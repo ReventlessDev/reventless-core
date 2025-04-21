@@ -200,6 +200,25 @@ module Make = (
           addEventMapperFns->Dict.mapValues(addEventMapperFn =>
             addEventMapperFn(allEventTopics, queryEngine)
           )
+        let _ =
+          aggregatesOutputs
+          ->Dict.valuesToArray
+          ->Array.map(aggregatesOutput => aggregatesOutput.eventMapper)
+          ->Array.keepSome
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(eventMapperOutputs =>
+            eventMapperOutputs
+            ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
+            ->Pulumi.Output.all
+            ->Pulumi.Output.apply(
+              _ =>
+                aggregates->Array.forEach(
+                  (module(SpecificAggregate: Aggregate.T)) => {
+                    SpecificAggregate.AggregateRuntimeBuilder.finish()
+                  },
+                ),
+            )
+          )
 
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints
@@ -516,28 +535,6 @@ module Make = (
         }
       })
     }
-
-    let _ = pureOutputs->Pulumi.Output.flatMap(outputs =>
-      outputs.aggregates
-      ->Dict.valuesToArray
-      ->Array.map(aggregatesOutput => aggregatesOutput.eventMapper)
-      ->Array.keepSome
-      ->Pulumi.Output.all
-      ->Pulumi.Output.flatMap(eventMapperOutputs =>
-        eventMapperOutputs
-        ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
-        ->Pulumi.Output.all
-        ->Pulumi.Output.apply(
-          _ =>
-            aggregates->Array.forEach(
-              (module(SpecificAggregate: Aggregate.T)) => {
-                SpecificAggregate.AggregateRuntimeBuilder.finish()
-              },
-            ),
-        )
-      )
-    )
-
     self->Component.setOutputs({
       Plugin.id: pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
       version: pureOutputs->Pulumi.Output.apply(outputs => outputs.version),

@@ -170,6 +170,17 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var aggregatesOutputs = Core__Dict.mapValues(addEventMapperFns, (function (addEventMapperFn) {
                                 return addEventMapperFn(allEventTopics, queryEngine);
                               }));
+                        Pulumi.all(Core__Array.keepSome(Object.values(aggregatesOutputs).map(function (aggregatesOutput) {
+                                        return aggregatesOutput.eventMapper;
+                                      }))).apply(function (eventMapperOutputs) {
+                              return Pulumi.all(eventMapperOutputs.map(function (eventMapperOutput) {
+                                                return eventMapperOutput.eventCollector;
+                                              })).apply(function (param) {
+                                          aggregates.forEach(function (SpecificAggregate) {
+                                                SpecificAggregate.AggregateRuntimeBuilder.finish();
+                                              });
+                                        });
+                            });
                         var match = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
                                   var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
                                   return [
@@ -361,19 +372,6 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 heartbeat: Component$Reventless.outputs(heartbeat)
                               };
                       });
-                  Output$Pulumi.flatMap(pureOutputs, (function (outputs) {
-                          return Output$Pulumi.flatMap(Pulumi.all(Core__Array.keepSome(Object.values(outputs.aggregates).map(function (aggregatesOutput) {
-                                                  return aggregatesOutput.eventMapper;
-                                                }))), (function (eventMapperOutputs) {
-                                        return Pulumi.all(eventMapperOutputs.map(function (eventMapperOutput) {
-                                                          return eventMapperOutput.eventCollector;
-                                                        })).apply(function (param) {
-                                                    aggregates.forEach(function (SpecificAggregate) {
-                                                          SpecificAggregate.AggregateRuntimeBuilder.finish();
-                                                        });
-                                                  });
-                                      }));
-                        }));
                   return Component$Reventless.setOutputs(extra, {
                               id: pureOutputs.apply(function (outputs) {
                                     return outputs.id;
