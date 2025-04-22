@@ -122,7 +122,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
 
     let storageResource = (~pluginName: option<string>, ~tableName: string) =>
       allQueryDbs
-      ->Reventless.Plugin_Builder.getStorageResources(pluginName, tableName)
+      ->Reventless.Plugin_Helpers.getStorageResources(pluginName, tableName)
       ->Util.DynamoDb.findResourceInOutput
       ->Reventless.Adapter.outputToResource
 

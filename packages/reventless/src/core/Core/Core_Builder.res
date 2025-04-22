@@ -1,3 +1,5 @@
+open Core_Helpers
+
 module Make = (
   Config: Config.T,
   RuntimeEnvironment: Runtime.Environment,
@@ -6,13 +8,9 @@ module Make = (
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
   CoreRuntimeBuilder: PluginRuntime_Builder.T
-    with module EventCollectorChannel = EventCollectorChannel,
+    with module EventCollectorChannel = EventCollectorChannel
+    and type runtimeParts = RuntimeEnvironment.parts,
 ) => {
-  type readModel = {
-    module_: module(ReadModel.T),
-    readModel: ReadModel.component,
-  }
-
   let construct = (
     ~version,
     ~extensionPoints: array<module(ExtensionPoint.T)>,
@@ -25,43 +23,9 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = Core.componentType->ComponentType.toName
 
-    let addEventMapperFns = Js.Dict.empty()
-    let aggregateResources = Js.Dict.empty()
-    let publishToAggregates = Js.Dict.empty()
-
-    let aggregatesWithoutEventMappers =
-      aggregates
-      ->Array.map((module(SpecificAggregate: Aggregate.T)) => {
-        let aggregate = SpecificAggregate.make(~opts)
-        addEventMapperFns->Js.Dict.set(
-          SpecificAggregate.Spec.name,
-          (aggregate->Component.outputs).addEventMapper,
-        )
-        let resources =
-          (aggregate->Component.outputs).commandTopic->Pulumi.Output.apply(commandTopic =>
-            commandTopic.resources
-          )
-        aggregateResources->Js.Dict.set(SpecificAggregate.Spec.name, resources)
-        let publishJsons =
-          aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons)
-        publishToAggregates->Js.Dict.set(SpecificAggregate.Spec.name, publishJsons)
-        aggregate->Component.outputs
-      })
-      ->Array.map(aggregate => {(aggregate.name, aggregate)})
-      ->Js.Dict.fromArray
-
+    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
-
-    let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
-      let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
-      (SpecificReadModel.Spec.name, {module_: module(SpecificReadModel), readModel})
-    })
-    let readModelsOutputs =
-      readModels
-      ->Js.Dict.fromArray
-      ->Js.Dict.entries
-      ->Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
-      ->Js.Dict.fromArray
+    let readModelsOutputs = readModels->createReadModels(allEventTopics, opts)
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
@@ -75,29 +39,16 @@ module Make = (
       )
       ->Pulumi.Output.all4
       ->Pulumi.Output.apply(((aggregateResources, publishToAggregates, queryEngine, scheduler)) => {
-        let aggregatesOutputs = Js.Dict.map(
-          addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
-          addEventMapperFns,
-        )
+        let aggregatesOutputs = aggregates->addEventMappers(allEventTopics, queryEngine)
 
         let (extensionPointsOutputs, extensionPointsOutgoingEventHandlers) =
-          extensionPoints
-          ->Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
-            let extensionPoint = SpecificExtensionPoint.make(
-              ~aggregateResources,
-              ~publishToAggregates,
-              ~scheduler,
-              ~queryEngine,
-              ~opts=Some(opts),
-            )
-            (
-              extensionPoint->Component.outputs,
-              extensionPoint
-              ->Component.operations
-              ->Pulumi.Output.apply(({outgoingEventHandler}) => outgoingEventHandler),
-            )
-          })
-          ->Belt.Array.unzip
+          extensionPoints->createExtensionPoints(
+            ~aggregateResources,
+            ~publishToAggregates,
+            ~scheduler,
+            ~queryEngine,
+            ~opts,
+          )
 
         let aggregateNames =
           extensionPointsOutputs
@@ -107,52 +58,29 @@ module Make = (
           ->Array.reduce(Belt.Set.String.empty, (acc, names) => acc->Belt.Set.String.union(names))
 
         let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
-        let resources =
-          extensionPointsOutputs
-          ->Array.map(extensionPoint => extensionPoint.eventTopic)
+
+        module EventCollectorHelper = MakeEventCollectorHelper(
+          RuntimeEnvironment,
+          EventCollectorChannel,
+          CoreRuntimeBuilder,
+        )
+        let (eventCollector, eventCollectorOutputs) = EventCollectorHelper.make(
+          ~name,
+          ~eventTopics,
+          ~opts,
+        )
+
+        let _ =
+          extensionPointsOutgoingEventHandlers
           ->Pulumi.Output.all
-          ->Pulumi.Output.apply(eventTopics =>
-            eventTopics
-            ->Array.map(eventTopic => eventTopic.resources)
-            ->Array.flat
-          )
-
-        let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {
-          id: "Core@FAKE",
-          name: "Core",
-          version: "FAKE",
-          extensionPoints: [],
-          extensions: [],
-          eventCollector: "NOT-SET",
-        }
-
-        let eventCollectorOutputs =
-          (extensionPointsOutgoingEventHandlers->Pulumi.Output.all, resources)
-          ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((extensionPointsOutgoingEventHandlers, resources)) => {
-            module CoreEventCollector = EventCollector_Builder.Make(
-              RuntimeEnvironment,
-              EventCollectorChannel,
-            )
-            let eventCollector = CoreEventCollector.make(~name, ~eventTopics, ~opts)
-            let eventCollectorOutputs = eventCollector->Component.outputs
-
-            module Callback = Core_Callback.Make({
-              let pluginDefinition = fakePluginDefinition
-              let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
-            })
-            let handler = CoreEventCollector.makeHandler(
+          ->Pulumi.Output.flatMap(extensionPointsOutgoingEventHandlers =>
+            EventCollectorHelper.connect(
               ~eventCollector,
-              ~eventsHandler=Callback.eventsHandler,
-            )
-            eventCollector->CoreRuntimeBuilder.forPluginEventCollector(
-              ~handler,
               ~eventTopics,
-              ~resources,
+              ~extensionPointsOutputs,
+              ~extensionPointsOutgoingEventHandlers,
             )
-
-            eventCollectorOutputs
-          })
+          )
         (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs)
       })
       ->Pulumi.Output.unzip3
@@ -162,9 +90,7 @@ module Make = (
 
     self->Component.setOutputs({
       Core.version,
-      eventCollector: eventCollectorOutputs->Pulumi.Output.flatMap(eventCollectorOutputs =>
-        eventCollectorOutputs
-      ),
+      eventCollector: eventCollectorOutputs,
       extensionPoints: extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
         extensionPointsOutputs
         ->Array.map(ep => (ep.name, ep))

@@ -4,83 +4,21 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Core__Dict = require("@rescript/core/src/Core__Dict.res.js");
-var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Plugin$Reventless = require("./Plugin.res.js");
-var Adapter$Reventless = require("../../adapter/Adapter.res.js");
-var QueryDb$Reventless = require("../QueryDb/QueryDb.res.js");
 var Aggregate$Reventless = require("../Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
 var ReadModel$Reventless = require("../ReadModel/ReadModel.res.js");
 var Interstack$Reventless = require("../../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
-var Util_QueryDb$Reventless = require("../../util/Util_QueryDb.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var ExtensionPoint$Reventless = require("../ExtensionPoint/ExtensionPoint.res.js");
-var Util_StackRefs$Reventless = require("../../util/Util_StackRefs.res.js");
-var Plugin_Callback$Reventless = require("./Plugin_Callback.res.js");
+var Plugin_Helpers$Reventless = require("./Plugin_Helpers.res.js");
 var AdapterDeploytime$Reventless = require("../../adapter/AdapterDeploytime.res.js");
 var Heartbeat_Builder$Reventless = require("../Heartbeat/Heartbeat_Builder.res.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
-var ResourceQueryRuntime$Reventless = require("../../util/ResourceQueryRuntime.res.js");
-var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
-var PluginConnectExtension_Builder$Reventless = require("../../core/Extensions/Connect/PluginConnectExtension_Builder.res.js");
-
-function getRemoteStorageResources(pluginName, queryDbName) {
-  var resources = Core__Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
-          return stackRef.requireOutput("plugin").apply(function (plugin) {
-                      return Core__Option.getOr(Core__Option.map(Js_dict.get(plugin.readModels, queryDbName), (function (readModel) {
-                                        return readModel.queryDb.resources;
-                                      })), []);
-                    });
-        }));
-  if (resources !== undefined) {
-    return resources;
-  } else {
-    console.log("Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin $pluginName");
-    return Pulumi.output([]);
-  }
-}
-
-function getStorageResources(allQueryDbs, pluginName, queryDbName) {
-  if (pluginName !== undefined) {
-    return getRemoteStorageResources(pluginName, queryDbName);
-  } else {
-    return Pulumi.output(Util_QueryDb$Reventless.getLocalStorageResources(allQueryDbs, queryDbName));
-  }
-}
-
-function getIncomingEventHandler(eventHandlers) {
-  return eventHandlers.incoming;
-}
-
-function getOutgoingEventHandler(eventHandlers) {
-  return eventHandlers.outgoing;
-}
-
-function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEventHandler) {
-  var dict = {};
-  Belt_Array.zip(outputs, handlers).forEach(function (param) {
-        var outputs = param[0];
-        Core__Option.forEach(getEventHandler(param[1]), (function (eventHandler) {
-                getServiceNames(outputs).forEach(function (serviceName) {
-                      var eventHandlers = Js_dict.get(dict, serviceName);
-                      if (eventHandlers !== undefined) {
-                        dict[serviceName] = eventHandlers.concat([eventHandler]);
-                      } else {
-                        dict[serviceName] = [eventHandler];
-                      }
-                    });
-              }));
-      });
-  return dict;
-}
 
 function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner, PluginRuntimeBuilder) {
   var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts) {
@@ -90,64 +28,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                   var opts = {
                     parent: opts_parent
                   };
-                  var addEventMapperFns = {};
-                  var aggregateResources = {};
-                  var publishToAggregates = {};
-                  var aggregatesWithoutEventMappers = Js_dict.fromArray(aggregates.map(function (SpecificAggregate) {
-                              var aggregate = SpecificAggregate.make(opts);
-                              addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
-                              var resources = Component$Reventless.outputs(aggregate).commandTopic.apply(function (commandTopic) {
-                                    return commandTopic.resources;
-                                  });
-                              aggregateResources[SpecificAggregate.Spec.name] = resources;
-                              var publishJsons = Component$Reventless.operations(aggregate).apply(function (param) {
-                                    return param.publishJsons;
-                                  });
-                              publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
-                              return Component$Reventless.outputs(aggregate);
-                            }).map(function (aggregate) {
-                            return [
-                                    aggregate.name,
-                                    aggregate
-                                  ];
-                          }));
+                  var aggregatesWithoutEventMappers = Plugin_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, opts);
                   var allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
-                  var readModelNamesForSourceName = {};
-                  var publishToReadModels = {};
-                  var readModels$1 = readModels.map(function (SpecificReadModel) {
-                        var readModel = SpecificReadModel.make(allEventTopics, opts);
-                        Component$Reventless.outputs(readModel).sourceNames.forEach(function (sourceName) {
-                              var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
-                              if (readModelNames !== undefined) {
-                                readModelNamesForSourceName[sourceName] = readModelNames.concat([SpecificReadModel.Spec.name]);
-                              } else {
-                                readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
-                              }
-                            });
-                        publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
-                              return param.enqueueEvent;
-                            });
-                        return [
-                                SpecificReadModel.Spec.name,
-                                {
-                                  module_: SpecificReadModel,
-                                  readModel: readModel
-                                }
-                              ];
-                      });
-                  Pulumi.all(readModels$1.map(function (param) {
-                              return Component$Reventless.operations(param[1].readModel);
-                            })).apply(function (param) {
-                        readModels$1.forEach(function (param) {
-                              param[1].module_.ReadModelRuntimeBuilder.finish();
-                            });
-                      });
-                  var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModels$1)).map(function (param) {
-                            return [
-                                    param[0],
-                                    Component$Reventless.outputs(param[1].readModel)
-                                  ];
-                          }));
+                  var readModelsOutputs = Plugin_Helpers$Reventless.createReadModels(readModels, allEventTopics, opts);
                   var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                   var queryEngine = QueryEngineAdapter.make(allQueryDbs);
                   var coreExtensionPoints = Core__Option.mapOr(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
@@ -155,9 +38,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         }));
                   var pureOutputs = Pulumi.all([
                           coreExtensionPoints,
-                          Pulumi.all(aggregateResources),
-                          Pulumi.all(publishToAggregates),
-                          Pulumi.all(publishToReadModels),
+                          Pulumi.all(Plugin_Helpers$Reventless.aggregateResources),
+                          Pulumi.all(Plugin_Helpers$Reventless.publishToAggregates),
+                          Pulumi.all(Plugin_Helpers$Reventless.publishToReadModels),
                           scheduler,
                           queryEngine
                         ]).apply(function (param) {
@@ -165,83 +48,18 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var scheduler = param[4];
                         var publishToReadModels = param[3];
                         var publishToAggregates = param[2];
-                        var aggregateResources = param[1];
                         var coreExtensionPoints = param[0];
-                        var aggregatesOutputs = Core__Dict.mapValues(addEventMapperFns, (function (addEventMapperFn) {
-                                return addEventMapperFn(allEventTopics, queryEngine);
-                              }));
-                        var match = Belt_Array.unzip(Core__Array.keepSome(Object.values(aggregatesOutputs).map(function (aggregateOutputs) {
-                                      return Core__Option.map(aggregateOutputs.eventMapper, (function (eventMapper) {
-                                                    return [
-                                                            eventMapper,
-                                                            aggregateOutputs.commandTopic
-                                                          ];
-                                                  }));
-                                    })));
-                        Pulumi.all([
-                                Pulumi.all(match[0]),
-                                Pulumi.all(match[1])
-                              ]).apply(function (param) {
-                              return Pulumi.all(param[0].map(function (eventMapperOutput) {
-                                                return eventMapperOutput.eventCollector;
-                                              })).apply(function (param) {
-                                          aggregates.forEach(function (SpecificAggregate) {
-                                                console.log("Plugin_Builder: AggregateRuntimeBuilder.finish", extra$1);
-                                                SpecificAggregate.AggregateRuntimeBuilder.finish();
-                                              });
-                                        });
-                            });
-                        var match$1 = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
-                                  var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
-                                  return [
-                                          Component$Reventless.outputs(extensionPoint),
-                                          Component$Reventless.operations(extensionPoint).apply(function (param) {
-                                                return {
-                                                        outgoing: param.outgoingEventHandler
-                                                      };
-                                              })
-                                        ];
-                                }));
-                        var extensionPointsOutputs = match$1[0];
+                        var aggregatesOutputs = Plugin_Helpers$Reventless.addEventMappers(aggregates, allEventTopics, queryEngine);
+                        var match = Plugin_Helpers$Reventless.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, opts);
+                        var extensionPointsOutputs = match[0];
                         var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
                         var corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
                         var corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
                         var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
-                        var match$2 = Belt_Array.unzip(extensions.map(function (SpecificExtension) {
-                                  var extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-                                  return [
-                                          Component$Reventless.outputs(extension),
-                                          Component$Reventless.operations(extension).apply(function (param) {
-                                                return {
-                                                        outgoing: param.outgoingEventHandler,
-                                                        incoming: param.incomingEventHandler
-                                                      };
-                                              })
-                                        ];
-                                }));
-                        var extensionsOutputs = match$2[0];
-                        var extensionPointsDefinitions = Pulumi.all(extensionPointsOutputs.map(function (extensionPointOutputs) {
-                                  return Pulumi.all([
-                                                Output$Pulumi.flatMap(extensionPointOutputs.commandTopic, (function (param) {
-                                                        return param.resources[0].id;
-                                                      })),
-                                                Output$Pulumi.flatMap(extensionPointOutputs.eventTopic, (function (param) {
-                                                        return param.resources[0].id;
-                                                      }))
-                                              ]).apply(function (param) {
-                                              return {
-                                                      name: extensionPointOutputs.name,
-                                                      commandTopic: param[0],
-                                                      eventTopic: param[1]
-                                                    };
-                                            });
-                                }));
-                        var extensionsDefinitions = extensionsOutputs.map(function (extensionOutputs) {
-                              return {
-                                      name: extensionOutputs.name,
-                                      extensionPointName: extensionOutputs.extensionPointName
-                                    };
-                            });
+                        var match$1 = Plugin_Helpers$Reventless.createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
+                        var extensionsOutputs = match$1[0];
+                        var extensionPointsDefinitions = Plugin_Helpers$Reventless.extractExtensionPointDefinitions(extensionPointsOutputs);
+                        var extensionsDefinitions = Plugin_Helpers$Reventless.extractExtensionDefinitions(extensionsOutputs);
                         var collectAggregateNames = function (ex) {
                           return Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
                         };
@@ -252,101 +70,33 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   return ex.aggregateNames;
                                 }));
                         var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
-                        var partial_arg = EventCollector_Builder$Reventless.Make;
-                        var PluginEventCollector = partial_arg(RuntimeEnvironment, EventCollectorChannel);
-                        var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
-                        var eventCollector = PluginEventCollector.make(childName, eventTopics, opts);
-                        var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
-                        var eventCollectorUrn = eventCollectorOutputs.resources[0].urn;
-                        var match$3 = Output$Pulumi.unzip3(Pulumi.all([
-                                    Pulumi.all(extensionPointsOutputs.map(ExtensionPoint$Reventless.toUnwrappedOutputs)),
-                                    extensionPointsDefinitions,
-                                    eventCollectorUrn
-                                  ]).apply(function (param) {
-                                  var pluginDefinition = {
-                                    id: id,
-                                    name: extra$1,
-                                    version: version,
-                                    extensionPoints: param[1],
-                                    extensions: extensionsDefinitions,
-                                    eventCollector: param[2]
-                                  };
-                                  var ConnectPluginExtension = PluginConnectExtension_Builder$Reventless.Make({
-                                        pluginDefinition: pluginDefinition,
-                                        extensionPointsOutputs: param[0],
-                                        extensionsOutputs: extensionsOutputs
-                                      });
-                                  var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-                                  var connectPluginExtensionOutputs = Component$Reventless.outputs(connectPluginExtension);
-                                  var connectPluginExtensionIncomingEventHandler = Component$Reventless.operations(connectPluginExtension).apply(function (param) {
-                                        return param.incomingEventHandler;
-                                      });
-                                  return [
-                                          connectPluginExtensionOutputs,
-                                          connectPluginExtensionIncomingEventHandler,
-                                          pluginDefinition
-                                        ];
-                                }));
-                        var tasksOutputs = {
-                          contents: []
-                        };
-                        var queryBucketName = function (taskName) {
-                          return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName);
-                        };
-                        tasksOutputs.contents = taskMakers.map(function (taskMaker) {
-                              return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
-                            });
-                        var resolvers = QueryDb$Reventless.allResolversMakers(allQueryDbs).map(function (resolverMaker) {
-                                return resolverMaker(allQueryDbs);
-                              }).flat();
                         eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                           resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.unwrappedToResource)
                         };
-                        var resources = Pulumi.all(extensionPointsOutputs.map(function (extensionPoint) {
-                                    return extensionPoint.eventTopic;
-                                  })).apply(function (eventTopics) {
-                              return eventTopics.map(function (eventTopic) {
-                                              return eventTopic.resources;
-                                            }).flat().concat(Adapter$Reventless.unwrappedToResources(corePluginExtensionPointUnwrapped.commandTopic.resources));
-                            });
-                        var eventCollectorOutputs$1 = Pulumi.all([
-                                match$3[2],
-                                match$3[1],
-                                Pulumi.all(match$2[1]),
-                                Pulumi.all(match$1[1]),
-                                match$3[0],
-                                resources
+                        var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
+                        var partial_arg = Plugin_Helpers$Reventless.MakeEventCollectorHelper;
+                        var partial_arg$1 = function (param, param$1) {
+                          return partial_arg(RuntimeEnvironment, param, param$1);
+                        };
+                        var EventCollectorHelper = partial_arg$1(EventCollectorChannel, PluginRuntimeBuilder);
+                        var match$2 = EventCollectorHelper.make(childName, eventTopics, opts);
+                        var pluginDefinition = Pulumi.all([
+                                extensionPointsDefinitions,
+                                match$2[2]
                               ]).apply(function (param) {
-                              var extensionsHandlers = param[2];
-                              var pluginDefinition = param[0];
-                              var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
-                                      return outputs.aggregateNames;
-                                    }), param[3], getOutgoingEventHandler);
-                              var incomingConnectExtensionEventHandlers = serviceNameToEventHandlers([param[4]], (function (outputs) {
-                                      return [outputs.extensionPointName];
-                                    }), [{
-                                      incoming: param[1]
-                                    }], getIncomingEventHandler);
-                              var outgoingExtensionEventHandlers = serviceNameToEventHandlers(extensionsOutputs, (function (outputs) {
-                                      return outputs.aggregateNames;
-                                    }), extensionsHandlers, getOutgoingEventHandler);
-                              var incomingExtensionEventHandlers = serviceNameToEventHandlers(extensionsOutputs, (function (outputs) {
-                                      return [outputs.extensionPointName];
-                                    }), extensionsHandlers, getIncomingEventHandler);
-                              var Callback = Plugin_Callback$Reventless.Make({
-                                    pluginDefinition: pluginDefinition,
-                                    incomingConnectExtensionEventHandlers: incomingConnectExtensionEventHandlers,
-                                    outgoingExtensionPointEventHandlers: outgoingExtensionPointEventHandlers,
-                                    outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
-                                    incomingExtensionEventHandlers: incomingExtensionEventHandlers
-                                  });
-                              var handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
-                              PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[5], undefined, undefined, eventCollector);
-                              eventCollectorOutputs.resources[0].urn.apply(function (urn) {
-                                    pluginDefinition.eventCollector = urn;
-                                  });
-                              return eventCollectorOutputs;
+                              return {
+                                      id: id,
+                                      name: extra$1,
+                                      version: version,
+                                      extensionPoints: param[0],
+                                      extensions: extensionsDefinitions,
+                                      eventCollector: param[1]
+                                    };
                             });
+                        var match$3 = Plugin_Helpers$Reventless.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$Reventless.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+                        EventCollectorHelper.connect(match$2[0], eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, match$3[1], match$1[1], match[1], match$3[0]);
+                        var tasksOutputs = Plugin_Helpers$Reventless.createTasks(taskMakers, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, opts);
+                        var resolvers = Plugin_Helpers$Reventless.createResolvers(allQueryDbs);
                         var SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
                         var heartbeat = SpecificHeartbeat.make(childName, opts);
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
@@ -357,7 +107,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 id: id,
                                 version: version,
                                 heartbeatInterval: heartbeatInterval,
-                                eventCollector: eventCollectorOutputs$1,
+                                eventCollector: match$2[1],
                                 extensionPoints: Js_dict.fromArray(extensionPointsOutputs.map(function (el) {
                                           return [
                                                   el.name,
@@ -372,7 +122,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                         })),
                                 aggregates: aggregatesOutputs,
                                 readModels: readModelsOutputs,
-                                tasks: Js_dict.fromArray(tasksOutputs.contents.map(function (el) {
+                                tasks: Js_dict.fromArray(tasksOutputs.map(function (el) {
                                           return [
                                                   el.name,
                                                   el
@@ -392,9 +142,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                               heartbeatInterval: pureOutputs.apply(function (outputs) {
                                     return outputs.heartbeatInterval;
                                   }),
-                              eventCollector: Output$Pulumi.flatMap(pureOutputs, (function (outputs) {
-                                      return outputs.eventCollector;
-                                    })),
+                              eventCollector: pureOutputs.apply(function (outputs) {
+                                    return outputs.eventCollector;
+                                  }),
                               extensionPoints: pureOutputs.apply(function (outputs) {
                                     return outputs.extensionPoints;
                                   }),
@@ -424,10 +174,5 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
         };
 }
 
-exports.getRemoteStorageResources = getRemoteStorageResources;
-exports.getStorageResources = getStorageResources;
-exports.getIncomingEventHandler = getIncomingEventHandler;
-exports.getOutgoingEventHandler = getOutgoingEventHandler;
-exports.serviceNameToEventHandlers = serviceNameToEventHandlers;
 exports.Make = Make;
-/* Output-Pulumi Not a pure module */
+/* @pulumi/pulumi Not a pure module */

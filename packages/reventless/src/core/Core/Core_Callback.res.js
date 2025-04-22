@@ -5,7 +5,7 @@ var Logger$Reventless = require("../../util/Logger.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec) {
-  var eventsHandler = function (eventsJson$p) {
+  var handleJsonEvents = function (eventsJson$p) {
     var count = eventsJson$p.length;
     return Util_Promise$Reventless.toUnit(Promise.all(eventsJson$p.map(async function (eventJson$p, idx) {
                         var idx$1 = idx + 1 | 0;
@@ -16,7 +16,7 @@ function Make(Spec) {
                       })));
   };
   return {
-          eventsHandler: eventsHandler
+          handleJsonEvents: handleJsonEvents
         };
 }
 

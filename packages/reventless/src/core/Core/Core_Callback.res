@@ -1,12 +1,14 @@
-type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
-
 module type Spec = {
   let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
-  let outgoingExtensionPointEventHandlers: array<eventHandler>
+  let outgoingExtensionPointEventHandlers: array<ExtensionPoint.eventHandler>
 }
 
-module Make = (Spec: Spec) => {
-  let eventsHandler = eventsJson' => {
+module type T = {
+  let handleJsonEvents: array<Js.Json.t> => Js.Promise.t<unit>
+}
+
+module Make = (Spec: Spec): T => {
+  let handleJsonEvents = eventsJson' => {
     let count = eventsJson'->Array.length
     eventsJson'
     ->Array.mapWithIndex(async (eventJson', idx) => {
