@@ -45,8 +45,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
   var validateParent = function (parent) {
     var parentName = Core__Option.getOr(parent.__name, "UnnamedParent");
     return parent.urn.apply(function (urn) {
-                var pulumiType = Core__Option.getOr(Core__Option.flatMap(urn.split("::")[2], (function (fullType) {
-                            return fullType.split(":")[1];
+                var pulumiType = Core__Option.getOr(Core__Option.map(urn.split("::")[2], (function (fullType) {
+                            var parts = fullType.split(":");
+                            return parts[parts.length - 1 | 0];
                           })), "Unknown");
                 console.log("validateParent: parent " + parentName + " type: " + pulumiType);
                 var match = grandParent.contents;
@@ -121,8 +122,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     var match$1 = parentType.contents;
     var exit = 0;
     if (match !== undefined && match$1 !== undefined) {
-      var parentType$1 = Core__Option.getOr(match$1.split(":")[1], "Parent");
-      var name = "All" + parentType$1 + "s";
+      var name = "All" + match$1 + "s";
       var match$2 = runtimeSpec.contents;
       var runtime = RuntimeEnvironment.make(name, Pulumi.output(eventCollectorHandler(name)), match$2.maxMemorySize, match$2.maxTimeout, {
             parent: match

@@ -57,7 +57,10 @@ module Make = (
     parent.urn->Pulumi.Output.apply(urn => {
       let pulumiType =
         (urn->String.split("::"))[2]
-        ->Option.flatMap(fullType => (fullType->String.split(":"))[1])
+        ->Option.map(fullType => {
+          let parts = fullType->String.split(":")
+          parts->Array.getUnsafe(parts->Array.length - 1)
+        })
         ->Option.getOr("Unknown")
       Js.log(`validateParent: parent ${parentName} type: ${pulumiType}`)
       switch (grandParent.contents, parentType.contents) {
@@ -149,7 +152,6 @@ module Make = (
     if !finished.contents {
       switch (grandParent.contents, parentType.contents) {
       | (Some(grandParent), Some(parentType)) =>
-        let parentType = (parentType->String.split(":"))[1]->Option.getOr("Parent")
         let name = `All${parentType}s`
         let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
         let runtime = RuntimeEnvironment.make(
