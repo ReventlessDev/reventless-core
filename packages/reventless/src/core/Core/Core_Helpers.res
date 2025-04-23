@@ -18,8 +18,7 @@ module MakeEventCollectorHelper = (
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
   CoreRuntimeBuilder: PluginRuntime_Builder.T
-    with module EventCollectorChannel = EventCollectorChannel
-    and type runtimeParts = RuntimeEnvironment.parts,
+    with module EventCollectorChannel = EventCollectorChannel,
 ) => {
   module CoreEventCollector = EventCollector_Builder.Make(RuntimeEnvironment, EventCollectorChannel)
   let make = (~name, ~eventTopics, ~opts) => {

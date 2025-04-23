@@ -348,8 +348,7 @@ module MakeEventCollectorHelper = (
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
   PluginRuntimeBuilder: PluginRuntime_Builder.T
-    with module EventCollectorChannel = EventCollectorChannel
-    and type runtimeParts = RuntimeEnvironment.parts,
+    with module EventCollectorChannel = EventCollectorChannel,
 ) => {
   module PluginEventCollector = EventCollector_Builder.Make(
     RuntimeEnvironment,
