@@ -16,77 +16,100 @@ var EventCollector_Builder$Reventless = require("../EventCollector/EventCollecto
 var CommandGenerator_Builder$Reventless = require("../CommandGenerator/CommandGenerator_Builder.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel, AggregateRuntimeBuilder) {
+  var partial_arg_Id = Spec.Id;
+  var partial_arg_name = Spec.name;
+  var partial_arg_event_encode = Spec.event_encode;
+  var partial_arg_event_decode = Spec.event_decode;
+  var partial_arg = {
+    Id: partial_arg_Id,
+    name: partial_arg_name,
+    event_encode: partial_arg_event_encode,
+    event_decode: partial_arg_event_decode
+  };
+  var partial_arg$1 = EventLog_Builder$Reventless.Make;
+  var partial_arg$2 = function (param, param$1) {
+    return partial_arg$1(partial_arg, param, param$1);
+  };
+  var SpecificEventLog = partial_arg$2(EventLogStorage, EventTopicPublisher);
+  var partial_arg_Id$1 = Spec.Id;
+  var partial_arg_command_encode = Spec.command_encode;
+  var partial_arg_command_decode = Spec.command_decode;
+  var partial_arg$3 = {
+    Id: partial_arg_Id$1,
+    command_encode: partial_arg_command_encode,
+    command_decode: partial_arg_command_decode
+  };
+  var partial_arg$4 = CommandTopic_Builder$Reventless.Make;
+  var SpecificCommandTopic = (function (param) {
+        return partial_arg$4(partial_arg$3, param);
+      })(CommandTopicChannel);
+  var partial_arg$5 = CommandGenerator_Builder$Reventless.Make;
+  var partial_arg$6 = function (param, param$1) {
+    return partial_arg$5(Config, Spec, param, param$1);
+  };
+  var SpecificCommandGenerator = partial_arg$6(Behaviour, CommandGeneratorResolvers);
+  var partial_arg$7 = EventCollector_Builder$Reventless.Make;
+  var SpecificEventCollector = partial_arg$7(RuntimeEnvironment, EventCollectorChannel);
+  var partial_arg_name$1 = Spec.name;
+  var partial_arg_Id$2 = Spec.Id;
+  var partial_arg_command_encode$1 = Spec.command_encode;
+  var partial_arg_command_decode$1 = Spec.command_decode;
+  var partial_arg$8 = {
+    name: partial_arg_name$1,
+    Id: partial_arg_Id$2,
+    command_encode: partial_arg_command_encode$1,
+    command_decode: partial_arg_command_decode$1
+  };
+  var partial_arg$9 = EventMapper_Builder$Reventless.Make;
+  var partial_arg$10 = function (param, param$1) {
+    return partial_arg$9(partial_arg$8, SpecificEventCollector, param, param$1);
+  };
+  var SpecificEventMapper = partial_arg$10(EventMappings, AggregateRuntimeBuilder);
+  var createCommandTopic = function (eventLog, name, opts) {
+    return Component$Reventless.operations(eventLog).apply(function (eventLogOps) {
+                var partial_arg = Aggregate_Callback$Reventless.Make;
+                var partial_arg$1 = function (param, param$1) {
+                  return partial_arg(Spec, param, param$1);
+                };
+                var AggregateCallback = partial_arg$1(Behaviour, {
+                      Spec: Spec,
+                      EventLog: SpecificEventLog,
+                      eventLog: eventLogOps
+                    });
+                var commandTopic = SpecificCommandTopic.make(name, opts);
+                var handler = SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands);
+                var eventLog$1 = Component$Reventless.outputs(eventLog);
+                var resources = [
+                    eventLog$1.resources,
+                    eventLog$1.eventTopic.resources
+                  ].flat();
+                AggregateRuntimeBuilder.forCommandTopic(handler, (function (none) {
+                        return Curry._3(SpecificCommandTopic.connect, none, resources, commandTopic);
+                      }), undefined, undefined, commandTopic);
+                return commandTopic;
+              });
+  };
+  var createCommandGenerator = function (commandTopic, name, opts) {
+    return Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
+                  return Component$Reventless.operations(commandTopic).apply(function (param) {
+                              var commandGenerator = SpecificCommandGenerator.make(name, opts);
+                              var resources = Component$Reventless.outputs(commandTopic).resources;
+                              AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(param.publishJsons), (function (none) {
+                                      return Curry._3(SpecificCommandGenerator.connect, resources, none, commandGenerator);
+                                    }), undefined, undefined, commandGenerator);
+                              return commandGenerator;
+                            });
+                }));
+  };
   var construct = function (self, name) {
     var opts_parent = Component$Reventless.toPulumiResource(self);
     var opts = {
       parent: opts_parent
     };
     var name$1 = ComponentType$Reventless.name(name, Aggregate$Reventless.componentType);
-    var partial_arg_Id = Spec.Id;
-    var partial_arg_name = Spec.name;
-    var partial_arg_event_encode = Spec.event_encode;
-    var partial_arg_event_decode = Spec.event_decode;
-    var partial_arg = {
-      Id: partial_arg_Id,
-      name: partial_arg_name,
-      event_encode: partial_arg_event_encode,
-      event_decode: partial_arg_event_decode
-    };
-    var partial_arg$1 = EventLog_Builder$Reventless.Make;
-    var partial_arg$2 = function (param, param$1) {
-      return partial_arg$1(partial_arg, param, param$1);
-    };
-    var SpecificEventLog = partial_arg$2(EventLogStorage, EventTopicPublisher);
     var eventLog = SpecificEventLog.make(name$1, opts);
-    var commandTopic = Component$Reventless.operations(eventLog).apply(function (eventLogOps) {
-          var partial_arg_Id = Spec.Id;
-          var partial_arg_command_encode = Spec.command_encode;
-          var partial_arg_command_decode = Spec.command_decode;
-          var partial_arg = {
-            Id: partial_arg_Id,
-            command_encode: partial_arg_command_encode,
-            command_decode: partial_arg_command_decode
-          };
-          var partial_arg$1 = CommandTopic_Builder$Reventless.Make;
-          var SpecificCommandTopic = (function (param) {
-                return partial_arg$1(partial_arg, param);
-              })(CommandTopicChannel);
-          var commandTopic = SpecificCommandTopic.make(name$1, opts);
-          var partial_arg$2 = Aggregate_Callback$Reventless.Make;
-          var partial_arg$3 = function (param, param$1) {
-            return partial_arg$2(Spec, param, param$1);
-          };
-          var AggregateCallback = partial_arg$3(Behaviour, {
-                Spec: Spec,
-                EventLog: SpecificEventLog,
-                eventLog: eventLogOps
-              });
-          var handler = SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands);
-          var eventLog$1 = Component$Reventless.outputs(eventLog);
-          var resources = [
-              eventLog$1.resources,
-              eventLog$1.eventTopic.resources
-            ].flat();
-          AggregateRuntimeBuilder.forCommandTopic(handler, (function (none) {
-                  return Curry._3(SpecificCommandTopic.connect, none, resources, commandTopic);
-                }), undefined, undefined, commandTopic);
-          return commandTopic;
-        });
-    var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
-            return Component$Reventless.operations(commandTopic).apply(function (param) {
-                        var partial_arg = CommandGenerator_Builder$Reventless.Make;
-                        var partial_arg$1 = function (param, param$1) {
-                          return partial_arg(Config, Spec, param, param$1);
-                        };
-                        var SpecificCommandGenerator = partial_arg$1(Behaviour, CommandGeneratorResolvers);
-                        var commandGenerator = SpecificCommandGenerator.make(name$1, opts);
-                        var resources = Component$Reventless.outputs(commandTopic).resources;
-                        AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(param.publishJsons), (function (none) {
-                                return Curry._3(SpecificCommandGenerator.connect, resources, none, commandGenerator);
-                              }), undefined, undefined, commandGenerator);
-                        return Component$Reventless.outputs(commandGenerator);
-                      });
-          }));
+    var commandTopic = createCommandTopic(eventLog, name$1, opts);
+    var commandGenerator = createCommandGenerator(commandTopic, name$1, opts);
     Component$Reventless.setOperations(self, Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
                 return Component$Reventless.operations(commandTopic).apply(function (param) {
                             return {
@@ -96,27 +119,10 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
               })));
     return Component$Reventless.setOutputs(self, {
                 name: Spec.name,
-                commandGenerator: commandGenerator,
+                commandGenerator: Component$Reventless.wrappedOutputs(commandGenerator),
                 commandTopic: Component$Reventless.wrappedOutputs(commandTopic),
                 eventLog: Component$Reventless.outputs(eventLog),
                 addEventMapper: (function (none, none$1) {
-                    var partial_arg = EventCollector_Builder$Reventless.Make;
-                    var SpecificEventCollector = partial_arg(RuntimeEnvironment, EventCollectorChannel);
-                    var partial_arg_name = Spec.name;
-                    var partial_arg_Id = Spec.Id;
-                    var partial_arg_command_encode = Spec.command_encode;
-                    var partial_arg_command_decode = Spec.command_decode;
-                    var partial_arg$1 = {
-                      name: partial_arg_name,
-                      Id: partial_arg_Id,
-                      command_encode: partial_arg_command_encode,
-                      command_decode: partial_arg_command_decode
-                    };
-                    var partial_arg$2 = EventMapper_Builder$Reventless.Make;
-                    var partial_arg$3 = function (param, param$1) {
-                      return partial_arg$2(partial_arg$1, SpecificEventCollector, param, param$1);
-                    };
-                    var SpecificEventMapper = partial_arg$3(EventMappings, AggregateRuntimeBuilder);
                     if (EventMappings.mappings.length <= 0) {
                       return Component$Reventless.outputs(self);
                     }

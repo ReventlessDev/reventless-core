@@ -21,18 +21,26 @@ module Make = (
   module Spec = Spec
   module AggregateRuntimeBuilder = AggregateRuntimeBuilder
 
-  let addEventMapperFn = (aggregate: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
-    module SpecificEventCollector = EventCollector_Builder.Make(
-      RuntimeEnvironment,
-      EventCollectorChannel,
-    )
-    module SpecificEventMapper = EventMapper_Builder.Make(
-      Spec,
-      SpecificEventCollector,
-      EventMappings,
-      AggregateRuntimeBuilder,
-    )
+  module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
+  module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
+  module SpecificCommandGenerator = CommandGenerator_Builder.Make(
+    Config,
+    Spec,
+    Behaviour,
+    CommandGeneratorResolvers,
+  )
+  module SpecificEventCollector = EventCollector_Builder.Make(
+    RuntimeEnvironment,
+    EventCollectorChannel,
+  )
+  module SpecificEventMapper = EventMapper_Builder.Make(
+    Spec,
+    SpecificEventCollector,
+    EventMappings,
+    AggregateRuntimeBuilder,
+  )
 
+  let addEventMapperFn = (aggregate: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
     if EventMappings.mappings->Array.length > 0 {
       let eventMapper =
         (aggregate->Component.operations, (aggregate->Component.outputs).commandTopic)
@@ -58,63 +66,59 @@ module Make = (
     }
   }
 
-  let construct = (self, name) => {
-    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-    let name = name->ComponentType.name(Aggregate.componentType)
+  let createCommandTopic = (eventLog: SpecificEventLog.component, name, opts) =>
+    eventLog
+    ->Component.operations
+    ->Pulumi.Output.apply(eventLogOps => {
+      module AggregateCallback = Aggregate_Callback.Make(
+        Spec,
+        Behaviour,
+        {
+          module Spec = Spec
+          module EventLog = SpecificEventLog
+          let eventLog = eventLogOps
+        },
+      )
+      let commandTopic = SpecificCommandTopic.make(~name, ~opts)
+      let handler = SpecificCommandTopic.makeHandler(
+        ~commandTopic,
+        ~commandsHandler=AggregateCallback.handleCommands,
+      )
+      let eventLog = eventLog->Component.outputs
+      let resources = [eventLog.resources, eventLog.eventTopic.resources]->Array.flat
+      commandTopic->AggregateRuntimeBuilder.forCommandTopic(
+        ~handler,
+        ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...)
+      )
+      commandTopic
+    })
 
-    module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
-    let eventLog = SpecificEventLog.make(~name, ~opts)
-
-    let commandTopic =
-      eventLog
-      ->Component.operations
-      ->Pulumi.Output.apply(eventLogOps => {
-        module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
-        let commandTopic = SpecificCommandTopic.make(~name, ~opts)
-
-        module AggregateCallback = Aggregate_Callback.Make(
-          Spec,
-          Behaviour,
-          {
-            module Spec = Spec
-            module EventLog = SpecificEventLog
-            let eventLog = eventLogOps
-          },
-        )
-        let handler = SpecificCommandTopic.makeHandler(
-          ~commandTopic,
-          ~commandsHandler=AggregateCallback.handleCommands,
-        )
-        let eventLog = eventLog->Component.outputs
-        let resources = [eventLog.resources, eventLog.eventTopic.resources]->Array.flat
-
-        commandTopic->AggregateRuntimeBuilder.forCommandTopic(
-          ~handler,
-          ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...)
-        )
-
-        commandTopic
-      })
-
-    let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>
+  let createCommandGenerator = (
+    commandTopic: Pulumi.Output.t<SpecificCommandTopic.component>,
+    name,
+    opts,
+  ) =>
+    commandTopic->Pulumi.Output.flatMap(commandTopic =>
       commandTopic
       ->Component.operations
       ->Pulumi.Output.apply(({publishJsons}) => {
-        module SpecificCommandGenerator = CommandGenerator_Builder.Make(
-          Config,
-          Spec,
-          Behaviour,
-          CommandGeneratorResolvers,
-        )
         let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
         let resources = (commandTopic->Component.outputs).resources
         commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
           ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
           ~connect=SpecificCommandGenerator.connect(commandGenerator, ~resources, ...)
         )
-        commandGenerator->Component.outputs
+        commandGenerator
       })
     )
+
+  let construct = (self, name) => {
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let name = name->ComponentType.name(Aggregate.componentType)
+
+    let eventLog = SpecificEventLog.make(~name, ~opts)
+    let commandTopic = eventLog->createCommandTopic(name, opts)
+    let commandGenerator = commandTopic->createCommandGenerator(name, opts)
 
     self->Component.setOperations(
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
@@ -125,7 +129,7 @@ module Make = (
     )
     self->Component.setOutputs({
       Aggregate.name: Spec.name,
-      commandGenerator,
+      commandGenerator: commandGenerator->Component.wrappedOutputs,
       commandTopic: commandTopic->Component.wrappedOutputs,
       eventLog: eventLog->Component.outputs,
       addEventMapper: self->(addEventMapperFn(~opts, ...)),
