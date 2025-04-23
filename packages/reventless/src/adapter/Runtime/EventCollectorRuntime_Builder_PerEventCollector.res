@@ -3,7 +3,7 @@ module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
 ): (
-  ReadModelRuntime_Builder.T
+  EventCollectorRuntime_Builder.T
     with type context = RuntimeEnvironment.context
     and type runtimeParts = RuntimeEnvironment.parts
     and module EventCollectorChannel = EventCollectorChannel

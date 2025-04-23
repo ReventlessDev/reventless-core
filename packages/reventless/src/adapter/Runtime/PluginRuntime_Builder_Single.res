@@ -59,14 +59,6 @@ module Make = (
   }
 
   // let forDeadLetterQueue = (~handler, ~memorySize=1024, ~timeout=30, plugin) => {
-  //   let resource = plugin->Component.toPulumiResource
-  //   RuntimeEnvironment.make(
-  //     ~name=resource.name->Option.getOr("DeadLetterQueue"),
-  //     ~handler,
-  //     ~memorySize,
-  //     ~timeout,
-  //     ~opts={Pulumi.ComponentResource.parent: resource},
-  //   )
   // }
 
   let finish = () => ()

@@ -9,11 +9,11 @@ module Make = (
     and type role = Config.role,
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
-  ReadModelRuntimeBuilder: ReadModelRuntime_Builder.T
+  EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel,
 ): (ReadModel.T with module Spec = Spec) => {
   module Spec = Spec
-  module ReadModelRuntimeBuilder = ReadModelRuntimeBuilder
+  module EventCollectorRuntimeBuilder = EventCollectorRuntimeBuilder
 
   type projectionOperations = QueryDb.operations<string, Spec.state> // TODO: should we really use this "mixed" type?
 
@@ -72,7 +72,7 @@ module Make = (
         )
         let resources = (queryDb->Component.outputs).resources
 
-        eventCollector->ReadModelRuntimeBuilder.forEventCollector(
+        eventCollector->EventCollectorRuntimeBuilder.forEventCollector(
           ~handler,
           ~eventTopics,
           ~resources,

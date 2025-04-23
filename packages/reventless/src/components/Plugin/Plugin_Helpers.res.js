@@ -138,7 +138,7 @@ function finishReadModels(readModels) {
               return Component$Reventless.operations(param[1].readModel);
             })).apply(function (param) {
         readModels.forEach(function (param) {
-              param[1].module_.ReadModelRuntimeBuilder.finish();
+              param[1].module_.EventCollectorRuntimeBuilder.finish();
             });
       });
 }

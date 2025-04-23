@@ -5,8 +5,8 @@ var ReadModel_Builder$Reventless = require("@reventless/reventless/src/component
 var QueryDbStorage_DynamoDb$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb.res.js");
 var QueryDbResolvers_AppSync$ReventlessAws = require("../adapter/QueryDb/QueryDbResolvers_AppSync.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
-var ReadModelRuntime_Builder_PerReadModel$Reventless = require("@reventless/reventless/src/adapter/Runtime/ReadModelRuntime_Builder_PerReadModel.res.js");
 var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
+var EventCollectorRuntime_Builder_PerEventCollector$Reventless = require("@reventless/reventless/src/adapter/Runtime/EventCollectorRuntime_Builder_PerEventCollector.res.js");
 
 function partial_arg_asEventHandler(prim) {
   return prim;
@@ -18,9 +18,9 @@ var partial_arg = {
   asEventHandler: partial_arg_asEventHandler
 };
 
-var partial_arg$1 = ReadModelRuntime_Builder_PerReadModel$Reventless.Make;
+var partial_arg$1 = EventCollectorRuntime_Builder_PerEventCollector$Reventless.Make;
 
-var ReadModelRuntimeBuilder = (function (param) {
+var EventCollectorRuntimeBuilder = (function (param) {
       return partial_arg$1(partial_arg, param);
     })({
       make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
@@ -45,7 +45,7 @@ function Make(Config, Spec, Mappings) {
     asEventHandler: partial_arg_asEventHandler
   };
   var partial_arg$4 = ReadModel_Builder$Reventless.Make;
-  return partial_arg$4(Config, Spec, Mappings, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, ReadModelRuntimeBuilder);
+  return partial_arg$4(Config, Spec, Mappings, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, EventCollectorRuntimeBuilder);
 }
 
 var EventCollectorChannel;
@@ -54,6 +54,6 @@ var RuntimeEnvironment;
 
 exports.EventCollectorChannel = EventCollectorChannel;
 exports.RuntimeEnvironment = RuntimeEnvironment;
-exports.ReadModelRuntimeBuilder = ReadModelRuntimeBuilder;
+exports.EventCollectorRuntimeBuilder = EventCollectorRuntimeBuilder;
 exports.Make = Make;
-/* ReadModelRuntimeBuilder Not a pure module */
+/* EventCollectorRuntimeBuilder Not a pure module */

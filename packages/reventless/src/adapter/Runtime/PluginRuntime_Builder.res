@@ -3,10 +3,6 @@ module type T = {
   type runtimeParts
   module EventCollectorChannel: EventCollector_Adapter.Channel
 
-  let forSideEffectHandlerEventCollector: Runtime.forEventCollector<
-    Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
-    EventCollector.component,
-  >
   let forPluginEventCollector: Runtime.forEventCollector<
     Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
     EventCollector.component,
@@ -17,5 +13,5 @@ module type T = {
     Heartbeat.component,
   >
   // let forDeadLetterQueue: Runtime.forComponent<'h, runtimeParts, Plugin.component>
-  let finish: Plugin.component => unit
+  let finish: unit => unit
 }

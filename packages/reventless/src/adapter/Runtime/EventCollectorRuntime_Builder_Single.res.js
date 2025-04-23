@@ -12,6 +12,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
   var plugin = {
     contents: undefined
   };
+  var parentType = {
+    contents: undefined
+  };
   var runtimeSpec = {
     contents: {
       channelSpecs: [],
@@ -20,9 +23,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     }
   };
   var eventCollectorHandlers = {};
-  var readModelHandler = function (readModelName) {
+  var eventCollectorHandler = function (parentName) {
     return async function ($$event, context) {
-      var desc = "readModelHandler for " + readModelName + ":";
+      var desc = "eventCollectorHandler for " + parentName + ":";
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource($$event)).map(async function (param) {
                 var $$event = param[1];
                 var urn = param[0];
@@ -39,18 +42,28 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
               }));
     };
   };
-  var registerRuntimeSpec = function (channel, eventTopics, resources, memorySize, timeout, readModel) {
-    var readModelName = Core__Option.getOr(readModel.__name, "UnnamedReadModel");
-    var plugin$1 = plugin.contents;
-    if (plugin$1 !== undefined) {
-      var pluginName = Core__Option.getOr(plugin$1.__name, "UnnamedPlugin");
-      if (Caml_obj.notequal(plugin$1, readModel.__parentResource)) {
-        Js_exn.raiseError("registerRuntimeSpec: readModel " + readModelName + " has different parent than plugin " + pluginName);
+  var validateParent = function (parent) {
+    var parentName = Core__Option.getOr(parent.__name, "UnnamedParent");
+    var match = plugin.contents;
+    var match$1 = parentType.contents;
+    if (match !== undefined) {
+      if (Caml_obj.notequal(match, parent.__parentResource)) {
+        var pluginName = Core__Option.getOr(match.__name, "UnnamedPlugin");
+        return Js_exn.raiseError("registerRuntimeSpec: parent " + parentName + " has different parent than plugin " + pluginName);
       }
       
-    } else {
-      plugin.contents = readModel.__parentResource;
+    } else if (match$1 === undefined) {
+      plugin.contents = parent.__parentResource;
+      parentType.contents = parent.__pulumiType;
+      return ;
     }
+    if (match$1 !== undefined && match$1 !== parent.__pulumiType) {
+      return Js_exn.raiseError("registerRuntimeSpec: parent " + parentName + " has different type " + parent.__pulumiType + " than " + match$1);
+    }
+    
+  };
+  var registerRuntimeSpec = function (channel, eventTopics, resources, memorySize, timeout, parent) {
+    validateParent(parent);
     var match = runtimeSpec.contents;
     runtimeSpec.contents = {
       channelSpecs: match.channelSpecs.concat([{
@@ -68,11 +81,11 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     var eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
     var eventCollectorName = Core__Option.getOr(eventCollectorResource.__name, "Unnamed");
     var channel = eventCollector.channel;
-    var readModelResource = eventCollectorResource.__parentResource;
-    if (readModelResource === undefined) {
-      return Js_exn.raiseError("forEventCollector: eventCollector " + eventCollectorName + " has no ReadModel parent");
+    var parentResource = eventCollectorResource.__parentResource;
+    if (parentResource === undefined) {
+      return Js_exn.raiseError("forEventCollector: eventCollector " + eventCollectorName + " has no parent");
     }
-    registerRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, readModelResource);
+    registerRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, parentResource);
     var urns = Pulumi.all(Component$Reventless.outputs(eventCollector).resources.map(function (param) {
               return param.urn;
             }));
@@ -96,17 +109,27 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     if (finished.contents) {
       return ;
     }
-    var plugin$1 = plugin.contents;
-    if (plugin$1 !== undefined) {
-      var match = runtimeSpec.contents;
-      var runtime = RuntimeEnvironment.make("AllReadModels", Pulumi.output(readModelHandler("AllReadModels")), match.maxMemorySize, match.maxTimeout, {
-            parent: plugin$1
+    var match = plugin.contents;
+    var match$1 = parentType.contents;
+    var exit = 0;
+    if (match !== undefined && match$1 !== undefined) {
+      var parentType$1 = Core__Option.getOr(match$1.split(":")[1], "Parent");
+      var name = "All" + parentType$1 + "s";
+      var match$2 = runtimeSpec.contents;
+      var runtime = RuntimeEnvironment.make(name, Pulumi.output(eventCollectorHandler(name)), match$2.maxMemorySize, match$2.maxTimeout, {
+            parent: match
           });
-      var opts_parent = plugin$1;
+      var opts_parent = match;
       var opts = {
         parent: opts_parent
       };
-      EventCollectorChannel.connect("AllReadModels", match.channelSpecs, runtime, opts);
+      EventCollectorChannel.connect(name, match$2.channelSpecs, runtime, opts);
+    } else {
+      exit = 1;
+    }
+    if (exit === 1) {
+      console.log("EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set:", plugin.contents, parentType.contents);
+      Js_exn.raiseError("EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set");
     }
     finished.contents = true;
   };

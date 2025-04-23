@@ -11,7 +11,7 @@ var QueryDb_Builder$Reventless = require("../QueryDb/QueryDb_Builder.res.js");
 var ReadModel_Callback$Reventless = require("./ReadModel_Callback.res.js");
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 
-function Make(Config, Spec, Mappings, RuntimeEnvironment, QueryDbStorage, QueryDbResolvers, EventCollectorChannel, ReadModelRuntimeBuilder) {
+function Make(Config, Spec, Mappings, RuntimeEnvironment, QueryDbStorage, QueryDbResolvers, EventCollectorChannel, EventCollectorRuntimeBuilder) {
   var make = function (allEventTopics, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(ReadModel$Reventless.componentType), Spec.name, (function (extra, extra$1) {
                   var opts_parent = Component$Reventless.toPulumiResource(extra);
@@ -83,7 +83,7 @@ function Make(Config, Spec, Mappings, RuntimeEnvironment, QueryDbStorage, QueryD
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                         var resources = Component$Reventless.outputs(queryDb).resources;
-                        ReadModelRuntimeBuilder.forEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
+                        EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
                         return eventCollector;
                       });
                   Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {
@@ -101,7 +101,7 @@ function Make(Config, Spec, Mappings, RuntimeEnvironment, QueryDbStorage, QueryD
   };
   return {
           Spec: Spec,
-          ReadModelRuntimeBuilder: ReadModelRuntimeBuilder,
+          EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
           make: make
         };
 }

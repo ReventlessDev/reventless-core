@@ -5,17 +5,9 @@ module EventCollectorRuntimeBuilder = Reventless.EventCollectorRuntime_Builder_S
   EventCollectorChannel,
 )
 
-module Make = (
-  Config: Config.T,
-  Spec: ReventlessSpec.ReadModel_Spec.T,
-  Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-): (Reventless.ReadModel.T with module Spec = Spec) => Reventless.ReadModel_Builder.Make(
-  Config,
-  Spec,
-  Mappings,
+include Reventless.SideEffectHandler_Builder.Make(
   RuntimeEnvironment,
-  QueryDbStorage.DynamoDb,
-  QueryDbResolvers.AppSync,
   EventCollectorChannel,
+  Reventless.EventCollector_Builder.Make(RuntimeEnvironment, EventCollectorChannel),
   EventCollectorRuntimeBuilder,
 )

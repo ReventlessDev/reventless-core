@@ -150,7 +150,7 @@ let finishReadModels = readModels => {
     ->Pulumi.Output.all
     ->Pulumi.Output.apply(_ =>
       readModels->Array.forEach(((_, {module_: module(SpecificReadModel: ReadModel.T)})) => {
-        SpecificReadModel.ReadModelRuntimeBuilder.finish()
+        SpecificReadModel.EventCollectorRuntimeBuilder.finish()
       })
     )
 }

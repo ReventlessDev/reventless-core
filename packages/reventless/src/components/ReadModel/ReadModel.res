@@ -12,7 +12,7 @@ type component = Component.t<t, outputs, operations>
 
 module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T
-  module ReadModelRuntimeBuilder: ReadModelRuntime_Builder.T
+  module EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
 
   let make: (
     ~allEventTopics: EventTopic.allOutputs,

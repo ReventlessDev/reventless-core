@@ -3,7 +3,7 @@ module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
 ): (
-  ReadModelRuntime_Builder.T
+  EventCollectorRuntime_Builder.T
     with type context = RuntimeEnvironment.context
     and type runtimeParts = RuntimeEnvironment.parts
     and module EventCollectorChannel = EventCollectorChannel
@@ -25,6 +25,8 @@ module Make = (
   }
 
   let plugin = ref(None)
+  let parentType = ref(None)
+
   let runtimeSpec = ref({
     channelSpecs: [],
     maxMemorySize: 0,
@@ -32,8 +34,8 @@ module Make = (
   })
   let eventCollectorHandlers = Js.Dict.empty()
 
-  let readModelHandler = readModelName => async (event: RuntimeEnvironment.event, context) => {
-    let desc = `readModelHandler for ${readModelName}:`
+  let eventCollectorHandler = parentName => async (event: RuntimeEnvironment.event, context) => {
+    let desc = `eventCollectorHandler for ${parentName}:`
     let _ =
       await event
       ->RuntimeEnvironment.groupBySource
@@ -50,25 +52,34 @@ module Make = (
       ->Promise.all
   }
 
+  let validateParent = (parent: Pulumi.Resource.t) => {
+    let parentName = parent.name->Option.getOr("UnnamedParent")
+    switch (plugin.contents, parentType.contents) {
+    | (None, None) =>
+      plugin := parent.parent
+      parentType := Some(parent.pulumiType)
+    | (Some(plugin), _) if Some(plugin) != parent.parent =>
+      let pluginName = plugin.name->Option.getOr("UnnamedPlugin")
+      Js.Exn.raiseError(
+        `registerRuntimeSpec: parent ${parentName} has different parent than plugin ${pluginName}`,
+      )
+    | (_, Some(parentType)) if parentType != parent.pulumiType =>
+      Js.Exn.raiseError(
+        `registerRuntimeSpec: parent ${parentName} has different type ${parent.pulumiType} than ${parentType}`,
+      )
+    | _ => ()
+    }
+  }
+
   let registerRuntimeSpec = (
     ~channel,
     ~eventTopics,
     ~resources,
     ~memorySize,
     ~timeout,
-    readModel: Pulumi.Resource.t,
+    parent: Pulumi.Resource.t,
   ) => {
-    let readModelName = readModel.name->Option.getOr("UnnamedReadModel")
-    switch plugin.contents {
-    | None => plugin := readModel.parent
-    | Some(plugin) =>
-      let pluginName = plugin.name->Option.getOr("UnnamedPlugin")
-      if Some(plugin) != readModel.parent {
-        Js.Exn.raiseError(
-          `registerRuntimeSpec: readModel ${readModelName} has different parent than plugin ${pluginName}`,
-        )
-      }
-    }
+    parent->validateParent
     let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
     runtimeSpec := {
         channelSpecs: channelSpecs->Array.concat([{channel, eventTopics, resources}]),
@@ -91,14 +102,8 @@ module Make = (
     let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
     let channel = eventCollector->EventCollector_Adapter.channel
     switch eventCollectorResource.parent {
-    | Some(readModelResource) =>
-      readModelResource->registerRuntimeSpec(
-        ~channel,
-        ~eventTopics,
-        ~resources,
-        ~memorySize,
-        ~timeout,
-      )
+    | Some(parentResource) =>
+      parentResource->registerRuntimeSpec(~channel, ~eventTopics, ~resources, ~memorySize, ~timeout)
       let urns =
         (eventCollector->Component.outputs).resources
         ->Array.map(({urn}) => urn)
@@ -117,9 +122,7 @@ module Make = (
           })
         })
     | None =>
-      Js.Exn.raiseError(
-        `forEventCollector: eventCollector ${eventCollectorName} has no ReadModel parent`,
-      )
+      Js.Exn.raiseError(`forEventCollector: eventCollector ${eventCollectorName} has no parent`)
     }
   }
 
@@ -127,25 +130,30 @@ module Make = (
 
   let finish = () =>
     if !finished.contents {
-      switch plugin.contents {
-      | Some(plugin) =>
+      switch (plugin.contents, parentType.contents) {
+      | (Some(plugin), Some(parentType)) =>
+        let parentType = (parentType->String.split(":"))[1]->Option.getOr("Parent")
+        let name = `All${parentType}s`
         let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
         let runtime = RuntimeEnvironment.make(
-          ~name="AllReadModels",
-          ~handler=readModelHandler("AllReadModels")->Pulumi.Output.make,
+          ~name,
+          ~handler=eventCollectorHandler(name)->Pulumi.Output.make,
           ~memorySize=maxMemorySize,
           ~timeout=maxTimeout,
           ~opts={Pulumi.ComponentResource.parent: plugin},
         )
         let opts = {Pulumi.ComponentResource.parent: plugin}
 
-        let _connectResources = EventCollectorChannel.connect(
-          ~name="AllReadModels",
-          ~channelSpecs,
-          ~runtime,
-          ~opts,
+        let _connectResources = EventCollectorChannel.connect(~name, ~channelSpecs, ~runtime, ~opts)
+      | _ =>
+        Js.log3(
+          "EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set:",
+          plugin.contents,
+          parentType.contents,
         )
-      | None => ()
+        Js.Exn.raiseError(
+          "EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set",
+        )
       }
       finished := true
     }

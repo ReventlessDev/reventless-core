@@ -14,7 +14,7 @@ var ComponentType$Reventless = require("../../ComponentType.res.js");
 var SideEffectHandler$Reventless = require("./SideEffectHandler.res.js");
 var SideEffectHandler_Callback$Reventless = require("./SideEffectHandler_Callback.res.js");
 
-function Make(RuntimeEnvironment, EventCollectorChannel, SpecificEventCollector, PluginRuntimeBuilder) {
+function Make(RuntimeEnvironment, EventCollectorChannel, SpecificEventCollector, EventCollectorRuntimeBuilder) {
   var make = function (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, memorySizeOpt, timeoutOpt, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
@@ -40,7 +40,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, SpecificEventCollector,
                         var resources = commandTopics.flatMap(function (commandTopic) {
                               return commandTopic.resources;
                             });
-                        PluginRuntimeBuilder.forSideEffectHandlerEventCollector(handler, eventTopics, resources, memorySize, timeout, eventCollector);
+                        EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, eventCollector);
                       });
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),

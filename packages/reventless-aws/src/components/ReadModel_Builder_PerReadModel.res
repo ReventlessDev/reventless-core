@@ -1,6 +1,6 @@
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
-module ReadModelRuntimeBuilder = Reventless.ReadModelRuntime_Builder_PerReadModel.Make(
+module EventCollectorRuntimeBuilder = Reventless.EventCollectorRuntime_Builder_PerEventCollector.Make(
   RuntimeEnvironment,
   EventCollectorChannel,
 )
@@ -17,5 +17,5 @@ module Make = (
   QueryDbStorage.DynamoDb,
   QueryDbResolvers.AppSync,
   EventCollectorChannel,
-  ReadModelRuntimeBuilder,
+  EventCollectorRuntimeBuilder,
 )

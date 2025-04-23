@@ -3,7 +3,7 @@ module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
   SpecificEventCollector: EventCollector.T,
-  PluginRuntimeBuilder: PluginRuntime_Builder.T
+  EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
     with type EventCollectorChannel.callbackEvent := SpecificEventCollector.callbackEvent,
 ): SideEffectHandler.T => {
   let construct = (
@@ -46,7 +46,7 @@ module Make = (
         ->Option.getOr([])
       let resources = commandTopics->Array.flatMap(commandTopic => commandTopic.resources)
 
-      eventCollector->PluginRuntimeBuilder.forSideEffectHandlerEventCollector(
+      eventCollector->EventCollectorRuntimeBuilder.forEventCollector(
         ~handler,
         ~eventTopics,
         ~resources,
