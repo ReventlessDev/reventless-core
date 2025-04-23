@@ -24,7 +24,7 @@ module Make = (
     maxTimeout: int,
   }
 
-  let plugin = ref(None)
+  let grandParent = ref(None)
   let parentType = ref(None)
 
   let runtimeSpec = ref({
@@ -54,21 +54,28 @@ module Make = (
 
   let validateParent = (parent: Pulumi.Resource.t) => {
     let parentName = parent.name->Option.getOr("UnnamedParent")
-    switch (plugin.contents, parentType.contents) {
-    | (None, None) =>
-      plugin := parent.parent
-      parentType := Some(parent.pulumiType)
-    | (Some(plugin), _) if Some(plugin) != parent.parent =>
-      let pluginName = plugin.name->Option.getOr("UnnamedPlugin")
-      Js.Exn.raiseError(
-        `registerRuntimeSpec: parent ${parentName} has different parent than plugin ${pluginName}`,
-      )
-    | (_, Some(parentType)) if parentType != parent.pulumiType =>
-      Js.Exn.raiseError(
-        `registerRuntimeSpec: parent ${parentName} has different type ${parent.pulumiType} than ${parentType}`,
-      )
-    | _ => ()
-    }
+    parent.urn->Pulumi.Output.apply(urn => {
+      let pulumiType =
+        (urn->String.split("::"))[2]
+        ->Option.flatMap(fullType => (fullType->String.split(":"))[1])
+        ->Option.getOr("Unknown")
+      Js.log(`validateParent: parent ${parentName} type: ${pulumiType}`)
+      switch (grandParent.contents, parentType.contents) {
+      | (None, None) =>
+        parentType := Some(pulumiType)
+        grandParent := parent.parent
+      | (Some(grandParent), _) if Some(grandParent) != parent.parent =>
+        let grandParentName = grandParent.name->Option.getOr("UnnamedGrandParent")
+        Js.Exn.raiseError(
+          `registerRuntimeSpec: parent ${parentName} has different parent than ${grandParentName}`,
+        )
+      | (_, Some(parentType)) if parentType != pulumiType =>
+        Js.Exn.raiseError(
+          `registerRuntimeSpec: parent ${parentName} has different type ${pulumiType} than ${parentType}`,
+        )
+      | _ => ()
+      }
+    })
   }
 
   let registerRuntimeSpec = (
@@ -79,13 +86,16 @@ module Make = (
     ~timeout,
     parent: Pulumi.Resource.t,
   ) => {
-    parent->validateParent
-    let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
-    runtimeSpec := {
-        channelSpecs: channelSpecs->Array.concat([{channel, eventTopics, resources}]),
-        maxMemorySize: Math.Int.max(maxMemorySize, memorySize),
-        maxTimeout: Math.Int.max(maxTimeout, timeout),
-      }
+    parent
+    ->validateParent
+    ->Pulumi.Output.apply(_ => {
+      let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
+      runtimeSpec := {
+          channelSpecs: channelSpecs->Array.concat([{channel, eventTopics, resources}]),
+          maxMemorySize: Math.Int.max(maxMemorySize, memorySize),
+          maxTimeout: Math.Int.max(maxTimeout, timeout),
+        }
+    })
   }
 
   let forEventCollector = (
@@ -103,15 +113,22 @@ module Make = (
     let channel = eventCollector->EventCollector_Adapter.channel
     switch eventCollectorResource.parent {
     | Some(parentResource) =>
-      parentResource->registerRuntimeSpec(~channel, ~eventTopics, ~resources, ~memorySize, ~timeout)
+      let registered =
+        parentResource->registerRuntimeSpec(
+          ~channel,
+          ~eventTopics,
+          ~resources,
+          ~memorySize,
+          ~timeout,
+        )
       let urns =
         (eventCollector->Component.outputs).resources
         ->Array.map(({urn}) => urn)
         ->Pulumi.Output.all
       let _ =
-        (urns, handler)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((urns, handler)) => {
+        (registered, urns, handler)
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((_, urns, handler)) => {
           Js.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
@@ -130,8 +147,8 @@ module Make = (
 
   let finish = () =>
     if !finished.contents {
-      switch (plugin.contents, parentType.contents) {
-      | (Some(plugin), Some(parentType)) =>
+      switch (grandParent.contents, parentType.contents) {
+      | (Some(grandParent), Some(parentType)) =>
         let parentType = (parentType->String.split(":"))[1]->Option.getOr("Parent")
         let name = `All${parentType}s`
         let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
@@ -140,19 +157,21 @@ module Make = (
           ~handler=eventCollectorHandler(name)->Pulumi.Output.make,
           ~memorySize=maxMemorySize,
           ~timeout=maxTimeout,
-          ~opts={Pulumi.ComponentResource.parent: plugin},
+          ~opts={Pulumi.ComponentResource.parent: grandParent},
         )
-        let opts = {Pulumi.ComponentResource.parent: plugin}
+        let opts = {Pulumi.ComponentResource.parent: grandParent}
 
         let _connectResources = EventCollectorChannel.connect(~name, ~channelSpecs, ~runtime, ~opts)
       | _ =>
         Js.log3(
-          "EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set:",
-          plugin.contents,
+          "EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set:",
+          grandParent.contents->Option.map(grandParent =>
+            `${grandParent.pulumiType} ${grandParent.name->Option.getOr("UnnamedGrandParent")}`
+          ),
           parentType.contents,
         )
         Js.Exn.raiseError(
-          "EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set",
+          "EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set",
         )
       }
       finished := true

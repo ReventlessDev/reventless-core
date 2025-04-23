@@ -9,7 +9,7 @@ var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("../../components/Component.res.js");
 
 function Make(RuntimeEnvironment, EventCollectorChannel) {
-  var plugin = {
+  var grandParent = {
     contents: undefined
   };
   var parentType = {
@@ -44,36 +44,43 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
   };
   var validateParent = function (parent) {
     var parentName = Core__Option.getOr(parent.__name, "UnnamedParent");
-    var match = plugin.contents;
-    var match$1 = parentType.contents;
-    if (match !== undefined) {
-      if (Caml_obj.notequal(match, parent.__parentResource)) {
-        var pluginName = Core__Option.getOr(match.__name, "UnnamedPlugin");
-        return Js_exn.raiseError("registerRuntimeSpec: parent " + parentName + " has different parent than plugin " + pluginName);
-      }
-      
-    } else if (match$1 === undefined) {
-      plugin.contents = parent.__parentResource;
-      parentType.contents = parent.__pulumiType;
-      return ;
-    }
-    if (match$1 !== undefined && match$1 !== parent.__pulumiType) {
-      return Js_exn.raiseError("registerRuntimeSpec: parent " + parentName + " has different type " + parent.__pulumiType + " than " + match$1);
-    }
-    
+    return parent.urn.apply(function (urn) {
+                var pulumiType = Core__Option.getOr(Core__Option.flatMap(urn.split("::")[2], (function (fullType) {
+                            return fullType.split(":")[1];
+                          })), "Unknown");
+                console.log("validateParent: parent " + parentName + " type: " + pulumiType);
+                var match = grandParent.contents;
+                var match$1 = parentType.contents;
+                if (match !== undefined) {
+                  if (Caml_obj.notequal(match, parent.__parentResource)) {
+                    var grandParentName = Core__Option.getOr(match.__name, "UnnamedGrandParent");
+                    return Js_exn.raiseError("registerRuntimeSpec: parent " + parentName + " has different parent than " + grandParentName);
+                  }
+                  
+                } else if (match$1 === undefined) {
+                  parentType.contents = pulumiType;
+                  grandParent.contents = parent.__parentResource;
+                  return ;
+                }
+                if (match$1 !== undefined && match$1 !== pulumiType) {
+                  return Js_exn.raiseError("registerRuntimeSpec: parent " + parentName + " has different type " + pulumiType + " than " + match$1);
+                }
+                
+              });
   };
   var registerRuntimeSpec = function (channel, eventTopics, resources, memorySize, timeout, parent) {
-    validateParent(parent);
-    var match = runtimeSpec.contents;
-    runtimeSpec.contents = {
-      channelSpecs: match.channelSpecs.concat([{
-              channel: channel,
-              eventTopics: eventTopics,
-              resources: resources
-            }]),
-      maxMemorySize: Math.max(match.maxMemorySize, memorySize),
-      maxTimeout: Math.max(match.maxTimeout, timeout)
-    };
+    return validateParent(parent).apply(function () {
+                var match = runtimeSpec.contents;
+                runtimeSpec.contents = {
+                  channelSpecs: match.channelSpecs.concat([{
+                          channel: channel,
+                          eventTopics: eventTopics,
+                          resources: resources
+                        }]),
+                  maxMemorySize: Math.max(match.maxMemorySize, memorySize),
+                  maxTimeout: Math.max(match.maxTimeout, timeout)
+                };
+              });
   };
   var forEventCollector = function (handler, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
@@ -85,16 +92,17 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     if (parentResource === undefined) {
       return Js_exn.raiseError("forEventCollector: eventCollector " + eventCollectorName + " has no parent");
     }
-    registerRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, parentResource);
+    var registered = registerRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, parentResource);
     var urns = Pulumi.all(Component$Reventless.outputs(eventCollector).resources.map(function (param) {
               return param.urn;
             }));
     Pulumi.all([
+            registered,
             urns,
             handler
           ]).apply(function (param) {
-          var handler = param[1];
-          var urns = param[0];
+          var handler = param[2];
+          var urns = param[1];
           console.log("***** forEventCollector " + eventCollectorName + ": set handler for", urns);
           return urns.map(function (urn) {
                       var handlers = Core__Option.getOr(eventCollectorHandlers[urn], []);
@@ -109,7 +117,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     if (finished.contents) {
       return ;
     }
-    var match = plugin.contents;
+    var match = grandParent.contents;
     var match$1 = parentType.contents;
     var exit = 0;
     if (match !== undefined && match$1 !== undefined) {
@@ -128,8 +136,10 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
       exit = 1;
     }
     if (exit === 1) {
-      console.log("EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set:", plugin.contents, parentType.contents);
-      Js_exn.raiseError("EventCollectorRuntime_Builder_Single.finish: plugin or parentType not set");
+      console.log("EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set:", Core__Option.map(grandParent.contents, (function (grandParent) {
+                  return grandParent.__pulumiType + " " + Core__Option.getOr(grandParent.__name, "UnnamedGrandParent");
+                })), parentType.contents);
+      Js_exn.raiseError("EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set");
     }
     finished.contents = true;
   };
