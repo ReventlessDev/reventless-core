@@ -26,7 +26,7 @@ module type T = {
     ~extensions: array<module(Extension.T)>,
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
-    ~taskMakers: array<Task.maker>,
+    ~tasks: array<module(Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

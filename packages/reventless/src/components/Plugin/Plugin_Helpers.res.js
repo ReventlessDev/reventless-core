@@ -4,7 +4,6 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Core__Dict = require("@rescript/core/src/Core__Dict.res.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
@@ -259,11 +258,12 @@ var tasksOutputs = {
   contents: []
 };
 
-function createTasks(taskMakers, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, opts) {
-  tasksOutputs.contents = taskMakers.map(function (taskMaker) {
-        return Component$Reventless.outputs(taskMaker((function (taskName) {
-                          return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName);
-                        }), scheduler, publishToAggregates, queryEngine, aggregatesOutputs, Caml_option.some(opts)));
+function createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, opts) {
+  tasksOutputs.contents = tasks.map(function (SpecificTask) {
+        return Component$Reventless.outputs(SpecificTask.make((function (taskName, bucketNameOpt) {
+                          var bucketName = bucketNameOpt !== undefined ? bucketNameOpt : "Bucket";
+                          return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName, bucketName);
+                        }), scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
       });
   return tasksOutputs.contents;
 }

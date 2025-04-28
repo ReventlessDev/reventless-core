@@ -26,6 +26,8 @@ function toString(service) {
         return "Kinesis";
     case "Lambda" :
         return "Lambda";
+    case "S3" :
+        return "S3";
     
   }
 }
@@ -51,6 +53,8 @@ function toPrincipal(service) {
         return "kinesis.amazonaws.com";
     case "Lambda" :
         return "lambda.amazonaws.com";
+    case "S3" :
+        return "s3.amazonaws.com";
     
   }
 }
@@ -154,6 +158,15 @@ var CloudwatchEventRule = {
   principal: principal$10
 };
 
+var service$11 = "S3";
+
+var principal$11 = "s3.amazonaws.com";
+
+var S3 = {
+  service: service$11,
+  principal: principal$11
+};
+
 var Tags;
 
 exports.Tags = Tags;
@@ -170,4 +183,5 @@ exports.SQS_FIFO = SQS_FIFO;
 exports.AppSync = AppSync;
 exports.IAM = IAM;
 exports.CloudwatchEventRule = CloudwatchEventRule;
+exports.S3 = S3;
 /* No side effect */

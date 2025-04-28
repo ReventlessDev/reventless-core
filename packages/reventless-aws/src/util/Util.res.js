@@ -28,6 +28,10 @@ var Kinesis_Runtime;
 
 var Lambda;
 
+var S3;
+
+var S3_Runtime;
+
 var SesPolicy_Runtime;
 
 var SNS;
@@ -57,6 +61,8 @@ exports.DynamoDbStream = DynamoDbStream;
 exports.EventSourceMapping = EventSourceMapping;
 exports.Kinesis_Runtime = Kinesis_Runtime;
 exports.Lambda = Lambda;
+exports.S3 = S3;
+exports.S3_Runtime = S3_Runtime;
 exports.SesPolicy_Runtime = SesPolicy_Runtime;
 exports.SNS = SNS;
 exports.SNS_FIFO = SNS_FIFO;

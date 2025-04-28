@@ -21,7 +21,7 @@ var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/E
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
 function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner, PluginRuntimeBuilder) {
-  var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts) {
+  var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, tasks, scheduler, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (function (extra, extra$1) {
                   var id = Plugin$Reventless.makeId(extra$1, version);
                   var opts_parent = Component$Reventless.toPulumiResource(extra);
@@ -95,7 +95,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                             });
                         var match$3 = Plugin_Helpers$Reventless.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$Reventless.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
                         EventCollectorHelper.connect(match$2[0], eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, match$3[1], match$1[1], match[1], match$3[0]);
-                        var tasksOutputs = Plugin_Helpers$Reventless.createTasks(taskMakers, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, opts);
+                        var tasksOutputs = Plugin_Helpers$Reventless.createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, opts);
                         var resolvers = Plugin_Helpers$Reventless.createResolvers(allQueryDbs);
                         var SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
                         var heartbeat = SpecificHeartbeat.make(childName, opts);

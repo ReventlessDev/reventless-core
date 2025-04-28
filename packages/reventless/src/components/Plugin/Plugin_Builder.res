@@ -18,7 +18,7 @@ module Make = (
     ~extensions: array<module(Extension.T)>,
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
-    ~taskMakers: array<Task.maker>,
+    ~tasks: array<module(Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     self,
     name,
@@ -178,7 +178,7 @@ module Make = (
         )
 
         let tasksOutputs = createTasks(
-          taskMakers,
+          tasks,
           ~aggregatesOutputs,
           ~scheduler,
           ~publishToAggregates,
@@ -250,7 +250,7 @@ module Make = (
     ~extensions,
     ~aggregates,
     ~readModels,
-    ~taskMakers,
+    ~tasks,
     ~scheduler,
     ~opts=?,
   ) =>
@@ -264,7 +264,7 @@ module Make = (
         ~extensions,
         ~aggregates,
         ~readModels,
-        ~taskMakers,
+        ~tasks,
         ~scheduler,
         ...
       ),

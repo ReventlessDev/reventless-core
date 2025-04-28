@@ -12,6 +12,7 @@ type service =
   | SNS_FIFO
   | Kinesis
   | Lambda
+  | S3
 
 let toString: service => string = service =>
   switch service {
@@ -26,6 +27,7 @@ let toString: service => string = service =>
   | AppSync => "AppSync"
   | IAM => "IAM"
   | CloudwatchEventRule => "CloudwatchEventRule"
+  | S3 => "S3"
   }
 
 let toPrincipal: service => string = service =>
@@ -41,6 +43,7 @@ let toPrincipal: service => string = service =>
   | AppSync => "appsync.amazonaws.com"
   | IAM => "iam.amazonaws.com"
   | CloudwatchEventRule => "events.amazonaws.com"
+  | S3 => "s3.amazonaws.com"
   }
 
 module DynamoDb = {
@@ -86,4 +89,8 @@ module IAM = {
 module CloudwatchEventRule = {
   let service = CloudwatchEventRule->toString
   let principal = CloudwatchEventRule->toPrincipal
+}
+module S3 = {
+  let service = S3->toString
+  let principal = S3->toPrincipal
 }

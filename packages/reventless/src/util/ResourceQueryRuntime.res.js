@@ -4,18 +4,20 @@
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var ResourceQuery$Reventless = require("./ResourceQuery.res.js");
 
-function bucketNameOfAllTasks(tasks, taskName) {
+function bucketNameOfAllTasks(tasks, taskName, bucketName) {
   return Core__Option.map(Core__Option.flatMap(tasks.find(function (task) {
                       return task.name === taskName;
                     }), (function (task) {
-                    return task.bucket;
+                    return Core__Option.flatMap(task.buckets, (function (buckets) {
+                                  return buckets[bucketName];
+                                }));
                   })), (function (bucket) {
-                return bucket.bucket.get();
+                return bucket.get();
               }));
 }
 
-function bucketNameOfTaskExn(tasks, taskName) {
-  return ResourceQuery$Reventless.unwrapResource(bucketNameOfAllTasks(tasks, taskName), "Bucket", taskName);
+function bucketNameOfTaskExn(tasks, taskName, bucketName) {
+  return ResourceQuery$Reventless.unwrapResource(bucketNameOfAllTasks(tasks, taskName, bucketName), "Bucket", taskName);
 }
 
 exports.bucketNameOfAllTasks = bucketNameOfAllTasks;

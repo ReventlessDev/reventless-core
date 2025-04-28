@@ -100,7 +100,7 @@ module Make = (
         ~timeout,
         ...
       ),
-      ~opts=opts->Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions)
+      ~opts
     )
   }
 }

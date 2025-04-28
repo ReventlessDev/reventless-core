@@ -8,7 +8,6 @@ var Adapter$Reventless = require("../../adapter/Adapter.res.js");
 var Schedule$Reventless = require("../../util/Schedule.res.js");
 var Component$Reventless = require("../Component.res.js");
 var EventTopic$Reventless = require("../EventTopic/EventTopic.res.js");
-var Util_Pulumi$Reventless = require("../../util/Util_Pulumi.res.js");
 var CommandTopic$Reventless = require("../CommandTopic/CommandTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var SideEffectHandler$Reventless = require("./SideEffectHandler.res.js");
@@ -57,7 +56,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, SpecificEventCollector,
                               name: extra$1,
                               eventCollector: Component$Reventless.outputs(eventCollector)
                             });
-                }), Core__Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions));
+                }), opts);
   };
   return {
           make: make

@@ -315,7 +315,7 @@ let createConnectPluginExtension = (
 let tasksOutputs = ref([])
 
 let createTasks = (
-  taskMakers,
+  tasks,
   ~aggregatesOutputs,
   ~scheduler,
   ~publishToAggregates,
@@ -323,10 +323,10 @@ let createTasks = (
   ~opts,
 ) => {
   tasksOutputs :=
-    taskMakers->Array.map(taskMaker =>
-      taskMaker(
-        ~queryBucketName=taskName =>
-          ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, taskName),
+    tasks->Array.map((module(SpecificTask: Task.T)) =>
+      SpecificTask.make(
+        ~queryBucketName=(~taskName, ~bucketName="Bucket") =>
+          ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, ~taskName, ~bucketName),
         ~scheduler,
         ~publishToAggregates,
         ~queryEngine,
