@@ -20,7 +20,7 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                     return Core__Option.getExn(Js_dict.get(publishToAggregates, aggregateName), undefined)(cmdJsons);
                   };
                   var config = Spec.setup(queryEngine, scheduler, publishCommands, queryBucketName, opts);
-                  var buckets = Core__Option.map(config.buckets, (function (buckets) {
+                  var bucketNames = Core__Option.map(config.buckets, (function (buckets) {
                           return Object.fromEntries(buckets.map(function (param) {
                                           var bucketName = param.bucketName;
                                           var name = extra$1 + bucketName;
@@ -45,7 +45,7 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                         }));
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
-                              buckets: buckets,
+                              bucketNames: bucketNames,
                               sideEffects: sideEffects
                             });
                 }), opts);

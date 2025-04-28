@@ -5,7 +5,9 @@ let bucketNameOfAllTasks: (
 ) => option<string> = (tasks, ~taskName, ~bucketName) =>
   tasks
   ->Array.find(task => task.name == taskName)
-  ->Option.flatMap(task => task.buckets->Option.flatMap(buckets => buckets->Dict.get(bucketName)))
+  ->Option.flatMap(task =>
+    task.bucketNames->Option.flatMap(buckets => buckets->Dict.get(bucketName))
+  )
   ->Option.map(bucket => bucket->Pulumi.Output.get)
 
 let bucketNameOfTaskExn = (tasks, ~taskName, ~bucketName) =>

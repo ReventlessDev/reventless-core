@@ -3,7 +3,7 @@ let componentType = ComponentType.Task
 type t
 type outputs = {
   name: string,
-  buckets?: dict<Pulumi.Output.t<string>>,
+  bucketNames?: dict<Pulumi.Output.t<string>>,
   sideEffects?: array<string>,
 }
 

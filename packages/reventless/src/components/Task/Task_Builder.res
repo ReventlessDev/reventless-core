@@ -14,7 +14,6 @@ module Make = (
   SideEffectHandler: SideEffectHandler.T,
 ): Task.T => {
   module Spec = Spec
-  module EventCollectorRuntimeBuilder = EventCollectorRuntimeBuilder
 
   let construct = (
     ~queryBucketName,
@@ -33,7 +32,7 @@ module Make = (
 
     let config = Spec.setup(queryEngine, scheduler, publishCommands, queryBucketName, opts)
 
-    let buckets = config.buckets->Option.map(buckets =>
+    let bucketNames = config.buckets->Option.map(buckets =>
       buckets
       ->Array.map(({bucketName, callback}) => {
         let name = taskName ++ bucketName
@@ -67,7 +66,7 @@ module Make = (
       config.sideEffects->Option.map(sideEffect =>
         sideEffect->Array.map((module(SideEffect)) => SideEffect.Source.name)
       )
-    self->Component.setOutputs({name: taskName, ?buckets, ?sideEffects})
+    self->Component.setOutputs({name: taskName, ?bucketNames, ?sideEffects})
   }
 
   let make = (

@@ -8,7 +8,7 @@ function bucketNameOfAllTasks(tasks, taskName, bucketName) {
   return Core__Option.map(Core__Option.flatMap(tasks.find(function (task) {
                       return task.name === taskName;
                     }), (function (task) {
-                    return Core__Option.flatMap(task.buckets, (function (buckets) {
+                    return Core__Option.flatMap(task.bucketNames, (function (buckets) {
                                   return buckets[bucketName];
                                 }));
                   })), (function (bucket) {
