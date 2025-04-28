@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-aws",
-  "version": "2.0.3-policies.102",
+  "version": "2.0.3-policies.103",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -27,10 +27,10 @@
   },
   "dependencies": {
     "@reventless/bs-aws-sdk": "^2.0.1-policies.2",
-    "@reventless/bs-pulumi-aws": "^2.0.1-policies.23",
-    "@reventless/bs-pulumi-pulumi": "^2.0.1-policies.2",
-    "@reventless/reventless": "^2.0.3-policies.66",
-    "@reventless/reventless-spec": "^2.0.1-policies.2"
+    "@reventless/bs-pulumi-aws": "^2.0.1-policies.24",
+    "@reventless/bs-pulumi-pulumi": "^2.0.1-policies.3",
+    "@reventless/reventless": "^2.0.3-policies.67",
+    "@reventless/reventless-spec": "^2.0.1-policies.3"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.11.0",
