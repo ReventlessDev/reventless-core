@@ -38,7 +38,7 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                   Core__Option.map(config.sideEffects, (function (sideEffects) {
                           return SideEffectHandler.make(extra$1, sideEffects, Aggregate$Reventless.allEventTopics(allAggregates), Aggregate$Reventless.allCommandTopics(allAggregates), undefined, queryEngine, scheduler, undefined, undefined, opts);
                         }));
-                  var sideEffects = Core__Option.map(config.sideEffects, (function (sideEffect) {
+                  var sideEffectSources = Core__Option.map(config.sideEffects, (function (sideEffect) {
                           return sideEffect.map(function (SideEffect) {
                                       return SideEffect.Source.name;
                                     });
@@ -46,7 +46,7 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
                               bucketNames: bucketNames,
-                              sideEffects: sideEffects
+                              sideEffectSources: sideEffectSources
                             });
                 }), opts);
   };

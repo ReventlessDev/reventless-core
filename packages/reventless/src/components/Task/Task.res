@@ -4,7 +4,7 @@ type t
 type outputs = {
   name: string,
   bucketNames?: dict<Pulumi.Output.t<string>>,
-  sideEffects?: array<string>,
+  sideEffectSources?: array<string>,
 }
 
 type publishCommands = (

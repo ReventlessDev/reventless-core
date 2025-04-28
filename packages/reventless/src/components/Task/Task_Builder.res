@@ -62,11 +62,11 @@ module Make = (
         )
       )
 
-    let sideEffects =
+    let sideEffectSources =
       config.sideEffects->Option.map(sideEffect =>
         sideEffect->Array.map((module(SideEffect)) => SideEffect.Source.name)
       )
-    self->Component.setOutputs({name: taskName, ?bucketNames, ?sideEffects})
+    self->Component.setOutputs({name: taskName, ?bucketNames, ?sideEffectSources})
   }
 
   let make = (
