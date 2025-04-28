@@ -38,11 +38,13 @@ module Make = (
         let name = taskName ++ bucketName
         let bucket = TaskBucket.make(~name, ~opts)
         let handler = TaskBucket.makeHandler(callback)
+        let opts = {Pulumi.ComponentResource.parent: bucket.parts->Pulumi.Resource.makeFromJs}
         self->TaskRuntimeBuilder.forBucketCallback(
           ~handler,
           ~connect=TaskBucket.connect(~name, ~bucket, ~opts, ...),
           ~memorySize=4096,
-          ~timeout=600
+          ~timeout=600,
+          ~name=bucketName
         )
         (bucketName, (bucket.resources->Array.getUnsafe(0)).id)
       })
@@ -79,7 +81,7 @@ module Make = (
   ) =>
     Component.make(
       ~componentType=Task.componentType->ComponentType.toString,
-      ~name=Spec.name->ComponentType.name(Task.componentType),
+      ~name=Spec.name,
       ~construct=construct(
         ~queryBucketName,
         ~scheduler,

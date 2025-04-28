@@ -3,7 +3,7 @@ module type T = {
   type callbackEvent
   type runtimeParts
 
-  let forBucketCallback: Runtime.forComponent<
+  let forBucketCallback: Runtime.forComponentNamed<
     Runtime.eventHandler<callbackEvent, context, unit>,
     runtimeParts,
     Task.component,

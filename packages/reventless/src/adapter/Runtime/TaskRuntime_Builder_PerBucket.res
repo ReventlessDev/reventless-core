@@ -18,10 +18,11 @@ module Make = (
     ~connect,
     ~memorySize=1024,
     ~timeout=30,
+    ~name,
     task: Task.component,
   ) => {
     let resource = task->Component.toPulumiResource
-    let name = resource.name->ComponentType.nameOpt(EventCollector.componentType)
+    let name = resource.name->Option.getOr("UnnamedTask") ++ name
     let runtime = RuntimeEnvironment.make(
       ~name,
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),

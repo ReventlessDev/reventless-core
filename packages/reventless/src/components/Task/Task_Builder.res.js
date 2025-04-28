@@ -11,7 +11,7 @@ var ComponentType$Reventless = require("../../ComponentType.res.js");
 
 function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRuntimeBuilder, TaskRuntimeBuilder, TaskBucket, SideEffectHandler) {
   var make = function (queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, opts) {
-    return Component$Reventless.make(ComponentType$Reventless.toString(Task$Reventless.componentType), ComponentType$Reventless.name(Spec.name, Task$Reventless.componentType), (function (extra, extra$1) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(Task$Reventless.componentType), Spec.name, (function (extra, extra$1) {
                   var opts_parent = Component$Reventless.toPulumiResource(extra);
                   var opts = {
                     parent: opts_parent
@@ -26,9 +26,13 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                                           var name = extra$1 + bucketName;
                                           var bucket = TaskBucket.make(name, opts);
                                           var handler = TaskBucket.makeHandler(param.callback);
+                                          var opts_parent = bucket.parts;
+                                          var opts$1 = {
+                                            parent: opts_parent
+                                          };
                                           TaskRuntimeBuilder.forBucketCallback(handler, (function (none) {
-                                                  return Curry._4(TaskBucket.connect, name, bucket, none, opts);
-                                                }), 4096, 600, extra);
+                                                  return Curry._4(TaskBucket.connect, name, bucket, none, opts$1);
+                                                }), 4096, 600, bucketName, extra);
                                           return [
                                                   bucketName,
                                                   bucket.resources[0].id

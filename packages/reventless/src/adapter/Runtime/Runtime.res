@@ -32,6 +32,15 @@ type forComponent<'handler, 'parts, 'component> = (
   'component,
 ) => unit
 
+type forComponentNamed<'handler, 'parts, 'component> = (
+  ~handler: Pulumi.Output.t<'handler>,
+  ~connect: connect<'parts>,
+  ~memorySize: int=?,
+  ~timeout: int=?,
+  ~name: string,
+  'component,
+) => unit
+
 type forEventCollector<'handler, 'component> = (
   ~handler: Pulumi.Output.t<'handler>,
   ~eventTopics: EventTopic.allOutputs,

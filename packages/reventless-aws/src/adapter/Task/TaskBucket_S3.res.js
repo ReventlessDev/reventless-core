@@ -20,7 +20,7 @@ function connect(name, bucket, runtime, opts) {
 
 function make(name, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var bucket = new (Aws.s3.Bucket)(name + "Bucket", {
+  var bucket = new (Aws.s3.Bucket)(name, {
         corsRules: [{
             allowedHeaders: ["*"],
             allowedMethods: [

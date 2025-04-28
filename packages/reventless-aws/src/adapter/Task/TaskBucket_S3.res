@@ -35,7 +35,7 @@ let make: Reventless.Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts) => {
 
   let bucket = {
     PulumiAws.S3.Bucket.make(
-      ~name=name ++ "Bucket",
+      ~name,
       ~args={
         corsRules: [
           {
