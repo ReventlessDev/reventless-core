@@ -52,41 +52,53 @@ function toResources(eventTopics) {
                 }));
 }
 
-function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
+function createQueuePolicy(queue, name, resources, opts) {
   Pulumi.all([
           queue.arn,
-          queue.id,
-          toResources(eventTopics)
+          queue.id
         ]).apply(function (param) {
-        var eventTopicResources = param[2];
-        var queueId = param[1];
-        console.log("EventCollectorChannel_Common: connectSqsQueue2SnsTopics " + queueId + ": eventTopicResources:", eventTopicResources);
-        var snsResources$1 = snsResources(eventTopicResources);
+        var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
+                    Sid: "AllowReceiveSnsEvents",
+                    Principal: {
+                      Service: [AWS$ReventlessAws.SNS.principal]
+                    },
+                    Effect: "Allow",
+                    Action: ["sqs:SendMessage"],
+                    Resource: param[0],
+                    Condition: {
+                      ArnEquals: Object.fromEntries([[
+                              "aws:SourceArn",
+                              Adapter$Reventless.urns(resources)
+                            ]])
+                    }
+                  }]));
         new (Aws.sqs.QueuePolicy)(name, {
-              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
-                          Sid: "AllowReceiveSnsEvents",
-                          Principal: {
-                            Service: [AWS$ReventlessAws.SNS.principal]
-                          },
-                          Effect: "Allow",
-                          Action: ["sqs:SendMessage"],
-                          Resource: param[0],
-                          Condition: {
-                            ArnEquals: Js_dict.fromArray([[
-                                    "aws:SourceArn",
-                                    Adapter$Reventless.urns(snsResources$1)
-                                  ]])
-                          }
-                        }])),
-              queueUrl: queueId
+              policy: queuePolicyDocument,
+              queueUrl: param[1]
             }, opts);
-        snsResources$1.map(function (snsResource) {
-              console.log("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsResource);
-              var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsResource), opts);
-              return subscription.id.apply(function (id) {
-                          console.log("created SNS subscription:", id, name);
-                        });
-            });
+      });
+}
+
+function subscribeQueue2SnsTopic(queue, name, resources, opts) {
+  resources.map(function (resource) {
+        console.log("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource);
+        var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, resource.name, AdapterDeploytime$Reventless.unwrappedToResource(resource), opts);
+        return subscription.id.apply(function (id) {
+                    console.log("created SNS subscription:", id, name);
+                  });
+      });
+}
+
+function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
+  Pulumi.all([
+          toResources(eventTopics),
+          queue.id
+        ]).apply(function (param) {
+        var eventTopicResources = param[0];
+        console.log("EventCollectorChannel_Helpers.connectSqsQueue2SnsTopics " + param[1] + ": eventTopicResources:", eventTopicResources);
+        var snsResources$1 = snsResources(eventTopicResources);
+        createQueuePolicy(queue, name, snsResources$1, opts);
+        subscribeQueue2SnsTopic(queue, name, snsResources$1, opts);
       });
 }
 
@@ -101,8 +113,8 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
         var resources = param[2];
         var queueArns = param[1];
         var eventTopicResources = param[0];
-        console.log("EventCollectorChannel_Common: connectLambda " + name + ": eventTopicResources:", eventTopicResources);
-        console.log("EventCollectorChannel_Common: connectLambda " + name + ": resources:", resources);
+        console.log("EventCollectorChannel_Helpers.connectLambda " + name + ": eventTopicResources:", eventTopicResources);
+        console.log("EventCollectorChannel_Helpers.connectLambda " + name + ": resources:", resources);
         var dynamoDbStreamResources$1 = dynamoDbStreamResources(eventTopicResources);
         var targetSnsResources$1 = targetSnsResources(resources);
         var targetSqsResources$1 = targetSqsResources(resources);
@@ -183,6 +195,8 @@ exports.targetSnsResources = targetSnsResources;
 exports.targetSqsResources = targetSqsResources;
 exports.targetDynamoDbResources = targetDynamoDbResources;
 exports.toResources = toResources;
+exports.createQueuePolicy = createQueuePolicy;
+exports.subscribeQueue2SnsTopic = subscribeQueue2SnsTopic;
 exports.connectSqsQueue2SnsTopics = connectSqsQueue2SnsTopics;
 exports.connectLambda = connectLambda;
 /* @pulumi/aws Not a pure module */

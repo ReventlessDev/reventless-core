@@ -32,62 +32,73 @@ let toResources = (eventTopics: Reventless.EventTopic.allOutputs) =>
   ->Array.flatMap(outputs => outputs.resources)
   ->Reventless.Adapter.resourcesToUnwrappedOutput
 
-let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics, opts) => {
+let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) => {
   let _ =
-    (queue.arn, queue.id, eventTopics->toResources)
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((queueArn, queueId, eventTopicResources)) => {
-      Js.Console.log2(
-        `EventCollectorChannel_Common: connectSqsQueue2SnsTopics ${queueId}: eventTopicResources:`,
-        eventTopicResources,
-      )
-      let snsResources = eventTopicResources->snsResources
-
+    (queue.arn, queue.id)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((queueArn, queueId)) => {
+      let queuePolicyDocument =
+        PulumiAws.PolicyDocument.make(
+          ~id=name ++ "QueuePolicy",
+          ~statements=[
+            {
+              sid: "AllowReceiveSnsEvents",
+              principal: Principals({
+                service: PrincipalIds([AWS.SNS.principal]),
+              }),
+              effect: Allow,
+              actions: Actions(["sqs:SendMessage"]),
+              resources: Resource(queueArn),
+              conditions: {
+                arnEquals: [("aws:SourceArn", ConditionValues(resources->urns))]->Dict.fromArray,
+              },
+            },
+          ],
+        )
+        ->toJsonString
+        ->Pulumi.Input.make
       let _queuePolicy = {
         PulumiAws.SQS.QueuePolicy.make(
           ~name,
           ~args={
             queueUrl: queueId->Pulumi.Input.make,
-            policy: PulumiAws.PolicyDocument.make(
-              ~id=name ++ "QueuePolicy",
-              ~statements=[
-                {
-                  sid: "AllowReceiveSnsEvents",
-                  principal: Principals({
-                    service: PrincipalIds([AWS.SNS.principal]),
-                  }),
-                  effect: Allow,
-                  actions: Actions(["sqs:SendMessage"]),
-                  resources: Resource(queueArn),
-                  conditions: {
-                    arnEquals: [
-                      ("aws:SourceArn", ConditionValues(snsResources->urns)),
-                    ]->Js.Dict.fromArray,
-                  },
-                },
-              ],
-            )
-            ->toJsonString
-            ->Pulumi.Input.make,
+            policy: queuePolicyDocument,
           },
           ~opts=Some(opts),
         )
       }
+    })
+}
 
-      let _snsTopicSubscriptions = snsResources->Array.map(snsResource => {
-        Js.log3("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsResource)
-        let subscription = Util_SQS.subscribeToSnsTopic(
-          ~queue,
-          ~targetName=name,
-          ~sourceName=snsResource.name,
-          ~topic=snsResource->Reventless.AdapterDeploytime.unwrappedToResource,
-          ~opts,
-        )
-        subscription.id->Pulumi.Output.apply(id => Js.log3("created SNS subscription:", id, name))
-      })
+let subscribeQueue2SnsTopic = (queue, name, resources, opts) => {
+  let _snsTopicSubscriptions = resources->Array.map(resource => {
+    Js.log3("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource)
+    let subscription = Util_SQS.subscribeToSnsTopic(
+      ~queue,
+      ~targetName=name,
+      ~sourceName=resource.name,
+      ~topic=resource->Reventless.AdapterDeploytime.unwrappedToResource,
+      ~opts,
+    )
+    subscription.id->Pulumi.Output.apply(id => Js.log3("created SNS subscription:", id, name))
+  })
+}
 
-      // let _printWarningForEmptySnsTopic = if snsResources->Array.length == 0 {
-      //   Js.log2("No SNS topics are present for EventCollectorChannel_Common", name)
+let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics, opts) => {
+  let _ =
+    (eventTopics->toResources, queue.id)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((eventTopicResources, queueId)) => {
+      Js.log2(
+        `EventCollectorChannel_Helpers.connectSqsQueue2SnsTopics ${queueId}: eventTopicResources:`,
+        eventTopicResources,
+      )
+      let snsResources = eventTopicResources->snsResources
+      queue->createQueuePolicy(name, snsResources, opts)
+      queue->subscribeQueue2SnsTopic(name, snsResources, opts)
+
+      // if snsResources->Array.length == 0 {
+      //   Js.log2(`No SNS topics are present for ${name}`)
       // }
     })
 }
@@ -110,10 +121,10 @@ let connectLambda = (
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((eventTopicResources, queueArns, resources)) => {
       Js.Console.log2(
-        `EventCollectorChannel_Common: connectLambda ${name}: eventTopicResources:`,
+        `EventCollectorChannel_Helpers.connectLambda ${name}: eventTopicResources:`,
         eventTopicResources,
       )
-      Js.Console.log2(`EventCollectorChannel_Common: connectLambda ${name}: resources:`, resources)
+      Js.Console.log2(`EventCollectorChannel_Helpers.connectLambda ${name}: resources:`, resources)
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources
       let targetSnsResources = resources->targetSnsResources

@@ -5,7 +5,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
-var EventCollectorChannel_Common$ReventlessAws = require("./EventCollectorChannel_Common.res.js");
+var EventCollectorChannel_Helpers$ReventlessAws = require("./EventCollectorChannel_Helpers.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
 function connect(name, channelSpecs, runtime, opts) {
@@ -19,7 +19,7 @@ function connect(name, channelSpecs, runtime, opts) {
   var resources = channelSpecs.map(function (param) {
           return param.resources;
         }).flat();
-  return EventCollectorChannel_Common$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
+  return EventCollectorChannel_Helpers$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
 }
 
 function make(param, eventTopics, param$1) {

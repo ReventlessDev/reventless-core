@@ -15,7 +15,7 @@ let connect = (
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
 
-  open EventCollectorChannel_Common
+  open EventCollectorChannel_Helpers
 
   let _ = channelSpecs->Array.map(({channel, eventTopics}) => {
     let queue = channel.parts.queue

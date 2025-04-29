@@ -10,7 +10,7 @@ var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulum
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
-var EventCollectorChannel_Common$ReventlessAws = require("./EventCollectorChannel_Common.res.js");
+var EventCollectorChannel_Helpers$ReventlessAws = require("./EventCollectorChannel_Helpers.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
 function connect(name, channelSpecs, runtime, opts) {
@@ -19,7 +19,7 @@ function connect(name, channelSpecs, runtime, opts) {
   var lambdaRole = runtime.parts.lambdaRole;
   channelSpecs.map(function (param) {
         var queue = param.channel.parts.queue;
-        EventCollectorChannel_Common$ReventlessAws.connectSqsQueue2SnsTopics(queue, name, param.eventTopics, opts$1);
+        EventCollectorChannel_Helpers$ReventlessAws.connectSqsQueue2SnsTopics(queue, name, param.eventTopics, opts$1);
       });
   var queues = channelSpecs.map(function (param) {
         return param.channel.parts.queue;
@@ -30,7 +30,7 @@ function connect(name, channelSpecs, runtime, opts) {
   var resources = channelSpecs.map(function (param) {
           return param.resources;
         }).flat();
-  return EventCollectorChannel_Common$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
+  return EventCollectorChannel_Helpers$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
 }
 
 function make(name, eventTopics, opts) {
