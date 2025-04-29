@@ -109,9 +109,6 @@ let connectLambda = (
     )
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((eventTopicResources, queueArns, resources)) => {
-      open PulumiAws.PolicyDocument
-      open Reventless.Adapter
-
       Js.Console.log2(
         `EventCollectorChannel_Common: connectLambda ${name}: eventTopicResources:`,
         eventTopicResources,
