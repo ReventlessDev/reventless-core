@@ -9,42 +9,10 @@ var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
-var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
+var Adapter_Helpers$ReventlessAws = require("../Adapter_Helpers.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
-
-function snsResources(eventTopicResources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [
-              AWS$ReventlessAws.SNS.service,
-              AWS$ReventlessAws.SNS_FIFO.service
-            ]);
-}
-
-function dynamoDbStreamResources(eventTopicResources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
-}
-
-function targetSnsResources(resources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.SNS.service,
-              AWS$ReventlessAws.SNS_FIFO.service
-            ]);
-}
-
-function targetSqsResources(resources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.SQS.service,
-              AWS$ReventlessAws.SQS_FIFO.service
-            ]);
-}
-
-function targetDynamoDbResources(resources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.DynamoDb.service,
-              AWS$ReventlessAws.DynamoDbStream.service
-            ]);
-}
 
 function toResources(eventTopics) {
   return Adapter$Reventless.resourcesToUnwrappedOutput(Js_dict.values(eventTopics).flatMap(function (outputs) {
@@ -96,9 +64,9 @@ function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
         ]).apply(function (param) {
         var eventTopicResources = param[0];
         console.log("EventCollectorChannel_Helpers.connectSqsQueue2SnsTopics " + param[1] + ": eventTopicResources:", eventTopicResources);
-        var snsResources$1 = snsResources(eventTopicResources);
-        createQueuePolicy(queue, name, snsResources$1, opts);
-        subscribeQueue2SnsTopic(queue, name, snsResources$1, opts);
+        var snsResources = Adapter_Helpers$ReventlessAws.snsResources(eventTopicResources);
+        createQueuePolicy(queue, name, snsResources, opts);
+        subscribeQueue2SnsTopic(queue, name, snsResources, opts);
       });
 }
 
@@ -115,12 +83,12 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
         var eventTopicResources = param[0];
         console.log("EventCollectorChannel_Helpers.connectLambda " + name + ": eventTopicResources:", eventTopicResources);
         console.log("EventCollectorChannel_Helpers.connectLambda " + name + ": resources:", resources);
-        var dynamoDbStreamResources$1 = dynamoDbStreamResources(eventTopicResources);
-        var targetSnsResources$1 = targetSnsResources(resources);
-        var targetSqsResources$1 = targetSqsResources(resources);
-        var targetDynamoDbResources$1 = targetDynamoDbResources(resources);
-        var lambdaDynamoDbStreamPolicyDocuments = dynamoDbStreamResources$1.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbStreamPolicy", [{
-                  Sid: "AllowLambdaToReadStream",
+        var dynamoDbStreamResources = Adapter_Helpers$ReventlessAws.dynamoDbStreamResources(eventTopicResources);
+        var targetSnsResources = Adapter_Helpers$ReventlessAws.snsResources(resources);
+        var targetSqsResources = Adapter_Helpers$ReventlessAws.sqsResources(resources);
+        var targetDynamoDbResources = Adapter_Helpers$ReventlessAws.dynamoDbResources(resources);
+        var allowLambdaReadDynamoDbStream = dynamoDbStreamResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbStreamPolicy", [{
+                  Sid: "AllowLambdaReadDynamoDbStream",
                   Effect: "Allow",
                   Action: [
                     "dynamodb:DescribeStream",
@@ -128,9 +96,9 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
                     "dynamodb:GetShardIterator",
                     "dynamodb:ListStreams"
                   ],
-                  Resource: Adapter$Reventless.urns(dynamoDbStreamResources$1)
+                  Resource: Adapter$Reventless.urns(dynamoDbStreamResources)
                 }]) : undefined;
-        var lambdaWriteDynamoDbPolicyDocument = targetDynamoDbResources$1.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
+        var allowLambdaReadWriteDynamoDb = targetDynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
                   Sid: "AllowLambdaReadWriteDynamoDb",
                   Effect: "Allow",
                   Action: [
@@ -143,22 +111,22 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
                     "dynamodb:DeleteItem",
                     "dynamodb:BatchWriteItem"
                   ],
-                  Resource: Adapter$Reventless.urns(targetDynamoDbResources$1)
+                  Resource: Adapter$Reventless.urns(targetDynamoDbResources)
                 }]) : undefined;
-        var lambdaSnsPublishNotificationPolicyDocument = targetSnsResources$1.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "PublishSNS", [{
-                  Sid: "LambdaAllowPublishSNS",
+        var allowLambdaPublishSNS = targetSnsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "PublishSNS", [{
+                  Sid: "AllowLambdaPublishSNS",
                   Effect: "Allow",
                   Action: "sns:Publish",
-                  Resource: Adapter$Reventless.urns(targetSnsResources$1)
+                  Resource: Adapter$Reventless.urns(targetSnsResources)
                 }]) : undefined;
-        var lambdaSqsSendPolicyDocument = targetSqsResources$1.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
-                  Sid: "LambdaAllowSendSQS",
+        var allowLambdaSendSQS = targetSqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
+                  Sid: "AllowLambdaSendSQS",
                   Effect: "Allow",
                   Action: "sqs:SendMessage",
-                  Resource: Adapter$Reventless.urns(targetSqsResources$1)
+                  Resource: Adapter$Reventless.urns(targetSqsResources)
                 }]) : undefined;
-        var lambdaQueuePolicyDocument = queueArns.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaSQSPolicy", [{
-                  Sid: "AllowLambdaReceiveSQSMessage",
+        var allowLambdaReceiveSQS = queueArns.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaSQSPolicy", [{
+                  Sid: "AllowLambdaReceiveSQS",
                   Effect: "Allow",
                   Action: [
                     "sqs:ReceiveMessage",
@@ -170,15 +138,15 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
         new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Core__Array.keepSome([
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
-                        lambdaQueuePolicyDocument,
-                        lambdaDynamoDbStreamPolicyDocuments,
-                        lambdaWriteDynamoDbPolicyDocument,
-                        lambdaSnsPublishNotificationPolicyDocument,
-                        lambdaSqsSendPolicyDocument
+                        allowLambdaReceiveSQS,
+                        allowLambdaReadDynamoDbStream,
+                        allowLambdaReadWriteDynamoDb,
+                        allowLambdaPublishSNS,
+                        allowLambdaSendSQS
                       ])),
               role: lambdaRole.id
             }, opts);
-        dynamoDbStreamResources$1.map(function (dynamoDbStreamResource) {
+        dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
               return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts);
             });
       });
@@ -189,11 +157,6 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
             });
 }
 
-exports.snsResources = snsResources;
-exports.dynamoDbStreamResources = dynamoDbStreamResources;
-exports.targetSnsResources = targetSnsResources;
-exports.targetSqsResources = targetSqsResources;
-exports.targetDynamoDbResources = targetDynamoDbResources;
 exports.toResources = toResources;
 exports.createQueuePolicy = createQueuePolicy;
 exports.subscribeQueue2SnsTopic = subscribeQueue2SnsTopic;

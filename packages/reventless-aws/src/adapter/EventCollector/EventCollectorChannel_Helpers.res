@@ -1,30 +1,6 @@
 open PulumiAws.PolicyDocument
 open Reventless.Adapter
-
-let snsResources = eventTopicResources =>
-  eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-    AWS.SNS.service,
-    AWS.SNS_FIFO.service,
-  ])
-let dynamoDbStreamResources = eventTopicResources =>
-  eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-    AWS.DynamoDbStream.service,
-  ])
-let targetSnsResources = resources =>
-  resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-    AWS.SNS.service,
-    AWS.SNS_FIFO.service,
-  ])
-let targetSqsResources = resources =>
-  resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-    AWS.SQS.service,
-    AWS.SQS_FIFO.service,
-  ])
-let targetDynamoDbResources = resources =>
-  resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-    AWS.DynamoDb.service,
-    AWS.DynamoDbStream.service,
-  ])
+open Adapter_Helpers
 
 let toResources = (eventTopics: Reventless.EventTopic.allOutputs) =>
   eventTopics
@@ -127,18 +103,18 @@ let connectLambda = (
       Js.Console.log2(`EventCollectorChannel_Helpers.connectLambda ${name}: resources:`, resources)
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources
-      let targetSnsResources = resources->targetSnsResources
-      let targetSqsResources = resources->targetSqsResources
-      let targetDynamoDbResources = resources->targetDynamoDbResources
+      let targetSnsResources = resources->snsResources
+      let targetSqsResources = resources->sqsResources
+      let targetDynamoDbResources = resources->dynamoDbResources
 
-      let lambdaDynamoDbStreamPolicyDocuments =
+      let allowLambdaReadDynamoDbStream =
         dynamoDbStreamResources->Array.length > 0
           ? Some(
               PulumiAws.PolicyDocument.make(
                 ~id=name ++ "LambdaDynamoDbStreamPolicy",
                 ~statements=[
                   {
-                    sid: "AllowLambdaToReadStream",
+                    sid: "AllowLambdaReadDynamoDbStream",
                     effect: Allow,
                     actions: Actions([
                       "dynamodb:DescribeStream",
@@ -153,7 +129,7 @@ let connectLambda = (
             )
           : None
 
-      let lambdaWriteDynamoDbPolicyDocument =
+      let allowLambdaReadWriteDynamoDb =
         targetDynamoDbResources->Array.length > 0
           ? Some(
               PulumiAws.PolicyDocument.make(
@@ -179,14 +155,14 @@ let connectLambda = (
             )
           : None
 
-      let lambdaSnsPublishNotificationPolicyDocument =
+      let allowLambdaPublishSNS =
         targetSnsResources->Array.length > 0
           ? Some(
               PulumiAws.PolicyDocument.make(
                 ~id=name ++ "PublishSNS",
                 ~statements=[
                   {
-                    sid: "LambdaAllowPublishSNS",
+                    sid: "AllowLambdaPublishSNS",
                     effect: Allow,
                     actions: Action("sns:Publish"),
                     resources: Resources(targetSnsResources->urns),
@@ -196,14 +172,14 @@ let connectLambda = (
             )
           : None
 
-      let lambdaSqsSendPolicyDocument =
+      let allowLambdaSendSQS =
         targetSqsResources->Array.length > 0
           ? Some(
               PulumiAws.PolicyDocument.make(
                 ~id=name ++ "SendSQS",
                 ~statements=[
                   {
-                    sid: "LambdaAllowSendSQS",
+                    sid: "AllowLambdaSendSQS",
                     effect: Allow,
                     actions: Action("sqs:SendMessage"),
                     resources: Resources(targetSqsResources->urns),
@@ -213,14 +189,14 @@ let connectLambda = (
             )
           : None
 
-      let lambdaQueuePolicyDocument =
+      let allowLambdaReceiveSQS =
         queueArns->Array.length > 0
           ? Some(
               PulumiAws.PolicyDocument.make(
                 ~id=name ++ "LambdaSQSPolicy",
                 ~statements=[
                   {
-                    sid: "AllowLambdaReceiveSQSMessage",
+                    sid: "AllowLambdaReceiveSQS",
                     effect: Allow,
                     actions: Actions([
                       "sqs:ReceiveMessage",
@@ -234,18 +210,18 @@ let connectLambda = (
             )
           : None
 
-      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
+      let _lambdaPolicy = PulumiAws.IAM.RolePolicy.make(
         ~name,
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
             name ++ "LambdaPolicy",
             [
               Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
-              lambdaQueuePolicyDocument,
-              lambdaDynamoDbStreamPolicyDocuments,
-              lambdaWriteDynamoDbPolicyDocument,
-              lambdaSnsPublishNotificationPolicyDocument,
-              lambdaSqsSendPolicyDocument,
+              allowLambdaReceiveSQS,
+              allowLambdaReadDynamoDbStream,
+              allowLambdaReadWriteDynamoDb,
+              allowLambdaPublishSNS,
+              allowLambdaSendSQS,
             ]->Array.keepSome,
           )->Pulumi.Output.asInput,
           role: lambdaRole.id->Pulumi.Output.asInput,
