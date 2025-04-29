@@ -64,7 +64,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
 
       let _lambdaPolicy = {
         PulumiAws.IAM.RolePolicy.make(
-          ~name=name ++ "LambdaPolicy",
+          ~name,
           ~args={
             policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
               name ++ "LambdaPolicy",
@@ -80,7 +80,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       }
 
       let _addCommandGeneratorPermission = PulumiAws.Lambda.Permission.make(
-        ~name=name ++ "Permission",
+        ~name,
         ~args={
           action: "lambda:InvokeFunction",
           function: lambdaName->Pulumi.Input.make,
@@ -90,7 +90,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       )
 
       let _attachDataSourcePolicy = PulumiAws.IAM.RolePolicy.make(
-        ~name=name ++ "DataSourcePolicy",
+        ~name=name ++ "DataSource",
         ~args={
           PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
             ~id=name ++ "DataSourcePolicy",

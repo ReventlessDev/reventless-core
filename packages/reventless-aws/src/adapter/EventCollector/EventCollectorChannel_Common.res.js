@@ -62,7 +62,7 @@ function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
         var queueId = param[1];
         console.log("EventCollectorChannel_Common: connectSqsQueue2SnsTopics " + queueId + ": eventTopicResources:", eventTopicResources);
         var snsResources$1 = snsResources(eventTopicResources);
-        new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
+        new (Aws.sqs.QueuePolicy)(name, {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
                           Sid: "AllowReceiveSnsEvents",
                           Principal: {
@@ -155,7 +155,7 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
                   ],
                   Resource: queueArns
                 }]) : undefined;
-        new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
+        new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Core__Array.keepSome([
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         lambdaQueuePolicyDocument,

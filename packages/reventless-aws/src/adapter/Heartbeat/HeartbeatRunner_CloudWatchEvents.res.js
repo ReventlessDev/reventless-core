@@ -37,7 +37,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
                 })),
           lambdaRole.id
         ]).apply(function (param) {
-        new (Aws.lambda.Permission)(name + "Permission", {
+        new (Aws.lambda.Permission)(name, {
               action: "lambda:InvokeFunction",
               function: param[1],
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal

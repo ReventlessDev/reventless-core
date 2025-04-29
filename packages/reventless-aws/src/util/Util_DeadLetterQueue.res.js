@@ -37,7 +37,7 @@ var opts = {
   parent: opts_parent
 };
 
-var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Role", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
+var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
 
 var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, lambdaRole, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
 

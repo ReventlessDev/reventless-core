@@ -45,7 +45,7 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics
 
       let _queuePolicy = {
         PulumiAws.SQS.QueuePolicy.make(
-          ~name=name ++ "QueuePolicy",
+          ~name,
           ~args={
             queueUrl: queueId->Pulumi.Input.make,
             policy: PulumiAws.PolicyDocument.make(
@@ -224,7 +224,7 @@ let connectLambda = (
           : None
 
       let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
-        ~name=name ++ "LambdaPolicy",
+        ~name,
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
             name ++ "LambdaPolicy",

@@ -27,7 +27,7 @@ let callback: Lambda.eventHandlerNoResult<'a> = (evt, ctx) =>
 
 let opts = {Pulumi.CustomResourceOptions.parent: queue->PulumiAws.SQS.Queue.toResource}
 let lambdaRole = IAM.Role.makeWithDefaultPolicy(
-  ~name=name ++ "Role",
+  ~name,
   ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
   ~opts,
 )

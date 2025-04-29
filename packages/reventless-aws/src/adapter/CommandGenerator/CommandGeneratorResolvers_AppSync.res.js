@@ -48,19 +48,19 @@ function make(name, api, fields, runtime, resources, opts) {
                   Action: "sqs:SendMessage",
                   Resource: Adapter$Reventless.urns(targetSqsResources)
                 }]) : undefined;
-        new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
+        new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Core__Array.keepSome([
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         lambdaSqsSendPolicyDocument
                       ])),
               role: param[2]
             }, opts$1);
-        new (Aws.lambda.Permission)(name + "Permission", {
+        new (Aws.lambda.Permission)(name, {
               action: "lambda:InvokeFunction",
               function: param[1],
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal
             }, opts$1);
-        new (Aws.iam.RolePolicy)(name + "DataSourcePolicy", {
+        new (Aws.iam.RolePolicy)(name + "DataSource", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
                           Sid: "AllowCloudWatchDataSourceInvokeLambda",
                           Effect: "Allow",

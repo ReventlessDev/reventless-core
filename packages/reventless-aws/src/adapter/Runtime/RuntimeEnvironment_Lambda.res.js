@@ -20,7 +20,7 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   var opts$1 = Core__Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
-  var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Role", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
+  var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
   var lambda = handler.apply(function (handler) {
         return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name, CommandTopic$Reventless.componentType), undefined), opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined);
       });
