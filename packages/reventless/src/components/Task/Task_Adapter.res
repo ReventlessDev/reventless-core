@@ -3,6 +3,8 @@ type bucket<'bucketParts> = {resources: array<ReventlessSpec.Adapter.resource>, 
 type connect<'bucketParts, 'runtimeParts> = (
   ~name: string,
   ~bucket: bucket<'bucketParts>,
+  ~bucketMode: Task.bucketMode,
+  ~commandTopics: Pulumi.Output.t<CommandTopic.allOutputs>,
   ~runtime: Runtime.environment<'runtimeParts>,
   ~opts: Pulumi.ComponentResource.options,
 ) => unit // array<ReventlessSpec.Adapter.resource>
@@ -19,8 +21,11 @@ module type Bucket = {
   type bucketParts
 
   let connect: connect<bucketParts, runtimeParts>
-  let makeHandler: Task.bucketCallback => Pulumi.Output.t<
-    Runtime.eventHandler<callbackEvent, context, unit>,
+  let makeHandler: Task.bucketCallback => Runtime.eventHandler<
+    callbackEvent,
+    context,
+    array<Task.taskAction>,
   >
+
   let make: bucketMaker<bucketParts>
 }

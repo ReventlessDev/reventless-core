@@ -14,6 +14,11 @@ module Make = (
   SideEffectHandler: SideEffectHandler.T,
 ): Task.T => {
   module Spec = Spec
+  type handler = Runtime.eventHandler<
+    TaskRuntimeBuilder.callbackEvent,
+    TaskRuntimeBuilder.context,
+    array<Task.taskAction>,
+  >
 
   let construct = (
     ~queryBucketName,
@@ -25,23 +30,44 @@ module Make = (
     taskName,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let allCommandTopics = allAggregates->Aggregate.allCommandTopics
 
     let publishCommands: Task.publishCommands = (aggregateName, cmdJsons) => {
-      (publishToAggregates->Js.Dict.get(aggregateName)->Option.getExn)(cmdJsons)
+      (publishToAggregates->Dict.get(aggregateName)->Option.getExn)(cmdJsons)
     }
 
-    let config = Spec.setup(queryEngine, scheduler, publishCommands, queryBucketName, opts)
+    let taskActionsHandler = (handler: handler) => async (event, context) => {
+      let taskActions = await handler(event, context)
+      await taskActions
+      ->Array.map(async taskAction => {
+        switch taskAction {
+        | PublishCommands(aggregateName, cmdJsons) => await publishCommands(aggregateName, cmdJsons)
+        | _ => ()
+        }
+      })
+      ->Promise.all
+      ->Util.Promise.toUnit
+    }
+
+    let config = Spec.setup(queryEngine, scheduler, queryBucketName, opts)
 
     let bucketNames = config.buckets->Option.map(buckets =>
       buckets
-      ->Array.map(({bucketName, callback}) => {
+      ->Array.map(({bucketName, bucketMode, callback}) => {
         let name = taskName ++ bucketName
         let bucket = TaskBucket.make(~name, ~opts)
-        let handler = TaskBucket.makeHandler(callback)
         let opts = {Pulumi.ComponentResource.parent: bucket.parts->Pulumi.Resource.makeFromJs}
+
         self->TaskRuntimeBuilder.forBucketCallback(
-          ~handler,
-          ~connect=TaskBucket.connect(~name, ~bucket, ~opts, ...),
+          ~handler=callback->TaskBucket.makeHandler->taskActionsHandler->Pulumi.Output.make,
+          ~connect=TaskBucket.connect(
+            ~name,
+            ~bucket,
+            ~bucketMode,
+            ~commandTopics=allCommandTopics,
+            ~opts,
+            ...
+          ),
           ~memorySize=4096,
           ~timeout=600,
           ~name=bucketName
@@ -57,7 +83,7 @@ module Make = (
           ~name=taskName,
           ~sideEffects,
           ~allEventTopics=allAggregates->Aggregate.allEventTopics,
-          ~allCommandTopics=allAggregates->Aggregate.allCommandTopics,
+          ~allCommandTopics,
           ~queryEngine,
           ~scheduler,
           ~opts,

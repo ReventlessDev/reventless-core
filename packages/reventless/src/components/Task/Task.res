@@ -16,9 +16,11 @@ type queryBucketName = (~taskName: string, ~bucketName: string=?) => string
 type operations = {publishCommands: publishCommands}
 type component = Component.t<t, outputs, operations>
 
-type bucketCallback = (~eventName: string, ~key: string) => promise<unit>
+type taskAction = PublishCommands(string, array<Message.commandJson>) // TODO add other taskActions
+type bucketCallback = (~eventName: string, ~key: string) => promise<array<taskAction>>
 
-type bucketSpec = {bucketName: string, callback: bucketCallback}
+type bucketMode = Read | Write | ReadWrite
+type bucketSpec = {bucketName: string, bucketMode: bucketMode, callback: bucketCallback}
 type config = {
   buckets?: array<bucketSpec>,
   sideEffects?: Reventless.SideEffectHandler.sideEffects,
@@ -27,7 +29,6 @@ type config = {
 type setup = (
   ReventlessSpec.QueryEngine.operations,
   Scheduler.operations,
-  publishCommands,
   queryBucketName,
   Pulumi.ComponentResource.options,
 ) => config
