@@ -3,11 +3,14 @@
 
 
 function handleBucketEvent(handleEvent) {
-  return async function ($$event, param) {
-    var record = $$event.Records[0];
-    var eventName = record.eventName;
-    var key = decodeURIComponent(record.s3.object.key);
-    handleEvent(eventName, key);
+  return function ($$event, param) {
+    return Promise.all($$event.Records.map(function (record) {
+                      var eventName = record.eventName;
+                      var key = decodeURIComponent(record.s3.object.key);
+                      return handleEvent(eventName, key);
+                    })).then(function (actions) {
+                return actions.flat();
+              });
   };
 }
 
