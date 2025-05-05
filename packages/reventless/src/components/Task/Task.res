@@ -20,7 +20,7 @@ type taskAction = PublishCommands(string, array<Message.commandJson>) // TODO ad
 type bucketCallback = (~eventName: string, ~key: string) => promise<array<taskAction>>
 
 type bucketMode = Read | Write | ReadWrite
-type bucketSpec = {bucketName: string, bucketMode: bucketMode, callback: bucketCallback}
+type bucketSpec = {bucketName?: string, bucketMode: bucketMode, callback?: bucketCallback}
 type config = {
   buckets?: array<bucketSpec>,
   sideEffects?: Reventless.SideEffectHandler.sideEffects,

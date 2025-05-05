@@ -31,18 +31,19 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                   };
                   var config = Spec.setup(queryEngine, scheduler, queryBucketName, opts);
                   var bucketNames = Core__Option.map(config.buckets, (function (buckets) {
-                          return Object.fromEntries(buckets.map(function (param) {
-                                          var bucketMode = param.bucketMode;
-                                          var bucketName = param.bucketName;
+                          return Object.fromEntries(buckets.map(function (bucketSpec) {
+                                          var bucketName = Core__Option.getOr(bucketSpec.bucketName, "Bucket");
                                           var name = extra$1 + bucketName;
                                           var bucket = TaskBucket.make(name, opts);
                                           var opts_parent = bucket.parts;
                                           var opts$1 = {
                                             parent: opts_parent
                                           };
-                                          TaskRuntimeBuilder.forBucketCallback(Pulumi.output(taskActionsHandler(TaskBucket.makeHandler(param.callback))), (function (none) {
-                                                  return Curry._6(TaskBucket.connect, name, bucket, bucketMode, allCommandTopics, none, opts$1);
-                                                }), 4096, 600, bucketName, extra);
+                                          Core__Option.forEach(bucketSpec.callback, (function (callback) {
+                                                  TaskRuntimeBuilder.forBucketCallback(Pulumi.output(taskActionsHandler(TaskBucket.makeHandler(callback))), (function (none) {
+                                                          return Curry._6(TaskBucket.connect, name, bucket, bucketSpec.bucketMode, allCommandTopics, none, opts$1);
+                                                        }), 4096, 600, bucketName, extra);
+                                                }));
                                           return [
                                                   bucketName,
                                                   bucket.resources[0].id

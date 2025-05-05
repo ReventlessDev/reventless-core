@@ -42,7 +42,6 @@ module Make = (
       ->Array.map(async taskAction => {
         switch taskAction {
         | PublishCommands(aggregateName, cmdJsons) => await publishCommands(aggregateName, cmdJsons)
-        | _ => ()
         }
       })
       ->Promise.all
@@ -53,25 +52,30 @@ module Make = (
 
     let bucketNames = config.buckets->Option.map(buckets =>
       buckets
-      ->Array.map(({bucketName, bucketMode, callback}) => {
+      ->Array.map(bucketSpec => {
+        let bucketName = bucketSpec.bucketName->Option.getOr("Bucket")
         let name = taskName ++ bucketName
         let bucket = TaskBucket.make(~name, ~opts)
         let opts = {Pulumi.ComponentResource.parent: bucket.parts->Pulumi.Resource.makeFromJs}
 
-        self->TaskRuntimeBuilder.forBucketCallback(
-          ~handler=callback->TaskBucket.makeHandler->taskActionsHandler->Pulumi.Output.make,
-          ~connect=TaskBucket.connect(
-            ~name,
-            ~bucket,
-            ~bucketMode,
-            ~commandTopics=allCommandTopics,
-            ~opts,
-            ...
-          ),
-          ~memorySize=4096,
-          ~timeout=600,
-          ~name=bucketName
+        bucketSpec.callback->Option.forEach(
+          callback =>
+            self->TaskRuntimeBuilder.forBucketCallback(
+              ~handler=callback->TaskBucket.makeHandler->taskActionsHandler->Pulumi.Output.make,
+              ~connect=TaskBucket.connect(
+                ~name,
+                ~bucket,
+                ~bucketMode=bucketSpec.bucketMode,
+                ~commandTopics=allCommandTopics,
+                ~opts,
+                ...
+              ),
+              ~memorySize=4096,
+              ~timeout=600,
+              ~name=bucketName
+            ),
         )
+
         (bucketName, (bucket.resources->Array.getUnsafe(0)).id)
       })
       ->Dict.fromArray
