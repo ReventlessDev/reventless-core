@@ -11,14 +11,14 @@ module Make = (
     and type callbackEvent = TaskRuntimeBuilder.callbackEvent
     and type runtimeParts = RuntimeEnvironment.parts
     and type context = TaskRuntimeBuilder.context,
-  SideEffectHandler: SideEffectHandler.T,
+  SpecificSideEffectHandler: SideEffectHandler.T,
 ): Task.T => {
   module Spec = Spec
-  type handler = Runtime.eventHandler<
-    TaskRuntimeBuilder.callbackEvent,
-    TaskRuntimeBuilder.context,
-    array<Task.taskAction>,
-  >
+  // type handler = Runtime.eventHandler<
+  //   TaskRuntimeBuilder.callbackEvent,
+  //   TaskRuntimeBuilder.context,
+  //   array<Task.taskAction>,
+  // >
 
   let construct = (
     ~queryBucketName,
@@ -36,19 +36,52 @@ module Make = (
       (publishToAggregates->Dict.get(aggregateName)->Option.getExn)(cmdJsons)
     }
 
-    let taskActionsHandler = (handler: handler) => async (event, context) => {
-      let taskActions = await handler(event, context)
-      await taskActions
+    let config = Spec.setup(queryEngine, queryBucketName, opts)
+
+    let sideEffectHandler =
+      config.sideEffects->Option.map(sideEffects =>
+        SpecificSideEffectHandler.make(
+          ~name=taskName,
+          ~sideEffects,
+          ~allEventTopics=allAggregates->Aggregate.allEventTopics,
+          ~allCommandTopics,
+          ~queryEngine,
+          ~scheduler,
+          ~opts,
+        )
+      )
+
+    let taskActionsHandler = (taskActions, operations: option<SideEffectHandler.operations>) => {
+      taskActions
       ->Array.map(async taskAction => {
         switch taskAction {
-        | PublishCommands(aggregateName, cmdJsons) => await publishCommands(aggregateName, cmdJsons)
+        | Task.PublishCommands(aggregateName, cmdJsons) =>
+          await publishCommands(aggregateName, cmdJsons)
+        | CreateSchedule(schedule) =>
+          switch operations {
+          | Some(operations) => await operations.createSchedule(schedule)
+          | None => Js.log("No SideEffectHandler to create schedule")
+          }
+        | DeleteSchedule(scheduleId) =>
+          switch operations {
+          | Some(operations) => await operations.deleteSchedule(scheduleId)
+          | None => Js.log("No SideEffectHandler to delete schedule")
+          }
         }
       })
       ->Promise.all
       ->Util.Promise.toUnit
     }
 
-    let config = Spec.setup(queryEngine, scheduler, queryBucketName, opts)
+    let createHandler = (sideEffectHandler, callback) =>
+      sideEffectHandler
+      ->Option.map(sideEffectHandler => sideEffectHandler->Component.operations)
+      ->Pulumi.Output.allOpt
+      ->Pulumi.Output.apply(operations => async (event, context) => {
+        let handler = callback->TaskBucket.makeHandler
+        let taskActions = await handler(event, context)
+        await taskActions->taskActionsHandler(operations)
+      })
 
     let bucketNames = config.buckets->Option.map(buckets =>
       buckets
@@ -61,7 +94,7 @@ module Make = (
         bucketSpec.callback->Option.forEach(
           callback =>
             self->TaskRuntimeBuilder.forBucketCallback(
-              ~handler=callback->TaskBucket.makeHandler->taskActionsHandler->Pulumi.Output.make,
+              ~handler=sideEffectHandler->createHandler(callback),
               ~connect=TaskBucket.connect(
                 ~name,
                 ~bucket,
@@ -81,23 +114,11 @@ module Make = (
       ->Dict.fromArray
     )
 
-    let _sideEffectHandler =
-      config.sideEffects->Option.map(sideEffects =>
-        SideEffectHandler.make(
-          ~name=taskName,
-          ~sideEffects,
-          ~allEventTopics=allAggregates->Aggregate.allEventTopics,
-          ~allCommandTopics,
-          ~queryEngine,
-          ~scheduler,
-          ~opts,
-        )
-      )
-
     let sideEffectSources =
       config.sideEffects->Option.map(sideEffect =>
         sideEffect->Array.map((module(SideEffect)) => SideEffect.Source.name)
       )
+
     self->Component.setOutputs({name: taskName, ?bucketNames, ?sideEffectSources})
   }
 

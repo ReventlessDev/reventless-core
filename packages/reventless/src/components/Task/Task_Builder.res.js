@@ -3,14 +3,14 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
-var Pulumi = require("@pulumi/pulumi");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Task$Reventless = require("./Task.res.js");
 var Aggregate$Reventless = require("../Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 
-function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRuntimeBuilder, TaskRuntimeBuilder, TaskBucket, SideEffectHandler) {
+function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRuntimeBuilder, TaskRuntimeBuilder, TaskBucket, SpecificSideEffectHandler) {
   var make = function (queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Task$Reventless.componentType), Spec.name, (function (extra, extra$1) {
                   var opts_parent = Component$Reventless.toPulumiResource(extra);
@@ -21,15 +21,44 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                   var publishCommands = function (aggregateName, cmdJsons) {
                     return Core__Option.getExn(publishToAggregates[aggregateName], undefined)(cmdJsons);
                   };
-                  var taskActionsHandler = function (handler) {
-                    return async function ($$event, context) {
-                      var taskActions = await handler($$event, context);
-                      return await Util_Promise$Reventless.toUnit(Promise.all(taskActions.map(async function (taskAction) {
-                                          return await publishCommands(taskAction._0, taskAction._1);
-                                        })));
-                    };
+                  var config = Spec.setup(queryEngine, queryBucketName, opts);
+                  var sideEffectHandler = Core__Option.map(config.sideEffects, (function (sideEffects) {
+                          return SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$Reventless.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, undefined, undefined, opts);
+                        }));
+                  var taskActionsHandler = function (taskActions, operations) {
+                    return Util_Promise$Reventless.toUnit(Promise.all(taskActions.map(async function (taskAction) {
+                                        switch (taskAction.TAG) {
+                                          case "PublishCommands" :
+                                              return await publishCommands(taskAction._0, taskAction._1);
+                                          case "CreateSchedule" :
+                                              if (operations !== undefined) {
+                                                return await operations.createSchedule(taskAction._0);
+                                              } else {
+                                                console.log("No SideEffectHandler to create schedule");
+                                                return ;
+                                              }
+                                          case "DeleteSchedule" :
+                                              if (operations !== undefined) {
+                                                return await operations.deleteSchedule(taskAction._0);
+                                              } else {
+                                                console.log("No SideEffectHandler to delete schedule");
+                                                return ;
+                                              }
+                                          
+                                        }
+                                      })));
                   };
-                  var config = Spec.setup(queryEngine, scheduler, queryBucketName, opts);
+                  var createHandler = function (sideEffectHandler, callback) {
+                    return Output$Pulumi.allOpt(Core__Option.map(sideEffectHandler, (function (sideEffectHandler) {
+                                        return Component$Reventless.operations(sideEffectHandler);
+                                      }))).apply(function (operations) {
+                                return async function ($$event, context) {
+                                  var handler = TaskBucket.makeHandler(callback);
+                                  var taskActions = await handler($$event, context);
+                                  return await taskActionsHandler(taskActions, operations);
+                                };
+                              });
+                  };
                   var bucketNames = Core__Option.map(config.buckets, (function (buckets) {
                           return Object.fromEntries(buckets.map(function (bucketSpec) {
                                           var bucketName = Core__Option.getOr(bucketSpec.bucketName, "Bucket");
@@ -40,7 +69,7 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                                             parent: opts_parent
                                           };
                                           Core__Option.forEach(bucketSpec.callback, (function (callback) {
-                                                  TaskRuntimeBuilder.forBucketCallback(Pulumi.output(taskActionsHandler(TaskBucket.makeHandler(callback))), (function (none) {
+                                                  TaskRuntimeBuilder.forBucketCallback(createHandler(sideEffectHandler, callback), (function (none) {
                                                           return Curry._6(TaskBucket.connect, name, bucket, bucketSpec.bucketMode, allCommandTopics, none, opts$1);
                                                         }), 4096, 600, bucketName, extra);
                                                 }));
@@ -49,9 +78,6 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                                                   bucket.resources[0].id
                                                 ];
                                         }));
-                        }));
-                  Core__Option.map(config.sideEffects, (function (sideEffects) {
-                          return SideEffectHandler.make(extra$1, sideEffects, Aggregate$Reventless.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, undefined, undefined, opts);
                         }));
                   var sideEffectSources = Core__Option.map(config.sideEffects, (function (sideEffect) {
                           return sideEffect.map(function (SideEffect) {
@@ -72,4 +98,4 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
 }
 
 exports.Make = Make;
-/* @pulumi/pulumi Not a pure module */
+/* Output-Pulumi Not a pure module */
