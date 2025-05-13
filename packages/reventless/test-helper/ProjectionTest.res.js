@@ -63,12 +63,10 @@ function Make(Projection) {
   var handleActions = function (actions, primitives) {
     return Projection$Reventless.handleActions(actions, primitives, Projection.subIdConfig);
   };
-  var update = async function (store, id, meta, $$event) {
-    await handleActions([Projection.map({
-                id: id,
-                meta: meta,
-                event: $$event
-              })], {
+  var update = async function (store, events$p) {
+    await handleActions(events$p.map(function (event$p) {
+              return Projection.map(event$p);
+            }), {
           load: (function (extra) {
               return Promise.resolve({
                           TAG: "Ok",
@@ -198,39 +196,85 @@ function Make(Projection) {
     }
   };
   var givenEvents = function (events) {
-    return Belt_Array.reduce(events, Promise.resolve({}), (async function (store, $$event) {
-                  return await update(await store, testId.contents, meta.contents, $$event);
-                }));
+    return update({}, events.map(function ($$event) {
+                    return {
+                            id: testId.contents,
+                            meta: meta.contents,
+                            event: $$event
+                          };
+                  }));
   };
   var givenEventsWithTime = function (events) {
-    return Belt_Array.reduce(events, Promise.resolve({}), (async function (store, param) {
-                  var init = meta.contents;
-                  return await update(await store, testId.contents, {
+    return update({}, events.map(function (param) {
+                    var init = meta.contents;
+                    return {
+                            id: testId.contents,
+                            meta: {
                               service: init.service,
                               time: param[0],
                               ip: init.ip,
                               user: init.user,
                               msgId: init.msgId,
                               correlationId: init.correlationId
-                            }, param[1]);
-                }));
+                            },
+                            event: param[1]
+                          };
+                  }));
   };
   var whenEvent = function (store, $$event) {
     return Jest.Expect.expect(async function () {
-                return await update(await store, testId.contents, meta.contents, $$event);
+                return await update(await store, [{
+                              id: testId.contents,
+                              meta: meta.contents,
+                              event: $$event
+                            }]);
+              });
+  };
+  var whenEvents = function (store, events) {
+    return Jest.Expect.expect(async function () {
+                return await update(await store, events.map(function ($$event) {
+                                return {
+                                        id: testId.contents,
+                                        meta: meta.contents,
+                                        event: $$event
+                                      };
+                              }));
               });
   };
   var whenEventWithTime = function (store, time, $$event) {
     return Jest.Expect.expect(async function () {
                 var init = meta.contents;
-                return await update(await store, testId.contents, {
-                            service: init.service,
-                            time: time,
-                            ip: init.ip,
-                            user: init.user,
-                            msgId: init.msgId,
-                            correlationId: init.correlationId
-                          }, $$event);
+                return await update(await store, [{
+                              id: testId.contents,
+                              meta: {
+                                service: init.service,
+                                time: time,
+                                ip: init.ip,
+                                user: init.user,
+                                msgId: init.msgId,
+                                correlationId: init.correlationId
+                              },
+                              event: $$event
+                            }]);
+              });
+  };
+  var whenEventsWithTime = function (store, events) {
+    return Jest.Expect.expect(async function () {
+                return await update(await store, events.map(function (param) {
+                                var init = meta.contents;
+                                return {
+                                        id: testId.contents,
+                                        meta: {
+                                          service: init.service,
+                                          time: param[0],
+                                          ip: init.ip,
+                                          user: init.user,
+                                          msgId: init.msgId,
+                                          correlationId: init.correlationId
+                                        },
+                                        event: param[1]
+                                      };
+                              }));
               });
   };
   var thenStates = async function (p, expectedStates) {
@@ -315,7 +359,9 @@ function Make(Projection) {
           givenEvents: givenEvents,
           givenEventsWithTime: givenEventsWithTime,
           whenEvent: whenEvent,
+          whenEvents: whenEvents,
           whenEventWithTime: whenEventWithTime,
+          whenEventsWithTime: whenEventsWithTime,
           thenStates: thenStates,
           thenStatesWithId: thenStatesWithId,
           thenAllStates: thenAllStates,

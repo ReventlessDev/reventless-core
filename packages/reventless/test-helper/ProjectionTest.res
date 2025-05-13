@@ -14,10 +14,18 @@ module type T = {
     Js.Promise.t<store>,
     sourceEvent,
   ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
+  let whenEvents: (
+    Js.Promise.t<store>,
+    array<sourceEvent>,
+  ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
   let whenEventWithTime: (
     Js.Promise.t<store>,
     string,
     sourceEvent,
+  ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
+  let whenEventsWithTime: (
+    Js.Promise.t<store>,
+    array<(string, sourceEvent)>,
   ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
   let thenStates: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
@@ -157,8 +165,10 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       )
     }
 
-  let update = async (store, id, meta, event) => {
-    await [{id, meta, event}->Projection.map]->handleActions({
+  let update = async (store, events') => {
+    await events'
+    ->Array.map(event' => event'->Projection.map)
+    ->handleActions({
       load: load(store, ...),
       save: save(store, ...),
       saveBatch: saveBatch(store, ...),
@@ -170,20 +180,45 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   }
 
   let givenEvents = events =>
-    events->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, event) =>
-      await (await store)->update(testId.contents, meta.contents, event)
+    Js.Dict.empty()->update(
+      events->Array.map(event => {Message.id: testId.contents, meta: meta.contents, event}),
     )
+
   let givenEventsWithTime = events =>
-    events->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, (time, event)) =>
-      await (await store)->update(testId.contents, {...meta.contents, time}, event)
+    Js.Dict.empty()->update(
+      events->Array.map(((time, event)) => {
+        Message.id: testId.contents,
+        meta: {...meta.contents, time},
+        event,
+      }),
     )
 
   open Jest.Expect
   let whenEvent = (store, event) =>
-    expect(async () => await (await store)->update(testId.contents, meta.contents, event))
+    expect(async () =>
+      await (await store)->update([{Message.id: testId.contents, meta: meta.contents, event}])
+    )
+  let whenEvents = (store, events) =>
+    expect(async () =>
+      await (await store)->update(
+        events->Array.map(event => {Message.id: testId.contents, meta: meta.contents, event}),
+      )
+    )
   let whenEventWithTime = (store, time, event) =>
     expect(async () =>
-      await (await store)->update(testId.contents, {...meta.contents, time}, event)
+      await (await store)->update([
+        {Message.id: testId.contents, meta: {...meta.contents, time}, event},
+      ])
+    )
+  let whenEventsWithTime = (store, events) =>
+    expect(async () =>
+      await (await store)->update(
+        events->Array.map(((time, event)) => {
+          Message.id: testId.contents,
+          meta: {...meta.contents, time},
+          event,
+        }),
+      )
     )
 
   let thenStates = async (p, expectedStates) => {
