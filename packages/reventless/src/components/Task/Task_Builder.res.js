@@ -2,8 +2,9 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Pulumi = require("@pulumi/pulumi");
 var Task$Reventless = require("./Task.res.js");
 var Aggregate$Reventless = require("../Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
@@ -49,15 +50,20 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
                                       })));
                   };
                   var createHandler = function (sideEffectHandler, callback) {
-                    return Output$Pulumi.allOpt(Core__Option.map(sideEffectHandler, (function (sideEffectHandler) {
-                                        return Component$Reventless.operations(sideEffectHandler);
-                                      }))).apply(function (operations) {
-                                return async function ($$event, context) {
-                                  var handler = TaskBucket.makeHandler(callback);
+                    var handler = TaskBucket.makeHandler(callback);
+                    if (sideEffectHandler !== undefined) {
+                      return Component$Reventless.operations(Caml_option.valFromOption(sideEffectHandler)).apply(function (operations) {
+                                  return async function ($$event, context) {
+                                    var taskActions = await handler($$event, context);
+                                    return await taskActionsHandler(taskActions, operations);
+                                  };
+                                });
+                    } else {
+                      return Pulumi.output(async function ($$event, context) {
                                   var taskActions = await handler($$event, context);
-                                  return await taskActionsHandler(taskActions, operations);
-                                };
-                              });
+                                  return await taskActionsHandler(taskActions, undefined);
+                                });
+                    }
                   };
                   var bucketNames = Core__Option.map(config.buckets, (function (buckets) {
                           return Object.fromEntries(buckets.map(function (bucketSpec) {
@@ -98,4 +104,4 @@ function Make(Spec, RuntimeEnvironment, EventCollectorChannel, EventCollectorRun
 }
 
 exports.Make = Make;
-/* Output-Pulumi Not a pure module */
+/* @pulumi/pulumi Not a pure module */

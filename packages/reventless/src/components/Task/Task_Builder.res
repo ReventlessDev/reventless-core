@@ -73,15 +73,25 @@ module Make = (
       ->Util.Promise.toUnit
     }
 
-    let createHandler = (sideEffectHandler, callback) =>
-      sideEffectHandler
-      ->Option.map(sideEffectHandler => sideEffectHandler->Component.operations)
-      ->Pulumi.Output.allOpt
-      ->Pulumi.Output.apply(operations => async (event, context) => {
-        let handler = callback->TaskBucket.makeHandler
-        let taskActions = await handler(event, context)
-        await taskActions->taskActionsHandler(operations)
-      })
+    let createHandler = (sideEffectHandler, callback) => {
+      let handler = callback->TaskBucket.makeHandler
+      switch sideEffectHandler {
+      | Some(sideEffectHandler) =>
+        sideEffectHandler
+        ->Component.operations
+        ->Pulumi.Output.apply(operations => async (event, context) => {
+          let taskActions = await handler(event, context)
+          await taskActions->taskActionsHandler(Some(operations))
+        })
+      | None =>
+        (
+          async (event, context) => {
+            let taskActions = await handler(event, context)
+            await taskActions->taskActionsHandler(None)
+          }
+        )->Pulumi.Output.make
+      }
+    }
 
     let bucketNames = config.buckets->Option.map(buckets =>
       buckets
