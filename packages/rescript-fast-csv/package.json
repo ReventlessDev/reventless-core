@@ -1,0 +1,42 @@
+{
+  "name": "@reventless/rescript-fast-csv",
+  "version": "1.1.0",
+  "description": "Bucklescript / ReasonML bindings for fast-csv",
+  "author": "Atos",
+  "license": "MIT",
+  "keywords": [
+    "reasonml",
+    "bucklescript",
+    "bs",
+    "bsb",
+    "csv",
+    "binding"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.com:reventless/reventless-universe.git"
+  },
+  "publishConfig": {
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+  },
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "test": "echo \"Error: There are no tests for rescript-fast-csv.\" && exit 1",
+    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
+  },
+  "dependencies": {
+    "@reventless/bs-node-streams": "^1.0.0",
+    "fast-csv": "^5.0.1"
+  },
+  "devDependencies": {
+    "rescript": "^11.1.4"
+  },
+  "peerDependencies": {
+    "@rescript/core": "^1.6.0",
+    "@rescript/std": "^11.1.4",
+    "rescript": "^11.1.4"
+  }
+}

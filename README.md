@@ -5,7 +5,7 @@ This is a mono-repo, which contains all necessary packages for the Reventless fr
 For individual Readmes per package see inside the package's directory `./packages/*`:
 
 - [rescript-aws-sdk](packages/rescript-aws-sdk/README.md): bindings for `aws-sdk`
-- [bs-fast-csv](packages/bs-fast-csv/README.md): bindings for `fast-csv`
+- [rescript-fast-csv](packages/rescript-fast-csv/README.md): bindings for `fast-csv`
 - [bs-hash-obj](packages/bs-hash-obj/README.md): bindings for `hash-obj`
 - [bs-node-streams](packages/bs-node-streams/README.md): bindings for streams in `node`
 - [bs-pulumi-aws](packages/bs-pulumi-aws/README.md): bindings for `@pulumi/pulumi-aws`
@@ -100,10 +100,10 @@ How to read the following table:
 - packages are listed top to bottom
 - dependencies are listed left to right
 
-| Package / dep    | rescript-aws-sdk | bs-fast-csv | bs-hash-obj | bs-node-streams | bs-pulumi-aws | bs-pulumi-pulumi | bs-ssh2 | bs-uuid |
+| Package / dep    | rescript-aws-sdk | rescript-fast-csv | bs-hash-obj | bs-node-streams | bs-pulumi-aws | bs-pulumi-pulumi | bs-ssh2 | bs-uuid |
 | ---------------- | :--------: | :---------: | :---------: | :-------------: | :-----------: | :--------------: | :-----: | :-----: |
 | rescript-aws-sdk       |            |             |             |        x        |               |                  |         |         |
-| bs-fast-csv      |            |             |             |        x        |               |                  |         |         |
+| rescript-fast-csv      |            |             |             |        x        |               |                  |         |         |
 | bs-hash-obj      |            |             |             |                 |               |                  |         |         |
 | bs-node-streams  |            |             |             |                 |               |                  |         |         |
 | bs-pulumi-aws    |            |             |             |                 |               |        x         |         |         |
@@ -117,6 +117,6 @@ Therefore there is a natural order in which package updates should be published:
 | 0                | 1             | 2          |
 | ---------------- | ------------- | ---------- |
 | bs-hash-obj      | rescript-aws-sdk    | reventless |
-| bs-node-streams  | bs-fast-csv   |            |
+| bs-node-streams  | rescript-fast-csv   |            |
 | bs-pulumi-pulumi | bs-pulumi-aws |            |
 | bs-uuid          | bs-ssh2       |            |
