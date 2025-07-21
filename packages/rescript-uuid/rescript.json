@@ -1,0 +1,30 @@
+{
+  "name": "@reventless/rescript-uuid",
+  "version": "0.1.1",
+  "namespace": false,
+  "suffix": ".res.js",
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true,
+      "public": [
+        "Uuid"
+      ]
+    },
+    {
+      "dir": "examples",
+      "subdirs": true,
+      "type": "dev"
+    }
+  ],
+  "bs-dependencies": [],
+  "external-stdlib": "@rescript/std"
+}

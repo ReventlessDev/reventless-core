@@ -11,7 +11,7 @@ For individual Readmes per package see inside the package's directory `./package
 - [rescript-pulumi-aws](packages/rescript-pulumi-aws/README.md): bindings for `@pulumi/pulumi-aws`
 - [rescript-pulumi-pulumi](packages/rescript-pulumi-pulumi/README.md): bindings for `@pulumi/pulumi`
 - [rescript-ssh2](packages/rescript-ssh2/README.md): bindings for `ssh2`
-- [bs-uuid](packages/bs-uuid/README.md): bindings for `uuid`
+- [rescript-uuid](packages/rescript-uuid/README.md): bindings for `uuid`
 - [reventless](packages/reventless/README.md): reventless framework (provider agnostic)
 - [reventless-aws](packages/reventless-aws/README.md): aws specifics for the reventless framework (adapter, preconficured components, etc.)
 - [reventless-ci](packages/reventless-ci/README.md): ci tooling for reventless projects (docker image, scripts, ci templates)
@@ -100,7 +100,7 @@ How to read the following table:
 - packages are listed top to bottom
 - dependencies are listed left to right
 
-| Package / dep    | rescript-aws-sdk | rescript-fast-csv | rescript-hash-obj | rescript-node-streams | rescript-pulumi-aws | rescript-pulumi-pulumi | rescript-ssh2 | bs-uuid |
+| Package / dep    | rescript-aws-sdk | rescript-fast-csv | rescript-hash-obj | rescript-node-streams | rescript-pulumi-aws | rescript-pulumi-pulumi | rescript-ssh2 | rescript-uuid |
 | ---------------- | :--------: | :---------: | :---------: | :-------------: | :-----------: | :--------------: | :-----: | :-----: |
 | rescript-aws-sdk       |            |             |             |        x        |               |                  |         |         |
 | rescript-fast-csv      |            |             |             |        x        |               |                  |         |         |
@@ -109,7 +109,7 @@ How to read the following table:
 | rescript-pulumi-aws    |            |             |             |                 |               |        x         |         |         |
 | rescript-pulumi-pulumi |            |             |             |                 |               |                  |         |         |
 | rescript-ssh2          |            |             |             |        x        |               |                  |         |         |
-| bs-uuid          |            |             |             |                 |               |                  |         |         |
+| rescript-uuid          |            |             |             |                 |               |                  |         |         |
 | reventless       |     x      |      x      |      x      |        x        |       x       |        x         |    x    |    x    |
 
 Therefore there is a natural order in which package updates should be published:
@@ -119,4 +119,4 @@ Therefore there is a natural order in which package updates should be published:
 | rescript-hash-obj      | rescript-aws-sdk    | reventless |
 | rescript-node-streams  | rescript-fast-csv   |            |
 | rescript-pulumi-pulumi | rescript-pulumi-aws |            |
-| bs-uuid          | rescript-ssh2       |            |
+| rescript-uuid          | rescript-ssh2       |            |

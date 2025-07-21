@@ -1,0 +1,41 @@
+{
+  "name": "@reventless/rescript-uuid",
+  "version": "1.0.0",
+  "description": "Bucklescript / ReasonML bindings for node streams",
+  "author": "Atos",
+  "license": "MIT",
+  "keywords": [
+    "reasonml",
+    "bucklescript",
+    "bs",
+    "bsb",
+    "uuid",
+    "binding"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.com:reventless/reventless-universe.git"
+  },
+  "publishConfig": {
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+  },
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "test": "echo \"Error: There are no tests for rescript-uuid.\" && exit 1",
+    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
+  },
+  "dependencies": {
+    "@rescript/std": "^11.1.4",
+    "uuid": "^11.0.0-0"
+  },
+  "devDependencies": {
+    "rescript": "^11.1.4"
+  },
+  "peerDependencies": {
+    "@rescript/std": "^11.1.4",
+    "rescript": "^11.1.4"
+  }
+}
