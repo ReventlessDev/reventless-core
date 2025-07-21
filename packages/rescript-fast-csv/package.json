@@ -1,6 +1,6 @@
 {
   "name": "@reventless/rescript-fast-csv",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Bucklescript / ReasonML bindings for fast-csv",
   "author": "Atos",
   "license": "MIT",
