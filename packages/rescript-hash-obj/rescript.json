@@ -1,0 +1,27 @@
+{
+  "name": "@reventless/rescript-hash-obj",
+  "version": "0.1.1",
+  "namespace": false,
+  "suffix": ".res.js",
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    },
+    {
+      "dir": "examples",
+      "type": "dev",
+      "subdirs": true
+    }
+  ],
+  "bs-dependencies": [],
+  "external-stdlib": "@rescript/std"
+}
