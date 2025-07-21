@@ -23,13 +23,13 @@
   ],
   "bs-dependencies": [
     "@rescript/core",
-    "@reventless/bs-node-streams"
+    "@reventless/rescript-node-streams"
   ],
   "bsc-flags": [
     "-open RescriptCore"
   ],
   "pinned-dependencies": [
-    "@reventless/bs-node-streams"
+    "@reventless/rescript-node-streams"
   ],
   "external-stdlib": "@rescript/std"
 }

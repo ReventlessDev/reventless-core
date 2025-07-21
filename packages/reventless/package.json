@@ -38,7 +38,7 @@
         "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
     },
     "dependencies": {
-        "@reventless/bs-node-streams": "^1.0.0",
+        "@reventless/rescript-node-streams": "^1.0.0",
         "@reventless/bs-pulumi-aws": "^2.1.1",
         "@reventless/bs-pulumi-pulumi": "^2.1.0",
         "@reventless/bs-ssh2": "^1.0.0",

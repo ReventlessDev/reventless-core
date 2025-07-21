@@ -41,7 +41,7 @@
     "@aws-sdk/client-sqs": "^3.658.1",
     "@aws-sdk/lib-dynamodb": "^3.662.0",
     "@aws-sdk/lib-storage": "^3.658.1",
-    "@reventless/bs-node-streams": "^1.0.0"
+    "@reventless/rescript-node-streams": "^1.0.0"
   },
   "devDependencies": {
     "@rescript/core": "^1.6.0",

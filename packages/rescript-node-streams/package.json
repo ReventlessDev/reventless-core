@@ -1,7 +1,7 @@
 {
-  "name": "@reventless/rescript-fast-csv",
-  "version": "1.1.1",
-  "description": "Bucklescript / ReasonML bindings for fast-csv",
+  "name": "@reventless/rescript-node-streams",
+  "version": "1.0.0",
+  "description": "Bucklescript / ReasonML bindings for node streams",
   "author": "Atos",
   "license": "MIT",
   "keywords": [
@@ -9,7 +9,8 @@
     "bucklescript",
     "bs",
     "bsb",
-    "csv",
+    "node",
+    "stream",
     "binding"
   ],
   "repository": {
@@ -24,18 +25,16 @@
     "start": "rescript build -w",
     "clean": "rescript clean",
     "rebuild": "npm run clean && npm run build -- -with-deps",
-    "test": "echo \"Error: There are no tests for rescript-fast-csv.\" && exit 1",
+    "test": "echo \"Error: There are no tests for rescript-node-streams.\" && exit 1",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
-    "@reventless/rescript-node-streams": "^1.0.0",
-    "fast-csv": "^5.0.1"
+    "@rescript/std": "^11.1.4"
   },
   "devDependencies": {
     "rescript": "^11.1.4"
   },
   "peerDependencies": {
-    "@rescript/core": "^1.6.0",
     "@rescript/std": "^11.1.4",
     "rescript": "^11.1.4"
   }

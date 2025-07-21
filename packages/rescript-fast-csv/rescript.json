@@ -24,10 +24,10 @@
   ],
   "bs-dependencies": [
     "@rescript/core",
-    "@reventless/bs-node-streams"
+    "@reventless/rescript-node-streams"
   ],
   "pinned-dependencies": [
-    "@reventless/bs-node-streams"
+    "@reventless/rescript-node-streams"
   ],
   "bsc-flags": [
     "-open RescriptCore"
