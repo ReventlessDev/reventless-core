@@ -1,0 +1,31 @@
+{
+  "name": "@reventless/rescript-node-zlib",
+  "namespace": false,
+  "suffix": ".res.js",
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true,
+      "public": [
+        "NodeZlib"
+      ]
+    },
+    {
+      "dir": "example",
+      "subdirs": true,
+      "type": "dev"
+    }
+  ],
+  "bs-dependencies": [
+    "@reventless/rescript-node-streams"
+  ],
+  "external-stdlib": "@rescript/std"
+}
