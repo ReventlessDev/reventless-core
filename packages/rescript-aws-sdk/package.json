@@ -1,6 +1,6 @@
 {
   "name": "@reventless/rescript-aws-sdk",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Bucklescript / ReasonML bindings for aws-sdk",
   "author": "Atos",
   "license": "MIT",
