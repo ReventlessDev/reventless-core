@@ -2,6 +2,10 @@
 
 ## Next version
 
+## 1.6.1
+
+- Add `difference`, `intersection`, `union`, `symmetricDifference`, `isSubsetOf`, `isSupersetOf`, `isDisjointFrom`, `toArray` functions to `Set`. https://github.com/rescript-association/rescript-core/pull/247
+
 ## 1.6.0
 
 - Optimize compare and equal functions. https://github.com/rescript-association/rescript-core/pull/238

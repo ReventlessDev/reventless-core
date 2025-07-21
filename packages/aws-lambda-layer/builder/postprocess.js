@@ -35,7 +35,7 @@ export async function bsMoment(node, cwd, dependenciesPath) {
 }
 
 export async function rescriptCore(node, cwd, dependenciesPath) {
-    return copyPrecompiled('@rescript/core@1.6.0', node.name, dependenciesPath);
+    return copyPrecompiled('@rescript/core@1.6.1', node.name, dependenciesPath);
 }
 
 export async function rescriptDependent(node, cwd) {
