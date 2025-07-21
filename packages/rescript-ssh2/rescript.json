@@ -1,0 +1,30 @@
+{
+  "name": "@reventless/rescript-ssh2",
+  "version": "0.1.1",
+  "namespace": false,
+  "suffix": ".res.js",
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true,
+      "public": [
+        "SSH2"
+      ]
+    }
+  ],
+  "bs-dependencies": [
+    "@reventless/rescript-node-streams"
+  ],
+  "pinned-dependencies": [
+    "@reventless/rescript-node-streams"
+  ],
+  "external-stdlib": "@rescript/std"
+}

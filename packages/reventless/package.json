@@ -38,7 +38,7 @@
         "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
     },
     "dependencies": {
-        "@reventless/bs-ssh2": "^1.0.1",
+        "@reventless/rescript-ssh2": "^1.0.1",
         "@reventless/bs-uuid": "^1.0.0",
         "@reventless/rescript-aws-sdk": "^2.1.2",
         "@reventless/rescript-fast-csv": "^1.1.2",
