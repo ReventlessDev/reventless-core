@@ -1,6 +1,6 @@
 {
   "name": "@reventless/rescript-aws-sdk",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Bucklescript / ReasonML bindings for aws-sdk",
   "author": "Atos",
   "license": "MIT",
@@ -41,7 +41,7 @@
     "@aws-sdk/client-sqs": "^3.658.1",
     "@aws-sdk/lib-dynamodb": "^3.662.0",
     "@aws-sdk/lib-storage": "^3.658.1",
-    "@reventless/rescript-node-streams": "^1.0.0"
+    "@reventless/rescript-node-streams": "^1.0.1"
   },
   "devDependencies": {
     "@rescript/core": "^1.6.0",

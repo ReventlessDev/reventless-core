@@ -1,6 +1,6 @@
 {
   "name": "@reventless/rescript-node-streams",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bucklescript / ReasonML bindings for node streams",
   "author": "Atos",
   "license": "MIT",
