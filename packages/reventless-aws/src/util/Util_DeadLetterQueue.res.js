@@ -3,11 +3,11 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
-var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
+var IAM$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Lambda$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
 
 var name = "DeadLetterQueue";
 

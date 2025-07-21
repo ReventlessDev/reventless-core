@@ -4,18 +4,18 @@
 var Aws = require("@pulumi/aws");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
-var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
+var IAM$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Lambda$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
-var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var AppSync_Resolver$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
-var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
+var AppSync_Resolver_Templates$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
 
 function handleResolversEvent(generateCommand) {
   return Pulumi.output(function ($$event, _context) {

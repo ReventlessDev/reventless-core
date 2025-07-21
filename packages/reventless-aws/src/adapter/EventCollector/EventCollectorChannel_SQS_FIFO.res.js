@@ -3,7 +3,7 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
-var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
+var SQS_Queue$PulumiAws = require("@reventless/rescript-pulumi-aws/src/SQS/SQS_Queue.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");

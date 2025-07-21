@@ -5,16 +5,16 @@ var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Lambda$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var Util_Cloudwatch$ReventlessAws = require("../../util/Util_Cloudwatch.res.js");
-var Cloudwatch_EventRule$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.js");
-var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.js");
+var Cloudwatch_EventRule$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.js");
+var Cloudwatch_EventTarget$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.js");
 
 function make(name, remoteChannel, timeout, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);

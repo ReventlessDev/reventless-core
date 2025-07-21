@@ -3,7 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
 
 function addUserGroup(name, userPoolId) {
   return new (Aws.cognito.UserGroup)("UserGroup-" + name, {

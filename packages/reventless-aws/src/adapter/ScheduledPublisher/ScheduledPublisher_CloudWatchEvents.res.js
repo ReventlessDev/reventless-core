@@ -2,10 +2,10 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
+var IAM$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var AWS$ReventlessAws = require("../AWS.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws = require("./ScheduledPublisher_CloudWatchEvents_Runtime.res.js");
 
 function make(name, opts) {

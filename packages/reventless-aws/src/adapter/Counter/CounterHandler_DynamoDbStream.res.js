@@ -3,7 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Lambda$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var CounterHandler_DynamoDbStream_Runtime$ReventlessAws = require("./CounterHandler_DynamoDbStream_Runtime.res.js");

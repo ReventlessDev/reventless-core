@@ -6,10 +6,10 @@ var Aws = require("@pulumi/aws");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Lambda$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Adapter_Helpers$ReventlessAws = require("../Adapter_Helpers.res.js");
 
 function createQueuePolicy(queue, name, lambda, opts) {

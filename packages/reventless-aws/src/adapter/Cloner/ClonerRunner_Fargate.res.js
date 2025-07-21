@@ -4,17 +4,17 @@
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
-var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
+var IAM$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Lambda$PulumiAws = require("@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Vpc$Reventless = require("@reventless/reventless/src/util/Util_Vpc.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
-var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
-var GetSecretVersion$PulumiAws = require("@reventless/bs-pulumi-aws/src/SecretsManager/GetSecretVersion.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var AppSync_Resolver$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
+var GetSecretVersion$PulumiAws = require("@reventless/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
-var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
+var AppSync_Resolver_Templates$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
 var ClonerRunner_Fargate_Runtime$ReventlessAws = require("./ClonerRunner_Fargate_Runtime.res.js");
 
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {

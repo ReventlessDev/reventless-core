@@ -1,0 +1,54 @@
+/** @pulumi/aws/appsync/GraphQLApi
+  see: https://www.pulumi.com/registry/packages/aws/api-docs/appsync/graphqlapi
+*/
+type uris = {@as("GRAPHQL") graphQL: string, @as("REALTIME") realtime: string}
+
+type t = {
+  id: Pulumi.Output.t<string>,
+  arn: Pulumi.Output.t<string>,
+  name: Pulumi.Output.t<string>,
+  uris: Pulumi.Output.t<uris>,
+}
+type graphQLApi = t
+
+type defaultAction = ALLOW | DENY
+type userPoolConfig = {
+  userPoolId: string,
+  defaultAction: defaultAction,
+  awsRegion?: string,
+  appIdClientRegex?: string,
+}
+
+type authenticationType =
+  | API_KEY
+  | AWS_IAM
+  | AMAZON_COGNITO_USER_POOLS
+  | OPENID_CONNECT
+
+type args = {
+  authenticationType: Pulumi.Input.t<authenticationType>,
+  name?: Pulumi.Input.t<string>,
+  schema?: Pulumi.Input.t<string>,
+  userPoolConfig?: Pulumi.Input.t<userPoolConfig>,
+}
+
+@module("@pulumi/aws") @scope("appsync") @new
+external make: (
+  ~name: string,
+  ~args: args=?,
+  ~opts: option<Pulumi.CustomResourceOptions.t>=?,
+) => graphQLApi = "GraphQLApi"
+
+@deprecated("use bare make instead")
+let makeUnnecessarilyConvenient = (~name, ~userPoolId, ~schema, ~opts=?) =>
+  make(
+    ~name,
+    ~args={
+      authenticationType: AMAZON_COGNITO_USER_POOLS->Pulumi.Input.make,
+      userPoolConfig: userPoolId
+      ->Pulumi.Output.apply(userPoolId => {userPoolId, defaultAction: ALLOW})
+      ->Pulumi.Output.asInput,
+      schema,
+    },
+    ~opts?,
+  )

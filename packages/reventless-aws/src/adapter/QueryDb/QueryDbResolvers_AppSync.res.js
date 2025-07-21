@@ -6,12 +6,12 @@ var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_QueryDb$Reventless = require("@reventless/reventless/src/util/Util_QueryDb.res.js");
 var Plugin_Helpers$Reventless = require("@reventless/reventless/src/components/Plugin/Plugin_Helpers.res.js");
-var AppSync_Function$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Function.res.js");
-var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
+var AppSync_Function$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.js");
+var AppSync_Resolver$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
-var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_DataSource.res.js");
-var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
+var AppSync_DataSource$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.js");
+var AppSync_Resolver_Templates$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
 
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
   var name$1 = StringLabels.capitalize_ascii(name);

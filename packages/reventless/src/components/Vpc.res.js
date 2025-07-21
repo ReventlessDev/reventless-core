@@ -3,16 +3,16 @@
 
 var Component = require("./Component").default;
 var Aws = require("@pulumi/aws");
-var EC2_Eip$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Eip.res.js");
-var EC2_Vpc$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Vpc.res.js");
-var EC2_Subnet$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Subnet.res.js");
+var EC2_Eip$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_Eip.res.js");
+var EC2_Vpc$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_Vpc.res.js");
+var EC2_Subnet$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_Subnet.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
-var EC2_NatGateway$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_NatGateway.res.js");
-var EC2_RouteTable$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_RouteTable.res.js");
-var EC2_VpcEndpoint$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_VpcEndpoint.res.js");
-var EC2_SecurityGroup$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_SecurityGroup.res.js");
-var EC2_InternetGateway$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_InternetGateway.res.js");
-var EC2_RouteTableAssociation$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_RouteTableAssociation.res.js");
+var EC2_NatGateway$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_NatGateway.res.js");
+var EC2_RouteTable$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_RouteTable.res.js");
+var EC2_VpcEndpoint$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_VpcEndpoint.res.js");
+var EC2_SecurityGroup$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_SecurityGroup.res.js");
+var EC2_InternetGateway$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_InternetGateway.res.js");
+var EC2_RouteTableAssociation$PulumiAws = require("@reventless/rescript-pulumi-aws/src/EC2/EC2_RouteTableAssociation.res.js");
 
 function construct(self, name, availabilityZone) {
   var opts_parent = self;

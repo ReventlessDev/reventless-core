@@ -6,9 +6,9 @@ var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb/QueryDb.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
-var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_DataSource.res.js");
+var AppSync_DataSource$PulumiAws = require("@reventless/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.res.js");
 
 function globalSecondaryIndexes(indexes) {
