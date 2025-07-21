@@ -2,21 +2,20 @@
 'use strict';
 
 var Component = require("./Component").default;
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 var Adapter = {};
 
 function Make(Spec, Publisher) {
   var construct = function (self, name, allQueryDbs) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Component$Reventless.toPulumiResource(self);
     var opts = {
       parent: opts_parent
     };
     var publisher = Publisher.make(ComponentType$Reventless.name(name, "EventTopic"), opts, allQueryDbs);
-    var publisherOutputs = publisher.resource;
     var outputs = {
-      publisher: publisherOutputs
+      resource: publisher.resource
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

@@ -24,10 +24,10 @@ let pluginDefinition2 = {
   ReventlessSpec.Plugin.id: "id2@1",
   name: "name2",
   version: "1",
-  extensionPoints: extensionPointNames2->Belt.Array.mapWithIndex((idx, name) => {
+  extensionPoints: extensionPointNames2->Array.mapWithIndex((name, idx) => {
     ReventlessSpec.Plugin.name,
-    commandTopic: `commandTopic${idx->Belt.Int.toString}`,
-    eventTopic: `eventTopic${idx->Belt.Int.toString}`,
+    commandTopic: `commandTopic${idx->Int.toString}`,
+    eventTopic: `eventTopic${idx->Int.toString}`,
   }),
   extensions: [],
   eventCollector: "eventCollector",

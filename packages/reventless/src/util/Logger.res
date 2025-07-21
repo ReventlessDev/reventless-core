@@ -24,13 +24,13 @@ external identity: 'a => 'a = "%identity"
 
 let createTag = (~level as _, ~loc) => {
   let re = %re("/File \"(.*).res\", line (.*), characters (.*)-(.*)/")
-  switch Js.Re.exec_(re, loc->Belt.Option.getWithDefault("")) {
+  switch Js.Re.exec_(re, loc->Option.getOr("")) {
   | Some(result) =>
     let captures =
       result
       ->Js.Re.captures
-      ->Belt.Array.map(Js.Nullable.toOption)
-      ->Belt.Array.map(Belt.Option.getWithDefault(_, ""))
+      ->Array.map(capture => capture->Js.Nullable.toOption)
+      ->Array.map(Option.getOr(_, ""))
     `${captures->Array.getUnsafe(1)}#${captures->Array.getUnsafe(2)}:`
   | _ => ""
   }
@@ -52,12 +52,10 @@ let log: (
   let (descStr, itemStr) = if stringify {
     let itemStr = itemMapped->Js.Json.stringifyAny
     let descStringified =
-      itemStr->Belt.Option.mapWithDefault(
-        desc ++ " [ERROR: Couldn't stringify, displaying raw value!]",
-        _ => desc,
+      itemStr->Option.mapOr(desc ++ " [ERROR: Couldn't stringify, displaying raw value!]", _ =>
+        desc
       )
-    let itemStrWithDefault =
-      itemStr->Belt.Option.mapWithDefault(itemMapped->logItem, i => i->logItem)
+    let itemStrWithDefault = itemStr->Option.mapOr(itemMapped->logItem, i => i->logItem)
     (descStringified, itemStrWithDefault)
   } else {
     (desc, itemMapped->logItem)
@@ -89,9 +87,9 @@ let commandJsonToLogMessage: Message.commandJson => string = ({id, meta, command
   `${commandName}(${id}): {"command":${commandStr},"meta":${metaStr},"id":${id}}`
 }
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {
-  let count = cmds->Belt.Array.size->Belt.Int.toString
-  cmds->Belt.Array.mapWithIndex((idx, cmd) => {
-    let idx = (idx + 1)->Belt.Int.toString
+  let count = cmds->Array.length->Int.toString
+  cmds->Array.mapWithIndex((cmd, idx) => {
+    let idx = (idx + 1)->Int.toString
     `${idx}/${count}: ${cmd->commandJsonToLogMessage}`
   })
 }
@@ -102,18 +100,18 @@ let logCmdJson = (~loc=?, ~level=Level.Info, cmdJson, desc) =>
 let logCmdJsons = (~loc=?, ~level=Level.Info, cmdJsons, desc) => {
   cmdJsons
   ->commandJsonsToLogMessages
-  ->Belt.Array.forEach(msg => {
+  ->Array.forEach(msg => {
     log(~loc?, ~level, desc, msg)
   })
 }
 
-let event'JsonToLogMessage = event'Json => {
-  let eventName = event'Json->Message.eventNameOfEvent'Json
-  let (id, metaStr, eventStr) = event'Json->Message.idMetaEventOfEvent'Json
+let event'JsonToLogMessage = eventJson' => {
+  let eventName = eventJson'->Message.eventNameOfEvent'Json
+  let (id, metaStr, eventStr) = eventJson'->Message.idMetaEventOfEvent'Json
   let event'Str = `{"event":${eventStr},"meta":${metaStr},"id":"${id}"}`
   `${eventName}(${id}): ${event'Str}`
 }
 
-let logEvent'Json = (~loc=?, ~level=Level.Info, event'Json, desc) => {
-  event'JsonToLogMessage(event'Json)->log(~loc?, ~level, desc, _)
+let logJsonEvent = (~loc=?, ~level=Level.Info, eventJson', desc) => {
+  event'JsonToLogMessage(eventJson')->(log(~loc?, ~level, desc, _))
 }

@@ -2,8 +2,7 @@
 'use strict';
 
 var Pulumi = require("@pulumi/pulumi");
-
-var service = "AppSync";
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 
 function toResource(param) {
   var id = param.id;
@@ -12,17 +11,16 @@ function toResource(param) {
           id: id,
           urn: param.arn,
           info: Pulumi.all([
-                  param.type_,
+                  param.type,
                   param.field
                 ]).apply(function (param) {
                 return param[0] + ("." + param[1]);
               }),
           service: id.apply(function (param) {
-                return service;
+                return AWS$ReventlessAws.AppSync.service;
               })
         };
 }
 
-exports.service = service;
 exports.toResource = toResource;
 /* @pulumi/pulumi Not a pure module */

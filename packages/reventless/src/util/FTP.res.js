@@ -2,7 +2,7 @@
 'use strict';
 
 var SSH2 = require("@reventless/bs-ssh2/src/SSH2.res.js");
-var Belt_Int = require("@rescript/std/lib/js/belt_Int.js");
+var Core__Int = require("@rescript/core/src/Core__Int.res.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Util_Promise$Reventless = require("./Util_Promise.res.js");
@@ -30,7 +30,7 @@ function parseUrl(url) {
   if (!match$1) {
     return [
             url.slice(0, colonI),
-            Belt_Int.fromString(url.slice(colonI + 1 | 0)),
+            Core__Int.fromString(url.slice(colonI + 1 | 0), undefined),
             ""
           ];
   }
@@ -39,7 +39,7 @@ function parseUrl(url) {
   var path = colonI < slashI ? url.slice(slashI + 1 | 0) : url.slice(slashI + 1 | 0, colonI);
   return [
           url.slice(0, fst),
-          Belt_Int.fromString(port),
+          Core__Int.fromString(port, undefined),
           path
         ];
 }

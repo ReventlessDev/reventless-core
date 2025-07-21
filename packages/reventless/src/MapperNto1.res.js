@@ -2,9 +2,9 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 
 function makeGenericMap(decode, map) {
@@ -14,27 +14,27 @@ function makeGenericMap(decode, map) {
       return map(msg._0);
     }
     var jsonStr = JSON.stringify(json);
-    return Js_exn.raiseError("Error: Couldn't decode source message: " + Belt_Option.getExn(JSON.stringify(msg._0)) + ", " + jsonStr);
+    return Js_exn.raiseError("Error: Couldn't decode source message: " + Core__Option.getExn(JSON.stringify(msg._0), undefined) + ", " + jsonStr);
   };
 }
 
 function Mapper(Spec, Target, Mappings) {
   var findMappings = function (sourceNameOpt, mappings) {
-    return Belt_Option.mapWithDefault(sourceNameOpt, [], (function (sourceName) {
-                  return Belt_Array.keep(mappings, (function (Mapping) {
-                                return Mapping.sourceName === sourceName;
-                              }));
+    return Core__Option.mapOr(sourceNameOpt, [], (function (sourceName) {
+                  return mappings.filter(function (Mapping) {
+                              return Mapping.sourceName === sourceName;
+                            });
                 }));
   };
   var map = function (sourceName, json) {
-    return Belt_Array.keepMap(findMappings(sourceName, Mappings.mappings), (function (Mapping) {
+    return Core__Array.filterMap(findMappings(sourceName, Mappings.mappings), (function (Mapping) {
                   try {
                     return Caml_option.some(Mapping.map(json));
                   }
                   catch (raw_exn){
                     var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-                    console.log("Mapping failed:", Belt_Option.map(Caml_js_exceptions.as_js_exn(exn), (function (prim) {
-                                return prim.message;
+                    console.log("Mapping failed:", Core__Option.map(Caml_js_exceptions.as_js_exn(exn), (function (exn) {
+                                return exn.message;
                               })));
                     return ;
                   }

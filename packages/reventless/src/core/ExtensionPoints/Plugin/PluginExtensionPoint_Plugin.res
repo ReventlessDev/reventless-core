@@ -5,7 +5,7 @@ let forwardCommand = async (
   _id,
   command,
   extensionPointName,
-  queryEngine: ReventlessSpec.QueryEngine.t,
+  queryEngine: ReventlessSpec.QueryEngine.operations,
 ) =>
   switch await queryEngine.scan(
     ~readModelName=PluginSpec.name,
@@ -19,15 +19,15 @@ let forwardCommand = async (
     switch jsons {
     | [] => Js.log2("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName)
     | plugins =>
-      let plugin = plugins->Belt.Array.getExn(0)
+      let plugin = plugins->Array.getUnsafe(0)
       await plugin
       ->PluginReadModelSpec.state_decode
       ->(
         async result =>
           switch result {
-          | Belt.Result.Ok(plugin: PluginReadModelSpec.state) =>
+          | Ok(plugin: PluginReadModelSpec.state) =>
             await plugin.extensionPoints
-            ->Belt.Array.getBy(extensionPoint => extensionPoint.name == extensionPointName)
+            ->Array.find(extensionPoint => extensionPoint.name == extensionPointName)
             ->(
               async extensionPoint =>
                 switch extensionPoint {
@@ -64,24 +64,24 @@ let forwardCommand = async (
 let callHandler = async (
   createSchedule: ReventlessSpec.Schedule.create,
   deleteSchedule: ReventlessSpec.Schedule.delete,
-  queryEngine: ReventlessSpec.QueryEngine.t,
+  queryEngine: ReventlessSpec.QueryEngine.operations,
   callCommand,
 ) =>
   switch callCommand {
   | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
     await createSchedule({
-      name: PulumiAws.Lambda.environment->Belt.Option.getWithDefault("unknownEnv") ++ ("-" ++ id),
+      name: PulumiAws.Lambda.environment->Option.getOr("unknownEnv") ++ ("-" ++ id),
       rate: timeout->Schedule.minutesFromNow,
       payload: {
         Message.id,
         meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),
         command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
       }
-      ->Message.command'_encode(
+      ->(Message.command'_encode(
         Decco.stringToJson,
         ReventlessSpec.PluginExtensionPointSpec.command_encode,
         _,
-      )
+      ))
       ->Js.Json.stringify,
     })
   | DeleteDisconnectSchedule(id) => await deleteSchedule(id)

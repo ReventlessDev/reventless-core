@@ -9,17 +9,21 @@ var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var ClientSqs = require("@aws-sdk/client-sqs");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
-var Util_SQS_FIFO$ReventlessAws = require("./Util_SQS_FIFO.res.js");
-var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
 
-var service = "SQS";
+function toRuntimeQueue(param) {
+  return {
+          id: param.id,
+          name: param.name,
+          arn: param.urn
+        };
+}
 
 function sendMessage(queue, delay, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, delay);
+  return SQS$AwsSdk.sendMessage(queue.id, messageBody, undefined, undefined, delay);
 }
 
 function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, delay);
+  return SQS$AwsSdk.sendMessage(queue.id, messageBody, messageGroupId, undefined, delay);
 }
 
 async function send(queue, queueService, commandJson) {
@@ -27,7 +31,7 @@ async function send(queue, queueService, commandJson) {
   var messageBody = Message$Reventless.toMessageBody(commandJson);
   try {
     return await (
-            queueService === Util_SQS_FIFO$ReventlessAws.service ? sendFifoMessage(queue, delay, commandJson.id, messageBody) : sendMessage(queue, delay, messageBody)
+            queueService === "SQS_FIFO" ? sendFifoMessage(queue, delay, commandJson.id, messageBody) : sendMessage(queue, delay, messageBody)
           );
   }
   catch (raw_e){
@@ -47,7 +51,7 @@ function makeEntry(queueService, commandJson) {
   var delay = commandJson.delay;
   var messageId = commandJson.meta.msgId;
   var messageBody = Message$Reventless.toMessageBody(commandJson);
-  if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
+  if (queueService === "SQS_FIFO") {
     return SQS$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, delay);
   } else {
     return SQS$AwsSdk.makeBatchEntry(messageBody, messageId, delay);
@@ -55,20 +59,20 @@ function makeEntry(queueService, commandJson) {
 }
 
 async function sendMessages(queue, queueService, commandJsons) {
-  var failedIds = await SQS$AwsSdk.sendMessagesParallel(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
-              return makeEntry(queueService, commandJson);
-            })));
+  var failedIds = await SQS$AwsSdk.sendMessagesParallel(queue.id, commandJsons.map(function (commandJson) {
+            return makeEntry(queueService, commandJson);
+          }));
   if (failedIds.TAG === "Ok") {
     return ;
   }
   var failedIds$1 = failedIds._0;
   console.log("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds$1);
-  var commandJsonsToRetry = Belt_Array.keep(commandJsons, (function (param) {
-          var msgId = param.meta.msgId;
-          return Belt_Array.some(failedIds$1, (function (failedId) {
-                        return failedId === msgId;
-                      }));
-        }));
+  var commandJsonsToRetry = commandJsons.filter(function (param) {
+        var msgId = param.meta.msgId;
+        return Belt_Array.some(failedIds$1, (function (failedId) {
+                      return failedId === msgId;
+                    }));
+      });
   var timeout = Js_math.random_int(3000, 7000);
   await Util_Promise$Reventless.finishTimeout(timeout);
   console.log("Retry sendMessages after " + timeout.toString() + " ms:", commandJsonsToRetry);
@@ -77,29 +81,29 @@ async function sendMessages(queue, queueService, commandJsons) {
 
 async function deleteMessage(queue, receiptHandle) {
   return await SQS$AwsSdk.DeleteMessageCommand.send(new ClientSqs.DeleteMessageCommand({
-                  QueueUrl: queue.id.get(),
+                  QueueUrl: queue.id,
                   ReceiptHandle: receiptHandle
                 }));
 }
 
 async function deleteMessages(entries, queue) {
-  var failedIds = await SQS$AwsSdk.deleteMessagesParallel(queue.id.get(), entries);
+  var failedIds = await SQS$AwsSdk.deleteMessagesParallel(queue.id, entries);
   if (failedIds.TAG === "Ok") {
     return ;
   }
   var failedIds$1 = failedIds._0;
   console.log("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds$1);
-  var entriesToRetry = Belt_Array.mapWithIndex(Belt_Array.keepWithIndex(entries, (function (param, idx) {
-              var id = idx.toString();
-              return Belt_Array.some(failedIds$1, (function (failedId) {
-                            return failedId === id;
-                          }));
-            })), (function (idx, entry) {
-          return {
-                  Id: idx.toString(),
-                  ReceiptHandle: entry.ReceiptHandle
-                };
-        }));
+  var entriesToRetry = Belt_Array.keepWithIndex(entries, (function (param, idx) {
+            var id = idx.toString();
+            return Belt_Array.some(failedIds$1, (function (failedId) {
+                          return failedId === id;
+                        }));
+          })).map(function (entry, idx) {
+        return {
+                Id: idx.toString(),
+                ReceiptHandle: entry.ReceiptHandle
+              };
+      });
   var timeout = Js_math.random_int(3000, 7000);
   await Util_Promise$Reventless.finishTimeout(timeout);
   console.log("Retry deleteMessages after " + timeout.toString() + " ms:", entriesToRetry);
@@ -108,6 +112,7 @@ async function deleteMessages(entries, queue) {
 
 function parseSqsRecord(record) {
   var eventStr = record.body;
+  console.log("parseSqsRecord: eventStr:", eventStr);
   var json;
   try {
     json = JSON.parse(eventStr);
@@ -120,23 +125,7 @@ function parseSqsRecord(record) {
   return json;
 }
 
-function fromResource(resource) {
-  return {
-          arn: resource.urn,
-          name: resource.name,
-          id: resource.id
-        };
-}
-
-function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, service);
-}
-
-function findUnwrappedResource(resources) {
-  return Util_AdapterRuntime$Reventless.findUnwrappedResource(resources, service);
-}
-
-exports.service = service;
+exports.toRuntimeQueue = toRuntimeQueue;
 exports.sendMessage = sendMessage;
 exports.sendFifoMessage = sendFifoMessage;
 exports.send = send;
@@ -145,7 +134,4 @@ exports.sendMessages = sendMessages;
 exports.deleteMessage = deleteMessage;
 exports.deleteMessages = deleteMessages;
 exports.parseSqsRecord = parseSqsRecord;
-exports.fromResource = fromResource;
-exports.findResource = findResource;
-exports.findUnwrappedResource = findUnwrappedResource;
 /* SQS-AwsSdk Not a pure module */

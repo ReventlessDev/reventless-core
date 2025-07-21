@@ -1,8 +1,21 @@
-//type t<'component, 'outputs> constraint 'outputs = 'a
-// TODO: remove? type unknown;
+type t<'component, 'outputs, 'operations>
 
-let extractOutputs: ReventlessSpec.Component.t<'component, 'outputs> => 'outputs
-let extractMultipleOutputs: array<ReventlessSpec.Component.t<'component, 'outputs>> => array<'outputs>
+type constructed
+let registerOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => constructed
+let setOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => constructed
+let outputs: t<'component, 'outputs, 'operations> => 'outputs
+let wrappedOutputs: Pulumi.Output.t<t<'component, 'outputs, 'operations>> => Pulumi.Output.t<
+  'outputs,
+>
+let setOperations: (t<'component, 'outputs, 'operations>, Pulumi.Output.t<'operations>) => unit
+let operations: t<'component, 'outputs, 'operations> => Pulumi.Output.t<'operations>
 
-external toPulumiResource: ReventlessSpec.Component.t<'component, 'outputs> => Pulumi.Resource.t = "%identity"
-// TODO: remove? external toUnknown: t('component, 'outputs) => t(unknown, 'outputs) = "%identity";
+let toPulumiResource: t<'component, 'outputs, 'operations> => Pulumi.Resource.t
+let fromPulumiResource: Pulumi.Resource.t => t<'component, 'outputs, 'operations>
+
+let make: (
+  ~componentType: string,
+  ~name: string,
+  ~construct: 'construct,
+  ~opts: option<Pulumi.ComponentResource.options>,
+) => t<'component, 'outputs, 'operations>

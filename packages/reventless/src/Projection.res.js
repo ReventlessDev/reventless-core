@@ -4,11 +4,12 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("./util/Logger.res.js");
+var QueryDb$Reventless = require("./components/QueryDb/QueryDb.res.js");
 var QueryDb$ReventlessSpec = require("@reventless/reventless-spec/src/components/QueryDb.res.js");
-var QueryDbRuntime$Reventless = require("./components/QueryDbRuntime.res.js");
 
 function Make(Source, Target, MappingImpl) {
   return {
@@ -42,27 +43,27 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
   var getSubId = param$1.getSubId;
   var subIdField = param$1.subIdField;
   var beforeCount = beforeStates.length;
-  var beforeSubIds = Belt_SetString.fromArray(Belt_Array.map(beforeStates, (function (state) {
-              return getSubId(state);
-            })));
+  var beforeSubIds = Belt_SetString.fromArray(beforeStates.map(function (state) {
+            return getSubId(state);
+          }));
   var afterCount = afterStates.length;
-  var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, (function (state) {
-              return getSubId(state);
-            })));
+  var afterSubIds = Belt_SetString.fromArray(afterStates.map(function (state) {
+            return getSubId(state);
+          }));
   var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
-  var addedStates = Belt_Array.keep(afterStates, (function (state) {
-          return Belt_SetString.has(addedSubIds, getSubId(state));
-        }));
+  var addedStates = afterStates.filter(function (state) {
+        return Belt_SetString.has(addedSubIds, getSubId(state));
+      });
   var addedCount = addedStates.length;
-  var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
+  var changedStates = Core__Array.filterMap(beforeStates, (function (before) {
           var beforeSubId = getSubId(before);
-          return Belt_Array.getBy(afterStates, (function (after) {
-                        if (getSubId(after) === beforeSubId) {
-                          return Caml_obj.notequal(after, before);
-                        } else {
-                          return false;
-                        }
-                      }));
+          return afterStates.find(function (after) {
+                      if (getSubId(after) === beforeSubId) {
+                        return Caml_obj.notequal(after, before);
+                      } else {
+                        return false;
+                      }
+                    });
         }));
   var changedCount = changedStates.length;
   var batchToSave = Belt_Array.map(Belt_Array.concat(changedStates, addedStates), (function (state) {
@@ -73,17 +74,17 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
                 ];
         }));
   var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
-  var batchToDelete = Belt_Array.map(deletedSubIds, (function (subId) {
-          return [
-                  id,
-                  [
-                    subIdField,
-                    subId
-                  ]
-                ];
-        }));
+  var batchToDelete = deletedSubIds.map(function (subId) {
+        return [
+                id,
+                [
+                  subIdField,
+                  subId
+                ]
+              ];
+      });
   var deletedCount = batchToDelete.length;
-  var str = action + "(" + id + "): beforeStates:" + String(beforeCount) + " afterStates:" + String(afterCount) + " added:" + String(addedCount) + " changed:" + String(changedCount) + " deleted:" + String(deletedCount);
+  var str = action + "(" + id + "): beforeStates:" + beforeCount.toString() + " afterStates:" + afterCount.toString() + " added:" + addedCount.toString() + " changed:" + changedCount.toString() + " deleted:" + deletedCount.toString();
   console.log("Projection.handleAction:", str);
   await Promise.all([
         param.deleteBatch(batchToDelete),
@@ -96,17 +97,17 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
 }
 
 function stateToString(state) {
-  return Belt_Option.getExn(JSON.stringify(state));
+  return Core__Option.getExn(JSON.stringify(state), undefined);
 }
 
 function statesToString(states) {
-  return Belt_Array.map(states, stateToString).join(", ");
+  return states.map(stateToString).join(", ");
 }
 
-async function handleAction(action, primitives, subIdConfig) {
-  var saveBatch = primitives.saveBatch;
-  var save = primitives.save;
-  var load = primitives.load;
+async function handleAction(action, operations, subIdConfig) {
+  var saveBatch = operations.saveBatch;
+  var save = operations.save;
+  var load = operations.load;
   if (typeof action !== "object") {
     console.log("Projection.handleAction:", "Ignore");
     return {
@@ -118,20 +119,20 @@ async function handleAction(action, primitives, subIdConfig) {
     case "Create" :
         var state = action._1;
         var id = action._0;
-        var str = "Create(" + id + ", " + Belt_Option.getExn(JSON.stringify(state)) + ")";
+        var str = "Create(" + id + ", " + stateToString(state) + ")";
         console.log("Projection.handleAction:", str);
         return await save(id, state, "Init", undefined);
     case "CreateMany" :
-        var batch = Belt_Array.map(action._0, (function (param) {
-                return [
-                        param[0],
-                        param[1],
-                        undefined
-                      ];
-              }));
-        var statesStr = Belt_Array.map(batch, (function (param) {
-                  return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
-                })).join(", ");
+        var batch = action._0.map(function (param) {
+              return [
+                      param[0],
+                      param[1],
+                      undefined
+                    ];
+            });
+        var statesStr = batch.map(function (param) {
+                return "(" + param[0] + "," + stateToString(param[1]) + ")";
+              }).join(", ");
         console.log("Projection.handleAction:", "CreateMany(" + statesStr + ")");
         return await saveBatch(batch);
     case "Update" :
@@ -162,7 +163,7 @@ async function handleAction(action, primitives, subIdConfig) {
         }
         var oldState = states$1[0];
         var newState = action._1(oldState);
-        var str$1 = "Update(" + id$1 + ", " + Belt_Option.getExn(JSON.stringify(oldState)) + " => " + Belt_Option.getExn(JSON.stringify(newState)) + ")";
+        var str$1 = "Update(" + id$1 + ", " + stateToString(oldState) + " => " + stateToString(newState) + ")";
         console.log("Projection.handleAction:", str$1);
         return await save(id$1, newState, "Overwrite", undefined);
     case "UpdateWithDefault" :
@@ -181,18 +182,18 @@ async function handleAction(action, primitives, subIdConfig) {
                       _0: "StaleState"
                     };
             }
-            var str$2 = "UpdateWithDefault(" + id$2 + ", default: " + Belt_Option.getExn(JSON.stringify($$default)) + ")";
+            var str$2 = "UpdateWithDefault(" + id$2 + ", default: " + stateToString($$default) + ")";
             console.log("Projection.handleAction:", str$2);
             return await save(id$2, $$default, "Init", undefined);
           }
           var oldState$1 = states$3[0];
           var newState$1 = action._2(oldState$1);
-          var str$3 = "UpdateWithDefault(" + id$2 + ", " + Belt_Option.getExn(JSON.stringify(oldState$1)) + " => " + Belt_Option.getExn(JSON.stringify(newState$1)) + ")";
+          var str$3 = "UpdateWithDefault(" + id$2 + ", " + stateToString(oldState$1) + " => " + stateToString(newState$1) + ")";
           console.log("Projection.handleAction:", str$3);
           return await save(id$2, newState$1, "Overwrite", undefined);
         }
         var err = states$2._0;
-        var str$4 = "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + QueryDbRuntime$Reventless.storageErrorToString(err) + ")";
+        var str$4 = "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + QueryDb$Reventless.storageErrorToString(err) + ")";
         console.log("Projection.handleAction:", str$4);
         return {
                 TAG: "Error",
@@ -201,43 +202,43 @@ async function handleAction(action, primitives, subIdConfig) {
     case "Set" :
         var state$1 = action._1;
         var id$3 = action._0;
-        var str$5 = "Set(" + id$3 + ", " + Belt_Option.getExn(JSON.stringify(state$1)) + ")";
+        var str$5 = "Set(" + id$3 + ", " + stateToString(state$1) + ")";
         console.log("Projection.handleAction:", str$5);
         return await save(id$3, state$1, "Any", undefined);
     case "SetMany" :
         var set = action._1;
-        var batch$1 = Belt_Array.map(action._0, (function (id) {
-                return [
-                        id,
-                        set(id),
-                        undefined
-                      ];
-              }));
-        var statesStr$1 = Belt_Array.map(batch$1, (function (param) {
-                  return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
-                })).join(", ");
+        var batch$1 = action._0.map(function (id) {
+              return [
+                      id,
+                      set(id),
+                      undefined
+                    ];
+            });
+        var statesStr$1 = batch$1.map(function (param) {
+                return "(" + param[0] + "," + stateToString(param[1]) + ")";
+              }).join(", ");
         console.log("Projection.handleAction:", "SetMany(" + statesStr$1 + ")");
         return await saveBatch(batch$1);
     case "Delete" :
         var id$4 = action._0;
         console.log("Projection.handleAction:", "Delete(" + id$4 + ")");
-        return await primitives.delete(id$4, undefined);
+        return await operations.delete(id$4, undefined);
     case "DeleteMany" :
         var ids = action._0;
         var str$6 = "DeleteMany(" + ids.join(", ") + ")";
         console.log("Projection.handleAction:", str$6);
-        return await primitives.deleteBatch(Belt_Array.map(ids, (function (id) {
-                          return [
-                                  id,
-                                  undefined
-                                ];
-                        })));
+        return await operations.deleteBatch(ids.map(function (id) {
+                        return [
+                                id,
+                                undefined
+                              ];
+                      }));
     case "CreateMultiState" :
         var states$4 = action._1;
         var id$5 = action._0;
-        var str$7 = "CreateMultiState(" + id$5 + ", " + Belt_Array.map(states$4, (function (state) {
-                  return Belt_Option.getExn(JSON.stringify(state));
-                })).join(", ") + ")";
+        var str$7 = "CreateMultiState(" + id$5 + ", " + states$4.map(function (state) {
+                return stateToString(state);
+              }).join(", ") + ")";
         console.log("Projection.handleAction:", str$7);
         var len$2 = states$4.length;
         if (len$2 !== 1) {
@@ -247,13 +248,13 @@ async function handleAction(action, primitives, subIdConfig) {
                     _0: undefined
                   };
           }
-          var batch$2 = Belt_Array.map(states$4, (function (state) {
-                  return [
-                          id$5,
-                          state,
-                          undefined
-                        ];
-                }));
+          var batch$2 = states$4.map(function (state) {
+                return [
+                        id$5,
+                        state,
+                        undefined
+                      ];
+              });
           return await saveBatch(batch$2);
         }
         var state$2 = states$4[0];
@@ -265,7 +266,7 @@ async function handleAction(action, primitives, subIdConfig) {
           if (subIdConfig !== undefined) {
             var states$5 = match._0;
             var afterStates = action._1(states$5);
-            return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, primitives, subIdConfig);
+            return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, operations, subIdConfig);
           }
           console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
           return {
@@ -275,7 +276,7 @@ async function handleAction(action, primitives, subIdConfig) {
         }
         if (subIdConfig !== undefined) {
           var err$1 = match._0;
-          var str$8 = "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + QueryDbRuntime$Reventless.storageErrorToString(err$1) + ")";
+          var str$8 = "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + QueryDb$Reventless.storageErrorToString(err$1) + ")";
           console.log("Projection.handleAction:", str$8);
           return {
                   TAG: "Error",
@@ -302,39 +303,39 @@ function actionsWithId(action) {
   }
   switch (action.TAG) {
     case "CreateMany" :
-        return Belt_Array.map(action._0, (function (param) {
-                      var id = param[0];
-                      return [
-                              id,
-                              {
-                                TAG: "Create",
-                                _0: id,
-                                _1: param[1]
-                              }
-                            ];
-                    }));
+        return action._0.map(function (param) {
+                    var id = param[0];
+                    return [
+                            id,
+                            {
+                              TAG: "Create",
+                              _0: id,
+                              _1: param[1]
+                            }
+                          ];
+                  });
     case "SetMany" :
         var set = action._1;
-        return Belt_Array.map(action._0, (function (id) {
-                      return [
-                              id,
-                              {
-                                TAG: "Set",
-                                _0: id,
-                                _1: set(id)
-                              }
-                            ];
-                    }));
+        return action._0.map(function (id) {
+                    return [
+                            id,
+                            {
+                              TAG: "Set",
+                              _0: id,
+                              _1: set(id)
+                            }
+                          ];
+                  });
     case "DeleteMany" :
-        return Belt_Array.map(action._0, (function (id) {
-                      return [
-                              id,
-                              {
-                                TAG: "Delete",
-                                _0: id
-                              }
-                            ];
-                    }));
+        return action._0.map(function (id) {
+                    return [
+                            id,
+                            {
+                              TAG: "Delete",
+                              _0: id
+                            }
+                          ];
+                  });
     case "UpdateMany" :
     case "UpdateManyWithDefault" :
     case "DeleteIf" :
@@ -343,18 +344,18 @@ function actionsWithId(action) {
         return [];
     case "UpdateManyMultiStates" :
         var update = action._1;
-        return Belt_Array.map(action._0, (function (id) {
-                      return [
-                              id,
-                              {
-                                TAG: "UpdateMultiState",
-                                _0: id,
-                                _1: (function (states) {
-                                    return update(id, states);
-                                  })
-                              }
-                            ];
-                    }));
+        return action._0.map(function (id) {
+                    return [
+                            id,
+                            {
+                              TAG: "UpdateMultiState",
+                              _0: id,
+                              _1: (function (states) {
+                                  return update(id, states);
+                                })
+                            }
+                          ];
+                  });
     default:
       return [[
                 action._0,
@@ -364,33 +365,33 @@ function actionsWithId(action) {
 }
 
 function groupActionsById(actions) {
-  var allActionsWithId = Belt_Array.concatMany(Belt_Array.map(actions, (function (action) {
-              return actionsWithId(action);
-            })));
-  var ids = Belt_Array.map(allActionsWithId, (function (param) {
-          return param[0];
-        }));
-  return Belt_Array.map(Belt_SetString.toArray(Belt_SetString.fromArray(ids)), (function (id) {
-                return [
-                        id,
-                        Belt_Array.keepMap(allActionsWithId, (function (param) {
-                                if (param[0] === id) {
-                                  return param[1];
-                                }
-                                
-                              }))
-                      ];
-              }));
+  var allActionsWithId = actions.map(function (action) {
+          return actionsWithId(action);
+        }).flat();
+  var ids = allActionsWithId.map(function (param) {
+        return param[0];
+      });
+  return Belt_SetString.toArray(Belt_SetString.fromArray(ids)).map(function (id) {
+              return [
+                      id,
+                      Core__Array.filterMap(allActionsWithId, (function (param) {
+                              if (param[0] === id) {
+                                return param[1];
+                              }
+                              
+                            }))
+                    ];
+            });
 }
 
 function optimizeActions(actions) {
-  return Belt_Array.reduce(actions, [], (function (optimizedActions, action) {
+  return Core__Array.reduce(actions, [], (function (optimizedActions, action) {
                 var optimizedActionsCount = optimizedActions.length;
                 if (optimizedActionsCount === 0) {
                   return [action];
                 }
-                var lastAction = Belt_Array.getExn(optimizedActions, optimizedActionsCount - 1 | 0);
-                var previousActions = optimizedActionsCount === 1 ? [] : Belt_Array.slice(optimizedActions, 0, optimizedActionsCount - 1 | 0);
+                var lastAction = optimizedActions[optimizedActionsCount - 1 | 0];
+                var previousActions = optimizedActionsCount === 1 ? [] : optimizedActions.slice(0, optimizedActionsCount);
                 if (typeof lastAction === "object") {
                   switch (lastAction.TAG) {
                     case "Create" :
@@ -401,7 +402,7 @@ function optimizeActions(actions) {
                             case "Create" :
                                 if (Caml_obj.equal(id1, action._0)) {
                                   console.warn("optimizing 2 sequential Create actions, therefore ignoring the second one:", JSON.stringify(action._1));
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Create",
                                                 _0: id1,
                                                 _1: state1
@@ -410,7 +411,7 @@ function optimizeActions(actions) {
                                 break;
                             case "Update" :
                                 if (Caml_obj.equal(id1, action._0)) {
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Create",
                                                 _0: id1,
                                                 _1: action._1(state1)
@@ -419,7 +420,7 @@ function optimizeActions(actions) {
                                 break;
                             case "UpdateWithDefault" :
                                 if (Caml_obj.equal(id1, action._0)) {
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Create",
                                                 _0: id1,
                                                 _1: action._2(state1)
@@ -429,7 +430,7 @@ function optimizeActions(actions) {
                             case "Set" :
                                 if (Caml_obj.equal(id1, action._0)) {
                                   console.warn("optimizing Set after Create, therefore ignoring the Create:", state1);
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Set",
                                                 _0: id1,
                                                 _1: action._1
@@ -439,7 +440,7 @@ function optimizeActions(actions) {
                             case "Delete" :
                                 if (Caml_obj.equal(id1, action._0)) {
                                   console.warn("optimizing Delete after Create, therefore ignoring the Create:", state1);
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Delete",
                                                 _0: id1
                                               }]);
@@ -458,7 +459,7 @@ function optimizeActions(actions) {
                             case "Update" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   var g = action._1;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Update",
                                                 _0: id1$1,
                                                 _1: (function (state) {
@@ -470,7 +471,7 @@ function optimizeActions(actions) {
                             case "UpdateWithDefault" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   var g$1 = action._2;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$1,
                                                 _1: action._1,
@@ -483,7 +484,7 @@ function optimizeActions(actions) {
                             case "Set" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   console.warn("optimizing Set after Update, therefore ignoring the Update");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Set",
                                                 _0: id1$1,
                                                 _1: action._1
@@ -493,7 +494,7 @@ function optimizeActions(actions) {
                             case "Delete" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   console.warn("optimizing Delete after Update, therefore ignoring the Update");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Delete",
                                                 _0: id1$1
                                               }]);
@@ -513,7 +514,7 @@ function optimizeActions(actions) {
                             case "Create" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$2,
                                                 _1: defaultState1,
@@ -524,7 +525,7 @@ function optimizeActions(actions) {
                             case "Update" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   var g$2 = action._1;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$2,
                                                 _1: g$2(defaultState1),
@@ -537,7 +538,7 @@ function optimizeActions(actions) {
                             case "UpdateWithDefault" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   var g$3 = action._2;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$2,
                                                 _1: g$3(defaultState1),
@@ -550,7 +551,7 @@ function optimizeActions(actions) {
                             case "Set" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   console.warn("optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Set",
                                                 _0: id1$2,
                                                 _1: action._1
@@ -560,7 +561,7 @@ function optimizeActions(actions) {
                             case "Delete" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   console.warn("optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Delete",
                                                 _0: id1$2
                                               }]);
@@ -575,7 +576,7 @@ function optimizeActions(actions) {
                         if (typeof action === "object" && action.TAG === "Create") {
                           var id1$3 = lastAction._0;
                           if (Caml_obj.equal(id1$3, action._0)) {
-                            return Belt_Array.concat(previousActions, [{
+                            return previousActions.concat([{
                                           TAG: "Set",
                                           _0: id1$3,
                                           _1: action._1
@@ -590,7 +591,7 @@ function optimizeActions(actions) {
                           if (Caml_obj.equal(id1$4, action._0)) {
                             var g$4 = action._1;
                             var f$2 = lastAction._1;
-                            return Belt_Array.concat(previousActions, [{
+                            return previousActions.concat([{
                                           TAG: "UpdateMultiState",
                                           _0: id1$4,
                                           _1: (function (state) {
@@ -606,34 +607,34 @@ function optimizeActions(actions) {
                   }
                 }
                 console.warn("actions not optimized: ", JSON.stringify(lastAction), JSON.stringify(action));
-                return Belt_Array.concat(optimizedActions, [action]);
+                return optimizedActions.concat([action]);
               }));
 }
 
-async function handleActions(actions, primitives, subIdConfig) {
+async function handleActions(actions, operations, subIdConfig) {
   var handleActionsForId = async function (actions, id) {
     var actionCount = actions.length;
     if (actionCount > 1) {
-      console.log("Projection.handleActions: optimizing " + String(actionCount) + " actions for id=" + id);
+      console.log("Projection.handleActions: optimizing " + actionCount.toString() + " actions for id=" + id);
     }
     var optimizedActions = optimizeActions(actions);
     var optimizedActionCount = optimizedActions.length;
-    console.log("Projection.handleActions: handling " + String(optimizedActionCount) + " optimized actions for id=" + id);
-    return await Belt_Array.reduce(optimizedActions, Promise.resolve({
+    console.log("Projection.handleActions: handling " + optimizedActionCount.toString() + " optimized actions for id=" + id);
+    return await Core__Array.reduce(optimizedActions, Promise.resolve({
                     TAG: "Ok",
                     _0: undefined
                   }), (async function (p, action) {
                   var err = await p;
                   if (err.TAG !== "Ok") {
-                    Logger$Reventless.error("File \"Projection.res\", line 385, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
+                    Logger$Reventless.error("File \"Projection.res\", line 374, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
-                  return await handleAction(action, primitives, subIdConfig);
+                  return await handleAction(action, operations, subIdConfig);
                 }));
   };
-  var results = await Promise.all(Belt_Array.map(groupActionsById(actions), (function (param) {
-              return handleActionsForId(param[1], param[0]);
-            })));
-  var errors = Belt_Array.keepMap(results, (function (x) {
+  var results = await Promise.all(groupActionsById(actions).map(function (param) {
+            return handleActionsForId(param[1], param[0]);
+          }));
+  var errors = Core__Array.filterMap(results, (function (x) {
           if (x.TAG === "Ok") {
             return ;
           } else {
@@ -644,7 +645,7 @@ async function handleActions(actions, primitives, subIdConfig) {
     return ;
   }
   var count = errors.length;
-  return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + Belt_Array.map(errors, QueryDbRuntime$Reventless.storageErrorToString).join(","));
+  return Js_exn.raiseError("Projection.handleActions failed with " + count.toString() + " errors: " + errors.map(QueryDb$Reventless.storageErrorToString).join(","));
 }
 
 var $$Set;

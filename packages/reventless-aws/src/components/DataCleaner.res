@@ -5,10 +5,10 @@ open ReventlessSpec.Adapter
 type tableConfig = {name: string, id: string, sort: option<string>}
 type event = {tables: Js.nullable<array<tableConfig>>}
 
-let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<Belt.Result.t<'a, 'b>> = async p =>
+let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<result<'a, 'b>> = async p =>
   switch await p {
-  | res => Belt.Result.Ok(res)
-  | exception err => Belt.Result.Error(err)
+  | res => Ok(res)
+  | exception err => Error(err)
   }
 
 let handleDeleteResult = result => {
@@ -24,17 +24,17 @@ let handleDeleteResult = result => {
   }
 }
 
-let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableConfig): unit =>
+let deleteAllItems = async (items: array<dict<string>>, tableConfig: tableConfig): unit =>
   switch await items
-  ->Belt.Array.map(async (item: Js.Dict.t<string>) => {
+  ->Array.map(async (item: dict<string>) => {
     let id = item->Js.Dict.get(tableConfig.id)
-    let sort = tableConfig.sort->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField))
+    let sort = tableConfig.sort->Option.flatMap(sortField => item->Js.Dict.get(sortField))
     switch (id, sort) {
     | (Some(id), Some(sort)) =>
       switch await AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
         ~tableName=tableConfig.name,
         ~id,
-        ~sortField=tableConfig.sort->Belt.Option.getExn,
+        ~sortField=tableConfig.sort->Option.getExn,
         ~sortKey=sort,
       )->promiseToResult {
       | res => res->handleDeleteResult
@@ -47,51 +47,51 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
       | res => res->handleDeleteResult
       }
     //Promise.handlePromise(handeDeleteResult)
-    | _ => Belt.Result.Error("No valid Config found!")
+    | _ => Error("No valid Config found!")
     }
   })
   ->Js.Promise.all {
   | result =>
     result
-    ->Belt.Array.reduce(0, (state, item) =>
+    ->Array.reduce(0, (state, item) =>
       switch item {
-      | Belt.Result.Ok(_) => state + 1
-      | Belt.Result.Error(_) => state
+      | Ok(_) => state + 1
+      | Error(_) => state
       }
     )
     ->Js.log3(
       "Deleted",
       _,
       "of " ++
-      (result->Belt.Array.length->string_of_int ++
+      (result->Array.length->string_of_int ++
       (" items in table " ++ tableConfig.name)),
     )
   }
 
 let handleScanResult = async (
   tableConfig: tableConfig,
-  scanResult: Belt.Result.t<AwsSdk.DynamoDb.DocumentClient.QueryCommand.output, 'a>,
-): Belt.Result.t<int, 'a> => {
+  scanResult: result<AwsSdk.DynamoDb.DocumentClient.QueryCommand.output, 'a>,
+): result<int, 'a> => {
   if mode == #debug {
     Js.log("Clean table " ++ tableConfig.name)
   }
   switch scanResult {
-  | Belt.Result.Ok(scanResult) =>
+  | Ok(scanResult) =>
     if mode == #debug {
-      Js.log2("Items in scan-result:", scanResult.items->Belt.Array.length)
+      Js.log2("Items in scan-result:", scanResult.items->Array.length)
     }
     let _ = await scanResult.items->deleteAllItems(tableConfig)
-    Belt.Result.Ok(-1)
-  | Belt.Result.Error(error) =>
+    Ok(-1)
+  | Error(error) =>
     if mode == #debug {
       Js.log2("Couldn't scan table " ++ (tableConfig.name ++ ":"), error)
     }
-    Belt.Result.Error(error)
+    Error(error)
   }
 }
 
 let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
-  Belt.Result.t<string, string>,
+  result<string, string>,
 > => {
   if mode == #debug {
     Js.log("Scan " ++ tableConfig.name)
@@ -117,9 +117,9 @@ let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
   | res => {
       let scanResult = await handleScanResult(tableConfig, res)
       let deletedItemsCount = switch scanResult {
-      | Belt.Result.Ok(deletedItemsCount) =>
-        Belt.Result.Ok(tableConfig.name ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
-      | Belt.Result.Error(_err) => Belt.Result.Error(tableConfig.name ++ " [ERROR]")
+      | Ok(deletedItemsCount) =>
+        Ok(tableConfig.name ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
+      | Error(_err) => Error(tableConfig.name ++ " [ERROR]")
       }
       deletedItemsCount->Js.Promise.resolve
     }
@@ -134,17 +134,17 @@ let toTableConfig: resource => tableConfig = resource => {
 }
 
 let cleanerFn = async (tablesToClean, _event, _context) =>
-  switch tablesToClean->Belt.Array.map(toTableConfig) {
-  | tableConfigs if tableConfigs->Belt.Array.length == 0 => "No tables to clean."
+  switch tablesToClean->Array.map(toTableConfig) {
+  | tableConfigs if tableConfigs->Array.length == 0 => "No tables to clean."
   | tableConfigs =>
-    switch await tableConfigs->Belt.Array.map(scanTableAndClean)->Js.Promise.all {
+    switch await tableConfigs->Array.map(scanTableAndClean)->Js.Promise.all {
     | results => {
-        let summary = results->Belt.Array.reduce(Js.Promise.resolve(""), async (state, result) =>
+        let summary = results->Array.reduce(Js.Promise.resolve(""), async (state, result) =>
           (await state) ++
           (" | " ++
           switch await result {
-          | Belt.Result.Ok(successMsg) => successMsg
-          | Belt.Result.Error(errorMsg) => errorMsg
+          | Ok(successMsg) => successMsg
+          | Error(errorMsg) => errorMsg
           })
         )
         "Cleaned tables " ++ (await summary)

@@ -2,13 +2,13 @@ type result<'a> = {status: string, value: option<'a>, reason: option<Js.Promise.
 
 let filterRejected = results =>
   results
-  ->Belt.Array.mapWithIndex((idx, result) => (idx, result))
-  ->Belt.Array.keep(((_, result)) => result.status == "rejected")
-  ->Belt.Array.map(((idx, result)) => (
+  ->Array.mapWithIndex((result, idx) => (idx, result))
+  ->Array.filter(((_, result)) => result.status == "rejected")
+  ->Array.map(((idx, result)) => (
     idx,
     result.reason
-    ->Belt.Option.map(reason => (reason->Util_Error.ofPromise).message)
-    ->Belt.Option.getWithDefault("Unknown error"),
+    ->Option.map(reason => (reason->Util_Error.ofPromise).message)
+    ->Option.getOr("Unknown error"),
   ))
 
 @ocaml.doc(

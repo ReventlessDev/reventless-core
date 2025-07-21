@@ -1,5 +1,5 @@
 type resolverConfig<'command> = {
-  commandDecoder: Js.Json.t => Belt.Result.t<'command, Decco.decodeError>,
+  commandDecoder: Js.Json.t => result<'command, Decco.decodeError>,
   fields: array<string>,
 }
 
@@ -7,13 +7,13 @@ type init<'state, 'event> = 'event => 'state
 type apply<'state, 'event> = ('state, 'event) => 'state
 
 type create<'command, 'event, 'error> = (
-  . 'command,
+  'command,
   Message.context,
   Message.errorHandler<'error, 'command, 'event>,
 ) => array<'event>
 
 type execute<'state, 'command, 'event, 'error> = (
-  . 'state,
+  'state,
   'command,
   Message.context,
   Message.errorHandler<'error, 'command, 'event>,

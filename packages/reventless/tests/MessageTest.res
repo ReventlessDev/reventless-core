@@ -40,7 +40,7 @@ describe("Message should", () => {
     expect(variantName)->toBe(expected)
   })
 
-  test("get event name of event'Json", () => {
+  test("get event name of eventJson'", () => {
     open PluginSpec
     let event': event'<string, event> = {
       id: "testId",
@@ -54,13 +54,13 @@ describe("Message should", () => {
       },
       event: UnknownPluginDetected,
     }
-    let event'Json: Js.Json.t = event'->event'_encode(Decco.stringToJson, event_encode, _)
-    let eventName = event'Json->eventNameOfEvent'Json
+    let eventJson': Js.Json.t = event'->(event'_encode(Decco.stringToJson, event_encode, _))
+    let eventName = eventJson'->eventNameOfEvent'Json
 
     expect(eventName)->toBe("UnknownPluginDetected")
   })
 
-  test("get id of event'Json", () => {
+  test("get id of eventJson'", () => {
     open PluginSpec
     let event': event'<string, event> = {
       id: "testId",
@@ -74,8 +74,8 @@ describe("Message should", () => {
       },
       event: UnknownPluginDetected,
     }
-    let event'Json: Js.Json.t = event'->event'_encode(Decco.stringToJson, event_encode, _)
-    let eventId = idOfEvent'Json(event'Json)->Belt.Option.getExn
+    let eventJson': Js.Json.t = event'->(event'_encode(Decco.stringToJson, event_encode, _))
+    let eventId = idOfEvent'Json(eventJson')->Option.getExn
 
     expect(eventId)->toBe("testId")
   })

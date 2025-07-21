@@ -2,7 +2,7 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
   (table.hashKey, table.rangeKey, table.streamArn)
   ->Pulumi.Output.all3
   ->Pulumi.Output.apply(((hashKey, rangeKey, streamArn)) =>
-    hashKey ++ ("," ++ (rangeKey->Belt.Option.getWithDefault("") ++ ("," ++ streamArn)))
+    hashKey ++ ("," ++ (rangeKey->Option.getOr("") ++ ("," ++ streamArn)))
   )
 
 let streamArnFromDynamoDbTableResource = (resource: ReventlessSpec.Adapter.resource) =>
@@ -10,16 +10,14 @@ let streamArnFromDynamoDbTableResource = (resource: ReventlessSpec.Adapter.resou
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((tableInfo, tableName)) =>
     switch tableInfo->Js.String2.split(",") {
-    | parts if parts->Belt.Array.length < 3 || parts->Array.getUnsafe(2)->Js.String2.trim == "" =>
+    | parts if parts->Array.length < 3 || parts->Array.getUnsafe(2)->Js.String2.trim == "" =>
       Js.Exn.raiseError("No streamArn field given for table " ++ tableName)
     | parts => parts->Array.getUnsafe(2)
     }
   )
 
 let toResource = (table: PulumiAws.DynamoDb.Table.t) => {
-  ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ =>
-    Util_DynamoDbStream_Runtime.service
-  ),
+  ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
   name: table.name,
   id: table.id,
   urn: table.arn,
@@ -31,7 +29,7 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 
   {
     ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ =>
-      Util_DynamoDbStream_Runtime.service
+      AWS.DynamoDbStream.service
     ),
     name: table.name,
     id: streamArn,
@@ -85,9 +83,7 @@ let updateTable: (~ttl: int=?, PulumiAws.DynamoDb.Table.table) => PulumiAws.Dyna
   {
     ...table,
     streamEnabled: streamInfo->Pulumi.Output.apply(((enabled, _, _)) => Some(enabled)),
-    streamArn: streamInfo->Pulumi.Output.apply(((_, streamArn, _)) =>
-      streamArn->Belt.Option.getWithDefault("")
-    ),
+    streamArn: streamInfo->Pulumi.Output.apply(((_, streamArn, _)) => streamArn->Option.getOr("")),
     streamLabel: streamInfo->Pulumi.Output.apply(((_, _, streamLabel)) => streamLabel),
     ttl: newTtl,
     pointInTimeRecovery: newPointInTimeRecovery,
@@ -107,7 +103,7 @@ let makeTable = (
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")
-    ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name))
+    ->Option.flatMap(tables => tables->Js.Dict.get(name))
 
   let (dependencies, registerResource) = Util_DynamoDb_TableManager.getDependencies()
 
@@ -131,14 +127,14 @@ let makeTable = (
 
   registerResource(table->Pulumi.Resource.makeFromJs)
 
-  restoreSourceName->Belt.Option.isSome
+  restoreSourceName->Option.isNone
   // Workaround when restore enabled
     ? updateTable(~ttl?, table)
     : table
 }
 
 let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(Util_DynamoDbStream_Runtime.service)
+  resources->Reventless.Util.Adapter.findResource(AWS.DynamoDbStream.service)
 
 let findUnwrappedResource = resources =>
-  resources->Reventless.Util.Adapter.findUnwrappedResource(Util_DynamoDbStream_Runtime.service)
+  resources->Reventless.Util.Adapter.findUnwrappedResource(AWS.DynamoDbStream.service)

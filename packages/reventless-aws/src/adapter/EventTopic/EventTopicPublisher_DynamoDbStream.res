@@ -1,4 +1,4 @@
-let make: Reventless.EventTopic.Adapter.publisherMaker = (
+let make: Reventless.EventTopic_Adapter.publisherMaker = (
   ~name as _,
   ~storageResources,
   ~opts as _,
@@ -9,7 +9,7 @@ let make: Reventless.EventTopic.Adapter.publisherMaker = (
     resources: [
       storageResource.service
       ->Pulumi.Output.apply(service =>
-        if service == Util_DynamoDbStream_Runtime.service {
+        if service == AWS.DynamoDbStream.service {
           storageResource->Util_DynamoDbStream.toStreamResource
         } else {
           Js.Exn.raiseError(
@@ -19,6 +19,6 @@ let make: Reventless.EventTopic.Adapter.publisherMaker = (
       )
       ->Reventless.Adapter.outputToResource,
     ],
-    publish: (_, _, _) => Js.Promise.resolve(), // ignore publish
+    publishJson: Pulumi.Output.make((_, _, _) => Js.Promise.resolve()), // ignore
   }
 }

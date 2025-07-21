@@ -1,21 +1,21 @@
 open PulumiAws
 open DynamoDb.Table
-open ReventlessSpec.ReadModel.Spec
+open ReventlessSpec.ReadModel_Spec
 
 type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<IAM.Role.t>
 
 let globalSecondaryIndexes = indexes =>
   indexes
-  ->Belt.Array.map(({index, projectionType} as indexConfig) => {
+  ->Array.map(({index, projectionType} as indexConfig) => {
     let (projectionType, includes) = switch projectionType {
-    | ALL as projection => (PulumiAws.DynamoDb.Table.ALL, None)
-    | KEYS_ONLY as projection => (KEYS_ONLY, None)
+    | ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
+    | KEYS_ONLY as _projection => (KEYS_ONLY, None)
     | INCLUDE(includes) => (INCLUDE, Some(includes))
     }
     {
       name: index,
-      hashKey: indexConfig.idField->Belt.Option.getWithDefault(index),
+      hashKey: indexConfig.idField->Option.getOr(index),
       rangeKey: ?indexConfig.subIdField,
       projectionType,
       nonKeyAttributes: ?includes,
@@ -26,18 +26,16 @@ let globalSecondaryIndexes = indexes =>
 let attributes = (sortField, indexes) =>
   [
     [{name: "id", type_: "S"}],
-    sortField->Belt.Option.mapWithDefault([], sortField => [{name: sortField, type_: "S"}]),
+    sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
     indexes
-    ->Belt.Array.map(({index, type_} as indexConfig) =>
+    ->Array.map(({index, type_} as indexConfig) =>
       [
         [{name: index, type_}],
-        indexConfig.subIdField->Belt.Option.mapWithDefault([], sortField => [
-          {name: sortField, type_: "S"},
-        ]),
-      ]->Belt.Array.concatMany
+        indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
+      ]->Array.flat
     )
-    ->Belt.Array.concatMany,
-  ]->Belt.Array.concatMany
+    ->Array.flat,
+  ]->Array.flat
 
 let dataSource = (name, table, api, apiRole, opts) => {
   let _dataSourceRolePolicy = {
@@ -45,9 +43,20 @@ let dataSource = (name, table, api, apiRole, opts) => {
       ~name,
       ~args={
         IAM.RolePolicy.policy: table.arn
-        ->Pulumi.Output.apply(tableArn =>
-          IAM.RolePolicy.generatePolicy([tableArn ++ "*"], "dynamodb:*")
-        )
+        ->Pulumi.Output.apply(tableArn => {
+          open PolicyDocument
+          PolicyDocument.make(
+            ~id=name ++ "DataSourcePolicy",
+            ~statements=[
+              {
+                sid: "AllowDynamoDbActions",
+                effect: Allow,
+                actions: Action("dynamodb:*"),
+                resources: Resource(tableArn),
+              },
+            ],
+          )->toJsonString
+        })
         ->Pulumi.Output.asInput,
         role: apiRole
         ->Pulumi.Output.flatMap((role: PulumiAws.IAM.Role.t) => role.id)
@@ -60,7 +69,7 @@ let dataSource = (name, table, api, apiRole, opts) => {
   AppSync.DataSource.makeDynamoDBDataSource(~name, ~api, ~table, ~serviceRole=apiRole, ~opts)
 }
 
-let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
+let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
   ~indexes,
   ~subIdField=?,
@@ -75,7 +84,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
     ~rangeKey=?subIdField,
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
-    ~tags=AWS.tags(~name, Reventless.QueryDb.componentType),
+    ~tags=AWS.Tags.make(~name, Reventless.QueryDb.componentType),
     ~opts,
   )
 
@@ -83,11 +92,15 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
   {
     resources: [table->Util_DynamoDb.toResource],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
-    load: table->load,
-    save: table->save,
-    saveBatch: table->saveBatch,
-    count: table->count,
-    delete: table->delete,
-    deleteBatch: table->deleteBatch,
+    operations: table
+    ->Util_DynamoDb.toRuntimeTableOutput
+    ->Pulumi.Output.apply(runtimeTable => {
+      Reventless.QueryDb.load: runtimeTable->load,
+      save: runtimeTable->save,
+      saveBatch: runtimeTable->saveBatch,
+      count: runtimeTable->count,
+      delete: runtimeTable->delete,
+      deleteBatch: runtimeTable->deleteBatch,
+    }),
   }
 }

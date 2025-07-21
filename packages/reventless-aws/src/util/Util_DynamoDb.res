@@ -4,12 +4,21 @@ open ReventlessSpec.Adapter
 let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
   ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((hashKey, rangeKey)) =>
-    hashKey ++ ("," ++ rangeKey->Belt.Option.getWithDefault(""))
-  )
+  ->Pulumi.Output.apply(((hashKey, rangeKey)) => hashKey ++ ("," ++ rangeKey->Option.getOr("")))
+
+let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
+  (name, id, arn, hashKey, rangeKey)
+  ->Pulumi.Output.all5
+  ->Pulumi.Output.apply(((name, id, arn, hashKey, rangeKey)) => {
+    Util_DynamoDb_Runtime.id,
+    name,
+    arn,
+    hashKey,
+    rangeKey: ?rangeKey->Option.map(rangeKey => rangeKey->Js.Nullable.return),
+  })
 
 let toResource: table => resource = ({id, name, arn} as table) => {
-  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => Util_DynamoDb_Runtime.service),
+  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
   name,
   id,
   urn: arn,
@@ -103,7 +112,7 @@ let makeTableArgs = (
   ~streamEnabled=?,
   ~streamViewType=?,
 ) => {
-  let ttl = ttl->Belt.Option.map(_ =>
+  let ttl = ttl->Option.map(_ =>
     {
       PulumiAws.DynamoDb.Table.enabled: true,
       attributeName: Util_DynamoDb_Runtime.purgeTimeAttributeName,
@@ -115,7 +124,7 @@ let makeTableArgs = (
   {
     PulumiAws.DynamoDb.Table.attributes: attributes->Pulumi.Input.make,
     hashKey: "id"->Pulumi.Input.make,
-    rangeKey: ?rangeKey->Belt.Option.map(Pulumi.Input.make),
+    rangeKey: ?rangeKey->Option.map(Pulumi.Input.make),
     billingMode: PAY_PER_REQUEST,
     ?globalSecondaryIndexes,
     ?tags,
@@ -123,12 +132,12 @@ let makeTableArgs = (
     pointInTimeRecovery: {
       enabled: true,
     }->Pulumi.Input.make,
-    restoreSourceName: ?restoreSourceName->Belt.Option.map(Pulumi.Input.make),
-    restoreDateTime: ?restoreSourceName->Belt.Option.flatMap(_ =>
-      restoreDateTime->Belt.Option.map(Pulumi.Input.make)
+    restoreSourceName: ?restoreSourceName->Option.map(Pulumi.Input.make),
+    restoreDateTime: ?restoreSourceName->Option.flatMap(_ =>
+      restoreDateTime->Option.map(Pulumi.Input.make)
     ),
-    restoreToLatestTime: ?restoreSourceName->Belt.Option.map(_ =>
-      restoreDateTime->Belt.Option.isNone->Pulumi.Input.make
+    restoreToLatestTime: ?restoreSourceName->Option.map(_ =>
+      restoreDateTime->Option.isNone->Pulumi.Input.make
     ),
     ?streamEnabled,
     ?streamViewType,
@@ -153,7 +162,7 @@ let makeTable = (
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")
-    ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name))
+    ->Option.flatMap(tables => tables->Js.Dict.get(name))
 
   let (dependencies, registerResource) = Util_DynamoDb_TableManager.getDependencies()
 
@@ -175,17 +184,17 @@ let makeTable = (
 
   registerResource(table->Pulumi.Resource.makeFromJs)
 
-  restoreSourceName->Belt.Option.isSome
+  restoreSourceName->Option.isNone
   // Workaround when restore enabled
     ? updateTable(~ttl?, table)
     : table
 }
 
 let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(Util_DynamoDb_Runtime.service)
+  resources->Reventless.Util.Adapter.findResource(AWS.DynamoDb.service)
 
 let findUnwrappedResource = resources =>
-  resources->Reventless.Util.Adapter.findUnwrappedResource(Util_DynamoDb_Runtime.service)
+  resources->Reventless.Util.Adapter.findUnwrappedResource(AWS.DynamoDb.service)
 
 let findResourceInOutput = resourcesOutput =>
-  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(Util_DynamoDb_Runtime.service)
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(AWS.DynamoDb.service)

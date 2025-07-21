@@ -1,18 +1,28 @@
 open Reventless.Message
 open AwsSdk
 
-let service = "SQS"
+type runtimeQueue = {
+  id: string,
+  name: string,
+  arn: string,
+}
 
-let sendMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, messageBody) =>
-  SQS.sendMessage(~queueId=queue.id->Pulumi.Output.get, ~messageBody, ~delay?)
+let toRuntimeQueue = ({id, name, urn}: Reventless.Adapter.unwrappedResource) => {
+  id,
+  name,
+  arn: urn,
+}
 
-let sendFifoMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, ~messageGroupId, messageBody) =>
-  SQS.sendMessage(~queueId=queue.id->Pulumi.Output.get, ~messageBody, ~messageGroupId, ~delay?)
+let sendMessage = (queue, ~delay=?, messageBody) =>
+  SQS.sendMessage(~queueId=queue.id, ~messageBody, ~delay?)
+
+let sendFifoMessage = (queue, ~delay=?, ~messageGroupId, messageBody) =>
+  SQS.sendMessage(~queueId=queue.id, ~messageBody, ~messageGroupId, ~delay?)
 
 let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
   try await (
-    if queueService == Util_SQS_FIFO.service {
+    if queueService == AWS.SQS_FIFO {
       queue->sendFifoMessage(~messageGroupId=id, ~delay?, messageBody)
     } else {
       queue->sendMessage(~delay?, messageBody)
@@ -27,29 +37,26 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   }
 }
 
-let makeEntry = (
-  queueService,
-  {id, meta: {msgId: messageId, service: _}, delay} as commandJson,
-) => {
+let makeEntry = (queueService, {id, meta: {msgId: messageId}, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
 
   // Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
-  if queueService == Util_SQS_FIFO.service {
+  if queueService == AWS.SQS_FIFO {
     SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay)
   } else {
     SQS.makeBatchEntry(~messageId, ~messageBody, ~delay)
   }
 }
 
-let rec sendMessages = async (queue: PulumiAws.SQS.Queue.t, queueService, commandJsons) => {
+let rec sendMessages = async (queue, queueService, commandJsons) => {
   switch await commandJsons
-  ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
-  ->SQS.sendMessagesParallel(~queueId=queue.id->Pulumi.Output.get) {
+  ->Array.map(commandJson => makeEntry(queueService, commandJson))
+  ->SQS.sendMessagesParallel(~queueId=queue.id) {
   | Ok() => ()
   | Error(failedIds) =>
     Js.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
     let commandJsonsToRetry =
-      commandJsons->Belt.Array.keep(({meta: {msgId}}) =>
+      commandJsons->Array.filter(({meta: {msgId}}) =>
         failedIds->Belt.Array.some(failedId => failedId == msgId)
       )
     let timeout = Js.Math.random_int(3000, 7000)
@@ -59,17 +66,17 @@ let rec sendMessages = async (queue: PulumiAws.SQS.Queue.t, queueService, comman
   }
 }
 
-let deleteMessage = async (queue: PulumiAws.SQS.Queue.t, receiptHandle) => {
+let deleteMessage = async (queue, receiptHandle) => {
   await {
-    queueUrl: queue.id->Pulumi.Output.get,
+    queueUrl: queue.id,
     receiptHandle,
   }
   ->SQS.DeleteMessageCommand.make
   ->SQS.DeleteMessageCommand.send
 }
 
-let rec deleteMessages = async (entries, queue: PulumiAws.SQS.Queue.t) =>
-  switch await SQS.deleteMessagesParallel(~queueId=queue.id->Pulumi.Output.get, entries) {
+let rec deleteMessages = async (entries, queue) =>
+  switch await SQS.deleteMessagesParallel(~queueId=queue.id, entries) {
   | Ok() => ()
   | Error(failedIds) =>
     Js.log2("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds)
@@ -79,7 +86,7 @@ let rec deleteMessages = async (entries, queue: PulumiAws.SQS.Queue.t) =>
         let id = idx->Js.Int.toString
         failedIds->Belt.Array.some(failedId => failedId == id)
       })
-      ->Belt.Array.mapWithIndex((idx, entry) => {
+      ->Array.mapWithIndex((entry, idx) => {
         AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Js.Int.toString,
         receiptHandle: entry.receiptHandle,
       })
@@ -91,6 +98,7 @@ let rec deleteMessages = async (entries, queue: PulumiAws.SQS.Queue.t) =>
 
 let parseSqsRecord = (record: PulumiAws.SQS.Queue.record) => {
   let eventStr = record.body
+  Js.log2("parseSqsRecord: eventStr:", eventStr)
   switch eventStr->Js.Json.parseExn {
   | json => Some(json)
   | exception err =>
@@ -98,18 +106,3 @@ let parseSqsRecord = (record: PulumiAws.SQS.Queue.record) => {
     None
   }
 }
-
-@obj
-external makeQueue: (
-  ~arn: Pulumi.Output.t<string>,
-  ~name: Pulumi.Output.t<string>,
-  ~id: Pulumi.Output.t<string>,
-) => PulumiAws.SQS.Queue.t = ""
-
-let fromResource = (resource: ReventlessSpec.Adapter.resource) =>
-  makeQueue(~id=resource.id, ~name=resource.name, ~arn=resource.urn)
-
-let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)
-
-let findUnwrappedResource = resources =>
-  resources->Reventless.Util.AdapterRuntime.findUnwrappedResource(service)

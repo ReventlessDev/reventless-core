@@ -2,9 +2,8 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-
-var service = "SNS_FIFO";
 
 function toResource(param) {
   var name = param.name;
@@ -16,13 +15,13 @@ function toResource(param) {
                 return "";
               }),
           service: name.apply(function (param) {
-                return service;
+                return AWS$ReventlessAws.SNS_FIFO.service;
               })
         };
 }
 
 function findTopicInUnwrappedResources(resources) {
-  var resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [service]);
+  var resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [AWS$ReventlessAws.SNS_FIFO.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
@@ -31,7 +30,6 @@ function findTopicInUnwrappedResources(resources) {
   return Js_exn.raiseError(err);
 }
 
-exports.service = service;
 exports.toResource = toResource;
 exports.findTopicInUnwrappedResources = findTopicInUnwrappedResources;
 /* Util_Adapter-Reventless Not a pure module */

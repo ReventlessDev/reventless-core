@@ -3,7 +3,6 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
@@ -12,7 +11,7 @@ var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runt
 
 function append(table) {
   return async function (_sequenceNr, _id, jsons) {
-    var result = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()));
+    var result = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(jsons.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name));
     var unprocessedItems;
     try {
       unprocessedItems = await result;
@@ -45,7 +44,7 @@ async function tryReplay(retryOpt, tableName, id) {
   catch (raw_e){
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
-      Logger$Reventless.warn("File \"EventLogStorage_DynamoDb_Runtime.res\", line 23, characters 11-18", undefined, undefined, "Couldn't replay events for id " + id + ", retry:" + retry.toString(), e._1);
+      Logger$Reventless.warn("File \"EventLogStorage_DynamoDb_Runtime.res\", line 22, characters 11-18", undefined, undefined, "Couldn't replay events for id " + id + ", retry:" + retry.toString(), e._1);
       var timeout = Math.imul(100, retry) + Js_math.random_int(0, 100) | 0;
       await Util_Promise$Reventless.finishTimeout(timeout);
       return await tryReplay(retry + 1 | 0, tableName, id);
@@ -56,7 +55,7 @@ async function tryReplay(retryOpt, tableName, id) {
 
 function replay(table) {
   return async function (id) {
-    return await tryReplay(undefined, table.name.get(), id);
+    return await tryReplay(undefined, table.name, id);
   };
 }
 

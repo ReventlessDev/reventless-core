@@ -33,6 +33,6 @@ type queryResult = {
 
 let name = "Plugin"
 
-open ReventlessSpec.ReadModel.Spec
+open ReventlessSpec.ReadModel_Spec
 let config = config()
 let subIdConfig = None

@@ -5,22 +5,18 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var Util_Error$Reventless = require("@reventless/reventless/src/util/Util_Error.res.js");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
-var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
-
-var service = "DynamoDb";
 
 function put(table, item) {
   return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
                   Item: item,
-                  TableName: table.name.get()
+                  TableName: table.name
                 }));
 }
 
@@ -58,7 +54,7 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
   var retry = retryOpt !== undefined ? retryOpt : 0;
   var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
   try {
-    await DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name.get(), idKey, sortKey, item);
+    await DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item);
     return {
             TAG: "Ok",
             _0: undefined
@@ -68,8 +64,8 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
       var e$1 = e._1;
-      var err = DynamoDb_DocumentClient$AwsSdk.PutError.classify(e$1);
-      if (err.TAG === "ConditionCheckFailedException") {
+      var _err = DynamoDb_DocumentClient$AwsSdk.PutError.classify(e$1);
+      if (_err.TAG === "ConditionCheckFailedException") {
         return {
                 TAG: "Error",
                 _0: "Stale State: id=" + id
@@ -93,7 +89,7 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
 }
 
 function $$delete(table, sort, id) {
-  return DynamoDb_DocumentClient$AwsSdk.$$delete(sort, table.name.get(), id);
+  return DynamoDb_DocumentClient$AwsSdk.$$delete(sort, table.name, id);
 }
 
 async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
@@ -127,7 +123,7 @@ async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
 }
 
 function queryById(table, id) {
-  return DynamoDb_DocumentClient$AwsSdk.queryById(table.name.get(), id);
+  return DynamoDb_DocumentClient$AwsSdk.queryById(table.name, id);
 }
 
 function keysFromResource(resource) {
@@ -172,8 +168,8 @@ function calcPurgeTime(ttl) {
 }
 
 function insertTtl(json, ttl) {
-  return Belt_Option.getWithDefault(Belt_Option.flatMap(ttl, (function (ttl) {
-                    return Belt_Option.mapWithDefault(Js_json.decodeObject(json), (function () {
+  return Core__Option.getOr(Core__Option.flatMap(ttl, (function (ttl) {
+                    return Core__Option.mapOr(Js_json.decodeObject(json), (function () {
                                     console.log("Util_DynamoDb_Runtime-ReventlessAws" + ".insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
                                   }), (function (obj) {
                                     obj[purgeTimeAttributeName] = calcPurgeTime(ttl);
@@ -193,7 +189,7 @@ function batchWrite(itemRequestMap) {
 }
 
 function hasUnprocessedItems(writeOutput) {
-  return Belt_Option.mapWithDefault(writeOutput.UnprocessedItems, 0, (function (items) {
+  return Core__Option.mapOr(writeOutput.UnprocessedItems, 0, (function (items) {
                 return Object.keys(items).length;
               })) > 0;
 }
@@ -225,7 +221,7 @@ async function retryBatchWriteIfNecessary(p, allItems, retry, maxRetries) {
             _0: undefined
           };
   }
-  var unprocessedItems = Belt_Option.getExn(writeOutput.UnprocessedItems);
+  var unprocessedItems = Core__Option.getExn(writeOutput.UnprocessedItems, undefined);
   var unprocessedItemsCount = Object.keys(unprocessedItems).length.toString();
   console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".retryBatchWriteIfNecessary: retry " + retry.toString() + ": " + unprocessedItemsCount + " unprocessed items"));
   if (retry < maxRetries) {
@@ -241,7 +237,7 @@ async function retryBatchWriteIfNecessary(p, allItems, retry, maxRetries) {
 async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests) {
   var retry = retryOpt !== undefined ? retryOpt : 0;
   var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
-  var all = Belt_Array.concatMany(Js_dict.values(batchWriteRequests)).length.toString();
+  var all = Js_dict.values(batchWriteRequests).flat().length.toString();
   var writeOutput;
   try {
     writeOutput = await batchWrite(batchWriteRequests);
@@ -270,7 +266,7 @@ async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests
             _0: undefined
           };
   }
-  var unprocessedRequests = Belt_Option.getExn(writeOutput.UnprocessedItems);
+  var unprocessedRequests = Core__Option.getExn(writeOutput.UnprocessedItems, undefined);
   var unprocessedRequestCount = Object.keys(unprocessedRequests).length.toString();
   console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".batchWriteWithRetries: retry " + retry.toString() + ": " + unprocessedRequestCount + " unprocessed items"));
   if (retry < maxRetries) {
@@ -279,7 +275,7 @@ async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests
     console.log("Retry batchWrite for " + unprocessedRequestCount + " unprocessed items after " + timeout$1.toString() + " ms");
     return await batchWriteWithRetries(retry + 1 | 0, maxRetries, unprocessedRequests);
   }
-  var count = Belt_Array.concatMany(Js_dict.values(batchWriteRequests)).length.toString();
+  var count = Js_dict.values(batchWriteRequests).flat().length.toString();
   return {
           TAG: "Error",
           _0: "batchWrite failed " + count + "/" + all + " requests after " + maxRetries.toString() + " retries"
@@ -309,11 +305,6 @@ function toTable(writeRequests, tableName) {
               ]]);
 }
 
-function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, service);
-}
-
-exports.service = service;
 exports.put = put;
 exports.putWithRetries = putWithRetries;
 exports.putIfNotExistsWithRetries = putIfNotExistsWithRetries;
@@ -331,5 +322,4 @@ exports.batchWriteWithRetries = batchWriteWithRetries;
 exports.toPutRequest = toPutRequest;
 exports.toDeleteRequest = toDeleteRequest;
 exports.toTable = toTable;
-exports.findResource = findResource;
 /* Message-Reventless Not a pure module */

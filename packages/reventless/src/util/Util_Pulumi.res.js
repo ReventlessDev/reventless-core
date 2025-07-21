@@ -36,8 +36,19 @@ function ofCustomResourceOptions(customResourceOpts) {
         };
 }
 
+function toCustomResourceOptions(componentResourceOpts) {
+  return {
+          dependsOn: componentResourceOpts.dependsOn,
+          id: componentResourceOpts.id,
+          parent: componentResourceOpts.parent,
+          protect: componentResourceOpts.protect,
+          provider: componentResourceOpts.provider
+        };
+}
+
 var ComponentResourceOptions = {
-  ofCustomResourceOptions: ofCustomResourceOptions
+  ofCustomResourceOptions: ofCustomResourceOptions,
+  toCustomResourceOptions: toCustomResourceOptions
 };
 
 exports.Output = Output;

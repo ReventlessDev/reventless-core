@@ -4,8 +4,9 @@
 var Jest = require("@glennsl/rescript-jest/src/jest.res.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
@@ -15,13 +16,13 @@ function Make(Spec, Behaviour) {
     return Behaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), Behaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(events.slice(1), Behaviour.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Belt_Array.concat(errors.contents, [error]);
+    errors.contents = errors.contents.concat([error]);
     return [];
   };
   var exec = function (history, context, command) {
@@ -72,11 +73,11 @@ function Make(Spec, Behaviour) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     errors.contents.length,
                     events.length,
-                    Belt_Array.every(Belt_Array.map(Belt_Array.zip(events, expectedEvents), (function (param) {
-                                return compare(cmp, param[0], param[1]);
-                              })), (function (result) {
-                            return result;
-                          }))
+                    Belt_Array.zip(events, expectedEvents).map(function (param) {
+                            return compare(cmp, param[0], param[1]);
+                          }).every(function (result) {
+                          return result;
+                        })
                   ]), [
                 0,
                 expectedEvents.length,
@@ -84,38 +85,38 @@ function Make(Spec, Behaviour) {
               ]);
   };
   var listErrors = function () {
-    return "Errors occured: " + Belt_Array.reduce(Belt_Array.map(errors.contents, (function (err) {
-                      return Belt_Option.getExn(Js_json.decodeString(Belt_Option.getExn(Js_json.decodeArray(Spec.error_encode(err)))[0]));
-                    })), "", (function (a, b) {
+    return "Errors occured: " + Core__Array.reduce(errors.contents.map(function (err) {
+                    return Core__Option.getExn(Js_json.decodeString(Core__Option.getExn(Js_json.decodeArray(Spec.error_encode(err)), undefined)[0]), undefined);
+                  }), "", (function (a, b) {
                   return a + (b + " ");
                 }));
   };
   var thenEvent = function (events, expectedEvent) {
-    if (events.length !== 0) {
+    if (events.length > 0) {
       return Jest.Expect.toEqual(Jest.Expect.expect([
                       errors.contents.length,
                       events.length,
-                      Belt_Array.get(events, 0)
+                      events[0]
                     ]), [
                   0,
                   1,
                   Caml_option.some(expectedEvent)
                 ]);
-    } else if (errors.contents.length !== 0) {
+    } else if (errors.contents.length > 0) {
       return Jest.fail(listErrors());
     } else {
       return Jest.fail("thenEvent: No event present to validate");
     }
   };
   var thenCompareEvent = function (events, expectedEvent, cmp) {
-    if (events.length === 0) {
-      if (errors.contents.length !== 0) {
+    if (events.length <= 0) {
+      if (errors.contents.length > 0) {
         return Jest.fail(listErrors());
       } else {
         return Jest.fail("thenEvent: No event present to validate");
       }
     }
-    var firstEvent = Belt_Option.getExn(Belt_Array.get(events, 0));
+    var firstEvent = Core__Option.getExn(events[0], undefined);
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     errors.contents.length,
                     events.length,
@@ -132,9 +133,9 @@ function Make(Spec, Behaviour) {
   var thenEventWithError = function (events, expectedEvent, expectedError) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events.length,
-                    Belt_Array.get(events, 0),
+                    events[0],
                     errors.contents.length,
-                    Belt_Array.get(errors.contents, 0)
+                    errors.contents[0]
                   ]), [
                 1,
                 Caml_option.some(expectedEvent),
@@ -146,7 +147,7 @@ function Make(Spec, Behaviour) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events,
                     errors.contents.length,
-                    Belt_Array.get(errors.contents, 0)
+                    errors.contents[0]
                   ]), [
                 expectedEvents,
                 1,
@@ -157,7 +158,7 @@ function Make(Spec, Behaviour) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events,
                     errors.contents.length,
-                    Belt_Array.get(errors.contents, 0)
+                    errors.contents[0]
                   ]), [
                 [],
                 1,

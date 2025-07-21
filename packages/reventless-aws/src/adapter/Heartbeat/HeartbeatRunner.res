@@ -1,0 +1,1 @@
+module CloudwatchEvents = HeartbeatRunner_CloudWatchEvents

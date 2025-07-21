@@ -1,9 +1,15 @@
 open AwsSdk.DynamoDb.DocumentClient
 
-let service = "DynamoDb"
+type runtimeTable = {
+  id: string,
+  name: string,
+  arn: string,
+  hashKey: string,
+  rangeKey?: Js.Nullable.t<string>,
+}
 
-let put = (table: PulumiAws.DynamoDb.Table.t, item) => {
-  {PutCommand.tableName: table.name->Pulumi.Output.get, item}->PutCommand.make->PutCommand.send
+let put = (table, item) => {
+  {PutCommand.tableName: table.name, item}->PutCommand.make->PutCommand.send
 }
 
 let rec putWithRetries = async (~retry=0, ~maxRetries=5, table, id, item) =>
@@ -30,15 +36,15 @@ let rec putIfNotExistsWithRetries = async (
   ~maxRetries=5,
   ~idKey,
   ~sortKey=?,
-  table: PulumiAws.DynamoDb.Table.t,
+  table,
   id,
   item,
 ) =>
-  switch await putIfNotExists(table.name->Pulumi.Output.get, idKey, sortKey, item) {
+  switch await putIfNotExists(table.name, idKey, sortKey, item) {
   | _ => Ok()
   | exception Js.Exn.Error(e) =>
     switch e->PutError.classify {
-    | ConditionCheckFailedException(err) => Error(`Stale State: id=${id}`)
+    | ConditionCheckFailedException(_err) => Error(`Stale State: id=${id}`)
     | _ =>
       let errorMsg = e->Reventless.Util.Error.message
       Js.log(
@@ -63,8 +69,8 @@ let rec putIfNotExistsWithRetries = async (
     }
   }
 
-let delete = (table: PulumiAws.DynamoDb.Table.t, ~sort=?, id) => {
-  delete(~tableName=table.name->Pulumi.Output.get, ~sort?, ~id)
+let delete = (table, ~sort=?, id) => {
+  delete(~tableName=table.name, ~sort?, ~id)
 }
 
 let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) =>
@@ -83,8 +89,7 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
     }
   }
 
-let queryById = (table: PulumiAws.DynamoDb.Table.t, id) =>
-  queryById(table.name->Pulumi.Output.get, id)
+let queryById = (table, id) => queryById(table.name, id)
 
 let keysFromResource: ReventlessSpec.Adapter.resource => (string, option<string>) = resource =>
   switch resource.info->Pulumi.Output.get->Js.String2.split(",") {
@@ -105,11 +110,11 @@ let calcPurgeTime = ttl => {
 }
 let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
   ttl
-  ->Belt.Option.flatMap(ttl =>
+  ->Option.flatMap(ttl =>
     (
       json
       ->Js.Json.decodeObject
-      ->Belt.Option.mapWithDefault(
+      ->Option.mapOr(
         // TODO: extract mapWithSideEffect to Util module
         () => {
           Js.log2(__MODULE__ ++ ".insertTtl: Error: Couldn't decode JSON", json->Js.Json.stringify)
@@ -122,7 +127,7 @@ let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
       )
     )()
   )
-  ->Belt.Option.getWithDefault(json)
+  ->Option.getOr(json)
 
 /** max. batch size is 25 */
 let batchWrite = itemRequestMap => {
@@ -136,22 +141,22 @@ let batchWrite = itemRequestMap => {
 }
 
 let hasUnprocessedItems = writeOutput =>
-  writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.mapWithDefault(0, items =>
-    items->Js.Dict.keys->Belt.Array.size
+  writeOutput.BatchWriteCommand.unprocessedItems->Option.mapOr(0, items =>
+    items->Js.Dict.keys->Array.length
   ) > 0
 
 let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): result<
   unit,
-  Js.Dict.t<array<AwsSdk.DynamoDb.DocumentClient.BatchWriteCommand.writeRequest>>,
+  dict<array<AwsSdk.DynamoDb.DocumentClient.BatchWriteCommand.writeRequest>>,
 > => {
   switch await p {
   | writeOutput =>
     if writeOutput->hasUnprocessedItems {
-      let unprocessedItems = writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.getExn
+      let unprocessedItems = writeOutput.BatchWriteCommand.unprocessedItems->Option.getExn
       let unprocessedItemsCount: string =
         unprocessedItems
         ->Js.Dict.keys
-        ->Belt.Array.size
+        ->Array.length
         ->Js.Int.toString
       Js.log(
         __MODULE__ ++
@@ -185,16 +190,15 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): res
 }
 
 let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteRequests) => {
-  let all =
-    batchWriteRequests->Js.Dict.values->Belt.Array.concatMany->Belt.Array.size->Js.Int.toString
+  let all = batchWriteRequests->Js.Dict.values->Array.flat->Array.length->Js.Int.toString
   switch await batchWrite(batchWriteRequests) {
   | writeOutput =>
     if writeOutput->hasUnprocessedItems {
-      let unprocessedRequests = writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.getExn
+      let unprocessedRequests = writeOutput.BatchWriteCommand.unprocessedItems->Option.getExn
       let unprocessedRequestCount: string =
         unprocessedRequests
         ->Js.Dict.keys
-        ->Belt.Array.size
+        ->Array.length
         ->Js.Int.toString
       Js.log(
         __MODULE__ ++
@@ -211,8 +215,8 @@ let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteReques
         let count =
           batchWriteRequests
           ->Js.Dict.values
-          ->Belt.Array.concatMany
-          ->Belt.Array.size
+          ->Array.flat
+          ->Array.length
           ->Js.Int.toString
         Error(
           `batchWrite failed ${count}/${all} requests after ${maxRetries->Js.Int.toString} retries`,
@@ -241,10 +245,8 @@ let toPutRequest: Js.Json.t => BatchWriteCommand.writeRequest = json => {
   {putRequest: {BatchWriteCommand.item: json}}
 }
 
-let toDeleteRequest: Js.Dict.t<Js.Json.t> => BatchWriteCommand.writeRequest = keys => {
+let toDeleteRequest: dict<Js.Json.t> => BatchWriteCommand.writeRequest = keys => {
   {deleteRequest: {BatchWriteCommand.key: keys}}
 }
 
 let toTable = (writeRequests, tableName) => Js.Dict.fromArray([(tableName, writeRequests)])
-
-let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)

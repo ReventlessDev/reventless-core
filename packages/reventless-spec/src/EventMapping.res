@@ -1,4 +1,3 @@
-/** see AggregateSpec.T */
 module type Source = {
   let name: string
   module Id: Id.T
@@ -6,7 +5,6 @@ module type Source = {
   type event
 }
 
-/** see AggregateSpec.T */
 module type Target = {
   let name: string
   module Id: Id.T
@@ -28,6 +26,6 @@ module type T = {
   let map: (
     . Source.Id.t,
     Source.event,
-    QueryEngine.t,
+    QueryEngine.operations,
   ) => array<action<Target.Id.t, Target.command>>
 }

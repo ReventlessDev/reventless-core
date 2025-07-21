@@ -1,16 +1,22 @@
-let make: Reventless.EventLog.Adapter.storageMaker = (~name, ~opts) => {
+let make: Reventless.EventLog_Adapter.storageMaker = (~name, ~opts) => {
   let table = Util.DynamoDb.makeTable(
     name,
     ~attributes=[{name: "id", type_: "S"}, {name: "sequenceNr", type_: "S"}],
     ~rangeKey="sequenceNr",
-    ~tags=AWS.tags(~name, Reventless.EventLog.componentType),
+    ~tags=AWS.Tags.make(~name, Reventless.EventLog.componentType),
     ~opts,
   )
 
   {
     resources: [table->Util_DynamoDb.toResource],
-    append: (sequenceNr, id, jsons) =>
-      (table->EventLogStorage_DynamoDb_Runtime.append)(sequenceNr, id, jsons),
-    replay: id => (table->EventLogStorage_DynamoDb_Runtime.replay)(id),
+    operations: table
+    ->Util_DynamoDb.toRuntimeTableOutput
+    ->Pulumi.Output.apply(runtimeTable => {
+      Reventless.EventLog_Adapter.append: EventLogStorage_DynamoDb_Runtime.append(
+        runtimeTable,
+        ...
+      ),
+      replay: EventLogStorage_DynamoDb_Runtime.replay(runtimeTable, ...),
+    }),
   }
 }

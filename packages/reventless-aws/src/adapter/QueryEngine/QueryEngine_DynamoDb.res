@@ -10,7 +10,7 @@ let toJson = x =>
 @val @scope("JSON") external parseJs: string => _ = "parse"
 
 let createSubIdExprNamesValues = (subIdConfig: option<SubId.config>) =>
-  subIdConfig->Belt.Option.map(((subIdName, comparator, value)) => {
+  subIdConfig->Option.map(((subIdName, comparator, value)) => {
     (
       [
         switch comparator {
@@ -29,8 +29,8 @@ let createSubIdExprNamesValues = (subIdConfig: option<SubId.config>) =>
 
 let createFilterExprNamesValues = filterConfigs =>
   filterConfigs
-  ->Belt.Array.mapWithIndex((idx, (fieldName, comparator, value)) => {
-    let valueName = `${fieldName}${idx->Belt.Int.toString}`
+  ->Array.mapWithIndex(((fieldName, comparator, value), idx) => {
+    let valueName = `${fieldName}${idx->Int.toString}`
     (
       switch comparator {
       | Filter.Equal => `#${fieldName} = :${valueName}`
@@ -60,25 +60,25 @@ let queryByTableName = async (
   ~limit=1,
 ) => {
   let (subIdExpressions, subIdNamesValues) =
-    subIdConfig->createSubIdExprNamesValues->Belt.Option.getWithDefault(([], []))
+    subIdConfig->createSubIdExprNamesValues->Option.getOr(([], []))
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilterExprNamesValues
 
   let keyConditionExpression =
-    ["#key = :value"]->Belt.Array.concat(subIdExpressions)->Js.Array2.joinWith(" AND ")
+    ["#key = :value"]->Array.concat(subIdExpressions)->Js.Array2.joinWith(" AND ")
   let filterExpression = switch filterExpressions {
   | [] => None
   | filterExpressions => Some(filterExpressions->Js.Array2.joinWith(" AND "))
   }
 
-  let (names, values) = subIdNamesValues->Belt.Array.concat(filterNamesValues)->Belt.Array.unzip
+  let (names, values) = subIdNamesValues->Array.concat(filterNamesValues)->Belt.Array.unzip
   let attributeValues =
-    Belt.Array.concatMany([[(":value", id->toJson)], values])
+    Array.flat([[(":value", id->toJson)], values])
     ->Js.Dict.fromArray
     ->Js.Json.object_
     ->Js.Json.stringify
     ->parseJs
 
-  let attributeNames = Belt.Array.concatMany([[("#key", key)], names])->Js.Dict.fromArray
+  let attributeNames = Array.flat([[("#key", key)], names])->Js.Dict.fromArray
 
   let params: AwsSdk.DynamoDb.DocumentClient.QueryCommand.input = {
     {
@@ -102,8 +102,8 @@ let queryByTableName = async (
   switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params) {
   | result =>
     result.items
-    ->Belt.Option.getWithDefault([])
-    ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+    ->Option.getOr([])
+    ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception err =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", err)
     []
@@ -133,25 +133,31 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params) {
   | result =>
     result.items
-    ->Belt.Option.getWithDefault([])
-    ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+    ->Option.getOr([])
+    ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception Js.Exn.Error(e) =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", e)
     []
   }
 }
 
-let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
-  let tableName = readModelName =>
-    (
-      allQueryDbs
-      ->Reventless.Util_QueryDbRuntime.getLocalStorageResources(readModelName)
-      ->Util_DynamoDb_Runtime.findResource
-    ).name->Reventless.OutputFailsafeRuntime.get
+let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
+  let allRuntimeQueryDbsOutputs = Js.Dict.map((queryDb: Reventless.QueryDb.outputs) =>
+    queryDb.resources
+    ->Util.DynamoDb.findResource
+    ->Reventless.Adapter.resourceToUnwrappedOutput
+  , allQueryDbs)->Pulumi.Output.allDict
 
-  {
+  let tableName = (allRuntimeQueryDbs, readModelName) =>
+    (allRuntimeQueryDbs->Reventless.Util_QueryDbRuntime.getRuntimeResource(readModelName)).name
+
+  allRuntimeQueryDbsOutputs->Pulumi.Output.apply(allRuntimeQueryDbs => {
     scan: (~readModelName, ~filterConfigs, ~limit) =>
-      scanByTableName(~tableName=tableName(readModelName), ~filterConfigs, ~limit),
+      scanByTableName(
+        ~tableName=allRuntimeQueryDbs->tableName(readModelName),
+        ~filterConfigs,
+        ~limit,
+      ),
     query: (
       ~readModelName,
       ~key=?,
@@ -162,7 +168,7 @@ let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
       ~limit=?,
     ) =>
       queryByTableName(
-        ~tableName=tableName(readModelName),
+        ~tableName=allRuntimeQueryDbs->tableName(readModelName),
         ~key?,
         ~id,
         ~subIdConfig?,
@@ -170,5 +176,5 @@ let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
         ~ascending?,
         ~limit?,
       ),
-  }
+  })
 }

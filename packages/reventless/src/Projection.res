@@ -1,5 +1,5 @@
 open ReventlessSpec.Projection.Spec // FIXME: open locally
-open ReventlessSpec.ReadModel.Spec // FIXME: open locally
+open ReventlessSpec.ReadModel_Spec // FIXME: open locally
 open Belt.Result // FIXME: open locally
 
 module Set = Belt.Set.String
@@ -35,14 +35,6 @@ module Mappings = {
   }
 }
 
-type primitives<'id, 'state> = {
-  load: ReventlessSpec.QueryDb.load<'id, 'state>,
-  save: ReventlessSpec.QueryDb.save<'id, 'state>,
-  saveBatch: ReventlessSpec.QueryDb.saveBatch<'id, 'state>,
-  delete: ReventlessSpec.QueryDb.delete<'id>,
-  deleteBatch: ReventlessSpec.QueryDb.deleteBatch<'id>,
-}
-
 let logAction = str => Js.log2("Projection.handleAction:", str)
 
 let applyChanges = async (
@@ -50,34 +42,34 @@ let applyChanges = async (
   id,
   beforeStates,
   afterStates,
-  {saveBatch, deleteBatch},
+  {QueryDb.saveBatch: saveBatch, deleteBatch},
   {subIdField, getSubId},
 ) => {
-  let beforeCount = beforeStates->Belt.Array.length
-  let beforeSubIds = beforeStates->Belt.Array.map(state => state->getSubId)->Set.fromArray
+  let beforeCount = beforeStates->Array.length
+  let beforeSubIds = beforeStates->Array.map(state => state->getSubId)->Set.fromArray
 
-  let afterCount = afterStates->Belt.Array.length
-  let afterSubIds = afterStates->Belt.Array.map(state => state->getSubId)->Set.fromArray
+  let afterCount = afterStates->Array.length
+  let afterSubIds = afterStates->Array.map(state => state->getSubId)->Set.fromArray
 
   let addedSubIds = afterSubIds->Set.diff(beforeSubIds)
-  let addedStates = afterStates->Belt.Array.keep(state => addedSubIds->Set.has(state->getSubId))
-  let addedCount = addedStates->Belt.Array.size
+  let addedStates = afterStates->Array.filter(state => addedSubIds->Set.has(state->getSubId))
+  let addedCount = addedStates->Array.length
 
-  let changedStates = beforeStates->Belt.Array.keepMap(before => {
+  let changedStates = beforeStates->Array.filterMap(before => {
     let beforeSubId = before->getSubId
-    afterStates->Belt.Array.getBy(after => after->getSubId == beforeSubId && after != before)
+    afterStates->Array.find(after => after->getSubId == beforeSubId && after != before)
   })
-  let changedCount = changedStates->Belt.Array.size
+  let changedCount = changedStates->Array.length
 
   let batchToSave =
     changedStates->Belt.Array.concat(addedStates)->Belt.Array.map(state => (id, state, None))
 
   let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray
-  let batchToDelete = deletedSubIds->Belt.Array.map(subId => (id, Some((subIdField, subId))))
-  let deletedCount = batchToDelete->Belt.Array.size
+  let batchToDelete = deletedSubIds->Array.map(subId => (id, Some((subIdField, subId))))
+  let deletedCount = batchToDelete->Array.length
 
   logAction(
-    `${action}(${id}): beforeStates:${beforeCount->Belt.Int.toString} afterStates:${afterCount->Belt.Int.toString} added:${addedCount->Belt.Int.toString} changed:${changedCount->Belt.Int.toString} deleted:${deletedCount->Belt.Int.toString}`,
+    `${action}(${id}): beforeStates:${beforeCount->Int.toString} afterStates:${afterCount->Int.toString} added:${addedCount->Int.toString} changed:${changedCount->Int.toString} deleted:${deletedCount->Int.toString}`,
   )
   let result = await [deleteBatch(batchToDelete), saveBatch(batchToSave)]->Js.Promise.all
   switch result {
@@ -85,13 +77,13 @@ let applyChanges = async (
   }
 }
 
-let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Belt.Option.getExn
+let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Option.getExn
 let statesToString: array<'a> => string = states =>
-  states->Belt.Array.map(stateToString)->Js.Array2.joinWith(", ")
+  states->Array.map(stateToString)->Js.Array2.joinWith(", ")
 
 let handleAction = async (
   action,
-  {load, save, saveBatch, delete, deleteBatch} as primitives,
+  {QueryDb.load: load, save, saveBatch, delete, deleteBatch} as operations,
   subIdConfig,
 ) =>
   switch action {
@@ -105,21 +97,21 @@ let handleAction = async (
   | CreateMultiState(id, states) =>
     logAction(
       `CreateMultiState(${id}, ${states
-        ->Belt.Array.map(state => state->stateToString)
+        ->Array.map(state => state->stateToString)
         ->Js.Array2.joinWith(", ")})`,
     )
     switch states {
     | [] => Ok()
     | [state] => await save(id, state, Init, None)
     | states =>
-      let batch = states->Belt.Array.map(state => (id, state, None))
+      let batch = states->Array.map(state => (id, state, None))
       await saveBatch(batch)
     }
   | CreateMany(states) =>
-    let batch = states->Belt.Array.map(((id, state)) => (id, state, None))
+    let batch = states->Array.map(((id, state)) => (id, state, None))
     let statesStr =
       batch
-      ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+      ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`CreateMany(${statesStr})`)
     await saveBatch(batch) // TODO: think about using single saves with saveMode Init
@@ -128,10 +120,10 @@ let handleAction = async (
     logAction(`Set(${id}, ${state->stateToString})`)
     await save(id, state, Any, None)
   | SetMany(ids, set) =>
-    let batch = ids->Belt.Array.map(id => (id, set(id), None))
+    let batch = ids->Array.map(id => (id, set(id), None))
     let statesStr =
       batch
-      ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+      ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`SetMany(${statesStr})`)
     await saveBatch(batch)
@@ -173,7 +165,7 @@ let handleAction = async (
       }
     | Error(err) =>
       logAction(
-        `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
+        `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDb.storageErrorToString})`,
       )
       Error(err)
     }
@@ -182,11 +174,11 @@ let handleAction = async (
     | (Ok(states), Some(subIdConfig)) =>
       let beforeStates = states
       let afterStates = beforeStates->update
-      await applyChanges("UpdateMultiState", id, beforeStates, afterStates, primitives, subIdConfig)
+      await applyChanges("UpdateMultiState", id, beforeStates, afterStates, operations, subIdConfig)
 
     | (Error(err), Some(_)) =>
       logAction(
-        `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
+        `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDb.storageErrorToString})`,
       )
       Error(err)
     | (_, None) =>
@@ -198,7 +190,7 @@ let handleAction = async (
     await delete(id, None)
   | DeleteMany(ids) =>
     logAction(`DeleteMany(${ids->Js.Array2.joinWith(", ")})`)
-    await deleteBatch(ids->Belt.Array.map(id => (id, None)))
+    await deleteBatch(ids->Array.map(id => (id, None)))
 
   // TODO: add missing actions
   | _ =>
@@ -211,16 +203,16 @@ let actionsWithId = action =>
   | Ignore => []
   | Create(id, _) => [(id, action)]
   | CreateMultiState(id, _) => [(id, action)]
-  | CreateMany(states) => states->Belt.Array.map(((id, state)) => (id, Create(id, state)))
+  | CreateMany(states) => states->Array.map(((id, state)) => (id, Create(id, state)))
   | Set(id, _) => [(id, action)]
-  | SetMany(ids, set) => ids->Belt.Array.map(id => (id, Set(id, id->set)))
+  | SetMany(ids, set) => ids->Array.map(id => (id, Set(id, id->set)))
   | Update(id, _) => [(id, action)]
   | UpdateWithDefault(id, _, _) => [(id, action)]
   | UpdateMultiState(id, _) => [(id, action)]
   | UpdateManyMultiStates(ids, update) =>
-    ids->Belt.Array.map(id => (id, UpdateMultiState(id, states => update(id, states))))
+    ids->Array.map(id => (id, UpdateMultiState(id, states => update(id, states))))
   | Delete(id) => [(id, action)]
-  | DeleteMany(ids) => ids->Belt.Array.map(id => (id, Delete(id)))
+  | DeleteMany(ids) => ids->Array.map(id => (id, Delete(id)))
 
   // TODO: add missing actions
   | _ =>
@@ -229,49 +221,46 @@ let actionsWithId = action =>
   }
 
 let groupActionsById = actions => {
-  let allActionsWithId =
-    actions->Belt.Array.map(action => action->actionsWithId)->Belt.Array.concatMany
-  let ids = allActionsWithId->Belt.Array.map(((id, _)) => id)
+  let allActionsWithId = actions->Array.map(action => action->actionsWithId)->Array.flat
+  let ids = allActionsWithId->Array.map(((id, _)) => id)
   ids
   ->Belt.Set.String.fromArray
   ->Belt.Set.String.toArray
-  ->Belt.Array.map(id => (
+  ->Array.map(id => (
     id,
-    allActionsWithId->Belt.Array.keepMap(((actionId, action)) =>
-      actionId == id ? Some(action) : None
-    ),
+    allActionsWithId->Array.filterMap(((actionId, action)) => actionId == id ? Some(action) : None),
   ))
 }
 
 let optimizeActions = actions => {
   // [ UpdateMultiSate(f), UpdateMultiState(g), Create(..)] => [ UpdateMultiState(f(g)), Create(..) ]
-  actions->Belt.Array.reduce([], (optimizedActions, action) => {
-    let optimizedActionsCount = optimizedActions->Belt.Array.size
+  actions->Array.reduce([], (optimizedActions, action) => {
+    let optimizedActionsCount = optimizedActions->Array.length
     if optimizedActionsCount == 0 {
       [action]
     } else {
-      let lastAction = optimizedActions->Belt.Array.getExn(optimizedActionsCount - 1)
+      let lastAction = optimizedActions->Array.getUnsafe(optimizedActionsCount - 1)
       let previousActions = if optimizedActionsCount == 1 {
         []
       } else {
-        optimizedActions->Belt.Array.slice(~offset=0, ~len=optimizedActionsCount - 1)
+        optimizedActions->Array.slice(~start=0, ~end=optimizedActionsCount)
       }
 
       switch (lastAction, action) {
       // SINGLE STATES
       | (Create(id1, state1), Update(id2, f)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Create(id1, f(state1))])
+        previousActions->Array.concat([Create(id1, f(state1))])
       | (Create(id1, state1), UpdateWithDefault(id2, _defaultState2, f)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Create(id1, f(state1))])
+        previousActions->Array.concat([Create(id1, f(state1))])
       | (Update(id1, f), Update(id2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Update(id1, state => g(f(state)))])
+        previousActions->Array.concat([Update(id1, state => g(f(state)))])
       | (UpdateWithDefault(id1, defaultState1, f), UpdateWithDefault(id2, _defaultState2, g))
         if id1 == id2 =>
-        previousActions->Belt.Array.concat([
+        previousActions->Array.concat([
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
       | (Update(id1, f), UpdateWithDefault(id2, defaultState2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([
+        previousActions->Array.concat([
           UpdateWithDefault(
             id1,
             /* if no state exists before the first upate, it is ignored */
@@ -280,58 +269,58 @@ let optimizeActions = actions => {
           ),
         ])
       | (UpdateWithDefault(id1, defaultState1, f), Update(id2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([
+        previousActions->Array.concat([
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
       | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
         Js.Console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create")
-        previousActions->Belt.Array.concat([UpdateWithDefault(id1, defaultState1, f)])
+        previousActions->Array.concat([UpdateWithDefault(id1, defaultState1, f)])
       | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
         Js.Console.warn2(
           "optimizing 2 sequential Create actions, therefore ignoring the second one:",
           state2->Js.Json.stringifyAny,
         )
-        previousActions->Belt.Array.concat([Create(id1, state1)])
+        previousActions->Array.concat([Create(id1, state1)])
       | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
         Js.Console.warn2("optimizing Delete after Create, therefore ignoring the Create:", state1)
-        previousActions->Belt.Array.concat([Delete(id1)])
+        previousActions->Array.concat([Delete(id1)])
       | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
         Js.Console.warn("optimizing Delete after Update, therefore ignoring the Update")
-        previousActions->Belt.Array.concat([Delete(id1)])
+        previousActions->Array.concat([Delete(id1)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
         Js.Console.warn(
           "optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
         )
-        previousActions->Belt.Array.concat([Delete(id1)])
+        previousActions->Array.concat([Delete(id1)])
       | (Delete(id1), Create(id2, state2)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
         Js.Console.warn2("optimizing Set after Create, therefore ignoring the Create:", state1)
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
         Js.Console.warn("optimizing Set after Update, therefore ignoring the Update")
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
         Js.Console.warn(
           "optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
         )
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       // MULTI STATES
       /*
       | (CreateMultiState(id1, states1), UpdateMultiState(id2, f)) if id1 == id2 =>
-        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, f(states1))])
+        THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, f(states1))])
         suggestion: UpdateMultiState with following updateFunction:
             - apply f to states1 and states of UpdateMultiState separately
             - concat unique states of both results
  */
       | (UpdateMultiState(id1, f), UpdateMultiState(id2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([UpdateMultiState(id1, state => g(f(state)))])
+        previousActions->Array.concat([UpdateMultiState(id1, state => g(f(state)))])
       /*
       | (UpdateMultiState(id1, _f), CreateMultiState(id2, states2)) if id1 == id2 =>
         Js.Console.warn(
           "optimizing CreateMultiState after UpdateMultiState, therefore ignoring the UpdateMultiState",
         )
-        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, states2)])
+        THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, states2)])
         suggestion: UpdateMultiState with following updateFunction:
             - apply f to states of UpdateMultiState 
             - concat unique states of update results and states2
@@ -343,7 +332,7 @@ let optimizeActions = actions => {
           "optimizing 2 sequential CreateMultiState actions, therefore ignoring the first one:",
           states1->Js.Json.stringifyAny,
         )
-        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, states2)])
+        THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, states2)])
         suggestion: CreateMultiState with following updateFunction:
             - concatenate states1 & states2
             - if duplicates exist, prefer states2
@@ -355,29 +344,29 @@ let optimizeActions = actions => {
           lastAction->Js.Json.stringifyAny,
           action->Js.Json.stringifyAny,
         )
-        optimizedActions->Belt.Array.concat([action])
+        optimizedActions->Array.concat([action])
       }
     }
   })
 }
 
-let handleActions = async (actions, primitives, subIdConfig) => {
+let handleActions = async (actions, operations, subIdConfig) => {
   let handleActionsForId = async (actions, id) => {
-    let actionCount = actions->Belt.Array.size
+    let actionCount = actions->Array.length
     if actionCount > 1 {
       Js.log(
-        `Projection.handleActions: optimizing ${actionCount->Belt.Int.toString} actions for id=${id}`,
+        `Projection.handleActions: optimizing ${actionCount->Int.toString} actions for id=${id}`,
       )
     }
 
     let optimizedActions = optimizeActions(actions)
-    let optimizedActionCount = optimizedActions->Belt.Array.size
+    let optimizedActionCount = optimizedActions->Array.length
     Js.log(
-      `Projection.handleActions: handling ${optimizedActionCount->Belt.Int.toString} optimized actions for id=${id}`,
+      `Projection.handleActions: handling ${optimizedActionCount->Int.toString} optimized actions for id=${id}`,
     )
 
     // FIXME: handle errors!
-    await optimizedActions->Belt.Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
+    await optimizedActions->Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
       switch await p {
       | Ok() => ()
       | Error(err) =>
@@ -387,28 +376,28 @@ let handleActions = async (actions, primitives, subIdConfig) => {
           err->ReventlessSpec.QueryDb.storageError_encode->Js.Json.stringify,
         )
       }
-      await action->handleAction(primitives, subIdConfig)
+      await action->handleAction(operations, subIdConfig)
     })
   }
 
   let results =
     await actions
     ->groupActionsById
-    ->Belt.Array.map(((id, actions)) => actions->handleActionsForId(id))
+    ->Array.map(((id, actions)) => actions->handleActionsForId(id))
     ->Js.Promise.all
-  let errors = results->Belt.Array.keepMap(x =>
+  let errors = results->Array.filterMap(x =>
     switch x {
-    | Belt.Result.Error(err) => Some(err)
+    | Error(err) => Some(err)
     | _ => None
     }
   )
   switch errors {
   | [] => ()
   | errors =>
-    let count = errors->Belt.Array.size
+    let count = errors->Array.length
     Js.Exn.raiseError(
-      `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
-        ->Belt.Array.map(QueryDbRuntime.storageErrorToString)
+      `Projection.handleActions failed with ${count->Int.toString} errors: ${errors
+        ->Array.map(QueryDb.storageErrorToString)
         ->Js.Array2.joinWith(",")}`,
     )
   }

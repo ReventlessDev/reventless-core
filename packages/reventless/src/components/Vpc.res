@@ -2,19 +2,19 @@ let componentType = ComponentType.Vpc
 open PulumiAws.EC2
 
 type outputs = {
-  "dynamoDbEndpoint": VpcEndpoint.t,
-  "eip": Eip.t,
-  "internetGateway": InternetGateway.t,
-  "natGateway": NatGateway.t,
-  "privateSubnet": Subnet.t,
-  "privateSubnetRouteTable": RouteTable.t,
-  "privateSubnetRouteTableAssociation": RouteTableAssociation.t,
-  "publicSubnet": Subnet.t,
-  "publicSubnetRouteTable": RouteTable.t,
-  "publicSubnetRouteTableAssociation": RouteTableAssociation.t,
-  "s3Endpoint": VpcEndpoint.t,
-  "securityGroup": SecurityGroup.t,
-  "vpc": PulumiAws.EC2.Vpc.t,
+  dynamoDbEndpoint: VpcEndpoint.t,
+  eip: Eip.t,
+  internetGateway: InternetGateway.t,
+  natGateway: NatGateway.t,
+  privateSubnet: Subnet.t,
+  privateSubnetRouteTable: RouteTable.t,
+  privateSubnetRouteTableAssociation: RouteTableAssociation.t,
+  publicSubnet: Subnet.t,
+  publicSubnetRouteTable: RouteTable.t,
+  publicSubnetRouteTableAssociation: RouteTableAssociation.t,
+  s3Endpoint: VpcEndpoint.t,
+  securityGroup: SecurityGroup.t,
+  vpc: PulumiAws.EC2.Vpc.t,
 }
 type t = outputs
 
@@ -30,23 +30,6 @@ external make: (
   ~opts: option<Pulumi.ComponentResource.options>,
   ~availabilityZone: option<PulumiAws.Aws.AvailabilityZone.t>,
 ) => t = "default"
-
-@obj
-external makeOutputs: (
-  ~dynamoDbEndpoint: VpcEndpoint.t,
-  ~eip: Eip.t,
-  ~internetGateway: InternetGateway.t,
-  ~natGateway: NatGateway.t,
-  ~privateSubnet: Subnet.t,
-  ~privateSubnetRouteTable: RouteTable.t,
-  ~privateSubnetRouteTableAssociation: RouteTableAssociation.t,
-  ~publicSubnet: Subnet.t,
-  ~publicSubnetRouteTable: RouteTable.t,
-  ~publicSubnetRouteTableAssociation: RouteTableAssociation.t,
-  ~s3Endpoint: VpcEndpoint.t,
-  ~securityGroup: SecurityGroup.t,
-  ~vpc: PulumiAws.EC2.Vpc.t,
-) => outputs = ""
 
 @send
 external registerOutputs: (t, outputs) => constructed = "registerOutputs"
@@ -200,29 +183,27 @@ let construct: construct = (self, name, availabilityZone) => {
     ~opts,
   )
 
-  self->setOutputs(
-    makeOutputs(
-      ~dynamoDbEndpoint,
-      ~eip,
-      ~internetGateway,
-      ~natGateway,
-      ~privateSubnet,
-      ~privateSubnetRouteTable,
-      ~privateSubnetRouteTableAssociation,
-      ~publicSubnet,
-      ~publicSubnetRouteTable,
-      ~publicSubnetRouteTableAssociation,
-      ~s3Endpoint,
-      ~securityGroup,
-      ~vpc,
-    ),
-  )
+  self->setOutputs({
+    dynamoDbEndpoint,
+    eip,
+    internetGateway,
+    natGateway,
+    privateSubnet,
+    privateSubnetRouteTable,
+    privateSubnetRouteTableAssociation,
+    publicSubnet,
+    publicSubnetRouteTable,
+    publicSubnetRouteTableAssociation,
+    s3Endpoint,
+    securityGroup,
+    vpc,
+  })
 }
 
 let make: (
   ~name: string,
   ~availabilityZone: PulumiAws.Aws.AvailabilityZone.t=?,
-  ~opts: Pulumi.ComponentResource.options=?
+  ~opts: Pulumi.ComponentResource.options=?,
 ) => t = (~name, ~availabilityZone=?, ~opts=?) =>
   make(
     ~componentType=componentType->ComponentType.toString,

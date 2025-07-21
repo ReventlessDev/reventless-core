@@ -3,8 +3,8 @@ type mapImpl<'msg, 'action> = 'msg => 'action
 
 let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<'action> = (
   decode,
-  map
-) => (json) => 
+  map,
+) => json =>
   switch json->decode {
   | Ok(msg) => msg->map
   | Error(err) =>
@@ -12,7 +12,7 @@ let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<
     Js.Exn.raiseError(
       `Error: Couldn't decode source message: ${err
         ->Js.Json.stringifyAny
-        ->Belt.Option.getExn}, ${jsonStr}`,
+        ->Option.getExn}, ${jsonStr}`,
     )
   }
 
@@ -54,8 +54,8 @@ module Mapper = (
     and type action<'id, 'state> := Spec.action<string, Target.t>
 ) => {
   let findMappings = (sourceNameOpt, mappings) =>
-    sourceNameOpt->Belt.Option.mapWithDefault([], sourceName =>
-      mappings->Belt.Array.keep((module(Mapping: Mappings.Mapping)) =>
+    sourceNameOpt->Option.mapOr([], sourceName =>
+      mappings->Array.filter((module(Mapping: Mappings.Mapping)) =>
         Mapping.sourceName == sourceName
       )
     )
@@ -63,10 +63,10 @@ module Mapper = (
     findMappings(
       sourceName,
       Mappings.mappings,
-    )->Belt.Array.keepMap((module(Mapping: Mappings.Mapping)) =>
+    )->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
       try Some(json->Mapping.map) catch {
       | exn =>
-        Js.log2("Mapping failed:", exn->Js.Exn.asJsExn->Belt.Option.map(Js.Exn.message))
+        Js.log2("Mapping failed:", exn->Js.Exn.asJsExn->Option.map(exn => exn->Js.Exn.message))
         None
       }
     )

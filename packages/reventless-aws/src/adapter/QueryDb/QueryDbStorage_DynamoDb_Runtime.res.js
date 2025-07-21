@@ -4,8 +4,8 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var Util_Error$Reventless = require("@reventless/reventless/src/util/Util_Error.res.js");
@@ -22,7 +22,7 @@ function load(table) {
       var e = Caml_js_exceptions.internalToOCamlException(raw_e);
       if (e.RE_EXN_ID === Js_exn.$$Error) {
         var errorMsg = Util_Error$Reventless.message(undefined, e._1);
-        var tableName = table.name.get();
+        var tableName = table.name;
         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".load: Error: Couldn't load state for " + id + " from " + tableName + ": " + errorMsg));
         return {
                 TAG: "Error",
@@ -43,11 +43,11 @@ function load(table) {
 
 function save(table) {
   return async function (id, json, saveMode, ttl) {
-    var tableName = table.name.get();
+    var tableName = table.name;
     var json$1 = Util_DynamoDb_Runtime$ReventlessAws.insertTtl(json, ttl);
     switch (saveMode) {
       case "Init" :
-          var errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(undefined, undefined, table.hashKey.get(), table.rangeKey.get(), table, id, json$1);
+          var errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(undefined, undefined, table.hashKey, table.rangeKey, table, id, json$1);
           if (errorMsg.TAG === "Ok") {
             console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: saved Init state to " + tableName + ": id=" + id));
             return {
@@ -90,19 +90,21 @@ function save(table) {
 }
 
 function sliceBatch(arr, batchNr) {
-  return Belt_Array.slice(arr, Math.imul(batchNr, DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
+  var start = Math.imul(batchNr, DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
+  var end = start + DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize | 0;
+  return arr.slice(start, end);
 }
 
 async function writeMultiple(writeRequests, op, ids, table) {
-  var tableName = table.name.get();
+  var tableName = table.name;
   var count = ids.length.toString();
   var allIdsStr = ids.join(", ");
   var size = writeRequests.length;
   var batches = Js_math.ceil_int(size / DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
   if (batches > 1) {
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + ("writeBatch: splitting up batch of size " + String(size) + " into " + String(batches) + " batches"));
+    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + ("writeBatch: splitting up batch of size " + size.toString() + " into " + batches.toString() + " batches"));
   }
-  var results = Promise.allSettled(Belt_Array.makeBy(batches, (function (batchNr) {
+  var results = Promise.allSettled(Core__Array.fromInitializer(batches, (function (batchNr) {
               return Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(sliceBatch(writeRequests, batchNr), tableName));
             })));
   var results$1;
@@ -124,21 +126,21 @@ async function writeMultiple(writeRequests, op, ids, table) {
     }
     throw e;
   }
-  var errors = Belt_Array.keepMap(Belt_Array.mapWithIndex(results$1, (function (batchNr, result) {
-              var batchIds = sliceBatch(ids, batchNr);
-              var count = batchIds.length.toString();
-              var batchIdsStr = batchIds.join(", ");
-              var match = result.value;
-              var match$1 = result.reason;
-              if (match !== undefined && match.TAG !== "Ok") {
-                return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + match._0;
-              }
-              if (match$1 === undefined) {
-                return ;
-              }
-              var error = Caml_option.valFromOption(match$1).message;
-              return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + error;
-            })), (function (x) {
+  var errors = Core__Array.filterMap(results$1.map(function (result, batchNr) {
+            var batchIds = sliceBatch(ids, batchNr);
+            var count = batchIds.length.toString();
+            var batchIdsStr = batchIds.join(", ");
+            var match = result.value;
+            var match$1 = result.reason;
+            if (match !== undefined && match.TAG !== "Ok") {
+              return "Batch " + batchNr.toString() + ": " + count + " ids:" + batchIdsStr + ": " + match._0;
+            }
+            if (match$1 === undefined) {
+              return ;
+            }
+            var error = Caml_option.valFromOption(match$1).message;
+            return "Batch " + batchNr.toString() + ": " + count + " ids:" + batchIdsStr + ": " + error;
+          }), (function (x) {
           return x;
         }));
   if (errors.length !== 0) {
@@ -170,13 +172,12 @@ function saveBatch(table) {
                 _0: undefined
               };
       }
-      table.name.get();
-      var ids = Belt_Array.map(items, (function (param) {
-              return param[0];
-            }));
-      return await writeMultiple(Belt_Array.map(items, (function (param) {
-                        return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
-                      })), "finished put", ids, table);
+      var ids = items.map(function (param) {
+            return param[0];
+          });
+      return await writeMultiple(items.map(function (param) {
+                      return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
+                    }), "finished put", ids, table);
     }
     var match = items[0];
     return await save(table)(match[0], match[1], "Any", match[2]);
@@ -185,8 +186,8 @@ function saveBatch(table) {
 
 function count(table) {
   return async function (id, fieldName, inc) {
-    var tableName = table.name.get();
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: " + tableName + ", " + id + ", " + fieldName + ", " + String(inc)));
+    var tableName = table.name;
+    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: " + tableName + ", " + id + ", " + fieldName + ", " + inc.toString()));
     var updateOutput;
     try {
       updateOutput = await DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
@@ -244,7 +245,7 @@ function count(table) {
 
 function $$delete(table) {
   return async function (id, sort) {
-    var tableName = table.name.get();
+    var tableName = table.name;
     var errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(undefined, undefined, sort, table, id);
     if (errorMsg.TAG === "Ok") {
       console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".delete: deleted state from " + tableName + ": id=" + id + ", sort="), sort);
@@ -275,31 +276,30 @@ function deleteBatch(table) {
                 _0: undefined
               };
       }
-      table.name.get();
-      var ids = Belt_Array.map(items, (function (param) {
-              return param[0];
-            }));
-      return await writeMultiple(Belt_Array.map(items, (function (param) {
-                        var sort = param[1];
-                        var id = param[0];
-                        if (sort !== undefined) {
-                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([
-                                          [
-                                            "id",
-                                            id
-                                          ],
-                                          [
-                                            sort[0],
-                                            sort[1]
-                                          ]
-                                        ]));
-                        } else {
-                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([[
-                                            "id",
-                                            id
-                                          ]]));
-                        }
-                      })), "deleted", ids, table);
+      var ids = items.map(function (param) {
+            return param[0];
+          });
+      return await writeMultiple(items.map(function (param) {
+                      var sort = param[1];
+                      var id = param[0];
+                      if (sort !== undefined) {
+                        return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([
+                                        [
+                                          "id",
+                                          id
+                                        ],
+                                        [
+                                          sort[0],
+                                          sort[1]
+                                        ]
+                                      ]));
+                      } else {
+                        return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([[
+                                          "id",
+                                          id
+                                        ]]));
+                      }
+                    }), "deleted", ids, table);
     }
     var match = items[0];
     return await $$delete(table)(match[0], match[1]);

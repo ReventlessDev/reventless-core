@@ -3,7 +3,7 @@ type extensionPointName = string
 type callHandler<'msg> = (
   Schedule.create,
   Schedule.delete,
-  QueryEngine.t,
+  QueryEngine.operations,
   'msg,
 ) => Js.Promise.t<unit>
 
@@ -38,12 +38,12 @@ type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'extensionPointCall
   string,
   'aggregateEvent,
   Message.meta,
-  QueryEngine.t,
+  QueryEngine.operations,
 ) => array<eventAction<'extensionPointEvent, 'extensionPointCallCommand>>
 
 module type Impl = {
   module ExtensionPoint: Spec
-  module Aggregate: AggregateSpec.T
+  module Aggregate: Aggregate.Spec
 
   let mapIncomingCommand: mapIncomingCommand<
     ExtensionPoint.command,

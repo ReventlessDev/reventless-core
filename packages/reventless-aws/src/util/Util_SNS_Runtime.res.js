@@ -4,11 +4,11 @@
 var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.res.js");
 
 function publish(topic, message) {
-  return SNS$AwsSdk.publish(topic.arn.get(), undefined, message);
+  return SNS$AwsSdk.publish(topic.arn, undefined, message);
 }
 
 function publishFifo(topic, messageGroupId, message) {
-  return SNS$AwsSdk.publish(topic.arn.get(), messageGroupId, message);
+  return SNS$AwsSdk.publish(topic.arn, messageGroupId, message);
 }
 
 exports.publish = publish;

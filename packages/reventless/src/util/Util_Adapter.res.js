@@ -4,31 +4,30 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Adapter$Reventless = require("../adapter/Adapter.res.js");
 
 function filterSupportedResources(resources, supportedServices) {
-  return Pulumi.all(Belt_Array.map(resources, (function (resource) {
-                      return resource.service;
-                    }))).apply(function (services) {
-              return Belt_Array.map(Belt_Array.keep(Belt_Array.zip(resources, services), (function (param) {
-                                var service = param[1];
-                                return Belt_Array.some(supportedServices, (function (supportedService) {
-                                              return service === supportedService;
-                                            }));
-                              })), (function (param) {
-                            return param[0];
-                          }));
+  return Pulumi.all(resources.map(function (resource) {
+                    return resource.service;
+                  })).apply(function (services) {
+              return Belt_Array.zip(resources, services).filter(function (param) {
+                            var service = param[1];
+                            return Belt_Array.some(supportedServices, (function (supportedService) {
+                                          return service === supportedService;
+                                        }));
+                          }).map(function (param) {
+                          return param[0];
+                        });
             });
 }
 
 function filterSupportedUnwrappedResources(resources, supportedServices) {
-  return Belt_Array.keep(resources, (function (resource) {
-                return Belt_Array.some(supportedServices, (function (supportedService) {
-                              return resource.service === supportedService;
-                            }));
-              }));
+  return resources.filter(function (resource) {
+              return Belt_Array.some(supportedServices, (function (supportedService) {
+                            return resource.service === supportedService;
+                          }));
+            });
 }
 
 function findResource(resources, service) {
@@ -36,22 +35,21 @@ function findResource(resources, service) {
                   if (resources.length !== 0) {
                     return resources[0];
                   }
-                  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (resource) {
-                            return Belt_Option.getExn(JSON.stringify(resource));
-                          })).join(", ");
-                  console.log(err);
+                  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources";
+                  Pulumi.all(resources.map(Adapter$Reventless.resourceToUnwrappedOutput)).apply(function (resources) {
+                        var resourcesStr = Adapter$Reventless.unwrappedToString(resources);
+                        console.log(err, resourcesStr);
+                      });
                   return Js_exn.raiseError(err);
                 }));
 }
 
 function findUnwrappedResource(resources, service) {
-  var resources$1 = filterSupportedUnwrappedResources(resources, [service]);
-  if (resources$1.length !== 0) {
-    return resources$1[0];
+  var matching = filterSupportedUnwrappedResources(resources, [service]);
+  if (matching.length !== 0) {
+    return matching[0];
   }
-  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (resource) {
-            return Belt_Option.getExn(JSON.stringify(resource));
-          })).join(", ");
+  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + Adapter$Reventless.unwrappedToString(resources);
   console.log(err);
   return Js_exn.raiseError(err);
 }
@@ -63,29 +61,29 @@ function findResourceInOutput(resourcesOutput, service) {
 }
 
 function partitionSupportedResources(allResources, supportedServices) {
-  var match = Belt_Array.unzip(Belt_Array.map(Js_dict.entries(allResources), (function (param) {
-              return [
-                      param[0],
-                      filterSupportedResources(param[1], supportedServices)
-                    ];
-            })));
+  var match = Belt_Array.unzip(Js_dict.entries(allResources).map(function (param) {
+            return [
+                    param[0],
+                    filterSupportedResources(param[1], supportedServices)
+                  ];
+          }));
   var names = match[0];
   return Pulumi.all(match[1]).apply(function (resources) {
               var match = Belt_Array.partition(Belt_Array.zip(names, resources), (function (param) {
-                      return param[1].length !== 0;
+                      return param[1].length > 0;
                     }));
               return [
-                      Belt_Array.map(match[0], (function (param) {
-                              return [
-                                      param[0],
-                                      Belt_Array.map(param[1], (function (prim) {
-                                              return prim;
-                                            }))
-                                    ];
-                            })),
-                      Belt_Array.map(match[1], (function (param) {
-                              return param[0];
-                            }))
+                      match[0].map(function (param) {
+                            return [
+                                    param[0],
+                                    param[1].map(function (prim) {
+                                          return prim;
+                                        })
+                                  ];
+                          }),
+                      match[1].map(function (param) {
+                            return param[0];
+                          })
                     ];
             });
 }

@@ -1,11 +1,11 @@
-open ReventlessSpec.Adapter
-open Reventless.Counter
+// open ReventlessSpec.Adapter
+// open Reventless.Counter_Runtime
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
 let addToCounterTarget = async (
   table: ReventlessSpec.Adapter.resource,
-  {counterId, target, targetRef},
+  {Reventless.Counter.counterId: counterId, target, targetRef},
 ) => {
   Js.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
   let tableName = table.name->Pulumi.Output.get
@@ -16,14 +16,14 @@ let addToCounterTarget = async (
     ("SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle), " ++
     "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)"),
     expressionAttributeNames: [
-      ("#count", countFieldName),
+      ("#count", Reventless.Counter.countFieldName),
       ("#total", "total"),
       ("#targets", "targets"),
       ("#targetRefs", "targetRefs"),
     ]->Js.Dict.fromArray,
     expressionAttributeValues: [
-      (":inc", target->Belt.Int.toFloat->Js.Json.number),
-      (":targetSingle", [target->Belt.Int.toFloat->Js.Json.number]->Js.Json.array),
+      (":inc", target->Int.toFloat->Js.Json.number),
+      (":targetSingle", [target->Int.toFloat->Js.Json.number]->Js.Json.array),
       (":targetRefSingle", [targetRef->Js.Json.string]->Js.Json.array),
       (":targetRef", targetRef->Js.Json.string),
       (":empty", []->Js.Json.array),
@@ -48,9 +48,9 @@ type referencesView = {
 }
 
 let handleStreamEvent = (
-  ~referencesStream: resource,
-  ~countsStream: resource,
-  ~counterHandler: counterHandler,
+  ~referencesStream: ReventlessSpec.Adapter.resource,
+  ~countsStream: ReventlessSpec.Adapter.resource,
+  ~counterHandler: Reventless.Counter_Callback.counterHandler,
   streamEvent: PulumiAws.DynamoDb.Stream.event,
   _,
 ) => {
@@ -63,7 +63,7 @@ let handleStreamEvent = (
         (record.eventSourceARN == referencesARN || record.eventSourceARN == countsARN)
     )
 
-  ignoredRecords->Belt.Array.forEach(record =>
+  ignoredRecords->Array.forEach(record =>
     Js.log4(
       __MODULE__ ++ ": ignoring record from eventSource:",
       record.eventSource,
@@ -75,7 +75,7 @@ let handleStreamEvent = (
   let (referenceRecords, countRecords) =
     dynamoDbRecords->Belt.Array.partition(record => record.eventSourceARN == referencesARN)
 
-  let references = referenceRecords->Belt.Array.keepMap(record =>
+  let references = referenceRecords->Array.filterMap(record =>
     switch record->parseDynamoDbStreamRecordState {
     | NewImage(id, newImage) =>
       let inc = switch newImage->referencesView_decode {
@@ -92,7 +92,7 @@ let handleStreamEvent = (
     }
   )
 
-  let counts = countRecords->Belt.Array.keepMap(record =>
+  let counts = countRecords->Array.filterMap(record =>
     switch record->parseDynamoDbStreamRecordState {
     | NewImage(_, newImage)
     | NewAndOldImage(_, newImage, _) =>

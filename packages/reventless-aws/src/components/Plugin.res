@@ -1,5 +1,11 @@
-include Reventless.Plugin.Make(
-  EventCollectorConnector.SQS,
+module EventCollectorChannel = EventCollectorChannel.SQS
+module RuntimeEnvironment = RuntimeEnvironment.Lambda
+
+include Reventless.Plugin_Builder.Make(
+  RuntimeEnvironment,
+  EventCollectorChannel,
   QueryEngine.DynamoDb,
-  CommandTopicRemoteConnector.SQS,
+  CommandTopicRemoteChannel.SQS,
+  HeartbeatRunner.CloudwatchEvents,
+  Reventless.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment, EventCollectorChannel),
 )

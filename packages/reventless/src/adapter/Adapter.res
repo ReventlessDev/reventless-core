@@ -29,6 +29,19 @@ let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessSpec.Adapter.reso
   | _ => None
   }
 
+let unwrappedToResource = (
+  {id, name, urn, info, service}: unwrappedResource,
+): ReventlessSpec.Adapter.resource => {
+  id: id->Pulumi.Output.make,
+  name: name->Pulumi.Output.make,
+  urn: urn->Pulumi.Output.make,
+  info: info->Pulumi.Output.make,
+  service: service->Pulumi.Output.make,
+}
+
+let unwrappedToResources = (unwrapped: array<unwrappedResource>) =>
+  unwrapped->Array.map(unwrapped => unwrapped->unwrappedToResource)
+
 let unwrappedOutputToResource: Pulumi.Output.t<
   unwrappedResource,
 > => ReventlessSpec.Adapter.resource = unwrappedResource => {
@@ -39,9 +52,24 @@ let unwrappedOutputToResource: Pulumi.Output.t<
   info: unwrappedResource->Pulumi.Output.apply(r => r.info),
 }
 
-let logResource = (r: ReventlessSpec.Adapter.resource) => {
-  let _ = r.name->Pulumi.Output.apply(name => Js.log2("Resource: ", name))
-  let _ = r.id->Pulumi.Output.apply(id => Js.log2("  id: ", id))
-  let _ = r.urn->Pulumi.Output.apply(urn => Js.log2("  urn: ", urn))
-  let _ = r.service->Pulumi.Output.apply(service => Js.log2("  service: ", service))
+let resourceToUnwrappedOutput = (r: ReventlessSpec.Adapter.resource) =>
+  (r.name, r.id, r.urn, r.info, r.service)
+  ->Pulumi.Output.all5
+  ->Pulumi.Output.apply(((name, id, urn, info, service)) => {name, id, urn, info, service})
+
+let resourcesToUnwrappedOutput = (resources: array<ReventlessSpec.Adapter.resource>) =>
+  resources
+  ->Array.map(resource => resource->resourceToUnwrappedOutput)
+  ->Pulumi.Output.all
+
+let logResource = r => {
+  let _ = r->resourceToUnwrappedOutput->Pulumi.Output.apply(r => Js.log2("resource:", r))
 }
+
+let unwrappedToString = (resources: array<unwrappedResource>) => {
+  resources
+  ->Array.filterMap(resource => resource->Js.Json.stringifyAny)
+  ->Js.Array2.joinWith(", ")
+}
+
+let urns = resources => resources->Array.map((resource: unwrappedResource) => resource.urn)

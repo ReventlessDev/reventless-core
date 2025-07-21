@@ -1,36 +1,38 @@
-open ReventlessSpec.Component
-// type unknown
+type t<'component, 'outputs, 'operations>
 
-// in Component.js setOutputs(_), which is called in the constructor sets the output keys
+@set
+external setOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => unit = "outputs"
 @get
-external getOutputKeys: t<'component, 'outputs> => array<string> = "outputKeys"
+external outputs: t<'component, 'outputs, 'operations> => 'outputs = "outputs"
+let wrappedOutputs = component => component->Pulumi.Output.apply(component => component->outputs)
 
-type propValue
-@val @scope("Object")
-external objFromEntries: array<(string, propValue)> => 'b = "fromEntries"
+@set
+external setOperations: (
+  t<'component, 'outputs, 'operations>,
+  Pulumi.Output.t<'operations>,
+) => unit = "operations"
+@get
+external operations: t<'component, 'outputs, 'operations> => Pulumi.Output.t<'operations> =
+  "operations"
 
-type obj
-external toObj: t<'component, 'outputs> => obj = "%identity"
-let unsafeGetProp: (obj, string) => propValue = %raw(`
-  function(obj, prop) {
-    return obj[prop]
-  }
-`)
-let unsafeGetProp: (obj, string) => propValue = (obj, key) => unsafeGetProp(obj, key)
+external toPulumiResource: t<'component, 'outputs, 'operations> => Pulumi.Resource.t = "%identity"
+external fromPulumiResource: Pulumi.Resource.t => t<'component, 'outputs, 'operations> = "%identity"
 
-let extractOutputs: t<'component, 'outputs> => 'outputs = component =>
-  component
-  ->getOutputKeys
-  ->Belt.Array.map(key => (key, unsafeGetProp(component->toObj, key)))
-  ->objFromEntries
+type constructed
 
-let extractMultipleOutputs: array<t<'component, 'outputs>> => array<'outputs> = components =>
-  components->Belt.Array.map(extractOutputs)
+@module("./Component") @new
+external make: (
+  ~componentType: string,
+  ~name: string,
+  ~construct: 'construct,
+  ~opts: option<Pulumi.ComponentResource.options>,
+) => t<'component, 'outputs, 'operations> = "default"
 
-external toPulumiResource: t<'component, 'outputs> => Pulumi.Resource.t = "%identity"
-// external toUnknown: t<'component, 'outputs> => t<unknown, 'outputs> = "%identity"
+@send
+external registerOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => constructed =
+  "registerOutputs"
 
-// TODO:
-//  - adapt components make function to return this t('outputs)
-//  - add a `getOutputs` function to each component
-//  - use getOutputs in each parent's component to set only the child's outputs as the parent's outputs
+let setOutputs = (self, outputs) => {
+  self->setOutputs(outputs)
+  self->registerOutputs(outputs)
+}

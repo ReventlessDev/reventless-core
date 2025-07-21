@@ -2,9 +2,8 @@
 'use strict';
 
 var Decco = require("@rescript-labs/decco/src/Decco.res.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../../Message.res.js");
@@ -34,7 +33,7 @@ async function forwardCommand(_id, command, extensionPointName, queryEngine) {
         ]
       ], 1000);
   if (jsons.length !== 0) {
-    var plugin = Belt_Array.getExn(jsons, 0);
+    var plugin = jsons[0];
     return await (async function (result) {
                 if (result.TAG === "Ok") {
                   var plugin$1 = result._0;
@@ -53,9 +52,9 @@ async function forwardCommand(_id, command, extensionPointName, queryEngine) {
                                 return ;
                               }
                               console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1);
-                            })(Belt_Array.getBy(plugin$1.extensionPoints, (function (extensionPoint) {
-                                    return extensionPoint.name === extensionPointName;
-                                  })));
+                            })(plugin$1.extensionPoints.find(function (extensionPoint) {
+                                  return extensionPoint.name === extensionPointName;
+                                }));
                 }
                 console.log("ForwardCommand: Couldn't decode Plugin", plugin, result._0);
               })(PluginReadModelSpec$Reventless.state_decode(plugin));
@@ -68,7 +67,7 @@ async function callHandler(createSchedule, deleteSchedule, queryEngine, callComm
     case "CreateDisconnectSchedule" :
         var id = callCommand._0;
         return await createSchedule({
-                    name: Belt_Option.getWithDefault(process.env.Environment, "unknownEnv") + ("-" + id),
+                    name: Core__Option.getOr(process.env.Environment, "unknownEnv") + ("-" + id),
                     rate: Schedule$Reventless.minutesFromNow(callCommand._1),
                     payload: JSON.stringify((function (__x) {
                               return Message$Reventless.command$p_encode(Decco.stringToJson, PluginExtensionPointSpec$ReventlessSpec.command_encode, __x);

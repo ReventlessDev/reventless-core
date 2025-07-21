@@ -4,7 +4,8 @@
   "namespace": "ReventlessAws",
   "suffix": ".res.js",
   "ppx-flags": [
-    "@rescript-labs/decco/ppx"
+    "@rescript-labs/decco/ppx",
+    "rescript-schema-ppx/bin"
   ],
   "warnings": {
     "error": "-44+101"
@@ -31,10 +32,12 @@
     "@reventless/bs-pulumi-pulumi",
     "@reventless/reventless-spec",
     "@reventless/reventless",
-    "@rescript/core"
+    "@rescript/core",
+    "rescript-schema"
   ],
   "bsc-flags": [
-    "-open RescriptCore"
+    "-open RescriptCore",
+    "-open RescriptSchema"
   ],
   "pinned-dependencies": [
     "@reventless/bs-aws-sdk",

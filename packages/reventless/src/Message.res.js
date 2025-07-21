@@ -6,8 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Js_option = require("@rescript/std/lib/js/js_option.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.res.js");
 
@@ -58,7 +57,7 @@ function toMessageBody(param) {
 function serviceNameOfMsg(msgJson) {
   var msgObj = Js_json.decodeObject(msgJson);
   if (msgObj !== undefined) {
-    var x = Belt_Option.map(Js_dict.get(msgObj, "meta"), Message$ReventlessSpec.meta_decode);
+    var x = Core__Option.map(Js_dict.get(msgObj, "meta"), Message$ReventlessSpec.meta_decode);
     if (x !== undefined) {
       if (x.TAG === "Ok") {
         return x._0.service;
@@ -69,14 +68,14 @@ function serviceNameOfMsg(msgJson) {
     console.log("Message.serviceNameOfMsg: Invalid JSON object");
     return ;
   } else {
-    console.log("Message.serviceNameOfMsg:", msgJson);
+    console.log("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson);
     return ;
   }
 }
 
 function variantNameOfJson(json) {
-  return Belt_Option.getWithDefault(Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
-                        return Belt_Array.get(evtArr, 0);
+  return Core__Option.getOr(Core__Option.flatMap(Core__Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
+                        return evtArr[0];
                       })), Js_json.decodeString), "unknown");
 }
 
@@ -85,27 +84,31 @@ function eventNameOfEvent$pJson(json) {
   if (dict !== undefined) {
     return variantNameOfJson(dict["event"]);
   } else {
-    return "unknown";
+    return "unknownEventName";
   }
 }
 
 function idOfEvent$pJson(json) {
-  return Belt_Option.flatMap(Js_json.decodeObject(json), (function (event$p) {
+  return Core__Option.flatMap(Js_json.decodeObject(json), (function (event$p) {
                 return Js_json.decodeString(event$p["id"]);
               }));
 }
 
 function idMetaEventOfEvent$pJson(json) {
   var dict = Js_json.decodeObject(json);
-  var id = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
-              return Belt_Option.getWithDefault(Js_json.decodeString(dict["id"]), "unknown");
-            })), "");
-  var meta = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
-              return JSON.stringify(dict["meta"]);
-            })), "");
-  var $$event = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
-              return JSON.stringify(dict["event"]);
-            })), "");
+  var id = Core__Option.getOr(Core__Option.flatMap(dict, (function (dict) {
+              return Core__Option.flatMap(dict["id"], Js_json.decodeString);
+            })), "unknownId");
+  var meta = Core__Option.getOr(Core__Option.flatMap(dict, (function (dict) {
+              return Core__Option.map(dict["meta"], (function (metaStr) {
+                            return JSON.stringify(metaStr);
+                          }));
+            })), "noMeta");
+  var $$event = Core__Option.getOr(Core__Option.flatMap(dict, (function (dict) {
+              return Core__Option.map(dict["event"], (function (eventStr) {
+                            return JSON.stringify(eventStr);
+                          }));
+            })), "noEvent");
   return [
           id,
           meta,
@@ -146,6 +149,23 @@ function decomposeMeta(meta) {
   return Js_dict.entries(Js_option.getExn(Js_json.decodeObject(Message$ReventlessSpec.meta_encode(meta))));
 }
 
+function composeEventJson$p(id, meta, eventJson) {
+  return Js_dict.fromArray([
+              [
+                "id",
+                id
+              ],
+              [
+                "meta",
+                Message$ReventlessSpec.meta_encode(meta)
+              ],
+              [
+                "event",
+                eventJson
+              ]
+            ]);
+}
+
 function string(x) {
   if (x !== undefined && !Caml_obj.equal(x, null)) {
     return x;
@@ -158,11 +178,11 @@ function composeMeta(dict) {
   return Js_dict.fromArray([
               [
                 "service",
-                Belt_Option.getExn(Js_dict.get(dict, "service"))
+                Core__Option.getExn(Js_dict.get(dict, "service"), undefined)
               ],
               [
                 "time",
-                Belt_Option.getExn(Js_dict.get(dict, "time"))
+                Core__Option.getExn(Js_dict.get(dict, "time"), undefined)
               ],
               [
                 "ip",
@@ -174,11 +194,11 @@ function composeMeta(dict) {
               ],
               [
                 "msgId",
-                Belt_Option.getExn(Js_dict.get(dict, "msgId"))
+                Core__Option.getExn(Js_dict.get(dict, "msgId"), undefined)
               ],
               [
                 "correlationId",
-                Belt_Option.getExn(Js_dict.get(dict, "correlationId"))
+                Core__Option.getExn(Js_dict.get(dict, "correlationId"), undefined)
               ]
             ]);
 }
@@ -252,6 +272,7 @@ exports.log = log;
 exports.hrtimeToString = hrtimeToString;
 exports.generateMeta = generateMeta;
 exports.decomposeMeta = decomposeMeta;
+exports.composeEventJson$p = composeEventJson$p;
 exports.string = string;
 exports.composeMeta = composeMeta;
 exports.commandJsonOfCommand$p = commandJsonOfCommand$p;

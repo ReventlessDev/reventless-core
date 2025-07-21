@@ -10,7 +10,7 @@
 //   let toAbstractAction:
 //     (
 //       action('a),
-//       Js.Json.t => Belt.Result.t('a, Decco.decodeError),
+//       Js.Json.t => result('a, Decco.decodeError),
 //       'a => Js.Json.t
 //     ) =>
 //     abstractAction;
@@ -86,19 +86,19 @@
 //          )
 //          : (Mapper with module Spec := Spec) => {
 //     let findMappings = (targetNameOpt, mappings) =>
-//       targetNameOpt->Belt.Option.mapWithDefault([||], targetName =>
-//         mappings->Belt.Array.keep((module Mapping: Mappings.Mapping) =>
+//       targetNameOpt->Option.mapOr([||], targetName =>
+//         mappings->Array.filter((module Mapping: Mappings.Mapping) =>
 //           Mapping.targetName == targetName
 //         )
 //       );
 //     let map = (~targetName, json) =>
 //       findMappings(targetName, Mappings.mappings)
-//       ->Belt.Array.keepMap((module Mapping: Mappings.Mapping) =>
+//       ->Array.filterMap((module Mapping: Mappings.Mapping) =>
 //           try (Some(json->Mapping.map)) {
 //           | exn =>
 //             Js.log2(
 //               "Mapping failed:",
-//               exn->Js.Exn.asJsExn->Belt.Option.map(Js.Exn.message),
+//               exn->Js.Exn.asJsExn->Option.map(Js.Exn.message),
 //             );
 //             None;
 //           }

@@ -1,20 +1,19 @@
 open Util_DynamoDb_Runtime
 
-let append = (table: PulumiAws.DynamoDb.Table.t) =>
-  async (_sequenceNr, _id, jsons) => {
-    let result =
-      jsons
-      ->Belt.Array.map(toPutRequest)
-      ->toTable(table.name->Pulumi.Output.get)
-      ->batchWriteWithRetries
-    switch await result {
-    | Ok() => Ok()
-    | Error(unprocessedItems) =>
-      Reventless.Logger.error("Error: unprocessed items:", unprocessedItems)
-      Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !")
-    | exception _ => Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed !") // TODO: error message
-    }
+let append = table => async (_sequenceNr, _id, jsons) => {
+  let result =
+    jsons
+    ->Array.map(toPutRequest)
+    ->toTable(table.name)
+    ->batchWriteWithRetries
+  switch await result {
+  | Ok() => Ok()
+  | Error(unprocessedItems) =>
+    Reventless.Logger.error("Error: unprocessed items:", unprocessedItems)
+    Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !")
+  | exception _ => Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed !") // TODO: error message
   }
+}
 
 let rec tryReplay = async (~retry=0, tableName, id) =>
   switch await AwsSdk.DynamoDb.DocumentClient.queryById(tableName, id) {
@@ -30,6 +29,6 @@ let rec tryReplay = async (~retry=0, tableName, id) =>
   | history => history
   }
 
-let replay = (table: PulumiAws.DynamoDb.Table.t) => {
-  async id => await table.name->Pulumi.Output.get->tryReplay(id)
+let replay = table => {
+  async id => await tryReplay(table.name, id)
 }

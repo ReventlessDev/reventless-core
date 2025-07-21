@@ -1,39 +1,35 @@
-open PulumiAws.DynamoDb.Stream
-
-let service = "DynamoDbStream"
-
 type result =
   | NewImage(string, Js.Json.t)
   | OldImage(string, Js.Json.t)
   | NewAndOldImage(string, Js.Json.t, Js.Json.t)
   | Invalid
 
-let buildEvent'Json = dict =>
+let buildJsonEvent' = dict =>
   [
-    ("id", dict->Js.Dict.get("id")->Belt.Option.getExn),
+    ("id", dict->Js.Dict.get("id")->Option.getExn),
     ("meta", dict->Reventless.Message.composeMeta),
-    ("event", dict->Js.Dict.get("event")->Belt.Option.getExn),
+    ("event", dict->Js.Dict.get("event")->Option.getExn),
   ]
   ->Js.Dict.fromArray
   ->Js.Json.object_
 
-let buildStateJson = dict => dict->Js.Json.object_
+let buildJsonState = dict => dict->Js.Json.object_
 
-let parseDynamoDbStreamRecord = (buildJson, record: record) => {
+let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.record) => {
   let record = record.dynamodb
-  let id = record->Belt.Option.flatMap(record => AwsSdk.DynamoDb.Util.unmarshall(record.keys.id))
+  let id = record->Option.flatMap(record => AwsSdk.DynamoDb.Util.unmarshall(record.keys.id))
 
   let newImageJson =
     record
-    ->Belt.Option.flatMap(dynamodb => dynamodb.newImage)
-    ->Belt.Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage))
-    ->Belt.Option.map(buildJson)
+    ->Option.flatMap(dynamodb => dynamodb.newImage)
+    ->Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage))
+    ->Option.map(buildJson)
 
   let oldImageJson =
     record
-    ->Belt.Option.flatMap(dynamodb => dynamodb.oldImage)
-    ->Belt.Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage))
-    ->Belt.Option.map(buildJson)
+    ->Option.flatMap(dynamodb => dynamodb.oldImage)
+    ->Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage))
+    ->Option.map(buildJson)
 
   switch (id, newImageJson, oldImageJson) {
   | (Some(id), Some(newImage), Some(oldImage)) => NewAndOldImage(id, newImage, oldImage)
@@ -44,9 +40,22 @@ let parseDynamoDbStreamRecord = (buildJson, record: record) => {
 }
 
 let parseDynamoDbStreamRecordEvent: PulumiAws.DynamoDb.Stream.record => result = record =>
-  parseDynamoDbStreamRecord(buildEvent'Json, record)
+  parseDynamoDbStreamRecord(buildJsonEvent', record)
+
+// let parseDynamoDbStreamRecord = record =>
+//   switch record
+//   ->PulumiAws.DynamoDb.Stream.asRecord
+//   ->parseDynamoDbStreamRecordEvent {
+//   | NewImage(_, newImage)
+//   | NewAndOldImage(_, newImage, _) =>
+//     Some(newImage)
+//   | _ =>
+//     Js.log(__MODULE__ ++ ".handleChannelEvent: no NewImage included in Stream event !")
+//     None
+//   }
 
 let parseDynamoDbStreamRecordState: PulumiAws.DynamoDb.Stream.record => result = record =>
-  parseDynamoDbStreamRecord(buildStateJson, record)
+  parseDynamoDbStreamRecord(buildJsonState, record)
 
-let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)
+let findResource = resources =>
+  resources->Reventless.Util.AdapterRuntime.findResource(AWS.DynamoDbStream.service)

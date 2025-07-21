@@ -1,12 +1,10 @@
-let service = "AppSync"
-
 let toResource: PulumiAws.AppSync.Resolver.t => ReventlessSpec.Adapter.resource = ({
   id,
   arn,
   type_,
   field,
 }) => {
-  service: id->Pulumi.Output.apply(_ => service),
+  service: id->Pulumi.Output.apply(_ => AWS.AppSync.service),
   name: id,
   id,
   urn: arn,

@@ -2,9 +2,8 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 
 var stackRefs = {};
@@ -12,9 +11,9 @@ var stackRefs = {};
 var coreStackName = new Pulumi.Config("core").get("stack");
 
 function stackName(pluginName) {
-  return Belt_Option.map(coreStackName, (function (name) {
+  return Core__Option.map(coreStackName, (function (name) {
                 var parts = name.split("/");
-                Belt_Array.set(parts, 1, pluginName);
+                parts[1] = pluginName;
                 return parts.join("/");
               }));
 }
@@ -24,7 +23,7 @@ function get(pluginName) {
   if (stackRef !== undefined) {
     return stackRef;
   }
-  var stackRef$1 = Belt_Option.map(stackName(pluginName), (function (stack) {
+  var stackRef$1 = Core__Option.map(stackName(pluginName), (function (stack) {
           return new Pulumi.StackReference(stack);
         }));
   if (stackRef$1 === undefined) {

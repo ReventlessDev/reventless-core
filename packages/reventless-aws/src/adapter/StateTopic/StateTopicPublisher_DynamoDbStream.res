@@ -12,7 +12,7 @@ let make: Reventless.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~al
   {
     resource: queryDbResource.service
     ->Pulumi.Output.apply(service =>
-      if service == Util_DynamoDbStream_Runtime.service {
+      if service == AWS.DynamoDbStream.service {
         queryDbResource->Util_DynamoDbStream.toStreamResource
       } else {
         Js.Exn.raiseError(

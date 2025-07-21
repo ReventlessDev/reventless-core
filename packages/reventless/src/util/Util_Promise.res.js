@@ -3,26 +3,25 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 
 function filterRejected(results) {
-  return Belt_Array.map(Belt_Array.keep(Belt_Array.mapWithIndex(results, (function (idx, result) {
-                        return [
-                                idx,
-                                result
-                              ];
-                      })), (function (param) {
-                    return param[1].status === "rejected";
-                  })), (function (param) {
-                return [
-                        param[0],
-                        Belt_Option.getWithDefault(Belt_Option.map(param[1].reason, (function (reason) {
-                                    return reason.message;
-                                  })), "Unknown error")
-                      ];
-              }));
+  return results.map(function (result, idx) {
+                  return [
+                          idx,
+                          result
+                        ];
+                }).filter(function (param) {
+                return param[1].status === "rejected";
+              }).map(function (param) {
+              return [
+                      param[0],
+                      Core__Option.getOr(Core__Option.map(param[1].reason, (function (reason) {
+                                  return reason.message;
+                                })), "Unknown error")
+                    ];
+            });
 }
 
 async function map(p, mapOk, mapExn) {

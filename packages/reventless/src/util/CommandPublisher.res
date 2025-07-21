@@ -29,13 +29,8 @@ module Make = (Spec: Spec, Config: Config) => {
     }
 
   let toJsons = commandsToSend => {
-    Js.log4(
-      "toJsons: commandsToSend:",
-      commandsToSend->Belt.Array.size,
-      "rest:",
-      buffer->Belt.Array.size,
-    )
-    commandsToSend->Belt.Array.map(((id, command)) => {
+    Js.log4("toJsons: commandsToSend:", commandsToSend->Array.length, "rest:", buffer->Array.length)
+    commandsToSend->Array.map(((id, command)) => {
       let commandJson = command->Spec.command_encode
       {
         ReventlessSpec.Message.id,
@@ -50,11 +45,11 @@ module Make = (Spec: Spec, Config: Config) => {
     await finishRunning()
     switch Config.mode {
     | SendChunks(chunkSize) =>
-      let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
+      let size = Js.Math.min_int(chunkSize, buffer->Array.length)
       if size >= chunkSize || (size > 0 && flush.contents) {
         chunkCount := chunkCount.contents + 1
-        let sizeStr = size->Belt.Int.toString
-        let bufferSizeStr = buffer->Belt.Array.size->Belt.Int.toString
+        let sizeStr = size->Int.toString
+        let bufferSizeStr = buffer->Array.length->Int.toString
         let chunkCountStr = chunkCount.contents->Js.Int.toString
         Logger.debug(
           ~loc=__LOC__,
@@ -67,7 +62,7 @@ module Make = (Spec: Spec, Config: Config) => {
         switch await promise {
         | () => Logger.debug(~loc=__LOC__, "send", `finished chunk ${chunkCountStr}: ${sizeStr}`)
         | exception Js.Exn.Error(e) =>
-          let errorMessage = e->Js.Exn.message->Belt.Option.getWithDefault("unknown Error")
+          let errorMessage = e->Js.Exn.message->Option.getOr("unknown Error")
           Js.log(
             `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr}: ${errorMessage}`,
           )
@@ -82,7 +77,7 @@ module Make = (Spec: Spec, Config: Config) => {
         running := None
       }
     | SendAllInOneChunk =>
-      let size = buffer->Belt.Array.size
+      let size = buffer->Array.length
       if size > 0 {
         let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
@@ -100,7 +95,7 @@ module Make = (Spec: Spec, Config: Config) => {
   let publish = (id: string, command: Spec.command) => {
     let _ = buffer->Js.Array2.push((id, command))
     switch (running.contents, Config.mode) {
-    | (None, SendChunks(chunkSize)) if buffer->Belt.Array.size >= chunkSize =>
+    | (None, SendChunks(chunkSize)) if buffer->Array.length >= chunkSize =>
       running := Some(Js.Promise.resolve())
       let _ = send()
     | _ => ()
@@ -119,7 +114,7 @@ module Make = (Spec: Spec, Config: Config) => {
     switch running.contents {
     | None => await send()
     | _ =>
-      while running.contents->Belt.Option.isSome {
+      while running.contents->Option.isNone {
         await finishRunning()
       }
     }

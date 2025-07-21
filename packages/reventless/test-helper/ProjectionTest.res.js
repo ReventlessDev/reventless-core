@@ -7,6 +7,8 @@ var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var Belt_SortArray = require("@rescript/std/lib/js/belt_SortArray.js");
 var Projection$Reventless = require("../src/Projection.res.js");
@@ -54,14 +56,14 @@ function Make(Projection) {
     store[id] = [];
   };
   var deleteSubState = function (store, id, subId, getSubId) {
-    store[id] = Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(store, id), (function (states) {
-                return Belt_Array.keep(states, (function (state) {
-                              return Caml_obj.notequal(getSubId(state), subId);
-                            }));
+    store[id] = Core__Option.getOr(Core__Option.map(Js_dict.get(store, id), (function (states) {
+                return states.filter(function (state) {
+                            return Caml_obj.notequal(getSubId(state), subId);
+                          });
               })), []);
   };
-  var handleActions = function (actions, primitives) {
-    return Projection$Reventless.handleActions(actions, primitives, Projection.subIdConfig);
+  var handleActions = function (actions, operations) {
+    return Projection$Reventless.handleActions(actions, operations, Projection.subIdConfig);
   };
   var update = async function (store, events$p) {
     await handleActions(events$p.map(function (event$p) {
@@ -116,30 +118,36 @@ function Make(Projection) {
                         });
             }),
           saveBatch: (function (extra) {
-              Belt_Array.forEach(extra, (function (param) {
-                      var id = param[0];
-                      var newState = param[1];
-                      var subId = getSubId(newState);
-                      var match = subId !== undefined ? (
-                          Belt_Array.some(states(store, id), (function (state) {
-                                  return hasSubId(state, subId);
-                                })) ? [
-                              updateState(store, id, subId, newState),
-                              []
-                            ] : [
-                              states(store, id),
-                              [newState]
-                            ]
-                        ) : [
-                          states(store, id),
-                          [newState]
-                        ];
-                      store[id] = Belt_Array.concat(match[0], match[1]);
-                    }));
+              extra.forEach(function (param) {
+                    var id = param[0];
+                    var newState = param[1];
+                    var subId = getSubId(newState);
+                    var match = subId !== undefined ? (
+                        Belt_Array.some(states(store, id), (function (state) {
+                                return hasSubId(state, subId);
+                              })) ? [
+                            updateState(store, id, subId, newState),
+                            []
+                          ] : [
+                            states(store, id),
+                            [newState]
+                          ]
+                      ) : [
+                        states(store, id),
+                        [newState]
+                      ];
+                    store[id] = match[0].concat(match[1]);
+                  });
               return Promise.resolve({
                           TAG: "Ok",
                           _0: undefined
                         });
+            }),
+          count: (async function (param, param$1, param$2) {
+              return {
+                      TAG: "Ok",
+                      _0: 0
+                    };
             }),
           delete: (function (extra, extra$1) {
               var match = Projection.subIdConfig;
@@ -165,20 +173,20 @@ function Make(Projection) {
               }
             }),
           deleteBatch: (function (extra) {
-              Belt_Array.forEach(extra, (function (param) {
-                      var subId = param[1];
-                      var id = param[0];
-                      var match = Projection.subIdConfig;
-                      if (subId !== undefined) {
-                        if (match !== undefined) {
-                          return deleteSubState(store, id, subId[1], match.getSubId);
-                        } else {
-                          return ;
-                        }
+              extra.forEach(function (param) {
+                    var subId = param[1];
+                    var id = param[0];
+                    var match = Projection.subIdConfig;
+                    if (subId !== undefined) {
+                      if (match !== undefined) {
+                        return deleteSubState(store, id, subId[1], match.getSubId);
                       } else {
-                        return deleteStates(store, id);
+                        return ;
                       }
-                    }));
+                    } else {
+                      return deleteStates(store, id);
+                    }
+                  });
               return Promise.resolve({
                           TAG: "Ok",
                           _0: undefined
@@ -281,8 +289,8 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
+                    Object.keys(store)[0],
+                    Core__Option.getOr(Js_dict.values(store)[0], [])
                   ]), [
                 1,
                 testId.contents,
@@ -293,8 +301,8 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
+                    Object.keys(store)[0],
+                    Core__Option.getOr(Js_dict.values(store)[0], [])
                   ]), [
                 1,
                 id,
@@ -309,9 +317,9 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
-                    Belt_Array.get(Js_dict.values(store)[0], 0)
+                    Object.keys(store)[0],
+                    Core__Option.getOr(Js_dict.values(store)[0], []).length,
+                    Js_dict.values(store)[0][0]
                   ]), [
                 1,
                 testId.contents,
@@ -323,9 +331,9 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
-                    Belt_Array.get(Js_dict.values(store)[0], 0)
+                    Object.keys(store)[0],
+                    Core__Option.getOr(Js_dict.values(store)[0], []).length,
+                    Js_dict.values(store)[0][0]
                   ]), [
                 1,
                 id,
@@ -335,7 +343,7 @@ function Make(Projection) {
   };
   var thenNoState = async function (p) {
     var store = await p.VAL();
-    return Jest.Expect.toEqual(Jest.Expect.expect(Belt_Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
+    return Jest.Expect.toEqual(Jest.Expect.expect(Core__Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
                           return acc + states.length | 0;
                         }))), 0);
   };

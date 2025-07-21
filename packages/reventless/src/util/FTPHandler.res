@@ -39,7 +39,7 @@ type ftpAction =
 let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
   let {host, port, userName, secret, path, readyTimeout} = connectionParams
   let (promise, resolve, _reject) = Util.Promise.make()
-  let result: ref<Belt.Result.t<bool, string>> = ref(Error("Stream ended before action handling!"))
+  let result: ref<result<bool, string>> = ref(Error("Stream ended before action handling!"))
   let client = FTP.Client.make()
 
   client
@@ -48,11 +48,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
     resolve(result.contents)
   })
   ->FTP.Client.onError(err => {
-    resolve(
-      Belt.Result.Error(
-        err->Js.Exn.message->Belt.Option.getWithDefault("Error contains no message."),
-      ),
-    )
+    resolve(Error(err->Js.Exn.message->Option.getOr("Error contains no message.")))
     // client->FTP.Client.end_
   })
   ->FTP.Client.onTimeout(() =>
@@ -87,16 +83,14 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             switch await sftp->FTP.readdir(path) {
             | entities =>
               result :=
-                (
-                  await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp)
-                )->Belt.Result.Ok
+                (await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp))->Ok
             | exception Js.Exn.Error(e) => result := e->Reventless.Util.Error.message->Error
             }
           | Upload(readableStream, filename) =>
             let ws =
               (path ++ ("/" ++ filename))
               ->Message.log("FTPHandler: path for write stream")
-              ->FTP.createWriteStream(sftp, ~path=_)
+              ->(FTP.createWriteStream(sftp, ~path=_))
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
                 Js.log("FTPHandler: writable ended")

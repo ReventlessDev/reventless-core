@@ -5,15 +5,15 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Aws = require("@pulumi/aws");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var ClientDynamodb = require("@aws-sdk/client-dynamodb");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.res.js");
 var Util_DynamoDb$ReventlessAws = require("./Util_DynamoDb.res.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.res.js");
-var Util_DynamoDbStream_Runtime$ReventlessAws = require("./Util_DynamoDbStream_Runtime.res.js");
 
 function toInfo(table) {
   return Pulumi.all([
@@ -21,7 +21,7 @@ function toInfo(table) {
                 table.rangeKey,
                 table.streamArn
               ]).apply(function (param) {
-              return param[0] + ("," + (Belt_Option.getWithDefault(param[1], "") + ("," + param[2])));
+              return param[0] + ("," + (Core__Option.getOr(param[1], "") + ("," + param[2])));
             });
 }
 
@@ -46,7 +46,7 @@ function toResource(table) {
           urn: table.arn,
           info: toInfo(table),
           service: table.name.apply(function (param) {
-                return Util_DynamoDbStream_Runtime$ReventlessAws.service;
+                return AWS$ReventlessAws.DynamoDbStream.service;
               })
         };
 }
@@ -61,7 +61,7 @@ function toStreamResource(table) {
                 return "";
               }),
           service: table.name.apply(function (param) {
-                return Util_DynamoDbStream_Runtime$ReventlessAws.service;
+                return AWS$ReventlessAws.DynamoDbStream.service;
               })
         };
 }
@@ -117,7 +117,7 @@ function updateTable(ttl, table) {
                 return param[0];
               }),
           streamArn: streamInfo.apply(function (param) {
-                return Belt_Option.getWithDefault(param[1], "");
+                return Core__Option.getOr(param[1], "");
               }),
           streamLabel: streamInfo.apply(function (param) {
                 return param[2];
@@ -128,14 +128,14 @@ function updateTable(ttl, table) {
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamViewType, tags, opts, name) {
-  var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
+  var restoreSourceName = Core__Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies();
   var newrecord = Caml_obj.obj_dup(opts);
   var table = new (Aws.dynamodb.Table)(name, Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, true, streamViewType), (newrecord.dependsOn = match[0], newrecord));
   match[1](table);
-  if (Belt_Option.isSome(restoreSourceName)) {
+  if (Core__Option.isNone(restoreSourceName)) {
     return updateTable(ttl, table);
   } else {
     return table;
@@ -143,11 +143,11 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamView
 }
 
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, Util_DynamoDbStream_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDbStream.service);
 }
 
 function findUnwrappedResource(resources) {
-  return Util_Adapter$Reventless.findUnwrappedResource(resources, Util_DynamoDbStream_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findUnwrappedResource(resources, AWS$ReventlessAws.DynamoDbStream.service);
 }
 
 exports.toInfo = toInfo;

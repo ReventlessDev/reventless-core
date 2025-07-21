@@ -41,7 +41,7 @@ let serviceNameOfMsg = msgJson =>
   | Some(msgObj) =>
     msgObj
     ->Js.Dict.get("meta")
-    ->Belt.Option.map(meta_decode)
+    ->Option.map(meta_decode)
     ->(
       x =>
         switch x {
@@ -56,53 +56,56 @@ let serviceNameOfMsg = msgJson =>
     )
 
   | None =>
-    Js.log2("Message.serviceNameOfMsg:", msgJson)
+    Js.log2("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson)
     None
   }
 
 let variantNameOfJson = json =>
   json
   ->Js.Json.decodeArray
-  ->Belt.Option.flatMap(evtArr => evtArr->Belt.Array.get(0))
-  ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
-  ->Belt.Option.getWithDefault("unknown")
+  ->Option.flatMap(evtArr => evtArr->Array.get(0))
+  ->Option.flatMap(evt => evt->Js.Json.decodeString)
+  ->Option.getOr("unknown")
 
 // TODO: group all functions on event`Json into submodule with the according type
 
 let eventNameOfEvent'Json = json => {
   switch json->Js.Json.decodeObject {
   | Some(dict) => dict->Js.Dict.unsafeGet("event")->variantNameOfJson
-  | _ => "unknown"
+  | _ => "unknownEventName"
   }
 }
 
 let idOfEvent'Json = json => {
   json
   ->Js.Json.decodeObject
-  ->Belt.Option.flatMap(event' => event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString)
+  ->Option.flatMap(event' => event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString)
 }
 
 let idMetaEventOfEvent'Json = json => {
   let dict = json->Js.Json.decodeObject
   let id =
     dict
-    ->Belt.Option.map(dict =>
-      dict->Js.Dict.unsafeGet("id")->Js.Json.decodeString->Belt.Option.getWithDefault("unknown")
-    )
-    ->Belt.Option.getWithDefault("")
+    ->Option.flatMap(dict => dict->Dict.get("id")->Option.flatMap(id => id->Js.Json.decodeString))
+    ->Option.getOr("unknownId")
   let meta =
     dict
-    ->Belt.Option.map(dict => dict->Js.Dict.unsafeGet("meta")->Js.Json.stringify)
-    ->Belt.Option.getWithDefault("")
+    ->Option.flatMap(dict =>
+      dict->Dict.get("meta")->Option.map(metaStr => metaStr->Js.Json.stringify)
+    )
+    ->Option.getOr("noMeta")
   let event =
     dict
-    ->Belt.Option.map(dict => dict->Js.Dict.unsafeGet("event")->Js.Json.stringify)
-    ->Belt.Option.getWithDefault("")
+    ->Option.flatMap(dict =>
+      dict->Dict.get("event")->Option.map(eventStr => eventStr->Js.Json.stringify)
+    )
+    ->Option.getOr("noEvent")
+
   (id, meta, event)
 }
 
 type eventsHandler<'id, 'event> = (
-  . 'id,
+  'id,
   array<ReventlessSpec.Message.event'<'id, 'event>>,
 ) => Js.Promise.t<unit>
 
@@ -146,6 +149,15 @@ let generateMeta = (~service, ~ip="", ~user="unknown") => {
 let decomposeMeta = meta =>
   meta->meta_encode->Js.Json.decodeObject->Js.Option.getExn->Js.Dict.entries
 
+let composeEventJson' = (id, meta, eventJson) =>
+  [
+    ("id", id->Js.Json.string),
+    ("meta", meta->ReventlessSpec.Message.meta_encode),
+    ("event", eventJson),
+  ]
+  ->Js.Dict.fromArray
+  ->Js.Json.object_
+
 let string = x =>
   switch x {
   | Some(ip) if ip == Js.Json.null => ""->Js.Json.string
@@ -153,19 +165,19 @@ let string = x =>
   | None => ""->Js.Json.string
   }
 
-let composeMeta = (dict: Js.Dict.t<Js.Json.t>) =>
+let composeMeta = (dict: dict<Js.Json.t>) =>
   [
-    ("service", dict->Js.Dict.get("service")->Belt.Option.getExn),
-    ("time", dict->Js.Dict.get("time")->Belt.Option.getExn),
+    ("service", dict->Js.Dict.get("service")->Option.getExn),
+    ("time", dict->Js.Dict.get("time")->Option.getExn),
     ("ip", dict->Js.Dict.get("ip")->string),
     ("user", dict->Js.Dict.get("user")->string),
-    ("msgId", dict->Js.Dict.get("msgId")->Belt.Option.getExn),
-    ("correlationId", dict->Js.Dict.get("correlationId")->Belt.Option.getExn),
+    ("msgId", dict->Js.Dict.get("msgId")->Option.getExn),
+    ("correlationId", dict->Js.Dict.get("correlationId")->Option.getExn),
   ]
   ->Js.Dict.fromArray
   ->Js.Json.object_
 
-type decoder<'a> = Js.Json.t => Belt.Result.t<'a, Decco.decodeError>
+type decoder<'a> = Js.Json.t => result<'a, Decco.decodeError>
 type encoder<'a> = 'a => Js.Json.t
 
 let commandJsonOfCommand': (

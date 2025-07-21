@@ -14,22 +14,24 @@ let fromCustomResourceOptions: option<
   }
 
 let sesPolicyDocument: (
+  ~name: string,
   ~identity: PulumiAws.SES.EmailIdentity.t,
   ~opts: Pulumi.CustomResourceOptions.t=?,
-) => Pulumi.Output.t<PulumiAws.IAM.policyDocument> = (~identity, ~opts=?) =>
+) => Pulumi.Output.t<PulumiAws.PolicyDocument.t> = (~name,~identity, ~opts=?) =>
   identity.arn->Pulumi.Output.flatMap(identityArn => {
-    open PulumiAws.IAM
-    let principal = {identifiers: ["*"], type_: "AWS"}
-    let actions = ["SES:SendEmail", "SES:SendRawEmail"]
-    let statement = {
-      actions,
-      principals: [principal],
-      resources: [identityArn],
-    }
-    getPolicyDocument(
-      ~args={statements: [statement]},
-      ~opts=opts->fromCustomResourceOptions,
-    )->Pulumi.Output.fromPromise
+    open PulumiAws.PolicyDocument
+    PulumiAws.PolicyDocument.make(
+      ~id = name ++ "SESPolicy",
+      ~statements=[
+        {
+          sid: "AllowSES",
+          principal: Principals({aws: PrincipalId("*")}),
+          effect: Allow,
+          actions: Actions(["SES:SendEmail", "SES:SendRawEmail"]),
+          resources: Resource(identityArn),
+        },
+      ],
+    )->Pulumi.Output.make
   })
 
 let identityWithPolicy: (
@@ -43,8 +45,8 @@ let identityWithPolicy: (
     ~name="identityPolicy" ++ name,
     ~args={
       identity: identity.arn->Pulumi.Output.asInput,
-      policy: sesPolicyDocument(~identity, ~opts?)
-      ->Pulumi.Output.apply(policyDocument => policyDocument.json)
+      policy: sesPolicyDocument(~name, ~identity, ~opts?)
+      ->Pulumi.Output.apply(policyDocument => policyDocument->PulumiAws.PolicyDocument.toJsonString)
       ->Pulumi.Output.asInput,
     },
     ~opts?,

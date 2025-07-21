@@ -3,7 +3,7 @@ open QueryDbStorage_DynamoDb
 type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
 
-let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
+let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
   ~indexes,
   ~subIdField=?,
@@ -19,18 +19,22 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
     ~streamViewType=NEW_AND_OLD_IMAGES,
-    ~tags=AWS.tags(~name, Reventless.QueryDb.componentType),
+    ~tags=AWS.Tags.make(~name, Reventless.QueryDb.componentType),
     ~opts,
   )
   open QueryDbStorage_DynamoDb_Runtime
   {
     resources: [table->Util_DynamoDbStream.toResource],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
-    load: table->load,
-    count: table->count,
-    save: table->save,
-    saveBatch: table->saveBatch,
-    delete: table->delete,
-    deleteBatch: table->deleteBatch,
+    operations: table
+    ->Util_DynamoDb.toRuntimeTableOutput
+    ->Pulumi.Output.apply(runtimeTable => {
+      Reventless.QueryDb.load: runtimeTable->load,
+      save: runtimeTable->save,
+      saveBatch: runtimeTable->saveBatch,
+      count: runtimeTable->count,
+      delete: runtimeTable->delete,
+      deleteBatch: runtimeTable->deleteBatch,
+    }),
   }
 }

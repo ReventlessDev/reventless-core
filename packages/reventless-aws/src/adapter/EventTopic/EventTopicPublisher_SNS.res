@@ -1,13 +1,18 @@
 open PulumiAws
 
-let make: Reventless.EventTopic.Adapter.publisherMaker = (~name, ~storageResources as _, ~opts) => {
+let make: Reventless.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~opts) => {
   let topic = SNS.Topic.make(
     ~name,
-    ~args={SNS.Topic.tags: AWS.tags(~name, Reventless.EventTopic.componentType)},
+    ~args={SNS.Topic.tags: AWS.Tags.make(~name, Reventless.EventTopic.componentType)},
+    ~opts,
   )
 
   {
     resources: [topic->Util_SNS.toResource],
-    publish: (id, meta, json) => topic->EventTopicPublisher_SNS_Runtime.publish(id, meta, json),
+    publishJson: topic
+    ->Util_SNS.toRuntimeTopicOutput
+    ->Pulumi.Output.apply(runtimeTopic =>
+      EventTopicPublisher_SNS_Runtime.publish(runtimeTopic, ...)
+    ),
   }
 }

@@ -34,10 +34,10 @@ describe("Logger", () => {
           correlationId: "testCorrelationId",
         }
         let metaStr = meta->Message.meta_encode->Js.Json.stringify
-        let arr: array<Message.commandJson> = commands->Belt.Array.mapWithIndex(
-          (id, command) => {
+        let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
+          (command, idx) => {
             {
-              Message.id: id->Belt.Int.toString,
+              Message.id: idx->Int.toString,
               meta,
               commandJson: command->PluginSpec.command_encode,
               delay: None,
@@ -77,10 +77,10 @@ describe("Logger", () => {
           correlationId: "testCorrelationId",
         }
         let metaStr = meta->Message.meta_encode->Js.Json.stringify
-        let arr: array<Message.commandJson> = commands->Belt.Array.mapWithIndex(
-          (id, command) => {
+        let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
+          (command, idx) => {
             {
-              Message.id: id->Belt.Int.toString,
+              Message.id: idx->Int.toString,
               meta,
               commandJson: command->PluginSpec.command_encode,
               delay: None,
@@ -110,9 +110,9 @@ describe("Logger", () => {
           },
           event: UnknownPluginDetected,
         }
-        let event'Json: Js.Json.t =
-          event'->Message.event'_encode(Decco.stringToJson, event_encode, _)
-        let msg = event'JsonToLogMessage(event'Json)
+        let eventJson': Js.Json.t =
+          event'->(Message.event'_encode(Decco.stringToJson, event_encode, _))
+        let msg = event'JsonToLogMessage(eventJson')
 
         let expected = `UnknownPluginDetected(testId): {"event":["UnknownPluginDetected"],"meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`
 

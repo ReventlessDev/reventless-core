@@ -7,6 +7,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
@@ -142,13 +143,13 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
             return false;
           }
         }));
-  Belt_Array.forEach(match[1], (function (record) {
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", record.eventSource, record.eventSourceARN, JSON.stringify(record));
-        }));
+  match[1].forEach(function (record) {
+        console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", record.eventSource, record.eventSourceARN, JSON.stringify(record));
+      });
   var match$1 = Belt_Array.partition(match[0], (function (record) {
           return record.eventSourceARN === referencesARN;
         }));
-  var references = Belt_Array.keepMap(match$1[0], (function (record) {
+  var references = Core__Array.filterMap(match$1[0], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
           if (typeof match !== "object") {
             return ;
@@ -170,7 +171,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
             
           }
         }));
-  var counts = Belt_Array.keepMap(match$1[1], (function (record) {
+  var counts = Core__Array.filterMap(match$1[1], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
           if (typeof match !== "object") {
             return ;

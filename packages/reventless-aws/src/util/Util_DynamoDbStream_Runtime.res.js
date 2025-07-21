@@ -2,19 +2,18 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var DynamoDb_Util$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_Util.res.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
 
-var service = "DynamoDbStream";
-
-function buildEvent$pJson(dict) {
+function buildJsonEvent$p(dict) {
   return Js_dict.fromArray([
               [
                 "id",
-                Belt_Option.getExn(Js_dict.get(dict, "id"))
+                Core__Option.getExn(Js_dict.get(dict, "id"), undefined)
               ],
               [
                 "meta",
@@ -22,26 +21,26 @@ function buildEvent$pJson(dict) {
               ],
               [
                 "event",
-                Belt_Option.getExn(Js_dict.get(dict, "event"))
+                Core__Option.getExn(Js_dict.get(dict, "event"), undefined)
               ]
             ]);
 }
 
-function buildStateJson(dict) {
+function buildJsonState(dict) {
   return dict;
 }
 
 function parseDynamoDbStreamRecord(buildJson, record) {
   var record$1 = record.dynamodb;
-  var id = Belt_Option.flatMap(record$1, (function (record) {
+  var id = Core__Option.flatMap(record$1, (function (record) {
           return DynamoDb_Util$AwsSdk.unmarshall(undefined, record.Keys.id);
         }));
-  var newImageJson = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
+  var newImageJson = Core__Option.map(Core__Option.map(Core__Option.flatMap(record$1, (function (dynamodb) {
                   return dynamodb.NewImage;
                 })), (function (newImage) {
               return DynamoDb_Util$AwsSdk.unmarshallDict(undefined, newImage);
             })), buildJson);
-  var oldImageJson = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
+  var oldImageJson = Core__Option.map(Core__Option.map(Core__Option.flatMap(record$1, (function (dynamodb) {
                   return dynamodb.OldImage;
                 })), (function (oldImage) {
               return DynamoDb_Util$AwsSdk.unmarshallDict(undefined, oldImage);
@@ -77,20 +76,19 @@ function parseDynamoDbStreamRecord(buildJson, record) {
 }
 
 function parseDynamoDbStreamRecordEvent(record) {
-  return parseDynamoDbStreamRecord(buildEvent$pJson, record);
+  return parseDynamoDbStreamRecord(buildJsonEvent$p, record);
 }
 
 function parseDynamoDbStreamRecordState(record) {
-  return parseDynamoDbStreamRecord(buildStateJson, record);
+  return parseDynamoDbStreamRecord(buildJsonState, record);
 }
 
 function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, service);
+  return Util_AdapterRuntime$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDbStream.service);
 }
 
-exports.service = service;
-exports.buildEvent$pJson = buildEvent$pJson;
-exports.buildStateJson = buildStateJson;
+exports.buildJsonEvent$p = buildJsonEvent$p;
+exports.buildJsonState = buildJsonState;
 exports.parseDynamoDbStreamRecord = parseDynamoDbStreamRecord;
 exports.parseDynamoDbStreamRecordEvent = parseDynamoDbStreamRecordEvent;
 exports.parseDynamoDbStreamRecordState = parseDynamoDbStreamRecordState;

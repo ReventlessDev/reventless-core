@@ -39,13 +39,13 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let currentState = events =>
     events
-    ->Belt.Array.sliceToEnd(1)
-    ->Belt.Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
+    ->Array.sliceToEnd(~start=1)
+    ->Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
   let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := Belt.Array.concat(errors.contents, [error])
+    errors := Array.concat(errors.contents, [error])
     []
   }
 
@@ -72,7 +72,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   open Jest.Expect
 
   let thenEvents = (events, expectedEvents) =>
-    expect((errors.contents->Belt.Array.length, events))->toEqual((0, expectedEvents))
+    expect((errors.contents->Array.length, events))->toEqual((0, expectedEvents))
 
   let compare = (cmp, e1, e2) => {
     let cmpResult = cmp(e1, e2)
@@ -84,52 +84,52 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let thenCompareEvents = (events, expectedEvents, cmp) =>
     expect((
-      errors.contents->Belt.Array.length,
-      events->Belt.Array.length,
+      errors.contents->Array.length,
+      events->Array.length,
       Belt.Array.zip(events, expectedEvents)
-      ->Belt.Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
-      ->Belt.Array.every(result => result),
-    ))->toEqual((0, expectedEvents->Belt.Array.length, true))
+      ->Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
+      ->Array.every(result => result),
+    ))->toEqual((0, expectedEvents->Array.length, true))
 
   let listErrors = () =>
     "Errors occured: " ++
     errors.contents
-    ->Belt.Array.map(err =>
+    ->Array.map(err =>
       /* NOTE: this process is very fragile!!
               it relies on decco decoding the error-varints to arrays of string
  */
       err
       ->Spec.error_encode
       ->Js.Json.decodeArray
-      ->Belt.Option.getExn
+      ->Option.getExn
       ->Array.getUnsafe(0)
       ->Js.Json.decodeString
-      ->Belt.Option.getExn
+      ->Option.getExn
     )
-    ->Belt.Array.reduce("", (a, b) => a ++ (b ++ " "))
+    ->Array.reduce("", (a, b) => a ++ (b ++ " "))
 
   let thenEvent = (events, expectedEvent) =>
-    if events->Belt.Array.length > 0 {
-      expect((
-        errors.contents->Belt.Array.length,
-        events->Belt.Array.length,
-        events->Belt.Array.get(0),
-      ))->toEqual((0, 1, Some(expectedEvent)))
-    } else if errors.contents->Belt.Array.length > 0 {
+    if events->Array.length > 0 {
+      expect((errors.contents->Array.length, events->Array.length, events->Array.get(0)))->toEqual((
+        0,
+        1,
+        Some(expectedEvent),
+      ))
+    } else if errors.contents->Array.length > 0 {
       listErrors()->Jest.fail
     } else {
       Jest.fail("thenEvent: No event present to validate")
     }
 
   let thenCompareEvent = (events, expectedEvent, cmp) =>
-    if events->Belt.Array.length > 0 {
-      let firstEvent = events->Belt.Array.get(0)->Belt.Option.getExn
+    if events->Array.length > 0 {
+      let firstEvent = events->Array.get(0)->Option.getExn
       expect((
-        errors.contents->Belt.Array.length,
-        events->Belt.Array.length,
+        errors.contents->Array.length,
+        events->Array.length,
         cmp->compare(firstEvent, expectedEvent),
       ))->toEqual((0, 1, true))
-    } else if errors.contents->Belt.Array.length > 0 {
+    } else if errors.contents->Array.length > 0 {
       listErrors()->Jest.fail
     } else {
       Jest.fail("thenEvent: No event present to validate")
@@ -139,23 +139,23 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
     expect((
-      events->Belt.Array.length,
-      events->Belt.Array.get(0),
-      errors.contents->Belt.Array.length,
-      errors.contents->Belt.Array.get(0),
+      events->Array.length,
+      events->Array.get(0),
+      errors.contents->Array.length,
+      errors.contents->Array.get(0),
     ))->toEqual((1, Some(expectedEvent), 1, Some(expectedError)))
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
-    expect((
-      events,
-      errors.contents->Belt.Array.length,
-      errors.contents->Belt.Array.get(0),
-    ))->toEqual((expectedEvents, 1, Some(expectedError)))
+    expect((events, errors.contents->Array.length, errors.contents->Array.get(0)))->toEqual((
+      expectedEvents,
+      1,
+      Some(expectedError),
+    ))
 
   let thenError = (events, expectedError) =>
-    expect((
-      events,
-      errors.contents->Belt.Array.length,
-      errors.contents->Belt.Array.get(0),
-    ))->toEqual(([], 1, Some(expectedError)))
+    expect((events, errors.contents->Array.length, errors.contents->Array.get(0)))->toEqual((
+      [],
+      1,
+      Some(expectedError),
+    ))
 }

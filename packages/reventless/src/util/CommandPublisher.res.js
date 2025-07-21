@@ -3,9 +3,8 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_splice_call = require("@rescript/std/lib/js/caml_splice_call.js");
 var Logger$Reventless = require("./Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -41,15 +40,15 @@ function Make(Spec, Config) {
   };
   var toJsons = function (commandsToSend) {
     console.log("toJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
-    return Belt_Array.map(commandsToSend, (function (param) {
-                  var commandJson = Spec.command_encode(param[1]);
-                  return {
-                          id: param[0],
-                          meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user),
-                          commandJson: commandJson,
-                          delay: undefined
-                        };
-                }));
+    return commandsToSend.map(function (param) {
+                var commandJson = Spec.command_encode(param[1]);
+                return {
+                        id: param[0],
+                        meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user),
+                        commandJson: commandJson,
+                        delay: undefined
+                      };
+              });
   };
   var send = async function () {
     await finishRunning();
@@ -89,10 +88,10 @@ function Make(Spec, Config) {
       return ;
     }
     chunkCount.contents = chunkCount.contents + 1 | 0;
-    var sizeStr = String(size$1);
-    var bufferSizeStr = String(buffer.length);
+    var sizeStr = size$1.toString();
+    var bufferSizeStr = buffer.length.toString();
     var chunkCountStr = chunkCount.contents.toString();
-    Logger$Reventless.debug("File \"CommandPublisher.res\", line 60, characters 15-22", undefined, undefined, "send", "bufferSize: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr);
+    Logger$Reventless.debug("File \"CommandPublisher.res\", line 55, characters 15-22", undefined, undefined, "send", "bufferSize: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr);
     var commandsToSend$1 = buffer.splice(0, size$1);
     var promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
     running.contents = Caml_option.some(promise$1);
@@ -105,7 +104,7 @@ function Make(Spec, Config) {
     catch (raw_e$1){
       var e$1 = Caml_js_exceptions.internalToOCamlException(raw_e$1);
       if (e$1.RE_EXN_ID === Js_exn.$$Error) {
-        var errorMessage = Belt_Option.getWithDefault(e$1._1.message, "unknown Error");
+        var errorMessage = Core__Option.getOr(e$1._1.message, "unknown Error");
         console.log("CommandPublisher.send: Error: Couldn't publish chunk " + chunkCountStr + ": " + errorMessage);
         var timeout = Js_math.random_int(3000, 7000);
         await Util_Promise$Reventless.finishTimeout(timeout);
@@ -117,7 +116,7 @@ function Make(Spec, Config) {
       }
     }
     if (exit$1 === 1) {
-      Logger$Reventless.debug("File \"CommandPublisher.res\", line 68, characters 34-41", undefined, undefined, "send", "finished chunk " + chunkCountStr + ": " + sizeStr);
+      Logger$Reventless.debug("File \"CommandPublisher.res\", line 63, characters 34-41", undefined, undefined, "send", "finished chunk " + chunkCountStr + ": " + sizeStr);
     }
     return await send();
   };
@@ -148,7 +147,7 @@ function Make(Spec, Config) {
     if (match === undefined) {
       return await send();
     }
-    while(Belt_Option.isSome(running.contents)) {
+    while(Core__Option.isNone(running.contents)) {
       await finishRunning();
     };
   };

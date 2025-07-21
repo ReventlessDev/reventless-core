@@ -4,14 +4,15 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
+var Pulumi = require("@pulumi/pulumi");
 var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
+var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.res.js");
-var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.res.js");
-var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.res.js");
 
 function toJson(x) {
   switch (x.TAG) {
@@ -25,7 +26,7 @@ function toJson(x) {
 }
 
 function createSubIdExprNamesValues(subIdConfig) {
-  return Belt_Option.map(subIdConfig, (function (param) {
+  return Core__Option.map(subIdConfig, (function (param) {
                 var subIdName = param[0];
                 var tmp;
                 switch (param[1]) {
@@ -69,60 +70,60 @@ function createSubIdExprNamesValues(subIdConfig) {
 }
 
 function createFilterExprNamesValues(filterConfigs) {
-  return Belt_Array.unzip(Belt_Array.mapWithIndex(filterConfigs, (function (idx, param) {
-                    var fieldName = param[0];
-                    var valueName = fieldName + String(idx);
-                    var tmp;
-                    switch (param[1]) {
-                      case "Equal" :
-                          tmp = "#" + fieldName + " = :" + valueName;
-                          break;
-                      case "Unequal" :
-                          tmp = "#" + fieldName + " <> :" + valueName;
-                          break;
-                      case "LessOrEqual" :
-                          tmp = "#" + fieldName + " <= :" + valueName;
-                          break;
-                      case "Less" :
-                          tmp = "#" + fieldName + " < :" + valueName;
-                          break;
-                      case "GreaterOrEqual" :
-                          tmp = "#" + fieldName + " >= :" + valueName;
-                          break;
-                      case "Greater" :
-                          tmp = "#" + fieldName + " > :" + valueName;
-                          break;
-                      case "Exists" :
-                          tmp = "attribute_exists( #" + fieldName + " )";
-                          break;
-                      case "NotExists" :
-                          tmp = "attribute_not_exists( #" + fieldName + " )";
-                          break;
-                      case "Contains" :
-                          tmp = "contains( #" + fieldName + ", :" + valueName + " )";
-                          break;
-                      case "NotContains" :
-                          tmp = "NOT contains( #" + fieldName + ", :" + valueName + " )";
-                          break;
-                      case "BeginsWith" :
-                          tmp = "begins_with( #" + fieldName + ", :" + valueName + " )";
-                          break;
-                      
-                    }
-                    return [
-                            tmp,
+  return Belt_Array.unzip(filterConfigs.map(function (param, idx) {
+                  var fieldName = param[0];
+                  var valueName = fieldName + idx.toString();
+                  var tmp;
+                  switch (param[1]) {
+                    case "Equal" :
+                        tmp = "#" + fieldName + " = :" + valueName;
+                        break;
+                    case "Unequal" :
+                        tmp = "#" + fieldName + " <> :" + valueName;
+                        break;
+                    case "LessOrEqual" :
+                        tmp = "#" + fieldName + " <= :" + valueName;
+                        break;
+                    case "Less" :
+                        tmp = "#" + fieldName + " < :" + valueName;
+                        break;
+                    case "GreaterOrEqual" :
+                        tmp = "#" + fieldName + " >= :" + valueName;
+                        break;
+                    case "Greater" :
+                        tmp = "#" + fieldName + " > :" + valueName;
+                        break;
+                    case "Exists" :
+                        tmp = "attribute_exists( #" + fieldName + " )";
+                        break;
+                    case "NotExists" :
+                        tmp = "attribute_not_exists( #" + fieldName + " )";
+                        break;
+                    case "Contains" :
+                        tmp = "contains( #" + fieldName + ", :" + valueName + " )";
+                        break;
+                    case "NotContains" :
+                        tmp = "NOT contains( #" + fieldName + ", :" + valueName + " )";
+                        break;
+                    case "BeginsWith" :
+                        tmp = "begins_with( #" + fieldName + ", :" + valueName + " )";
+                        break;
+                    
+                  }
+                  return [
+                          tmp,
+                          [
                             [
-                              [
-                                "#" + fieldName,
-                                fieldName
-                              ],
-                              [
-                                ":" + valueName,
-                                toJson(param[2])
-                              ]
+                              "#" + fieldName,
+                              fieldName
+                            ],
+                            [
+                              ":" + valueName,
+                              toJson(param[2])
                             ]
-                          ];
-                  })));
+                          ]
+                        ];
+                }));
 }
 
 async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, ascendingOpt, limitOpt) {
@@ -130,29 +131,29 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
   var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : [];
   var ascending = ascendingOpt !== undefined ? ascendingOpt : true;
   var limit = limitOpt !== undefined ? limitOpt : 1;
-  var match = Belt_Option.getWithDefault(createSubIdExprNamesValues(subIdConfig), [
+  var match = Core__Option.getOr(createSubIdExprNamesValues(subIdConfig), [
         [],
         []
       ]);
   var match$1 = createFilterExprNamesValues(filterConfigs);
   var filterExpressions = match$1[0];
-  var keyConditionExpression = Belt_Array.concat(["#key = :value"], match[0]).join(" AND ");
+  var keyConditionExpression = ["#key = :value"].concat(match[0]).join(" AND ");
   var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
-  var match$2 = Belt_Array.unzip(Belt_Array.concat(match[1], match$1[1]));
-  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray(Belt_Array.concatMany([
-                    [[
-                        ":value",
-                        toJson(id)
-                      ]],
-                    match$2[1]
-                  ]))));
-  var attributeNames = Js_dict.fromArray(Belt_Array.concatMany([
-            [[
-                "#key",
-                key
-              ]],
-            match$2[0]
-          ]));
+  var match$2 = Belt_Array.unzip(match[1].concat(match$1[1]));
+  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray([
+                  [[
+                      ":value",
+                      toJson(id)
+                    ]],
+                  match$2[1]
+                ].flat())));
+  var attributeNames = Js_dict.fromArray([
+          [[
+              "#key",
+              key
+            ]],
+          match$2[0]
+        ].flat());
   var params_ExpressionAttributeNames = attributeNames;
   var params_ExpressionAttributeValues = attributeValues;
   var params_IndexName = key === "id" ? undefined : key;
@@ -179,9 +180,9 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     Logger$Reventless.error("File \"QueryEngine_DynamoDb.res\", line 108, characters 33-40", undefined, undefined, "Error:", err);
     return [];
   }
-  return Belt_Array.map(Belt_Option.getWithDefault(result.Items, []), (function (js) {
-                return JSON.parse(JSON.stringify(js));
-              }));
+  return Core__Option.getOr(result.Items, []).map(function (js) {
+              return JSON.parse(JSON.stringify(js));
+            });
 }
 
 async function scanByTableName(tableName, filterConfigs, limit) {
@@ -221,23 +222,28 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     }
     throw e;
   }
-  return Belt_Array.map(Belt_Option.getWithDefault(result.Items, []), (function (js) {
-                return JSON.parse(JSON.stringify(js));
-              }));
+  return Core__Option.getOr(result.Items, []).map(function (js) {
+              return JSON.parse(JSON.stringify(js));
+            });
 }
 
 function make(allQueryDbs) {
-  var tableName = function (readModelName) {
-    return OutputFailsafeRuntime$Reventless.get(Util_DynamoDb_Runtime$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, readModelName)).name);
+  var allRuntimeQueryDbsOutputs = Pulumi.all(Js_dict.map((function (queryDb) {
+              return Adapter$Reventless.resourceToUnwrappedOutput(Util_DynamoDb$ReventlessAws.findResource(queryDb.resources));
+            }), allQueryDbs));
+  var tableName = function (allRuntimeQueryDbs, readModelName) {
+    return Util_QueryDbRuntime$Reventless.getRuntimeResource(allRuntimeQueryDbs, readModelName).name;
   };
-  return {
-          scan: (function (readModelName, filterConfigs, limit) {
-              return scanByTableName(tableName(readModelName), filterConfigs, limit);
-            }),
-          query: (function (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) {
-              return queryByTableName(tableName(readModelName), key, id, subIdConfig, filterConfigs, ascending, limit);
-            })
-        };
+  return allRuntimeQueryDbsOutputs.apply(function (allRuntimeQueryDbs) {
+              return {
+                      scan: (function (readModelName, filterConfigs, limit) {
+                          return scanByTableName(tableName(allRuntimeQueryDbs, readModelName), filterConfigs, limit);
+                        }),
+                      query: (function (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) {
+                          return queryByTableName(tableName(allRuntimeQueryDbs, readModelName), key, id, subIdConfig, filterConfigs, ascending, limit);
+                        })
+                    };
+            });
 }
 
 exports.toJson = toJson;
@@ -246,4 +252,4 @@ exports.createFilterExprNamesValues = createFilterExprNamesValues;
 exports.queryByTableName = queryByTableName;
 exports.scanByTableName = scanByTableName;
 exports.make = make;
-/* Logger-Reventless Not a pure module */
+/* @pulumi/pulumi Not a pure module */

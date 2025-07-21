@@ -30,7 +30,7 @@ type mapIncomingEvent<
   'extensionPointEvent,
   Message.meta,
   PluginExtensionPointSpec.pluginDefinition,
-  QueryEngine.t,
+  QueryEngine.operations,
 ) => array<
   incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'extensionPointCallCommand>,
 >
@@ -55,7 +55,7 @@ module type Spec = {
 
 module type Impl = {
   module ExtensionPoint: Spec
-  module Aggregate: AggregateSpec.T
+  module Aggregate: Aggregate.Spec
 
   let mapIncomingEvent: mapIncomingEvent<
     ExtensionPoint.event,

@@ -2,10 +2,10 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.EventTopic
 
-type outputs = {.}
+type outputs = {resource: resource}
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T
@@ -22,7 +22,7 @@ module type T = {
   let make: (
     ~name: string,
     ~opts: Pulumi.ComponentResource.options=?,
-    ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
+    ~allQueryDbs: QueryDb.allOutputs,
   ) => component
 }
 
@@ -31,7 +31,7 @@ module Adapter = {
   type publisherMaker = (
     ~name: string,
     ~opts: Pulumi.CustomResourceOptions.t,
-    ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
+    ~allQueryDbs: QueryDb.allOutputs,
   ) => publisher
 
   module type Publisher = {
@@ -43,7 +43,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   module Spec = Spec
 
   type constructed
-  type construct = (component, string, ReventlessSpec.QueryDb.allOutputs) => constructed
+  type construct = (component, string, QueryDb.allOutputs) => constructed
 
   @module("./Component") @new
   external make: (
@@ -51,10 +51,8 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
-    ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
+    ~allQueryDbs: QueryDb.allOutputs,
   ) => component = "default"
-
-  @obj external makeOutputs: (~publisher: resource) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
@@ -73,9 +71,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
       ~allQueryDbs,
     )
 
-    let publisherOutputs = publisher.resource
-
-    self->setOutputs(makeOutputs(~publisher=publisherOutputs))
+    self->setOutputs({resource: publisher.resource})
   }
 
   let make = (~name, ~opts=?, ~allQueryDbs) =>

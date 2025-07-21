@@ -109,16 +109,6 @@ function predIsNecessary(excludedScopes, excludedModules, node) {
     const log = logger.extend('predIsNecessary')
     var msg;
 
-    /*
-    var prodEdgeExists = false;
-    for (const e of node.edgesIn) {
-        if (isEdgeNecessary(e)) {
-            prodEdgeExists = true;
-            break;
-        }
-    }
-    */
-
     if (node.name === 'rescript' || node.name === 'typescript')
         log('isNecessary? %O: dev:%s - optional:%s - devOptiona:%s - peer:%s - type:%s - prodEdge:%s', node, node.dev, node.optional, node.devOptional, node.peer, node.type);
 
@@ -130,10 +120,6 @@ function predIsNecessary(excludedScopes, excludedModules, node) {
         msg = `${node.name} is not necessary: optional dev`;
     else if (node.peer)
         msg = `${node.name} is not necessary: peer`;
-    /*
-    else if (!prodEdgeExists)
-        msg = `${node.name} is not necessary: no prod edges`;
-    */
     else if (isNodeScopeExcluded(excludedScopes, node))
         msg = `${node.name} is not necessary: scope excluded`;
     else if (isNodeExcluded(excludedModules, node))
@@ -253,12 +239,6 @@ async function doPostProcessing(node, pathToSavedDependencies, fn, spinner, log)
     spinner.start(`postprocess ${node.name}: ${fn.name}`);
     console.log();
     try {
-        /*
-        const r = execSync(fn, {
-            cwd: cwd
-        });
-        console.log(`${node.name} postProcess(${cwd}: ${fn.name}):`, r.toString());
-        */
         await fn(node, cwd);
         spinner.succeed();
     } catch (error) {
@@ -274,9 +254,6 @@ export function build(opt) {
     const logPostProcessing = logger.extend('post-processing');
     // FIXME: move this out into build opts
     const opts = {
-        //path: "./",
-        //path: "../../../fidap/wm-raw/plugin",
-        //"@fidap-wm-raw:registry": "https://gitlab.com/api/v4/projects/43406890/packages/npm/",
         "@fidap-wm-raw:registry": "https://gitlab.com/api/v4/packages/npm/",
         "@fidap:registry": "https://gitlab.com/api/v4/packages/npm/",
         "@reventless:registry": "https://gitlab.com/api/v4/packages/npm/",
@@ -286,7 +263,6 @@ export function build(opt) {
         "//gitlab.com/api/v4/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN
     }
 
-    //const modulePath = path.join(pathToLayerData, pathToSavedDependencies)
     const rootPath = path.resolve(pathToSavedDependencies, sourcePackageName)
     const sourcePackageVersionStr = (sourcePackageVersion) ? sourcePackageVersion : 'latest';
     const sourcePackageSpec = `${sourcePackageName}@${sourcePackageVersionStr}`
@@ -305,9 +281,7 @@ export function build(opt) {
     spinner.start('extract source package');
 
     //------ extract root module ------//
-    return pacote.extract(sourcePackageSpec,
-        rootPath,
-        opts)
+    return pacote.extract(sourcePackageSpec, rootPath, opts)
         .then(res => {
             spinner.succeed();
             log('root module extracted: %O', res);
@@ -318,7 +292,6 @@ export function build(opt) {
                 ...opts,
                 path: rootPath,
             });
-
 
             return arb.buildIdealTree({
                 preferDedupe: true,
@@ -335,7 +308,6 @@ export function build(opt) {
             log("filtered nodes: %d", numberOfFilteredNodes);
             */
             log('total nodes in tree=%d', countChildrenRecursive(tree))
-
             log("");
 
             const logTree = logger.extend('tree');
@@ -358,12 +330,12 @@ export function build(opt) {
                         log('found %s@%s', node.name, node.version);
                         rescriptStdModule = node;
                     };
+                    console.log("\nNode: ", node.packageName)
                     if (predIsNecessary(excludeScopes, excludeModules, node)) {
                         log('extracting necessary node: %s', node.name);
                         const extractOpts = { ...opts, resolved: node.resolved };
-                        return pacote.extract(node.name + '@' + node.version,
-                            path.resolve(pathToSavedDependencies, node.name),
-                            extractOpts)
+                        return pacote.extract(node.packageName + '@' + node.version,
+                            path.resolve(pathToSavedDependencies, node.packageName), extractOpts)
                             .then(async res => {
                                 spinner.suffixText = "";
                                 spinner.succeed(`extracted dependency ${node.name}`);
@@ -379,21 +351,11 @@ export function build(opt) {
                                 }
                                 if (shouldPostProcess) {
                                     //console.log(node.name, 'post-process', postProcess[node.name], node, cwd)
-                                    /*
-                                    postProcess[node.name].forEach(cmd => {
-                                        doPostProcessing(node, pathToSavedDependencies, cmd, spinner, logPostProcessing);
-                                    });
-                                    */
                                     await doPostProcessing(node, pathToSavedDependencies, postProcess[node.name], spinner, logPostProcessing);
                                 }
                                 //check for matching `>DEPENDENCY` keys in postProcess
                                 for (const dependencyForPostProcessing of postProcessingNamesForDependencies) {
                                     if (hasDependency(node, dependencyForPostProcessing)) {
-                                        /*
-                                        postProcess['>' + dependencyForPostProcessing].forEach(cmd => {
-                                            doPostProcessing(node, pathToSavedDependencies, cmd, spinner, logPostProcessing);
-                                        });
-                                        */
                                         await doPostProcessing(node, pathToSavedDependencies, postProcess['>' + dependencyForPostProcessing], spinner, logPostProcessing);
                                     }
                                 }

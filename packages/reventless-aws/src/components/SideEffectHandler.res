@@ -1,3 +1,1 @@
-include Reventless.SideEffectHandler.Make(
-  Reventless.EventCollector.Make(EventCollectorConnector.DynamoDbStream),
-)
+include SideEffectHandler_PerSideEffectHandler

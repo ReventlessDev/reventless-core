@@ -1,11 +1,10 @@
 open PulumiAws.AppSync
-open ReventlessSpec.ReadModel.Spec
-open Reventless
+open ReventlessSpec.ReadModel_Spec
 
 type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
 
-let make: QueryDb.Adapter.resolversMaker<api, role> = (
+let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
   ~name: string,
   ~api: api,
   ~apiRole: role,
@@ -35,7 +34,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
     ~opts,
   )
   let resolverByIdMultiple =
-    subIdField->Belt.Option.map(_sortField =>
+    subIdField->Option.map(_sortField =>
       Resolver.makeUnitResolver(
         ~name=name ++ "ById",
         ~api,
@@ -60,10 +59,10 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
     ~opts,
   )
 
-  let resourcesMaker: ReventlessSpec.QueryDb.resolversResourcesMaker = allQueryDbs => {
-    let resolversByIndex = indexes->Belt.Array.map(({index} as indexConfig) => {
+  let resourcesMaker: Reventless.QueryDb.resolversResourcesMaker = allQueryDbs => {
+    let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
       let name = name ++ ("By" ++ index->StringLabels.capitalize_ascii)
-      let idField = indexConfig.idField->Belt.Option.getWithDefault(index)
+      let idField = indexConfig.idField->Option.getOr(index)
       switch indexConfig.authorization {
       | None =>
         Resolver.makeUnitResolver(
@@ -86,8 +85,8 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
           ~api,
           ~tableName=(
             allQueryDbs
-            ->Util_QueryDbRuntime.getLocalStorageResources(tableName)
-            ->Util_DynamoDb.findResource
+            ->Reventless.Util.QueryDb.getLocalStorageResources(tableName)
+            ->Util.DynamoDb.findResource
           ).name,
           ~serviceRole=apiRole,
           ~opts,
@@ -123,8 +122,8 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
 
     let storageResource = (~pluginName: option<string>, ~tableName: string) =>
       allQueryDbs
-      ->Plugin.getStorageResources(pluginName, tableName)
-      ->Util_DynamoDb.findResourceInOutput
+      ->Reventless.Plugin_Helpers.getStorageResources(pluginName, tableName)
+      ->Util.DynamoDb.findResourceInOutput
       ->Reventless.Adapter.outputToResource
 
     let generateTemplate = (~storageResource: ReventlessSpec.Adapter.resource, ~template) =>
@@ -132,7 +131,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
       ->Pulumi.Output.apply(realTableName => template(realTableName))
       ->Pulumi.Output.asInput
 
-    let idResolvers = idResolverConfigs->Belt.Array.map(config => {
+    let idResolvers = idResolverConfigs->Array.map(config => {
       let {
         source: {idField: sourceIdField, subId: sourceSubId, resolvedField},
         target: {tableName, idField: targetId} as target,
@@ -199,7 +198,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
       }
     })
 
-    let idsResolvers = idsResolverConfigs->Belt.Array.map(config => {
+    let idsResolvers = idsResolverConfigs->Array.map(config => {
       let {source: {idsField, resolvedField}, target: {tableName} as target} = config
       let storageResource = storageResource(~pluginName=target.pluginName, ~tableName)
 
@@ -211,19 +210,17 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
         ~field=resolvedField->Pulumi.Input.make,
         ~requestTemplate=generateTemplate(
           ~storageResource,
-          ~template=Resolver.Templates.resolveIds(~idsField, ~sortField=target.subIdField, ...),
+          ~template=Resolver.Templates.resolveIds(~idsField, ~sortField=target.subIdField, ...)
         ),
         ~responseTemplate=generateTemplate(
           ~storageResource,
-          ~template=Resolver.Templates.resolveIdsResult(~idsField, ...),
+          ~template=Resolver.Templates.resolveIdsResult(~idsField, ...)
         ),
         ~opts,
       )
     })
 
-    Belt.Array.concatMany([resolversByIndex, idResolvers, idsResolvers])->Belt.Array.map(
-      Util_AppSync.toResource,
-    )
+    Array.flat([resolversByIndex, idResolvers, idsResolvers])->Array.map(Util.AppSync.toResource)
   }
 
   let resolvers = switch resolverByIdMultiple {
@@ -231,7 +228,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
   | None => [resolverByIdSingle, resolverAll]
   } // TODO add other resolvers (from maker)
 
-  let resources = resolvers->Belt.Array.map(Util_AppSync.toResource)
+  let resources = resolvers->Array.map(Util.AppSync.toResource)
 
   {resources, resourcesMaker}
 }

@@ -34,6 +34,10 @@ export async function bsMoment(node, cwd, dependenciesPath) {
     return copyPrecompiled('bs-moment@0.8.0', node.name, dependenciesPath);
 }
 
+export async function rescriptCore(node, cwd, dependenciesPath) {
+    return copyPrecompiled('@rescript/core@1.6.0', node.name, dependenciesPath);
+}
+
 export async function rescriptDependent(node, cwd) {
     const rmRes = rimraf('**/*.res', {glob: {cwd}});
     const rmResi = rimraf('**/*.resi', {glob: {cwd}});

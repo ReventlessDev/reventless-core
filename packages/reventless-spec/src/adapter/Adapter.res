@@ -6,4 +6,4 @@ type resource = {
   service: Pulumi.Output.t<string>,
 }
 
-type resources = Js.Dict.t<resource>
+type resources = dict<resource>
