@@ -1,6 +1,6 @@
 {
   "name": "@reventless/rescript-ssh2",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Bucklescript / ReasonML bindings for ssh2",
   "author": "Atos",
   "license": "MIT",
