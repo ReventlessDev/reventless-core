@@ -1,6 +1,6 @@
 {
   "name": "@reventless/rescript-hash-obj",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Bucklescript / ReasonML bindings for hash-obj",
   "author": "Atos",
   "license": "MIT",
