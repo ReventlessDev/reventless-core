@@ -3,7 +3,7 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Output$Pulumi = require("@reventless/rescript-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Core$Reventless = require("./Core.res.js");

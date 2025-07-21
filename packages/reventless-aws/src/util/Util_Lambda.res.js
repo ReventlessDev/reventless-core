@@ -2,7 +2,7 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Output$Pulumi = require("@reventless/rescript-pulumi-pulumi/src/Output.res.js");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 

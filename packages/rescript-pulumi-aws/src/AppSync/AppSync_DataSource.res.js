@@ -4,7 +4,7 @@
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Aws = require("@pulumi/aws");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Output$Pulumi = require("@reventless/rescript-pulumi-pulumi/src/Output.res.js");
 
 function makeDynamoDBDataSourceWithTableName(name, api, tableName, serviceRole, opts) {
   return new (Aws.appsync.DataSource)(name, {

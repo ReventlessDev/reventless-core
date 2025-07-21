@@ -1,0 +1,40 @@
+{
+  "name": "@reventless/rescript-pulumi-pulumi",
+  "version": "2.1.0",
+  "description": "ReScript bindings for @pulumi/pulumi",
+  "author": "Atos",
+  "license": "MIT",
+  "keywords": [
+    "reasonml",
+    "bucklescript",
+    "bs",
+    "bsb",
+    "pulumi"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.com:reventless/reventless-universe.git"
+  },
+  "publishConfig": {
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+  },
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "test": "echo \"Error: There are no tests for rescript-pulumi-pulumi.\" && exit 1",
+    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "~3.146.0"
+  },
+  "devDependencies": {
+    "rescript": "^11.1.4"
+  },
+  "peerDependencies": {
+    "@rescript/core": "^1.6.0",
+    "@rescript/std": "^11.1.4",
+    "rescript": "^11.1.4"
+  }
+}

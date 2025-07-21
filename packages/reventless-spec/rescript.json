@@ -19,7 +19,7 @@
     }
   ],
   "bs-dependencies": [
-    "@reventless/bs-pulumi-pulumi",
+    "@reventless/rescript-pulumi-pulumi",
     "@rescript-labs/decco",
     "@rescript/core"
   ],
@@ -27,7 +27,7 @@
     "-open RescriptCore"
   ],
   "pinned-dependencies": [
-    "@reventless/bs-pulumi-pulumi"
+    "@reventless/rescript-pulumi-pulumi"
   ],
   "external-stdlib": "@rescript/std"
 }

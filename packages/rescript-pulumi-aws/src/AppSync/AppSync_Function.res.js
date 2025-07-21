@@ -2,7 +2,7 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Output$Pulumi = require("@reventless/rescript-pulumi-pulumi/src/Output.res.js");
 
 function make(name, api, dataSource, requestMappingTemplate, responseMappingTemplate, opts) {
   return new (Aws.appsync.Function)(name, {

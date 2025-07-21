@@ -34,7 +34,7 @@
         "@reventless/rescript-hash-obj",
         "@reventless/rescript-node-streams",
         "@reventless/rescript-pulumi-aws",
-        "@reventless/bs-pulumi-pulumi",
+        "@reventless/rescript-pulumi-pulumi",
         "@reventless/bs-ssh2",
         "@reventless/bs-uuid",
         "@reventless/reventless-spec",
@@ -47,7 +47,7 @@
         "@reventless/rescript-hash-obj",
         "@reventless/rescript-node-streams",
         "@reventless/rescript-pulumi-aws",
-        "@reventless/bs-pulumi-pulumi",
+        "@reventless/rescript-pulumi-pulumi",
         "@reventless/bs-ssh2",
         "@reventless/bs-uuid"
     ],

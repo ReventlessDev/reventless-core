@@ -2,7 +2,7 @@
 'use strict';
 
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Output$Pulumi = require("@reventless/rescript-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 
 function outputToResource(resourceOutput) {

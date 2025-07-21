@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@pulumi/aws": "~6.66.3",
-    "@reventless/bs-pulumi-pulumi": "^2.1.0",
+    "@reventless/rescript-pulumi-pulumi": "^2.1.0",
     "@reventless/rescript-aws-sdk": "^2.1.2",
     "rescript-schema": "^9.3.0"
   },

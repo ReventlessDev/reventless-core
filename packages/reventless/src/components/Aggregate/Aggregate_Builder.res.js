@@ -3,7 +3,7 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Output$Pulumi = require("@reventless/rescript-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Aggregate$Reventless = require("./Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");

@@ -3,7 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Output$Pulumi = require("@reventless/rescript-pulumi-pulumi/src/Output.res.js");
 var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb/QueryDb.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.js");

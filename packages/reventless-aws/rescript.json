@@ -29,7 +29,7 @@
     "@glennsl/rescript-jest",
     "@reventless/rescript-aws-sdk",
     "@reventless/rescript-pulumi-aws",
-    "@reventless/bs-pulumi-pulumi",
+    "@reventless/rescript-pulumi-pulumi",
     "@reventless/reventless-spec",
     "@reventless/reventless",
     "@rescript/core",
@@ -42,7 +42,7 @@
   "pinned-dependencies": [
     "@reventless/rescript-aws-sdk",
     "@reventless/rescript-pulumi-aws",
-    "@reventless/bs-pulumi-pulumi",
+    "@reventless/rescript-pulumi-pulumi",
     "@reventless/reventless-spec",
     "@reventless/reventless"
   ],

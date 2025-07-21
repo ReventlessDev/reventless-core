@@ -18,7 +18,7 @@
   ],
   "bs-dependencies": [
     "@rescript/core",
-    "@reventless/bs-pulumi-pulumi",
+    "@reventless/rescript-pulumi-pulumi",
     "@reventless/rescript-aws-sdk",
     "rescript-schema"
   ],
@@ -27,7 +27,7 @@
     "-open RescriptSchema"
   ],
   "pinned-dependencies": [
-    "@reventless/bs-pulumi-pulumi"
+    "@reventless/rescript-pulumi-pulumi"
   ],
   "external-stdlib": "@rescript/std"
 }
