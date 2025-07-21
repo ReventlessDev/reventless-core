@@ -67,9 +67,11 @@ module CallbackFunction = {
     type functionEnvironment = {variables?: dict<string>}
 
     /**
-      Default node runtime: 18
+      Default node runtime: 22
      */
-    type runtime = | @as("nodejs18.x") NodeJs18
+    type runtime =
+      | @as("nodejs20.x") NodeJs20
+      | @as("nodejs22.x") NodeJs22
 
     type t<'event, 'result> = {
       callback: eventHandler<'event, 'result>,
@@ -87,7 +89,7 @@ module CallbackFunction = {
     }
 
     /**
-      defaults: memorySize=128, timeout=180, runtime=NodeJs18
+      defaults: memorySize=128, timeout=180, runtime=NodeJs22
       */
     let make = (
       ~callback,
@@ -97,7 +99,7 @@ module CallbackFunction = {
       ~tracingConfig=?,
       ~memorySize=128->Pulumi.Input.make,
       ~timeout=180->Pulumi.Input.make,
-      ~runtime=NodeJs18,
+      ~runtime=NodeJs22,
       ~layers=reventlessLayerArn
       ->Option.map(arn => [arn->Pulumi.Input.make])
       ->Option.getOr([])
