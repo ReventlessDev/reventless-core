@@ -11,7 +11,7 @@ var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js")
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
-var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
+var DynamoDb_DocumentClient$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.res.js");
 
 function toJson(x) {

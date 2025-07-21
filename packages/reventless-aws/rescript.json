@@ -27,7 +27,7 @@
   "bs-dependencies": [
     "@rescript-labs/decco",
     "@glennsl/rescript-jest",
-    "@reventless/bs-aws-sdk",
+    "@reventless/rescript-aws-sdk",
     "@reventless/bs-pulumi-aws",
     "@reventless/bs-pulumi-pulumi",
     "@reventless/reventless-spec",
@@ -40,7 +40,7 @@
     "-open RescriptSchema"
   ],
   "pinned-dependencies": [
-    "@reventless/bs-aws-sdk",
+    "@reventless/rescript-aws-sdk",
     "@reventless/bs-pulumi-aws",
     "@reventless/bs-pulumi-pulumi",
     "@reventless/reventless-spec",

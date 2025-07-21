@@ -2,7 +2,7 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
+var SQS$AwsSdk = require("@reventless/rescript-aws-sdk/src/SQS.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Message$Reventless = require("../../Message.res.js");

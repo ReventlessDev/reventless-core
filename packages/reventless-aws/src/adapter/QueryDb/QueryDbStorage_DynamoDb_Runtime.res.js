@@ -9,7 +9,7 @@ var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var Util_Error$Reventless = require("@reventless/reventless/src/util/Util_Error.res.js");
-var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
+var DynamoDb_DocumentClient$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.res.js");
 
 function load(table) {

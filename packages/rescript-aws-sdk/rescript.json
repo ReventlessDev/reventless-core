@@ -1,0 +1,35 @@
+{
+  "name": "@reventless/rescript-aws-sdk",
+  "namespace": "AwsSdk",
+  "suffix": ".res.js",
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    },
+    {
+      "dir": "example",
+      "type": "dev",
+      "subdirs": true
+    }
+  ],
+  "bs-dependencies": [
+    "@rescript/core",
+    "@reventless/bs-node-streams"
+  ],
+  "bsc-flags": [
+    "-open RescriptCore"
+  ],
+  "pinned-dependencies": [
+    "@reventless/bs-node-streams"
+  ],
+  "external-stdlib": "@rescript/std"
+}

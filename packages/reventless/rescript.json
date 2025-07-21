@@ -29,7 +29,7 @@
     "bs-dependencies": [
         "@rescript/core",
         "@glennsl/rescript-jest",
-        "@reventless/bs-aws-sdk",
+        "@reventless/rescript-aws-sdk",
         "@reventless/bs-fast-csv",
         "@reventless/bs-hash-obj",
         "@reventless/bs-node-streams",
@@ -42,7 +42,7 @@
     ],
     "pinned-dependencies": [
         "@reventless/reventless-spec",
-        "@reventless/bs-aws-sdk",
+        "@reventless/rescript-aws-sdk",
         "@reventless/bs-fast-csv",
         "@reventless/bs-hash-obj",
         "@reventless/bs-node-streams",

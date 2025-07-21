@@ -1,0 +1,56 @@
+{
+  "name": "@reventless/rescript-aws-sdk",
+  "version": "2.1.0",
+  "description": "Bucklescript / ReasonML bindings for aws-sdk",
+  "author": "Atos",
+  "license": "MIT",
+  "keywords": [
+    "aws",
+    "sdk",
+    "bucklescript",
+    "reasonml",
+    "bs",
+    "bsb",
+    "reason"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.com:reventless/reventless-universe.git"
+  },
+  "publishConfig": {
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+  },
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'",
+    "test": "echo \"Error: There are no tests for rescript-aws-sdk.\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch-events": "^3.662.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.667.0",
+    "@aws-sdk/client-dynamodb": "^3.662.0",
+    "@aws-sdk/client-ecs": "^3.662.0",
+    "@aws-sdk/client-kinesis": "^3.662.0",
+    "@aws-sdk/client-s3": "^3.658.1",
+    "@aws-sdk/client-secrets-manager": "^3.658.1",
+    "@aws-sdk/client-sesv2": "^3.687.0",
+    "@aws-sdk/client-sns": "^3.658.1",
+    "@aws-sdk/client-sqs": "^3.658.1",
+    "@aws-sdk/lib-dynamodb": "^3.662.0",
+    "@aws-sdk/lib-storage": "^3.658.1",
+    "@reventless/bs-node-streams": "^1.0.0"
+  },
+  "devDependencies": {
+    "@rescript/core": "^1.6.0",
+    "@rescript/std": "^11.1.4",
+    "rescript": "^11.1.4"
+  },
+  "peerDependencies": {
+    "@rescript/core": "^1.6.0",
+    "@rescript/std": "^11.1.4",
+    "rescript": "^11.1.4"
+  }
+}

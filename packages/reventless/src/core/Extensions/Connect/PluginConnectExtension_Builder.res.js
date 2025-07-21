@@ -2,7 +2,7 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.res.js");
+var SNS$AwsSdk = require("@reventless/rescript-aws-sdk/src/SNS.res.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var AWS$Reventless = require("../../../util/AWS.res.js");

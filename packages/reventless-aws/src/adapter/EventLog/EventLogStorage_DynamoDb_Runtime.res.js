@@ -6,7 +6,7 @@ var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
-var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
+var DynamoDb_DocumentClient$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.res.js");
 
 function append(table) {

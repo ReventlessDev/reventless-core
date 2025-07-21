@@ -2,7 +2,7 @@
 'use strict';
 
 var Decco = require("@rescript-labs/decco/src/Decco.res.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
+var SQS$AwsSdk = require("@reventless/rescript-aws-sdk/src/SQS.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");

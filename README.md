@@ -4,7 +4,7 @@ This is a mono-repo, which contains all necessary packages for the Reventless fr
 
 For individual Readmes per package see inside the package's directory `./packages/*`:
 
-- [bs-aws-sdk](packages/bs-aws-sdk/README.md): bindings for `aws-sdk`
+- [rescript-aws-sdk](packages/rescript-aws-sdk/README.md): bindings for `aws-sdk`
 - [bs-fast-csv](packages/bs-fast-csv/README.md): bindings for `fast-csv`
 - [bs-hash-obj](packages/bs-hash-obj/README.md): bindings for `hash-obj`
 - [bs-node-streams](packages/bs-node-streams/README.md): bindings for streams in `node`
@@ -100,9 +100,9 @@ How to read the following table:
 - packages are listed top to bottom
 - dependencies are listed left to right
 
-| Package / dep    | bs-aws-sdk | bs-fast-csv | bs-hash-obj | bs-node-streams | bs-pulumi-aws | bs-pulumi-pulumi | bs-ssh2 | bs-uuid |
+| Package / dep    | rescript-aws-sdk | bs-fast-csv | bs-hash-obj | bs-node-streams | bs-pulumi-aws | bs-pulumi-pulumi | bs-ssh2 | bs-uuid |
 | ---------------- | :--------: | :---------: | :---------: | :-------------: | :-----------: | :--------------: | :-----: | :-----: |
-| bs-aws-sdk       |            |             |             |        x        |               |                  |         |         |
+| rescript-aws-sdk       |            |             |             |        x        |               |                  |         |         |
 | bs-fast-csv      |            |             |             |        x        |               |                  |         |         |
 | bs-hash-obj      |            |             |             |                 |               |                  |         |         |
 | bs-node-streams  |            |             |             |                 |               |                  |         |         |
@@ -116,7 +116,7 @@ Therefore there is a natural order in which package updates should be published:
 
 | 0                | 1             | 2          |
 | ---------------- | ------------- | ---------- |
-| bs-hash-obj      | bs-aws-sdk    | reventless |
+| bs-hash-obj      | rescript-aws-sdk    | reventless |
 | bs-node-streams  | bs-fast-csv   |            |
 | bs-pulumi-pulumi | bs-pulumi-aws |            |
 | bs-uuid          | bs-ssh2       |            |

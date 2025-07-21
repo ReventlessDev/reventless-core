@@ -2,7 +2,7 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var ECS$AwsSdk = require("@reventless/bs-aws-sdk/src/ECS.res.js");
+var ECS$AwsSdk = require("@reventless/rescript-aws-sdk/src/ECS.res.js");
 var ClientEcs = require("@aws-sdk/client-ecs");
 
 function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload, param) {

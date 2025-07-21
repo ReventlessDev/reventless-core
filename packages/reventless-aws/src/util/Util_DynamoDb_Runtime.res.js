@@ -11,7 +11,7 @@ var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var Util_Error$Reventless = require("@reventless/reventless/src/util/Util_Error.res.js");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
-var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
+var DynamoDb_DocumentClient$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 
 function put(table, item) {
   return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({

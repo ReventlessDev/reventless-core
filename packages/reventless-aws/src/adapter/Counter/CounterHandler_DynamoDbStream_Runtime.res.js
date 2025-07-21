@@ -9,7 +9,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
-var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
+var DynamoDb_DocumentClient$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
 async function addToCounterTarget(table, param) {

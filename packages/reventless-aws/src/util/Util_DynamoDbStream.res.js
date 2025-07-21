@@ -11,7 +11,7 @@ var Pulumi = require("@pulumi/pulumi");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var ClientDynamodb = require("@aws-sdk/client-dynamodb");
-var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.res.js");
+var DynamoDb_DynamoDb$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.js");
 var Util_DynamoDb$ReventlessAws = require("./Util_DynamoDb.res.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.res.js");
 

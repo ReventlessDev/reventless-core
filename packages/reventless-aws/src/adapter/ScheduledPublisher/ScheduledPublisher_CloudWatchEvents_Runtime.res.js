@@ -2,7 +2,7 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var CloudWatchEvents$AwsSdk = require("@reventless/bs-aws-sdk/src/CloudWatchEvents.res.js");
+var CloudWatchEvents$AwsSdk = require("@reventless/rescript-aws-sdk/src/CloudWatchEvents.res.js");
 var ClientCloudwatchEvents = require("@aws-sdk/client-cloudwatch-events");
 
 function plural(count) {

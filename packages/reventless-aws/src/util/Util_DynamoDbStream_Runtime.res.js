@@ -6,7 +6,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
-var DynamoDb_Util$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_Util.res.js");
+var DynamoDb_Util$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_Util.res.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
 
 function buildJsonEvent$p(dict) {
