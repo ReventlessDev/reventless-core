@@ -27,7 +27,7 @@
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
-    "@pulumi/pulumi": "~3.146.0"
+    "@pulumi/pulumi": "~3.184.0"
   },
   "devDependencies": {
     "rescript": "^11.1.4"
