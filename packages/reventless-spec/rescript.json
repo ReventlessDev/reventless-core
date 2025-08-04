@@ -3,7 +3,7 @@
   "namespace": "ReventlessSpec",
   "suffix": ".res.js",
   "ppx-flags": [
-    "@rescript-labs/decco/ppx"
+    "sury-ppx/bin"
   ],
   "warnings": {
     "error": "-44+101"
@@ -19,9 +19,9 @@
     }
   ],
   "bs-dependencies": [
-    "@reventless/rescript-pulumi-pulumi",
-    "@rescript-labs/decco",
-    "@rescript/core"
+    "@rescript/core",
+    "sury",
+    "@reventless/rescript-pulumi-pulumi"
   ],
   "bsc-flags": [
     "-open RescriptCore"

@@ -3,10 +3,10 @@ module type Spec = {
 
   let name: string
 
-  @decco
+  @schema
   type command
-  @decco
+  @schema
   type event
-  @decco
+  @schema
   type callCommand
 }

@@ -1,14 +1,14 @@
 module type Source = {
   module Id: Id.T
   let name: string
-  @decco
+  @schema
   type event
 }
 
 module type Target = {
   module Id: Id.T
   let name: string
-  @decco
+  @schema
   type state
   let subIdConfig: option<ReadModel_Spec.subIdConfig<state>>
 }

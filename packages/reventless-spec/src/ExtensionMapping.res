@@ -45,11 +45,11 @@ type mapOutgoingEvent<'aggregateEvent, 'extensionPointCommand, 'extensionPointCa
 module type Spec = {
   let name: string
 
-  @decco
+  @schema
   type command
-  @decco
+  @schema
   type event
-  @decco
+  @schema
   type callCommand
 }
 
@@ -73,7 +73,7 @@ module NoAggregate = {
   let name = "NoAggregate"
 
   module Id = {
-    @decco
+    @schema
     type t = string
     type input = string
     external make: t => t = "%identity"
@@ -82,12 +82,12 @@ module NoAggregate = {
     let cmp = String.compare
   }
 
-  @decco
+  @schema
   type command = unit
 
-  @decco
+  @schema
   type event = unit
 
-  @decco
+  @schema
   type error = unit
 }

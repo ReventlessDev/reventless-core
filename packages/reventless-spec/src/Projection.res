@@ -1,19 +1,19 @@
 module Spec = Projection_Spec
 
-type encode<'a> = 'a => Js.Json.t
-type decode<'a> = Js.Json.t => result<'a, Decco.decodeError>
 module type Mapping = {
   //module Source: Projection_Spec.Source
   //module Target: Projection_Spec.Target // NOTE: to be destructive substituted
   module SourceId: Id.T
+  @schema
   type sourceEvent
+  @schema
   type targetState
+
   let map: Message.event'<string, sourceEvent> => Spec.action<string, targetState>
-  let sourceEvent_decode: decode<sourceEvent> // TODO: is it possible to remove Decco here?
-  let sourceEvent_encode: encode<sourceEvent> // TODO: is it possible to remove Decco here?
+  let sourceEventSchema: S.t<sourceEvent>
   let sourceName: string
   let subIdConfig: option<ReadModel_Spec.subIdConfig<targetState>>
-  let targetState_encode: encode<targetState>
+  let targetStateSchema: S.t<targetState>
 }
 
 module type Mappings = {

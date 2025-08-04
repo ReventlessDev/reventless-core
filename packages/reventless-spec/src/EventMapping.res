@@ -1,14 +1,14 @@
 module type Source = {
   let name: string
   module Id: Id.T
-  @decco
+  @schema
   type event
 }
 
 module type Target = {
   let name: string
   module Id: Id.T
-  @decco
+  @schema
   type command
 }
 
@@ -24,7 +24,7 @@ module type T = {
   module Source: Source
   module Target: Target
   let map: (
-    . Source.Id.t,
+    Source.Id.t,
     Source.event,
     QueryEngine.operations,
   ) => array<action<Target.Id.t, Target.command>>

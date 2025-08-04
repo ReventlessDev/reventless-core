@@ -1,4 +1,4 @@
-@decco
+@schema
 type storageError =
   | NotSavedToStorage(string)
   | NotLoadedFromStorage(string)

@@ -1,7 +1,7 @@
-@decco
+@schema
 type service = string
 
-@decco
+@schema
 type meta = {
   service: service,
   time: string,
@@ -11,13 +11,12 @@ type meta = {
   correlationId: string,
 }
 
-@decco
+@schema
 type context = {
   id: string,
   meta: meta,
 }
 
-@decco
 type event'<'id, 'event> = {
   id: 'id,
   meta: meta,
@@ -26,20 +25,19 @@ type event'<'id, 'event> = {
 
 let invalidEvent = (reason, event) => Js.log4("Invalid Event (", reason, "), Event:", event)
 
-@decco
+@schema
 type statusChange = {
   at: string,
   by: string,
 }
 
-@decco
 type command'<'id, 'command> = {
   id: 'id,
   meta: meta,
   command: 'command,
 }
 
-@decco
+@schema
 type commandJson = {
   id: string,
   meta: meta,

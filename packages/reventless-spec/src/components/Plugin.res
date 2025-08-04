@@ -1,22 +1,22 @@
-@decco
+@schema
 type name = string
-@decco
+@schema
 type version = string
 
-@decco
+@schema
 type extensionPointDefinition = {
   name: string,
   commandTopic: string,
   eventTopic: string,
 }
 
-@decco
+@schema
 type extensionDefinition = {
   name: string,
   extensionPointName: string,
 }
 
-@decco
+@schema
 type pluginDefinition = {
   id: string,
   name: name,

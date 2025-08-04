@@ -1,5 +1,5 @@
 module type T = {
-  @decco
+  @schema
   type t
   type input
   let make: input => t
@@ -9,14 +9,13 @@ module type T = {
 }
 
 module StringPure = {
-  @decco
+  @schema
   type t = string
   type input = string
   external make: t => t = "%identity"
   external makeFromString: string => t = "%identity"
   external toString: t => t = "%identity"
-  let cmp: (t,t) => Ordering.t = String.compare
-
+  let cmp: (t, t) => Ordering.t = String.compare
 }
 
 module String: T = StringPure

@@ -2,24 +2,24 @@ let name = "Core.Plugin"
 
 include Plugin
 
-@decco
+@schema
 type timeout = int // in minutes
 
-@decco
+@schema
 type forwardCommand = {
   extensionPointName: string,
   id: string,
   command: string,
 }
 
-@decco
+@schema
 type command =
   | Heartbeat(timeout)
   | ConnectPlugin(pluginDefinition)
   | DisconnectPlugin
   | ForwardCommand(forwardCommand)
 
-@decco
+@schema
 type event =
   | UnknownPluginDetected
   | PluginConnected(pluginDefinition)
@@ -28,7 +28,7 @@ type event =
   | PluginDeactivated(pluginDefinition)
   | PluginActivated(pluginDefinition)
 
-@decco
+@schema
 type callCommand =
   | CreateDisconnectSchedule(string, timeout)
   | DeleteDisconnectSchedule(string)

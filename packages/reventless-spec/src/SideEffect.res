@@ -1,7 +1,7 @@
 module type Source = {
   let name: string
   module Id: Id.T
-  @decco
+  @schema
   type event
 }
 

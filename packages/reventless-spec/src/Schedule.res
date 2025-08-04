@@ -1,15 +1,15 @@
-@decco
+@schema
 type year = int
-@decco
+@schema
 type month = int
-@decco
+@schema
 type day = int
-@decco
+@schema
 type hour = int
-@decco
+@schema
 type minute = int
 
-@decco
+@schema
 type rate =
   | Single(year, month, day, hour, minute)
   | Minutes(int)
@@ -19,7 +19,7 @@ type rate =
   | Weekdays(hour, minute)
   | WeekdaysAndSaturday(hour, minute)
 
-@decco
+@schema
 type schedule = {
   name: string,
   rate: rate,

@@ -85,7 +85,7 @@ module type T = {
 
   let name: string
 
-  @decco
+  @schema
   type state
 
   let config: config
