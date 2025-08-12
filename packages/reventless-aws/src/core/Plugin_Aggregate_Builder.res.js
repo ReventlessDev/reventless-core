@@ -18,22 +18,18 @@ function Make(Config) {
   var partial_arg$1 = {
     Id: Id$ReventlessSpec.$$String,
     name: PluginSpec$Reventless.name,
-    command_encode: PluginSpec$Reventless.command_encode,
-    command_decode: PluginSpec$Reventless.command_decode,
-    event_encode: PluginSpec$Reventless.event_encode,
-    event_decode: PluginSpec$Reventless.event_decode,
-    error_encode: PluginSpec$Reventless.error_encode,
-    error_decode: PluginSpec$Reventless.error_decode
+    commandSchema: PluginSpec$Reventless.commandSchema,
+    eventSchema: PluginSpec$Reventless.eventSchema,
+    errorSchema: PluginSpec$Reventless.errorSchema
   };
   var partial_arg$2 = Aggregate_Builder_Single$ReventlessAws.Make;
   var param = NoEventMappings$Reventless.Make({
         name: PluginSpec$Reventless.name,
         Id: Id$ReventlessSpec.$$String,
-        command_encode: PluginSpec$Reventless.command_encode,
-        command_decode: PluginSpec$Reventless.command_decode
+        commandSchema: PluginSpec$Reventless.commandSchema
       });
   return partial_arg$2(Config, partial_arg$1, partial_arg, param);
 }
 
 exports.Make = Make;
-/* PluginBehaviour-Reventless Not a pure module */
+/* Id-ReventlessSpec Not a pure module */

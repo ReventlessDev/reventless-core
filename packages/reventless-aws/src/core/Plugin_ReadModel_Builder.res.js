@@ -10,8 +10,7 @@ var ReadModel_Builder_Single$ReventlessAws = require("../components/ReadModel_Bu
 var MappingsType = Projection$Reventless.Mappings.Make({
       Id: Id$ReventlessSpec.$$String,
       name: PluginReadModelSpec$Reventless.name,
-      state_encode: PluginReadModelSpec$Reventless.state_encode,
-      state_decode: PluginReadModelSpec$Reventless.state_decode,
+      stateSchema: PluginReadModelSpec$Reventless.stateSchema,
       subIdConfig: undefined
     });
 
@@ -25,8 +24,7 @@ function Make(Config) {
   var partial_arg = {
     Id: Id$ReventlessSpec.$$String,
     name: PluginReadModelSpec$Reventless.name,
-    state_encode: PluginReadModelSpec$Reventless.state_encode,
-    state_decode: PluginReadModelSpec$Reventless.state_decode,
+    stateSchema: PluginReadModelSpec$Reventless.stateSchema,
     config: PluginReadModelSpec$Reventless.config,
     subIdConfig: undefined
   };

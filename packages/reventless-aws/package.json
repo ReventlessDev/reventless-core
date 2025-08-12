@@ -34,11 +34,11 @@
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.11.0",
-    "rescript": "^11.1.4",
-    "rescript-schema-ppx": "^9.0.1"
+    "sury": "^10.0.4",
+    "sury-ppx": "^10.0.0",
+    "rescript": "^11.1.4"
   },
   "peerDependencies": {
-    "@rescript-labs/decco": "2.0.4",
     "@rescript/core": "^1.6.0",
     "@rescript/std": "^11.1.4",
     "rescript": "^11.1.4"

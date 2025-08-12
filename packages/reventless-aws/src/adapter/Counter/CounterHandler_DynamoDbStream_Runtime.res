@@ -41,7 +41,7 @@ let addToCounterTarget = async (
   }
 }
 
-@decco
+@schema
 type referencesView = {
   id: string,
   inc: int,
@@ -78,9 +78,11 @@ let handleStreamEvent = (
   let references = referenceRecords->Array.filterMap(record =>
     switch record->parseDynamoDbStreamRecordState {
     | NewImage(id, newImage) =>
-      let inc = switch newImage->referencesView_decode {
-      | Ok({inc}) => inc
-      | _ => 1
+      let inc = switch newImage->S.parseJsonOrThrow(referencesViewSchema) {
+      | {inc} => inc
+      | exception err =>
+        Js.log3(__MODULE__ ++ " (references): error parsing newImage:", newImage, err)
+        1
       }
       Some((id, inc))
     | NewAndOldImage(id, _, _) =>
