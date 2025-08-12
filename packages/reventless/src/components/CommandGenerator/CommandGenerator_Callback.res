@@ -41,12 +41,11 @@ module Make = (
     params[0] = Js.Json.string(payload.command)
     let commandJson = params->Js.Json.array
     Js.log2("CommandGenerator: generated command:", commandJson)
-    let decodedCommand = commandJson->Behaviour.resolverConfig.commandDecoder
-    switch decodedCommand {
-    | Ok(_) =>
+    switch commandJson->Message.decode(Behaviour.resolverConfig.commandSchema) {
+    | _ =>
       await Spec.publishJsons([{id, meta, commandJson, delay: None}])
       meta.msgId
-    | Error(err) =>
+    | exception err =>
       Js.Exn.raiseError(
         `Error: Couldn't decode ${params
           ->Array.map(param => param->Js.Json.stringify)

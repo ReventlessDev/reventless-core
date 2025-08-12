@@ -15,7 +15,7 @@ module Make = (
     module ReferencesSpec = {
       module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "References"
-      @decco
+      @schema
       type state = Counter_Operations.referencesState
 
       let subIdConfig = None
@@ -32,7 +32,7 @@ module Make = (
     module CountsSpec = {
       module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "Counts"
-      @decco
+      @schema
       type state = Counter_Callback.countsState
 
       let subIdConfig = None
@@ -97,6 +97,6 @@ module Make = (
       ~componentType=Counter.componentType->ComponentType.toString,
       ~name=name->ComponentType.name(Counter.componentType),
       ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl), ...),
-      ~opts,
+      ~opts
     )
 }

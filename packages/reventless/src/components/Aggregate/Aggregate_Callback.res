@@ -17,8 +17,8 @@ module Make = (
   module Spec = Spec
 
   let errorHandler = (error, command, context: Message.context) => {
-    let errorJson = error->Spec.error_encode->Js.Json.stringify
-    let commandJsonStr = command->Spec.command_encode->Js.Json.stringify
+    let errorJson = error->Message.encode(Spec.errorSchema)->Js.Json.stringify
+    let commandJsonStr = command->Message.encode(Spec.commandSchema)->Js.Json.stringify
     let serviceName = Spec.name
     let id = context.id
     Logger.error(
@@ -32,7 +32,7 @@ module Make = (
   @inline
   let eventName: Message.event'<Spec.Id.t, Spec.event> => string = event' =>
     event'.event
-    ->Spec.event_encode
+    ->Message.encode(Spec.eventSchema)
     ->Message.variantNameOfJson
 
   let groupTopicItemsById = (
@@ -121,7 +121,7 @@ module Make = (
         ->Array.map(({command}) =>
           command->Message.commandJsonOfCommand'(
             ~idToString=Spec.Id.toString,
-            ~commandEncode=Spec.command_encode,
+            ~commandSchema=Spec.commandSchema,
           )
         )
         ->Logger.logCmdJsons(~loc=__LOC__, "Handling command")

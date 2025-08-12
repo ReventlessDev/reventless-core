@@ -83,7 +83,7 @@ let debug = log(~level=Level.Debug, ...)
 let commandJsonToLogMessage: Message.commandJson => string = ({id, meta, commandJson}) => {
   let commandName = commandJson->Message.variantNameOfJson
   let commandStr = commandJson->Js.Json.stringify
-  let metaStr = meta->ReventlessSpec.Message.meta_encode->Js.Json.stringify
+  let metaStr = meta->Message.encode(Message.metaSchema)->Js.Json.stringify
   `${commandName}(${id}): {"command":${commandStr},"meta":${metaStr},"id":${id}}`
 }
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {

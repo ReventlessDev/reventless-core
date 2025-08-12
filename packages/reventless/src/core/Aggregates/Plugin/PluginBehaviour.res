@@ -3,7 +3,7 @@ open ReventlessSpec.Plugin
 
 module Spec = PluginSpec
 
-@decco
+@schema
 type state =
   | Detected
   | Connected(pluginDefinition)
@@ -11,9 +11,8 @@ type state =
   | Inactive(pluginDefinition)
 
 let resolverConfig = {
-  open Behaviour
   {
-    commandDecoder: command_decode,
+    Behaviour.commandSchema,
     fields: ["Plugin_Activate", "Plugin_Deactivate"],
   }
 }
@@ -77,7 +76,7 @@ let init: Behaviour.init<state, event> = event =>
   | Disconnected(_)
   | Activated(_)
   | Deactivated(_) =>
-    raise(Message.InvalidEvent(event_encode(event)))
+    raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
 let apply: Behaviour.apply<state, event> = (state: state, event) =>
@@ -90,7 +89,7 @@ let apply: Behaviour.apply<state, event> = (state: state, event) =>
     | Disconnected(_)
     | Activated(_)
     | Deactivated(_) =>
-      raise(Message.InvalidEvent(event_encode(event)))
+      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Connected(pluginDefinition) =>
     switch event {
@@ -100,7 +99,7 @@ let apply: Behaviour.apply<state, event> = (state: state, event) =>
     | Connected(_)
     | Reconnected(_)
     | Activated(_) =>
-      raise(Message.InvalidEvent(event_encode(event)))
+      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Disconnected(pluginDefinition) =>
     switch event {
@@ -110,7 +109,7 @@ let apply: Behaviour.apply<state, event> = (state: state, event) =>
     | Connected(_)
     | Disconnected(_)
     | Activated(_) =>
-      raise(Message.InvalidEvent(event_encode(event)))
+      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Inactive(pluginDefinition) =>
     switch event {
@@ -120,6 +119,6 @@ let apply: Behaviour.apply<state, event> = (state: state, event) =>
     | Reconnected(_)
     | Disconnected(_)
     | Deactivated(_) =>
-      raise(Message.InvalidEvent(event_encode(event)))
+      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   }

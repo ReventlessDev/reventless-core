@@ -14,7 +14,7 @@ exception NotPublishedToPublisher(Js.Promise.error)
 module type Spec = {
   module Id: ReventlessSpec.Id.T
 
-  @decco
+  @schema
   type event
 }
 

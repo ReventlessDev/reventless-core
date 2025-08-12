@@ -3,6 +3,7 @@
 
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("./Message.res.js");
 
 function Make(Spec, MappingImpl) {
@@ -19,7 +20,7 @@ function Make(Spec, MappingImpl) {
                               if (x.TAG === "PublishCommand") {
                                 var aggregateCmd = x._1;
                                 var aggregateId = x._0;
-                                var commandStr = JSON.stringify(Aggregate.command_encode(aggregateCmd));
+                                var commandStr = JSON.stringify(Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema));
                                 console.log("ExtensionPointMapping incoming from ExtensionPoint " + extensionPointName + " to Aggregate " + aggregateName + ": Publishing command: " + commandStr + " id: " + aggregateId);
                                 return {
                                         TAG: "AbstractPublishCommand",
@@ -35,14 +36,14 @@ function Make(Spec, MappingImpl) {
                                             msgId: Message$Reventless.uuid(),
                                             correlationId: meta.correlationId
                                           },
-                                          commandJson: Aggregate.command_encode(aggregateCmd),
+                                          commandJson: Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema),
                                           delay: undefined
                                         }
                                       };
                               }
                               var callCommand = x._1;
                               var handler = x._0;
-                              console.log("ExtensionPointMapping incoming from ExtensionPoint " + extensionPointName + ": Handling call command", JSON.stringify(Spec.callCommand_encode(callCommand)));
+                              console.log("ExtensionPointMapping incoming from ExtensionPoint " + extensionPointName + ": Handling call command", JSON.stringify(Message$Reventless.encode(callCommand, Spec.callCommandSchema)));
                               return {
                                       TAG: "AbstractCall",
                                       _0: reference,
@@ -55,70 +56,73 @@ function Make(Spec, MappingImpl) {
   };
   var mapOutgoingEvent = Core__Option.map(MappingImpl.mapOutgoingEvent, (function (mapOutgoingEventImpl) {
           return function (extra, extra$1, extra$2, extra$3) {
-            var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, extra);
-            if (err.TAG === "Ok") {
-              var match = err._0;
-              var meta = match.meta;
-              return mapOutgoingEventImpl(Aggregate.Id.toString(match.id), match.event, meta, extra$3).map(function (eventAction) {
-                          switch (eventAction.TAG) {
-                            case "PublishEvent" :
-                                var id = eventAction._0;
-                                var eventJson = Spec.event_encode(eventAction._1);
-                                console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
-                                var meta_service = Spec.name;
-                                var meta_time = meta.time;
-                                var meta_ip = meta.ip;
-                                var meta_user = meta.user;
-                                var meta_msgId = Message$Reventless.uuid();
-                                var meta_correlationId = meta.correlationId;
-                                var meta$1 = {
-                                  service: meta_service,
-                                  time: meta_time,
-                                  ip: meta_ip,
-                                  user: meta_user,
-                                  msgId: meta_msgId,
-                                  correlationId: meta_correlationId
-                                };
-                                var eventJson$p = Message$Reventless.composeEventJson$p(id, meta$1, eventJson);
-                                return {
-                                        TAG: "AbstractPublishEvent",
-                                        _0: id,
-                                        _1: meta$1,
-                                        _2: eventJson$p
-                                      };
-                            case "PublishEventAsync" :
-                                var toEvent$p = async function (promise) {
-                                  var match = await promise;
-                                  var id = match[0];
-                                  var eventJson = Spec.event_encode(match[1]);
-                                  console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
-                                  var eventJson$p = Message$Reventless.composeEventJson$p(id, meta, eventJson);
-                                  return [
-                                          id,
-                                          meta,
-                                          eventJson$p
-                                        ];
-                                };
-                                return {
-                                        TAG: "AbstractPublishEventAsync",
-                                        _0: toEvent$p(eventAction._0)
-                                      };
-                            case "Call" :
-                                var msg = eventAction._1;
-                                var handler = eventAction._0;
-                                console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Spec.callCommand_encode(msg)));
-                                return {
-                                        TAG: "AbstractCall",
-                                        _0: (function () {
-                                            return handler(extra$1, extra$2, extra$3, msg);
-                                          })
-                                      };
-                            
-                          }
-                        });
+            var val;
+            try {
+              val = Message$Reventless.decodeEvent$p(extra, Aggregate.Id.schema, Aggregate.eventSchema);
             }
-            console.log("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err._0);
-            return [];
+            catch (raw_err){
+              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+              console.log("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err);
+              return [];
+            }
+            var meta = val.meta;
+            return mapOutgoingEventImpl(Aggregate.Id.toString(val.id), val.event, meta, extra$3).map(function (eventAction) {
+                        switch (eventAction.TAG) {
+                          case "PublishEvent" :
+                              var id = eventAction._0;
+                              var eventJson = Message$Reventless.encode(eventAction._1, Spec.eventSchema);
+                              console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
+                              var meta_service = Spec.name;
+                              var meta_time = meta.time;
+                              var meta_ip = meta.ip;
+                              var meta_user = meta.user;
+                              var meta_msgId = Message$Reventless.uuid();
+                              var meta_correlationId = meta.correlationId;
+                              var meta$1 = {
+                                service: meta_service,
+                                time: meta_time,
+                                ip: meta_ip,
+                                user: meta_user,
+                                msgId: meta_msgId,
+                                correlationId: meta_correlationId
+                              };
+                              var eventJson$p = Message$Reventless.composeEventJson$p(id, meta$1, eventJson);
+                              return {
+                                      TAG: "AbstractPublishEvent",
+                                      _0: id,
+                                      _1: meta$1,
+                                      _2: eventJson$p
+                                    };
+                          case "PublishEventAsync" :
+                              var toEvent$p = async function (promise) {
+                                var match = await promise;
+                                var id = match[0];
+                                var eventJson = Message$Reventless.encode(match[1], Spec.eventSchema);
+                                console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
+                                var eventJson$p = Message$Reventless.composeEventJson$p(id, meta, eventJson);
+                                return [
+                                        id,
+                                        meta,
+                                        eventJson$p
+                                      ];
+                              };
+                              return {
+                                      TAG: "AbstractPublishEventAsync",
+                                      _0: toEvent$p(eventAction._0)
+                                    };
+                          case "Call" :
+                              var callCmd = eventAction._1;
+                              var handler = eventAction._0;
+                              console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Message$Reventless.encode(callCmd, Spec.callCommandSchema)));
+                              return {
+                                      TAG: "AbstractCall",
+                                      _0: (function () {
+                                          return handler(extra$1, extra$2, extra$3, callCmd);
+                                        })
+                                    };
+                          
+                        }
+                      });
           };
         }));
   return {
@@ -129,4 +133,4 @@ function Make(Spec, MappingImpl) {
 }
 
 exports.Make = Make;
-/* Message-Reventless Not a pure module */
+/* Id-ReventlessSpec Not a pure module */

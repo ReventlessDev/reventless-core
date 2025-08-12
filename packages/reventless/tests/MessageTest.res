@@ -2,6 +2,8 @@ open Jest
 open Expect
 open Message
 
+type event = event'<string, PluginSpec.event>
+
 describe("Message should", () => {
   test("create a valid sequenceNr", () => {
     let now = 123456789.
@@ -11,7 +13,7 @@ describe("Message should", () => {
 
   test("get variant name of json without payload", () => {
     let variant = PluginSpec.Heartbeat
-    let variantJson = variant->PluginSpec.command_encode
+    let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)
 
     expect(variantName)->toBe("Heartbeat")
@@ -32,7 +34,7 @@ describe("Message should", () => {
       extensions: [{name: "testExtension", extensionPointName: "testExtensionPoint"}],
       eventCollector: "testEventCollector",
     })
-    let variantJson = variant->PluginSpec.command_encode
+    let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)
 
     let expected = "Connect"
@@ -42,7 +44,7 @@ describe("Message should", () => {
 
   test("get event name of eventJson'", () => {
     open PluginSpec
-    let event': event'<string, event> = {
+    let event' = {
       id: "testId",
       meta: {
         service: "testService",
@@ -54,7 +56,7 @@ describe("Message should", () => {
       },
       event: UnknownPluginDetected,
     }
-    let eventJson': Js.Json.t = event'->(event'_encode(Decco.stringToJson, event_encode, _))
+    let eventJson' = event'->Message.encodeEvent'(S.string, PluginSpec.eventSchema)
     let eventName = eventJson'->eventNameOfEvent'Json
 
     expect(eventName)->toBe("UnknownPluginDetected")
@@ -62,7 +64,7 @@ describe("Message should", () => {
 
   test("get id of eventJson'", () => {
     open PluginSpec
-    let event': event'<string, event> = {
+    let event' = {
       id: "testId",
       meta: {
         service: "testService",
@@ -74,7 +76,7 @@ describe("Message should", () => {
       },
       event: UnknownPluginDetected,
     }
-    let eventJson': Js.Json.t = event'->(event'_encode(Decco.stringToJson, event_encode, _))
+    let eventJson' = event'->Message.encodeEvent'(S.string, PluginSpec.eventSchema)
     let eventId = idOfEvent'Json(eventJson')->Option.getExn
 
     expect(eventId)->toBe("testId")

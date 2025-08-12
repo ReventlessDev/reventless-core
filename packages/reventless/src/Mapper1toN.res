@@ -19,9 +19,9 @@
 //   module Spec: Spec; // to be removed via destructive replace in functor call
 //   module Source: GenericSource;
 //   module Target: GenericTarget;
-//   [@decco]
+//   [@schema]
 //   type source;
-//   [@decco]
+//   [@schema]
 //   type target;
 //   let map: (source, ReventlessSpec.Message.context) => Spec.action(target);
 // };

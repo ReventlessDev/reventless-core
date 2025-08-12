@@ -12,17 +12,20 @@ function Make(Spec, Ops) {
     Logger$Reventless.debug("File \"CommandTopic_Callback.res\", line 12, characters 22-29", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
     var topicItems = Core__Array.filterMap(jsonItems, (function (param) {
             var json = param.command;
-            var command$p = (function (__x) {
-                  return Message$Reventless.command$p_decode(Spec.Id.t_decode, Spec.command_decode, __x);
-                })(json);
-            if (command$p.TAG === "Ok") {
-              return {
-                      command: command$p._0,
-                      reference: param.reference
-                    };
+            var command$p;
+            try {
+              command$p = Message$Reventless.decodeCommand$p(json, Spec.Id.schema, Spec.commandSchema);
             }
-            var commandStr = JSON.stringify(json);
-            Logger$Reventless.error("File \"CommandTopic_Callback.res\", line 21, characters 26-33", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
+            catch (raw_err){
+              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+              var commandStr = JSON.stringify(json);
+              Logger$Reventless.error("File \"CommandTopic_Callback.res\", line 21, characters 26-33", undefined, undefined, "Couldn't decode command " + commandStr + ":", err);
+              return ;
+            }
+            return {
+                    command: command$p,
+                    reference: param.reference
+                  };
           }));
     var res;
     try {

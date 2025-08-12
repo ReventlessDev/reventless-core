@@ -3,10 +3,10 @@ module type Spec = {
 }
 
 module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
-  let decode = (id, item) =>
-    switch ReadModelSpec.state_decode(item) {
-    | Ok(state) => [state]
-    | Error(err) =>
+  let decode = (id, stateJson) =>
+    switch stateJson->Message.decode(ReadModelSpec.stateSchema) {
+    | state => [state]
+    | exception err =>
       Js.log(
         `QueryDb: Error: Couldn't decode state for ${id->ReadModelSpec.Id.toString}: ${err
           ->Js.Json.stringifyAny
@@ -22,9 +22,9 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
     }
 
   let save = async (id, state, saveMode, ttl) =>
-    switch state->ReadModelSpec.state_encode->Js.Json.decodeObject {
+    switch state->Message.encode(ReadModelSpec.stateSchema)->Js.Json.decodeObject {
     | Some(dict) =>
-      dict->Js.Dict.set("id", ReadModelSpec.Id.t_encode(id))
+      dict->Js.Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
       let json = Js.Json.object_(dict)
       await Spec.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
@@ -32,11 +32,11 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
       Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
     }
 
-  let saveBatch = async items => {
-    let batch = items->Array.filterMap(((id, state, ttl)) =>
-      switch state->ReadModelSpec.state_encode->Js.Json.decodeObject {
+  let saveBatch = async states => {
+    let batch = states->Array.filterMap(((id, state, ttl)) =>
+      switch state->Message.encode(ReadModelSpec.stateSchema)->Js.Json.decodeObject {
       | Some(dict) =>
-        dict->Js.Dict.set("id", ReadModelSpec.Id.t_encode(id))
+        dict->Js.Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
         let json = Js.Json.object_(dict)
         Some((id->ReadModelSpec.Id.toString, json, ttl))
       | None =>

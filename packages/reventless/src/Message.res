@@ -1,14 +1,14 @@
 module type Service = {
   module Id: ReventlessSpec.Id.T
 
-  @decco
+  @schema
   type id = Id.t
 
-  @decco
+  @schema
   type command
-  @decco
+  @schema
   type event
-  @decco
+  @schema
   type error
 
   let name: string
@@ -16,7 +16,38 @@ module type Service = {
 
 include ReventlessSpec.Message
 
+let decode = (json, schema: S.t<'a>) => json->S.parseJsonOrThrow(schema)
+let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(schema)
+
+let toEventSchema' = (idSchema, eventSchema) =>
+  S.object(s => {
+    id: s.field("id", idSchema),
+    meta: s.field("meta", metaSchema),
+    event: s.field("event", eventSchema),
+  })
+let toCommandSchema' = (idSchema, commandSchema) =>
+  S.object(s => {
+    id: s.field("id", idSchema),
+    meta: s.field("meta", metaSchema),
+    command: s.field("command", commandSchema),
+  })
+
+let decodeEvent' = (json, idSchema, eventSchema) =>
+  json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+let decodeCommand' = (json, idSchema, commandSchema) =>
+  json->S.parseJsonOrThrow(toCommandSchema'(idSchema, commandSchema))
+
+let encodeEvent' = (event', idSchema, eventSchema) =>
+  event'->S.reverseConvertToJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+let encodeCommand' = (command', idSchema, commandSchema) =>
+  command'->S.reverseConvertToJsonOrThrow(toCommandSchema'(idSchema, commandSchema))
+
 let uuid = Uuid.v4
+
+let log: ('a, string) => 'a = (value, str) => {
+  Js.log2(str, value)
+  value
+}
 
 let now = () => Js.Date.make()->Js.Date.getTime
 
@@ -26,7 +57,11 @@ type handler<'msg> = 'msg => Js.Promise.t<unit>
 
 let toMessageBody = ({id, meta, commandJson}) => {
   let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()}
-  [("id", id->Js.Json.string), ("meta", commandMeta->meta_encode), ("command", commandJson)]
+  [
+    ("id", id->Js.Json.string),
+    ("meta", commandMeta->S.reverseConvertToJsonOrThrow(metaSchema)),
+    ("command", commandJson),
+  ]
   ->Js.Dict.fromArray
   ->Js.Json.object_
   ->Js.Json.stringify
@@ -41,31 +76,30 @@ let serviceNameOfMsg = msgJson =>
   | Some(msgObj) =>
     msgObj
     ->Js.Dict.get("meta")
-    ->Option.map(meta_decode)
-    ->(
-      x =>
-        switch x {
-        | Some(Ok(msgMeta)) => Some(msgMeta.service)
-        | Some(Error(err)) =>
-          Js.log2("Message.serviceNameOfMsg: Couldn't decode meta:", err)
-          None
-        | _ =>
-          Js.log("Message.serviceNameOfMsg: Invalid JSON object")
-          None
-        }
+    ->Option.flatMap(meta =>
+      switch meta->S.parseJsonOrThrow(metaSchema) {
+      | msgMeta => Some(msgMeta.service)
+      | exception err =>
+        Js.log2("Message.serviceNameOfMsg: Couldn't parse meta:", err)
+        None
+      }
     )
-
   | None =>
     Js.log2("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson)
     None
   }
 
-let variantNameOfJson = json =>
-  json
-  ->Js.Json.decodeArray
-  ->Option.flatMap(evtArr => evtArr->Array.get(0))
-  ->Option.flatMap(evt => evt->Js.Json.decodeString)
-  ->Option.getOr("unknown")
+let variantNameOfJson = json => {
+  switch json->Js.Json.classify {
+  | JSONString(str) => str
+  | JSONObject(dict) =>
+    switch dict->Js.Dict.get("TAG") {
+    | Some(String(tag)) => tag
+    | _ => "unknown"
+    }
+  | _ => "unknown"
+  }
+}
 
 // TODO: group all functions on event`Json into submodule with the according type
 
@@ -120,11 +154,6 @@ exception InvalidCommand(Js.Json.t)
 @val @scope("JSON") @deprecated("use Js.Json.stringify() or Js.Json.stringifyAny()")
 external stringify: _ => string = "stringify"
 
-let log: ('a, string) => 'a = (value, str) => {
-  Js.log2(str, value)
-  value
-}
-
 type hrtime = (int, int)
 @val @scope("process") external hrtime: unit => hrtime = "hrtime"
 
@@ -147,12 +176,16 @@ let generateMeta = (~service, ~ip="", ~user="unknown") => {
 }
 
 let decomposeMeta = meta =>
-  meta->meta_encode->Js.Json.decodeObject->Js.Option.getExn->Js.Dict.entries
+  meta
+  ->S.reverseConvertToJsonOrThrow(metaSchema)
+  ->Js.Json.decodeObject
+  ->Js.Option.getExn
+  ->Js.Dict.entries
 
 let composeEventJson' = (id, meta, eventJson) =>
   [
     ("id", id->Js.Json.string),
-    ("meta", meta->ReventlessSpec.Message.meta_encode),
+    ("meta", meta->S.reverseConvertToJsonOrThrow(metaSchema)),
     ("event", eventJson),
   ]
   ->Js.Dict.fromArray
@@ -177,18 +210,18 @@ let composeMeta = (dict: dict<Js.Json.t>) =>
   ->Js.Dict.fromArray
   ->Js.Json.object_
 
-type decoder<'a> = Js.Json.t => result<'a, Decco.decodeError>
-type encoder<'a> = 'a => Js.Json.t
+// type decoder<'a> = Js.Json.t => result<'a, Decco.decodeError>
+// type encoder<'a> = 'a => Js.Json.t
 
 let commandJsonOfCommand': (
   ~idToString: 'id => string,
-  ~commandEncode: 'command => Js.Json.t,
+  ~commandSchema: S.t<'command>,
   command'<'id, 'command>,
-) => commandJson = (~idToString, ~commandEncode, cmd) => {
+) => commandJson = (~idToString, ~commandSchema, cmd) => {
   {
     id: cmd.id->idToString,
     meta: cmd.meta,
-    commandJson: cmd.command->commandEncode,
+    commandJson: cmd.command->encode(commandSchema),
     delay: None,
   }
 }

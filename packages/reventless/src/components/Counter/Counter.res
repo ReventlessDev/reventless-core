@@ -26,13 +26,13 @@ type action =
   | Count(countItem)
   | AddToCounterTarget(counterTargetRef)
 
-@decco
+@schema
 type counterEvent = CountFinished
 
 module Source = {
   module Id = ReventlessSpec.Id.String
   let name = ComponentType.Counter->ComponentType.toName
-  @decco
+  @schema
   type event = counterEvent
 }
 

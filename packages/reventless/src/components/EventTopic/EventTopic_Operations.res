@@ -7,11 +7,8 @@ module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
     let eventCount = events'->Array.length
     await events'
     ->Array.mapWithIndex(async (event', idx) => {
-      let eventJson' = Message.event'_encode(
-        EventTopicSpec.Id.t_encode,
-        EventTopicSpec.event_encode,
-        event',
-      )
+      let eventJson' =
+        event'->Message.encodeEvent'(EventTopicSpec.Id.schema, EventTopicSpec.eventSchema)
 
       let id = event'.id
       let idx = idx + 1

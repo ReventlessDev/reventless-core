@@ -136,19 +136,19 @@ module Make = (
    TODO: The following functions were unused and are due to be deleted:
      let logSourceEvents = events =>
        events->Array.forEachWithIndex((event, idx) => {
-         let eventStr = event->Source.event_encode;
+         let eventStr = event->Message.encode(Source.eventSchema);
          Js.log({j|Source event[$idx]: $eventStr|j});
        });
      let logTargetCommands = commands => {
        commands->Array.forEachWithIndex(((id, command), idx) => {
-         let commandStr = command->Target.command_encode;
+         let commandStr = command->Message.encode(Target.commandSchema);
          Js.log({j|Target command[$idx]: $commandStr id:$id|j});
        });
        commands;
      };
      let logTargetEvents = events =>
        events->Array.forEachWithIndex((event, idx) => {
-         let eventStr = event->Target.event_encode;
+         let eventStr = event->Message.encode(Target.eventSchema);
          Js.log({j|  new Target event[$idx]: $eventStr|j});
        });
      let logTargetEventsDict = (events, prefix) =>
@@ -156,7 +156,7 @@ module Make = (
        ->Js.Dict.entries
        ->Array.forEachWithIndex(((id, events), idx1) =>
            events->Array.forEachWithIndex((event, idx2) => {
-             let eventStr = event->Target.event_encode;
+             let eventStr = event->Message.encode(Target.eventSchema);
              Js.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
            })
          );

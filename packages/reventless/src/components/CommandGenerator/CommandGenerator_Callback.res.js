@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
 
 function Make(Spec, AggregateSpec, Behaviour) {
@@ -30,11 +31,15 @@ function Make(Spec, AggregateSpec, Behaviour) {
     var params = argumentsJson !== undefined ? Js_dict.values(argumentsJson) : Js_exn.raiseError("Couldn't decode:" + Core__Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
     params[0] = payload.command;
     console.log("CommandGenerator: generated command:", params);
-    var decodedCommand = Behaviour.resolverConfig.commandDecoder(params);
-    if (decodedCommand.TAG !== "Ok") {
+    var val;
+    try {
+      val = Message$Reventless.decode(params, Behaviour.resolverConfig.commandSchema);
+    }
+    catch (raw_err){
+      var err = Caml_js_exceptions.internalToOCamlException(raw_err);
       return Js_exn.raiseError("Error: Couldn't decode " + params.map(function (param) {
                         return JSON.stringify(param);
-                      }).join(", ") + ": " + Core__Option.getExn(JSON.stringify(decodedCommand._0), undefined));
+                      }).join(", ") + ": " + Core__Option.getExn(JSON.stringify(err), undefined));
     }
     await Spec.publishJsons([{
             id: id,

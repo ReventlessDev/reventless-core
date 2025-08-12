@@ -5,15 +5,21 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Core__Result = require("@rescript/core/src/Core__Result.res.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
+var Message$Reventless = require("../../Message.res.js");
 
 function Make(ReadModelSpec, Spec) {
-  var decode = function (id, item) {
-    var state = ReadModelSpec.state_decode(item);
-    if (state.TAG === "Ok") {
-      return [state._0];
+  var decode = function (id, stateJson) {
+    var state;
+    try {
+      state = Message$Reventless.decode(stateJson, ReadModelSpec.stateSchema);
     }
-    console.log("QueryDb: Error: Couldn't decode state for " + ReadModelSpec.Id.toString(id) + ": " + Core__Option.getExn(JSON.stringify(state._0), undefined));
-    return [];
+    catch (raw_err){
+      var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+      console.log("QueryDb: Error: Couldn't decode state for " + ReadModelSpec.Id.toString(id) + ": " + Core__Option.getExn(JSON.stringify(err), undefined));
+      return [];
+    }
+    return [state];
   };
   var load = async function (id) {
     var result = await Spec.jsonOps.load(ReadModelSpec.Id.toString(id));
@@ -24,9 +30,9 @@ function Make(ReadModelSpec, Spec) {
                 }));
   };
   var save = async function (id, state, saveMode, ttl) {
-    var dict = Js_json.decodeObject(ReadModelSpec.state_encode(state));
+    var dict = Js_json.decodeObject(Message$Reventless.encode(state, ReadModelSpec.stateSchema));
     if (dict !== undefined) {
-      dict["id"] = ReadModelSpec.Id.t_encode(id);
+      dict["id"] = Message$Reventless.encode(id, ReadModelSpec.Id.schema);
       return await Spec.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
     } else {
       console.log("QueryDB.saveState: Error: Couldn't decodeObject:", JSON.stringify(state));
@@ -39,13 +45,13 @@ function Make(ReadModelSpec, Spec) {
             };
     }
   };
-  var saveBatch = async function (items) {
-    var batch = Core__Array.filterMap(items, (function (param) {
+  var saveBatch = async function (states) {
+    var batch = Core__Array.filterMap(states, (function (param) {
             var state = param[1];
             var id = param[0];
-            var dict = Js_json.decodeObject(ReadModelSpec.state_encode(state));
+            var dict = Js_json.decodeObject(Message$Reventless.encode(state, ReadModelSpec.stateSchema));
             if (dict !== undefined) {
-              dict["id"] = ReadModelSpec.Id.t_encode(id);
+              dict["id"] = Message$Reventless.encode(id, ReadModelSpec.Id.schema);
               return [
                       ReadModelSpec.Id.toString(id),
                       dict,
@@ -85,4 +91,4 @@ function Make(ReadModelSpec, Spec) {
 }
 
 exports.Make = Make;
-/* No side effect */
+/* Message-Reventless Not a pure module */

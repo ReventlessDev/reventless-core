@@ -13,8 +13,8 @@ var Message$Reventless = require("../../Message.res.js");
 
 function Make(Spec, Behaviour, Ops) {
   var errorHandler = function (error, command, context) {
-    var errorJson = JSON.stringify(Spec.error_encode(error));
-    var commandJsonStr = JSON.stringify(Spec.command_encode(command));
+    var errorJson = JSON.stringify(Message$Reventless.encode(error, Spec.errorSchema));
+    var commandJsonStr = JSON.stringify(Message$Reventless.encode(command, Spec.commandSchema));
     var id = context.id;
     Logger$Reventless.error("File \"Aggregate_Callback.res\", line 25, characters 11-18", undefined, undefined, "Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: ", commandJsonStr);
     return [];
@@ -113,7 +113,7 @@ function Make(Spec, Behaviour, Ops) {
                         };
                         Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 115, characters 26-33", undefined, undefined, "finished eventLogReplay for id", id);
                         Logger$Reventless.logCmdJsons("File \"Aggregate_Callback.res\", line 127, characters 34-41", undefined, topicItemsForId.map(function (param) {
-                                  return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
+                                  return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command);
                                 }), "Handling command");
                         var match = Belt_Array.unzip(topicItemsForId.map(function (param) {
                                   return [
@@ -143,7 +143,7 @@ function Make(Spec, Behaviour, Ops) {
                         if (events.length !== 0) {
                           var eventCount = events.length.toString();
                           Logger$Reventless.debug(undefined, undefined, undefined, "Aggregate.handleCommands(" + Spec.Id.toString(id) + "): " + eventCount + " Event(s) generated:", events.map(function (event$p) {
-                                    return Message$Reventless.variantNameOfJson(Spec.event_encode(event$p.event));
+                                    return Message$Reventless.variantNameOfJson(Message$Reventless.encode(event$p.event, Spec.eventSchema));
                                   }));
                           var match$1 = await Ops.eventLog.append(history.length, id, events);
                           if (match$1.TAG === "Ok") {

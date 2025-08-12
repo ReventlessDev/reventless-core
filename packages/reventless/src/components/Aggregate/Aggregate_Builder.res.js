@@ -18,13 +18,11 @@ var CommandGenerator_Builder$Reventless = require("../CommandGenerator/CommandGe
 function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel, AggregateRuntimeBuilder) {
   var partial_arg_Id = Spec.Id;
   var partial_arg_name = Spec.name;
-  var partial_arg_event_encode = Spec.event_encode;
-  var partial_arg_event_decode = Spec.event_decode;
+  var partial_arg_eventSchema = Spec.eventSchema;
   var partial_arg = {
     Id: partial_arg_Id,
     name: partial_arg_name,
-    event_encode: partial_arg_event_encode,
-    event_decode: partial_arg_event_decode
+    eventSchema: partial_arg_eventSchema
   };
   var partial_arg$1 = EventLog_Builder$Reventless.Make;
   var partial_arg$2 = function (param, param$1) {
@@ -32,12 +30,10 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
   };
   var SpecificEventLog = partial_arg$2(EventLogStorage, EventTopicPublisher);
   var partial_arg_Id$1 = Spec.Id;
-  var partial_arg_command_encode = Spec.command_encode;
-  var partial_arg_command_decode = Spec.command_decode;
+  var partial_arg_commandSchema = Spec.commandSchema;
   var partial_arg$3 = {
     Id: partial_arg_Id$1,
-    command_encode: partial_arg_command_encode,
-    command_decode: partial_arg_command_decode
+    commandSchema: partial_arg_commandSchema
   };
   var partial_arg$4 = CommandTopic_Builder$Reventless.Make;
   var SpecificCommandTopic = (function (param) {
@@ -52,13 +48,11 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
   var SpecificEventCollector = partial_arg$7(RuntimeEnvironment, EventCollectorChannel);
   var partial_arg_name$1 = Spec.name;
   var partial_arg_Id$2 = Spec.Id;
-  var partial_arg_command_encode$1 = Spec.command_encode;
-  var partial_arg_command_decode$1 = Spec.command_decode;
+  var partial_arg_commandSchema$1 = Spec.commandSchema;
   var partial_arg$8 = {
     name: partial_arg_name$1,
     Id: partial_arg_Id$2,
-    command_encode: partial_arg_command_encode$1,
-    command_decode: partial_arg_command_decode$1
+    commandSchema: partial_arg_commandSchema$1
   };
   var partial_arg$9 = EventMapper_Builder$Reventless.Make;
   var partial_arg$10 = function (param, param$1) {

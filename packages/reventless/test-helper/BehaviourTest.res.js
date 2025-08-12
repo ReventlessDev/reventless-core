@@ -86,7 +86,7 @@ function Make(Spec, Behaviour) {
   };
   var listErrors = function () {
     return "Errors occured: " + Core__Array.reduce(errors.contents.map(function (err) {
-                    return Core__Option.getExn(Js_json.decodeString(Core__Option.getExn(Js_json.decodeArray(Spec.error_encode(err)), undefined)[0]), undefined);
+                    return Core__Option.getExn(Js_json.decodeString(Core__Option.getExn(Js_json.decodeArray(Message$Reventless.encode(err, Spec.errorSchema)), undefined)[0]), undefined);
                   }), "", (function (a, b) {
                   return a + (b + " ");
                 }));

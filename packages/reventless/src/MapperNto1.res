@@ -6,8 +6,8 @@ let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<
   map,
 ) => json =>
   switch json->decode {
-  | Ok(msg) => msg->map
-  | Error(err) =>
+  | msg => msg->map
+  | exception err =>
     let jsonStr = json->Js.Json.stringify
     Js.Exn.raiseError(
       `Error: Couldn't decode source message: ${err

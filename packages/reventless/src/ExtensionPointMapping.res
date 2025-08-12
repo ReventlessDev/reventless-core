@@ -53,7 +53,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       mapIncomingEventImpl(id->ReventlessSpec.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
         | PublishCommand(aggregateId, aggregateCmd) =>
-          let commandStr = aggregateCmd->Aggregate.command_encode->Js.Json.stringify
+          let commandStr = aggregateCmd->Message.encode(Aggregate.commandSchema)->Js.Json.stringify
           Js.log(
             `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName} to Aggregate ${aggregateName}: Publishing command: ${commandStr} id: ${aggregateId}`,
           )
@@ -68,14 +68,14 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
                 service: Aggregate.name,
                 msgId: Message.uuid(),
               },
-              commandJson: aggregateCmd->Aggregate.command_encode,
+              commandJson: aggregateCmd->Message.encode(Aggregate.commandSchema),
               delay: None,
             },
           )
         | Call(handler, callCommand) =>
           Js.log2(
             `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
-            callCommand->Spec.callCommand_encode->Js.Json.stringify,
+            callCommand->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
           )
 
           AbstractCall(
@@ -91,17 +91,13 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
 
   let doMapOutgoingEvent = (
     mapOutgoingEventImpl,
-    aggregateEvent'Json,
+    aggregateEventJson',
     createSchedule,
     deleteSchedule,
     queryEngine,
   ) =>
-    switch Message.event'_decode(
-      Aggregate.Id.t_decode,
-      Aggregate.event_decode,
-      aggregateEvent'Json,
-    ) {
-    | Ok({id, meta, event}) =>
+    switch aggregateEventJson'->Message.decodeEvent'(Aggregate.Id.schema, Aggregate.eventSchema) {
+    | {id, meta, event} =>
       mapOutgoingEventImpl(
         id->Aggregate.Id.toString,
         event,
@@ -110,7 +106,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       )->Array.map(eventAction =>
         switch eventAction {
         | PublishEvent(id, event) =>
-          let eventJson = event->Spec.event_encode
+          let eventJson = event->Message.encode(Spec.eventSchema)
           Js.log(
             `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
           )
@@ -124,7 +120,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         | PublishEventAsync(promise) =>
           let toEvent' = async promise => {
             let (id, event) = await promise
-            let eventJson = event->Spec.event_encode
+            let eventJson = event->Message.encode(Spec.eventSchema)
             Js.log(
               `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
             )
@@ -132,16 +128,16 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             (id, meta, eventJson')
           }
           AbstractPublishEventAsync(promise->toEvent')
-        | Call(handler, msg) =>
+        | Call(handler, callCmd) =>
           Js.log2(
             `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling call command`,
-            msg->Spec.callCommand_encode->Js.Json.stringify,
+            callCmd->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
           )
 
-          AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, msg))
+          AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, callCmd))
         }
       )
-    | Error(err) =>
+    | exception err =>
       Js.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
       []
     }

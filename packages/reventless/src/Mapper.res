@@ -1,54 +1,36 @@
 type encode<'a> = 'a => Js.Json.t
-type decode<'a> = Js.Json.t => result<'a, Decco.decodeError>
+type decode<'a> = Js.Json.t => 'a
 
 module type GenericSource = {
   let name: string
   type t
-  let decode: decode<t> // TODO: is it possible to remove Decco here?
+  let decode': decode<Message.event'<string, t>> // why decode' ?
 }
 
 module type GenericTarget = {
   let name: string
   type t
-  let decode: decode<t> // TODO: is it possible to remove Decco here?
+  let decode: decode<t>
   let encode: encode<t>
 }
 
 module type EventSource = {
   module Id: ReventlessSpec.Id.T
   let name: string
+  @schema
   type event
-  let event_decode: decode<event> // TODO: is it possible to remove Decco here?
-}
-
-module MakeGenericSourceFromEventSource = (EventSource: ReventlessSpec.Projection.Mapping): (
-  GenericSource with type t = Message.event'<string, EventSource.sourceEvent>
-) => {
-  let name = EventSource.sourceName
-  type t = Message.event'<string, EventSource.sourceEvent>
-  let decode = json =>
-    json
-    ->(Message.event'_decode(EventSource.SourceId.t_decode, EventSource.sourceEvent_decode, _))
-    ->Result.map(({id, meta, event}) => {
-      ReventlessSpec.Message.id: id->EventSource.SourceId.toString,
-      meta,
-      event,
-    })
 }
 
 module type CommandTarget = {
   let name: string
+  @schema
   type command
-  let command_decode: Js.Json.t => result<command, Decco.decodeError> // TODO: is it possible to remove Decco here?
-  let command_encode: command => Js.Json.t
 }
 
 // TODO: en/decode command'
-module MakeGenericTargetFromCommandTarget = (CommandTarget: CommandTarget): (
-  GenericTarget with type t = CommandTarget.command
-) => {
+module MakeGenericTargetFromCommandTarget = (CommandTarget: CommandTarget): GenericTarget => {
   let name = CommandTarget.name
   type t = CommandTarget.command
-  let decode = CommandTarget.command_decode
-  let encode = CommandTarget.command_encode
+  let decode = json => json->Message.decode(CommandTarget.commandSchema)
+  let encode = cmd => cmd->Message.encode(CommandTarget.commandSchema)
 }

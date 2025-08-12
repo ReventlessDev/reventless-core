@@ -18,10 +18,9 @@ module Make = (Spec: Spec) => {
           msgId,
           correlationId: msgId,
         },
-        commandJson: {
-          open ReventlessSpec.PluginExtensionPointSpec
-          Heartbeat(Spec.timeout)->command_encode
-        },
+        commandJson: ReventlessSpec.PluginExtensionPointSpec.Heartbeat(
+          Spec.timeout,
+        )->Message.encode(ReventlessSpec.PluginExtensionPointSpec.commandSchema),
         delay: None,
       },
     ])

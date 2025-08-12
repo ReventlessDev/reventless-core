@@ -9,7 +9,7 @@ function Make(Spec, EventTopicSpec) {
   var publish = async function (events$p) {
     var eventCount = events$p.length;
     return await Util_Promise$Reventless.toUnit(Promise.all(events$p.map(async function (event$p, idx) {
-                        var eventJson$p = Message$Reventless.event$p_encode(EventTopicSpec.Id.t_encode, EventTopicSpec.event_encode, event$p);
+                        var eventJson$p = Message$Reventless.encodeEvent$p(event$p, EventTopicSpec.Id.schema, EventTopicSpec.eventSchema);
                         var id = event$p.id;
                         var idx$1 = idx + 1 | 0;
                         var val;
@@ -17,10 +17,10 @@ function Make(Spec, EventTopicSpec) {
                           val = await Spec.publishJson(EventTopicSpec.Id.toString(id), event$p.meta, eventJson$p);
                         }
                         catch (e){
-                          Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 22, characters 15-22", "Error", eventJson$p, "Couldn't publish event " + idx$1.toString() + "/" + eventCount.toString() + ":");
+                          Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 19, characters 15-22", "Error", eventJson$p, "Couldn't publish event " + idx$1.toString() + "/" + eventCount.toString() + ":");
                           throw e;
                         }
-                        return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 29, characters 15-22", undefined, eventJson$p, "Published event " + idx$1.toString() + "/" + eventCount.toString() + ":");
+                        return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 26, characters 15-22", undefined, eventJson$p, "Published event " + idx$1.toString() + "/" + eventCount.toString() + ":");
                       })));
   };
   return {

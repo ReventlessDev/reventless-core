@@ -33,18 +33,18 @@ describe("Logger", () => {
           msgId: "testMsgId",
           correlationId: "testCorrelationId",
         }
-        let metaStr = meta->Message.meta_encode->Js.Json.stringify
+        let metaStr = meta->Message.encode(Message.metaSchema)->Js.Json.stringify
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {
               Message.id: idx->Int.toString,
               meta,
-              commandJson: command->PluginSpec.command_encode,
+              commandJson: command->Message.encode(PluginSpec.commandSchema),
               delay: None,
             }
           },
         )
-        let expected = `1/1: Heartbeat(0): {"command":["Heartbeat"],"meta":${metaStr},"id":0}`
+        let expected = `1/1: Heartbeat(0): {"command":"Heartbeat","meta":${metaStr},"id":0}`
         expect(commandJsonsToLogMessages(arr))->toEqual([expected])
       },
     )
@@ -76,19 +76,19 @@ describe("Logger", () => {
           msgId: "testMsgId",
           correlationId: "testCorrelationId",
         }
-        let metaStr = meta->Message.meta_encode->Js.Json.stringify
+        let metaStr = meta->Message.encode(Message.metaSchema)->Js.Json.stringify
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {
               Message.id: idx->Int.toString,
               meta,
-              commandJson: command->PluginSpec.command_encode,
+              commandJson: command->Message.encode(PluginSpec.commandSchema),
               delay: None,
             }
           },
         )
-        let expected1 = `1/2: Heartbeat(0): {"command":["Heartbeat"],"meta":${metaStr},"id":0}`
-        let expected2 = `2/2: Connect(1): {"command":["Connect",{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector"}],"meta":${metaStr},"id":1}`
+        let expected1 = `1/2: Heartbeat(0): {"command":"Heartbeat","meta":${metaStr},"id":0}`
+        let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector"}},"meta":${metaStr},"id":1}`
         expect(commandJsonsToLogMessages(arr))->toEqual([expected1, expected2])
       },
     )
@@ -110,11 +110,10 @@ describe("Logger", () => {
           },
           event: UnknownPluginDetected,
         }
-        let eventJson': Js.Json.t =
-          event'->(Message.event'_encode(Decco.stringToJson, event_encode, _))
+        let eventJson' = event'->Message.encodeEvent'(S.string, eventSchema)
         let msg = event'JsonToLogMessage(eventJson')
 
-        let expected = `UnknownPluginDetected(testId): {"event":["UnknownPluginDetected"],"meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`
+        let expected = `UnknownPluginDetected(testId): {"event":"UnknownPluginDetected","meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`
 
         expect(msg)->toEqual(expected)
       },

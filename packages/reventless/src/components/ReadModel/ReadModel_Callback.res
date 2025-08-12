@@ -15,11 +15,7 @@ module Make = (
     jsons
     ->Array.mapWithIndex((json, idx) => {
       let idx = idx + 1
-      let sourceName =
-        json
-        ->ReventlessSpec.Message.context_decode
-        ->Result.map(context => context.meta.service)
-        ->Result.getOr("")
+      let sourceName = (json->Message.decode(ReventlessSpec.Message.contextSchema)).meta.service
       Js.log2(
         `ReadModel ${ReadModelSpec.name}: handling event ${idx->Int.toString}/${eventCount->Int.toString} from ${sourceName}:`,
         json,

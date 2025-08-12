@@ -18,10 +18,8 @@ var ExtensionPoint_Callback$Reventless = require("./ExtensionPoint_Callback.res.
 var ExtensionPoint_Operations$Reventless = require("./ExtensionPoint_Operations.res.js");
 
 function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopicAdapter, ExtensionPointRuntimeBuilder) {
-  var command_encode = Spec.command_encode;
-  var command_decode = Spec.command_decode;
-  var event_encode = Spec.event_encode;
-  var event_decode = Spec.event_decode;
+  var commandSchema = Spec.commandSchema;
+  var eventSchema = Spec.eventSchema;
   var filterAggregateResources = function (aggregateResources, aggregateNames) {
     return Js_dict.entries(aggregateResources).filter(function (param) {
                     var name = param[0];
@@ -41,8 +39,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                   var childName = ComponentType$Reventless.name(extra$1.replace(".", ""), ExtensionPoint$Reventless.componentType);
                   var partial_arg = {
                     Id: Id$ReventlessSpec.$$String,
-                    command_encode: command_encode,
-                    command_decode: command_decode
+                    commandSchema: commandSchema
                   };
                   var partial_arg$1 = CommandTopic_Builder$Reventless.Make;
                   var SpecificCommandTopic = (function (param) {
@@ -74,8 +71,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                                     }), undefined, undefined, commandTopic);
                               var partial_arg$3 = {
                                 Id: Id$ReventlessSpec.$$String,
-                                event_encode: event_encode,
-                                event_decode: event_decode
+                                eventSchema: eventSchema
                               };
                               var partial_arg$4 = EventTopic_Builder$Reventless.Make;
                               var SpecificEventTopic = (function (param) {

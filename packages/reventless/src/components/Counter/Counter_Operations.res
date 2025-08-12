@@ -1,4 +1,4 @@
-@decco
+@schema
 type referencesState = {
   id: string,
   inc: int,

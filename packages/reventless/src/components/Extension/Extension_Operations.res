@@ -72,20 +72,22 @@ module Make = (
     | err => Js.log2(`Extension: Error on publish command to Core.Plugin ExtensionPoint:`, err)
     }
 
-  let forwardCommand = (extensionPointName, commandJson: Message.commandJson) =>
+  let forwardCommand = (extensionPointName, commandJson: Message.commandJson) => {
+    let command: ReventlessSpec.PluginExtensionPointSpec.command = ForwardCommand({
+      extensionPointName,
+      id: commandJson.id,
+      command: commandJson->Message.toMessageBody,
+    })
     publishCorePluginExtensionPointCommand({
       Message.id: "",
       meta: {
         ...commandJson.meta,
         msgId: Message.uuid(),
       },
-      commandJson: ForwardCommand({
-        extensionPointName,
-        id: commandJson.id,
-        command: commandJson->Message.toMessageBody,
-      })->ReventlessSpec.PluginExtensionPointSpec.command_encode,
+      commandJson: command->Message.encode(ReventlessSpec.PluginExtensionPointSpec.commandSchema),
       delay: None,
     })
+  }
 
   let handle = async handler =>
     try await handler() catch {
@@ -132,14 +134,11 @@ module Make = (
     }
 
   let incomingEventHandler = async (eventJson', pluginDef) => {
-    let event' = Message.event'_decode(
-      ReventlessSpec.Id.StringPure.t_decode,
-      MappingSpec.event_decode,
-      eventJson',
-    )
-
-    switch event' {
-    | Ok(event') =>
+    switch eventJson'->Message.decodeEvent'(
+      ReventlessSpec.Id.StringPure.schema,
+      MappingSpec.eventSchema,
+    ) {
+    | event' =>
       let commandActions = mapIncomingEvent(event', pluginDef, Spec.queryEngine)
       let apply = async commandActions => {
         await commandActions
@@ -165,7 +164,7 @@ module Make = (
       | None => ()
       }
 
-    | Error(msg) => Js.log2("Could not decode event':", msg)
+    | exception err => Js.log3("Could not decode event':", eventJson', err)
     }
   }
 

@@ -4,14 +4,6 @@
     "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
     "author": "Atos",
     "license": "proprietary",
-    "keywords": [
-        "bucklescript",
-        "reasonml",
-        "event",
-        "event-sourcing",
-        "cqrs",
-        "serverless"
-    ],
     "repository": {
         "type": "git",
         "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
@@ -21,7 +13,7 @@
     },
     "jest": {
         "testMatch": [
-            "**/tests/**/*Test.bs.js"
+            "**/tests/**/*Test.res.js"
         ]
     },
     "scripts": {
@@ -50,10 +42,11 @@
     },
     "devDependencies": {
         "@glennsl/rescript-jest": "^0.11.0",
+        "sury": "^10.0.4",
+        "sury-ppx": "^10.0.0",
         "rescript": "^11.1.4"
     },
     "peerDependencies": {
-        "@rescript-labs/decco": "2.0.4",
         "@rescript/core": "^1.6.0",
         "@rescript/std": "^11.1.4",
         "rescript": "^11.1.4"

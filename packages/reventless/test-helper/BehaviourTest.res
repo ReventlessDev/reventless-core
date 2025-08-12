@@ -99,7 +99,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
               it relies on decco decoding the error-varints to arrays of string
  */
       err
-      ->Spec.error_encode
+      ->Message.encode(Spec.errorSchema)
       ->Js.Json.decodeArray
       ->Option.getExn
       ->Array.getUnsafe(0)

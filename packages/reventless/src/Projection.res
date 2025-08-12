@@ -18,14 +18,21 @@ module Mapping = {
       and module SourceId = Source.Id
   ) => {
     module SourceId = Source.Id
+    @schema
     type sourceEvent = Source.event
+    @schema
     type targetState = Target.state
     let map = MappingImpl.map
-    let sourceEvent_decode = Source.event_decode
-    let sourceEvent_encode = Source.event_encode
     let sourceName = Source.name
     let subIdConfig = Target.subIdConfig
-    let targetState_encode = Target.state_encode
+  }
+
+  module MakeGenericSource = (Mapping: ReventlessSpec.Projection.Mapping): (
+    Mapper.GenericSource with type t = Mapping.sourceEvent
+  ) => {
+    let name = Mapping.sourceName
+    type t = Mapping.sourceEvent
+    let decode' = json => json->Message.decodeEvent'(S.string, Mapping.sourceEventSchema)
   }
 }
 
@@ -373,7 +380,9 @@ let handleActions = async (actions, operations, subIdConfig) => {
         Logger.error(
           ~loc=__LOC__,
           "storage error:",
-          err->ReventlessSpec.QueryDb.storageError_encode->Js.Json.stringify,
+          err
+          ->Message.encode(ReventlessSpec.QueryDb.storageErrorSchema)
+          ->Js.Json.stringify,
         )
       }
       await action->handleAction(operations, subIdConfig)

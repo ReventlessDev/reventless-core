@@ -26,16 +26,9 @@ function Make(Config, QueryDbStorage, Handler) {
                     parent: opts2_parent
                   };
                   var name = extra$1 + "References";
-                  var state_encode = function (value) {
-                    return Counter_Operations$Reventless.referencesState_encode(value);
-                  };
-                  var state_decode = function (value) {
-                    return Counter_Operations$Reventless.referencesState_decode(value);
-                  };
                   var config = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined);
                   var partial_arg_Id = {
-                    t_encode: Id$ReventlessSpec.StringPure.t_encode,
-                    t_decode: Id$ReventlessSpec.StringPure.t_decode,
+                    schema: Id$ReventlessSpec.StringPure.schema,
                     make: (function (prim) {
                         return prim;
                       }),
@@ -50,8 +43,7 @@ function Make(Config, QueryDbStorage, Handler) {
                   var partial_arg = {
                     Id: partial_arg_Id,
                     name: name,
-                    state_encode: state_encode,
-                    state_decode: state_decode,
+                    stateSchema: Counter_Operations$Reventless.referencesStateSchema,
                     config: config,
                     subIdConfig: undefined
                   };
@@ -61,16 +53,9 @@ function Make(Config, QueryDbStorage, Handler) {
                   };
                   var ReferencesDb = partial_arg$2(QueryDbStorage, QueryDb_Adapter$Reventless.NoResolvers(Config));
                   var name$1 = extra$1 + "Counts";
-                  var state_encode$1 = function (value) {
-                    return Counter_Callback$Reventless.countsState_encode(value);
-                  };
-                  var state_decode$1 = function (value) {
-                    return Counter_Callback$Reventless.countsState_decode(value);
-                  };
                   var config$1 = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined);
                   var partial_arg_Id$1 = {
-                    t_encode: Id$ReventlessSpec.StringPure.t_encode,
-                    t_decode: Id$ReventlessSpec.StringPure.t_decode,
+                    schema: Id$ReventlessSpec.StringPure.schema,
                     make: (function (prim) {
                         return prim;
                       }),
@@ -85,8 +70,7 @@ function Make(Config, QueryDbStorage, Handler) {
                   var partial_arg$3 = {
                     Id: partial_arg_Id$1,
                     name: name$1,
-                    state_encode: state_encode$1,
-                    state_decode: state_decode$1,
+                    stateSchema: Counter_Callback$Reventless.countsStateSchema,
                     config: config$1,
                     subIdConfig: undefined
                   };

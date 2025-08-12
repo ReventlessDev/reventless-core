@@ -61,6 +61,14 @@ function Make(Spec, MappingSpec, Mappings) {
     }
   };
   var forwardCommand = function (extensionPointName, commandJson) {
+    var command = {
+      TAG: "ForwardCommand",
+      _0: {
+        extensionPointName: extensionPointName,
+        id: commandJson.id,
+        command: Message$Reventless.toMessageBody(commandJson)
+      }
+    };
     var init = commandJson.meta;
     return publishCorePluginExtensionPointCommand({
                 id: "",
@@ -72,14 +80,7 @@ function Make(Spec, MappingSpec, Mappings) {
                   msgId: Message$Reventless.uuid(),
                   correlationId: init.correlationId
                 },
-                commandJson: PluginExtensionPointSpec$ReventlessSpec.command_encode({
-                      TAG: "ForwardCommand",
-                      _0: {
-                        extensionPointName: extensionPointName,
-                        id: commandJson.id,
-                        command: Message$Reventless.toMessageBody(commandJson)
-                      }
-                    }),
+                commandJson: Message$Reventless.encode(command, PluginExtensionPointSpec$ReventlessSpec.commandSchema),
                 delay: undefined
               });
   };
@@ -138,29 +139,32 @@ function Make(Spec, MappingSpec, Mappings) {
     }
   };
   var incomingEventHandler = async function (eventJson$p, pluginDef) {
-    var event$p = Message$Reventless.event$p_decode(Id$ReventlessSpec.StringPure.t_decode, MappingSpec.event_decode, eventJson$p);
-    if (event$p.TAG === "Ok") {
-      var event$p$1 = event$p._0;
-      var commandActions = mapIncomingEvent(event$p$1, pluginDef, Spec.queryEngine);
-      var apply = async function (commandActions) {
-        return await Util_Promise$Reventless.toUnit(Promise.all(commandActions.map(applyIncomingCommandAction)));
-      };
-      await apply(commandActions);
-      var p = Core__Option.map(Js_dict.get(Spec.readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
-              return Promise.all(Core__Array.filterMap(readModelNames, (function (readModelName) {
-                                return Core__Option.map(Js_dict.get(Spec.publishToReadModels, readModelName), (function (enqueueEvent) {
-                                              return enqueueEvent(0, event$p$1.id, JSON.stringify(eventJson$p));
-                                            }));
-                              })));
-            }));
-      if (p !== undefined) {
-        await Caml_option.valFromOption(p);
-        return ;
-      } else {
-        return ;
-      }
+    var event$p;
+    try {
+      event$p = Message$Reventless.decodeEvent$p(eventJson$p, Id$ReventlessSpec.StringPure.schema, MappingSpec.eventSchema);
     }
-    console.log("Could not decode event':", event$p._0);
+    catch (raw_err){
+      var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+      console.log("Could not decode event':", eventJson$p, err);
+      return ;
+    }
+    var commandActions = mapIncomingEvent(event$p, pluginDef, Spec.queryEngine);
+    var apply = async function (commandActions) {
+      return await Util_Promise$Reventless.toUnit(Promise.all(commandActions.map(applyIncomingCommandAction)));
+    };
+    await apply(commandActions);
+    var p = Core__Option.map(Js_dict.get(Spec.readModelNamesForSourceName, event$p.meta.service), (function (readModelNames) {
+            return Promise.all(Core__Array.filterMap(readModelNames, (function (readModelName) {
+                              return Core__Option.map(Js_dict.get(Spec.publishToReadModels, readModelName), (function (enqueueEvent) {
+                                            return enqueueEvent(0, event$p.id, JSON.stringify(eventJson$p));
+                                          }));
+                            })));
+          }));
+    if (p !== undefined) {
+      await Caml_option.valFromOption(p);
+      return ;
+    }
+    
   };
   var outgoingEventHandler = function (eventJson$p, pluginDef) {
     var commandActions = mapOutgoingEvent(eventJson$p, pluginDef);
@@ -173,4 +177,4 @@ function Make(Spec, MappingSpec, Mappings) {
 }
 
 exports.Make = Make;
-/* Logger-Reventless Not a pure module */
+/* Id-ReventlessSpec Not a pure module */

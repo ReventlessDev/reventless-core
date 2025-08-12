@@ -4,7 +4,6 @@
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Message$Reventless = require("../Message.res.js");
-var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.res.js");
 
 function toString(level) {
   if (typeof level === "object") {
@@ -117,7 +116,7 @@ function commandJsonToLogMessage(param) {
   var id = param.id;
   var commandName = Message$Reventless.variantNameOfJson(commandJson);
   var commandStr = JSON.stringify(commandJson);
-  var metaStr = JSON.stringify(Message$ReventlessSpec.meta_encode(param.meta));
+  var metaStr = JSON.stringify(Message$Reventless.encode(param.meta, Message$Reventless.metaSchema));
   return commandName + "(" + id + "): {\"command\":" + commandStr + ",\"meta\":" + metaStr + ",\"id\":" + id + "}";
 }
 

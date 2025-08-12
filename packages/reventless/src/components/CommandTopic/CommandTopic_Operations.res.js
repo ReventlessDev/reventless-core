@@ -2,6 +2,7 @@
 'use strict';
 
 var Logger$Reventless = require("../../util/Logger.res.js");
+var Message$Reventless = require("../../Message.res.js");
 
 function Make(Spec, Ops) {
   var publishJsons = async function (cmdJsons) {
@@ -18,7 +19,7 @@ function Make(Spec, Ops) {
   var publish = function (command$p) {
     var commandJson_id = Spec.Id.toString(command$p.id);
     var commandJson_meta = command$p.meta;
-    var commandJson_commandJson = Spec.command_encode(command$p.command);
+    var commandJson_commandJson = Message$Reventless.encode(command$p.command, Spec.commandSchema);
     var commandJson = {
       id: commandJson_id,
       meta: commandJson_meta,

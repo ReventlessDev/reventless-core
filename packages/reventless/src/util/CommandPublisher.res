@@ -1,7 +1,7 @@
 module type Spec = {
-  @decco
+  @schema
   let name: string
-  @decco
+  @schema
   type command
 }
 
@@ -31,7 +31,7 @@ module Make = (Spec: Spec, Config: Config) => {
   let toJsons = commandsToSend => {
     Js.log4("toJsons: commandsToSend:", commandsToSend->Array.length, "rest:", buffer->Array.length)
     commandsToSend->Array.map(((id, command)) => {
-      let commandJson = command->Spec.command_encode
+      let commandJson = command->Message.encode(Spec.commandSchema)
       {
         ReventlessSpec.Message.id,
         meta: Reventless.Message.generateMeta(~service=Spec.name, ~user=Config.user),

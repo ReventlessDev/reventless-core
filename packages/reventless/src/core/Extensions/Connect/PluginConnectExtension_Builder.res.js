@@ -109,12 +109,9 @@ function Make(Spec) {
   };
   var partial_arg = {
     name: PluginExtensionPointSpec$ReventlessSpec.name,
-    command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
-    command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
-    event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
-    event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
-    callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
-    callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
+    commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
+    eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
+    callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
   };
   var partial_arg$1 = ExtensionMapping$Reventless.Make;
   var mapIncomingEvent = function (pluginId, $$event, _meta, _pluginDef, _queryEngine) {
@@ -175,8 +172,7 @@ function Make(Spec) {
       })({
         Aggregate: {
           Id: {
-            t_encode: $$let.t_encode,
-            t_decode: $$let.t_decode,
+            schema: $$let.schema,
             make: (function (prim) {
                 return prim;
               }),
@@ -189,12 +185,9 @@ function Make(Spec) {
             cmp: $$let.cmp
           },
           name: ExtensionMapping$ReventlessSpec.NoAggregate.name,
-          command_encode: ExtensionMapping$ReventlessSpec.NoAggregate.command_encode,
-          command_decode: ExtensionMapping$ReventlessSpec.NoAggregate.command_decode,
-          event_encode: ExtensionMapping$ReventlessSpec.NoAggregate.event_encode,
-          event_decode: ExtensionMapping$ReventlessSpec.NoAggregate.event_decode,
-          error_encode: ExtensionMapping$ReventlessSpec.NoAggregate.error_encode,
-          error_decode: ExtensionMapping$ReventlessSpec.NoAggregate.error_decode
+          commandSchema: ExtensionMapping$ReventlessSpec.NoAggregate.commandSchema,
+          eventSchema: ExtensionMapping$ReventlessSpec.NoAggregate.eventSchema,
+          errorSchema: ExtensionMapping$ReventlessSpec.NoAggregate.errorSchema
         },
         mapIncomingEvent: mapIncomingEvent,
         mapOutgoingEvent: undefined
@@ -208,12 +201,9 @@ function Make(Spec) {
   };
   var partial_arg$2 = {
     name: PluginExtensionPointSpec$ReventlessSpec.name,
-    command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
-    command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
-    event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
-    event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
-    callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
-    callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
+    commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
+    eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
+    callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
   };
   var partial_arg$3 = Extension_Builder$Reventless.Make;
   var include = (function (param) {

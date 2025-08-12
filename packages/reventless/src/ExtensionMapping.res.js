@@ -2,6 +2,7 @@
 'use strict';
 
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("./Message.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
@@ -23,12 +24,12 @@ function Make(Spec, MappingImpl) {
     var mapIncomingEventImpl = MappingImpl.mapIncomingEvent;
     var meta = extra.meta;
     var encodeAggregateCommandJson = function (aggregateCmd, aggregateId) {
-      var commandStr = JSON.stringify(Aggregate.command_encode(aggregateCmd));
+      var commandStr = JSON.stringify(Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema));
       console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + " to Aggregate " + aggregateName + ": Publishing command: " + commandStr + " id: " + aggregateId);
       return {
               id: aggregateId,
               meta: encodeMeta(meta, aggregateName),
-              commandJson: Aggregate.command_encode(aggregateCmd),
+              commandJson: Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema),
               delay: undefined
             };
     };
@@ -43,7 +44,7 @@ function Make(Spec, MappingImpl) {
             };
     };
     var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
-      return encodeExtensionPointCommandJson(Spec.command_encode(command), id, extensionPointName, action);
+      return encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
     };
     return mapIncomingEventImpl(extra.id, extra.event, meta, extra$1, extra$2).map(function (x) {
                 switch (x.TAG) {
@@ -104,7 +105,7 @@ function Make(Spec, MappingImpl) {
                   case "Call" :
                       var callCommand = x._1;
                       var handler = x._0;
-                      console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + ": Handling call command", JSON.stringify(Spec.callCommand_encode(callCommand)));
+                      console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + ": Handling call command", JSON.stringify(Message$Reventless.encode(callCommand, Spec.callCommandSchema)));
                       return {
                               TAG: "AbstractCall",
                               _0: (function () {
@@ -117,64 +118,67 @@ function Make(Spec, MappingImpl) {
   };
   var mapOutgoingEvent = Core__Option.map(MappingImpl.mapOutgoingEvent, (function (mapOutgoingEventImpl) {
           return function (extra, extra$1) {
-            var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, extra);
-            if (err.TAG === "Ok") {
-              var match = err._0;
-              var meta = match.meta;
-              var encodeExtensionPointCommandJson = function (commandJson, id, extensionPointName, action) {
-                var commandStr = JSON.stringify(commandJson);
-                console.log("ExtensionMapping outgoing from Aggregate " + aggregateName + ": " + action + ": " + commandStr + " id: " + id);
-                return {
-                        id: id,
-                        meta: encodeMeta(meta, extensionPointName),
-                        commandJson: commandJson,
-                        delay: undefined
-                      };
-              };
-              var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
-                return encodeExtensionPointCommandJson(Spec.command_encode(command), id, extensionPointName, action);
-              };
-              return mapOutgoingEventImpl(Aggregate.Id.toString(match.id), match.event, meta, extra$1).map(function (x) {
-                          switch (x.TAG) {
-                            case "PublishExtensionPointCommand" :
-                                var command = x._1;
-                                var id = x._0;
-                                if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
-                                  return {
-                                          TAG: "AbstractPublishPluginExtensionPointCommand",
-                                          _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
-                                        };
-                                } else {
-                                  return {
-                                          TAG: "AbstractPublishExtensionPointCommand",
-                                          _0: extensionPointName,
-                                          _1: encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
-                                        };
-                                }
-                            case "ForwardCommand" :
-                                var match = x._0;
-                                var extensionPointName$1 = match.extensionPointName;
+            var val;
+            try {
+              val = Message$Reventless.decodeEvent$p(extra, Aggregate.Id.schema, Aggregate.eventSchema);
+            }
+            catch (raw_err){
+              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+              console.log("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err);
+              return [];
+            }
+            var meta = val.meta;
+            var encodeExtensionPointCommandJson = function (commandJson, id, extensionPointName, action) {
+              var commandStr = JSON.stringify(commandJson);
+              console.log("ExtensionMapping outgoing from Aggregate " + aggregateName + ": " + action + ": " + commandStr + " id: " + id);
+              return {
+                      id: id,
+                      meta: encodeMeta(meta, extensionPointName),
+                      commandJson: commandJson,
+                      delay: undefined
+                    };
+            };
+            var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
+              return encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
+            };
+            return mapOutgoingEventImpl(Aggregate.Id.toString(val.id), val.event, meta, extra$1).map(function (x) {
+                        switch (x.TAG) {
+                          case "PublishExtensionPointCommand" :
+                              var command = x._1;
+                              var id = x._0;
+                              if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
+                                return {
+                                        TAG: "AbstractPublishPluginExtensionPointCommand",
+                                        _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
+                                      };
+                              } else {
                                 return {
                                         TAG: "AbstractPublishExtensionPointCommand",
-                                        _0: extensionPointName$1,
-                                        _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
+                                        _0: extensionPointName,
+                                        _1: encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
                                       };
-                            case "Call" :
-                                var callCommand = x._1;
-                                var handler = x._0;
-                                console.log("ExtensionMapping outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Spec.callCommand_encode(callCommand)));
-                                return {
-                                        TAG: "AbstractCall",
-                                        _0: (function () {
-                                            return handler(callCommand);
-                                          })
-                                      };
-                            
-                          }
-                        });
-            }
-            console.log("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err._0);
-            return [];
+                              }
+                          case "ForwardCommand" :
+                              var match = x._0;
+                              var extensionPointName$1 = match.extensionPointName;
+                              return {
+                                      TAG: "AbstractPublishExtensionPointCommand",
+                                      _0: extensionPointName$1,
+                                      _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
+                                    };
+                          case "Call" :
+                              var callCommand = x._1;
+                              var handler = x._0;
+                              console.log("ExtensionMapping outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Message$Reventless.encode(callCommand, Spec.callCommandSchema)));
+                              return {
+                                      TAG: "AbstractCall",
+                                      _0: (function () {
+                                          return handler(callCommand);
+                                        })
+                                    };
+                          
+                        }
+                      });
           };
         }));
   return {

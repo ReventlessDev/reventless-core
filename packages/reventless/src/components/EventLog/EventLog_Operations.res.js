@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
@@ -16,7 +15,7 @@ function Make(Spec, Ops) {
                 return Js_dict.fromArray([
                               [
                                 "id",
-                                Spec.Id.t_encode(id)
+                                Message$Reventless.encode(id, Spec.Id.schema)
                               ],
                               [
                                 "sequenceNr",
@@ -24,7 +23,7 @@ function Make(Spec, Ops) {
                               ],
                               [
                                 "event",
-                                Spec.event_encode($$event.event)
+                                Message$Reventless.encode($$event.event, Spec.eventSchema)
                               ]
                             ].concat(Message$Reventless.decomposeMeta($$event.meta)));
               });
@@ -82,27 +81,20 @@ function Make(Spec, Ops) {
     var eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
     var id$1 = Spec.Id.toString(id);
     return eventsJson.map(function (json) {
-                var x = Core__Option.map(Core__Option.map(Core__Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                                return Js_dict.get(dict, "event");
-                              })), (function (json) {
-                            return [
-                                    json,
-                                    Spec.event_decode(json)
-                                  ];
-                          })), (function (x) {
-                        var $$event = x[1];
-                        if ($$event.TAG === "Ok") {
-                          return $$event._0;
-                        }
-                        var eventStr = JSON.stringify(x[0]);
-                        var message = $$event._0.message;
-                        return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decode " + eventStr + ": " + message);
-                      }));
-                if (x !== undefined) {
-                  return Caml_option.valFromOption(x);
+                try {
+                  return Message$Reventless.decode(Core__Option.getExn(Core__Option.flatMap(Js_json.decodeObject(json), (function (dict) {
+                                        return Js_dict.get(dict, "event");
+                                      })), undefined), Spec.eventSchema);
                 }
-                var eventStr = JSON.stringify(json);
-                return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decodeObject " + eventStr);
+                catch (raw_e){
+                  var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+                  if (e.RE_EXN_ID === Js_exn.$$Error) {
+                    var eventStr = JSON.stringify(json);
+                    var message = Util_Error$Reventless.message(undefined, e._1);
+                    return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decode " + eventStr + ": " + message);
+                  }
+                  throw e;
+                }
               });
   };
   return {

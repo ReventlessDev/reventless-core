@@ -17,10 +17,10 @@ function Make(Spec) {
                     msgId: msgId,
                     correlationId: msgId
                   },
-                  commandJson: PluginExtensionPointSpec$ReventlessSpec.command_encode({
+                  commandJson: Message$Reventless.encode({
                         TAG: "Heartbeat",
                         _0: Spec.timeout
-                      }),
+                      }, PluginExtensionPointSpec$ReventlessSpec.commandSchema),
                   delay: undefined
                 }]);
   };

@@ -14,11 +14,11 @@ module Make = (Spec: CommandTopic.Spec, Ops: Ops with module Spec = Spec): T => 
       CommandTopic.reference: reference,
       command: json,
     }) =>
-      switch json->(Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _)) {
-      | Belt_Result.Ok(command') => Some({CommandTopic.reference, command: command'})
-      | Belt_Result.Error(err) =>
+      switch json->Message.decodeCommand'(Spec.Id.schema, Spec.commandSchema) {
+      | command' => Some({CommandTopic.reference, command: command'})
+      | exception err =>
         let commandStr = json->Js.Json.stringify
-        Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}`, err.message)
+        Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
         None
       }
     )

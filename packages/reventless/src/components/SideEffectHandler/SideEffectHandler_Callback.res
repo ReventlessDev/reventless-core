@@ -12,10 +12,9 @@ module Make = (Spec: Spec): T => {
     eventJson'
     ->Js.Json.decodeObject
     ->Option.flatMap(eventObj' => {
-      let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
-
-      switch meta {
-      | Some(Ok(eventMeta)) =>
+      let metaJson = eventObj'->Js.Dict.get("meta")
+      switch metaJson->Option.map(meta => meta->S.parseJsonOrThrow(Message.metaSchema)) {
+      | Some(eventMeta) =>
         let sideEffect =
           sideEffects->Array.find((module(SideEffect: ReventlessSpec.SideEffect.T)) =>
             SideEffect.Source.name == eventMeta.service
@@ -24,7 +23,7 @@ module Make = (Spec: Spec): T => {
         | None => None
         | Some(sideEffect) => Some((eventObj', eventMeta, sideEffect))
         }
-      | Some(Error(err)) =>
+      | exception err =>
         Js.log2("SideEffects.map: Couldn't decode meta:", err)
         None
       | _ =>
@@ -43,23 +42,29 @@ module Make = (Spec: Spec): T => {
         eventJson'->Logger.logJsonEvent(
           `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
         )
-        let idDecoded = eventObj->Js.Dict.get("id")->Option.map(SideEffect.Source.Id.t_decode)
-        let eventDecoded =
-          eventObj->Js.Dict.get("event")->Option.map(SideEffect.Source.event_decode)
+        try {
+          let idDecoded =
+            eventObj
+            ->Js.Dict.get("id")
+            ->Option.map(id => id->Message.decode(SideEffect.Source.Id.schema))
+          let eventDecoded =
+            eventObj
+            ->Js.Dict.get("event")
+            ->Option.map(json => json->Message.decode(SideEffect.Source.eventSchema))
+          switch (idDecoded, eventDecoded) {
+          | (Some(eventId), Some(event)) =>
+            try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
+            | err => Js.log2("SideEffect: Error while processing:", err)
+            }
 
-        switch (idDecoded, eventDecoded) {
-        | (Some(Ok(eventId)), Some(Ok(event))) =>
-          try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
-          | err => Js.log2("SideEffect: Error while processing:", err)
+          | (None, _)
+          | (_, None) =>
+            Js.log2("SideEffectHandler.eventHandler: Invalid event", eventJson')
           }
-
-        | (None, _)
-        | (_, None) =>
-          Js.log("SideEffectHandler.eventHandler: Invalid event")
-        | (_, Some(Error(err)))
-        | (Some(Error(err)), _) =>
-          Js.log2("SideEffectHandler.eventHandler: Couldn't decode event:", err)
+        } catch {
+        | err => Js.log3("SideEffectHandler.eventHandler: Couldn't decode event:", eventJson', err)
         }
+
       | None => ()
       }
     )

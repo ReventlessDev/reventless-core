@@ -12,7 +12,7 @@ module type Spec = {
 
   let name: string
 
-  @decco
+  @schema
   type state
 }
 

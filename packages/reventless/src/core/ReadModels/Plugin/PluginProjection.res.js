@@ -26,16 +26,14 @@ var Util = {
 var partial_arg = {
   Id: Id$ReventlessSpec.$$String,
   name: PluginReadModelSpec$Reventless.name,
-  state_encode: PluginReadModelSpec$Reventless.state_encode,
-  state_decode: PluginReadModelSpec$Reventless.state_decode,
+  stateSchema: PluginReadModelSpec$Reventless.stateSchema,
   subIdConfig: undefined
 };
 
 var partial_arg$1 = {
   Id: Id$ReventlessSpec.$$String,
   name: PluginSpec$Reventless.name,
-  event_encode: PluginSpec$Reventless.event_encode,
-  event_decode: PluginSpec$Reventless.event_decode
+  eventSchema: PluginSpec$Reventless.eventSchema
 };
 
 var partial_arg$2 = Projection$Reventless.Mapping.Make;
@@ -204,8 +202,7 @@ var PluginMapping = (function (param) {
 var Mappings = Projection$Reventless.Mappings.Make({
       Id: Id$ReventlessSpec.$$String,
       name: PluginReadModelSpec$Reventless.name,
-      state_encode: PluginReadModelSpec$Reventless.state_encode,
-      state_decode: PluginReadModelSpec$Reventless.state_decode,
+      stateSchema: PluginReadModelSpec$Reventless.stateSchema,
       subIdConfig: undefined
     });
 

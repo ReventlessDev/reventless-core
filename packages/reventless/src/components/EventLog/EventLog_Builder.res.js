@@ -17,12 +17,10 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     };
     var storage = $$Storage.make(ComponentType$Reventless.name(name, EventLog$Reventless.componentType), opts);
     var partial_arg_Id = Spec.Id;
-    var partial_arg_event_encode = Spec.event_encode;
-    var partial_arg_event_decode = Spec.event_decode;
+    var partial_arg_eventSchema = Spec.eventSchema;
     var partial_arg = {
       Id: partial_arg_Id,
-      event_encode: partial_arg_event_encode,
-      event_decode: partial_arg_event_decode
+      eventSchema: partial_arg_eventSchema
     };
     var partial_arg$1 = EventTopic_Builder$Reventless.Make;
     var SpecificEventTopic = (function (param) {

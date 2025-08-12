@@ -1,12 +1,12 @@
 module Id = ReventlessSpec.Id.String
 
-@decco
+@schema
 type status =
   | Connected
   | Disconnected
   | Inactive
 
-@decco
+@schema
 type state = {
   name: ReventlessSpec.Plugin.name,
   version: ReventlessSpec.Plugin.version,

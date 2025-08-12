@@ -1,4 +1,4 @@
-@decco
+@schema
 type countsState = {
   id: string,
   count: int,
@@ -44,8 +44,8 @@ module Make = (Spec: Spec) => {
 
     await Spec.counterEventsHandler(
       counts->Array.filterMap(state =>
-        switch state->countsState_decode {
-        | Ok({id, count}) if count == 0 =>
+        switch state->Message.decode(countsStateSchema) {
+        | {id, count} if count == 0 =>
           let (counterId, _) = id->Counter.unmakeId
           Js.log(
             __MODULE__ ++
@@ -58,13 +58,13 @@ module Make = (Spec: Spec) => {
           Some(
             [
               ("id", counterId->Js.Json.string),
-              ("meta", meta->Message.meta_encode),
-              ("event", CountFinished->Counter.counterEvent_encode),
+              ("meta", meta->Message.encode(Message.metaSchema)),
+              ("event", Counter.CountFinished->Message.encode(Counter.counterEventSchema)),
             ]
             ->Js.Dict.fromArray
             ->Js.Json.object_,
           )
-        | Ok({id, count}) =>
+        | {id, count} =>
           Js.log(
             __MODULE__ ++
             `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,

@@ -1,5 +1,5 @@
 type resolverConfig<'command> = {
-  commandDecoder: Js.Json.t => result<'command, Decco.decodeError>,
+  commandSchema: S.t<'command>,
   fields: array<string>,
 }
 
@@ -20,13 +20,13 @@ type execute<'state, 'command, 'event, 'error> = (
 ) => array<'event>
 
 module type Spec = {
-  @decco
+  @schema
   type command
 
-  @decco
+  @schema
   type event
 
-  @decco
+  @schema
   type error
 }
 

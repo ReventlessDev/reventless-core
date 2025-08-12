@@ -18,12 +18,12 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
 
   let eventToJson = (id, event') =>
     [
-      ("id", Spec.Id.t_encode(id)),
+      ("id", id->Message.encode(Spec.Id.schema)),
       (
         "sequenceNr",
         Js.Json.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
       ),
-      ("event", event'.ReventlessSpec.Message.event->Spec.event_encode),
+      ("event", event'.ReventlessSpec.Message.event->Message.encode(Spec.eventSchema)),
     ]
     ->Array.concat(event'.meta->Message.decomposeMeta)
     ->Js.Dict.fromArray
@@ -75,29 +75,17 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
   }
 
   let decodeEvent = (id, json) =>
-    Js.Json.decodeObject(json)
-    ->Option.flatMap(dict => dict->Js.Dict.get("event"))
-    ->Option.map(json => (json, Spec.event_decode(json)))
-    ->Option.map(x =>
-      switch x {
-      | (_, Ok(event)) => event
-      | (json, Error(err: Decco.decodeError)) =>
-        let eventStr = json->Js.Json.stringify
-        let message = err.message
-        Js.Exn.raiseError(
-          `EventLog.replay: Error: id:${id}: Couldn't decode ${eventStr}: ${message}`,
-        )
-      }
-    )
-    ->(
-      x =>
-        switch x {
-        | Some(event) => event
-        | None =>
-          let eventStr = json->Js.Json.stringify
-          Js.Exn.raiseError(`EventLog.replay: Error: id:${id}: Couldn't decodeObject ${eventStr}`)
-        }
-    )
+    try {
+      Js.Json.decodeObject(json)
+      ->Option.flatMap(dict => dict->Js.Dict.get("event"))
+      ->Option.getExn
+      ->Message.decode(Spec.eventSchema)
+    } catch {
+    | Js.Exn.Error(e) =>
+      let eventStr = json->Js.Json.stringify
+      let message = e->Util.Error.message
+      Js.Exn.raiseError(`EventLog.replay: Error: id:${id}: Couldn't decode ${eventStr}: ${message}`)
+    }
 
   let decodeEvents = (jsons, id) => jsons->Array.map(json => decodeEvent(id, json))
 

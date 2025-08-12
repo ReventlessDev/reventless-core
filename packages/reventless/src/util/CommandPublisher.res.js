@@ -41,7 +41,7 @@ function Make(Spec, Config) {
   var toJsons = function (commandsToSend) {
     console.log("toJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
     return commandsToSend.map(function (param) {
-                var commandJson = Spec.command_encode(param[1]);
+                var commandJson = Message$Reventless.encode(param[1], Spec.commandSchema);
                 return {
                         id: param[0],
                         meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user),

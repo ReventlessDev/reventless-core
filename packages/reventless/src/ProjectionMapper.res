@@ -3,9 +3,8 @@ module Spec = ReventlessSpec.Projection.Spec
 
 module type StateTarget = {
   let name: string
+  @schema
   type state
-  let state_decode: Js.Json.t => result<state, Decco.decodeError> // TODO: is it possible to remove Decco here?
-  let state_encode: state => Js.Json.t
 }
 
 module MakeGenericTargetFromStateTarget = (StateTarget: StateTarget): (
@@ -13,29 +12,29 @@ module MakeGenericTargetFromStateTarget = (StateTarget: StateTarget): (
 ) => {
   let name = StateTarget.name
   type t = StateTarget.state
-  let decode = StateTarget.state_decode
-  let encode = StateTarget.state_encode
+  let decode = json => json->Message.decode(StateTarget.stateSchema)
+  let encode = value => value->Message.encode(StateTarget.stateSchema)
 }
 
 module Make = (
-  DiscreteTarget: ReventlessSpec.Projection.Spec.Target,
-  Mappings: ReventlessSpec.Projection.Mappings with module Target := DiscreteTarget,
+  Target: ReventlessSpec.Projection.Spec.Target,
+  Mappings: ReventlessSpec.Projection.Mappings with module Target := Target,
 ): (
   MapperNto1.Mapper
-    with type targetState := DiscreteTarget.state
-    and type action<'id, 'state> := Spec.action<string, DiscreteTarget.state>
+    with type targetState := Target.state
+    and type action<'id, 'state> := Spec.action<string, Target.state>
 ) => {
-  module GenericTarget = MakeGenericTargetFromStateTarget(DiscreteTarget)
+  module GenericTarget = MakeGenericTargetFromStateTarget(Target)
   module GenericMappings = {
     module type Mapping = MapperNto1.Mapping
       with module Spec := Spec
-      and type target := DiscreteTarget.state
+      and type target := Target.state
 
     let mappings: array<module(Mapping)> = Mappings.mappings->Array.map((module(M)) => {
       module GenericMapping = {
         let sourceName = M.sourceName
-        module Source = Mapper.MakeGenericSourceFromEventSource(M)
-        let map = MapperNto1.makeGenericMap(Source.decode, M.map)
+        module Source = Projection.Mapping.MakeGenericSource(M)
+        let map = MapperNto1.makeGenericMap(Source.decode', M.map)
       }
       module(GenericMapping: Mapping)
     })

@@ -18,12 +18,14 @@ module MakeCounterHandler = (
 ): CounterHandler => {
   let target = Target.name
 
-  let findMapping = (mappings, eventObj) =>
-    eventObj->Option.flatMap(eventObj' => {
-      let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
-
-      switch meta {
-      | Some(Ok(eventMeta)) =>
+  let findMapping = (mappings, eventJson') => {
+    eventJson'
+    ->Js.Json.decodeObject
+    ->Option.flatMap(eventObj' => {
+      switch eventObj'
+      ->Js.Dict.get("meta")
+      ->Option.map(metaJson => metaJson->Message.decode(Message.metaSchema)) {
+      | Some(eventMeta) =>
         let source = eventMeta.service
         let mapping =
           mappings->Array.find((module(Mapping: Mappings.Mapping)) => Mapping.Source.name == source)
@@ -37,14 +39,15 @@ module MakeCounterHandler = (
           Js.log(`EventMapper.map: found mapping ${source} -> ${target}`)
           Some((eventObj', eventMeta, mapping))
         }
-      | Some(Error(err)) =>
-        Js.log2("EventMapper.map: Couldn't decode meta:", err)
+      | None =>
+        Js.log2("EventMapper_Callback.findMapping: Invalid JSON object:", eventJson')
         None
-      | _ =>
-        Js.log("EventMapper.map: Invalid JSON object")
+      | exception err =>
+        Js.log2("EventMapper_Callback.findMapping: Couldn't decode meta:", err)
         None
       }
     })
+  }
 
   type action =
     | Counter(Counter.action)
@@ -58,7 +61,7 @@ module MakeCounterHandler = (
       msgId: Message.uuid(),
       time: Message.nowAsISOString(),
     },
-    commandJson: command->Target.command_encode,
+    commandJson: command->Message.encode(Target.commandSchema),
     delay,
   }
 
@@ -87,33 +90,39 @@ module MakeCounterHandler = (
       }
     )
 
-  let commonEventsHandler = async eventsJson => {
-    let eventsCount = eventsJson->Array.length
+  let commonEventsHandler = async eventsJson' => {
+    let eventsCount = eventsJson'->Array.length
     let (publisherActions, counterActions) =
-      eventsJson
-      ->Array.mapWithIndex((eventJson, idx) => {
+      eventsJson'
+      ->Array.mapWithIndex((eventJson', idx) => {
         let idx = idx + 1
-        eventJson->Logger.logJsonEvent(
+        eventJson'->Logger.logJsonEvent(
           `EventMapper.eventsHandler: incoming event ${idx->Int.toString}/${eventsCount->Int.toString}:`,
         )
-        let event' = eventJson->Js.Json.decodeObject
-        switch findMapping(Mappings.mappings, event') {
+        switch findMapping(Mappings.mappings, eventJson') {
         // TODO: support multiple mappings for the same source
         | Some((eventObj, eventMeta, mapping)) =>
           module Mapping = unpack(mapping)
-          let idDecoded = eventObj->Js.Dict.get("id")->Option.map(Mapping.Source.Id.t_decode)
-          let eventDecoded = eventObj->Js.Dict.get("event")->Option.map(Mapping.Source.event_decode)
+          try {
+            let idDecoded =
+              eventObj
+              ->Js.Dict.get("id")
+              ->Option.map(id => id->Message.decode(Mapping.Source.Id.schema))
+            let eventDecoded =
+              eventObj
+              ->Js.Dict.get("event")
+              ->Option.map(event => event->Message.decode(Mapping.Source.eventSchema))
 
-          switch (idDecoded, eventDecoded) {
-          | (Some(Ok(eventId)), Some(Ok(event))) =>
-            Mapping.map(eventId, event, Ops.queryEngine)->processMappingActions(eventMeta)->Some
-          | (None, _)
-          | (_, None) =>
-            Js.log("EventMapper.map: Invalid event")
-            None
-          | (_, Some(Error(err)))
-          | (Some(Error(err)), _) =>
-            Js.log2("EventMapper.map: Couldn't decode event:", err)
+            switch (idDecoded, eventDecoded) {
+            | (Some(eventId), Some(event)) =>
+              Mapping.map(eventId, event, Ops.queryEngine)->processMappingActions(eventMeta)->Some
+            | _ =>
+              Js.log2("EventMapper.map: Invalid event:", eventJson')
+              None
+            }
+          } catch {
+          | err =>
+            Js.log3("EventMapper.map: Couldn't decode event:", eventJson', err)
             None
           }
         | None => None

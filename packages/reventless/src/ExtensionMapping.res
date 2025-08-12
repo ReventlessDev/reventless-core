@@ -55,14 +55,14 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     queryEngine,
   ) => {
     let encodeAggregateCommandJson = (aggregateCmd, aggregateId) => {
-      let commandStr = aggregateCmd->Aggregate.command_encode->Js.Json.stringify
+      let commandStr = aggregateCmd->Message.encode(Aggregate.commandSchema)->Js.Json.stringify
       Js.log(
         `ExtensionMapping incoming from ExtensionPoint ${extensionPointName} to Aggregate ${aggregateName}: Publishing command: ${commandStr} id: ${aggregateId}`,
       )
       {
         Message.id: aggregateId,
         meta: encodeMeta(meta, aggregateName),
-        commandJson: aggregateCmd->Aggregate.command_encode,
+        commandJson: aggregateCmd->Message.encode(Aggregate.commandSchema),
         delay: None,
       }
     }
@@ -82,7 +82,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
 
     let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action) =>
       command
-      ->Spec.command_encode
+      ->Message.encode(Spec.commandSchema)
       ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
 
     mapIncomingEventImpl(id, event, meta, pluginDef, queryEngine)->Array.map(x =>
@@ -135,7 +135,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       | Call(handler, callCommand) =>
         Js.log2(
           `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
-          callCommand->Spec.callCommand_encode->Js.Json.stringify,
+          callCommand->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
         )
 
         AbstractCall(() => handler(callCommand))
@@ -146,12 +146,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
   let mapIncomingEvent = doMapIncomingEvent(MappingImpl.mapIncomingEvent, ...)
 
   let doMapOutgoingEvent = (mapOutgoingEventImpl, aggregateEvent'Json, pluginDef) =>
-    switch Message.event'_decode(
-      Aggregate.Id.t_decode,
-      Aggregate.event_decode,
-      aggregateEvent'Json,
-    ) {
-    | Ok({id, meta, event}) =>
+    switch aggregateEvent'Json->Message.decodeEvent'(Aggregate.Id.schema, Aggregate.eventSchema) {
+    | {id, meta, event} =>
       let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
         let commandStr = commandJson->Js.Json.stringify
         Js.log(
@@ -167,7 +163,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
 
       let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action) =>
         command
-        ->Spec.command_encode
+        ->Message.encode(Spec.commandSchema)
         ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
 
       mapOutgoingEventImpl(id->Aggregate.Id.toString, event, meta, pluginDef)->Array.map(x =>
@@ -203,13 +199,13 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         | Call(handler, callCommand) =>
           Js.log2(
             `ExtensionMapping outgoing from Aggregate ${aggregateName}: Handling call command`,
-            callCommand->Spec.callCommand_encode->Js.Json.stringify,
+            callCommand->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
           )
 
           AbstractCall(() => handler(callCommand))
         }
       )
-    | Error(err) =>
+    | exception err =>
       Js.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
       []
     }

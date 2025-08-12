@@ -9,12 +9,16 @@ var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 
 function makeGenericMap(decode, map) {
   return function (json) {
-    var msg = decode(json);
-    if (msg.TAG === "Ok") {
-      return map(msg._0);
+    var msg;
+    try {
+      msg = decode(json);
     }
-    var jsonStr = JSON.stringify(json);
-    return Js_exn.raiseError("Error: Couldn't decode source message: " + Core__Option.getExn(JSON.stringify(msg._0), undefined) + ", " + jsonStr);
+    catch (raw_err){
+      var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+      var jsonStr = JSON.stringify(json);
+      return Js_exn.raiseError("Error: Couldn't decode source message: " + Core__Option.getExn(JSON.stringify(err), undefined) + ", " + jsonStr);
+    }
+    return map(msg);
   };
 }
 

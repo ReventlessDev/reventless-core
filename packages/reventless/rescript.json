@@ -3,7 +3,7 @@
     "namespace": "Reventless",
     "suffix": ".res.js",
     "ppx-flags": [
-        "@rescript-labs/decco/ppx"
+        "sury-ppx/bin"
     ],
     "warnings": {
         "error": "-44+101"
@@ -28,6 +28,7 @@
     ],
     "bs-dependencies": [
         "@rescript/core",
+        "sury",
         "@glennsl/rescript-jest",
         "@reventless/rescript-aws-sdk",
         "@reventless/rescript-fast-csv",
@@ -37,8 +38,7 @@
         "@reventless/rescript-pulumi-pulumi",
         "@reventless/rescript-ssh2",
         "@reventless/rescript-uuid",
-        "@reventless/reventless-spec",
-        "@rescript-labs/decco"
+        "@reventless/reventless-spec"
     ],
     "pinned-dependencies": [
         "@reventless/reventless-spec",

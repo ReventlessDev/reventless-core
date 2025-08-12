@@ -20,44 +20,33 @@ let forwardCommand = async (
     | [] => Js.log2("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName)
     | plugins =>
       let plugin = plugins->Array.getUnsafe(0)
-      await plugin
-      ->PluginReadModelSpec.state_decode
-      ->(
-        async result =>
-          switch result {
-          | Ok(plugin: PluginReadModelSpec.state) =>
-            await plugin.extensionPoints
-            ->Array.find(extensionPoint => extensionPoint.name == extensionPointName)
-            ->(
-              async extensionPoint =>
-                switch extensionPoint {
-                | Some(extensionPoint) =>
-                  switch await AwsSdk.SQS.sendMessage(
-                    ~queueId=extensionPoint.commandTopic,
-                    ~messageBody=command,
-                  ) {
-                  | _ =>
-                    Js.log3(
-                      "ForwardCommand: published command to",
-                      plugin.name,
-                      extensionPoint.commandTopic,
-                    )
-                  | exception err =>
-                    Js.log2("PluginExtensionPoint_PluginMapping: Error on publish command:", err)
-                  }
-
-                | None =>
-                  Js.log3(
-                    "ForwardCommand: Couldn't find ExtensionPoint",
-                    extensionPointName,
-                    plugin,
-                  )
-                }
+      switch plugin->Message.decode(PluginReadModelSpec.stateSchema) {
+      | plugin =>
+        let extensionPoint =
+          plugin.extensionPoints->Array.find(extensionPoint =>
+            extensionPoint.name == extensionPointName
+          )
+        switch extensionPoint {
+        | Some(extensionPoint) =>
+          switch await AwsSdk.SQS.sendMessage(
+            ~queueId=extensionPoint.commandTopic,
+            ~messageBody=command,
+          ) {
+          | _ =>
+            Js.log3(
+              "ForwardCommand: published command to",
+              plugin.name,
+              extensionPoint.commandTopic,
             )
-
-          | Error(err) => Js.log3("ForwardCommand: Couldn't decode Plugin", plugin, err)
+          | exception err =>
+            Js.log2("PluginExtensionPoint_PluginMapping: Error on publish command:", err)
           }
-      )
+
+        | None =>
+          Js.log3("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin)
+        }
+      | exception err => Js.log3("ForwardCommand: Couldn't decode Plugin", plugin, err)
+      }
     }
   }
 
@@ -77,11 +66,7 @@ let callHandler = async (
         meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),
         command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
       }
-      ->(Message.command'_encode(
-        Decco.stringToJson,
-        ReventlessSpec.PluginExtensionPointSpec.command_encode,
-        _,
-      ))
+      ->Message.encodeCommand'(S.string, ReventlessSpec.PluginExtensionPointSpec.commandSchema)
       ->Js.Json.stringify,
     })
   | DeleteDisconnectSchedule(id) => await deleteSchedule(id)

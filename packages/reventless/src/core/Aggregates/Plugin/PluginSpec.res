@@ -4,7 +4,7 @@ module Id = ReventlessSpec.Id.String
 
 open ReventlessSpec.Plugin
 
-@decco
+@schema
 type command =
   | Heartbeat
   | Connect(pluginDefinition)
@@ -12,7 +12,7 @@ type command =
   | Activate
   | Deactivate
 
-@decco
+@schema
 type event =
   | UnknownPluginDetected
   | Connected(pluginDefinition)
@@ -21,7 +21,7 @@ type event =
   | Activated(pluginDefinition)
   | Deactivated(pluginDefinition)
 
-@decco
+@schema
 type error =
   | NotExisting
   | AlreadyConnected

@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
@@ -15,32 +16,37 @@ var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function MakeCounterHandler(Target, Mappings, Ops) {
   var target = Target.name;
-  var findMapping = function (mappings, eventObj) {
-    return Core__Option.flatMap(eventObj, (function (eventObj$p) {
-                  var meta = Core__Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
-                  if (meta !== undefined) {
-                    if (meta.TAG === "Ok") {
-                      var eventMeta = meta._0;
-                      var source = eventMeta.service;
-                      var mapping = mappings.find(function (Mapping) {
-                            return Mapping.Source.name === source;
-                          });
-                      if (mapping !== undefined) {
-                        var source$1 = mapping.Source.name;
-                        console.log("EventMapper.map: found mapping " + source$1 + " -> " + target);
-                        return [
-                                eventObj$p,
-                                eventMeta,
-                                mapping
-                              ];
-                      }
-                      console.log("EventMapper.map: No mapping " + source + " -> " + target + " found");
-                      return ;
-                    }
-                    console.log("EventMapper.map: Couldn't decode meta:", meta._0);
+  var findMapping = function (mappings, eventJson$p) {
+    return Core__Option.flatMap(Js_json.decodeObject(eventJson$p), (function (eventObj$p) {
+                  var eventMeta;
+                  try {
+                    eventMeta = Core__Option.map(Js_dict.get(eventObj$p, "meta"), (function (metaJson) {
+                            return Message$Reventless.decode(metaJson, Message$Reventless.metaSchema);
+                          }));
+                  }
+                  catch (raw_err){
+                    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                    console.log("EventMapper_Callback.findMapping: Couldn't decode meta:", err);
                     return ;
                   }
-                  console.log("EventMapper.map: Invalid JSON object");
+                  if (eventMeta !== undefined) {
+                    var source = eventMeta.service;
+                    var mapping = mappings.find(function (Mapping) {
+                          return Mapping.Source.name === source;
+                        });
+                    if (mapping !== undefined) {
+                      var source$1 = mapping.Source.name;
+                      console.log("EventMapper.map: found mapping " + source$1 + " -> " + target);
+                      return [
+                              eventObj$p,
+                              eventMeta,
+                              mapping
+                            ];
+                    }
+                    console.log("EventMapper.map: No mapping " + source + " -> " + target + " found");
+                    return ;
+                  }
+                  console.log("EventMapper_Callback.findMapping: Invalid JSON object:", eventJson$p);
                 }));
   };
   var createCommandJson = function (delay, id, meta, command) {
@@ -54,7 +60,7 @@ function MakeCounterHandler(Target, Mappings, Ops) {
               msgId: Message$Reventless.uuid(),
               correlationId: meta.correlationId
             },
-            commandJson: Target.command_encode(command),
+            commandJson: Message$Reventless.encode(command, Target.commandSchema),
             delay: delay
           };
   };
@@ -122,38 +128,36 @@ function MakeCounterHandler(Target, Mappings, Ops) {
                 }
               });
   };
-  var commonEventsHandler = async function (eventsJson) {
-    var eventsCount = eventsJson.length;
-    var match = Belt_Array.partition(Core__Array.filterMap(eventsJson.map(function (eventJson, idx) {
+  var commonEventsHandler = async function (eventsJson$p) {
+    var eventsCount = eventsJson$p.length;
+    var match = Belt_Array.partition(Core__Array.filterMap(eventsJson$p.map(function (eventJson$p, idx) {
                     var idx$1 = idx + 1 | 0;
-                    Logger$Reventless.logJsonEvent(undefined, undefined, eventJson, "EventMapper.eventsHandler: incoming event " + idx$1.toString() + "/" + eventsCount.toString() + ":");
-                    var event$p = Js_json.decodeObject(eventJson);
-                    var match = findMapping(Mappings.mappings, event$p);
+                    Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "EventMapper.eventsHandler: incoming event " + idx$1.toString() + "/" + eventsCount.toString() + ":");
+                    var match = findMapping(Mappings.mappings, eventJson$p);
                     if (match === undefined) {
                       return ;
                     }
                     var mapping = match[2];
                     var eventObj = match[0];
-                    var idDecoded = Core__Option.map(Js_dict.get(eventObj, "id"), mapping.Source.Id.t_decode);
-                    var eventDecoded = Core__Option.map(Js_dict.get(eventObj, "event"), mapping.Source.event_decode);
-                    if (idDecoded !== undefined) {
-                      if (idDecoded.TAG === "Ok" && eventDecoded !== undefined && eventDecoded.TAG === "Ok") {
-                        return processMappingActions(mapping.map(idDecoded._0, eventDecoded._0, Ops.queryEngine), match[1]);
-                      }
-                      
-                    } else {
-                      console.log("EventMapper.map: Invalid event");
-                      return ;
-                    }
-                    if (eventDecoded !== undefined) {
-                      if (eventDecoded.TAG === "Ok") {
-                        console.log("EventMapper.map: Couldn't decode event:", idDecoded._0);
+                    try {
+                      var idDecoded = Core__Option.map(Js_dict.get(eventObj, "id"), (function (id) {
+                              return Message$Reventless.decode(id, mapping.Source.Id.schema);
+                            }));
+                      var eventDecoded = Core__Option.map(Js_dict.get(eventObj, "event"), (function ($$event) {
+                              return Message$Reventless.decode($$event, mapping.Source.eventSchema);
+                            }));
+                      if (idDecoded !== undefined && eventDecoded !== undefined) {
+                        return processMappingActions(mapping.map(Caml_option.valFromOption(idDecoded), Caml_option.valFromOption(eventDecoded), Ops.queryEngine), match[1]);
+                      } else {
+                        console.log("EventMapper.map: Invalid event:", eventJson$p);
                         return ;
                       }
-                      console.log("EventMapper.map: Couldn't decode event:", eventDecoded._0);
+                    }
+                    catch (raw_err){
+                      var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                      console.log("EventMapper.map: Couldn't decode event:", eventJson$p, err);
                       return ;
                     }
-                    console.log("EventMapper.map: Invalid event");
                   }), (function (entry) {
                   return entry;
                 })).flat(), (function (resultType) {
