@@ -20,13 +20,12 @@
   "dependencies": {
     "@pulumi/aws": "~6.83.0",
     "@reventless/rescript-aws-sdk": "^2.1.2",
-    "@reventless/rescript-pulumi-pulumi": "^2.2.0",
-    "rescript-schema": "^9.3.0"
+    "@reventless/rescript-pulumi-pulumi": "^2.2.0"
   },
   "devDependencies": {
-    "@rescript/std": "^11.1.4",
-    "rescript": "^11.1.4",
-    "rescript-schema-ppx": "^9.0.1"
+    "sury": "^10.0.4",
+    "sury-ppx": "^10.0.0",
+    "rescript": "^11.1.4"
   },
   "peerDependencies": {
     "@rescript/core": "^1.6.0",
