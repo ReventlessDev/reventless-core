@@ -29,22 +29,31 @@ function Make(Spec, AggregateSpec, Behaviour) {
             return Js_json.decodeObject(JSON.parse(jsonString));
           }));
     var params = argumentsJson !== undefined ? Js_dict.values(argumentsJson) : Js_exn.raiseError("Couldn't decode:" + Core__Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
-    params[0] = payload.command;
-    console.log("CommandGenerator: generated command:", params);
+    var commandStr = payload.command;
+    var params$1 = params[1];
+    var commandJson = params$1 !== undefined ? Js_dict.fromArray([
+            [
+              "TAG",
+              commandStr
+            ],
+            [
+              "_0",
+              params$1
+            ]
+          ]) : commandStr;
+    console.log("CommandGenerator: generated command:", commandJson);
     var val;
     try {
-      val = Message$Reventless.decode(params, Behaviour.resolverConfig.commandSchema);
+      val = Message$Reventless.decode(commandJson, Behaviour.resolverConfig.commandSchema);
     }
     catch (raw_err){
       var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-      return Js_exn.raiseError("Error: Couldn't decode " + params.map(function (param) {
-                        return JSON.stringify(param);
-                      }).join(", ") + ": " + Core__Option.getExn(JSON.stringify(err), undefined));
+      return Js_exn.raiseError("Error: Couldn't decode " + JSON.stringify(commandJson) + ": " + Core__Option.getExn(JSON.stringify(err), undefined));
     }
     await Spec.publishJsons([{
             id: id,
             meta: meta,
-            commandJson: params,
+            commandJson: commandJson,
             delay: undefined
           }]);
     return msgId;

@@ -38,8 +38,11 @@ module Make = (
         ->Option.getOr("<payload.arguments>"),
       )
     }
-    params[0] = Js.Json.string(payload.command)
-    let commandJson = params->Js.Json.array
+    let commandStr = Js.Json.string(payload.command)
+    let commandJson = switch params[1] {
+    | Some(params) => [("TAG", commandStr), ("_0", params)]->Js.Dict.fromArray->Js.Json.object_
+    | _ => commandStr
+    }
     Js.log2("CommandGenerator: generated command:", commandJson)
     switch commandJson->Message.decode(Behaviour.resolverConfig.commandSchema) {
     | _ =>
@@ -47,9 +50,7 @@ module Make = (
       meta.msgId
     | exception err =>
       Js.Exn.raiseError(
-        `Error: Couldn't decode ${params
-          ->Array.map(param => param->Js.Json.stringify)
-          ->Js.Array2.joinWith(", ")}: ${err
+        `Error: Couldn't decode ${commandJson->Js.Json.stringify}: ${err
           ->Js.Json.stringifyAny
           ->Option.getExn}`,
       )
