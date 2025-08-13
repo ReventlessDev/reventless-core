@@ -24,12 +24,10 @@ module Make = (
         correlationId: msgId,
       }
     }
-    let argumentsJson =
-      payload.arguments
-      ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
-      ->Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject)
-    let params = switch argumentsJson {
-    | Some(obj) => obj->Js.Dict.values
+    let params = switch payload.arguments
+    ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
+    ->Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject) {
+    | Some(obj) => obj->Js.Dict.values->Array.sliceToEnd(~start=1)
     | None =>
       Js.Exn.raiseError(
         "Couldn't decode:" ++
@@ -39,9 +37,13 @@ module Make = (
       )
     }
     let commandStr = Js.Json.string(payload.command)
-    let commandJson = switch params[1] {
-    | Some(params) => [("TAG", commandStr), ("_0", params)]->Js.Dict.fromArray->Js.Json.object_
-    | _ => commandStr
+    let commandJson = switch params->Array.length {
+    | 0 => commandStr
+    | _ =>
+      [("TAG", commandStr)]
+      ->Array.concat(params->Array.mapWithIndex((param, idx) => (`_${idx->Int.toString}`, param)))
+      ->Js.Dict.fromArray
+      ->Js.Json.object_
     }
     Js.log2("CommandGenerator: generated command:", commandJson)
     switch commandJson->Message.decode(Behaviour.resolverConfig.commandSchema) {

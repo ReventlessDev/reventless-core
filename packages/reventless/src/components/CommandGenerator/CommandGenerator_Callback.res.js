@@ -25,22 +25,21 @@ function Make(Spec, AggregateSpec, Behaviour) {
       msgId: msgId,
       correlationId: msgId
     };
-    var argumentsJson = Core__Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
+    var obj = Core__Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
             return Js_json.decodeObject(JSON.parse(jsonString));
           }));
-    var params = argumentsJson !== undefined ? Js_dict.values(argumentsJson) : Js_exn.raiseError("Couldn't decode:" + Core__Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+    var params = obj !== undefined ? Js_dict.values(obj).slice(1) : Js_exn.raiseError("Couldn't decode:" + Core__Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
     var commandStr = payload.command;
-    var params$1 = params[1];
-    var commandJson = params$1 !== undefined ? Js_dict.fromArray([
-            [
-              "TAG",
-              commandStr
-            ],
-            [
-              "_0",
-              params$1
-            ]
-          ]) : commandStr;
+    var match = params.length;
+    var commandJson = match !== 0 ? Js_dict.fromArray([[
+                "TAG",
+                commandStr
+              ]].concat(params.map(function (param, idx) {
+                    return [
+                            "_" + idx.toString(),
+                            param
+                          ];
+                  }))) : commandStr;
     console.log("CommandGenerator: generated command:", commandJson);
     var val;
     try {
