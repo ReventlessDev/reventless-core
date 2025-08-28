@@ -8,7 +8,16 @@ let buildJsonEvent' = dict =>
   [
     ("id", dict->Js.Dict.get("id")->Option.getExn),
     ("meta", dict->Reventless.Message.composeMeta),
-    ("event", dict->Js.Dict.get("event")->Option.getExn),
+    (
+      "event",
+      switch (dict->Dict.get("type"), dict->Dict.get("data")) {
+      | (Some(JSON.String(eventType)), Some(JSON.Object(data))) =>
+        Reventless.Message.combineMessage(eventType, data)
+      | (Some(JSON.String(eventType)), None) =>
+        Reventless.Message.combineMessage(eventType, Dict.make())
+      | _ => Reventless.Message.combineMessage("Unknown", Dict.make())
+      },
+    ),
   ]
   ->Js.Dict.fromArray
   ->Js.Json.object_

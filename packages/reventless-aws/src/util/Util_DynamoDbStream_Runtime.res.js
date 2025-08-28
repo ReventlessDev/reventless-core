@@ -10,6 +10,26 @@ var DynamoDb_Util$AwsSdk = require("@reventless/rescript-aws-sdk/src/DynamoDb_Ut
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
 
 function buildJsonEvent$p(dict) {
+  var match = dict["type"];
+  var match$1 = dict["data"];
+  var tmp;
+  var exit = 0;
+  if (match !== undefined && !(!Array.isArray(match) && (match === null || typeof match !== "object") && typeof match !== "number" && typeof match !== "string" && typeof match !== "boolean" || typeof match !== "string")) {
+    if (match$1 !== undefined) {
+      if (!Array.isArray(match$1) && (match$1 === null || typeof match$1 !== "object") && typeof match$1 !== "number" && typeof match$1 !== "string" && typeof match$1 !== "boolean" || !(typeof match$1 === "object" && !Array.isArray(match$1))) {
+        exit = 1;
+      } else {
+        tmp = Message$Reventless.combineMessage(match, match$1);
+      }
+    } else {
+      tmp = Message$Reventless.combineMessage(match, {});
+    }
+  } else {
+    exit = 1;
+  }
+  if (exit === 1) {
+    tmp = Message$Reventless.combineMessage("Unknown", {});
+  }
   return Js_dict.fromArray([
               [
                 "id",
@@ -21,7 +41,7 @@ function buildJsonEvent$p(dict) {
               ],
               [
                 "event",
-                Core__Option.getExn(Js_dict.get(dict, "event"), undefined)
+                tmp
               ]
             ]);
 }
