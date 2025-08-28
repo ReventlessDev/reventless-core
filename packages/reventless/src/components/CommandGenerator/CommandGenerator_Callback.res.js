@@ -28,18 +28,13 @@ function Make(Spec, AggregateSpec, Behaviour) {
     var obj = Core__Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
             return Js_json.decodeObject(JSON.parse(jsonString));
           }));
-    var params = obj !== undefined ? Js_dict.values(obj).slice(1) : Js_exn.raiseError("Couldn't decode:" + Core__Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+    var params = obj !== undefined ? Object.entries(obj).slice(1) : Js_exn.raiseError("Couldn't decode:" + Core__Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
     var commandStr = payload.command;
     var match = params.length;
     var commandJson = match !== 0 ? Js_dict.fromArray([[
                 "TAG",
                 commandStr
-              ]].concat(params.map(function (param, idx) {
-                    return [
-                            "_" + idx.toString(),
-                            param
-                          ];
-                  }))) : commandStr;
+              ]].concat(params)) : commandStr;
     console.log("CommandGenerator: generated command:", commandJson);
     var val;
     try {

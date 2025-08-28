@@ -27,7 +27,7 @@ module Make = (
     let params = switch payload.arguments
     ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
     ->Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject) {
-    | Some(obj) => obj->Js.Dict.values->Array.sliceToEnd(~start=1)
+    | Some(obj) => obj->Dict.toArray->Array.sliceToEnd(~start=1)
     | None =>
       Js.Exn.raiseError(
         "Couldn't decode:" ++
@@ -41,7 +41,7 @@ module Make = (
     | 0 => commandStr
     | _ =>
       [("TAG", commandStr)]
-      ->Array.concat(params->Array.mapWithIndex((param, idx) => (`_${idx->Int.toString}`, param)))
+      ->Array.concat(params)
       ->Js.Dict.fromArray
       ->Js.Json.object_
     }
