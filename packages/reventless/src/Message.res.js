@@ -7,6 +7,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Js_option = require("@rescript/std/lib/js/js_option.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -274,6 +275,38 @@ function commandJsonOfCommand$p(idToString, commandSchema, cmd) {
         };
 }
 
+function splitMessage(json) {
+  var dict = Js_json.decodeObject(json);
+  if (dict === undefined) {
+    return [
+            "Unknown",
+            {}
+          ];
+  }
+  var match = Belt_Array.partition(Object.entries(dict), (function (param) {
+          return param[0] === "TAG";
+        }));
+  var match$1 = match[0][0];
+  var typ;
+  if (match$1 !== undefined) {
+    var t = match$1[1];
+    typ = !Array.isArray(t) && (t === null || typeof t !== "object") && typeof t !== "number" && typeof t !== "string" && typeof t !== "boolean" || typeof t !== "string" ? "Unknown" : t;
+  } else {
+    typ = "Unknown";
+  }
+  return [
+          typ,
+          Object.fromEntries(match[1])
+        ];
+}
+
+function combineMessage(typ, data) {
+  return Object.fromEntries([[
+                  "TAG",
+                  typ
+                ]].concat(Object.entries(data)));
+}
+
 var serviceSchema = Message$ReventlessSpec.serviceSchema;
 
 var metaSchema = Message$ReventlessSpec.metaSchema;
@@ -319,4 +352,6 @@ exports.composeEventJson$p = composeEventJson$p;
 exports.string = string;
 exports.composeMeta = composeMeta;
 exports.commandJsonOfCommand$p = commandJsonOfCommand$p;
+exports.splitMessage = splitMessage;
+exports.combineMessage = combineMessage;
 /* S Not a pure module */

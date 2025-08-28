@@ -16,22 +16,9 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
 ) => {
   module Spec = Spec
 
-  let splitEncodedEvent = json =>
-    switch json->Js.Json.decodeObject {
-    | Some(eventDict) =>
-      let (tags, payload) =
-        eventDict->Dict.toArray->Belt.Array.partition(((key, _)) => key == "TAG")
-      let eventType = switch tags[0] {
-      | Some((_, String(t))) => t
-      | _ => "Unknown"
-      }
-      (eventType, payload->Dict.fromArray)
-    | _ => ("Unknown", Dict.make())
-    }
-
   let encodeEvent' = (id, event') => {
     let json = event'.ReventlessSpec.Message.event->Message.encode(Spec.eventSchema)
-    let (eventType, data) = json->splitEncodedEvent
+    let (eventType, data) = json->Message.splitMessage
     [
       ("id", id->Message.encode(Spec.Id.schema)),
       (
@@ -91,17 +78,14 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
     }
   }
 
-  let combineEvent = (eventType, data) => {
-    JSON.Object([("TAG", JSON.String(eventType))]->Array.concat(data->Dict.toArray)->Dict.fromArray)
-  }
-
   let decodeEvent = (id, json) =>
     try {
       Js.Json.decodeObject(json)
       ->Option.map(dict =>
         switch (dict->Dict.get("type"), dict->Dict.get("data")) {
-        | (Some(JSON.String(eventType)), Some(JSON.Object(data))) => combineEvent(eventType, data)
-        | (Some(JSON.String(eventType)), None) => combineEvent(eventType, Dict.make())
+        | (Some(JSON.String(eventType)), Some(JSON.Object(data))) =>
+          Message.combineMessage(eventType, data)
+        | (Some(JSON.String(eventType)), None) => Message.combineMessage(eventType, Dict.make())
         | _ => Js.Exn.raiseError("event type or data incorrect")
         }
       )

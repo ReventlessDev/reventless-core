@@ -225,3 +225,19 @@ let commandJsonOfCommand': (
     delay: None,
   }
 }
+
+let splitMessage = json =>
+  switch json->Js.Json.decodeObject {
+  | Some(dict) =>
+    let (tags, payload) = dict->Dict.toArray->Belt.Array.partition(((key, _)) => key == "TAG")
+    let typ = switch tags[0] {
+    | Some((_, String(t))) => t
+    | _ => "Unknown"
+    }
+    (typ, payload->Dict.fromArray)
+  | _ => ("Unknown", Dict.make())
+  }
+
+let combineMessage = (typ, data) => {
+  JSON.Object([("TAG", JSON.String(typ))]->Array.concat(data->Dict.toArray)->Dict.fromArray)
+}
