@@ -4,14 +4,41 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
 var Util_Error$Reventless = require("../../util/Util_Error.res.js");
 
 function Make(Spec, Ops) {
-  var eventsToJson = function (events$p, id) {
+  var splitEncodedEvent = function (json) {
+    var eventDict = Js_json.decodeObject(json);
+    if (eventDict === undefined) {
+      return [
+              "Unknown",
+              {}
+            ];
+    }
+    var match = Belt_Array.partition(Object.entries(eventDict), (function (param) {
+            return param[0] === "TAG";
+          }));
+    var match$1 = match[0][0];
+    var eventType;
+    if (match$1 !== undefined) {
+      var t = match$1[1];
+      eventType = !Array.isArray(t) && (t === null || typeof t !== "object") && typeof t !== "number" && typeof t !== "string" && typeof t !== "boolean" || typeof t !== "string" ? "Unknown" : t;
+    } else {
+      eventType = "Unknown";
+    }
+    return [
+            eventType,
+            Object.fromEntries(match[1])
+          ];
+  };
+  var encodeEvents$p = function (events$p, id) {
     return events$p.map(function ($$event) {
+                var json = Message$Reventless.encode($$event.event, Spec.eventSchema);
+                var match = splitEncodedEvent(json);
                 return Js_dict.fromArray([
                               [
                                 "id",
@@ -22,8 +49,12 @@ function Make(Spec, Ops) {
                                 Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now())
                               ],
                               [
-                                "event",
-                                Message$Reventless.encode($$event.event, Spec.eventSchema)
+                                "type",
+                                match[0]
+                              ],
+                              [
+                                "data",
+                                match[1]
                               ]
                             ].concat(Message$Reventless.decomposeMeta($$event.meta)));
               });
@@ -45,7 +76,7 @@ function Make(Spec, Ops) {
   };
   var append = async function (sequenceNr, id, events$p) {
     try {
-      var eventsJson = eventsToJson(events$p, id);
+      var eventsJson = encodeEvents$p(events$p, id);
       var exit = 0;
       var appendResult;
       try {
@@ -77,13 +108,33 @@ function Make(Spec, Ops) {
       throw exn;
     }
   };
+  var combineEvent = function (eventType, data) {
+    return Object.fromEntries([[
+                    "TAG",
+                    eventType
+                  ]].concat(Object.entries(data)));
+  };
   var replay = async function (id) {
     var eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
     var id$1 = Spec.Id.toString(id);
     return eventsJson.map(function (json) {
                 try {
-                  return Message$Reventless.decode(Core__Option.getExn(Core__Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                                        return Js_dict.get(dict, "event");
+                  return Message$Reventless.decode(Core__Option.getExn(Core__Option.map(Js_json.decodeObject(json), (function (dict) {
+                                        var match = dict["type"];
+                                        var match$1 = dict["data"];
+                                        if (match !== undefined && !(!Array.isArray(match) && (match === null || typeof match !== "object") && typeof match !== "number" && typeof match !== "string" && typeof match !== "boolean" || typeof match !== "string")) {
+                                          if (match$1 !== undefined) {
+                                            if (!Array.isArray(match$1) && (match$1 === null || typeof match$1 !== "object") && typeof match$1 !== "number" && typeof match$1 !== "string" && typeof match$1 !== "boolean" || !(typeof match$1 === "object" && !Array.isArray(match$1))) {
+                                              return Js_exn.raiseError("event type or data incorrect");
+                                            } else {
+                                              return combineEvent(match, match$1);
+                                            }
+                                          } else {
+                                            return combineEvent(match, {});
+                                          }
+                                        } else {
+                                          return Js_exn.raiseError("event type or data incorrect");
+                                        }
                                       })), undefined), Spec.eventSchema);
                 }
                 catch (raw_e){
