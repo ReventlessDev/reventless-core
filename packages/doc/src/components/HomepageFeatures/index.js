@@ -4,46 +4,80 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Easy to Use',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Event-Sourced Architecture',
+    icon: '📦',
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Built on Domain-Driven Design principles with Event Sourcing and CQRS.
+        Every state change is captured as an immutable event, providing full
+        auditability and the ability to rebuild state at any point in time.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Serverless First',
+    icon: '☁️',
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Designed for serverless infrastructure from the ground up. Pay only for
+        what you use with automatic scaling. Deploy to AWS Lambda with DynamoDB,
+        SQS, SNS, and S3 out of the box.
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Type-Safe ReScript',
+    icon: '🔒',
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        Written in ReScript for end-to-end type safety across your entire stack.
+        Catch errors at compile time, enjoy great refactoring support, and
+        benefit from a functional programming paradigm.
+      </>
+    ),
+  },
+  {
+    title: 'Infrastructure as Code',
+    icon: '🏗️',
+    description: (
+      <>
+        Powered by Pulumi for declarative infrastructure. Define your entire
+        cloud architecture in code alongside your application logic. No manual
+        cloud configuration required.
+      </>
+    ),
+  },
+  {
+    title: 'Focus on Business Logic',
+    icon: '💼',
+    description: (
+      <>
+        The framework handles the complex infrastructure concerns so you can
+        focus on what matters: your domain logic. Define aggregates, commands,
+        and events with minimal boilerplate.
+      </>
+    ),
+  },
+  {
+    title: 'Production Ready',
+    icon: '🚀',
+    description: (
+      <>
+        Battle-tested in production for financial industry applications since
+        2019. Proven patterns for reliability, scalability, and maintainability
+        in enterprise environments.
       </>
     ),
   },
 ];
 
-function Feature({Svg, title, description}) {
+function Feature({icon, title, description}) {
   return (
     <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
+      <div className={styles.featureCard}>
+        <div className={styles.featureIcon}>{icon}</div>
+        <Heading as="h3" className={styles.featureTitle}>{title}</Heading>
+        <p className={styles.featureDescription}>{description}</p>
       </div>
     </div>
   );
@@ -53,6 +87,9 @@ export default function HomepageFeatures() {
   return (
     <section className={styles.features}>
       <div className="container">
+        <Heading as="h2" className={styles.sectionTitle}>
+          Why Reventless?
+        </Heading>
         <div className="row">
           {FeatureList.map((props, idx) => (
             <Feature key={idx} {...props} />

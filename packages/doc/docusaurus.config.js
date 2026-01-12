@@ -50,11 +50,8 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          // FIXME:
           editUrl:
-            "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
+            "https://gitlab.com/reventless/reventless-universe/-/tree/main/packages/doc/",
         },
         /*
         blog: {
@@ -102,39 +99,42 @@ const config = {
           // },
           // { to: '/blog', label: 'Blog', position: 'left' },
           {
-            href: "https://github.com/facebook/docusaurus",
-            label: "GitHub",
+            href: "https://gitlab.com/reventless/reventless-universe",
+            label: "GitLab",
             position: "right",
           },
         ],
       },
       footer: {
-        // FIXME:
         style: "dark",
         links: [
           {
-            title: "Docs",
+            title: "Documentation",
             items: [
               {
-                label: "Tutorial",
-                to: "/docs/intro",
+                label: "Getting Started",
+                to: "/docs/",
+              },
+              {
+                label: "Components",
+                to: "/docs/reventless-components-overview",
               },
             ],
           },
           {
-            title: "Community",
+            title: "Resources",
             items: [
               {
-                label: "Stack Overflow",
-                href: "https://stackoverflow.com/questions/tagged/docusaurus",
+                label: "ReScript",
+                href: "https://rescript-lang.org/",
               },
               {
-                label: "Discord",
-                href: "https://discordapp.com/invite/docusaurus",
+                label: "Pulumi",
+                href: "https://www.pulumi.com/",
               },
               {
-                label: "Twitter",
-                href: "https://twitter.com/docusaurus",
+                label: "AWS Serverless",
+                href: "https://aws.amazon.com/serverless/",
               },
             ],
           },
@@ -142,17 +142,13 @@ const config = {
             title: "More",
             items: [
               {
-                label: "Blog",
-                to: "/blog",
-              },
-              {
-                label: "GitHub",
-                href: "https://github.com/facebook/docusaurus",
+                label: "GitLab",
+                href: "https://gitlab.com/reventless/reventless-universe",
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Reventless. Built for serverless.`,
       },
       prism: {
         theme: prismThemes.github,
