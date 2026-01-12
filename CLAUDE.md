@@ -1,0 +1,127 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Build Commands
+
+This is a Lerna monorepo with packages in `packages/`. Use Node v22.17.1 (specified in `.node-version`).
+
+### Monorepo-level commands
+```bash
+npm install                    # Install root dependencies
+npm run bootstrap              # lerna bootstrap - link all packages
+npm run build                  # Build all packages
+npm run test                   # Run tests in all packages
+npm run clean                  # Clean all packages
+```
+
+### Per-package commands (run from `packages/<name>/`)
+```bash
+npm run build                  # rescript build
+npm run start                  # rescript build -w (watch mode)
+npm run rebuild                # clean + build with dependencies
+npm run test                   # jest
+npm run dev                    # jest --watchAll
+```
+
+### Running a single test file
+```bash
+cd packages/reventless && npx jest tests/MessageTest.res.js
+```
+
+### Publishing
+```bash
+npx lerna publish              # Version and publish all changed packages
+npx lerna version              # Version only without publishing
+```
+
+## Architecture
+
+Reventless is an **event-sourced CQRS framework** for serverless infrastructure, written in **ReScript** (formerly ReasonML/BuckleScript).
+
+### Package Hierarchy
+
+1. **reventless-spec** - Type specifications and interfaces (defines aggregate, read model, plugin specs)
+2. **reventless** - Core framework (provider-agnostic components and adapters)
+3. **reventless-aws** - AWS-specific implementations (DynamoDB, Lambda, SQS, SNS, S3 adapters)
+4. **rescript-*** - ReScript bindings for various JS libraries (aws-sdk, pulumi, uuid, etc.)
+
+### Core Components (in `packages/reventless/src/components/`)
+
+- **Aggregate** - Event-sourced aggregate root with CommandTopic, EventLog, CommandGenerator
+- **ReadModel** - Query-side projection consuming events via EventCollector
+- **Plugin** - Deployable unit containing aggregates, read models, extension points
+- **Core** - The application core orchestrating all components
+
+Component structure pattern:
+- `Component.res` - Type definitions and outputs
+- `Component_Builder.res` - Factory for creating components
+- `Component_Adapter.res` - Abstract adapter interface
+
+### Adapter Pattern
+
+The framework separates **deploy-time** (Pulumi infrastructure) from **runtime** (Lambda handlers):
+- `src/adapter/` - Deploy-time adapter interfaces
+- `src/adapter/Runtime/` - Runtime builders for different deployment strategies (Single, PerAggregate, Micro)
+
+AWS adapters in `packages/reventless-aws/src/adapter/` implement:
+- EventLog storage → DynamoDB
+- CommandTopic/EventTopic channels → SQS (FIFO), SNS
+- QueryDb → DynamoDB
+- Task buckets → S3
+
+### Key Patterns
+
+**Builder pattern with module types**: Components use first-class modules for type-safe configuration
+```rescript
+module type T = {
+  module Spec: ReventlessSpec.Aggregate.Spec
+  let make: (~opts: Pulumi.ComponentResource.options=?) => component
+}
+```
+
+**Pulumi.Output.t wrapping**: All infrastructure values are wrapped in `Pulumi.Output.t<'a>` for deploy-time/runtime separation
+
+**sury-ppx**: Uses the `@schema` attribute for automatic JSON serialization via sury
+
+### ReScript Configuration
+
+Packages use `rescript.json` with:
+- `sury-ppx/bin` PPX for schema generation
+- `-open RescriptCore` flag
+- CommonJS output with `.res.js` suffix
+
+## Documentation
+
+The `packages/doc/` directory contains a Docusaurus-based documentation site.
+
+### Running the docs locally
+```bash
+cd packages/doc
+npm install
+npm run start                  # Start dev server with hot reload
+npm run build                  # Build static site
+npm run serve                  # Serve built site
+```
+
+### Documentation Structure (`packages/doc/docs/`)
+
+- **index.md** - Introduction to Reventless (methodology, programming model, framework overview)
+- **get-started.md** - Getting started guide
+- **advanced.md** - Advanced usage scenarios
+- **rescript-syntax.md** - ReScript language reference
+- **reventless-components-overview.md** - High-level component overview with diagrams
+- **reventless-component-relations.md** - How components interact
+- **reventless-components/** - Detailed docs for each component:
+  - aggregate.md, readmodel.md, plugin.md, extensionpoint.md, extension.md, task.md, api.md
+- **reventless-common-modules/** - Shared module docs (Id, config, counter)
+- **inner-workings/** - Framework internals:
+  - framework-inner-workings.md, messages.md, pulumi.md, aws-lambda.md, resources.md, serialization.md
+- **troubleshooting/** - Common issues and solutions
+
+## Code Smells to Avoid
+
+From the codebase documentation:
+- `...->ignore` in ReScript
+- `...->Pulumi.Output.apply(_, ...)` - prefer piped version
+- `option(Pulumi.Output.t('a))` - this type combination doesn't work correctly
