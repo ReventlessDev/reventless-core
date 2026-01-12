@@ -12,3 +12,4 @@ npm-debug.log
 tmp-bs-platform
 coverage
 lerna-debug.log
+.playwright-mcp

@@ -10,7 +10,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 const config = {
   title: "Reventless",
   tagline: "Ship Value Fast",
-  // TODO: favicon: "img/favicon.ico",
+  favicon: "img/logo.svg",
 
   // Set the production url of your site here
   url: "https://gitlab.com",
@@ -80,10 +80,10 @@ const config = {
       //image: 'img/docusaurus-social-card.jpg',
       navbar: {
         title: "Reventless",
-        // logo: {
-        //   alt: 'My Site Logo',
-        //   src: 'img/logo.svg',
-        // },
+        logo: {
+          alt: 'Reventless Logo',
+          src: 'img/logo.svg',
+        },
         items: [
           {
             type: "docSidebar",
