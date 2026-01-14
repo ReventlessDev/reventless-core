@@ -47,7 +47,7 @@ let name = "Customer"
 
 module Id = ReventlessSpec.Id.String
 
-@decco
+@schema
 type state = {
   name: name,
   address: address,
@@ -67,7 +67,7 @@ let config = ReventlessSpec.ReadModel.Spec.config(
 )
 ```
 
-For information about `@decco` see [Decco annotation](../inner-workings/serialization.md#decco-annotation).
+For information about `@schema` see [Schema attribute](../inner-workings/serialization.md#schema-attribute).
 
 ### Id
 
