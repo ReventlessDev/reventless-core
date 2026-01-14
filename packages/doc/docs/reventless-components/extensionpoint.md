@@ -17,18 +17,18 @@ type someRecord = {
     otherValue: bool,
     someDescription: string
 };
-[@decco]
+@schema
 type command =
     | InformExtensionPoint(bool)
     | TellExtensionPointSomethingElse(someRecord); // or unit if not used
 
-[@decco]
+@schema
 type event =
     | SomethingHappened(bool, string)
     | SomethingElseHappened(int);
 
-[@decco]
-type callCommand = 
+@schema
+type callCommand =
     | CallSomeSideEffect(int); // or unit if not used
 
 ```
