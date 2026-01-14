@@ -13,3 +13,6 @@ tmp-bs-platform
 coverage
 lerna-debug.log
 .playwright-mcp
+
+# Auto Claude data directory
+.auto-claude/
