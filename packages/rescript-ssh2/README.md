@@ -10,7 +10,7 @@ Add `rescript-ssh2` to your dependencies:
 npm install rescript-ssh2
 ```
 
-Add `rescript-ssh2` to your `rescript.json` (or `bsconfig.json`):
+Add `rescript-ssh2` to your `rescript.json`:
 
 ```json
 {

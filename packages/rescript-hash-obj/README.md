@@ -1,10 +1,10 @@
-# `rescript-hash-obj
+# `rescript-hash-obj`
 
 ReasonML / Bucklescript bindings for [hash-obj](https://github.com/puleos/object-hash).
 
 ## Usage
 - Add `rescript-hash-obj` to your dependencies in `package.json`.
-- Add `rescript-hash-obj` to your dependencies in `bsconfig.json`.
+- Add `rescript-hash-obj` to your dependencies in `rescript.json`.
 - For general information see this monorepo's [readme](../../README.md)
 
 ## API Documentation

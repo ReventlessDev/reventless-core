@@ -9,7 +9,7 @@ ReScript bindings for [Node.js streams](https://nodejs.org/docs/latest-v12.x/api
    npm install rescript-node-streams
    ```
 
-2. Add `rescript-node-streams` to your dependencies in `rescript.json` (or `bsconfig.json`):
+2. Add `rescript-node-streams` to your dependencies in `rescript.json`:
    ```json
    {
      "bs-dependencies": ["rescript-node-streams"]

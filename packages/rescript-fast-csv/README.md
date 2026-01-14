@@ -4,7 +4,7 @@ ReScript bindings for [fast-csv](https://github.com/C2FO/fast-csv), a fast and f
 
 ## Installation
 - Add `rescript-fast-csv` to your dependencies in `package.json`.
-- Add `rescript-fast-csv` to your dependencies in `bsconfig.json`.
+- Add `rescript-fast-csv` to your dependencies in `rescript.json`.
 - For general information see this monorepo's [readme](../../README.md)
 
 ## Core API

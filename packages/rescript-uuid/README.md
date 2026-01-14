@@ -14,7 +14,7 @@ ReScript bindings for [uuid](https://github.com/uuidjs/uuid) - RFC4122 UUID gene
 }
 ```
 
-2. Add `@reventless/rescript-uuid` to `bs-dependencies` in `rescript.json` (or `bsconfig.json`):
+2. Add `@reventless/rescript-uuid` to `bs-dependencies` in `rescript.json`:
 ```json
 {
   "bs-dependencies": [
