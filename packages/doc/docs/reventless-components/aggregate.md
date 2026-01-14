@@ -113,7 +113,7 @@ A name is a string which must be unique in the scope of Aggregate names in one [
 ### command
 
 The command type declares the possible inputs of the aggregate.
-There are no explicit constraints for the command type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/rescript-schema)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+There are no explicit constraints for the command type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/sury)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
 :::tip
 Command Variant Constructors should be formulated as imperative.
@@ -122,7 +122,7 @@ Command Variant Constructors should be formulated as imperative.
 ### event
 
 The event type declares the possible results of the aggregate.
-There are no explicit constraints for the event type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/rescript-schema)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+There are no explicit constraints for the event type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/sury)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
 :::tip
 Event Variant Constructors should be formulated in past tense.

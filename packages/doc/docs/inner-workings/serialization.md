@@ -5,7 +5,7 @@ date: 2024-08-20
 
 ## Sury-PPX
 
-[Sury](https://github.com/DZakh/rescript-schema) is the currently used library for de-/serialization using a [PPX](../rescript-syntax.md#ppx).
+[Sury](https://github.com/DZakh/sury) is the currently used library for de-/serialization using a [PPX](../rescript-syntax.md#ppx).
 
 ### `@schema` annotation
 
