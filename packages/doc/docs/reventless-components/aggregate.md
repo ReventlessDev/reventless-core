@@ -1,7 +1,6 @@
 ---
 title: Aggregate
 date: 2021-11-22
-draft: true
 ---
 
 [For a short summary of an Aggregate, see Reventless Components Overview.](../reventless-components-overview.md#aggregate)

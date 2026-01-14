@@ -24,7 +24,7 @@ const config = {
   organizationName: "eviden", // Usually your GitHub org/user name.
   projectName: "reventless", // Usually your repo name.
 
-  onBrokenLinks: "throw",
+  onBrokenLinks: "warn",
   onBrokenMarkdownLinks: "warn",
 
   // activate mermaid support

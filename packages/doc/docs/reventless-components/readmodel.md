@@ -1,7 +1,6 @@
 ---
 title: Read Model
 date: 2021-11-22
-draft: true
 ---
 
 [For a short summary of a ReadModel, see Reventless Components Overview.](../reventless-components-overview.md#readmodel)

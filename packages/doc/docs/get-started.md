@@ -1,7 +1,6 @@
 ---
 title: Get Started
 date: 2021-11-22
-draft: true
 sidebar_position: 2
 ---
 
