@@ -1,7 +1,6 @@
 ---
 title: Aggregate
 date: 2021-11-22
-draft: true
 ---
 
 [For a short summary of an Aggregate, see Reventless Components Overview.](../reventless-components-overview.md#aggregate)
@@ -64,30 +63,30 @@ An Aggregate Spec defines the id, name, command and event types of an Aggregate 
 
 module Id = ReventlessSpec.Id.String
 
-@decco
+@schema
 type id = Id.t
 
 let name = "Customer"
 
-@decco
+@schema
 type name = string
-@decco
+@schema
 type address = string
 
-@decco
+@schema
 type customer = {
   name: name,
   address: address,
 }
 
-@decco
+@schema
 type command =
   | Create(customer)
   | ChangeAddress(address)
   | ChangeName(name)
   | Delete
 
-@decco
+@schema
 type event =
   | Created(customer)
   | AddressChanged(address)
@@ -95,13 +94,13 @@ type event =
   | Unchanged
   | Deleted
 
-@decco
+@schema
 type error =
   | AlreadyExisting
   | NotExisting
 ```
 
-For information about `@decco` see [Decco annotation](../inner-workings/serialization.md#decco-annotation).
+For information about `@schema` see [Schema annotation](../inner-workings/serialization.md#schema-annotation).
 
 ### Id
 
@@ -113,8 +112,8 @@ A name is a string which must be unique in the scope of Aggregate names in one [
 
 ### command
 
-The command type declares the possible inputs of the aggregate.  
-There are no explicit constraints for the command type (developer can choose whichever type is best suited - proivided the serialization library has support - currently [decco](https://github.com/rescript-labs/decco)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+The command type declares the possible inputs of the aggregate.
+There are no explicit constraints for the command type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/sury)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
 :::tip
 Command Variant Constructors should be formulated as imperative.
@@ -122,8 +121,8 @@ Command Variant Constructors should be formulated as imperative.
 
 ### event
 
-The event type declares the possible results of the aggregate.  
-There are no explicit constraints for the event type (developer can choose whichever type is best suited - proivided the serialization library has support - currently [decco](https://github.com/rescript-labs/decco)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+The event type declares the possible results of the aggregate.
+There are no explicit constraints for the event type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/sury)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
 :::tip
 Event Variant Constructors should be formulated in past tense.
@@ -162,7 +161,7 @@ let atomicCounter = None
 let invalidEvent = event =>
   Js.Exn.raiseError("InvalidEvent: " ++ event_encode(event)->Js.Json.stringify)
 
-@decco
+@schema
 type state = {
   address: address,
   name: name,
