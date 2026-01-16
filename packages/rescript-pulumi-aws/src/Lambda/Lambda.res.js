@@ -7,7 +7,7 @@ var Pulumi = require("@pulumi/pulumi");
 var PolicyDocument$PulumiAws = require("../IAM/PolicyDocument.res.js");
 
 function make(callback, role, policies, deadLetterConfig, tracingConfig, memorySizeOpt, timeoutOpt, runtimeOpt, layersOpt, vpcConfig, tags, environmentOpt) {
-  var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 128;
+  var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
   var runtime = runtimeOpt !== undefined ? runtimeOpt : "nodejs22.x";
   var layers = layersOpt !== undefined ? layersOpt : Core__Option.getOr(Core__Option.map(process.env.REVENTLESS_LAYER_ARN, (function (arn) {

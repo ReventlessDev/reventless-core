@@ -89,7 +89,12 @@ module CallbackFunction = {
     }
 
     /**
-      defaults: memorySize=128, timeout=180, runtime=NodeJs22
+      defaults: memorySize=1024, timeout=180, runtime=NodeJs22
+
+      The 1024MB memory default is optimal for Node.js Lambdas with AWS SDK v3,
+      balancing cost and performance. Lower values cause slow cold starts when
+      loading multiple AWS SDK clients; higher values increase cost without
+      significant benefit for most workloads.
       */
     let make = (
       ~callback,
@@ -97,7 +102,7 @@ module CallbackFunction = {
       ~policies=?,
       ~deadLetterConfig=?,
       ~tracingConfig=?,
-      ~memorySize=128->Pulumi.Input.make,
+      ~memorySize=1024->Pulumi.Input.make,
       ~timeout=180->Pulumi.Input.make,
       ~runtime=NodeJs22,
       ~layers=reventlessLayerArn
