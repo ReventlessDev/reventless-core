@@ -1,6 +1,7 @@
 ---
 title: Extension Point
 date: 2021-11-22
+draft: false
 ---
 
 # Extension Point
@@ -16,18 +17,18 @@ type someRecord = {
     otherValue: bool,
     someDescription: string
 };
-@schema
+[@decco]
 type command =
     | InformExtensionPoint(bool)
     | TellExtensionPointSomethingElse(someRecord); // or unit if not used
 
-@schema
+[@decco]
 type event =
     | SomethingHappened(bool, string)
     | SomethingElseHappened(int);
 
-@schema
-type callCommand =
+[@decco]
+type callCommand = 
     | CallSomeSideEffect(int); // or unit if not used
 
 ```

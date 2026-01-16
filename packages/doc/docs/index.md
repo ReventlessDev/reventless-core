@@ -1,6 +1,7 @@
 ---
 title: Introduction to Reventless
 date: 2021-11-22
+draft: false
 sidebar_position: 1
 ---
 
@@ -92,7 +93,7 @@ other Suggestions:
 
 1. [Get started](./get-started.md) by reading [this guide](./get-started.md).
 2. Learn about [avanced usage](./advanced.md) scenarios by reading [this](./advanced.md).
-3. Get your hands dirty by reading an in-depth description about the [inner workings of the Reventless framework](./framework-inner-workings.md).
+3. Get your hands dirty by reading an in-depth description about the [inner workings of the Reventless framework](./inner-workings/framework-inner-workings.md).
 
 ## Roadmap
 

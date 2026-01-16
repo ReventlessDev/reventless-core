@@ -1,6 +1,7 @@
 ---
 title: Aggregate
 date: 2021-11-22
+draft: false
 ---
 
 [For a short summary of an Aggregate, see Reventless Components Overview.](../reventless-components-overview.md#aggregate)
@@ -47,14 +48,14 @@ GenericAggregate:::aggregate
 EventTopicOut --> EventTarget
 ```
 
-An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behaviour**](#behaviour), [**Config**](./config.md) and [**Event Mappings**](#eventmappings).
+An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behaviour**](#behaviour), [**Config**](../reventless-common-modules/config.md) and [**Event Mappings**](#eventmappings).
 
-Commands are requests for change, which may be accepted (or not). Several Components can act as a Command Source ([Command Generator](./command_generator.md), [Task](./task.md), [Event Mapper](#eventmappings), [Extension](./extension.md), [Extension Point](./extensionpoint.md) - see [runtime communication](component_relations.md#runtime-communication) for more details). Commands will never be stored. Accepted Commands result in any number of Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
+Commands are requests for change, which may be accepted (or not). Several Components can act as a Command Source (Command Generator, [Task](./task.md), [Event Mapper](#eventmappings), [Extension](./extension.md), [Extension Point](./extensionpoint.md) - see [runtime communication](../reventless-component-relations.md#runtime-communication) for more details). Commands will never be stored. Accepted Commands result in any number of Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
 In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
 
 ## Aggregate Spec
 
-An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behaviour](#behaviour), [EventMapper](eventmapper.md), [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
+An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behaviour](#behaviour), EventMapper, [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
 
 ### Example
 
@@ -63,30 +64,30 @@ An Aggregate Spec defines the id, name, command and event types of an Aggregate 
 
 module Id = ReventlessSpec.Id.String
 
-@schema
+@decco
 type id = Id.t
 
 let name = "Customer"
 
-@schema
+@decco
 type name = string
-@schema
+@decco
 type address = string
 
-@schema
+@decco
 type customer = {
   name: name,
   address: address,
 }
 
-@schema
+@decco
 type command =
   | Create(customer)
   | ChangeAddress(address)
   | ChangeName(name)
   | Delete
 
-@schema
+@decco
 type event =
   | Created(customer)
   | AddressChanged(address)
@@ -94,13 +95,13 @@ type event =
   | Unchanged
   | Deleted
 
-@schema
+@decco
 type error =
   | AlreadyExisting
   | NotExisting
 ```
 
-For information about `@schema` see [Schema annotation](../inner-workings/serialization.md#schema-annotation).
+For information about `@decco` see [Decco annotation](../inner-workings/serialization.md#decco-annotation).
 
 ### Id
 
@@ -112,8 +113,8 @@ A name is a string which must be unique in the scope of Aggregate names in one [
 
 ### command
 
-The command type declares the possible inputs of the aggregate.
-There are no explicit constraints for the command type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/sury)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+The command type declares the possible inputs of the aggregate.  
+There are no explicit constraints for the command type (developer can choose whichever type is best suited - proivided the serialization library has support - currently [decco](https://github.com/rescript-labs/decco)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
 :::tip
 Command Variant Constructors should be formulated as imperative.
@@ -121,8 +122,8 @@ Command Variant Constructors should be formulated as imperative.
 
 ### event
 
-The event type declares the possible results of the aggregate.
-There are no explicit constraints for the event type (developer can choose whichever type is best suited - provided the serialization library has support - currently [sury](https://github.com/DZakh/sury)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+The event type declares the possible results of the aggregate.  
+There are no explicit constraints for the event type (developer can choose whichever type is best suited - proivided the serialization library has support - currently [decco](https://github.com/rescript-labs/decco)), but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
 :::tip
 Event Variant Constructors should be formulated in past tense.
@@ -161,7 +162,7 @@ let atomicCounter = None
 let invalidEvent = event =>
   Js.Exn.raiseError("InvalidEvent: " ++ event_encode(event)->Js.Json.stringify)
 
-@schema
+@decco
 type state = {
   address: address,
   name: name,
@@ -236,7 +237,7 @@ The `resolverConfig` controls the connections of the API to the Aggregate (the n
 `resolverConfig` is a record containing these fields:
 
 - `commandDecoder`: function to decode incoming `json` into the `command` type (this usually equates to `Spec.command_decode`)
-- `fields`: array of strings equal to mutations in the (GraphQL) [API schema](./Api.md#schema), that should trigger the creation of a command for this aggregate: by convention and to avoid naming collisions, the field is usually named in a pattern of `<AggregateName>_<commandName>`
+- `fields`: array of strings equal to mutations in the (GraphQL) [API schema](./api.md#schema), that should trigger the creation of a command for this aggregate: by convention and to avoid naming collisions, the field is usually named in a pattern of `<AggregateName>_<commandName>`
 
 ### init
 
@@ -429,7 +430,7 @@ This array has to include all mappings for this `Aggregate`.
 
 `counter` defines if a counter should be used for this mapping. In this example no counter is needed, so it is `None`.
 
-See [Counter](./counter.md#usage-in-eventmappings) component for further details.
+See [Counter](../reventless-common-modules/counter.md#usage-in-eventmappings) component for further details.
 
 ## Generate Aggregate (AWS Defaults)
 

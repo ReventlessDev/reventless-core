@@ -1,6 +1,7 @@
 ---
 title: ReScript Syntax
 date: 2022-11-02
+draft: false
 ---
 
 Some most commonly used ReScript features and syntax shall be highlighted here. See [https://rescript-lang.org/](https://rescript-lang.org/) for the complete documtation of ReScript.

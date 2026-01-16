@@ -1,6 +1,7 @@
 ---
 title: Api
 date: 2024-08-13
+draft: false
 ---
 
 The API is used to query and mutate a [ReadModel](readmodel.md). As of writing, the API does not yet utilize the strong type system provided by Rescript. Therefore, instead of relying on the defined types inside the ReadModel, the programmer has to define the schema by hand. Once defined, a client can access the ReadModel to read or mutate the ReadModel state. 

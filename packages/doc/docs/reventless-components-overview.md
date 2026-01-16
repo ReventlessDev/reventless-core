@@ -1,6 +1,7 @@
 ---
 title: Reventless Components Overview
 date: 2022-09-27
+draft: false
 ---
 
 :::note[TODO]
@@ -78,8 +79,6 @@ graph LR
 - **responsibility**: execute `functions` of a given `task` based on (multiple) `aggregate`s' `Events`
 - **in**: `Event`s
 - **out**: -
-
-[Read more about the SideEffectHandler component.](./reventless-components/sideeffecthandler.md)
 
 ### Plugin
 

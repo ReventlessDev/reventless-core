@@ -1,6 +1,7 @@
 ---
 title: Task
 date: 2021-11-22
+draft: false
 ---
 
 The Task's business logic is defined in it's setup function. Contrary to the Command/Event paradigm used across the other components, the Task is free to be implemented in any way. Often Tasks are used to interact with third party systems (e.g. API calls, upload/download).
@@ -64,7 +65,7 @@ Retrieve all entries in the Read Model, which satisfy the given filter criteria.
 
 #### scheduler
 
-Provides the functions (`createSchedule` & `deleteSchedule`) of the Scheduler, which is created in the [Config](./config.md).
+Provides the functions (`createSchedule` & `deleteSchedule`) of the Scheduler, which is created in the [Config](../reventless-common-modules/config.md).
 
 ##### createSchedule
 
