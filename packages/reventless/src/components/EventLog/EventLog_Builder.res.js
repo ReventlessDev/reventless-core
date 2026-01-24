@@ -32,15 +32,15 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
                 Component$Reventless.operations(eventTopic)
               ]).apply(function (param) {
               var partial_arg = EventLog_Operations$Reventless.Make;
-              var Runtime = partial_arg(Spec, {
+              var Ops = partial_arg(Spec, {
                     Spec: Spec,
                     EventTopic: SpecificEventTopic,
                     eventTopic: param[1],
                     storage: param[0]
                   });
               return {
-                      append: Runtime.append,
-                      replay: Runtime.replay
+                      append: Ops.append,
+                      replay: Ops.replay
                     };
             }));
     return Component$Reventless.setOutputs(self, {

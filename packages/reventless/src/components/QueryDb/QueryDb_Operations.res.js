@@ -8,7 +8,7 @@ var Core__Result = require("@rescript/core/src/Core__Result.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
 
-function Make(ReadModelSpec, Spec) {
+function Make(ReadModelSpec, Ops) {
   var decode = function (id, stateJson) {
     var state;
     try {
@@ -22,7 +22,7 @@ function Make(ReadModelSpec, Spec) {
     return [state];
   };
   var load = async function (id) {
-    var result = await Spec.jsonOps.load(ReadModelSpec.Id.toString(id));
+    var result = await Ops.jsonOps.load(ReadModelSpec.Id.toString(id));
     return Core__Result.map(result, (function (states) {
                   return states.map(function (state) {
                                 return decode(id, state);
@@ -33,7 +33,7 @@ function Make(ReadModelSpec, Spec) {
     var dict = Js_json.decodeObject(Message$Reventless.encode(state, ReadModelSpec.stateSchema));
     if (dict !== undefined) {
       dict["id"] = Message$Reventless.encode(id, ReadModelSpec.Id.schema);
-      return await Spec.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
+      return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
     } else {
       console.log("QueryDB.saveState: Error: Couldn't decodeObject:", JSON.stringify(state));
       return {
@@ -62,13 +62,13 @@ function Make(ReadModelSpec, Spec) {
               return ;
             }
           }));
-    return await Spec.jsonOps.saveBatch(batch);
+    return await Ops.jsonOps.saveBatch(batch);
   };
   var count = async function (id, fieldName, inc) {
-    return await Spec.jsonOps.count(ReadModelSpec.Id.toString(id), fieldName, inc);
+    return await Ops.jsonOps.count(ReadModelSpec.Id.toString(id), fieldName, inc);
   };
   var $$delete = async function (id, subId) {
-    return await Spec.jsonOps.delete(ReadModelSpec.Id.toString(id), subId);
+    return await Ops.jsonOps.delete(ReadModelSpec.Id.toString(id), subId);
   };
   var deleteBatch = async function (ids) {
     var ids$1 = ids.map(function (param) {
@@ -77,7 +77,7 @@ function Make(ReadModelSpec, Spec) {
                   param[1]
                 ];
         });
-    return await Spec.jsonOps.deleteBatch(ids$1);
+    return await Ops.jsonOps.deleteBatch(ids$1);
   };
   return {
           decode: decode,

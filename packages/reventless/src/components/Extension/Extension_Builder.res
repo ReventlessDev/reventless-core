@@ -18,6 +18,8 @@ module Make = (
     name,
   ) => {
     module Operations = Extension_Operations.Make(
+      Spec,
+      Mappings,
       {
         let publishToAggregates = publishToAggregates
         let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
@@ -25,8 +27,6 @@ module Make = (
         let publishToReadModels = publishToReadModels
         let queryEngine = queryEngine
       },
-      Spec,
-      Mappings,
     )
     let operations = {
       {

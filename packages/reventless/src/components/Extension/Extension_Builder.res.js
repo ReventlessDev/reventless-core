@@ -13,18 +13,17 @@ var Extension_Operations$Reventless = require("./Extension_Operations.res.js");
 function Make(Spec, Mappings) {
   var make = function (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Extension$Reventless.componentType), Spec.name + ("." + Mappings.name), (function (extra, extra$1) {
-                  var partial_arg = {
-                    publishToAggregates: publishToAggregates,
-                    publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
-                    readModelNamesForSourceName: readModelNamesForSourceName,
-                    publishToReadModels: publishToReadModels,
-                    queryEngine: queryEngine
+                  var partial_arg = Extension_Operations$Reventless.Make;
+                  var partial_arg$1 = function (param, param$1) {
+                    return partial_arg(Spec, param, param$1);
                   };
-                  var partial_arg$1 = Extension_Operations$Reventless.Make;
-                  var partial_arg$2 = function (param, param$1) {
-                    return partial_arg$1(partial_arg, param, param$1);
-                  };
-                  var Operations = partial_arg$2(Spec, Mappings);
+                  var Operations = partial_arg$1(Mappings, {
+                        publishToAggregates: publishToAggregates,
+                        publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
+                        readModelNamesForSourceName: readModelNamesForSourceName,
+                        publishToReadModels: publishToReadModels,
+                        queryEngine: queryEngine
+                      });
                   var operations_incomingEventHandler = Operations.incomingEventHandler;
                   var operations_outgoingEventHandler = Operations.outgoingEventHandler;
                   var operations = {

@@ -79,22 +79,20 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                                   })(EventTopicAdapter);
                               var eventTopic = SpecificEventTopic.make(childName, [], opts);
                               return Component$Reventless.operations(eventTopic).apply(function (param) {
-                                          var OperationsSpec_publishToEventTopic = param.publishJson;
-                                          var OperationsSpec = {
-                                            publishToEventTopic: OperationsSpec_publishToEventTopic,
-                                            commandTopicResources: commandTopicResources,
-                                            scheduler: scheduler,
-                                            queryEngine: queryEngine
-                                          };
                                           var partial_arg = ExtensionPoint_Operations$Reventless.Make;
                                           var partial_arg$1 = function (param, param$1) {
-                                            return partial_arg(OperationsSpec, param, param$1);
+                                            return partial_arg(Spec, param, param$1);
                                           };
-                                          var Operations = partial_arg$1(Spec, Mappings);
+                                          var Ops = partial_arg$1(Mappings, {
+                                                publishToEventTopic: param.publishJson,
+                                                commandTopicResources: commandTopicResources,
+                                                scheduler: scheduler,
+                                                queryEngine: queryEngine
+                                              });
                                           return [
                                                   commandTopic,
                                                   eventTopic,
-                                                  Operations.outgoingEventHandler
+                                                  Ops.outgoingEventHandler
                                                 ];
                                         });
                             })));

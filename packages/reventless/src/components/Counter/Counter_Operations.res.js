@@ -35,9 +35,9 @@ function logCountItems(countItems) {
 
 var NotCounted = /* @__PURE__ */Caml_exceptions.create("Counter_Operations-Reventless.NotCounted");
 
-function Make(Spec) {
+function Make(Ops) {
   var count = async function (countItems) {
-    var result = await Spec.saveBatch(countItems.map(function (param) {
+    var result = await Ops.saveBatch(countItems.map(function (param) {
               var id = Counter$Reventless.makeId([
                     param.counterId,
                     param.reference
@@ -50,7 +50,7 @@ function Make(Spec) {
               return [
                       id,
                       state,
-                      Spec.ttl
+                      Ops.ttl
                     ];
             }));
     if (result.TAG === "Ok") {

@@ -4,7 +4,7 @@ module type Mappings = {
   let mappings: array<module(Mapping)>
 }
 
-module type Spec = {
+module type Ops = {
   let publishToEventTopic: EventTopic.publishJson
   let commandTopicResources: array<Adapter.unwrappedResource>
   let scheduler: Scheduler.operations
@@ -12,9 +12,9 @@ module type Spec = {
 }
 
 module Make = (
-  Spec: Spec,
   MappingSpec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
+  Ops: Ops,
 ) => {
   let findOutgoingMapping = (aggregateNameOpt, mappings) =>
     aggregateNameOpt->Option.flatMap(aggregateName =>
@@ -52,13 +52,13 @@ module Make = (
     switch action {
     | ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
       Js.log2("ExtensionPoint_Operations.applyEventAction:", eventJson->Js.Json.stringify)
-      try await Spec.publishToEventTopic(id, meta, eventJson) catch {
+      try await Ops.publishToEventTopic(id, meta, eventJson) catch {
       | err => err->Js.log2("ExtensionPoint: Error on publishToEventTopic command:")
       }
     | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
       let publishToEventTopic = async promise => {
         let (id, meta, eventJson) = await promise
-        try await Spec.publishToEventTopic(id, meta, eventJson) catch {
+        try await Ops.publishToEventTopic(id, meta, eventJson) catch {
         | err => err->Js.log2("ExtensionPoint: Error on publishToEventTopic command:")
         }
       }
@@ -74,9 +74,9 @@ module Make = (
     let eventActions = mapOutgoingEvent(
       eventJson',
       Mappings.mappings,
-      Spec.scheduler,
-      Spec.commandTopicResources,
-      Spec.queryEngine,
+      Ops.scheduler,
+      Ops.commandTopicResources,
+      Ops.queryEngine,
     )
 
     await eventActions

@@ -9,7 +9,7 @@ var Message$Reventless = require("../../Message.res.js");
 var Schedule$Reventless = require("../../util/Schedule.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
-function Make(Spec, MappingSpec, Mappings) {
+function Make(MappingSpec, Mappings, Ops) {
   var findOutgoingMapping = function (aggregateNameOpt, mappings) {
     return Core__Option.flatMap(aggregateNameOpt, (function (aggregateName) {
                   return mappings.find(function (Mapping) {
@@ -36,7 +36,7 @@ function Make(Spec, MappingSpec, Mappings) {
           var eventJson = action._2;
           console.log("ExtensionPoint_Operations.applyEventAction:", JSON.stringify(eventJson));
           try {
-            return await Spec.publishToEventTopic(action._0, action._1, eventJson);
+            return await Ops.publishToEventTopic(action._0, action._1, eventJson);
           }
           catch (raw_err){
             var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -47,7 +47,7 @@ function Make(Spec, MappingSpec, Mappings) {
           var publishToEventTopic = async function (promise) {
             var match = await promise;
             try {
-              return await Spec.publishToEventTopic(match[0], match[1], match[2]);
+              return await Ops.publishToEventTopic(match[0], match[1], match[2]);
             }
             catch (raw_err){
               var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -70,7 +70,7 @@ function Make(Spec, MappingSpec, Mappings) {
   };
   var outgoingEventHandler = async function (eventJson$p, _pluginDef) {
     console.log("ExtensionPoint_Operations.outgoingEventHandler:", JSON.stringify(eventJson$p));
-    var eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Spec.scheduler, Spec.commandTopicResources, Spec.queryEngine);
+    var eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Ops.scheduler, Ops.commandTopicResources, Ops.queryEngine);
     return await Util_Promise$Reventless.toUnit(Promise.all(eventActions.map(applyEventAction)));
   };
   return {

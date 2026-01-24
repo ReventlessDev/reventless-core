@@ -1,19 +1,18 @@
-module type Spec = {
+module type Ops = {
   let publishJson: EventTopic.publishJson
 }
 
-module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
+module Make = (Spec: EventTopic.Spec, Ops: Ops) => {
   let publish = async events' => {
     let eventCount = events'->Array.length
     await events'
     ->Array.mapWithIndex(async (event', idx) => {
-      let eventJson' =
-        event'->Message.encodeEvent'(EventTopicSpec.Id.schema, EventTopicSpec.eventSchema)
+      let eventJson' = event'->Message.encodeEvent'(Spec.Id.schema, Spec.eventSchema)
 
       let id = event'.id
       let idx = idx + 1
 
-      switch await Spec.publishJson(id->EventTopicSpec.Id.toString, event'.meta, eventJson') {
+      switch await Ops.publishJson(id->Spec.Id.toString, event'.meta, eventJson') {
       | exception e =>
         eventJson'->Logger.logJsonEvent(
           ~loc=__LOC__,

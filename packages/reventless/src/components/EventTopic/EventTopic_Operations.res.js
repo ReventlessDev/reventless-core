@@ -5,22 +5,22 @@ var Logger$Reventless = require("../../util/Logger.res.js");
 var Message$Reventless = require("../../Message.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
-function Make(Spec, EventTopicSpec) {
+function Make(Spec, Ops) {
   var publish = async function (events$p) {
     var eventCount = events$p.length;
     return await Util_Promise$Reventless.toUnit(Promise.all(events$p.map(async function (event$p, idx) {
-                        var eventJson$p = Message$Reventless.encodeEvent$p(event$p, EventTopicSpec.Id.schema, EventTopicSpec.eventSchema);
+                        var eventJson$p = Message$Reventless.encodeEvent$p(event$p, Spec.Id.schema, Spec.eventSchema);
                         var id = event$p.id;
                         var idx$1 = idx + 1 | 0;
                         var val;
                         try {
-                          val = await Spec.publishJson(EventTopicSpec.Id.toString(id), event$p.meta, eventJson$p);
+                          val = await Ops.publishJson(Spec.Id.toString(id), event$p.meta, eventJson$p);
                         }
                         catch (e){
-                          Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 19, characters 15-22", "Error", eventJson$p, "Couldn't publish event " + idx$1.toString() + "/" + eventCount.toString() + ":");
+                          Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 18, characters 15-22", "Error", eventJson$p, "Couldn't publish event " + idx$1.toString() + "/" + eventCount.toString() + ":");
                           throw e;
                         }
-                        return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 26, characters 15-22", undefined, eventJson$p, "Published event " + idx$1.toString() + "/" + eventCount.toString() + ":");
+                        return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 25, characters 15-22", undefined, eventJson$p, "Published event " + idx$1.toString() + "/" + eventCount.toString() + ":");
                       })));
   };
   return {

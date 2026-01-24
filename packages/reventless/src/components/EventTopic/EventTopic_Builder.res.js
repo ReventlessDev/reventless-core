@@ -15,13 +15,10 @@ function Make(Spec, Publisher) {
                   };
                   var publisher = Publisher.make(ComponentType$Reventless.name(extra$1, EventTopic$Reventless.componentType), storageResources, opts);
                   Component$Reventless.setOperations(extra, publisher.publishJson.apply(function (publishJson) {
-                            var partial_arg = {
-                              publishJson: publishJson
-                            };
-                            var partial_arg$1 = EventTopic_Operations$Reventless.Make;
-                            var Operations = (function (param) {
-                                  return partial_arg$1(partial_arg, param);
-                                })(Spec);
+                            var partial_arg = EventTopic_Operations$Reventless.Make;
+                            var Operations = partial_arg(Spec, {
+                                  publishJson: publishJson
+                                });
                             return {
                                     publish: Operations.publish,
                                     publishJson: publishJson

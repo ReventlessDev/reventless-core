@@ -13,7 +13,7 @@ var Message$Reventless = require("../../Message.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
-function Make(Spec, MappingSpec, Mappings) {
+function Make(MappingSpec, Mappings, Ops) {
   var findOutgoingMapping = function (aggregateNameOpt, mappings) {
     return Core__Option.flatMap(aggregateNameOpt, (function (aggregateName) {
                   return mappings.find(function (Mapping) {
@@ -40,7 +40,7 @@ function Make(Spec, MappingSpec, Mappings) {
     }
   };
   var publishAggregateCommand = async function (aggregateName, cmdJson) {
-    var pub = Core__Option.getExn(Js_dict.get(Spec.publishToAggregates, aggregateName), undefined);
+    var pub = Core__Option.getExn(Js_dict.get(Ops.publishToAggregates, aggregateName), undefined);
     try {
       return await pub([cmdJson]);
     }
@@ -52,7 +52,7 @@ function Make(Spec, MappingSpec, Mappings) {
   };
   var publishCorePluginExtensionPointCommand = async function (cmdJson) {
     try {
-      return await Spec.publishToCorePluginExtensionPoint([cmdJson]);
+      return await Ops.publishToCorePluginExtensionPoint([cmdJson]);
     }
     catch (raw_err){
       var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -148,14 +148,14 @@ function Make(Spec, MappingSpec, Mappings) {
       console.log("Could not decode event':", eventJson$p, err);
       return ;
     }
-    var commandActions = mapIncomingEvent(event$p, pluginDef, Spec.queryEngine);
+    var commandActions = mapIncomingEvent(event$p, pluginDef, Ops.queryEngine);
     var apply = async function (commandActions) {
       return await Util_Promise$Reventless.toUnit(Promise.all(commandActions.map(applyIncomingCommandAction)));
     };
     await apply(commandActions);
-    var p = Core__Option.map(Js_dict.get(Spec.readModelNamesForSourceName, event$p.meta.service), (function (readModelNames) {
+    var p = Core__Option.map(Js_dict.get(Ops.readModelNamesForSourceName, event$p.meta.service), (function (readModelNames) {
             return Promise.all(Core__Array.filterMap(readModelNames, (function (readModelName) {
-                              return Core__Option.map(Js_dict.get(Spec.publishToReadModels, readModelName), (function (enqueueEvent) {
+                              return Core__Option.map(Js_dict.get(Ops.publishToReadModels, readModelName), (function (enqueueEvent) {
                                             return enqueueEvent(0, event$p.id, JSON.stringify(eventJson$p));
                                           }));
                             })));

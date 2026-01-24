@@ -26,18 +26,20 @@ module Make = (
     self->Component.setOperations(
       (storage.operations, eventTopic->Component.operations)
       ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((storage, eventTopic)) => {
-        module Ops = {
-          module Spec = Spec
-          module EventTopic = SpecificEventTopic
-          let eventTopic = eventTopic
-          let storage = storage
-        }
-        module Runtime = EventLog_Operations.Make(Spec, Ops)
+      ->Pulumi.Output.apply(((storageOps, eventTopicOps)) => {
+        module Ops = EventLog_Operations.Make(
+          Spec,
+          {
+            module Spec = Spec
+            module EventTopic = SpecificEventTopic
+            let eventTopic = eventTopicOps
+            let storage = storageOps
+          },
+        )
 
         {
-          append: Runtime.append,
-          replay: Runtime.replay,
+          append: Ops.append,
+          replay: Ops.replay,
         }
       }),
     )

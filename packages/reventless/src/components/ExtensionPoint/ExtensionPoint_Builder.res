@@ -83,15 +83,18 @@ module Make = (
         eventTopic
         ->Component.operations
         ->Pulumi.Output.apply(({publishJson: publishToEventTopic}) => {
-          module OperationsSpec = {
-            let publishToEventTopic = publishToEventTopic
-            let commandTopicResources = commandTopicResources
-            let scheduler = scheduler
-            let queryEngine = queryEngine
-          }
-          module Operations = ExtensionPoint_Operations.Make(OperationsSpec, Spec, Mappings)
+          module Ops = ExtensionPoint_Operations.Make(
+            Spec,
+            Mappings,
+            {
+              let publishToEventTopic = publishToEventTopic
+              let commandTopicResources = commandTopicResources
+              let scheduler = scheduler
+              let queryEngine = queryEngine
+            },
+          )
 
-          (commandTopic, eventTopic, Operations.outgoingEventHandler)
+          (commandTopic, eventTopic, Ops.outgoingEventHandler)
         })
       })
       ->Pulumi.Output.unzip3

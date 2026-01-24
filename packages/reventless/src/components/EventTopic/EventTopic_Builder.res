@@ -20,10 +20,10 @@ module Make = (Spec: EventTopic.Spec, Publisher: EventTopic_Adapter.Publisher): 
     self->Component.setOperations(
       publisher.publishJson->Pulumi.Output.apply(publishJson => {
         module Operations = EventTopic_Operations.Make(
+          Spec,
           {
             let publishJson = publishJson
           },
-          Spec,
         )
         {
           publishJson,
@@ -40,6 +40,6 @@ module Make = (Spec: EventTopic.Spec, Publisher: EventTopic_Adapter.Publisher): 
       ~componentType=EventTopic.componentType->ComponentType.toString,
       ~name,
       ~construct=construct(~storageResources, ...),
-      ~opts,
+      ~opts
     )
 }

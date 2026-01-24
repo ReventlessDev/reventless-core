@@ -1,8 +1,8 @@
-module type Spec = {
+module type Ops = {
   let jsonOps: QueryDb.operations<string, Js.Json.t>
 }
 
-module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
+module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Ops: Ops) => {
   let decode = (id, stateJson) =>
     switch stateJson->Message.decode(ReadModelSpec.stateSchema) {
     | state => [state]
@@ -16,7 +16,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
     }
 
   let load = async id =>
-    switch await Spec.jsonOps.load(id->ReadModelSpec.Id.toString) {
+    switch await Ops.jsonOps.load(id->ReadModelSpec.Id.toString) {
     | result =>
       result->Result.map(states => states->Array.map(state => decode(id, state))->Array.flat)
     }
@@ -26,7 +26,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
     | Some(dict) =>
       dict->Js.Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
       let json = Js.Json.object_(dict)
-      await Spec.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
+      await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
       Js.log2("QueryDB.saveState: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
       Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
@@ -44,16 +44,16 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
         None
       }
     )
-    await Spec.jsonOps.saveBatch(batch)
+    await Ops.jsonOps.saveBatch(batch)
   }
 
   let count = async (id, fieldName, inc) =>
-    await Spec.jsonOps.count(id->ReadModelSpec.Id.toString, fieldName, inc)
+    await Ops.jsonOps.count(id->ReadModelSpec.Id.toString, fieldName, inc)
 
-  let delete = async (id, subId) => await Spec.jsonOps.delete(id->ReadModelSpec.Id.toString, subId)
+  let delete = async (id, subId) => await Ops.jsonOps.delete(id->ReadModelSpec.Id.toString, subId)
 
   let deleteBatch = async ids => {
     let ids = ids->Array.map(((id, sort)) => (id->ReadModelSpec.Id.toString, sort))
-    await Spec.jsonOps.deleteBatch(ids)
+    await Ops.jsonOps.deleteBatch(ids)
   }
 }

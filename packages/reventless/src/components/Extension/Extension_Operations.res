@@ -5,7 +5,7 @@ module type Mappings = {
   let mappings: array<module(Mapping)>
 }
 
-module type Spec = {
+module type Ops = {
   let publishToAggregates: dict<CommandTopic.publishJsons>
   let publishToCorePluginExtensionPoint: CommandTopic.publishJsons
   let readModelNamesForSourceName: dict<array<string>>
@@ -19,9 +19,9 @@ module type T = {
 }
 
 module Make = (
-  Spec: Spec,
   MappingSpec: ReventlessSpec.ExtensionMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
+  Ops: Ops,
 ): T => {
   let findOutgoingMapping = (aggregateNameOpt, mappings) =>
     aggregateNameOpt->Option.flatMap(aggregateName =>
@@ -61,14 +61,14 @@ module Make = (
     }
 
   let publishAggregateCommand = async (aggregateName, cmdJson) => {
-    let pub = Spec.publishToAggregates->Js.Dict.get(aggregateName)->Option.getExn
+    let pub = Ops.publishToAggregates->Js.Dict.get(aggregateName)->Option.getExn
     try await pub([cmdJson]) catch {
     | err => Js.log2(`Extension: Error on publish command to aggregate ${aggregateName}:`, err)
     }
   }
 
   let publishCorePluginExtensionPointCommand = async cmdJson =>
-    try await Spec.publishToCorePluginExtensionPoint([cmdJson]) catch {
+    try await Ops.publishToCorePluginExtensionPoint([cmdJson]) catch {
     | err => Js.log2(`Extension: Error on publish command to Core.Plugin ExtensionPoint:`, err)
     }
 
@@ -139,7 +139,7 @@ module Make = (
       MappingSpec.eventSchema,
     ) {
     | event' =>
-      let commandActions = mapIncomingEvent(event', pluginDef, Spec.queryEngine)
+      let commandActions = mapIncomingEvent(event', pluginDef, Ops.queryEngine)
       let apply = async commandActions => {
         await commandActions
         ->Array.map(applyIncomingCommandAction)
@@ -148,12 +148,12 @@ module Make = (
       }
       await commandActions->apply
 
-      switch Spec.readModelNamesForSourceName
+      switch Ops.readModelNamesForSourceName
       ->Js.Dict.get(event'.meta.service)
       ->Option.map(readModelNames =>
         readModelNames
         ->Array.filterMap(readModelName =>
-          Spec.publishToReadModels
+          Ops.publishToReadModels
           ->Js.Dict.get(readModelName)
           ->Option.map(enqueueEvent => enqueueEvent(0, event'.id, eventJson'->Js.Json.stringify))
         ) // FIXME Error handling

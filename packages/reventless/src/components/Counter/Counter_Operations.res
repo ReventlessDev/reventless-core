@@ -24,18 +24,18 @@ let logCountItems = countItems =>
 
 exception NotCounted(string)
 
-module type Spec = {
+module type Ops = {
   let ttl: option<int>
   let saveBatch: QueryDb.saveBatch<string, referencesState>
 }
 
-module Make = (Spec: Spec) => {
+module Make = (Ops: Ops) => {
   let count = async countItems => {
-    let result = await Spec.saveBatch(
+    let result = await Ops.saveBatch(
       countItems->Array.map(({Counter.counterId: counterId, reference, inc}) => {
         let id = Counter.makeId((counterId, reference))
         let state: referencesState = {id, inc}
-        (id, state, Spec.ttl)
+        (id, state, Ops.ttl)
       }),
     )
     switch result {
