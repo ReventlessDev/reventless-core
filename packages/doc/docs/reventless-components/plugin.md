@@ -4,6 +4,10 @@ date: 2021-11-22
 draft: false
 ---
 
+:::info Framework Implementation
+This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions and builder logic.
+:::
+
 TODO
 
 ```

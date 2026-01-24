@@ -6,6 +6,14 @@ draft: false
 
 [For a short summary of an Aggregate, see Reventless Components Overview.](../reventless-components-overview.md#aggregate)
 
+:::info Framework Implementation
+This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`Aggregate.res`](../../reventless/src/components/Aggregate/Aggregate.res)), builder logic ([`Aggregate_Builder.res`](../../reventless/src/components/Aggregate/Aggregate_Builder.res)), and runtime callbacks ([`Aggregate_Callback.res`](../../reventless/src/components/Aggregate/Aggregate_Callback.res)).
+:::
+
+:::info Framework Implementation
+This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions, builder logic, and runtime callbacks.
+:::
+
 ```mermaid
 flowchart LR
 CommandSource[Command Source]:::source

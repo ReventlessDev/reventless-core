@@ -53,10 +53,18 @@ Reventless is an **event-sourced CQRS framework** for serverless infrastructure,
 - **Plugin** - Deployable unit containing aggregates, read models, extension points
 - **Core** - The application core orchestrating all components
 
-Component structure pattern:
+Component structure pattern (documented in `packages/doc/docs/inner-workings/component-structure-pattern.md`):
+
+**Core Files (Required):**
 - `Component.res` - Type definitions and outputs
-- `Component_Builder.res` - Factory for creating components
-- `Component_Adapter.res` - Abstract adapter interface
+- `Component_Builder.res` - Factory for creating components using functors
+
+**Optional Files:**
+- `Component_Adapter.res` - Provider-agnostic adapter interface for infrastructure dependencies
+- `Component_Operations.res` - Runtime business logic implementation (type-safe operations)
+- `Component_Callback.res` - Runtime handlers (where applicable)
+
+See the documentation for detailed explanations and examples using EventLog as a complete example.
 
 ### Adapter Pattern
 
