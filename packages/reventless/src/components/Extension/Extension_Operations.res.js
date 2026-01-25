@@ -80,8 +80,7 @@ function Make(MappingSpec, Mappings, Ops) {
                   msgId: Message$Reventless.uuid(),
                   correlationId: init.correlationId
                 },
-                commandJson: Message$Reventless.encode(command, PluginExtensionPointSpec$ReventlessSpec.commandSchema),
-                delay: undefined
+                commandJson: Message$Reventless.encode(command, PluginExtensionPointSpec$ReventlessSpec.commandSchema)
               });
   };
   var handle = async function (handler) {

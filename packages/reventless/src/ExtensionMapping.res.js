@@ -29,8 +29,7 @@ function Make(Spec, MappingImpl) {
       return {
               id: aggregateId,
               meta: encodeMeta(meta, aggregateName),
-              commandJson: Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema),
-              delay: undefined
+              commandJson: Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema)
             };
     };
     var encodeExtensionPointCommandJson = function (commandJson, id, extensionPointName, action) {
@@ -39,8 +38,7 @@ function Make(Spec, MappingImpl) {
       return {
               id: id,
               meta: encodeMeta(meta, extensionPointName),
-              commandJson: commandJson,
-              delay: undefined
+              commandJson: commandJson
             };
     };
     var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
@@ -134,8 +132,7 @@ function Make(Spec, MappingImpl) {
               return {
                       id: id,
                       meta: encodeMeta(meta, extensionPointName),
-                      commandJson: commandJson,
-                      delay: undefined
+                      commandJson: commandJson
                     };
             };
             var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {

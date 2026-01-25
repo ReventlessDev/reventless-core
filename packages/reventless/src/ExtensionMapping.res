@@ -63,7 +63,6 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         Message.id: aggregateId,
         meta: encodeMeta(meta, aggregateName),
         commandJson: aggregateCmd->Message.encode(Aggregate.commandSchema),
-        delay: None,
       }
     }
 
@@ -76,7 +75,6 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         Message.id,
         meta: encodeMeta(meta, extensionPointName),
         commandJson,
-        delay: None,
       }
     }
 
@@ -157,7 +155,6 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           Message.id,
           meta: encodeMeta(meta, extensionPointName),
           commandJson,
-          delay: None,
         }
       }
 

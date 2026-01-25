@@ -47,8 +47,7 @@ function Make(Spec, AggregateSpec, Behaviour) {
     await Spec.publishJsons([{
             id: id,
             meta: meta,
-            commandJson: commandJson,
-            delay: undefined
+            commandJson: commandJson
           }]);
     return msgId;
   };

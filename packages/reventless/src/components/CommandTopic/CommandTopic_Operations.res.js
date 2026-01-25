@@ -23,8 +23,7 @@ function Make(Spec, Ops) {
     var commandJson = {
       id: commandJson_id,
       meta: commandJson_meta,
-      commandJson: commandJson_commandJson,
-      delay: undefined
+      commandJson: commandJson_commandJson
     };
     return Ops.publishJsons([commandJson]);
   };

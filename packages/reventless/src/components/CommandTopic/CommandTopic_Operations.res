@@ -20,7 +20,6 @@ module Make = (Spec: CommandTopic.Spec, Ops: Ops) => {
       Message.id: command'.id->Spec.Id.toString,
       meta: command'.meta,
       commandJson: command'.command->Message.encode(Spec.commandSchema),
-      delay: None,
     }
     Ops.publishJsons([commandJson])
   }

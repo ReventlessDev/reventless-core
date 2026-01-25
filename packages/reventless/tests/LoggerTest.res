@@ -40,7 +40,6 @@ describe("Logger", () => {
               Message.id: idx->Int.toString,
               meta,
               commandJson: command->Message.encode(PluginSpec.commandSchema),
-              delay: None,
             }
           },
         )
@@ -83,7 +82,6 @@ describe("Logger", () => {
               Message.id: idx->Int.toString,
               meta,
               commandJson: command->Message.encode(PluginSpec.commandSchema),
-              delay: None,
             }
           },
         )

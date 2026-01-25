@@ -36,8 +36,7 @@ function Make(Spec, MappingImpl) {
                                             msgId: Message$Reventless.uuid(),
                                             correlationId: meta.correlationId
                                           },
-                                          commandJson: Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema),
-                                          delay: undefined
+                                          commandJson: Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema)
                                         }
                                       };
                               }

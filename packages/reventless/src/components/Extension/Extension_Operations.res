@@ -85,7 +85,6 @@ module Make = (
         msgId: Message.uuid(),
       },
       commandJson: command->Message.encode(ReventlessSpec.PluginExtensionPointSpec.commandSchema),
-      delay: None,
     })
   }
 

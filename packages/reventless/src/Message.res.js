@@ -270,8 +270,7 @@ function commandJsonOfCommand$p(idToString, commandSchema, cmd) {
   return {
           id: idToString(cmd.id),
           meta: cmd.meta,
-          commandJson: S.reverseConvertToJsonOrThrow(cmd.command, commandSchema),
-          delay: undefined
+          commandJson: S.reverseConvertToJsonOrThrow(cmd.command, commandSchema)
         };
 }
 

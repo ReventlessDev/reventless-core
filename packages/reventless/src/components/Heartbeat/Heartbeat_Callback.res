@@ -21,7 +21,6 @@ module Make = (Spec: Spec) => {
         commandJson: ReventlessSpec.PluginExtensionPointSpec.Heartbeat(
           Spec.timeout,
         )->Message.encode(ReventlessSpec.PluginExtensionPointSpec.commandSchema),
-        delay: None,
       },
     ])
   }

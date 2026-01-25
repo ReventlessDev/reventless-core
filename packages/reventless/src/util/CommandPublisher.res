@@ -36,7 +36,6 @@ module Make = (Spec: Spec, Config: Config) => {
         ReventlessSpec.Message.id,
         meta: Reventless.Message.generateMeta(~service=Spec.name, ~user=Config.user),
         commandJson,
-        delay: None,
       }
     })
   }

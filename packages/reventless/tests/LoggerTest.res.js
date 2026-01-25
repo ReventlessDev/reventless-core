@@ -33,8 +33,7 @@ Jest.describe("Logger", (function () {
                               return {
                                       id: idx.toString(),
                                       meta: meta,
-                                      commandJson: Message$Reventless.encode(command, PluginSpec$Reventless.commandSchema),
-                                      delay: undefined
+                                      commandJson: Message$Reventless.encode(command, PluginSpec$Reventless.commandSchema)
                                     };
                             });
                         var expected = "1/1: Heartbeat(0): {\"command\":\"Heartbeat\",\"meta\":" + metaStr + ",\"id\":0}";
@@ -75,8 +74,7 @@ Jest.describe("Logger", (function () {
                               return {
                                       id: idx.toString(),
                                       meta: meta,
-                                      commandJson: Message$Reventless.encode(command, PluginSpec$Reventless.commandSchema),
-                                      delay: undefined
+                                      commandJson: Message$Reventless.encode(command, PluginSpec$Reventless.commandSchema)
                                     };
                             });
                         var expected1 = "1/2: Heartbeat(0): {\"command\":\"Heartbeat\",\"meta\":" + metaStr + ",\"id\":0}";

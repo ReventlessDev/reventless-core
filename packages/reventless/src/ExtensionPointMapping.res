@@ -69,7 +69,6 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
                 msgId: Message.uuid(),
               },
               commandJson: aggregateCmd->Message.encode(Aggregate.commandSchema),
-              delay: None,
             },
           )
         | Call(handler, callCommand) =>

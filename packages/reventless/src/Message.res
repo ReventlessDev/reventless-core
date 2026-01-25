@@ -222,7 +222,6 @@ let commandJsonOfCommand': (
     id: cmd.id->idToString,
     meta: cmd.meta,
     commandJson: cmd.command->encode(commandSchema),
-    delay: None,
   }
 }
 

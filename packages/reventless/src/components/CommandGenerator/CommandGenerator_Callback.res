@@ -48,7 +48,7 @@ module Make = (
     Js.log2("CommandGenerator: generated command:", commandJson)
     switch commandJson->Message.decode(Behaviour.resolverConfig.commandSchema) {
     | _ =>
-      await Spec.publishJsons([{id, meta, commandJson, delay: None}])
+      await Spec.publishJsons([{id, meta, commandJson}])
       meta.msgId
     | exception err =>
       Js.Exn.raiseError(

@@ -62,7 +62,7 @@ module MakeCounterHandler = (
       time: Message.nowAsISOString(),
     },
     commandJson: command->Message.encode(Target.commandSchema),
-    delay,
+    ?delay,
   }
 
   let processMappingActions = (actions, eventMeta) =>
