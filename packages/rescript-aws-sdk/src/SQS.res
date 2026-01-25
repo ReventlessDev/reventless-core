@@ -181,7 +181,7 @@ let validateDelay = Option.map(_, delay =>
 let makeBatchEntry = (
   ~messageBody,
   ~messageId,
-  ~delay,
+  ~delay=?,
 ): SendMessageBatchCommand.sendMessageBatchEntry => {
   messageBody,
   id: messageId,
@@ -192,7 +192,7 @@ let makeBatchEntryFifo = (
   ~groupId,
   ~messageBody,
   ~messageId,
-  ~delay,
+  ~delay=?,
 ): SendMessageBatchCommand.sendMessageBatchEntry => {
   messageBody,
   id: messageId,
