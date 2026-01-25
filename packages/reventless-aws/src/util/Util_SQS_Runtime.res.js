@@ -28,34 +28,57 @@ function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
 
 async function send(queue, queueService, commandJson) {
   var delay = commandJson.delay;
-  var messageBody = Message$Reventless.toMessageBody(commandJson);
-  try {
-    return await (
-            queueService === "SQS_FIFO" ? sendFifoMessage(queue, delay, commandJson.id, messageBody) : sendMessage(queue, delay, messageBody)
-          );
-  }
-  catch (raw_e){
-    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
-    if (e.RE_EXN_ID === Js_exn.$$Error) {
-      console.log("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e._1.message);
-      var timeout = Js_math.random_int(3000, 7000);
-      await Util_Promise$Reventless.finishTimeout(timeout);
-      console.log("Retry send after " + timeout.toString() + " ms ...");
-      return await send(queue, queueService, commandJson);
+  if (delay !== undefined) {
+    var messageBody = Message$Reventless.toMessageBody(commandJson);
+    try {
+      return await (
+              queueService === "SQS_FIFO" ? sendFifoMessage(queue, delay, commandJson.id, messageBody) : sendMessage(queue, delay, messageBody)
+            );
     }
-    throw e;
+    catch (raw_e){
+      var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+      if (e.RE_EXN_ID === Js_exn.$$Error) {
+        console.log("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e._1.message);
+        var timeout = Js_math.random_int(3000, 7000);
+        await Util_Promise$Reventless.finishTimeout(timeout);
+        console.log("Retry send after " + timeout.toString() + " ms ...");
+        return await send(queue, queueService, commandJson);
+      }
+      throw e;
+    }
+  } else {
+    throw {
+          RE_EXN_ID: "Match_failure",
+          _1: [
+            "Util_SQS_Runtime.res",
+            22,
+            43
+          ],
+          Error: new Error()
+        };
   }
 }
 
 function makeEntry(queueService, commandJson) {
   var delay = commandJson.delay;
-  var messageId = commandJson.meta.msgId;
-  var messageBody = Message$Reventless.toMessageBody(commandJson);
-  if (queueService === "SQS_FIFO") {
-    return SQS$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, delay);
-  } else {
-    return SQS$AwsSdk.makeBatchEntry(messageBody, messageId, delay);
+  if (delay !== undefined) {
+    var messageId = commandJson.meta.msgId;
+    var messageBody = Message$Reventless.toMessageBody(commandJson);
+    if (queueService === "SQS_FIFO") {
+      return SQS$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, delay);
+    } else {
+      return SQS$AwsSdk.makeBatchEntry(messageBody, messageId, delay);
+    }
   }
+  throw {
+        RE_EXN_ID: "Match_failure",
+        _1: [
+          "Util_SQS_Runtime.res",
+          40,
+          31
+        ],
+        Error: new Error()
+      };
 }
 
 async function sendMessages(queue, queueService, commandJsons) {

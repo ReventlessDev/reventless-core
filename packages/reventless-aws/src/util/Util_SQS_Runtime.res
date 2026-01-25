@@ -23,9 +23,9 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
   try await (
     if queueService == AWS.SQS_FIFO {
-      queue->sendFifoMessage(~messageGroupId=id, ~delay?, messageBody)
+      queue->sendFifoMessage(~messageGroupId=id, ~delay, messageBody)
     } else {
-      queue->sendMessage(~delay?, messageBody)
+      queue->sendMessage(~delay, messageBody)
     }
   ) catch {
   | Js.Exn.Error(e) =>
