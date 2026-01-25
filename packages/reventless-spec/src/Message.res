@@ -3,12 +3,12 @@ type service = string
 
 @schema
 type meta = {
-  service: service,
-  time: string,
-  ip: string,
-  user: string,
-  msgId: string,
-  correlationId: string,
+  service: service, // service name that created event or is addressed by command
+  time: string, // when message was created
+  ip: string, // IP of service that created message
+  user: string, // user name that initiated message (if any)
+  msgId: string, // unique message id
+  correlationId: string, // id of message that caused this message
 }
 
 @schema
@@ -42,5 +42,5 @@ type commandJson = {
   id: string,
   meta: meta,
   commandJson: Js.Json.t,
-  delay: option<int>,
+  delay?: int,
 }
