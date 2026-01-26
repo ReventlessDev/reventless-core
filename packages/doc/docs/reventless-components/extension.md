@@ -4,7 +4,7 @@ date: 2021-11-22
 draft: false
 ---
 
-[For a short summary of an Extension, see Reventless Components Overview.](../reventless-components-overview.md#extension)
+For a short summary of an Extension, see [Reventless Components Overview.](../reventless-components-overview.md#extension)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`Extension.res`](../../reventless/src/components/Extension/Extension.res)), builder logic ([`Extension_Builder.res`](../../reventless/src/components/Extension/Extension_Builder.res)), and runtime operations ([`Extension_Operations.res`](../../reventless/src/components/Extension/Extension_Operations.res)).

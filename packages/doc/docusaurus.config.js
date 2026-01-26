@@ -192,7 +192,7 @@ const config = {
 
             .eventlog > rect,
             rect[name="CommandTopic"] {
-              fill: #88ccff;
+              fill: #fa0;
               stroke: #333;
               }
             rect[name="CommandTopic"] + text > tspan {
@@ -229,28 +229,24 @@ const config = {
               fill: #fa0;
               }
             .eventlog .nodeLabel {
-              color: #fff;
               }
 
             .eventtopic > rect {
               fill: #b97c01;
               }
             .eventtopic .nodeLabel {
-              color: #fff;
               }
 
             .eventtopic > rect {
               fill: #b97c01;
               }
             .eventtopic .nodeLabel {
-              color: #fff;
               }
 
             .eventcollector > rect {
               fill: #bda677;
               }
             .eventcollector .nodeLabel {
-              color: #fff;
               }
 
             .eventmapper > rect {

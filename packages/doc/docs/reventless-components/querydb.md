@@ -4,7 +4,7 @@ date: 2026-01-24
 draft: false
 ---
 
-[For a short summary of QueryDb, see Reventless Components Overview.](../reventless-components-overview.md#querydb)
+For a short summary of QueryDb, see [Reventless Components Overview.](../reventless-components-overview.md#querydb)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`QueryDb.res`](../../reventless/src/components/QueryDb/QueryDb.res)), builder logic ([`QueryDb_Builder.res`](../../reventless/src/components/QueryDb/QueryDb_Builder.res)), adapter interface ([`QueryDb_Adapter.res`](../../reventless/src/components/QueryDb/QueryDb_Adapter.res)), and runtime operations ([`QueryDb_Operations.res`](../../reventless/src/components/QueryDb/QueryDb_Operations.res)).

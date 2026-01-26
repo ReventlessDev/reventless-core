@@ -146,5 +146,10 @@ let graphQLSchema = ApiSchema.make([
 
 The module type ApiSchema stores all three components of the full API schema. Using the make function, we can provide an array of modules (files) that define the API using a typesSchema, queriesSchema and mutationsSChema. It then folds them into a single schema definition. The graphQLSchema in this example combines the schemata of three APIs into one. This gives a unified API where new schemata can be added without modifying the [Config](../reventless-common-modules/config.md) file.
 
+## Related Components
 
+- **[ReadModel](./readmodel.md)** - Provides queryable state that the API exposes via GraphQL queries
+- **[QueryDb](./querydb.md)** - Storage backend for ReadModel state that API queries access
+- **[CommandGenerator](./commandgenerator.md)** - Transforms API mutations into aggregate commands
+- **[Aggregate](./aggregate.md)** - Receives commands generated from API mutations
 

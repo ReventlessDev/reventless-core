@@ -370,11 +370,33 @@ module Make = (Spec: Component.Spec, /* other deps */): Component.T => {
 
 ## Examples in Codebase
 
+### Core Components
 - **[Aggregate](../reventless-components/aggregate.md)** - Uses Builder, Callback
 - **[ReadModel](../reventless-components/readmodel.md)** - Uses Builder
+- **[API](../reventless-components/api.md)** - GraphQL schema definition pattern
+
+### Infrastructure Components
 - **[EventLog](../../reventless/src/components/EventLog/)** - Uses all files (complete example)
-- **[CommandTopic](../../reventless/src/components/CommandTopic/)** - Uses Builder, Adapter
-- **[QueryDb](../../reventless/src/components/QueryDb/)** - Uses Builder, Adapter
+- **[CommandTopic](../../reventless/src/components/CommandTopic/)** - Uses Builder, Adapter, Operations, Callback
+- **[EventTopic](../../reventless/src/components/EventTopic/)** - Uses Builder, Adapter, Operations
+- **[EventCollector](../../reventless/src/components/EventCollector/)** - Uses Builder, Adapter
+- **[QueryDb](../../reventless/src/components/QueryDb/)** - Uses Builder, Adapter, Operations
+
+### Processing Components
+- **[CommandGenerator](../../reventless/src/components/CommandGenerator/)** - Uses Builder, Callback
+- **[EventMapper](../reventless-components/eventmapper.md)** - Uses Builder pattern for event-to-command mapping
+- **[SideEffectHandler](../reventless-components/sideeffecthandler.md)** - Uses Builder pattern for event-triggered side effects
+- **[Counter](../../reventless/src/components/Counter/)** - Uses Builder, Operations
+
+### Plugin System Components
+- **[Plugin](../reventless-components/plugin.md)** - Deployment unit organization
+- **[ExtensionPoint](../../reventless/src/components/ExtensionPoint/)** - Uses Builder, Operations
+- **[Extension](../../reventless/src/components/Extension/)** - Uses Builder, Operations
+
+### Scheduling Components
+- **[Scheduler](../reventless-components/scheduler.md)** - Time-based command publishing
+- **[Heartbeat](../reventless-components/heartbeat.md)** - Periodic health check signals
+- **[Task](../reventless-components/task.md)** - File-based task processing
 
 ## Related Documentation
 
