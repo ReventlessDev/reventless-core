@@ -66,6 +66,38 @@ Tasks may be implemented provider specific, since it's not possible to provide a
 
 [Read more about the Task component.](./reventless-components/task.md)
 
+### Scheduler
+
+The Scheduler component provides time-based command publishing capabilities, enabling scheduled workflows, periodic tasks, and cron-like event generation. It allows applications to create and manage schedules dynamically at runtime.
+
+```mermaid
+graph LR
+    Application[Application]:::application -->|createSchedule| Scheduler[Scheduler]:::scheduler
+    Scheduler -->|triggers| CommandTopic[Command Topic]:::commandtopic
+```
+
+- **responsibility**: manage time-based event scheduling and command publishing
+- **in**: schedule definitions with timing patterns and payloads
+- **out**: scheduled events/commands published to configured targets
+
+[Read more about the Scheduler component.](./reventless-components/scheduler.md)
+
+### Heartbeat
+
+The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the Core Plugin's ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
+
+```mermaid
+graph LR
+    CloudWatch[CloudWatch Events]:::aws -->|triggers| Lambda[Lambda]:::aws
+    Lambda -->|heartbeat| CorePlugin[Core Plugin]:::core
+```
+
+- **responsibility**: generate periodic heartbeat signals for health monitoring and extension triggering
+- **in**: timeout configuration and Core Plugin connection details
+- **out**: periodic heartbeat messages sent to Core Plugin ExtensionPoint
+
+[Read more about the Heartbeat component.](./reventless-components/heartbeat.md)
+
 #### SideEffectHandler
 
 A `SideEffectHandler` is similar to an `EventMapper`, but targeting `Task`s (and functions) outside of the Command/Event paradigm. For example: calling a foreign API everytime a specific `Event` occurs.
