@@ -103,8 +103,26 @@ A `Command` sent to the `ExtensionPoint` will be mapped to a specific `Command` 
 
 ### Extension
 
-> TODO
+An `Extension` enables a `Plugin` to consume events from and send commands to another `Plugin`'s `ExtensionPoint`. It acts as the consumer side of cross-Plugin communication, translating external events into internal commands and optionally forwarding internal events back to the `ExtensionPoint`.
+
+```mermaid
+graph LR
+    ExtensionPoint[ExtensionPoint]:::extensionpoint -->|events| Extension[Extension]:::extension -->|commands| Aggregate[Aggregate]:::aggregate
+    Aggregate -->|events| Extension -->|commands| ExtensionPoint
+```
+
+- **responsibility**: consume events from remote `ExtensionPoint`s and generate commands for local `Aggregate`s; optionally forward local events back to `ExtensionPoint`s
+- **in**: `ExtensionPoint` `Event`s (from remote `Plugin`s)
+- **out**: `Aggregate` `Command`s (to local `Aggregate`s) / `ExtensionPoint` `Command`s (to remote `Plugin`s)
+
+[Read more about the Extension component.](./reventless-components/extension.md)
 
 #### ExtensionMapping
 
-> TODO
+An `ExtensionMapping` defines how a `Plugin` interacts with a remote `ExtensionPoint`. It maps incoming `ExtensionPoint` `Event`s to local `Aggregate` `Command`s and optionally maps outgoing `Aggregate` `Event`s to `ExtensionPoint` `Command`s.
+
+- **responsibility**: translate between remote `ExtensionPoint` events/commands and local `Aggregate` commands/events
+- **in**: `ExtensionPoint` `Event`s (from remote `Plugin`) / `Aggregate` `Event`s (from local `Aggregate`s)
+- **out**: `Aggregate` `Command`s (to local `Aggregate`s) / `ExtensionPoint` `Command`s (to remote `Plugin`)
+
+[Read more about Extension Mappings.](./reventless-components/extension.md#extension-mappings)
