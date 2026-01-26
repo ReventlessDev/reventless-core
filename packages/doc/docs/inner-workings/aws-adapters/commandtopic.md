@@ -1,12 +1,9 @@
 ---
 title: "CommandTopic → SQS FIFO"
-date: 2026-01-15
-draft: false
 ---
-
 ## CommandTopic → SQS FIFO
 
-The CommandTopic adapter provides reliable command delivery using SQS FIFO queues, ensuring strict ordering and exactly-once processing guarantees per aggregate instance.
+The CommandTopic adapter provides reliable command delivery using **SQS FIFO queues**, ensuring strict ordering and exactly-once processing guarantees per aggregate instance.
 
 ## Queue Configuration
 
@@ -178,17 +175,109 @@ let handleQueueEvent = (queue, handleCommands) => async (event: PulumiAws.SQS.Qu
 - **Batch deletion** - Successful commands are deleted in a single batch operation for efficiency
 - **Automatic retry** - Failed commands become visible again after visibility timeout, triggering Lambda re-invocation
 
-## Message Ordering Guarantees
+## Message Ordering and Deduplication
 
-SQS FIFO provides strict ordering guarantees per message group:
+### FIFO Ordering
 
-- **Message group = Aggregate ID** - Commands for the same aggregate instance are processed in order
-- **Cross-aggregate parallelism** - Commands for different aggregates can be processed concurrently
-- **Single consumer per group** - Only one Lambda instance processes a message group at a time
-- **FIFO within group** - Commands are delivered and processed in the exact order they were sent
+CommandTopic uses **message groups** to guarantee ordering:
 
-This design ensures:
-- **Consistent command ordering** - Commands for an aggregate are never reordered
-- **Parallel processing** - Different aggregates don't block each other
-- **Exactly-once semantics** - Content-based deduplication prevents duplicate command processing
+- **Message Group ID** = Aggregate Instance ID
+- Commands for the **same aggregate** are processed in strict order
+- Commands for **different aggregates** can be processed in parallel
+
+```rescript
+// These commands are guaranteed to execute in order
+await commandTopic.publish({id: "customer-1", command: Create(...)})
+await commandTopic.publish({id: "customer-1", command: ChangeAddress(...)})
+await commandTopic.publish({id: "customer-1", command: Delete})
+
+// This command can execute in parallel with the above
+await commandTopic.publish({id: "customer-2", command: Create(...)})
+```
+
+### Content-Based Deduplication
+
+The CommandTopic automatically deduplicates identical commands:
+
+- **5-minute deduplication window**
+- **SHA-256 hash** of command content
+- **Per message group** (commands for different aggregates with same content are not deduplicated)
+
+```rescript
+// Second command is automatically deduplicated if sent within 5 minutes
+await commandTopic.publish({id: "customer-1", command: Create({...})})
+await commandTopic.publish({id: "customer-1", command: Create({...})}) // Deduplicated
+```
+
+## Error Handling and Retries
+
+### Automatic Retries
+
+Failed commands are automatically retried:
+
+1. Command fails during processing
+2. Message visibility timeout expires (3 minutes)
+3. Command becomes visible in queue again
+4. Lambda is triggered again
+5. Process repeats up to **5 times** (maxReceiveCount)
+
+### Dead Letter Queue
+
+After 5 failed attempts, commands move to the Dead Letter Queue (DLQ):
+
+- **Shared FIFO DLQ** for all CommandTopics
+- Failed commands can be inspected manually
+- Commands can be corrected and reprocessed
+- Prevents blocking of subsequent commands
+
+### Partial Failure Handling
+
+The CommandTopic handles batch processing failures gracefully:
+
+```rescript
+// Process batch of commands
+let results = await commandsHandler([cmd1, cmd2, cmd3])
+
+// Results: [Ok(ref1), Error(ref2), Ok(ref3)]
+// - cmd1 and cmd3 are deleted from queue (success)
+// - cmd2 remains in queue for retry (failure)
+```
+## Performance Considerations
+
+### Throughput
+
+- **Per aggregate**: Up to 3,000 commands/second
+- **System-wide**: Limited only by number of distinct aggregates
+- **Batching**: Multiple commands processed per Lambda invocation
+
+### Latency
+
+- **Typical**: below 100ms from publish to processing
+- **Factors**: Queue backlog, Lambda cold starts, command complexity
+- **Optimization**: Keep commands small, batch when possible
+
+### Cost Optimization
+
+- **Batch processing**: Process multiple commands per Lambda invocation
+- **Visibility timeout**: Set appropriately to avoid premature retries
+- **DLQ monitoring**: Clean up failed commands to avoid storage costs
+
+## Pulumi
+
+The CommandTopic component creates these infrastructure resources:
+
+```rescript
+type outputs = {
+  resources: array<resource>,    // SQS queue resources
+}
+```
+
+**Resource Naming:**
+- Component type: `reventless:CommandTopic`
+- Resource name pattern: `{aggregateName}CommandTopic`
+
+**Dependencies:**
+- Aggregate depends on CommandTopic (cannot process commands without queue)
+- Lambda execution role needs `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:GetQueueAttributes` permissions
+
 

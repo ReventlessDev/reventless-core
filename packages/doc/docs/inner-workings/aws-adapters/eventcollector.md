@@ -1,16 +1,16 @@
 ---
-title: "EventCollector → S3 + DynamoDB"
+title: "EventCollector → SQS FIFO + DynamoDB"
 date: 2026-01-15
 draft: false
 ---
 
 ## EventCollector → SQS FIFO
 
-The EventCollector adapter provides event consumption capabilities using SQS FIFO queues subscribed to SNS topics, enabling ReadModels and other components to receive and process events with ordering guarantees.
+The EventCollector adapter provides event consumption capabilities using **SQS FIFO queues** subscribed to **SNS topics**, enabling ReadModels and other components to receive and process events with ordering guarantees.
 
 ## Queue Configuration
 
-The EventCollector creates an SQS FIFO queue that subscribes to one or more EventTopic SNS topics:
+The EventCollector creates an **SQS FIFO queue** that subscribes to one or more EventTopic SNS topics:
 
 ```rescript
 let queue = PulumiAws.SQS.Queue.make(
@@ -46,6 +46,100 @@ let queue = PulumiAws.SQS.Queue.make(
 - **`redrivePolicy`** - Failed events move to dead letter queue after 5 retries
   - Shares the common FIFO dead letter queue (`Util_DeadLetterQueue.fifoQueue`)
 
+## Event Ordering
+
+### FIFO Guarantees
+
+Events are ordered by message group (aggregate ID):
+
+- Events for the **same aggregate** are processed in strict order
+- Events for **different aggregates** can be processed in parallel
+- **No reordering** within a message group
+
+```rescript
+// These events are guaranteed to be processed in order
+// Event 1: Customer-1 Created
+// Event 2: Customer-1 AddressChanged
+// Event 3: Customer-1 Deleted
+
+// This event can be processed in parallel
+// Event 4: Customer-2 Created
+```
+
+### Deduplication
+
+Content-based deduplication prevents duplicate processing:
+
+- **5-minute deduplication window**
+- **SHA-256 hash** of event content
+- **Per message group** deduplication
+
+## Error Handling
+
+### Automatic Retries
+
+Failed events are automatically retried:
+
+1. Event processing fails
+2. Message visibility timeout expires (30 seconds)
+3. Event becomes visible in queue again
+4. Lambda is triggered again
+5. Process repeats up to **5 times** (maxReceiveCount)
+
+### Dead Letter Queue
+
+After 5 failed attempts, events move to the Dead Letter Queue:
+
+- **Shared FIFO DLQ** for all EventCollectors
+- Failed events can be inspected manually
+- Events can be reprocessed after fixing issues
+- Prevents blocking of subsequent events
+
+### Partial Failure Handling
+
+The EventCollector handles batch processing failures:
+
+```rescript
+// Process batch of events
+await handleEvents(events)
+
+// Delete successfully processed SQS messages
+// DynamoDB stream position is automatically checkpointed
+```
+
+#
+## Performance Considerations
+
+### Throughput
+
+- **Per aggregate**: Up to 3,000 events/second
+- **System-wide**: Limited only by number of distinct aggregates
+- **Batching**: Multiple events processed per Lambda invocation
+
+### Latency
+
+- **SNS → SQS**: ~100-200ms from publish to processing
+- **DynamoDB Streams**: ~50-100ms from write to processing
+- **Factors**: Queue backlog, Lambda cold starts, event complexity
+
+### Cost Optimization
+
+- **Batch processing**: Process multiple events per Lambda invocation
+- **Visibility timeout**: Set appropriately to avoid premature retries
+- **DLQ monitoring**: Clean up failed events to avoid storage costs
+- **Right-size Lambda**: Match memory/timeout to processing needs
+
+## Pulumi
+
+The EventCollector component creates these infrastructure resources:
+
+```rescript
+type outputs = {
+  name: string,                          // Component name
+  resources: array<resource>,            // SQS queue resources
+}
+```
+
 ## SNS Topic Subscription
 
 The EventCollector automatically subscribes to EventTopic SNS topics during deployment:
@@ -72,9 +166,32 @@ let eventTopicResources =
 - **Retry isolation** - Failed events in one EventCollector don't affect others
 - **FIFO preservation** - Ordering is maintained end-to-end from EventTopic through SQS to Lambda
 
-## Handle Channel Event - Multi-source Support
+## Multi-Source Support
 
-The EventCollector runtime handler supports events from **two sources**: SQS queues and DynamoDB Streams. This flexibility allows EventCollectors to consume events either from EventTopics (via SNS → SQS) or directly from EventLog DynamoDB tables (via DynamoDB Streams).
+The EventCollector can consume events from two sources:
+
+### SNS → SQS Pattern
+
+Events flow from EventTopic (SNS) to EventCollector (SQS FIFO):
+
+**Benefits:**
+- **Decoupling** - EventTopics don't need to know about EventCollectors
+- **Buffering** - SQS queues buffer events during processing delays
+- **Parallel consumers** - Multiple EventCollectors can subscribe to same EventTopic
+- **Retry isolation** - Failed events in one EventCollector don't affect others
+- **FIFO preservation** - Ordering maintained end-to-end
+
+### DynamoDB Streams Pattern
+
+Events flow directly from EventLog DynamoDB table via streams:
+
+**Benefits:**
+- **Lower latency** - Direct stream from source, no intermediate topic
+- **Simpler architecture** - Fewer components in the path
+- **Automatic checkpointing** - Lambda manages stream position
+- **Change data capture** - Access to both old and new item images
+
+## Handle Channel Event
 
 ```rescript
 let handleDynamoDbOrSqsEvent = (queue, handleEvents) => async (

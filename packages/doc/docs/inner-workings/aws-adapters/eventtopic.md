@@ -167,3 +167,50 @@ EventTopic (SNS)
 - **Dynamic subscriptions** - Subscribers can be added/removed without changing publishers
 - **Retry logic** - SNS handles retries and dead-letter queues per subscription
 
+## Error Handling
+
+### Publish Failures
+
+The EventTopic handles publish failures with logging:
+
+```rescript
+let publish = async events' => {
+  await events'->Array.mapWithIndex(async (event', idx) => {
+    switch await publishJson(id, meta, eventJson') {
+    | exception e =>
+      Logger.logJsonEvent(~level=Error, "Couldn't publish event")
+      raise(e)
+    | _ =>
+      Logger.logJsonEvent("Published event")
+    }
+  })
+}
+```
+
+### Subscriber Failures
+
+Subscriber failures are handled by the EventCollector:
+- Failed deliveries are retried by SQS
+- After max retries, messages go to Dead Letter Queue
+- EventTopic is not affected by subscriber failures
+
+## Performance Considerations
+
+### Throughput
+
+- **Standard topics**: Virtually unlimited
+- **FIFO topics**: Up to 300 msgs/sec (3,000 with batching)
+- **Batching**: Publish multiple events in single operation
+
+### Latency
+
+- **Typical**: below 100ms from publish to subscriber delivery
+- **Factors**: Topic type, subscriber count, message size
+- **Optimization**: Use standard topics for low-latency requirements
+
+### Cost Optimization
+
+- **Batch publishing**: Reduce API calls
+- **Message filtering**: Use SNS filter policies to reduce unnecessary deliveries
+- **Right-size topics**: Use standard topics when FIFO guarantees aren't needed
+

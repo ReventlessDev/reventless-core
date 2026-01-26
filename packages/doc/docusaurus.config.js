@@ -186,8 +186,35 @@ const config = {
               fill: #ff6;
               stroke: #333;
               }
-            .aggregate .nodeLabel {
-              color:#333;
+            rect[name="Aggregate"] + text > tspan {
+              color: #333;
+            }
+
+            .eventlog > rect,
+            rect[name="CommandTopic"] {
+              fill: #88ccff;
+              stroke: #333;
+              }
+            rect[name="CommandTopic"] + text > tspan {
+              color: #333;
+            }
+
+            .eventlog > rect,
+            rect[name="EventLog"] {
+              fill: #fa0;
+              stroke: #333;
+              }
+            rect[name="EventLog"] + text > tspan {
+              color: #333;
+            }
+
+           .eventtopic > rect,
+            rect[name="EventTopic"] {
+              fill: #b97c01;
+              stroke: #333;
+              }
+            rect[name="EventTopic"] + text > tspan {
+              fill: #fff;
             }
 
             .readmodel > rect {
@@ -197,6 +224,34 @@ const config = {
             .readmodel .nodeLabel {
               color: #333;
             }
+
+            .eventlog > path {
+              fill: #fa0;
+              }
+            .eventlog .nodeLabel {
+              color: #fff;
+              }
+
+            .eventtopic > rect {
+              fill: #b97c01;
+              }
+            .eventtopic .nodeLabel {
+              color: #fff;
+              }
+
+            .eventtopic > rect {
+              fill: #b97c01;
+              }
+            .eventtopic .nodeLabel {
+              color: #fff;
+              }
+
+            .eventcollector > rect {
+              fill: #bda677;
+              }
+            .eventcollector .nodeLabel {
+              color: #fff;
+              }
 
             .eventmapper > rect {
               fill: #99f;
@@ -228,10 +283,13 @@ const config = {
               /*color: #66f;*/
               }
             
-            .eventtopic > rect {
-            /* TODO */
-            }
-
+            .commandgenerator > rect {
+              fill: #88ccff;
+              }
+            .commandgenerator .nodeLabel {
+              /*color: #66f;*/
+              }
+            
             .client > rect {
             /* TODO */
             }
