@@ -1,5 +1,5 @@
 ---
-title: Reventless Components Overview
+title: Component Overview
 date: 2022-09-27
 draft: false
 ---

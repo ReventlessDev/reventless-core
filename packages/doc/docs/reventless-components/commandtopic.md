@@ -4,7 +4,7 @@ date: 2026-01-24
 draft: false
 ---
 
-For a short summary of CommandTopic, see [Reventless Components Overview.](../reventless-components-overview.md#commandtopic)
+For a short summary of CommandTopic, see [Reventless Components Overview.](../component-overview.md#commandtopic)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`CommandTopic.res`](../../reventless/src/components/CommandTopic/CommandTopic.res)), builder logic ([`CommandTopic_Builder.res`](../../reventless/src/components/CommandTopic/CommandTopic_Builder.res)), adapter interface ([`CommandTopic_Adapter.res`](../../reventless/src/components/CommandTopic/CommandTopic_Adapter.res)), runtime operations ([`CommandTopic_Operations.res`](../../reventless/src/components/CommandTopic/CommandTopic_Operations.res)), and callback handlers ([`CommandTopic_Callback.res`](../../reventless/src/components/CommandTopic/CommandTopic_Callback.res)).

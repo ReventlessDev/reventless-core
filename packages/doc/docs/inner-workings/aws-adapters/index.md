@@ -8,7 +8,7 @@ draft: false
 
 The `reventless-aws` package provides AWS-specific implementations of the adapter interfaces defined in the core `reventless` framework. Adapters bridge the gap between Reventless's provider-agnostic components and AWS infrastructure services.
 
-[Reventless](../reventless-components-overview.md) components are designed to be cloud-provider-agnostic. The `reventless` package defines abstract adapter interfaces, while `reventless-aws` implements these interfaces using AWS services like DynamoDB, SQS, SNS, S3, and Lambda.
+[Reventless](../component-overview.md) components are designed to be cloud-provider-agnostic. The `reventless` package defines abstract adapter interfaces, while `reventless-aws` implements these interfaces using AWS services like DynamoDB, SQS, SNS, S3, and Lambda.
 
 ```mermaid
 flowchart TB

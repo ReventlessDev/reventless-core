@@ -2,7 +2,7 @@
 title: Task
 ---
 
-For a short summary of a Task, see [Reventless Components Overview.](../reventless-components-overview.md#task)
+For a short summary of a Task, see [Reventless Components Overview.](../component-overview.md#task)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`Task.res`](../../reventless/src/components/Task/Task.res)), builder logic ([`Task_Builder.res`](../../reventless/src/components/Task/Task_Builder.res)), and adapter interface ([`Task_Adapter.res`](../../reventless/src/components/Task/Task_Adapter.res)).

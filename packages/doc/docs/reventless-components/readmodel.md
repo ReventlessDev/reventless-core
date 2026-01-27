@@ -4,7 +4,7 @@ date: 2021-11-22
 draft: false
 ---
 
-For a short summary of a ReadModel, see [Reventless Components Overview.](../reventless-components-overview.md#readmodel)
+For a short summary of a ReadModel, see [Reventless Components Overview.](../component-overview.md#readmodel)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions, builder logic, and runtime callbacks.

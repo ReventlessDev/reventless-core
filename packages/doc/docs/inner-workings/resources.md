@@ -366,7 +366,7 @@ Task Bucket        →  TaskBucket_S3            → S3
 Links to related pages:
 - [Component Structure Pattern](./component-structure-pattern.md) - How components organize resources
 - [Pulumi Integration](./pulumi.md) - Deploy-time infrastructure management
-- [Adapter Pattern](../reventless-components-overview.md) - Provider-specific implementations
+- [Adapter Pattern](../component-overview.md) - Provider-specific implementations
 - [Runtime](./runtime.md) - Runtime resource usage
 
 ## Questions Addressed

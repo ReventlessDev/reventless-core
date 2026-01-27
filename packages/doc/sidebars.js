@@ -18,8 +18,7 @@ const sidebars = {
     'index',
     'get-started',
     'rescript-syntax',
-    'reventless-components-overview',
-    'reventless-component-relations',
+    'component-overview',
     {
       type: 'category',
       label: 'Components',
@@ -50,10 +49,8 @@ const sidebars = {
       items: [
         'reventless-common-modules/Id',
         'reventless-common-modules/config',
-        'reventless-common-modules/counter',
       ],
     },
-    'advanced',
     {
       type: 'category',
       label: 'Inner Workings',

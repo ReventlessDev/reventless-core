@@ -4,7 +4,7 @@ date: 2026-01-26
 draft: false
 ---
 
-For a short summary of CommandGenerator, see [Reventless Components Overview.](../reventless-components-overview.md#commandgenerator)
+For a short summary of CommandGenerator, see [Reventless Components Overview.](../component-overview.md#commandgenerator)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`CommandGenerator.res`](../../reventless/src/components/CommandGenerator/CommandGenerator.res)), builder logic ([`CommandGenerator_Builder.res`](../../reventless/src/components/CommandGenerator/CommandGenerator_Builder.res)), and runtime callbacks ([`CommandGenerator_Callback.res`](../../reventless/src/components/CommandGenerator/CommandGenerator_Callback.res)).

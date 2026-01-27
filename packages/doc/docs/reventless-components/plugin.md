@@ -4,7 +4,7 @@ date: 2021-11-22
 draft: false
 ---
 
-For a short summary of a Plugin, see [Reventless Components Overview.](../reventless-components-overview.md#plugin)
+For a short summary of a Plugin, see [Reventless Components Overview.](../component-overview.md#plugin)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`Plugin.res`](../../reventless/src/components/Plugin/Plugin.res)), builder logic ([`Plugin_Builder.res`](../../reventless/src/components/Plugin/Plugin_Builder.res)), and helper functions ([`Plugin_Helpers.res`](../../reventless/src/components/Plugin/Plugin_Helpers.res)).

@@ -92,8 +92,7 @@ other Suggestions:
 ## Get Productive
 
 1. [Get started](./get-started.md) by reading [this guide](./get-started.md).
-2. Learn about [avanced usage](./advanced.md) scenarios by reading [this](./advanced.md).
-3. Get your hands dirty by reading an in-depth description about the [inner workings of the Reventless framework](./inner-workings/framework-inner-workings.md).
+2. Get your hands dirty by reading an in-depth description about the [inner workings of the Reventless framework](./inner-workings/framework-inner-workings.md).
 
 ## Roadmap
 

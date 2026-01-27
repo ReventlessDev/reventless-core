@@ -95,6 +95,5 @@ If you're contributing to the framework or creating custom components:
 
 ## Related Documentation
 
-- [Component Overview](../reventless-components-overview.md) - High-level component architecture
-- [Component Relations](../reventless-component-relations.md) - How components interact
+- [Component Overview](../component-overview.md) - High-level component architecture
 - [ReScript Syntax](../rescript-syntax.md) - Language features used in the framework
