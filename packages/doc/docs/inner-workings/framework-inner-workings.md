@@ -24,6 +24,7 @@ This pattern ensures clear separation of concerns, type safety through module ty
 ### Other Patterns
 
 - [Messages](./messages.md) - How messages flow through the system
+- [Runtime & Deployment](./runtime.md) - Runtime environments and deployment strategies
 - [Pulumi Integration](./pulumi.md) - Deploy-time vs runtime separation
 - [Serialization](./serialization.md) - Data encoding/decoding patterns
 - [Resources](./resources.md) - Infrastructure resource management
@@ -57,6 +58,7 @@ This pattern uses **first-class modules**, **functors**, and the **adapter patte
 The framework employs several other important patterns:
 
 - [**Messages**](./messages.md) - How messages flow through the system
+- [**Runtime & Deployment**](./runtime.md) - Runtime environments and deployment strategies
 - [**Pulumi Integration**](./pulumi.md) - Deploy-time vs runtime separation
 - [**AWS Lambda**](./aws-lambda.md) - Runtime execution environment
 - [**Resources**](./resources.md) - Resource management patterns
