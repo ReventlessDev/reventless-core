@@ -60,7 +60,6 @@ The framework employs several other important patterns:
 - [**Messages**](./messages.md) - How messages flow through the system
 - [**Runtime & Deployment**](./runtime.md) - Runtime environments and deployment strategies
 - [**Pulumi Integration**](./pulumi.md) - Deploy-time vs runtime separation
-- [**AWS Lambda**](./aws-lambda.md) - Runtime execution environment
 - [**Resources**](./resources.md) - Resource management patterns
 - [**Serialization**](./serialization.md) - Data encoding and decoding
 

@@ -555,7 +555,6 @@ Error: Task timed out after 30.00 seconds
 ## Related Documentation
 
 - [**Component Structure Pattern**](./component-structure-pattern.md) - How components are organized and built
-- [**AWS Lambda**](./aws-lambda.md) - AWS Lambda-specific implementation details
 - [**Messages**](./messages.md) - How messages flow through the runtime system
 - [**Pulumi Integration**](./pulumi.md) - Infrastructure deployment patterns
 - [**Resources**](./resources.md) - Resource management and provisioning

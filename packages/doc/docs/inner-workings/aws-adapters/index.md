@@ -136,8 +136,8 @@ flowchart TB
 
 A fundamental pattern in Reventless adapters is the separation of **deploy-time** and **runtime** concerns:
 
-- **Deploy-time code** uses [Pulumi](./pulumi.md) to provision AWS infrastructure (creating DynamoDB tables, SQS queues, SNS topics, etc.)
-- **Runtime code** provides functions that execute within [Lambda handlers](./aws-lambda.md) to interact with the provisioned resources
+- **Deploy-time code** uses [Pulumi](../pulumi.md) to provision AWS infrastructure (creating DynamoDB tables, SQS queues, SNS topics, etc.)
+- **Runtime code** provides functions that execute within Lambda handlers to interact with the provisioned resources
 
 This separation allows the same adapter to orchestrate both infrastructure creation and application logic.
 
