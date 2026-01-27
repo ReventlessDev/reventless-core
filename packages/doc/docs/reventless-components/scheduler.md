@@ -271,4 +271,4 @@ let operations = scheduler.outputs.resource
 
 ## AWS Implementation
 
-For detailed AWS-specific implementation including CloudWatch Events integration, IAM role configuration, and runtime operations, see [ScheduledPublisher → EventBridge Scheduler](../inner-workings/aws-adapters/scheduledpublisher.md).
+For detailed AWS-specific implementation including CloudWatch Events integration, IAM role configuration, and runtime operations, see [ScheduledPublisher → EventBridge Scheduler](../aws-adapters/scheduledpublisher.md).

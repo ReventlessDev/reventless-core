@@ -28,7 +28,7 @@ This pattern ensures clear separation of concerns, type safety through module ty
 - [Pulumi Integration](./pulumi.md) - Deploy-time vs runtime separation
 - [Serialization](./serialization.md) - Data encoding/decoding patterns
 - [Resources](./resources.md) - Infrastructure resource management
-- [AWS Adapters](./aws-adapters/) - Provider-specific implementations
+- [AWS Adapters](../aws-adapters/) - Provider-specific implementations
 
 # Framework Inner Workings
 
@@ -67,13 +67,13 @@ The framework employs several other important patterns:
 
 Provider-specific implementations of framework components:
 
-- [**CommandGenerator**](./aws-adapters/commandgenerator.md)
-- [**CommandTopic**](./aws-adapters/commandtopic.md)
-- [**EventCollector**](./aws-adapters/eventcollector.md)
-- [**EventLog**](./aws-adapters/eventlog.md)
-- [**EventTopic**](./aws-adapters/eventtopic.md)
-- [**ScheduledPublisher**](./aws-adapters/scheduledpublisher.md)
-- [**Task**](./aws-adapters/task.md)
+- [**CommandGenerator**](../aws-adapters/commandgenerator.md)
+- [**CommandTopic**](../aws-adapters/commandtopic.md)
+- [**EventCollector**](../aws-adapters/eventcollector.md)
+- [**EventLog**](../aws-adapters/eventlog.md)
+- [**EventTopic**](../aws-adapters/eventtopic.md)
+- [**ScheduledPublisher**](../aws-adapters/scheduledpublisher.md)
+- [**Task**](../aws-adapters/task.md)
 
 ## Understanding the Framework
 

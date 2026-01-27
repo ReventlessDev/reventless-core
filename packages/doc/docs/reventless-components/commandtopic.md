@@ -253,5 +253,5 @@ This metadata enables:
 
 ## AWS Implementation
 
-For detailed implementation, see [CommandTopic AWS Adapter Documentation](../inner-workings/aws-adapters/commandtopic.md).
+For detailed implementation, see [CommandTopic AWS Adapter Documentation](../aws-adapters/commandtopic.md).
 

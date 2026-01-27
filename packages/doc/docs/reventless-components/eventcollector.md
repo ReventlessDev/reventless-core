@@ -192,4 +192,4 @@ flowchart TB
 
 ## AWS Implementation
 
-For detailed implementation, see [EventCollector AWS Adapter Documentation](../inner-workings/aws-adapters/eventcollector.md).
+For detailed implementation, see [EventCollector AWS Adapter Documentation](../aws-adapters/eventcollector.md).

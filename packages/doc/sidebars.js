@@ -53,6 +53,43 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'AWS Adapters',
+      items: [
+        'aws-adapters/index',
+        {
+          type: 'category',
+          label: 'Core Event Sourcing',
+          items: [
+            'aws-adapters/eventlog',
+            'aws-adapters/commandtopic',
+            'aws-adapters/eventtopic',
+            'aws-adapters/eventcollector',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Data Storage',
+          items: [
+            'aws-adapters/querydb',
+            'aws-adapters/task',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Supporting Services',
+          items: [
+            'aws-adapters/commandgenerator',
+            'aws-adapters/counter',
+            'aws-adapters/heartbeat',
+            'aws-adapters/queryengine',
+            'aws-adapters/scheduledpublisher',
+            'aws-adapters/statetopic',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Inner Workings',
       items: [
         'inner-workings/framework-inner-workings',
@@ -62,25 +99,6 @@ const sidebars = {
         'inner-workings/pulumi',
         'inner-workings/resources',
         'inner-workings/serialization',
-        {
-          type: 'category',
-          label: 'AWS Adapters',
-          items: [
-            'inner-workings/aws-adapters/index',
-            'inner-workings/aws-adapters/commandgenerator',
-            'inner-workings/aws-adapters/commandtopic',
-            'inner-workings/aws-adapters/counter',
-            'inner-workings/aws-adapters/eventcollector',
-            'inner-workings/aws-adapters/eventlog',
-            'inner-workings/aws-adapters/eventtopic',
-            'inner-workings/aws-adapters/heartbeat',
-            'inner-workings/aws-adapters/querydb',
-            'inner-workings/aws-adapters/queryengine',
-            'inner-workings/aws-adapters/scheduledpublisher',
-            'inner-workings/aws-adapters/statetopic',
-            'inner-workings/aws-adapters/task',
-          ],
-        },
       ],
     },
     {

@@ -447,4 +447,4 @@ let task = Task.make(
 
 ## AWS Implementation
 
-For detailed AWS-specific implementation including S3 bucket configuration, Lambda event subscriptions, IAM policies, and CORS settings, see [Task → Lambda + SQS](../inner-workings/aws-adapters/task.md).
+For detailed AWS-specific implementation including S3 bucket configuration, Lambda event subscriptions, IAM policies, and CORS settings, see [Task → Lambda + SQS](../aws-adapters/task.md).
