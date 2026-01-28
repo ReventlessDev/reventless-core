@@ -19,6 +19,7 @@ const sidebars = {
     'get-started',
     'rescript-syntax',
     'component-overview',
+    'unit-testing',
     {
       type: 'category',
       label: 'Components',
