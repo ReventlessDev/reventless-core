@@ -3,10 +3,10 @@ export const createSpec = {
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}.re',
   templateFile: 'plop-templates/Aggregate/Spec.re.hbs'
 };
-export const createBehaviour = {
+export const createBehavior = {
   type: 'add',
-  path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Behaviour.re',
-  templateFile: 'plop-templates/Aggregate/Behaviour.re.hbs'
+  path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Behavior.re',
+  templateFile: 'plop-templates/Aggregate/Behavior.re.hbs'
 };
 export const create = {
   type: 'add',
@@ -24,8 +24,8 @@ export const createTestFixture = {
   path: 'tests/{{properCase name}}/{{properCase name}}Fixtures.re',
   templateFile: 'plop-templates/tests/Fixtures.re.hbs'
 };
-export const createBehaviourTest = {
+export const createBehaviorTest = {
   type: 'add',
-  path: 'tests/{{properCase name}}/{{properCase name}}BehaviourTest.re',
-  templateFile: 'plop-templates/tests/BehaviourTest.re.hbs'
+  path: 'tests/{{properCase name}}/{{properCase name}}BehaviorTest.re',
+  templateFile: 'plop-templates/tests/BehaviorTest.re.hbs'
 };

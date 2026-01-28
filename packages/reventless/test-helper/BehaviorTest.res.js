@@ -11,12 +11,12 @@ var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
 
-function Make(Spec, Behaviour) {
+function Make(Spec, Behavior) {
   var apply$p = function (state, $$event) {
-    return Behaviour.apply(state, $$event);
+    return Behavior.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Core__Array.reduce(events.slice(1), Behaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(events.slice(1), Behavior.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
@@ -28,10 +28,10 @@ function Make(Spec, Behaviour) {
   var exec = function (history, context, command) {
     errors.contents = [];
     if (history.length === 0) {
-      return Behaviour.create(command, context, errorHandler);
+      return Behavior.create(command, context, errorHandler);
     }
     try {
-      return Behaviour.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+      return Behavior.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
     }
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);

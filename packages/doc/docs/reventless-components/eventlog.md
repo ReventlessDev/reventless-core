@@ -203,11 +203,11 @@ flowchart TB
     subgraph Aggregate Component
         CommandHandler[Command Handler]
         EventLog[(EventLog)]
-        Behaviour[Behaviour]
+        Behavior[Behavior]
         
         CommandHandler -->|1. replay| EventLog
-        EventLog -->|2. events| Behaviour
-        Behaviour -->|3. state| CommandHandler
+        EventLog -->|2. events| Behavior
+        Behavior -->|3. state| CommandHandler
         CommandHandler -->|4. new events| EventLog
     end
     
@@ -217,7 +217,7 @@ flowchart TB
 **Sequence:**
 1. Aggregate requests event replay for the aggregate ID
 2. EventLog returns historical events
-3. Behaviour reconstructs current state from events
+3. Behavior reconstructs current state from events
 4. Aggregate appends new events from command processing
 5. EventLog publishes new events to EventTopic
 

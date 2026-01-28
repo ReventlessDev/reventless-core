@@ -1,9 +1,9 @@
 open PluginSpec
 open PluginFixtures
-module PluginTest = BehaviourTest.Make(PluginSpec, PluginBehaviour)
+module PluginTest = BehaviorTest.Make(PluginSpec, PluginBehavior)
 open PluginTest
 
-describe("PluginBehaviour:", () => {
+describe("PluginBehavior:", () => {
   test("Heartbeat (first)", () =>
     givenEvents([])->whenCmd(Heartbeat)->thenEvents([UnknownPluginDetected])
   )

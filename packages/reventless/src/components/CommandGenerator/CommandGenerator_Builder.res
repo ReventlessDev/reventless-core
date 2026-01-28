@@ -1,11 +1,11 @@
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.Aggregate.Spec,
-  Behaviour: Behaviour.T with module Spec := Spec,
+  Behavior: Behavior.T with module Spec := Spec,
   Resolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
 ): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts) => {
   let construct = (self, _name) => {
-    let resources = Behaviour.resolverConfig.fields->Array.map(field => {
+    let resources = Behavior.resolverConfig.fields->Array.map(field => {
       ReventlessSpec.Adapter.id: ""->Pulumi.Output.make,
       info: `Mutation.${field}`->Pulumi.Output.make,
       name: ""->Pulumi.Output.make,
@@ -26,7 +26,7 @@ module Make = (
     let resolvers = Resolvers.make(
       ~name,
       ~api=Config.api,
-      ~fields=Behaviour.resolverConfig.fields,
+      ~fields=Behavior.resolverConfig.fields,
       ~runtime,
       ~resources,
       ~opts,
@@ -42,7 +42,7 @@ module Make = (
         let publishJsons = publishJsons
       },
       Spec,
-      Behaviour,
+      Behavior,
     )
 
     Resolvers.handleResolversEvent(Callback.generateCommand)

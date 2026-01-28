@@ -12,12 +12,12 @@ module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_Single.Make
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.Aggregate.Spec,
-  Behaviour: Reventless.Behaviour.T with module Spec := Spec,
+  Behavior: Reventless.Behavior.T with module Spec := Spec,
   EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
 ): Reventless.Aggregate.T => Reventless.Aggregate_Builder.Make(
   Config,
   Spec,
-  Behaviour,
+  Behavior,
   EventMappings,
   RuntimeEnvironment,
   CommandGeneratorResolvers,

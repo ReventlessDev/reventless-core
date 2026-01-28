@@ -11,12 +11,12 @@ var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
 
-function Make(Spec, Behaviour, Ops) {
+function Make(Spec, Behavior, Ops) {
   var errorHandler = function (error, command, context) {
     var errorJson = JSON.stringify(Message$Reventless.encode(error, Spec.errorSchema));
     var commandJsonStr = JSON.stringify(Message$Reventless.encode(command, Spec.commandSchema));
     var id = context.id;
-    Logger$Reventless.error("File \"Aggregate_Callback.res\", line 25, characters 11-18", undefined, undefined, "Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: ", commandJsonStr);
+    Logger$Reventless.error("File \"Aggregate_Callback.res\", line 25, characters 11-18", undefined, undefined, "Behavior error " + errorJson + " in " + Spec.name + "(" + id + "): Command: ", commandJsonStr);
     return [];
   };
   var groupTopicItemsById = function (topicItems) {
@@ -34,9 +34,9 @@ function Make(Spec, Behaviour, Ops) {
   };
   var apply$p = function (stateOpt, $$event) {
     if (stateOpt !== undefined) {
-      return Caml_option.some(Behaviour.apply(Caml_option.valFromOption(stateOpt), $$event));
+      return Caml_option.some(Behavior.apply(Caml_option.valFromOption(stateOpt), $$event));
     } else {
-      return Caml_option.some(Behaviour.init($$event));
+      return Caml_option.some(Behavior.init($$event));
     }
   };
   var updateState = function (stateOpt, events) {
@@ -68,7 +68,7 @@ function Make(Spec, Behaviour, Ops) {
                             if (stateO !== undefined) {
                               var generatedEvents;
                               try {
-                                generatedEvents = Behaviour.execute(Caml_option.valFromOption(stateO), command$p.command, {
+                                generatedEvents = Behavior.execute(Caml_option.valFromOption(stateO), command$p.command, {
                                       id: Spec.Id.toString(command$p.id),
                                       meta: command$p.meta
                                     }, errorHandler);
@@ -76,7 +76,7 @@ function Make(Spec, Behaviour, Ops) {
                               catch (raw_event){
                                 var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
                                 if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-                                  Logger$Reventless.error("File \"Aggregate_Callback.res\", line 87, characters 34-41", undefined, undefined, "Behaviour.execute: InvalidEvent", $$event._1);
+                                  Logger$Reventless.error("File \"Aggregate_Callback.res\", line 87, characters 34-41", undefined, undefined, "Behavior.execute: InvalidEvent", $$event._1);
                                   generatedEvents = [];
                                 } else {
                                   throw $$event;
@@ -93,7 +93,7 @@ function Make(Spec, Behaviour, Ops) {
                                       ]
                                     };
                             }
-                            var generatedEvents$1 = Behaviour.create(command$p.command, {
+                            var generatedEvents$1 = Behavior.create(command$p.command, {
                                   id: Spec.Id.toString(command$p.id),
                                   meta: command$p.meta
                                 }, errorHandler);

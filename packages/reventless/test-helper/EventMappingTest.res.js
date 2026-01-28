@@ -9,12 +9,12 @@ var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
 
-function MakeAggregate(Spec, Behaviour) {
+function MakeAggregate(Spec, Behavior) {
   var apply$p = function (state, $$event) {
-    return Behaviour.apply(state, $$event);
+    return Behavior.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Core__Array.reduce(events.slice(1), Behaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(events.slice(1), Behavior.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
@@ -26,10 +26,10 @@ function MakeAggregate(Spec, Behaviour) {
   var exec = function (context, command, history) {
     errors.contents = [];
     if (history.length === 0) {
-      return Behaviour.create(command, context, errorHandler);
+      return Behavior.create(command, context, errorHandler);
     }
     try {
-      return Behaviour.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+      return Behavior.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
     }
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
@@ -41,7 +41,7 @@ function MakeAggregate(Spec, Behaviour) {
   };
   return {
           Spec: Spec,
-          Behaviour: Behaviour,
+          Behavior: Behavior,
           apply$p: apply$p,
           currentState: currentState,
           errors: errors,
@@ -50,24 +50,24 @@ function MakeAggregate(Spec, Behaviour) {
         };
 }
 
-function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
-  var Behaviour_resolverConfig = SourceBehaviour.resolverConfig;
-  var Behaviour_init = SourceBehaviour.init;
-  var Behaviour_apply = SourceBehaviour.apply;
-  var Behaviour_create = SourceBehaviour.create;
-  var Behaviour_execute = SourceBehaviour.execute;
-  var Behaviour = {
-    resolverConfig: Behaviour_resolverConfig,
-    init: Behaviour_init,
-    apply: Behaviour_apply,
-    create: Behaviour_create,
-    execute: Behaviour_execute
+function Make(Source, SourceBehavior, Target, TargetBehavior, EventMapping) {
+  var Behavior_resolverConfig = SourceBehavior.resolverConfig;
+  var Behavior_init = SourceBehavior.init;
+  var Behavior_apply = SourceBehavior.apply;
+  var Behavior_create = SourceBehavior.create;
+  var Behavior_execute = SourceBehavior.execute;
+  var Behavior = {
+    resolverConfig: Behavior_resolverConfig,
+    init: Behavior_init,
+    apply: Behavior_apply,
+    create: Behavior_create,
+    execute: Behavior_execute
   };
   var apply$p = function (state, $$event) {
-    return SourceBehaviour.apply(state, $$event);
+    return SourceBehavior.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Core__Array.reduce(events.slice(1), SourceBehaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(events.slice(1), SourceBehavior.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
@@ -79,10 +79,10 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
   var exec = function (context, command, history) {
     errors.contents = [];
     if (history.length === 0) {
-      return SourceBehaviour.create(command, context, errorHandler);
+      return SourceBehavior.create(command, context, errorHandler);
     }
     try {
-      return SourceBehaviour.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+      return SourceBehavior.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
     }
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
@@ -92,23 +92,23 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
       throw exn;
     }
   };
-  var Behaviour_resolverConfig$1 = TargetBehaviour.resolverConfig;
-  var Behaviour_init$1 = TargetBehaviour.init;
-  var Behaviour_apply$1 = TargetBehaviour.apply;
-  var Behaviour_create$1 = TargetBehaviour.create;
-  var Behaviour_execute$1 = TargetBehaviour.execute;
-  var Behaviour$1 = {
-    resolverConfig: Behaviour_resolverConfig$1,
-    init: Behaviour_init$1,
-    apply: Behaviour_apply$1,
-    create: Behaviour_create$1,
-    execute: Behaviour_execute$1
+  var Behavior_resolverConfig$1 = TargetBehavior.resolverConfig;
+  var Behavior_init$1 = TargetBehavior.init;
+  var Behavior_apply$1 = TargetBehavior.apply;
+  var Behavior_create$1 = TargetBehavior.create;
+  var Behavior_execute$1 = TargetBehavior.execute;
+  var Behavior$1 = {
+    resolverConfig: Behavior_resolverConfig$1,
+    init: Behavior_init$1,
+    apply: Behavior_apply$1,
+    create: Behavior_create$1,
+    execute: Behavior_execute$1
   };
   var apply$p$1 = function (state, $$event) {
-    return TargetBehaviour.apply(state, $$event);
+    return TargetBehavior.apply(state, $$event);
   };
   var currentState$1 = function (events) {
-    return Core__Array.reduce(events.slice(1), TargetBehaviour.init(events[0]), apply$p$1);
+    return Core__Array.reduce(events.slice(1), TargetBehavior.init(events[0]), apply$p$1);
   };
   var errors$1 = {
     contents: []
@@ -120,10 +120,10 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
   var exec$1 = function (context, command, history) {
     errors$1.contents = [];
     if (history.length === 0) {
-      return TargetBehaviour.create(command, context, errorHandler$1);
+      return TargetBehavior.create(command, context, errorHandler$1);
     }
     try {
-      return TargetBehaviour.execute(currentState$1(history), command, TestFixtures$Reventless.context, errorHandler$1);
+      return TargetBehavior.execute(currentState$1(history), command, TestFixtures$Reventless.context, errorHandler$1);
     }
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);

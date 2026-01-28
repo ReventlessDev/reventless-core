@@ -302,7 +302,7 @@ EventMappers are typically defined as part of an Aggregate's EventMappings:
 include ReventlessAws.Aggregate.Make(
   Config,
   Order,
-  Order_Behaviour,
+  Order_Behavior,
   Order_EventMappings,  // EventMapper configuration
 )
 ```

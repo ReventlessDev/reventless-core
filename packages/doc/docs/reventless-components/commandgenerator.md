@@ -40,12 +40,12 @@ The **CommandGenerator** bridges the gap between external clients and event-sour
 
 The CommandGenerator requires configuration that defines the GraphQL schema and command generation behavior:
 
-### Behaviour Configuration
+### Behavior Configuration
 
-The Aggregate's Behaviour module must define a `resolverConfig` that specifies which GraphQL mutations map to which commands:
+The Aggregate's Behavior module must define a `resolverConfig` that specifies which GraphQL mutations map to which commands:
 
 ```rescript
-module type Behaviour = {
+module type Behavior = {
   module Spec: ReventlessSpec.Aggregate.Spec
   
   type resolverConfig = {
@@ -89,7 +89,7 @@ let mutationsSchema = "
 
 Configure how GraphQL mutations are transformed into commands:
 
-```rescript title="Customer_Behaviour.res"
+```rescript title="Customer_Behavior.res"
 module Spec = Customer
 
 type state = option<Customer.customer>
@@ -110,7 +110,7 @@ let resolverConfig = {
   commandSchema: Customer.commandSchema,
 }
 
-// Behaviour functions: init, apply, execute
+// Behavior functions: init, apply, execute
 let init = (event: Customer.event) =>
   switch event {
   | Created(customer) => Some(customer)
@@ -179,11 +179,11 @@ mutation CreateCustomer {
 The CommandGenerator is automatically created when defining an Aggregate:
 
 ```rescript title="Customer.res"
-// Define aggregate with behaviour
+// Define aggregate with behavior
 include ReventlessAws.Aggregate.Make(
   Config,
   Customer,          // Spec
-  Customer_Behaviour, // Behaviour (includes resolverConfig)
+  Customer_Behavior, // Behavior (includes resolverConfig)
   Customer_EventMappings,
 )
 
@@ -298,7 +298,7 @@ let generateCommand = async (payload: CommandGenerator.payload) => {
   }
   
   // 5. Validate command against schema
-  switch commandJson->Message.decode(Behaviour.resolverConfig.commandSchema) {
+  switch commandJson->Message.decode(Behavior.resolverConfig.commandSchema) {
   | command => 
     // 6. Publish to CommandTopic
     await publishJsons([{id, meta, commandJson}])
@@ -400,7 +400,7 @@ mutation CreateMultipleOrders {
 
 ### Async Command Generation
 
-```rescript title="Order_Behaviour.res"
+```rescript title="Order_Behavior.res"
 // Generate command after external validation
 let resolverConfig = {
   fields: ["Order_CreateWithValidation"],
@@ -485,7 +485,7 @@ type outputs = {
 - IAM roles for AppSync and Lambda
 
 **Configuration:**
-- Defined via Behaviour's `resolverConfig.fields`
+- Defined via Behavior's `resolverConfig.fields`
 - Automatically wired to CommandTopic during deployment
 
 ## Best Practices
@@ -566,7 +566,7 @@ let generateCommand = async (payload) => {
 - **[Aggregate](./aggregate.md)** - Receives commands from CommandGenerator
 - **[CommandTopic](./commandtopic.md)** - Receives generated commands for delivery
 - **[API](./api.md)** - Defines GraphQL schema for mutations
-- **[Behaviour](./aggregate.md#behaviour)** - Defines resolverConfig for command generation
+- **[Behavior](./aggregate.md#behavior)** - Defines resolverConfig for command generation
 - **[EventMapper](./eventmapper.md)** - Alternative command source (from events)
 
 ## AWS Implementation

@@ -11,7 +11,7 @@ module type T = {
 
 module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
-  Behaviour: Behaviour.T with module Spec := Spec,
+  Behavior: Behavior.T with module Spec := Spec,
   Ops: Ops with module Spec = Spec,
 ): (T with module Spec = Spec) => {
   module Spec = Spec
@@ -23,7 +23,7 @@ module Make = (
     let id = context.id
     Logger.error(
       ~loc=__LOC__,
-      `Behaviour error ${errorJson} in ${serviceName}(${id}): Command: `,
+      `Behavior error ${errorJson} in ${serviceName}(${id}): Command: `,
       commandJsonStr,
     )
     []
@@ -51,8 +51,8 @@ module Make = (
 
   let apply' = (stateOpt, event) =>
     switch stateOpt {
-    | Some(state) => Some(Behaviour.apply(state, event))
-    | None => Some(Behaviour.init(event))
+    | Some(state) => Some(Behavior.apply(state, event))
+    | None => Some(Behavior.init(event))
     }
 
   let updateState = (stateOpt, events) => events->Array.reduce(stateOpt, apply')
@@ -71,10 +71,10 @@ module Make = (
       ->Array.map(async ((id, topicItemsForId)) => {
         let history = await Ops.eventLog.replay(id)
         let processCommand = async (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
-          let runBehaviour = ((stateO, events)) =>
+          let runBehavior = ((stateO, events)) =>
             switch stateO {
             | Some(state) =>
-              let generatedEvents = try Behaviour.execute(
+              let generatedEvents = try Behavior.execute(
                 state,
                 command'.command,
                 {
@@ -84,7 +84,7 @@ module Make = (
                 errorHandler,
               ) catch {
               | Message.InvalidEvent(event) =>
-                Logger.error(~loc=__LOC__, "Behaviour.execute: InvalidEvent", event)
+                Logger.error(~loc=__LOC__, "Behavior.execute: InvalidEvent", event)
                 []
               }
               Ok((
@@ -92,7 +92,7 @@ module Make = (
                 Array.concat(events, [(generatedEvents, command'->updateMeta)]),
               ))
             | None =>
-              let generatedEvents = Behaviour.create(
+              let generatedEvents = Behavior.create(
                 command'.command,
                 {
                   id: command'.id->Spec.Id.toString,
@@ -107,7 +107,7 @@ module Make = (
             }
 
           switch await accP {
-          | Ok(acc) => runBehaviour(acc)
+          | Ok(acc) => runBehavior(acc)
           | Error(_) as error => error
           }
         }

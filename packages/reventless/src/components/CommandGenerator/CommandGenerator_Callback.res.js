@@ -9,7 +9,7 @@ var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
 
-function Make(Spec, AggregateSpec, Behaviour) {
+function Make(Spec, AggregateSpec, Behavior) {
   var generateCommand = async function (payload) {
     var msgId = Message$Reventless.uuid();
     var id = payload.arguments.id;
@@ -38,7 +38,7 @@ function Make(Spec, AggregateSpec, Behaviour) {
     console.log("CommandGenerator: generated command:", commandJson);
     var val;
     try {
-      val = Message$Reventless.decode(commandJson, Behaviour.resolverConfig.commandSchema);
+      val = Message$Reventless.decode(commandJson, Behavior.resolverConfig.commandSchema);
     }
     catch (raw_err){
       var err = Caml_js_exceptions.internalToOCamlException(raw_err);

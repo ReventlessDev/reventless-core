@@ -1,7 +1,7 @@
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.Aggregate.Spec,
-  Behaviour: Behaviour.T with module Spec := Spec,
+  Behavior: Behavior.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
   RuntimeEnvironment: Runtime.Environment,
   CommandGeneratorResolvers: CommandGenerator_Adapter.Resolvers
@@ -26,7 +26,7 @@ module Make = (
   module SpecificCommandGenerator = CommandGenerator_Builder.Make(
     Config,
     Spec,
-    Behaviour,
+    Behavior,
     CommandGeneratorResolvers,
   )
   module SpecificEventCollector = EventCollector_Builder.Make(
@@ -72,7 +72,7 @@ module Make = (
     ->Pulumi.Output.apply(eventLogOps => {
       module AggregateCallback = Aggregate_Callback.Make(
         Spec,
-        Behaviour,
+        Behavior,
         {
           module Spec = Spec
           module EventLog = SpecificEventLog

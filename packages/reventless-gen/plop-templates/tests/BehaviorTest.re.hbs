@@ -1,13 +1,13 @@
 open Jest;
 
-module {{properCase name}}BehaviourTest = 
-  Reventless.BehaviourTest.Make({{properCase name}}, {{properCase name}}Behaviour);
+module {{properCase name}}BehaviorTest =
+  Reventless.BehaviorTest.Make({{properCase name}}, {{properCase name}}Behavior);
 
-open {{properCase name}}BehaviourTest;
+open {{properCase name}}BehaviorTest;
 open {{properCase name}}Fixtures;
 open {{properCase name}};
 
-describe("{{properCase name}}Behaviour:", () => {
+describe("{{properCase name}}Behavior:", () => {
   test("Add", () =>
     givenEvents([]) //
     |> whenCmd(Add)

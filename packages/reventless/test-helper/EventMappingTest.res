@@ -51,10 +51,10 @@ module type T = {
 
 module type Aggregate = {
   module Spec: ReventlessSpec.Aggregate.Spec
-  module Behaviour: Reventless.Behaviour.T
+  module Behavior: Reventless.Behavior.T
 
-  let apply': (Behaviour.state, Spec.event) => Behaviour.state
-  let currentState: array<Spec.event> => Behaviour.state
+  let apply': (Behavior.state, Spec.event) => Behavior.state
+  let currentState: array<Spec.event> => Behavior.state
   let errors: array<Spec.error>
   let errorHandler: Reventless.Message.errorHandler<Spec.error, Spec.command, Spec.event>
   let exec: (Reventless.Message.context, Spec.command, array<Spec.event>) => array<Spec.event>
@@ -62,17 +62,17 @@ module type Aggregate = {
 
 module MakeAggregate = (
   Spec: ReventlessSpec.Aggregate.Spec,
-  Behaviour: Behaviour.T with module Spec := Spec,
+  Behavior: Behavior.T with module Spec := Spec,
 ) => {
   module Spec = Spec
-  module Behaviour = Behaviour
+  module Behavior = Behavior
 
-  let apply' = (state, event) => Behaviour.apply(state, event)
+  let apply' = (state, event) => Behavior.apply(state, event)
 
   let currentState = events =>
     events
     ->Array.sliceToEnd(~start=1)
-    ->Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
+    ->Array.reduce(Behavior.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
@@ -84,9 +84,9 @@ module MakeAggregate = (
   let exec = (context, command, history): array<Spec.event> => {
     errors := []
     switch history {
-    | [] => Behaviour.create(command, context, errorHandler)
+    | [] => Behavior.create(command, context, errorHandler)
     | history =>
-      try Behaviour.execute(
+      try Behavior.execute(
         history->currentState,
         command,
         TestFixtures.context,
@@ -100,9 +100,9 @@ module MakeAggregate = (
 
 module Make = (
   Source: ReventlessSpec.Aggregate.Spec,
-  SourceBehaviour: Behaviour.T with module Spec = Source,
+  SourceBehavior: Behavior.T with module Spec = Source,
   Target: ReventlessSpec.Aggregate.Spec,
-  TargetBehaviour: Behaviour.T with module Spec = Target,
+  TargetBehavior: Behavior.T with module Spec = Target,
   EventMapping: ReventlessSpec.EventMapping.T
     with module Source = Source
     and module Target := Target,
@@ -110,8 +110,8 @@ module Make = (
   module Source = Source
   module Target = Target
 
-  module SourceAggregate = MakeAggregate(Source, SourceBehaviour)
-  module TargetAggregate = MakeAggregate(Target, TargetBehaviour)
+  module SourceAggregate = MakeAggregate(Source, SourceBehavior)
+  module TargetAggregate = MakeAggregate(Target, TargetBehavior)
 
   let describe = Jest.describe
   let test = Jest.testPromise

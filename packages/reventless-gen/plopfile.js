@@ -111,11 +111,11 @@ export default function (plop) {
     }],
     actions: [
       Aggregate.createSpec,
-      Aggregate.createBehaviour,
+      Aggregate.createBehavior,
       Aggregate.create,
       Aggregate.addToMain,
       Aggregate.createTestFixture,
-      Aggregate.createBehaviourTest,
+      Aggregate.createBehaviorTest,
       ReadModel.createView,
       ReadModel.create,
       ReadModel.addToMain,
@@ -131,11 +131,11 @@ export default function (plop) {
     }],
     actions: [
       Aggregate.createSpec,
-      Aggregate.createBehaviour,
+      Aggregate.createBehavior,
       Aggregate.create,
       Aggregate.addToMain,
       Aggregate.createTestFixture,
-      Aggregate.createBehaviourTest,
+      Aggregate.createBehaviorTest,
     ]
   });
   plop.setGenerator('ReadModel', {
@@ -166,12 +166,12 @@ export default function (plop) {
     actions: [
       Status.addEmptyTypeStatusToSpec,
       Status.addStatusToSpec,
-      Status.addStatusFieldToBehaviourState,
-      Status.addStatusFieldToBehaviourInit,
-      Status.addStatusToBehaviourExecute,
-      Status.addStatusSwitchToBehaviourExecute,
-      Status.addStatusToBehaviourApply,
-      Status.addStatusSwitchToBehaviourApply,
+      Status.addStatusFieldToBehaviorState,
+      Status.addStatusFieldToBehaviorInit,
+      Status.addStatusToBehaviorExecute,
+      Status.addStatusSwitchToBehaviorExecute,
+      Status.addStatusToBehaviorApply,
+      Status.addStatusSwitchToBehaviorApply,
       Status.addStatusFieldToViewState,
       Status.addStatusFieldToViewInit,
       Status.addStatusToViewApply,
@@ -204,12 +204,12 @@ export default function (plop) {
     actions: function (data) {
       var actions = [
         Command.addToSpec,
-        Command.addToBehaviourCreate,
-        Command.addCommandAndEventToBehaviourExecute,
-        Command.addCommandAndEventToBehaviourTest,
+        Command.addToBehaviorCreate,
+        Command.addCommandAndEventToBehaviorExecute,
+        Command.addCommandAndEventToBehaviorTest,
         Event.addToSpec,
-        Event.addToBehaviourInit,
-        Event.addToBehaviourApply,
+        Event.addToBehaviorInit,
+        Event.addToBehaviorApply,
         Event.addToViewInit,
         Event.addToViewApply,
         Event.addToViewTest
@@ -240,9 +240,9 @@ export default function (plop) {
     actions: function (data) {
       var actions = [
         Command.addToSpec,
-        Command.addToBehaviourCreate,
-        Command.addToBehaviourExecute,
-        Command.addToBehaviourTest
+        Command.addToBehaviorCreate,
+        Command.addToBehaviorExecute,
+        Command.addToBehaviorTest
       ];
       if (data.addMutation) {
         actions.push(Command.addCommandToApiMutation);
@@ -263,8 +263,8 @@ export default function (plop) {
     }],
     actions: [
       Event.addToSpec,
-      Event.addToBehaviourInit,
-      Event.addToBehaviourApply,
+      Event.addToBehaviorInit,
+      Event.addToBehaviorApply,
       Event.addToViewInit,
       Event.addToViewApply,
       Event.addToViewTest

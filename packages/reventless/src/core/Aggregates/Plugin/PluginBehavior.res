@@ -12,14 +12,14 @@ type state =
 
 let resolverConfig = {
   {
-    Behaviour.commandSchema,
+    Behavior.commandSchema,
     fields: ["Plugin_Activate", "Plugin_Deactivate"],
   }
 }
 
 let atomicCounter = None
 
-let create: Behaviour.create<command, event, error> = (command, context, error) =>
+let create: Behavior.create<command, event, error> = (command, context, error) =>
   switch command {
   | Heartbeat => [UnknownPluginDetected]
   | Connect(_)
@@ -29,7 +29,7 @@ let create: Behaviour.create<command, event, error> = (command, context, error) 
     error(NotExisting, command, context)
   }
 
-let execute: Behaviour.execute<state, command, event, error> = (state, command, context, error) =>
+let execute: Behavior.execute<state, command, event, error> = (state, command, context, error) =>
   switch state {
   | Detected =>
     switch command {
@@ -68,7 +68,7 @@ let execute: Behaviour.execute<state, command, event, error> = (state, command, 
     }
   }
 
-let init: Behaviour.init<state, event> = event =>
+let init: Behavior.init<state, event> = event =>
   switch event {
   | UnknownPluginDetected => Detected
   | Connected(_)
@@ -79,7 +79,7 @@ let init: Behaviour.init<state, event> = event =>
     raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
-let apply: Behaviour.apply<state, event> = (state: state, event) =>
+let apply: Behavior.apply<state, event> = (state: state, event) =>
   switch state {
   | Detected =>
     switch event {

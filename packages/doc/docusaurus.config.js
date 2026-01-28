@@ -292,7 +292,7 @@ const config = {
 
             /* HELPER */
             .parameter > rect,
-            rect[name="Behaviour"] {
+            rect[name="Behavior"] {
               fill: #f90;
               stroke: #f90;
             }

@@ -15,7 +15,7 @@ var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Buil
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 var CommandGenerator_Builder$Reventless = require("../CommandGenerator/CommandGenerator_Builder.res.js");
 
-function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel, AggregateRuntimeBuilder) {
+function Make(Config, Spec, Behavior, EventMappings, RuntimeEnvironment, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel, AggregateRuntimeBuilder) {
   var partial_arg_Id = Spec.Id;
   var partial_arg_name = Spec.name;
   var partial_arg_eventSchema = Spec.eventSchema;
@@ -43,7 +43,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
   var partial_arg$6 = function (param, param$1) {
     return partial_arg$5(Config, Spec, param, param$1);
   };
-  var SpecificCommandGenerator = partial_arg$6(Behaviour, CommandGeneratorResolvers);
+  var SpecificCommandGenerator = partial_arg$6(Behavior, CommandGeneratorResolvers);
   var partial_arg$7 = EventCollector_Builder$Reventless.Make;
   var SpecificEventCollector = partial_arg$7(RuntimeEnvironment, EventCollectorChannel);
   var partial_arg_name$1 = Spec.name;
@@ -65,7 +65,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                 var partial_arg$1 = function (param, param$1) {
                   return partial_arg(Spec, param, param$1);
                 };
-                var AggregateCallback = partial_arg$1(Behaviour, {
+                var AggregateCallback = partial_arg$1(Behavior, {
                       Spec: Spec,
                       EventLog: SpecificEventLog,
                       eventLog: eventLogOps

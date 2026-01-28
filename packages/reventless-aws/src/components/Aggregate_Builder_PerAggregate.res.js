@@ -33,7 +33,7 @@ var AggregateRuntimeBuilder = (function (param) {
       connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
     });
 
-function Make(Config, Spec, Behaviour, EventMappings) {
+function Make(Config, Spec, Behavior, EventMappings) {
   var partial_arg = {
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
     connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
@@ -53,7 +53,7 @@ function Make(Config, Spec, Behaviour, EventMappings) {
     asEventHandler: partial_arg_asEventHandler
   };
   var partial_arg$6 = Aggregate_Builder$Reventless.Make;
-  return partial_arg$6(Config, Spec, Behaviour, EventMappings, partial_arg$5, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, AggregateRuntimeBuilder);
+  return partial_arg$6(Config, Spec, Behavior, EventMappings, partial_arg$5, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, AggregateRuntimeBuilder);
 }
 
 var CommandGeneratorResolvers;

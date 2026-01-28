@@ -2,9 +2,9 @@
 'use strict';
 
 var PluginSpec$Reventless = require("../../src/core/Aggregates/Plugin/PluginSpec.res.js");
-var BehaviourTest$Reventless = require("../../test-helper/BehaviourTest.res.js");
+var BehaviorTest$Reventless = require("../../test-helper/BehaviorTest.res.js");
+var PluginBehavior$Reventless = require("../../src/core/Aggregates/Plugin/PluginBehavior.res.js");
 var PluginFixtures$Reventless = require("./PluginFixtures.res.js");
-var PluginBehaviour$Reventless = require("../../src/core/Aggregates/Plugin/PluginBehaviour.res.js");
 
 var partial_arg = {
   commandSchema: PluginSpec$Reventless.commandSchema,
@@ -12,19 +12,19 @@ var partial_arg = {
   errorSchema: PluginSpec$Reventless.errorSchema
 };
 
-var partial_arg$1 = BehaviourTest$Reventless.Make;
+var partial_arg$1 = BehaviorTest$Reventless.Make;
 
 var PluginTest = (function (param) {
       return partial_arg$1(partial_arg, param);
     })({
-      resolverConfig: PluginBehaviour$Reventless.resolverConfig,
-      init: PluginBehaviour$Reventless.init,
-      apply: PluginBehaviour$Reventless.apply,
-      create: PluginBehaviour$Reventless.create,
-      execute: PluginBehaviour$Reventless.execute
+      resolverConfig: PluginBehavior$Reventless.resolverConfig,
+      init: PluginBehavior$Reventless.init,
+      apply: PluginBehavior$Reventless.apply,
+      create: PluginBehavior$Reventless.create,
+      execute: PluginBehavior$Reventless.execute
     });
 
-PluginTest.describe("PluginBehaviour:", (function () {
+PluginTest.describe("PluginBehavior:", (function () {
         PluginTest.test("Heartbeat (first)", (function () {
                 return PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([]), "Heartbeat"), ["UnknownPluginDetected"]);
               }));

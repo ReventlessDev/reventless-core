@@ -8,9 +8,9 @@ var ComponentType$Reventless = require("../../ComponentType.res.js");
 var CommandGenerator$Reventless = require("./CommandGenerator.res.js");
 var CommandGenerator_Callback$Reventless = require("./CommandGenerator_Callback.res.js");
 
-function Make(Config, Spec, Behaviour, Resolvers) {
+function Make(Config, Spec, Behavior, Resolvers) {
   var construct = function (self, _name) {
-    var resources = Behaviour.resolverConfig.fields.map(function (field) {
+    var resources = Behavior.resolverConfig.fields.map(function (field) {
           return {
                   name: Pulumi.output(""),
                   id: Pulumi.output(""),
@@ -30,7 +30,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
     var opts = {
       parent: opts_parent
     };
-    var resolvers = Resolvers.make(name, Config.api, Behaviour.resolverConfig.fields, runtime, resources, opts);
+    var resolvers = Resolvers.make(name, Config.api, Behavior.resolverConfig.fields, runtime, resources, opts);
     Component$Reventless.setOutputs(commandGenerator, {
           resources: resolvers.resources
         });
@@ -43,7 +43,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
     var partial_arg$2 = function (param, param$1) {
       return partial_arg$1(partial_arg, param, param$1);
     };
-    var Callback = partial_arg$2(Spec, Behaviour);
+    var Callback = partial_arg$2(Spec, Behavior);
     return Resolvers.handleResolversEvent(Callback.generateCommand);
   };
   var make = function (name, opts) {

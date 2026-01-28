@@ -9,7 +9,7 @@ module type T = {
 module Make = (
   Spec: Spec,
   AggregateSpec: ReventlessSpec.Aggregate.Spec,
-  Behaviour: Behaviour.T with module Spec := AggregateSpec,
+  Behavior: Behavior.T with module Spec := AggregateSpec,
 ): T => {
   let generateCommand = async (payload: CommandGenerator.payload) => {
     let msgId = Message.uuid()
@@ -46,7 +46,7 @@ module Make = (
       ->Js.Json.object_
     }
     Js.log2("CommandGenerator: generated command:", commandJson)
-    switch commandJson->Message.decode(Behaviour.resolverConfig.commandSchema) {
+    switch commandJson->Message.decode(Behavior.resolverConfig.commandSchema) {
     | _ =>
       await Spec.publishJsons([{id, meta, commandJson}])
       meta.msgId

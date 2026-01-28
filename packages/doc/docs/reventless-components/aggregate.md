@@ -28,13 +28,13 @@ subgraph GenericAggregate [Aggregate]
   subgraph Params [Parameters]
       direction TB
       Spec[Aggregate Spec]:::parameter
-      Behaviour[Behaviour]:::parameter
+      Behavior[Behavior]:::parameter
       Config[Config]:::parameter
       EventMappings[Event Mappings]:::parameter
 
       Config ~~~ Spec
-      Spec ~~~ Behaviour
-      Behaviour ~~~ EventMappings
+      Spec ~~~ Behavior
+      Behavior ~~~ EventMappings
 
   end
   Params:::aggregate
@@ -52,14 +52,14 @@ GenericAggregate:::aggregate
 EventTopicOut --> EventTarget
 ```
 
-An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behaviour**](#behaviour), [**Config**](../reventless-common-modules/config.md) and [**Event Mappings**](#eventmappings).
+An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behavior**](#behavior), [**Config**](../reventless-common-modules/config.md) and [**Event Mappings**](#eventmappings).
 
 Commands are requests for change, which may be accepted (or not). Several Components can act as a Command Source: Command Generator, [Task](./task.md), [Event Mapper](#eventmappings), [Extension](./extension.md), and [Extension Point](./extensionpoint.md). Commands will never be stored. Accepted Commands result in any number of Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.
 In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
 
 ## Aggregate Spec
 
-An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behaviour](#behaviour), EventMapper, [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
+An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behavior](#behavior), EventMapper, [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
 
 ### Example
 
@@ -136,11 +136,11 @@ Event Variant Constructors should be formulated in past tense.
 ### error
 
 The error type declares possible unrecoverable errors of the aggregate.  
-Only values of this type can be passed to the Behaviour's [error function](#errors). The semantic may be chossen by the developer, but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+Only values of this type can be passed to the Behavior's [error function](#errors). The semantic may be chossen by the developer, but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
-## Behaviour
+## Behavior
 
-The aggregate specific business logic is implemented in a behaviour module.
+The aggregate specific business logic is implemented in a behavior module.
 
 It defines:
 
@@ -149,12 +149,12 @@ It defines:
 
 ### Example
 
-```rescript title="Customer_Behaviour.res" showLineNumbers
+```rescript title="Customer_Behavior.res" showLineNumbers
 open Reventless
 open Customer
 
 let resolverConfig = {
-  open Behaviour
+  open Behavior
   {
     commandDecoder: command_decode,
     fields: ["Customer_Create", "Customer_ChangeAddress", "Customer_ChangeName", "Customer_Delete"],
@@ -174,7 +174,7 @@ type state = {
 }
 
 // command => list(event)
-let create: Behaviour.create<command, event, error> = (. command, context, error) =>
+let create: Behavior.create<command, event, error> = (. command, context, error) =>
   switch command {
   | Create(customer) => [Created(customer)]
   | ChangeAddress(_)
@@ -184,7 +184,7 @@ let create: Behaviour.create<command, event, error> = (. command, context, error
   }
 
 // (state, command) => list(event)
-let execute: Behaviour.execute<state, command, event, error> = (. state, command, context, error) =>
+let execute: Behavior.execute<state, command, event, error> = (. state, command, context, error) =>
   switch (command, state) {
   | (Create(customer), {deleted: true}) => [Created(customer)]
   | (Create(_), {deleted: false}) => error(AlreadyExisting, command, context)
@@ -204,7 +204,7 @@ let execute: Behaviour.execute<state, command, event, error> = (. state, command
   }
 
 // event => state
-let init: Behaviour.init<state, event> = (. event) =>
+let init: Behavior.init<state, event> = (. event) =>
   switch event {
   | Created({Customer.address: address, name}) => {address, name, deleted: false}
   | AddressChanged(_)
@@ -215,7 +215,7 @@ let init: Behaviour.init<state, event> = (. event) =>
   }
 
 // (state, event) => state
-let apply: Behaviour.apply<state, event> = (. state: state, event) =>
+let apply: Behavior.apply<state, event> = (. state: state, event) =>
   switch event {
   | AddressChanged(address) => {...state, address}
   | NameChanged(name) => {...state, name}
@@ -275,7 +275,7 @@ The [`errorHandler`](#errors) function is the same for the `create` and `execute
 sequenceDiagram
 participant CommandSource as Command Source
 participant Aggregate
-participant Behaviour
+participant Behavior
 participant EventLog
 
 %% first Command
@@ -287,10 +287,10 @@ activate EventLog
 Note over EventLog: no events persisted yet
 EventLog-->>Aggregate: [ ]
 deactivate EventLog
-Aggregate->>Behaviour: create(Command1)
-activate Behaviour
-Behaviour-->>Aggregate: event1
-deactivate Behaviour
+Aggregate->>Behavior: create(Command1)
+activate Behavior
+Behavior-->>Aggregate: event1
+deactivate Behavior
 Aggregate-)EventLog: append(event1)
 deactivate Aggregate
 
@@ -303,14 +303,14 @@ activate EventLog
 Note over EventLog: one event persisted
 EventLog-->>Aggregate: [event1]
 deactivate EventLog
-Aggregate->>Behaviour: init(event1)
-activate Behaviour
-Behaviour-->>Aggregate: state1
-deactivate Behaviour
-Aggregate->>Behaviour: execute(state1, Command2)
-activate Behaviour
-Behaviour-->>Aggregate: event2
-deactivate Behaviour
+Aggregate->>Behavior: init(event1)
+activate Behavior
+Behavior-->>Aggregate: state1
+deactivate Behavior
+Aggregate->>Behavior: execute(state1, Command2)
+activate Behavior
+Behavior-->>Aggregate: event2
+deactivate Behavior
 Aggregate-)EventLog: append(event2)
 deactivate Aggregate
 
@@ -323,18 +323,18 @@ activate EventLog
 Note over EventLog: two event persisted
 EventLog-->>Aggregate: [event1, event2]
 deactivate EventLog
-Aggregate->>Behaviour: init(event1)
-activate Behaviour
-Behaviour-->>Aggregate: state1
-deactivate Behaviour
-Aggregate->>Behaviour: apply(state1, event2)
-activate Behaviour
-Behaviour-->>Aggregate: state2
-deactivate Behaviour
-Aggregate->>Behaviour: execute(state2, Command3)
-activate Behaviour
-Behaviour-->>Aggregate: event3
-deactivate Behaviour
+Aggregate->>Behavior: init(event1)
+activate Behavior
+Behavior-->>Aggregate: state1
+deactivate Behavior
+Aggregate->>Behavior: apply(state1, event2)
+activate Behavior
+Behavior-->>Aggregate: state2
+deactivate Behavior
+Aggregate->>Behavior: execute(state2, Command3)
+activate Behavior
+Behavior-->>Aggregate: event3
+deactivate Behavior
 Aggregate-)EventLog: append(event3)
 deactivate Aggregate
 ```
@@ -441,7 +441,7 @@ See [Counter](../reventless-common-modules/counter.md#usage-in-eventmappings) co
 Finally the `Aggregate` has to be generated by providing the previously generated Modules:
 
 ```rescript title="Customer_EventMappings.res" showLineNumbers
-include ReventlessAws.Aggregate.Make(Config, Customer, Customer_Behaviour, Customer_EventMappings)
+include ReventlessAws.Aggregate.Make(Config, Customer, Customer_Behavior, Customer_EventMappings)
 ```
 
 ## Pulumi

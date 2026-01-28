@@ -10,41 +10,41 @@ export const addStatusToSpec = {
   pattern: /(type status\W[\S\s]*?);/,
   template: "$1\n  | {{properCaseWithOptionalParams status}};",
 };
-export const addStatusFieldToBehaviourState = {
+export const addStatusFieldToBehaviorState = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(type state = {)\.?([\S\s]*?)(?<!status\W[\S\s]*?)(};)/,
   template: "$1status,$2$3",
 };
-export const addStatusSwitchToBehaviourExecute = {
+export const addStatusSwitchToBehaviorExecute = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(let execute\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let execute\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
-export const addStatusSwitchToBehaviourApply = {
+export const addStatusSwitchToBehaviorApply = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(let apply\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
-export const addStatusFieldToBehaviourInit = {
+export const addStatusFieldToBehaviorInit = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(let init\W[\S\s]*?switch \(event\).*\n.*?{)(?![\S\s]*?status:)/,
   template: "$1status: {{properCaseWithOptionalParams status}},",
 };
-export const addStatusToBehaviourExecute = {
+export const addStatusToBehaviorExecute = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(let execute\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStatusToBehaviourExecute.re.hbs",
+  templateFile: "plop-templates/Aggregate/addStatusToBehaviorExecute.re.hbs",
 };
-export const addStatusToBehaviourApply = {
+export const addStatusToBehaviorApply = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(let apply\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStatusToBehaviourApply.re.hbs",
+  templateFile: "plop-templates/Aggregate/addStatusToBehaviorApply.re.hbs",
 };
 export const addStatusFieldToViewState = {
   type: "modify",

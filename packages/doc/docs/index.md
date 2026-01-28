@@ -31,7 +31,7 @@ other Suggestions:
 - use of a common (ubiquitous) language / vocabulary across all stakeholders to foster better communication and understanding
   - improved communication efficiency
 - focus on business centric tests
-  - high quality through behaviour driven test
+  - high quality through behavior driven test
   - very readable tests in common language to discuss with customers and users
 
 ## The Reventless Programming Model
@@ -69,7 +69,7 @@ other Suggestions:
   - same programming language for whole system
   - easy for developers to switch between frontend & backend
   - reuse backend business functionality for frontend
-- behaviour driven test support
+- behavior driven test support
   - test framework makes it easy to achieve high quality applications
 
 ## Reventless stands on the shoulders of giants

@@ -1,6 +1,6 @@
 include ReventlessAws.Aggregate.Make(
           Config,
           Reventless.PluginSpec,
-          Reventless.PluginBehaviour,
+          Reventless.PluginBehavior,
           (Reventless.NoEventMappings.Make(Reventless.PluginSpec)),
         );

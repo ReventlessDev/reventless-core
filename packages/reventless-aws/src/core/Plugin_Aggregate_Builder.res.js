@@ -3,17 +3,17 @@
 
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var PluginSpec$Reventless = require("@reventless/reventless/src/core/Aggregates/Plugin/PluginSpec.res.js");
+var PluginBehavior$Reventless = require("@reventless/reventless/src/core/Aggregates/Plugin/PluginBehavior.res.js");
 var NoEventMappings$Reventless = require("@reventless/reventless/src/util/NoEventMappings.res.js");
-var PluginBehaviour$Reventless = require("@reventless/reventless/src/core/Aggregates/Plugin/PluginBehaviour.res.js");
 var Aggregate_Builder_Single$ReventlessAws = require("../components/Aggregate_Builder_Single.res.js");
 
 function Make(Config) {
   var partial_arg = {
-    resolverConfig: PluginBehaviour$Reventless.resolverConfig,
-    init: PluginBehaviour$Reventless.init,
-    apply: PluginBehaviour$Reventless.apply,
-    create: PluginBehaviour$Reventless.create,
-    execute: PluginBehaviour$Reventless.execute
+    resolverConfig: PluginBehavior$Reventless.resolverConfig,
+    init: PluginBehavior$Reventless.init,
+    apply: PluginBehavior$Reventless.apply,
+    create: PluginBehavior$Reventless.create,
+    execute: PluginBehavior$Reventless.execute
   };
   var partial_arg$1 = {
     Id: Id$ReventlessSpec.$$String,

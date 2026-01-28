@@ -1,5 +1,5 @@
 module type T = {
-  module Spec: Behaviour.Spec
+  module Spec: Behavior.Spec
 
   let describe: (string, unit => unit) => unit
   let test: (string, unit => Jest.assertion) => unit
@@ -27,7 +27,7 @@ module type T = {
   let thenError: (array<Spec.event>, Spec.error) => Jest.assertion
 }
 
-module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := Spec): (
+module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec
@@ -35,12 +35,12 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let describe = Jest.describe
   let test = Jest.test
 
-  let apply' = (state, event) => Behaviour.apply(state, event)
+  let apply' = (state, event) => Behavior.apply(state, event)
 
   let currentState = events =>
     events
     ->Array.sliceToEnd(~start=1)
-    ->Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
+    ->Array.reduce(Behavior.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
@@ -52,9 +52,9 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let exec = (history, context, command): array<Spec.event> => {
     errors := []
     switch history {
-    | [] => Behaviour.create(command, context, errorHandler)
+    | [] => Behavior.create(command, context, errorHandler)
     | history =>
-      try Behaviour.execute(
+      try Behavior.execute(
         currentState(history),
         command,
         TestFixtures.context,

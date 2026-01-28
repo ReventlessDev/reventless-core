@@ -4,15 +4,15 @@ export const addToSpec = {
   pattern: /(type event\W[\S\s]*?);/,
   template: "$1\n  | {{properCaseWithOptionalParams event}};",
 };
-export const addToBehaviourInit = {
+export const addToBehaviorInit = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(?<=let init\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(};)/,
   template: "$1$2| {{properCaseWithOptionalParams event}} => invalidEvent(event)$2$3"
 };
-export const addToBehaviourApply = {
+export const addToBehaviorApply = {
   type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behavior.re",
   pattern: /(?<=let apply\W[\S\s]*?)( *)(switch \(event\)[\S\s]*?{)/g,
   template: "$1$2\n$1| {{properCaseWithOptionalParams event}} => state // TODO: add implementation",
 };
