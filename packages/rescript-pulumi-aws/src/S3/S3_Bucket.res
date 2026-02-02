@@ -43,20 +43,20 @@ type lifecycleRule = {
   expiration: lifecycleRuleExpiration,
   id: string,
   noncurrentVersionExpiration: lifecycleRuleNoncurrentVersionExpiration,
-  noncurrentVersionTransitions: Js.Array.t<lifecycleRuleNoncurrentVersionTransition>,
+  noncurrentVersionTransitions: array<lifecycleRuleNoncurrentVersionTransition>,
   prefix: string,
   tags: Aws.tags,
-  transitions: Js.Array.t<lifecycleRuleTransition>,
+  transitions: array<lifecycleRuleTransition>,
 }
 
-type lifecycleRules = Js.Array.t<lifecycleRule>
+type lifecycleRules = array<lifecycleRule>
 
 type logging = {
   targetBucket: string,
   targetPrefix: string,
 }
 
-type loggings = Js.Array.t<logging>
+type loggings = array<logging>
 
 type objectLockConfigurationRule = {
   days: int,
@@ -102,7 +102,7 @@ type replicationConfigurationRule = {
 
 type replicationConfiguration = {
   role: string,
-  rules: Js.Array.t<replicationConfigurationRule>,
+  rules: array<replicationConfigurationRule>,
 }
 
 type serverSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefault = {

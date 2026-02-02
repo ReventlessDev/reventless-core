@@ -1,17 +1,13 @@
 let componentType = ComponentType.EventCollector
 
-type enqueueEvent = (
-  /* ~delay: */ int,
-  /* ~id: */ string,
-  /* ~message: */ string,
-) => Js.Promise.t<unit>
+type enqueueEvent = (/* ~delay: */ int, /* ~id: */ string, /* ~message: */ string) => promise<unit>
 
 type t
 type outputs = {name: string, resources: array<ReventlessSpec.Adapter.resource>}
 type operations = {enqueueEvent: enqueueEvent}
 type component = Component.t<t, outputs, operations>
 
-type jsonEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
+type jsonEventsHandler = array<JSON.t> => promise<unit>
 
 module type T = {
   type callbackEvent

@@ -64,10 +64,10 @@ module SignUpCommand = {
       https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/
     */
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module AdminAddUserToGroupCommand = {
@@ -87,10 +87,10 @@ module AdminAddUserToGroupCommand = {
       see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-client-cognito-identity-provider/Class/AdminAddUserToGroupCommand/
     */
     @send
-    external send: (client, t) => Js.Promise.t<unit> = "send"
+    external send: (client, t) => promise<unit> = "send"
   }
 
-  let send: t => Js.Promise.t<unit> = command => Raw.send(client(), command)
+  let send: t => promise<unit> = command => Raw.send(client(), command)
 }
 
 module AdminRemoveUserFromGroupCommand = {
@@ -110,8 +110,8 @@ module AdminRemoveUserFromGroupCommand = {
       see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity-provider/command/AdminRemoveUserFromGroupCommand/
     */
     @send
-    external send: (client, t) => Js.Promise.t<unit> = "send"
+    external send: (client, t) => promise<unit> = "send"
   }
 
-  let send: t => Js.Promise.t<unit> = command => Raw.send(client(), command)
+  let send: t => promise<unit> = command => Raw.send(client(), command)
 }

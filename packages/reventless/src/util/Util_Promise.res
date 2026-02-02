@@ -1,4 +1,4 @@
-type result<'a> = {status: string, value: option<'a>, reason: option<Js.Promise.error>}
+type result<'a> = {status: string, value: option<'a>, reason: option<exn>}
 
 let filterRejected = results =>
   results
@@ -7,7 +7,8 @@ let filterRejected = results =>
   ->Array.map(((idx, result)) => (
     idx,
     result.reason
-    ->Option.map(reason => (reason->Util_Error.ofPromise).message)
+    ->Option.flatMap(reason => reason->JsExn.fromException)
+    ->Option.flatMap(exn => exn->JsExn.message)
     ->Option.getOr("Unknown error"),
   ))
 
@@ -16,7 +17,7 @@ let filterRejected = results =>
 )
 @val
 @scope("Promise")
-external allSettled: array<Js.Promise.t<'a>> => Js.Promise.t<array<result<'a>>> = "allSettled"
+external allSettled: array<promise<'a>> => promise<array<result<'a>>> = "allSettled"
 
 let map: (promise<'a>, 'a => 'b, exn => 'b) => promise<'b> = async (p, mapOk, mapExn) =>
   switch await p {
@@ -40,7 +41,7 @@ let toUnit: promise<'a> => promise<unit> = p => p->mapOk(ignore)
 let make = () => {
   let res = ref(_result => ())
   let rej = ref(_exn => ())
-  let promise = Js.Promise.make((~resolve, ~reject) => {
+  let promise = Promise.make((resolve, reject) => {
     res := resolve
     rej := reject
   })
@@ -50,16 +51,16 @@ let make = () => {
 let onEndHandler = async (flush, resolve) => {
   let _ = switch await flush() {
   | _res => resolve()
-  | exception Js.Exn.Error(e) => Js.log2(__LOC__, e)
+  | exception JsExn(e) => Console.log2(__LOC__, e)
   }
 }
 
 let finishTimeout = timeout => {
   let (promise, resolve, _reject) = make()
-  let _ = Js.Global.setTimeout(() => resolve(), timeout)
+  let _ = setTimeout(() => resolve(), timeout)
   promise
 }
 
 let finishRandomTimeout = (min, max) => {
-  Js.Math.random_int(min, max)->finishTimeout
+  Math.Int.random(min, max)->finishTimeout
 }

@@ -17,19 +17,19 @@ type component = Component.t<t, outputs, operations>
 type name = string
 
 let allEventTopics = allAggregates =>
-  Js.Dict.map(aggregate => aggregate.eventLog.eventTopic, allAggregates)
+  Dict.mapValues(allAggregates, aggregate => aggregate.eventLog.eventTopic)
 let allCommandTopics = allAggregates =>
-  Js.Dict.map(aggregate => aggregate.commandTopic, allAggregates)->Pulumi.Output.allDict
+  Dict.mapValues(allAggregates, aggregate => aggregate.commandTopic)->Pulumi.Output.allDict
 
 let filterEventTopics = (allAggregates, aggregateNames) =>
   aggregateNames
   ->Belt.Set.String.toArray
   ->Array.filterMap(aggregateName =>
     allAggregates
-    ->Js.Dict.get(aggregateName)
+    ->Dict.get(aggregateName)
     ->Option.map(aggregateOutput => (aggregateName, aggregateOutput.eventLog.eventTopic))
   )
-  ->Js.Dict.fromArray
+  ->Dict.fromArray
 
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec

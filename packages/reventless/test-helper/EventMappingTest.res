@@ -3,7 +3,7 @@ module type T = {
   module Target: ReventlessSpec.Aggregate.Spec
 
   let describe: (string, unit => unit) => unit
-  let test: (string, ~timeout: int=?, unit => Js.Promise.t<Jest.assertion>) => unit
+  let test: (string, ~timeout: int=?, unit => promise<Jest.assertion>) => unit
 
   let givenSourceEvents: array<Source.event> => array<Source.event>
   let givenTargetEvents: (
@@ -15,20 +15,20 @@ module type T = {
     string,
     Source.command,
     (array<(string, array<Target.event>)>, array<Source.event>),
-  ) => Js.Promise.t<dict<array<Target.event>>>
+  ) => promise<dict<array<Target.event>>>
 
   let thenTargetEvents: (
     array<(string, array<Target.event>)>,
-    Js.Promise.t<dict<array<Target.event>>>,
-  ) => Js.Promise.t<Jest.assertion>
+    promise<dict<array<Target.event>>>,
+  ) => promise<Jest.assertion>
 
   let thenTargetEvent: (
     string,
     Target.event,
-    Js.Promise.t<dict<array<Target.event>>>,
-  ) => Js.Promise.t<Jest.assertion>
+    promise<dict<array<Target.event>>>,
+  ) => promise<Jest.assertion>
 
-  let thenNoTargetEvent: Js.Promise.t<dict<array<Target.event>>> => Js.Promise.t<Jest.assertion>
+  let thenNoTargetEvent: promise<dict<array<Target.event>>> => promise<Jest.assertion>
   // let thenTargetEventWithError:
   //   (
   //     Target.Id.t,
@@ -71,7 +71,7 @@ module MakeAggregate = (
 
   let currentState = events =>
     events
-    ->Array.sliceToEnd(~start=1)
+    ->Array.slice(~start=1)
     ->Array.reduce(Behavior.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
@@ -117,7 +117,7 @@ module Make = (
   let test = Jest.testPromise
 
   let queryEngine: ReventlessSpec.QueryEngine.operations = {
-    scan: (~readModelName as _, ~filterConfigs as _, ~limit as _) => []->Js.Promise.resolve,
+    scan: (~readModelName as _, ~filterConfigs as _, ~limit as _) => []->Promise.resolve,
     query: (
       ~readModelName as _: string,
       ~key as _: option<string>=?,
@@ -126,7 +126,7 @@ module Make = (
       ~filterConfigs as _: option<array<ReventlessSpec.QueryEngine.Filter.config>>=?,
       ~ascending as _: option<bool>=?,
       ~limit as _: option<int>=?,
-    ) => []->Js.Promise.resolve,
+    ) => []->Promise.resolve,
   }
 
   let givenSourceEvents = sourceHistory => sourceHistory
@@ -137,27 +137,27 @@ module Make = (
      let logSourceEvents = events =>
        events->Array.forEachWithIndex((event, idx) => {
          let eventStr = event->Message.encode(Source.eventSchema);
-         Js.log({j|Source event[$idx]: $eventStr|j});
+         Console.log({j|Source event[$idx]: $eventStr|j});
        });
      let logTargetCommands = commands => {
        commands->Array.forEachWithIndex(((id, command), idx) => {
          let commandStr = command->Message.encode(Target.commandSchema);
-         Js.log({j|Target command[$idx]: $commandStr id:$id|j});
+         Console.log({j|Target command[$idx]: $commandStr id:$id|j});
        });
        commands;
      };
      let logTargetEvents = events =>
        events->Array.forEachWithIndex((event, idx) => {
          let eventStr = event->Message.encode(Target.eventSchema);
-         Js.log({j|  new Target event[$idx]: $eventStr|j});
+         Console.log({j|  new Target event[$idx]: $eventStr|j});
        });
      let logTargetEventsDict = (events, prefix) =>
        events
-       ->Js.Dict.entries
+       ->Dict.toArray
        ->Array.forEachWithIndex(((id, events), idx1) =>
            events->Array.forEachWithIndex((event, idx2) => {
              let eventStr = event->Message.encode(Target.eventSchema);
-             Js.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
+             Console.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
            })
          );
  */
@@ -175,9 +175,9 @@ module Make = (
         EventMapping.map(sourceId->Source.Id.makeFromString, sourceEvent, queryEngine)
       )
       ->Array.flat
-    let targetHistories = targetHistory->Js.Dict.fromArray
-    let commands =
-      (await targetActions
+    let targetHistories = targetHistory->Dict.fromArray
+    let commands = (
+      await targetActions
       ->Array.map(async action =>
         switch action {
         | Publish(id, command) => [(id, command)]
@@ -186,21 +186,21 @@ module Make = (
         | _ => []
         }
       )
-      ->Js.Promise.all)
-      ->Array.flat
+      ->Promise.all
+    )->Array.flat
     //  ->logTargetCommands
     //  newEvents->logTargetEvents;
-    commands->Array.reduce(Js.Dict.empty(), (targetEvents, (id, command)) => {
+    commands->Array.reduce(Dict.make(), (targetEvents, (id, command)) => {
       let id = id->Target.Id.toString
       let targetHistory =
         targetHistories
-        ->Js.Dict.get(id)
+        ->Dict.get(id)
         ->Option.getOr([])
-        ->Array.concat(targetEvents->Js.Dict.get(id)->Option.getOr([]))
+        ->Array.concat(targetEvents->Dict.get(id)->Option.getOr([]))
       let newEvents = TargetAggregate.exec({...TestFixtures.context, id}, command, targetHistory)
-      targetEvents->Js.Dict.set(
+      targetEvents->Dict.set(
         id,
-        targetEvents->Js.Dict.get(id)->Option.getOr([])->Array.concat(newEvents),
+        targetEvents->Dict.get(id)->Option.getOr([])->Array.concat(newEvents),
       )
       targetEvents
     })
@@ -213,12 +213,12 @@ module Make = (
       SourceAggregate.errors.contents->Array.length,
       TargetAggregate.errors.contents->Array.length,
       await targetEvents,
-    ))->toEqual((0, 0, expectedTargetEvents->Js.Dict.fromArray))
+    ))->toEqual((0, 0, expectedTargetEvents->Dict.fromArray))
   }
   //  events->logTargetEventsDict("");
 
   let thenTargetEvent = async (id, expectedTargetEvent, targetEvents) => {
-    let events = (await targetEvents)->Js.Dict.entries
+    let events = (await targetEvents)->Dict.toArray
     expect((
       SourceAggregate.errors.contents->Array.length,
       TargetAggregate.errors.contents->Array.length,

@@ -10,9 +10,9 @@ module type T = {
 module Make = (Spec: Spec): T => {
   let findSideEffect = (sideEffects, eventJson') =>
     eventJson'
-    ->Js.Json.decodeObject
+    ->JSON.Decode.object
     ->Option.flatMap(eventObj' => {
-      let metaJson = eventObj'->Js.Dict.get("meta")
+      let metaJson = eventObj'->Dict.get("meta")
       switch metaJson->Option.map(meta => meta->S.parseJsonOrThrow(Message.metaSchema)) {
       | Some(eventMeta) =>
         let sideEffect =
@@ -24,10 +24,10 @@ module Make = (Spec: Spec): T => {
         | Some(sideEffect) => Some((eventObj', eventMeta, sideEffect))
         }
       | exception err =>
-        Js.log2("SideEffects.map: Couldn't decode meta:", err)
+        Console.log2("SideEffects.map: Couldn't decode meta:", err)
         None
       | _ =>
-        Js.log("SideEffects.map: Invalid JSON object")
+        Console.log("SideEffects.map: Invalid JSON object")
         None
       }
     })
@@ -45,30 +45,31 @@ module Make = (Spec: Spec): T => {
         try {
           let idDecoded =
             eventObj
-            ->Js.Dict.get("id")
+            ->Dict.get("id")
             ->Option.map(id => id->Message.decode(SideEffect.Source.Id.schema))
           let eventDecoded =
             eventObj
-            ->Js.Dict.get("event")
+            ->Dict.get("event")
             ->Option.map(json => json->Message.decode(SideEffect.Source.eventSchema))
           switch (idDecoded, eventDecoded) {
           | (Some(eventId), Some(event)) =>
             try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
-            | err => Js.log2("SideEffect: Error while processing:", err)
+            | err => Console.log2("SideEffect: Error while processing:", err)
             }
 
           | (None, _)
           | (_, None) =>
-            Js.log2("SideEffectHandler.eventHandler: Invalid event", eventJson')
+            Console.log2("SideEffectHandler.eventHandler: Invalid event", eventJson')
           }
         } catch {
-        | err => Js.log3("SideEffectHandler.eventHandler: Couldn't decode event:", eventJson', err)
+        | err =>
+          Console.log3("SideEffectHandler.eventHandler: Couldn't decode event:", eventJson', err)
         }
 
       | None => ()
       }
     )
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
   }
 }

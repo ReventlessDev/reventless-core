@@ -1,15 +1,9 @@
 {
   "name": "@reventless/rescript-node-streams",
-  "version": "0.1.1",
   "namespace": false,
-  "suffix": ".bs.js",
   "ppx-flags": [],
   "warnings": {
     "error": "-44+101"
-  },
-  "package-specs": {
-    "module": "commonjs",
-    "in-source": true
   },
   "sources": [
     {
@@ -20,6 +14,5 @@
       ]
     }
   ],
-  "bs-dependencies": [],
-  "external-stdlib": "@rescript/std"
+  "dependencies": []
 }

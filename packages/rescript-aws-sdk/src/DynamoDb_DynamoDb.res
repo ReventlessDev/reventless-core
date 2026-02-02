@@ -107,10 +107,10 @@ module UpdateTableCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module UpdateTimeToLiveCommand = {
@@ -140,9 +140,9 @@ module UpdateTimeToLiveCommand = {
   external make: input => t = "UpdateTimeToLiveCommand"
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module UpdateContinuousBackupsCommand = {
@@ -164,9 +164,9 @@ module UpdateContinuousBackupsCommand = {
 
   type continuousBackupsStatus = [#ENABLED | #DISABLED]
   type pointInTimeRecoveryDescription = {
-    @as("EarliestRestorableDateTime") earliestRestorableDateTime?: Js.Date.t,
+    @as("EarliestRestorableDateTime") earliestRestorableDateTime?: Date.t,
     @as("PointInTimeRecoveryStatus") pointInTimeRecoveryStatus?: string,
-    @as("LatestRestorableDateTime") latestRestorableDateTime?: Js.Date.t,
+    @as("LatestRestorableDateTime") latestRestorableDateTime?: Date.t,
   }
   type continuousBackupsDescription = {
     @as("ContinuousBackupsStatus") continuousBackupsStatus: continuousBackupsStatus,
@@ -182,8 +182,8 @@ module UpdateContinuousBackupsCommand = {
   external make: input => t = "UpdateContinuousBackupsCommand"
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }

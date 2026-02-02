@@ -45,55 +45,55 @@ let encodeCommand' = (command', idSchema, commandSchema) =>
 let uuid = Uuid.v4
 
 let log: ('a, string) => 'a = (value, str) => {
-  Js.log2(str, value)
+  Console.log2(str, value)
   value
 }
 
-let now = () => Js.Date.make()->Js.Date.getTime
+let now = () => Date.make()->Date.getTime
 
-let nowAsISOString = () => Js.Date.make()->Js.Date.toISOString
+let nowAsISOString = () => Date.make()->Date.toISOString
 
-type handler<'msg> = 'msg => Js.Promise.t<unit>
+type handler<'msg> = 'msg => promise<unit>
 
 let toMessageBody = ({id, meta, commandJson}) => {
   let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()}
   [
-    ("id", id->Js.Json.string),
+    ("id", id->JSON.Encode.string),
     ("meta", commandMeta->S.reverseConvertToJsonOrThrow(metaSchema)),
     ("command", commandJson),
   ]
-  ->Js.Dict.fromArray
-  ->Js.Json.object_
-  ->Js.Json.stringify
+  ->Dict.fromArray
+  ->JSON.Encode.object
+  ->JSON.stringify
 }
 
-type commandHandler<'id, 'command> = command'<'id, 'command> => Js.Promise.t<unit>
+type commandHandler<'id, 'command> = command'<'id, 'command> => promise<unit>
 
-type commandsHandler<'id, 'command> = ('id, array<command'<'id, 'command>>) => Js.Promise.t<unit>
+type commandsHandler<'id, 'command> = ('id, array<command'<'id, 'command>>) => promise<unit>
 
 let serviceNameOfMsg = msgJson =>
-  switch msgJson->Js.Json.decodeObject {
+  switch msgJson->JSON.Decode.object {
   | Some(msgObj) =>
     msgObj
-    ->Js.Dict.get("meta")
+    ->Dict.get("meta")
     ->Option.flatMap(meta =>
       switch meta->S.parseJsonOrThrow(metaSchema) {
       | msgMeta => Some(msgMeta.service)
       | exception err =>
-        Js.log2("Message.serviceNameOfMsg: Couldn't parse meta:", err)
+        Console.log2("Message.serviceNameOfMsg: Couldn't parse meta:", err)
         None
       }
     )
   | None =>
-    Js.log2("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson)
+    Console.log2("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson)
     None
   }
 
 let variantNameOfJson = json => {
-  switch json->Js.Json.classify {
-  | JSONString(str) => str
-  | JSONObject(dict) =>
-    switch dict->Js.Dict.get("TAG") {
+  switch json {
+  | JSON.String(str) => str
+  | Object(dict) =>
+    switch dict->Dict.get("TAG") {
     | Some(String(tag)) => tag
     | _ => "unknown"
     }
@@ -104,34 +104,32 @@ let variantNameOfJson = json => {
 // TODO: group all functions on event`Json into submodule with the according type
 
 let eventNameOfEvent'Json = json => {
-  switch json->Js.Json.decodeObject {
-  | Some(dict) => dict->Js.Dict.unsafeGet("event")->variantNameOfJson
+  switch json->JSON.Decode.object {
+  | Some(dict) => dict->Dict.getUnsafe("event")->variantNameOfJson
   | _ => "unknownEventName"
   }
 }
 
 let idOfEvent'Json = json => {
   json
-  ->Js.Json.decodeObject
-  ->Option.flatMap(event' => event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString)
+  ->JSON.Decode.object
+  ->Option.flatMap(event' => event'->Dict.getUnsafe("id")->JSON.Decode.string)
 }
 
 let idMetaEventOfEvent'Json = json => {
-  let dict = json->Js.Json.decodeObject
+  let dict = json->JSON.Decode.object
   let id =
     dict
-    ->Option.flatMap(dict => dict->Dict.get("id")->Option.flatMap(id => id->Js.Json.decodeString))
+    ->Option.flatMap(dict => dict->Dict.get("id")->Option.flatMap(id => id->JSON.Decode.string))
     ->Option.getOr("unknownId")
   let meta =
     dict
-    ->Option.flatMap(dict =>
-      dict->Dict.get("meta")->Option.map(metaStr => metaStr->Js.Json.stringify)
-    )
+    ->Option.flatMap(dict => dict->Dict.get("meta")->Option.map(metaStr => metaStr->JSON.stringify))
     ->Option.getOr("noMeta")
   let event =
     dict
     ->Option.flatMap(dict =>
-      dict->Dict.get("event")->Option.map(eventStr => eventStr->Js.Json.stringify)
+      dict->Dict.get("event")->Option.map(eventStr => eventStr->JSON.stringify)
     )
     ->Option.getOr("noEvent")
 
@@ -141,17 +139,17 @@ let idMetaEventOfEvent'Json = json => {
 type eventsHandler<'id, 'event> = (
   'id,
   array<ReventlessSpec.Message.event'<'id, 'event>>,
-) => Js.Promise.t<unit>
+) => promise<unit>
 
 module type Events = {
   type id
   type event
 }
 
-exception InvalidEvent(Js.Json.t)
-exception InvalidCommand(Js.Json.t)
+exception InvalidEvent(JSON.t)
+exception InvalidCommand(JSON.t)
 
-@val @scope("JSON") @deprecated("use Js.Json.stringify() or Js.Json.stringifyAny()")
+@val @scope("JSON") @deprecated("use JSON.stringify() or JSON.stringifyAny()")
 external stringify: _ => string = "stringify"
 
 type hrtime = (int, int)
@@ -159,9 +157,9 @@ type hrtime = (int, int)
 
 let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) => {
   let (_, mil) = hrtime
-  let milString = mil->string_of_int
+  let milString = mil->Int.toString
   let milLength = milString->String.length
-  now->Js.Float.toString ++ ("-" ++ (String.repeat("0", 9 - milLength) ++ milString))
+  now->Float.toString ++ ("-" ++ (String.repeat("0", 9 - milLength) ++ milString))
 }
 
 type errorHandler<'error, 'command, 'event> = (
@@ -178,40 +176,40 @@ let generateMeta = (~service, ~ip="", ~user="unknown") => {
 let decomposeMeta = meta =>
   meta
   ->S.reverseConvertToJsonOrThrow(metaSchema)
-  ->Js.Json.decodeObject
-  ->Js.Option.getExn
-  ->Js.Dict.entries
+  ->JSON.Decode.object
+  ->Option.getOrThrow
+  ->Dict.toArray
 
 let composeEventJson' = (id, meta, eventJson) =>
   [
-    ("id", id->Js.Json.string),
+    ("id", id->JSON.Encode.string),
     ("meta", meta->S.reverseConvertToJsonOrThrow(metaSchema)),
     ("event", eventJson),
   ]
-  ->Js.Dict.fromArray
-  ->Js.Json.object_
+  ->Dict.fromArray
+  ->JSON.Encode.object
 
 let string = x =>
   switch x {
-  | Some(ip) if ip == Js.Json.null => ""->Js.Json.string
+  | Some(ip) if ip == JSON.Encode.null => ""->JSON.Encode.string
   | Some(ip) => ip
-  | None => ""->Js.Json.string
+  | None => ""->JSON.Encode.string
   }
 
-let composeMeta = (dict: dict<Js.Json.t>) =>
+let composeMeta = (dict: dict<JSON.t>) =>
   [
-    ("service", dict->Js.Dict.get("service")->Option.getExn),
-    ("time", dict->Js.Dict.get("time")->Option.getExn),
-    ("ip", dict->Js.Dict.get("ip")->string),
-    ("user", dict->Js.Dict.get("user")->string),
-    ("msgId", dict->Js.Dict.get("msgId")->Option.getExn),
-    ("correlationId", dict->Js.Dict.get("correlationId")->Option.getExn),
+    ("service", dict->Dict.get("service")->Option.getOrThrow),
+    ("time", dict->Dict.get("time")->Option.getOrThrow),
+    ("ip", dict->Dict.get("ip")->string),
+    ("user", dict->Dict.get("user")->string),
+    ("msgId", dict->Dict.get("msgId")->Option.getOrThrow),
+    ("correlationId", dict->Dict.get("correlationId")->Option.getOrThrow),
   ]
-  ->Js.Dict.fromArray
-  ->Js.Json.object_
+  ->Dict.fromArray
+  ->JSON.Encode.object
 
-// type decoder<'a> = Js.Json.t => result<'a, Decco.decodeError>
-// type encoder<'a> = 'a => Js.Json.t
+// type decoder<'a> = JSON.t => result<'a, Decco.decodeError>
+// type encoder<'a> = 'a => JSON.t
 
 let commandJsonOfCommand': (
   ~idToString: 'id => string,
@@ -226,7 +224,7 @@ let commandJsonOfCommand': (
 }
 
 let splitMessage = json =>
-  switch json->Js.Json.decodeObject {
+  switch json->JSON.Decode.object {
   | Some(dict) =>
     let (tags, payload) = dict->Dict.toArray->Belt.Array.partition(((key, _)) => key == "TAG")
     let typ = switch tags[0] {

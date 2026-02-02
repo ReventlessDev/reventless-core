@@ -86,7 +86,7 @@ let makeHelper =
       ),
     ~opts=
       opts->Option.map(opts => {
-        let optsWithDelete = Js.Obj.assign(Js.Obj.empty(), opts);
+        let optsWithDelete = Object.assign(Object.make(), opts);
         optsWithDelete##deleteBeforeReplace #= Some(true);
         optsWithDelete;
       }),

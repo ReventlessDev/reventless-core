@@ -59,14 +59,14 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<
     publishJsons: queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>
-      runtimeQueue->(CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS, ...))
+      runtimeQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS, ...)
     ),
     connect,
     handleChannelEvent: handleCommands =>
       queue
       ->Util_SQS.toRuntimeQueueOutput
       ->Pulumi.Output.apply(runtimeQueue =>
-        runtimeQueue->(CommandTopicChannel_SQS_Runtime.handleQueueEvent(handleCommands, ...))
+        runtimeQueue->CommandTopicChannel_SQS_Runtime.handleQueueEvent(handleCommands, ...)
       ),
   }
 }

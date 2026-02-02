@@ -28,7 +28,7 @@ parseFile(
    |> validate((_row, result) => result |> toInvalid("test"))
    |> validate((_row, result) => result |> toValid)
    |> validate((_, result) => {
-        Js.log("x");
+        Console.log("x");
         result |> toValid;
       })
    |> validate((_row, result) => result |> toError("This is not allowed"))
@@ -38,16 +38,16 @@ parseFile(
    				*/
 //|> validate((_row, result) => result |> toInvalid("test"))
 ->transform((row, cb) => {
-  Js.Dict.unsafeDeleteKey(row, "")
+  Dict.delete(row, "")
   cb->toValidTransformation(row)
 })
-->onData(row => Js.log2("parsed line:", row))
+->onData(row => Console.log2("parsed line:", row))
 ->onInvalid((row, rowNumber, reason) =>
   switch reason {
-  | None => Js.log2(`line (${rowNumber->string_of_int}) has too many/view records:`, row)
-  | Some(reason) => Js.log2(`line (${rowNumber->string_of_int}) is invalid: ${reason}`, row)
+  | None => Console.log2(`line (${rowNumber->Int.toString}) has too many/view records:`, row)
+  | Some(reason) => Console.log2(`line (${rowNumber->Int.toString}) is invalid: ${reason}`, row)
   }
 )
-->onError(err => Js.log2("error during parsing:", err->Js.Exn.message))
-->onEnd(rowCount => Js.log(`${rowCount->string_of_int} rows parsed`))
+->onError(err => Console.log2("error during parsing:", err->JsExn.message))
+->onEnd(rowCount => Console.log(`${rowCount->Int.toString} rows parsed`))
 ->ignore

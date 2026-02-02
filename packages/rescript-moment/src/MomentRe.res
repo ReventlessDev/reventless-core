@@ -293,9 +293,9 @@ module Moment = {
   external toMoment: (t, ~other: t, ~format: string) => string = "to"
   @send external valueOf: t => float = "valueOf"
   @send external daysInMonth: t => int = "daysInMonth"
-  @send external toJSON: t => Js.null<string> = "toJSON"
-  let toJSON = moment => toJSON(moment) |> Js.Null.toOption
-  @send external toDate: t => Js.Date.t = "toDate"
+  @send external toJSON: t => Null.t<string> = "toJSON"
+  let toJSON = moment => toJSON(moment)->Null.toOption
+  @send external toDate: t => Date.t = "toDate"
   @send external toUnix: t => int = "unix"
   @send external toISOString: (t, ~keepOffset: bool=?) => string = "toISOString"
 }
@@ -308,7 +308,7 @@ module Moment = {
 @module
 external momentWithFormat: (string, string) => Moment.t = "moment"
 
-@module external momentWithDate: Js.Date.t => Moment.t = "moment"
+@module external momentWithDate: Date.t => Moment.t = "moment"
 
 @module
 external momentWithFormats: (string, array<string>) => Moment.t = "moment"
@@ -323,7 +323,7 @@ external momentUtcWithFormats: (string, array<string>) => Moment.t = "utc"
 @module("moment")
 external momentUtcDefaultFormat: string => Moment.t = "utc"
 
-let momentWithUnix = (timestamp: int) => momentWithTimestampMS(float_of_int(timestamp) *. 1000.0)
+let momentWithUnix = (timestamp: int) => momentWithTimestampMS(Int.toFloat(timestamp) *. 1000.0)
 
 @send
 external diff: (

@@ -46,11 +46,11 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
 }
 
 let groupBySource = (event: event) => {
-  let dict: dict<event> = Js.Dict.empty()
+  let dict: dict<event> = Dict.make()
   event.records->Array.forEach(record => {
     let eventSourceArn = record.eventSourceARN
-    let currentEvent = dict->Js.Dict.get(eventSourceArn)->Option.getOr({records: []})
-    dict->Js.Dict.set(eventSourceArn, {records: currentEvent.records->Array.concat([record])})
+    let currentEvent = dict->Dict.get(eventSourceArn)->Option.getOr({records: []})
+    dict->Dict.set(eventSourceArn, {records: currentEvent.records->Array.concat([record])})
   })
   dict
 }

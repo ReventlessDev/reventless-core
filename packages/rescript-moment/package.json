@@ -8,25 +8,23 @@
   },
   "scripts": {
     "build": "rescript build",
-    "start": "rescript build -w",
+    "start": "rescript watch",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
     "deploy": "./scripts/deploy.sh",
     "test": "jest",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",
-    "watch:bsb": "bsb -make-world -w",
     "watch:jest": "jest --coverage --watchAll",
     "watch:screen": "screen -c .screenrc"
   },
   "peerDependencies": {
     "moment": "^2.26.0",
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   },
   "devDependencies": {
-    "@glennsl/rescript-jest": "^0.11.0",
+    "@glennsl/rescript-jest": "^0.13.1",
     "husky": "^4.2.5",
     "moment": "^2.26.0",
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   }
 }

@@ -1,9 +1,9 @@
 let getRuntimeResource = (allQueryDbs: dict<Adapter.unwrappedResource>, queryDbName) =>
-  try allQueryDbs->Js.Dict.get(queryDbName)->Option.getExn catch {
+  try allQueryDbs->Dict.get(queryDbName)->Option.getOrThrow catch {
   | exn =>
-    Js.log2(
+    Console.log2(
       `Util_QueryDbRuntime.getRuntimeResource: Couldn't find QueryDb ${queryDbName} in`,
       allQueryDbs,
     )
-    raise(exn)
+    throw(exn)
   }

@@ -4,7 +4,7 @@ open Adapter_Helpers
 
 let toResources = (eventTopics: Reventless.EventTopic.allOutputs) =>
   eventTopics
-  ->Js.Dict.values
+  ->Dict.valuesToArray
   ->Array.flatMap(outputs => outputs.resources)
   ->Reventless.Adapter.resourcesToUnwrappedOutput
 
@@ -48,7 +48,7 @@ let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) =>
 
 let subscribeQueue2SnsTopic = (queue, name, resources, opts) => {
   let _snsTopicSubscriptions = resources->Array.map(resource => {
-    Js.log3("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource)
+    Console.log3("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource)
     let subscription = Util_SQS.subscribeToSnsTopic(
       ~queue,
       ~targetName=name,
@@ -56,7 +56,7 @@ let subscribeQueue2SnsTopic = (queue, name, resources, opts) => {
       ~topic=resource->Reventless.AdapterDeploytime.unwrappedToResource,
       ~opts,
     )
-    subscription.id->Pulumi.Output.apply(id => Js.log3("created SNS subscription:", id, name))
+    subscription.id->Pulumi.Output.apply(id => Console.log3("created SNS subscription:", id, name))
   })
 }
 
@@ -65,7 +65,7 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics
     (eventTopics->toResources, queue.id)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((eventTopicResources, queueId)) => {
-      Js.log2(
+      Console.log2(
         `EventCollectorChannel_Helpers.connectSqsQueue2SnsTopics ${queueId}: eventTopicResources:`,
         eventTopicResources,
       )
@@ -74,7 +74,7 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics
       queue->subscribeQueue2SnsTopic(name, snsResources, opts)
 
       // if snsResources->Array.length == 0 {
-      //   Js.log2(`No SNS topics are present for ${name}`)
+      //   Console.log2(`No SNS topics are present for ${name}`)
       // }
     })
 }
@@ -96,11 +96,11 @@ let connectLambda = (
     )
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((eventTopicResources, queueArns, resources)) => {
-      Js.Console.log2(
+      Console.log2(
         `EventCollectorChannel_Helpers.connectLambda ${name}: eventTopicResources:`,
         eventTopicResources,
       )
-      Js.Console.log2(`EventCollectorChannel_Helpers.connectLambda ${name}: resources:`, resources)
+      Console.log2(`EventCollectorChannel_Helpers.connectLambda ${name}: resources:`, resources)
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources
       let targetSnsResources = resources->snsResources

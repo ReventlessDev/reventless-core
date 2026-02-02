@@ -13,7 +13,7 @@ let signUp = (
   ~userPoolClientId: string,
   ~userName: string,
   ~password: string,
-): Js.Promise.t<CognitoIdentityServiceProvider.SignUpCommand.output> => {
+): promise<CognitoIdentityServiceProvider.SignUpCommand.output> => {
   open CognitoIdentityServiceProvider
   let client = CognitoIdentityServiceProvider.Raw.client(
     ~options={
@@ -41,6 +41,6 @@ let signUpIfMissing = async (
   ~password: string,
 ) =>
   switch await signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password) {
-  | result => Js.log3("Created User", userName, result.userSub)
-  | exception _ => Js.log2("Didn't create user:", userName)
+  | result => Console.log3("Created User", userName, result.userSub)
+  | exception _ => Console.log2("Didn't create user:", userName)
   }

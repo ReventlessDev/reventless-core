@@ -19,7 +19,7 @@ module DateCalc = {
 }
 
 let forQueue = (name, queueId) =>
-  name->AWS.validateName ++ ("-" ++ queueId->Js.String2.split("-")->Array.getUnsafe(1))
+  name->AWS.validateName ++ ("-" ++ queueId->String.split("-")->Array.getUnsafe(1))
 
 let minutesFromNow = minutes => {
   let m = Date.make()->DateCalc.addMinutes(minutes)
@@ -68,10 +68,10 @@ let create = (scheduler: Scheduler.operations, queueResources) =>
     let schedule = {...schedule, name}
     let createSchedule = scheduler.createSchedule
     switch await createSchedule(queueResources, schedule) {
-    | _ => Js.log2("Schedule.create: created", schedule)
+    | _ => Console.log2("Schedule.create: created", schedule)
     | exception err => {
-        Js.log3("Schedule.create: couldn't create", schedule, err)
-        raise(ScheduleNotCreated(schedule))
+        Console.log3("Schedule.create: couldn't create", schedule, err)
+        throw(ScheduleNotCreated(schedule))
       }
     }
   }
@@ -81,10 +81,10 @@ let delete = (scheduler: Scheduler.operations, queueResources) =>
     let name = name->AWS.validateName
     let deleteSchedule = scheduler.deleteSchedule
     switch await deleteSchedule(queueResources, name) {
-    | _ => Js.log2("Schedule.delete: deleted", name)
+    | _ => Console.log2("Schedule.delete: deleted", name)
     | exception err => {
-        Js.log3("Schedule.delete: couldn't delete", name, err)
-        raise(ScheduleNotDeleted(name))
+        Console.log3("Schedule.delete: couldn't delete", name, err)
+        throw(ScheduleNotDeleted(name))
       }
     }
   }

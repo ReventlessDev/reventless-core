@@ -25,7 +25,7 @@ let fromResource = ({id, name}: ReventlessSpec.Adapter.resource) => {
 
 // Example ARN: arn:aws:sqs:eu-west-1:xxxxxx:MarketplaceServiceExtensionPointCommandTopic-0101023
 let arn2Account = arn =>
-  switch arn->Js.String2.split(":") {
+  switch arn->String.split(":") {
   | [_, _, _, _, account, _] => account
   | _ => ""
   }

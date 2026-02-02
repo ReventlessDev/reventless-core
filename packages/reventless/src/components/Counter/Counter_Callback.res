@@ -4,19 +4,16 @@ type countsState = {
   count: int,
 } //TODO: generalize
 
-type counterHandler = (
-  ~references: array<(string, int)>,
-  ~counts: array<Js.Json.t>,
-) => Js.Promise.t<unit>
+type counterHandler = (~references: array<(string, int)>, ~counts: array<JSON.t>) => promise<unit>
 
 let groupByCounterId = references => {
-  let dict = Js.Dict.empty()
+  let dict = Dict.make()
   references->Array.forEach(((reference, inc)) => {
     let counterId = reference->Counter.unmakeId->fst
-    let current = dict->Js.Dict.get(counterId)->Option.getOr(0)
-    dict->Js.Dict.set(counterId, current + inc)
+    let current = dict->Dict.get(counterId)->Option.getOr(0)
+    dict->Dict.set(counterId, current + inc)
   })
-  dict->Js.Dict.entries
+  dict->Dict.toArray
 }
 
 module type Spec = {
@@ -27,8 +24,8 @@ module type Spec = {
 
 module Make = (Spec: Spec) => {
   let counterHandler = async (~references, ~counts) => {
-    Js.log2("counterHandler: references:", references->Array.length)
-    Js.log2("counterHandler: counts:", counts)
+    Console.log2("counterHandler: references:", references->Array.length)
+    Console.log2("counterHandler: counts:", counts)
     await references
     ->groupByCounterId
     ->Array.map(((counterId, dec)) =>
@@ -38,7 +35,7 @@ module Make = (Spec: Spec) => {
         -dec,
       )
     )
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
     // TODO error handling
 
@@ -47,7 +44,7 @@ module Make = (Spec: Spec) => {
         switch state->Message.decode(countsStateSchema) {
         | {id, count} if count == 0 =>
           let (counterId, _) = id->Counter.unmakeId
-          Js.log(
+          Console.log(
             __MODULE__ ++
             `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
           )
@@ -57,22 +54,22 @@ module Make = (Spec: Spec) => {
           )
           Some(
             [
-              ("id", counterId->Js.Json.string),
+              ("id", counterId->JSON.Encode.string),
               ("meta", meta->Message.encode(Message.metaSchema)),
               ("event", Counter.CountFinished->Message.encode(Counter.counterEventSchema)),
             ]
-            ->Js.Dict.fromArray
-            ->Js.Json.object_,
+            ->Dict.fromArray
+            ->JSON.Encode.object,
           )
         | {id, count} =>
-          Js.log(
+          Console.log(
             __MODULE__ ++
             `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
           )
           None
         | _ =>
-          let stateStr = state->Js.Json.stringify
-          Js.log(__MODULE__ ++ `.counterHandler: couldn't decode state ${stateStr}`)
+          let stateStr = state->JSON.stringify
+          Console.log(__MODULE__ ++ `.counterHandler: couldn't decode state ${stateStr}`)
           None
         }
       ),

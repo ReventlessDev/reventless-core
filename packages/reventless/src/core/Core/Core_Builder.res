@@ -92,9 +92,7 @@ module Make = (
       Core.version,
       eventCollector: eventCollectorOutputs,
       extensionPoints: extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
-        extensionPointsOutputs
-        ->Array.map(ep => (ep.name, ep))
-        ->Js.Dict.fromArray
+        extensionPointsOutputs->Array.map(ep => (ep.name, ep))->Dict.fromArray
       ),
       aggregates: aggregatesOutputs,
       readModels: readModelsOutputs,
@@ -107,6 +105,6 @@ module Make = (
       ~componentType=Core.componentType->ComponentType.toString,
       ~name="Core",
       ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler, ...),
-      ~opts=None
+      ~opts=None,
     )
 }

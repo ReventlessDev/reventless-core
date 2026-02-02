@@ -15,4 +15,4 @@ external requireOutput: (t, Input.t<string>) => Output.t<'a> = "requireOutput"
 @send @deprecated("JS Api deprecated this function")
 external getOutputSync: (t, string) => option<'a> = "getOutputSync"
 
-let get = (dict, key) => dict->Js.Dict.get(key)->Option.getExn
+let get = (dict, key) => dict->Dict.get(key)->Option.getOrThrow

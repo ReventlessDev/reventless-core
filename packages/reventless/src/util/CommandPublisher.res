@@ -24,12 +24,17 @@ module Make = (Spec: Spec, Config: Config) => {
     | None => ()
     | Some(promise) =>
       try await promise catch {
-      | Js.Exn.Error(e) => Logger.error(~loc=__LOC__, "Couldn't publish commands", e)
+      | JsExn(e) => Logger.error(~loc=__LOC__, "Couldn't publish commands", e)
       }
     }
 
   let toJsons = commandsToSend => {
-    Js.log4("toJsons: commandsToSend:", commandsToSend->Array.length, "rest:", buffer->Array.length)
+    Console.log4(
+      "toJsons: commandsToSend:",
+      commandsToSend->Array.length,
+      "rest:",
+      buffer->Array.length,
+    )
     commandsToSend->Array.map(((id, command)) => {
       let commandJson = command->Message.encode(Spec.commandSchema)
       {
@@ -44,32 +49,32 @@ module Make = (Spec: Spec, Config: Config) => {
     await finishRunning()
     switch Config.mode {
     | SendChunks(chunkSize) =>
-      let size = Js.Math.min_int(chunkSize, buffer->Array.length)
+      let size = Math.Int.min(chunkSize, buffer->Array.length)
       if size >= chunkSize || (size > 0 && flush.contents) {
         chunkCount := chunkCount.contents + 1
         let sizeStr = size->Int.toString
         let bufferSizeStr = buffer->Array.length->Int.toString
-        let chunkCountStr = chunkCount.contents->Js.Int.toString
+        let chunkCountStr = chunkCount.contents->Int.toString
         Logger.debug(
           ~loc=__LOC__,
           "send",
           `bufferSize: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`,
         )
-        let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
+        let commandsToSend = buffer->Array.toSpliced(~start=0, ~remove=size, ~insert=[])
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
         | () => Logger.debug(~loc=__LOC__, "send", `finished chunk ${chunkCountStr}: ${sizeStr}`)
-        | exception Js.Exn.Error(e) =>
-          let errorMessage = e->Js.Exn.message->Option.getOr("unknown Error")
-          Js.log(
+        | exception JsExn(e) =>
+          let errorMessage = e->JsExn.message->Option.getOr("unknown Error")
+          Console.log(
             `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr}: ${errorMessage}`,
           )
-          let timeout = Js.Math.random_int(3000, 7000)
+          let timeout = Math.Int.random(3000, 7000)
           await Util.Promise.finishTimeout(timeout)
-          Js.log(`Retry sending after ${timeout->Js.Int.toString} ms ...`)
+          Console.log(`Retry sending after ${timeout->Int.toString} ms ...`)
           chunkCount := chunkCount.contents - 1
-          let _ = buffer->Js.Array2.unshiftMany(commandsToSend)
+          let _ = buffer->Array.unshiftMany(commandsToSend)
         }
         await send()
       } else {
@@ -78,13 +83,13 @@ module Make = (Spec: Spec, Config: Config) => {
     | SendAllInOneChunk =>
       let size = buffer->Array.length
       if size > 0 {
-        let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
+        let commandsToSend = buffer->Array.toSpliced(~start=0, ~remove=size, ~insert=[])
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => Js.log2("CommandPublisher.send: finished SendAllInOneChunk:", size)
-        | exception Js.Exn.Error(e) =>
-          Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
+        | () => Console.log2("CommandPublisher.send: finished SendAllInOneChunk:", size)
+        | exception JsExn(e) =>
+          Console.log2("CommandPublisher: Error: Couldn't publish commands", e)
         }
         running := None
       }
@@ -92,23 +97,23 @@ module Make = (Spec: Spec, Config: Config) => {
   }
 
   let publish = (id: string, command: Spec.command) => {
-    let _ = buffer->Js.Array2.push((id, command))
+    let _ = buffer->Array.push((id, command))
     switch (running.contents, Config.mode) {
     | (None, SendChunks(chunkSize)) if buffer->Array.length >= chunkSize =>
-      running := Some(Js.Promise.resolve())
+      running := Some(Promise.resolve())
       let _ = send()
     | _ => ()
     }
   }
 
   let clear = () => {
-    Js.log("CommandPublisher.clear")
-    let _ = buffer->Js.Array2.removeFromInPlace(~pos=0)
+    Console.log("CommandPublisher.clear")
+    let _ = buffer->Array.removeInPlace(0)
     flush := false
   }
 
   let flush = async () => {
-    Js.log("CommandPublisher.flush")
+    Console.log("CommandPublisher.flush")
     flush := true
     switch running.contents {
     | None => await send()

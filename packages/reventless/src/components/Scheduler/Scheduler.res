@@ -7,8 +7,8 @@ type outputs = {resource: resource}
 type createSchedule = (
   array<Adapter.unwrappedResource>,
   ReventlessSpec.Schedule.schedule,
-) => Js.Promise.t<unit>
-type deleteSchedule = (array<Adapter.unwrappedResource>, string) => Js.Promise.t<unit>
+) => promise<unit>
+type deleteSchedule = (array<Adapter.unwrappedResource>, string) => promise<unit>
 
 type operations = {
   createSchedule: createSchedule,

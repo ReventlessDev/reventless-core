@@ -25,47 +25,47 @@ module Make = (
   }
   type eventHandler = Runtime.eventHandler<RuntimeEnvironment.event, context, unit>
 
-  let runtimeSpecs: dict<runtimeSpec> = Js.Dict.empty()
-  let commandGeneratorHandlers: dict<CommandGenerator.eventHandler<context>> = Js.Dict.empty()
-  let commandTopicHandlers: dict<eventHandler> = Js.Dict.empty()
-  let eventCollectorHandlers: dict<array<eventHandler>> = Js.Dict.empty()
+  let runtimeSpecs: dict<runtimeSpec> = Dict.make()
+  let commandGeneratorHandlers: dict<CommandGenerator.eventHandler<context>> = Dict.make()
+  let commandTopicHandlers: dict<eventHandler> = Dict.make()
+  let eventCollectorHandlers: dict<array<eventHandler>> = Dict.make()
 
-  let aggregateHandler = aggregateName => async (event: RuntimeEnvironment.event, context) => {
-    let desc = `aggregateHandler for ${aggregateName}:`
-    switch event->CommandGenerator.metaInfo {
-    | Some(info) =>
-      switch commandGeneratorHandlers->Dict.get(info) {
-      | Some(handler) =>
-        Js.log2(`----- ${desc} found handler for CommandGenerator`, info)
-        await handler(event->CommandGenerator.asPayload, context)
-      | None =>
-        Js.log2(`${desc} no handler found:`, info)
-        ""
-      }
-    | _ =>
-      let _ =
-        await event
+  let aggregateHandler = aggregateName =>
+    async (event: RuntimeEnvironment.event, context) => {
+      let desc = `aggregateHandler for ${aggregateName}:`
+      switch event->CommandGenerator.metaInfo {
+      | Some(info) =>
+        switch commandGeneratorHandlers->Dict.get(info) {
+        | Some(handler) =>
+          Console.log2(`----- ${desc} found handler for CommandGenerator`, info)
+          await handler(event->CommandGenerator.asPayload, context)
+        | None =>
+          Console.log2(`${desc} no handler found:`, info)
+          ""
+        }
+      | _ =>
+        let _ = await event
         ->RuntimeEnvironment.groupBySource
         ->Dict.toArray
         ->Array.map(async ((urn, event)) => {
           switch commandTopicHandlers->Dict.get(urn) {
           | Some(handler) =>
-            Js.log2(`----- ${desc} found handler for CommandTopic`, urn)
+            Console.log2(`----- ${desc} found handler for CommandTopic`, urn)
             await handler(event, context)
           | None =>
             switch eventCollectorHandlers->Dict.get(urn) {
             | Some(handlers) =>
               let count = handlers->Array.length->Int.toString
-              Js.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
+              Console.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
               let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
-            | None => Js.log2(`${desc} no handler found:`, urn)
+            | None => Console.log2(`${desc} no handler found:`, urn)
             }
           }
         })
         ->Promise.all
-      ""
+        ""
+      }
     }
-  }
 
   let getRuntimeSpec = (aggregate: Pulumi.Resource.t) =>
     runtimeSpecs
@@ -131,12 +131,12 @@ module Make = (
         (infos, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
-          Js.log2(`***** forCommandGenerator ${commandGeneratorName}: set handler for`, infos)
-          infos->Array.map(info => commandGeneratorHandlers->Js.Dict.set(info, handler))
+          Console.log2(`***** forCommandGenerator ${commandGeneratorName}: set handler for`, infos)
+          infos->Array.map(info => commandGeneratorHandlers->Dict.set(info, handler))
         })
 
     | None =>
-      Js.Exn.raiseError(
+      JsError.throwWithMessage(
         `forCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
       )
     }
@@ -161,11 +161,13 @@ module Make = (
         (urn, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
-          Js.log(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
-          commandTopicHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
+          Console.log(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
+          commandTopicHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
         })
     | None =>
-      Js.Exn.raiseError(`forCommandTopic: commandTopic ${commandTopicName} has no Aggregate parent`)
+      JsError.throwWithMessage(
+        `forCommandTopic: commandTopic ${commandTopicName} has no Aggregate parent`,
+      )
     }
   }
   let forEventCollector = (
@@ -198,9 +200,9 @@ module Make = (
         (urns, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urns, handler)) => {
-          Js.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
+          Console.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
           // urns->Array.map(urn =>
-          //   eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
+          //   eventCollectorHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
           // )
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
@@ -211,7 +213,7 @@ module Make = (
           })
         })
     | None =>
-      Js.Exn.raiseError(
+      JsError.throwWithMessage(
         `forEventCollector: eventCollector ${eventCollectorName} has no Aggregate parent`,
       )
     }

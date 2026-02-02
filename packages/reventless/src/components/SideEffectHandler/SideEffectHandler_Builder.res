@@ -100,7 +100,7 @@ module Make = (
         ~timeout,
         ...
       ),
-      ~opts
+      ~opts,
     )
   }
 }

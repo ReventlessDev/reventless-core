@@ -67,6 +67,6 @@ module Make = (
         ~queryEngine,
         ...
       ),
-      ~opts
+      ~opts,
     )
 }

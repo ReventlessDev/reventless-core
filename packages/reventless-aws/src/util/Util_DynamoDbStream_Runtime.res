@@ -1,12 +1,12 @@
 type result =
-  | NewImage(string, Js.Json.t)
-  | OldImage(string, Js.Json.t)
-  | NewAndOldImage(string, Js.Json.t, Js.Json.t)
+  | NewImage(string, JSON.t)
+  | OldImage(string, JSON.t)
+  | NewAndOldImage(string, JSON.t, JSON.t)
   | Invalid
 
 let buildJsonEvent' = dict =>
   [
-    ("id", dict->Js.Dict.get("id")->Option.getExn),
+    ("id", dict->Dict.get("id")->Option.getOrThrow),
     ("meta", dict->Reventless.Message.composeMeta),
     (
       "event",
@@ -19,10 +19,10 @@ let buildJsonEvent' = dict =>
       },
     ),
   ]
-  ->Js.Dict.fromArray
-  ->Js.Json.object_
+  ->Dict.fromArray
+  ->JSON.Encode.object
 
-let buildJsonState = dict => dict->Js.Json.object_
+let buildJsonState = dict => dict->JSON.Encode.object
 
 let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.record) => {
   let record = record.dynamodb
@@ -59,7 +59,7 @@ let parseDynamoDbStreamRecordEvent: PulumiAws.DynamoDb.Stream.record => result =
 //   | NewAndOldImage(_, newImage, _) =>
 //     Some(newImage)
 //   | _ =>
-//     Js.log(__MODULE__ ++ ".handleChannelEvent: no NewImage included in Stream event !")
+//     Console.log(__MODULE__ ++ ".handleChannelEvent: no NewImage included in Stream event !")
 //     None
 //   }
 

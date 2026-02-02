@@ -15,7 +15,7 @@ module type Target = {
 type action<'id, 'command> =
   | Publish('id, 'command)
   | PublishDelayed('id, 'command, int)
-  | PublishAsync(Js.Promise.t<array<('id, 'command)>>)
+  | PublishAsync(promise<array<('id, 'command)>>)
   | AddToCounterTarget(Counter.counterTarget)
   | Count(Counter.counterId)
   | CountMulti(Counter.counterId, int)

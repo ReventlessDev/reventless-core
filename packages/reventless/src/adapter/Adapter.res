@@ -63,13 +63,11 @@ let resourcesToUnwrappedOutput = (resources: array<ReventlessSpec.Adapter.resour
   ->Pulumi.Output.all
 
 let logResource = r => {
-  let _ = r->resourceToUnwrappedOutput->Pulumi.Output.apply(r => Js.log2("resource:", r))
+  let _ = r->resourceToUnwrappedOutput->Pulumi.Output.apply(r => Console.log2("resource:", r))
 }
 
 let unwrappedToString = (resources: array<unwrappedResource>) => {
-  resources
-  ->Array.filterMap(resource => resource->Js.Json.stringifyAny)
-  ->Js.Array2.joinWith(", ")
+  resources->Array.filterMap(resource => resource->JSON.stringifyAny)->Array.joinUnsafe(", ")
 }
 
 let urns = resources => resources->Array.map((resource: unwrappedResource) => resource.urn)

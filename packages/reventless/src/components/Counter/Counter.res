@@ -12,10 +12,10 @@ type counterTargetRef = {
   targetRef: ReventlessSpec.Counter.reference,
 }
 
-type count = array<countItem> => Js.Promise.t<unit>
-type addToCounterTarget = counterTargetRef => Js.Promise.t<unit>
+type count = array<countItem> => promise<unit>
+type addToCounterTarget = counterTargetRef => promise<unit>
 
-type counterEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
+type counterEventsHandler = array<JSON.t> => promise<unit>
 
 type t
 type outputs = {referencesDb: QueryDb.outputs, countsDb: QueryDb.outputs}
@@ -49,7 +49,7 @@ let separator = "#"
 let makeId = ((counterId, reference)) => counterId ++ (separator ++ reference)
 let unmakeId = id =>
   id
-  ->Js.String2.split(separator)
+  ->String.split(separator)
   ->(
     x =>
       switch x {

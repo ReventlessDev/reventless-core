@@ -7,11 +7,11 @@ let addToCounterTarget = async (
   table: ReventlessSpec.Adapter.resource,
   {Reventless.Counter.counterId: counterId, target, targetRef},
 ) => {
-  Js.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
+  Console.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
   let tableName = table.name->Pulumi.Output.get
   switch await UpdateCommand.make({
     tableName,
-    key: Js.Dict.fromArray([("id", counterId->Js.Json.string)]),
+    key: Dict.fromArray([("id", counterId->JSON.Encode.string)]),
     updateExpression: "ADD #count :inc, #total :inc " ++
     ("SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle), " ++
     "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)"),
@@ -20,24 +20,26 @@ let addToCounterTarget = async (
       ("#total", "total"),
       ("#targets", "targets"),
       ("#targetRefs", "targetRefs"),
-    ]->Js.Dict.fromArray,
+    ]->Dict.fromArray,
     expressionAttributeValues: [
-      (":inc", target->Int.toFloat->Js.Json.number),
-      (":targetSingle", [target->Int.toFloat->Js.Json.number]->Js.Json.array),
-      (":targetRefSingle", [targetRef->Js.Json.string]->Js.Json.array),
-      (":targetRef", targetRef->Js.Json.string),
-      (":empty", []->Js.Json.array),
-    ]->Js.Dict.fromArray,
+      (":inc", target->Int.toFloat->JSON.Encode.float),
+      (":targetSingle", [target->Int.toFloat->JSON.Encode.float]->JSON.Encode.array),
+      (":targetRefSingle", [targetRef->JSON.Encode.string]->JSON.Encode.array),
+      (":targetRef", targetRef->JSON.Encode.string),
+      (":empty", []->JSON.Encode.array),
+    ]->Dict.fromArray,
     returnValues: #UPDATED_NEW,
     conditionExpression: "NOT contains(#targetRefs, :targetRef)",
   })->UpdateCommand.send {
   | (updateOutput: UpdateCommand.output) =>
-    Js.log2(
+    Console.log2(
       __MODULE__ ++ `.addToCounterTarget: current count for ${counterId}:`,
       updateOutput.attributes->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count"),
     )
   | exception _ =>
-    Js.Exn.raiseError(__MODULE__ ++ `.addToCounterTarget Error: Couldn't count on ${tableName}`)
+    JsError.throwWithMessage(
+      __MODULE__ ++ `.addToCounterTarget Error: Couldn't count on ${tableName}`,
+    )
   }
 }
 
@@ -64,11 +66,11 @@ let handleStreamEvent = (
     )
 
   ignoredRecords->Array.forEach(record =>
-    Js.log4(
+    Console.log4(
       __MODULE__ ++ ": ignoring record from eventSource:",
       record.eventSource,
       record.eventSourceARN,
-      record->Js.Json.stringifyAny,
+      record->JSON.stringifyAny,
     )
   )
 
@@ -81,15 +83,15 @@ let handleStreamEvent = (
       let inc = switch newImage->S.parseJsonOrThrow(referencesViewSchema) {
       | {inc} => inc
       | exception err =>
-        Js.log3(__MODULE__ ++ " (references): error parsing newImage:", newImage, err)
+        Console.log3(__MODULE__ ++ " (references): error parsing newImage:", newImage, err)
         1
       }
       Some((id, inc))
     | NewAndOldImage(id, _, _) =>
-      Js.log2(__MODULE__ ++ " (references): ignoring duplicate id:", id)
+      Console.log2(__MODULE__ ++ " (references): ignoring duplicate id:", id)
       None
     | _ =>
-      // Js.log2(__MODULE__ ++ " (references): ignoring record:", record->Js.Json.stringifyAny)
+      // Console.log2(__MODULE__ ++ " (references): ignoring record:", record->JSON.stringifyAny)
       None
     }
   )
@@ -100,7 +102,7 @@ let handleStreamEvent = (
     | NewAndOldImage(_, newImage, _) =>
       Some(newImage)
     | _ =>
-      // Js.log2(__MODULE__ ++ " (counts): ignoring record:", record->Js.Json.stringifyAny)
+      // Console.log2(__MODULE__ ++ " (counts): ignoring record:", record->JSON.stringifyAny)
       None
     }
   )

@@ -8,5 +8,7 @@ let unwrapResource = (resource, resourceType, name) =>
   switch resource {
   | Some(resource) => resource
   | None =>
-    Js.Exn.raiseError(`ResourceQuery: Couldn't find ${resourceType} for Service/Task ${name}.`)
+    JsError.throwWithMessage(
+      `ResourceQuery: Couldn't find ${resourceType} for Service/Task ${name}.`,
+    )
   }

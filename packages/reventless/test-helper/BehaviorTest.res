@@ -39,7 +39,7 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
 
   let currentState = events =>
     events
-    ->Array.sliceToEnd(~start=1)
+    ->Array.slice(~start=1)
     ->Array.reduce(Behavior.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
@@ -77,7 +77,7 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
   let compare = (cmp, e1, e2) => {
     let cmpResult = cmp(e1, e2)
     if !cmpResult {
-      Js.log3("Events do not match:", e1, e2)
+      Console.log3("Events do not match:", e1, e2)
     }
     cmpResult
   }
@@ -100,11 +100,11 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
  */
       err
       ->Message.encode(Spec.errorSchema)
-      ->Js.Json.decodeArray
-      ->Option.getExn
+      ->JSON.Decode.array
+      ->Option.getOrThrow
       ->Array.getUnsafe(0)
-      ->Js.Json.decodeString
-      ->Option.getExn
+      ->JSON.Decode.string
+      ->Option.getOrThrow
     )
     ->Array.reduce("", (a, b) => a ++ (b ++ " "))
 
@@ -123,7 +123,7 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
 
   let thenCompareEvent = (events, expectedEvent, cmp) =>
     if events->Array.length > 0 {
-      let firstEvent = events->Array.get(0)->Option.getExn
+      let firstEvent = events->Array.get(0)->Option.getOrThrow
       expect((
         errors.contents->Array.length,
         events->Array.length,

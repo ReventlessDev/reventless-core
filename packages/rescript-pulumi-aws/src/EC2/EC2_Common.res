@@ -1,13 +1,13 @@
 let supplementTagsWithName = (tags, name) =>
   switch tags {
   | Some(t) =>
-    switch t->Js.Dict.get("Name") {
-    | None => t->Js.Dict.set("Name", name)
+    switch t->Dict.get("Name") {
+    | None => t->Dict.set("Name", name)
     | Some(_) => ()
     }
     t
   | None =>
-    let t = Js.Dict.empty()
-    t->Js.Dict.set("Name", name)
+    let t = Dict.make()
+    t->Dict.set("Name", name)
     t
   }

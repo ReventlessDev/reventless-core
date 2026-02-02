@@ -4,60 +4,51 @@ module type T = {
 
   let describe: (string, unit => unit) => unit
   let describeWithId: (string, string, unit => unit) => unit
-  let test: (string, ~timeout: int=?, unit => Js.Promise.t<Jest.assertion>) => unit
+  let test: (string, ~timeout: int=?, unit => promise<Jest.assertion>) => unit
 
   type store = dict<array<targetState>>
 
-  let givenEvents: array<sourceEvent> => Js.Promise.t<store>
-  let givenEventsWithTime: array<(string, sourceEvent)> => Js.Promise.t<store>
-  let whenEvent: (
-    Js.Promise.t<store>,
-    sourceEvent,
-  ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
+  let givenEvents: array<sourceEvent> => promise<store>
+  let givenEventsWithTime: array<(string, sourceEvent)> => promise<store>
+  let whenEvent: (promise<store>, sourceEvent) => Jest.Expect.plainPartial<unit => promise<store>>
   let whenEvents: (
-    Js.Promise.t<store>,
+    promise<store>,
     array<sourceEvent>,
-  ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
+  ) => Jest.Expect.plainPartial<unit => promise<store>>
   let whenEventWithTime: (
-    Js.Promise.t<store>,
+    promise<store>,
     string,
     sourceEvent,
-  ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
+  ) => Jest.Expect.plainPartial<unit => promise<store>>
   let whenEventsWithTime: (
-    Js.Promise.t<store>,
+    promise<store>,
     array<(string, sourceEvent)>,
-  ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
+  ) => Jest.Expect.plainPartial<unit => promise<store>>
   let thenStates: (
-    Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
+    Jest.Expect.plainPartial<unit => promise<store>>,
     array<targetState>,
-  ) => Js.Promise.t<Jest.assertion>
+  ) => promise<Jest.assertion>
   let thenStatesWithId: (
-    Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
+    Jest.Expect.plainPartial<unit => promise<store>>,
     string,
     array<targetState>,
-  ) => Js.Promise.t<Jest.assertion>
+  ) => promise<Jest.assertion>
   let thenAllStates: (
-    Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
+    Jest.Expect.plainPartial<unit => promise<store>>,
     store,
-  ) => Js.Promise.t<Jest.assertion>
+  ) => promise<Jest.assertion>
   let thenState: (
-    Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
+    Jest.Expect.plainPartial<unit => promise<store>>,
     targetState,
-  ) => Js.Promise.t<Jest.assertion>
+  ) => promise<Jest.assertion>
   let thenStateWithId: (
-    Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
+    Jest.Expect.plainPartial<unit => promise<store>>,
     string,
     targetState,
-  ) => Js.Promise.t<Jest.assertion>
-  let thenNoState: Jest.Expect.plainPartial<unit => Js.Promise.t<store>> => Js.Promise.t<
-    Jest.assertion,
-  >
-  let thenThrow: Jest.Expect.plainPartial<unit => Js.Promise.t<store>> => Js.Promise.t<
-    Jest.assertion,
-  >
-  let thenFail: Jest.Expect.plainPartial<unit => Js.Promise.t<store>> => Js.Promise.t<
-    Jest.assertion,
-  >
+  ) => promise<Jest.assertion>
+  let thenNoState: Jest.Expect.plainPartial<unit => promise<store>> => promise<Jest.assertion>
+  let thenThrow: Jest.Expect.plainPartial<unit => promise<store>> => promise<Jest.assertion>
+  let thenFail: Jest.Expect.plainPartial<unit => promise<store>> => promise<Jest.assertion>
 }
 
 let unpackPlainPartial: Jest.Expect.plainPartial<'a> => 'a = p =>
@@ -84,8 +75,8 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   let getSubId = state => Projection.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId)
   let hasSubId = (state, subId) => state->getSubId->Belt.Option.getExn == subId
-  let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault([])
-  let setStates = (store, id, states) => store->Js.Dict.set(id, states)
+  let states = (store, id) => store->Dict.get(id)->Belt.Option.getWithDefault([])
+  let setStates = (store, id, states) => store->Dict.set(id, states)
   let updateState = (store, id, subId, newState) =>
     store->states(id)->Belt.Array.map(state => state->hasSubId(subId) ? newState : state)
   let addState = (store, id, newState) => {
@@ -96,43 +87,43 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
         : (store->states(id), [newState])
     | None => (store->states(id), [newState])
     }
-    store->Js.Dict.set(id, Array.concat(updatedStates, newStates))
+    store->Dict.set(id, Array.concat(updatedStates, newStates))
   }
-  let deleteStates = (store, id) => store->Js.Dict.set(id, [])
+  let deleteStates = (store, id) => store->Dict.set(id, [])
   let deleteSubState = (store, id, subId, getSubId) =>
-    store->Js.Dict.set(
+    store->Dict.set(
       id,
       store
-      ->Js.Dict.get(id)
+      ->Dict.get(id)
       ->Option.map(states => states->Array.filter(state => state->getSubId != subId))
       ->Option.getOr([]),
     )
 
   open Belt.Result
   //open QueryDb
-  let load = (store, id) => store->states(id)->Ok->Js.Promise.resolve
+  let load = (store, id) => store->states(id)->Ok->Promise.resolve
   let save = (store, id, state, saveMode: QueryDb.saveMode, _ttl) =>
     switch (store->states(id), saveMode) {
     | (_, Any)
     | ([], Init)
     | ([_], Overwrite) =>
       store->setStates(id, [state])
-      Ok()->Js.Promise.resolve
-    | _ => Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
+      Ok()->Promise.resolve
+    | _ => Error(ReventlessSpec.QueryDb.StaleState)->Promise.resolve
     }
   let saveBatch = (store, batch) => {
     batch->Array.forEach(((id, state, _ttl)) => store->addState(id, state))
-    Ok()->Js.Promise.resolve
+    Ok()->Promise.resolve
   }
   let delete = (store, id, subId) =>
     switch (subId, Projection.subIdConfig) {
     | (None, _) =>
       store->deleteStates(id)
-      Ok()->Js.Promise.resolve
+      Ok()->Promise.resolve
     | (Some((_, subId)), Some({ReventlessSpec.ReadModel_Spec.getSubId: getSubId})) =>
       store->deleteSubState(id, subId, getSubId)
-      Ok()->Js.Promise.resolve
-    | _ => Ok()->Js.Promise.resolve
+      Ok()->Promise.resolve
+    | _ => Ok()->Promise.resolve
     }
   let deleteBatch = (store, ids) => {
     ids->Array.forEach(((id, subId)) =>
@@ -143,7 +134,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       | _ => ()
       }
     )
-    Ok()->Js.Promise.resolve
+    Ok()->Promise.resolve
   }
 
   let handleActions = (actions, operations) =>
@@ -153,15 +144,10 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     switch Projection.subIdConfig {
     | None => store
     | Some(_) =>
-      Js.Dict.map(
-        states =>
-          states->Belt.SortArray.stableSortBy((state1, state2) =>
-            StringLabels.compare(
-              state1->getSubId->Option.getUnsafe,
-              state2->getSubId->Option.getUnsafe,
-            )
-          ),
-        store,
+      Dict.mapValues(store, states =>
+        states->Array.toSorted((state1, state2) =>
+          String.compare(state1->getSubId->Option.getUnsafe, state2->getSubId->Option.getUnsafe)
+        )
       )
     }
 
@@ -181,12 +167,12 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   }
 
   let givenEvents = events =>
-    Js.Dict.empty()->update(
+    Dict.make()->update(
       events->Array.map(event => {Message.id: testId.contents, meta: meta.contents, event}),
     )
 
   let givenEventsWithTime = events =>
-    Js.Dict.empty()->update(
+    Dict.make()->update(
       events->Array.map(((time, event)) => {
         Message.id: testId.contents,
         meta: {...meta.contents, time},
@@ -224,19 +210,19 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   let thenStates = async (p, expectedStates) => {
     let store = await (p->unpackPlainPartial)()
-    // Js.log2("####### store:", store)
+    // Console.log2("####### store:", store)
     expect((
-      store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Option.getOr([]),
+      store->Dict.keysToArray->Array.length,
+      store->Dict.keysToArray->Array.get(0),
+      store->Dict.valuesToArray->Array.get(0)->Option.getOr([]),
     ))->toEqual((1, Some(testId.contents), expectedStates))
   }
   let thenStatesWithId = async (p, id, expectedStates) => {
     let store = await (p->unpackPlainPartial)()
     expect((
-      store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Option.getOr([]),
+      store->Dict.keysToArray->Array.length,
+      store->Dict.keysToArray->Array.get(0),
+      store->Dict.valuesToArray->Array.get(0)->Option.getOr([]),
     ))->toEqual((1, Some(id), expectedStates))
   }
 
@@ -247,25 +233,25 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let thenState = async (p, expectedState) => {
     let store = await (p->unpackPlainPartial)()
     expect((
-      store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Option.getOr([])->Array.length,
-      store->Js.Dict.values->Array.getUnsafe(0)->Array.get(0),
+      store->Dict.keysToArray->Array.length,
+      store->Dict.keysToArray->Array.get(0),
+      store->Dict.valuesToArray->Array.get(0)->Option.getOr([])->Array.length,
+      store->Dict.valuesToArray->Array.getUnsafe(0)->Array.get(0),
     ))->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
   }
   let thenStateWithId = async (p, id, expectedState) => {
     let store = await (p->unpackPlainPartial)()
     expect((
-      store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Option.getOr([])->Array.length,
-      store->Js.Dict.values->Array.getUnsafe(0)->Array.get(0),
+      store->Dict.keysToArray->Array.length,
+      store->Dict.keysToArray->Array.get(0),
+      store->Dict.valuesToArray->Array.get(0)->Option.getOr([])->Array.length,
+      store->Dict.valuesToArray->Array.getUnsafe(0)->Array.get(0),
     ))->toEqual((1, Some(id), 1, Some(expectedState)))
   }
   let thenNoState = async p => {
     let store = await (p->unpackPlainPartial)()
     expect(
-      store->Js.Dict.values->Array.reduce(0, (acc, states) => acc + states->Array.length),
+      store->Dict.valuesToArray->Array.reduce(0, (acc, states) => acc + states->Array.length),
     )->toEqual(0)
   }
   let thenThrow = async p => {p->toThrow}

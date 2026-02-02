@@ -15,7 +15,7 @@ type outputs = {
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
 
-type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
+type eventHandler = (JSON.t, ReventlessSpec.Plugin.pluginDefinition) => promise<unit>
 
 module type T = {
   type operations = {outgoingEventHandler: eventHandler}

@@ -125,7 +125,7 @@ type t = policy
 let toJsonString: t => string = t => {
   t
   ->S.reverseConvertToJsonOrThrow(policySchema)
-  ->Js.Json.stringifyWithSpace(1)
+  ->JSON.stringify(~space=1)
 }
 
 let fromJsonString: string => t = (policyString: string) =>

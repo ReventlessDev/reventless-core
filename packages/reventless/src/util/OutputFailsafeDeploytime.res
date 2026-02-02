@@ -1,5 +1,5 @@
 let apply: (Pulumi.Output.t<string>, string => string) => Pulumi.Output.t<string> = (output, f) =>
-  if output->Js.typeof == "string" {
+  if output->typeof == #string {
     output->Pulumi.Output.unwrap->Pulumi.Output.make
   } else {
     output
@@ -9,7 +9,7 @@ let flatMap: (
   Pulumi.Output.t<string>,
   string => Pulumi.Output.t<string>,
 ) => Pulumi.Output.t<string> = (output, f) =>
-  if output->Js.typeof == "string" {
+  if output->typeof == #string {
     output->Pulumi.Output.unwrap->Pulumi.Output.make
   } else {
     output

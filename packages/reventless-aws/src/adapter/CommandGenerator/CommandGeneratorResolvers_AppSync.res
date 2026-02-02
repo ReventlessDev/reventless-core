@@ -35,7 +35,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       open PulumiAws.PolicyDocument
       open Reventless.Adapter
 
-      // Js.Console.log2(`CommandGeneratorResolvers_AppSync: Resources for ${name}:`, resources)
+      // Console..log2(`CommandGeneratorResolvers_AppSync: Resources for ${name}:`, resources)
 
       let targetSqsResources =
         resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
@@ -146,12 +146,12 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
   `->Pulumi.Input.make
 
   let resolvers = fields->Array.map(field => {
-    let commandName = switch field->Js.String2.split("_") {
-    | [_aggregate, commandName] => commandName->StringLabels.capitalize_ascii
-    | _ => field->StringLabels.capitalize_ascii
+    let commandName = switch field->String.split("_") {
+    | [_aggregate, commandName] => commandName->String.capitalize
+    | _ => field->String.capitalize
     }
     PulumiAws.AppSync.Resolver.makeUnitResolver(
-      ~name=field->StringLabels.capitalize_ascii,
+      ~name=field->String.capitalize,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,

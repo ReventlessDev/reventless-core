@@ -70,7 +70,7 @@ module Make = (
         let coreExtensionPoints = switch coreExtensionPoints {
         | Some(coreExtensionPoints) => coreExtensionPoints
         | None =>
-          Js.Exn.raiseError(
+          JsError.throwWithMessage(
             "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
           )
         }
@@ -116,7 +116,7 @@ module Make = (
           aggregatesOutputs->Aggregate.filterEventTopics(
             extensionPointAggregateNames->Set.union(extensionAggregateNames),
           )
-        eventTopics->Js.Dict.set(
+        eventTopics->Dict.set(
           ReventlessSpec.PluginExtensionPointSpec.name,
           {
             resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
@@ -202,7 +202,7 @@ module Make = (
             ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
             ~timeout=heartbeatInterval,
             ...
-          )
+          ),
         )
 
         {
@@ -210,17 +210,11 @@ module Make = (
           version,
           heartbeatInterval,
           eventCollector: eventCollectorOutputs,
-          extensionPoints: extensionPointsOutputs
-          ->Array.map(el => (el.name, el))
-          ->Js.Dict.fromArray,
-          extensions: extensionsOutputs
-          ->Array.map(el => (el.name, el))
-          ->Js.Dict.fromArray,
+          extensionPoints: extensionPointsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
+          extensions: extensionsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           aggregates: aggregatesOutputs,
           readModels: readModelsOutputs,
-          tasks: tasksOutputs
-          ->Array.map(el => (el.name, el))
-          ->Js.Dict.fromArray,
+          tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
           heartbeat: heartbeat->Component.outputs,
         }
@@ -268,6 +262,6 @@ module Make = (
         ~scheduler,
         ...
       ),
-      ~opts
+      ~opts,
     )
 }

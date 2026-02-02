@@ -1,7 +1,7 @@
 type forwardCommand = {
   extensionPointName: string,
   id: string,
-  commandJson: Js.Json.t,
+  commandJson: JSON.t,
 }
 
 type id = string
@@ -9,16 +9,16 @@ type id = string
 /* these actions are needed for Impl */
 type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'msg> =
   | PublishAggregateCommand(id, 'aggregateCommand)
-  | PublishAggregateCommandAsync(Js.Promise.t<(id, 'aggregateCommand)>)
-  | PublishAggregateCommandsAsync(Js.Promise.t<array<(id, 'aggregateCommand)>>)
+  | PublishAggregateCommandAsync(promise<(id, 'aggregateCommand)>)
+  | PublishAggregateCommandsAsync(promise<array<(id, 'aggregateCommand)>>)
   | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
-  | Call('msg => Js.Promise.t<unit>, 'msg)
+  | Call('msg => promise<unit>, 'msg)
 
 type outgoingCommandAction<'extensionPointCommand, 'msg> =
   | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
-  | Call('msg => Js.Promise.t<unit>, 'msg)
+  | Call('msg => promise<unit>, 'msg)
 
 type mapIncomingEvent<
   'extensionPointEvent,

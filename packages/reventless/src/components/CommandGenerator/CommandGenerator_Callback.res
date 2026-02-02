@@ -17,7 +17,7 @@ module Make = (
     let meta = {
       {
         Message.service: AggregateSpec.name,
-        ip: payload.meta.ip->Js.Array.shift->Option.getOr(""),
+        ip: payload.meta.ip->Array.shift->Option.getOr(""),
         user: payload.meta.user,
         time: Message.nowAsISOString(),
         msgId,
@@ -25,36 +25,32 @@ module Make = (
       }
     }
     let params = switch payload.arguments
-    ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
-    ->Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject) {
-    | Some(obj) => obj->Dict.toArray->Array.sliceToEnd(~start=1)
+    ->JSON.stringifyAny
+    ->Option.flatMap(jsonString => jsonString->JSON.parseOrThrow->JSON.Decode.object) {
+    | Some(obj) => obj->Dict.toArray->Array.slice(~start=1)
     | None =>
-      Js.Exn.raiseError(
+      JsError.throwWithMessage(
         "Couldn't decode:" ++
         payload.arguments
-        ->Js.Json.stringifyAny
+        ->JSON.stringifyAny
         ->Option.getOr("<payload.arguments>"),
       )
     }
-    let commandStr = Js.Json.string(payload.command)
+    let commandStr = JSON.Encode.string(payload.command)
     let commandJson = switch params->Array.length {
     | 0 => commandStr
-    | _ =>
-      [("TAG", commandStr)]
-      ->Array.concat(params)
-      ->Js.Dict.fromArray
-      ->Js.Json.object_
+    | _ => [("TAG", commandStr)]->Array.concat(params)->Dict.fromArray->JSON.Encode.object
     }
-    Js.log2("CommandGenerator: generated command:", commandJson)
+    Console.log2("CommandGenerator: generated command:", commandJson)
     switch commandJson->Message.decode(Behavior.resolverConfig.commandSchema) {
     | _ =>
       await Spec.publishJsons([{id, meta, commandJson}])
       meta.msgId
     | exception err =>
-      Js.Exn.raiseError(
-        `Error: Couldn't decode ${commandJson->Js.Json.stringify}: ${err
-          ->Js.Json.stringifyAny
-          ->Option.getExn}`,
+      JsError.throwWithMessage(
+        `Error: Couldn't decode ${commandJson->JSON.stringify}: ${err
+          ->JSON.stringifyAny
+          ->Option.getOrThrow}`,
       )
     }
   }

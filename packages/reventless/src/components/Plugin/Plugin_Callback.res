@@ -1,4 +1,4 @@
-type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
+type eventHandler = (JSON.t, ReventlessSpec.Plugin.pluginDefinition) => promise<unit>
 type eventHandlersByService = dict<array<eventHandler>>
 
 module type Spec = {
@@ -10,18 +10,18 @@ module type Spec = {
 }
 
 module type T = {
-  let handleJsonEvents: array<Js.Json.t> => Js.Promise.t<unit>
+  let handleJsonEvents: array<JSON.t> => promise<unit>
 }
 
 module Make = (Spec: Spec): T => {
   let handleEvent = async (eventJson', eventHandlersByService) =>
     await eventJson'
     ->Message.serviceNameOfMsg
-    ->Option.flatMap(serviceName => eventHandlersByService->Js.Dict.get(serviceName))
-    ->Option.mapOr(Js.Promise.resolve(), async eventHandlers => {
+    ->Option.flatMap(serviceName => eventHandlersByService->Dict.get(serviceName))
+    ->Option.mapOr(Promise.resolve(), async eventHandlers => {
       await eventHandlers
       ->Array.map(eventHandler => eventHandler(eventJson', Spec.pluginDefinition))
-      ->Js.Promise.all
+      ->Promise.all
       ->Util.Promise.toUnit
     })
 
@@ -30,11 +30,11 @@ module Make = (Spec: Spec): T => {
     ->Message.serviceNameOfMsg
     ->Option.mapOr((), serviceName =>
       switch (
-        Spec.outgoingExtensionPointEventHandlers->Js.Dict.get(serviceName),
-        Spec.outgoingExtensionEventHandlers->Js.Dict.get(serviceName),
-        Spec.incomingExtensionEventHandlers->Js.Dict.get(serviceName),
+        Spec.outgoingExtensionPointEventHandlers->Dict.get(serviceName),
+        Spec.outgoingExtensionEventHandlers->Dict.get(serviceName),
+        Spec.incomingExtensionEventHandlers->Dict.get(serviceName),
       ) {
-      | (None, None, None) => Js.log("No mapping matches service name")
+      | (None, None, None) => Console.log("No mapping matches service name")
       | _ => ()
       }
     )
@@ -55,10 +55,10 @@ module Make = (Spec: Spec): T => {
           eventJson'->handleEvent(Spec.outgoingExtensionPointEventHandlers),
           eventJson'->handleEvent(Spec.outgoingExtensionEventHandlers),
           eventJson'->handleEvent(Spec.incomingExtensionEventHandlers),
-        ]->Js.Promise.all
+        ]->Promise.all
       }
     })
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
   }
 }
@@ -77,7 +77,7 @@ let addStatement = (policy: AwsSdk.IAM.Policy.t, sid, queueArn, topicArn) => {
         condition: {arnEquals: topicArn},
       },
     ])
-  Js.log(`addStatement: adding 1 statement with Sid ${sid}`)
+  Console.log(`addStatement: adding 1 statement with Sid ${sid}`)
   {
     AwsSdk.IAM.Policy.version: policy.version,
     id: policy.id,
@@ -88,7 +88,7 @@ let removeStatement = (policy: AwsSdk.IAM.Policy.t, sid) => {
   let statements = policy.statement
   let newStatements = statements->Array.filter(statement => statement.sid != sid)
   let removedStatements = statements->Array.length - newStatements->Array.length
-  Js.log(
+  Console.log(
     `removeStatement: removing ${removedStatements->Int.toString} statement(s) with Sid ${sid}`,
   )
   {

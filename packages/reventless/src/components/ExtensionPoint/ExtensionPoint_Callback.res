@@ -42,11 +42,11 @@ module Make = (
     | ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
       let result =
         Spec.publishToAggregates
-        ->Js.Dict.get(aggregateName)
+        ->Dict.get(aggregateName)
         ->Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
         ->Option.mapOr(
           () =>
-            Js.Exn.raiseError(
+            JsError.throwWithMessage(
               `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
             ),
           x => {() => x},
@@ -54,7 +54,7 @@ module Make = (
       switch result() {
       | _ => Ok(reference)
       | exception err => {
-          Js.log2("ExtensionPoint: Error on publish command:", err)
+          Console.log2("ExtensionPoint: Error on publish command:", err)
           Error(reference)
         }
       }
@@ -62,7 +62,7 @@ module Make = (
       switch await handler() {
       | _ => Ok(reference)
       | exception err => {
-          err->Js.log2("ExtensionPoint: Error on calling handler:")
+          err->Console.log2("ExtensionPoint: Error on calling handler:")
           Error(reference)
         }
       }
@@ -77,6 +77,6 @@ module Make = (
         Spec.commandTopicResources,
       )
 
-    await commandActions->Array.map(applyCommandAction)->Js.Promise.all
+    await commandActions->Array.map(applyCommandAction)->Promise.all
   }
 }

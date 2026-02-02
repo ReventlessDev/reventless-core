@@ -3,12 +3,12 @@ open ReventlessSpec.ExtensionPointMapping
 /* these actions are internal to the Mapping Functor */
 type abstractCommandAction =
   | AbstractPublishCommand(Aggregate.name, string, Message.commandJson)
-  | AbstractCall(string, unit => Js.Promise.t<unit>)
+  | AbstractCall(string, unit => promise<unit>)
 
 type abstractEventAction<'extensionPointEvent> =
-  | AbstractPublishEvent(string, Message.meta, Js.Json.t)
-  | AbstractPublishEventAsync(Js.Promise.t<(string, Message.meta, Js.Json.t)>)
-  | AbstractCall(unit => Js.Promise.t<unit>)
+  | AbstractPublishEvent(string, Message.meta, JSON.t)
+  | AbstractPublishEventAsync(promise<(string, Message.meta, JSON.t)>)
+  | AbstractCall(unit => promise<unit>)
 
 module type T = {
   module ExtensionPoint: Spec
@@ -26,7 +26,7 @@ module type T = {
 
   let mapOutgoingEvent: option<
     (
-      Js.Json.t,
+      JSON.t,
       ReventlessSpec.Schedule.create,
       ReventlessSpec.Schedule.delete,
       ReventlessSpec.QueryEngine.operations,
@@ -53,8 +53,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       mapIncomingEventImpl(id->ReventlessSpec.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
         | PublishCommand(aggregateId, aggregateCmd) =>
-          let commandStr = aggregateCmd->Message.encode(Aggregate.commandSchema)->Js.Json.stringify
-          Js.log(
+          let commandStr = aggregateCmd->Message.encode(Aggregate.commandSchema)->JSON.stringify
+          Console.log(
             `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName} to Aggregate ${aggregateName}: Publishing command: ${commandStr} id: ${aggregateId}`,
           )
 
@@ -72,9 +72,9 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             },
           )
         | Call(handler, callCommand) =>
-          Js.log2(
+          Console.log2(
             `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
-            callCommand->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
+            callCommand->Message.encode(Spec.callCommandSchema)->JSON.stringify,
           )
 
           AbstractCall(
@@ -106,8 +106,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         switch eventAction {
         | PublishEvent(id, event) =>
           let eventJson = event->Message.encode(Spec.eventSchema)
-          Js.log(
-            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
+          Console.log(
+            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
           )
           let meta = {
             ...meta,
@@ -120,24 +120,24 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           let toEvent' = async promise => {
             let (id, event) = await promise
             let eventJson = event->Message.encode(Spec.eventSchema)
-            Js.log(
-              `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
+            Console.log(
+              `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
             )
             let eventJson' = Message.composeEventJson'(id, meta, eventJson) // TODO: check if meta is correct
             (id, meta, eventJson')
           }
           AbstractPublishEventAsync(promise->toEvent')
         | Call(handler, callCmd) =>
-          Js.log2(
+          Console.log2(
             `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling call command`,
-            callCmd->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
+            callCmd->Message.encode(Spec.callCommandSchema)->JSON.stringify,
           )
 
           AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, callCmd))
         }
       )
     | exception err =>
-      Js.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
+      Console.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
       []
     }
 

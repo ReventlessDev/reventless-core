@@ -19,7 +19,7 @@ module Make = (Spec: EventTopic.Spec, Ops: Ops) => {
           ~level=Error,
           `Couldn't publish event ${idx->Int.toString}/${eventCount->Int.toString}:`,
         )
-        raise(e)
+        throw(e)
       | _ =>
         eventJson'->Logger.logJsonEvent(
           ~loc=__LOC__,
@@ -27,7 +27,7 @@ module Make = (Spec: EventTopic.Spec, Ops: Ops) => {
         )
       }
     })
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
   }
 }

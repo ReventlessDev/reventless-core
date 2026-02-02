@@ -3,9 +3,9 @@ open PulumiAws.Lambda
 open ReventlessSpec.Adapter
 
 type tableConfig = {name: string, id: string, sort: option<string>}
-type event = {tables: Js.nullable<array<tableConfig>>}
+type event = {tables: nullable<array<tableConfig>>}
 
-let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<result<'a, 'b>> = async p =>
+let promiseToResult: promise<'a> => promise<result<'a, 'b>> = async p =>
   switch await p {
   | res => Ok(res)
   | exception err => Error(err)
@@ -13,12 +13,12 @@ let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<result<'a, 'b>> = async p 
 
 let handleDeleteResult = result => {
   if mode == #debug {
-    Js.log("Handle delete result")
+    Console.log("Handle delete result")
   }
   open Belt.Result
   switch result {
   | Error(err) =>
-    Js.log2("Couldn't delete item:", err)
+    Console.log2("Couldn't delete item:", err)
     Error("Couldn't delete item.")
   | Ok(_x) => Ok()
   }
@@ -27,8 +27,8 @@ let handleDeleteResult = result => {
 let deleteAllItems = async (items: array<dict<string>>, tableConfig: tableConfig): unit =>
   switch await items
   ->Array.map(async (item: dict<string>) => {
-    let id = item->Js.Dict.get(tableConfig.id)
-    let sort = tableConfig.sort->Option.flatMap(sortField => item->Js.Dict.get(sortField))
+    let id = item->Dict.get(tableConfig.id)
+    let sort = tableConfig.sort->Option.flatMap(sortField => item->Dict.get(sortField))
     switch (id, sort) {
     | (Some(id), Some(sort)) =>
       switch await AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
@@ -50,7 +50,7 @@ let deleteAllItems = async (items: array<dict<string>>, tableConfig: tableConfig
     | _ => Error("No valid Config found!")
     }
   })
-  ->Js.Promise.all {
+  ->Promise.all {
   | result =>
     result
     ->Array.reduce(0, (state, item) =>
@@ -59,11 +59,11 @@ let deleteAllItems = async (items: array<dict<string>>, tableConfig: tableConfig
       | Error(_) => state
       }
     )
-    ->Js.log3(
+    ->Console.log3(
       "Deleted",
       _,
       "of " ++
-      (result->Array.length->string_of_int ++
+      (result->Array.length->Int.toString ++
       (" items in table " ++ tableConfig.name)),
     )
   }
@@ -73,37 +73,37 @@ let handleScanResult = async (
   scanResult: result<AwsSdk.DynamoDb.DocumentClient.QueryCommand.output, 'a>,
 ): result<int, 'a> => {
   if mode == #debug {
-    Js.log("Clean table " ++ tableConfig.name)
+    Console.log("Clean table " ++ tableConfig.name)
   }
   switch scanResult {
   | Ok(scanResult) =>
     if mode == #debug {
-      Js.log2("Items in scan-result:", scanResult.items->Array.length)
+      Console.log2("Items in scan-result:", scanResult.items->Array.length)
     }
     let _ = await scanResult.items->deleteAllItems(tableConfig)
     Ok(-1)
   | Error(error) =>
     if mode == #debug {
-      Js.log2("Couldn't scan table " ++ (tableConfig.name ++ ":"), error)
+      Console.log2("Couldn't scan table " ++ (tableConfig.name ++ ":"), error)
     }
     Error(error)
   }
 }
 
-let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
+let scanTableAndClean = async (tableConfig: tableConfig): promise<
   result<string, string>,
 > => {
   if mode == #debug {
-    Js.log("Scan " ++ tableConfig.name)
+    Console.log("Scan " ++ tableConfig.name)
   }
 
   let idKey = tableConfig.id
   let (projectionExpression, expressionAttributeNames) = switch tableConfig.sort {
   | Some(sortKey) => (
       "#" ++ (idKey ++ (",#" ++ sortKey)),
-      [("#" ++ idKey, idKey), ("#" ++ sortKey, sortKey)]->Js.Dict.fromArray,
+      [("#" ++ idKey, idKey), ("#" ++ sortKey, sortKey)]->Dict.fromArray,
     )
-  | None => ("#" ++ idKey, [("#" ++ idKey, idKey)]->Js.Dict.fromArray)
+  | None => ("#" ++ idKey, [("#" ++ idKey, idKey)]->Dict.fromArray)
   }
 
   switch await AwsSdk.DynamoDb.DocumentClient.scan(
@@ -118,10 +118,10 @@ let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
       let scanResult = await handleScanResult(tableConfig, res)
       let deletedItemsCount = switch scanResult {
       | Ok(deletedItemsCount) =>
-        Ok(tableConfig.name ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
+        Ok(tableConfig.name ++ (" [" ++ (Int.toString(deletedItemsCount) ++ "]")))
       | Error(_err) => Error(tableConfig.name ++ " [ERROR]")
       }
-      deletedItemsCount->Js.Promise.resolve
+      deletedItemsCount->Promise.resolve
     }
   }
 }
@@ -137,9 +137,9 @@ let cleanerFn = async (tablesToClean, _event, _context) =>
   switch tablesToClean->Array.map(toTableConfig) {
   | tableConfigs if tableConfigs->Array.length == 0 => "No tables to clean."
   | tableConfigs =>
-    switch await tableConfigs->Array.map(scanTableAndClean)->Js.Promise.all {
+    switch await tableConfigs->Array.map(scanTableAndClean)->Promise.all {
     | results => {
-        let summary = results->Array.reduce(Js.Promise.resolve(""), async (state, result) =>
+        let summary = results->Array.reduce(Promise.resolve(""), async (state, result) =>
           (await state) ++
           (" | " ++
           switch await result {
@@ -154,7 +154,7 @@ let cleanerFn = async (tablesToClean, _event, _context) =>
 
 let stackName = prefix =>
   switch prefix {
-  | Some(prefix) => prefix->Js.String2.replace("_", "-") ++ "-"
+  | Some(prefix) => prefix->String.replace("_", "-") ++ "-"
   | None => ""
   } ++
   (Pulumi.Pulumi.getProjectName() ++

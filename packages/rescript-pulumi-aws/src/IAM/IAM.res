@@ -15,7 +15,7 @@ type args = {statements: array<statement>}
 external getPolicyDocument: (
   ~args: args=?,
   ~opts: Pulumi.InvokeOptions.t=?,
-) => Js.Promise.t<PolicyDocument.t> = "getPolicyDocument"
+) => promise<PolicyDocument.t> = "getPolicyDocument"
 
 /** @pulumi/aws/iam
   see: https://www.pulumi.com/registry/packages/aws/api-docs/iam/policy
@@ -40,7 +40,7 @@ module Policy = {
       ~id=name ++ "TrustPolicy",
       ~statements=[
         {
-          sid: name->Js.String2.split("-")->Array.getUnsafe(0) ++ "TrustPolicyStatement",
+          sid: name->String.split("-")->Array.getUnsafe(0) ++ "TrustPolicyStatement",
           principal: PolicyDocument.Principals({service: PrincipalId(serviceId)}),
           effect: PolicyDocument.Allow,
           actions: PolicyDocument.Action("sts:AssumeRole"),

@@ -41,15 +41,13 @@
         "@reventless/reventless-spec": "^2.3.0"
     },
     "devDependencies": {
-        "@glennsl/rescript-jest": "^0.11.0",
-        "rescript": "^11.1.4",
-        "sury": "^10.0.4",
-        "sury-ppx": "^10.0.0"
+        "@glennsl/rescript-jest": "^0.13.1",
+        "rescript": "^12.1.0",
+        "sury": "^11.0.0-alpha.4",
+        "sury-ppx": "^11.0.0-alpha.2"
     },
     "peerDependencies": {
-        "@rescript/core": "^1.6.0",
-        "@rescript/std": "^11.1.4",
-        "rescript": "^11.1.4"
+        "rescript": "^12.1.0"
     },
     "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2"
 }

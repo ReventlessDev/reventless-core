@@ -42,7 +42,7 @@ module Mappings = {
   }
 }
 
-let logAction = str => Js.log2("Projection.handleAction:", str)
+let logAction = str => Console.log2("Projection.handleAction:", str)
 
 let applyChanges = async (
   action,
@@ -78,15 +78,15 @@ let applyChanges = async (
   logAction(
     `${action}(${id}): beforeStates:${beforeCount->Int.toString} afterStates:${afterCount->Int.toString} added:${addedCount->Int.toString} changed:${changedCount->Int.toString} deleted:${deletedCount->Int.toString}`,
   )
-  let result = await [deleteBatch(batchToDelete), saveBatch(batchToSave)]->Js.Promise.all
+  let result = await [deleteBatch(batchToDelete), saveBatch(batchToSave)]->Promise.all
   switch result {
   | _ => Ok() // TODO: Error handling
   }
 }
 
-let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Option.getExn
+let stateToString: 'a => string = state => state->JSON.stringifyAny->Option.getOrThrow
 let statesToString: array<'a> => string = states =>
-  states->Array.map(stateToString)->Js.Array2.joinWith(", ")
+  states->Array.map(stateToString)->Array.joinUnsafe(", ")
 
 let handleAction = async (
   action,
@@ -105,7 +105,7 @@ let handleAction = async (
     logAction(
       `CreateMultiState(${id}, ${states
         ->Array.map(state => state->stateToString)
-        ->Js.Array2.joinWith(", ")})`,
+        ->Array.joinUnsafe(", ")})`,
     )
     switch states {
     | [] => Ok()
@@ -119,7 +119,7 @@ let handleAction = async (
     let statesStr =
       batch
       ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
-      ->Js.Array2.joinWith(", ")
+      ->Array.joinUnsafe(", ")
     logAction(`CreateMany(${statesStr})`)
     await saveBatch(batch) // TODO: think about using single saves with saveMode Init
 
@@ -131,7 +131,7 @@ let handleAction = async (
     let statesStr =
       batch
       ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
-      ->Js.Array2.joinWith(", ")
+      ->Array.joinUnsafe(", ")
     logAction(`SetMany(${statesStr})`)
     await saveBatch(batch)
 
@@ -153,7 +153,7 @@ let handleAction = async (
     | Error(err) => Error(err)
     }
   | UpdateWithDefault(id, default, update) =>
-    Js.log(`UpdateWithDefault(${id}, loading ...`)
+    Console.log(`UpdateWithDefault(${id}, loading ...`)
     switch await load(id) {
     | Ok(states) =>
       switch states {
@@ -196,7 +196,7 @@ let handleAction = async (
     logAction(`Delete(${id})`)
     await delete(id, None)
   | DeleteMany(ids) =>
-    logAction(`DeleteMany(${ids->Js.Array2.joinWith(", ")})`)
+    logAction(`DeleteMany(${ids->Array.joinUnsafe(", ")})`)
     await deleteBatch(ids->Array.map(id => (id, None)))
 
   // TODO: add missing actions
@@ -280,35 +280,35 @@ let optimizeActions = actions => {
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
       | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
-        Js.Console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create")
+        Console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create")
         previousActions->Array.concat([UpdateWithDefault(id1, defaultState1, f)])
       | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
-        Js.Console.warn2(
+        Console.warn2(
           "optimizing 2 sequential Create actions, therefore ignoring the second one:",
-          state2->Js.Json.stringifyAny,
+          state2->JSON.stringifyAny,
         )
         previousActions->Array.concat([Create(id1, state1)])
       | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
-        Js.Console.warn2("optimizing Delete after Create, therefore ignoring the Create:", state1)
+        Console.warn2("optimizing Delete after Create, therefore ignoring the Create:", state1)
         previousActions->Array.concat([Delete(id1)])
       | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
-        Js.Console.warn("optimizing Delete after Update, therefore ignoring the Update")
+        Console.warn("optimizing Delete after Update, therefore ignoring the Update")
         previousActions->Array.concat([Delete(id1)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
-        Js.Console.warn(
+        Console.warn(
           "optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
         )
         previousActions->Array.concat([Delete(id1)])
       | (Delete(id1), Create(id2, state2)) if id1 == id2 =>
         previousActions->Array.concat([Set(id1, state2)])
       | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
-        Js.Console.warn2("optimizing Set after Create, therefore ignoring the Create:", state1)
+        Console.warn2("optimizing Set after Create, therefore ignoring the Create:", state1)
         previousActions->Array.concat([Set(id1, state2)])
       | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
-        Js.Console.warn("optimizing Set after Update, therefore ignoring the Update")
+        Console.warn("optimizing Set after Update, therefore ignoring the Update")
         previousActions->Array.concat([Set(id1, state2)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
-        Js.Console.warn(
+        Console.warn(
           "optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
         )
         previousActions->Array.concat([Set(id1, state2)])
@@ -324,7 +324,7 @@ let optimizeActions = actions => {
         previousActions->Array.concat([UpdateMultiState(id1, state => g(f(state)))])
       /*
       | (UpdateMultiState(id1, _f), CreateMultiState(id2, states2)) if id1 == id2 =>
-        Js.Console.warn(
+        Console..warn(
           "optimizing CreateMultiState after UpdateMultiState, therefore ignoring the UpdateMultiState",
         )
         THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, states2)])
@@ -335,9 +335,9 @@ let optimizeActions = actions => {
  */
       /*
       | (CreateMultiState(id1, states1), CreateMultiState(id2, states2)) if id1 == id2 =>
-        Js.Console.warn2(
+        Console..warn2(
           "optimizing 2 sequential CreateMultiState actions, therefore ignoring the first one:",
-          states1->Js.Json.stringifyAny,
+          states1->JSON.stringifyAny,
         )
         THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, states2)])
         suggestion: CreateMultiState with following updateFunction:
@@ -346,10 +346,10 @@ let optimizeActions = actions => {
  */
       | (lastAction, action) =>
         // any other action will be just appended
-        Js.Console.warn3(
+        Console.warn3(
           "actions not optimized: ",
-          lastAction->Js.Json.stringifyAny,
-          action->Js.Json.stringifyAny,
+          lastAction->JSON.stringifyAny,
+          action->JSON.stringifyAny,
         )
         optimizedActions->Array.concat([action])
       }
@@ -361,39 +361,36 @@ let handleActions = async (actions, operations, subIdConfig) => {
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions->Array.length
     if actionCount > 1 {
-      Js.log(
+      Console.log(
         `Projection.handleActions: optimizing ${actionCount->Int.toString} actions for id=${id}`,
       )
     }
 
     let optimizedActions = optimizeActions(actions)
     let optimizedActionCount = optimizedActions->Array.length
-    Js.log(
+    Console.log(
       `Projection.handleActions: handling ${optimizedActionCount->Int.toString} optimized actions for id=${id}`,
     )
 
     // FIXME: handle errors!
-    await optimizedActions->Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
+    await optimizedActions->Array.reduce(Ok()->Promise.resolve, async (p, action) => {
       switch await p {
       | Ok() => ()
       | Error(err) =>
         Logger.error(
           ~loc=__LOC__,
           "storage error:",
-          err
-          ->Message.encode(ReventlessSpec.QueryDb.storageErrorSchema)
-          ->Js.Json.stringify,
+          err->Message.encode(ReventlessSpec.QueryDb.storageErrorSchema)->JSON.stringify,
         )
       }
       await action->handleAction(operations, subIdConfig)
     })
   }
 
-  let results =
-    await actions
-    ->groupActionsById
-    ->Array.map(((id, actions)) => actions->handleActionsForId(id))
-    ->Js.Promise.all
+  let results = await actions
+  ->groupActionsById
+  ->Array.map(((id, actions)) => actions->handleActionsForId(id))
+  ->Promise.all
   let errors = results->Array.filterMap(x =>
     switch x {
     | Error(err) => Some(err)
@@ -404,10 +401,10 @@ let handleActions = async (actions, operations, subIdConfig) => {
   | [] => ()
   | errors =>
     let count = errors->Array.length
-    Js.Exn.raiseError(
+    JsError.throwWithMessage(
       `Projection.handleActions failed with ${count->Int.toString} errors: ${errors
         ->Array.map(QueryDb.storageErrorToString)
-        ->Js.Array2.joinWith(",")}`,
+        ->Array.joinUnsafe(",")}`,
     )
   }
 }

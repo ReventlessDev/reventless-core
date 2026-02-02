@@ -8,4 +8,4 @@ external wrap: 'a => t<'a> = "%identity"
 
 external make: 'a => t<'a> = "%identity"
 
-external ofPromise: Js.Promise.t<'a> => t<'a> = "%identity"
+external ofPromise: promise<'a> => t<'a> = "%identity"

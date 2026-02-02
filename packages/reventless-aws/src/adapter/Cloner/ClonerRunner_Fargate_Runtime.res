@@ -1,7 +1,7 @@
 open Reventless.Cloner
 
 let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, payload, _) => {
-  Js.log(
+  Console.log(
     "clone: requested by user " ++
     (payload["meta"]["user"] ++
     (" from ip " ++ payload["meta"]["ip"])),
@@ -13,7 +13,7 @@ let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, paylo
     [
       ("REVENTLESS_CORE_STACK", `${organization}/${project}/${stack}`),
       ("RESTORE_DATE_TIME", payload["restoreDateTime"]),
-    ]->Js.Dict.fromArray
+    ]->Dict.fromArray
   }
 
   {

@@ -7,10 +7,7 @@ type outputs = {
   sideEffectSources?: array<string>,
 }
 
-type publishCommands = (
-  /* ~aggregateName: */ string,
-  array<Message.commandJson>,
-) => Js.Promise.t<unit>
+type publishCommands = (/* ~aggregateName: */ string, array<Message.commandJson>) => promise<unit>
 type queryBucketName = (~taskName: string, ~bucketName: string=?) => string
 
 type operations = {publishCommands: publishCommands}

@@ -2,7 +2,7 @@ open MomentRe
 open Jest
 open ExpectJs
 
-let isJsDateValid: Js.Date.t => bool = %raw(`
+let isJsDateValid: Date.t => bool = %raw(`
   function(date) {
     return (date instanceof Date && !isNaN(date.valueOf())) ? true : false;
   }
@@ -403,17 +403,14 @@ describe("moment", () => {
   test("instantiation with date", () =>
     expect(
       Moment.isSame(
-        momentWithDate(Js.Date.fromString("6 Mar 2017 21:22:23 GMT")),
+        momentWithDate(Date.fromString("6 Mar 2017 21:22:23 GMT")),
         moment("6 Mar 2017 21:22:23 GMT"),
       ),
     )->toBe(true)
   )
   test("instantiation momentWithTimestampMS (float)", () =>
     expect(
-      Moment.isSame(
-        moment("2017-06-12T18:30:00+02:00"),
-        momentWithTimestampMS(Int64.of_string("1497285000000")->Int64.to_float),
-      ),
+      Moment.isSame(moment("2017-06-12T18:30:00+02:00"), momentWithTimestampMS(1497285000000.0)),
     )->toBe(true)
   )
   test("instantiation momentWithUnix (int)", () =>
@@ -489,7 +486,7 @@ describe("moment", () => {
   describe("#toJSON", () => {
     test(
       "valid",
-      () => expect(moment("2016-01-01")->Moment.toJSON->Option.getExn)->toContainString("000Z"),
+      () => expect(moment("2016-01-01")->Moment.toJSON->Option.getOrThrow)->toContainString("000Z"),
     )
     test("invalid", () => expect(moment("9999-99-99")->Moment.toJSON)->toBe(None))
   })
@@ -508,7 +505,7 @@ describe("moment", () => {
       () =>
         moment("6 Mar 2017 21:22:23 GMT")
         ->Moment.toISOString(~keepOffset=true)
-        ->Js.String.includes("000Z")
+        ->String.includes("000Z")
         ->expect
         ->toBe(false),
     )

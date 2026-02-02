@@ -67,6 +67,6 @@ module Make = (
       ~componentType=QueryDb.componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~api=Config.api, ~apiRole=Config.apiRole, ~ttl?, ...),
-      ~opts
+      ~opts,
     )
 }

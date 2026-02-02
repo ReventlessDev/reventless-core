@@ -2,9 +2,9 @@ open ReventlessSpec.QueryEngine
 
 let toJson = x =>
   switch x {
-  | String(str) => Js.Json.string(str)
-  | Int(int) => Js.Json.number(float_of_int(int))
-  | Bool(bool) => Js.Json.boolean(bool)
+  | String(str) => JSON.Encode.string(str)
+  | Int(int) => JSON.Encode.float(Int.toFloat(int))
+  | Bool(bool) => JSON.Encode.bool(bool)
   }
 
 @val @scope("JSON") external parseJs: string => _ = "parse"
@@ -64,21 +64,21 @@ let queryByTableName = async (
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilterExprNamesValues
 
   let keyConditionExpression =
-    ["#key = :value"]->Array.concat(subIdExpressions)->Js.Array2.joinWith(" AND ")
+    ["#key = :value"]->Array.concat(subIdExpressions)->Array.joinUnsafe(" AND ")
   let filterExpression = switch filterExpressions {
   | [] => None
-  | filterExpressions => Some(filterExpressions->Js.Array2.joinWith(" AND "))
+  | filterExpressions => Some(filterExpressions->Array.joinUnsafe(" AND "))
   }
 
   let (names, values) = subIdNamesValues->Array.concat(filterNamesValues)->Belt.Array.unzip
   let attributeValues =
     Array.flat([[(":value", id->toJson)], values])
-    ->Js.Dict.fromArray
-    ->Js.Json.object_
-    ->Js.Json.stringify
+    ->Dict.fromArray
+    ->JSON.Encode.object
+    ->JSON.stringify
     ->parseJs
 
-  let attributeNames = Array.flat([[("#key", key)], names])->Js.Dict.fromArray
+  let attributeNames = Array.flat([[("#key", key)], names])->Dict.fromArray
 
   let params: AwsSdk.DynamoDb.DocumentClient.QueryCommand.input = {
     {
@@ -103,7 +103,7 @@ let queryByTableName = async (
   | result =>
     result.items
     ->Option.getOr([])
-    ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+    ->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
   | exception err =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", err)
     []
@@ -116,9 +116,9 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   let (filterExpression, attributeNames, attributeValues) = switch filterExpressions {
   | [] => (None, None, None)
   | filterExpressions => (
-      Some(filterExpressions->Js.Array2.joinWith(" AND ")),
-      Some(filterNames->Js.Dict.fromArray),
-      Some(filterValues->Js.Dict.fromArray->Js.Json.object_->Js.Json.stringify->parseJs),
+      Some(filterExpressions->Array.joinUnsafe(" AND ")),
+      Some(filterNames->Dict.fromArray),
+      Some(filterValues->Dict.fromArray->JSON.Encode.object->JSON.stringify->parseJs),
     )
   }
 
@@ -134,19 +134,21 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   | result =>
     result.items
     ->Option.getOr([])
-    ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
-  | exception Js.Exn.Error(e) =>
+    ->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
+  | exception JsExn(e) =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", e)
     []
   }
 }
 
 let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
-  let allRuntimeQueryDbsOutputs = Js.Dict.map((queryDb: Reventless.QueryDb.outputs) =>
+  let allRuntimeQueryDbsOutputs = Dict.mapValues(allQueryDbs, (
+    queryDb: Reventless.QueryDb.outputs,
+  ) =>
     queryDb.resources
     ->Util.DynamoDb.findResource
     ->Reventless.Adapter.resourceToUnwrappedOutput
-  , allQueryDbs)->Pulumi.Output.allDict
+  )->Pulumi.Output.allDict
 
   let tableName = (allRuntimeQueryDbs, readModelName) =>
     (allRuntimeQueryDbs->Reventless.Util_QueryDbRuntime.getRuntimeResource(readModelName)).name

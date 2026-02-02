@@ -11,7 +11,7 @@ module Make = (Spec: CommandTopic.Spec, Ops: Ops) => {
         ~loc=__LOC__,
         "Couldn't publish commands",
       )
-      raise(e)
+      throw(e)
     | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
     }
 

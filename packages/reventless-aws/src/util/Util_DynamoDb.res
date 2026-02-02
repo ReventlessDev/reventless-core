@@ -14,7 +14,7 @@ let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
     name,
     arn,
     hashKey,
-    rangeKey: ?rangeKey->Option.map(rangeKey => rangeKey->Js.Nullable.return),
+    rangeKey: ?(rangeKey->Option.map(rangeKey => rangeKey->Nullable.make)),
   })
 
 let toResource: table => resource = ({id, name, arn} as table) => {
@@ -26,14 +26,14 @@ let toResource: table => resource = ({id, name, arn} as table) => {
 }
 
 let arn2tableName = arn =>
-  switch arn->Js.String2.split(":") {
+  switch arn->String.split(":") {
   | [_, _, _service, _region, _account, tableName] => tableName
-  | _ => Js.Exn.raiseError("Invalid ARN: " ++ arn)
+  | _ => JsError.throwWithMessage("Invalid ARN: " ++ arn)
   }
 
 // Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
-let enableTtl: string => Js.Promise.t<ttl> = async tableName => {
-  Js.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
+let enableTtl: string => promise<ttl> = async tableName => {
+  Console.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
 
   //open AwsSdk.DynamoDb_DynamoDb.UpdateTimeToLiveCommand
   switch await {
@@ -63,12 +63,12 @@ let verifyTtl: (~expectedTtl: int=?, table) => Pulumi.Output.t<ttl> = (
     | (None, Some(_))
     | (Some(false), Some(_)) =>
       enableTtl(tableName)
-    | _ => ttl->Js.Promise.resolve
+    | _ => ttl->Promise.resolve
     }->Pulumi.Output.fromPromise
   )
 
 let enablePointInTimeRecovery = async tableName => {
-  Js.log(`${__MODULE__}: enablePointInTimeRecovery for ${tableName}`)
+  Console.log(`${__MODULE__}: enablePointInTimeRecovery for ${tableName}`)
 
   open AwsSdk.DynamoDb_DynamoDb
 
@@ -87,7 +87,7 @@ let verifyPointInTimeRecovery = (table: table) =>
   ->Pulumi.Output.flatMap(((tableName, pointInTimeRecovery)) =>
     switch pointInTimeRecovery.enabled {
     | false => enablePointInTimeRecovery(tableName)
-    | true => pointInTimeRecovery->Js.Promise.resolve
+    | true => pointInTimeRecovery->Promise.resolve
     }->Pulumi.Output.fromPromise
   )
 
@@ -124,7 +124,7 @@ let makeTableArgs = (
   {
     PulumiAws.DynamoDb.Table.attributes: attributes->Pulumi.Input.make,
     hashKey: "id"->Pulumi.Input.make,
-    rangeKey: ?rangeKey->Option.map(Pulumi.Input.make),
+    rangeKey: ?(rangeKey->Option.map(Pulumi.Input.make)),
     billingMode: PAY_PER_REQUEST,
     ?globalSecondaryIndexes,
     ?tags,
@@ -132,12 +132,12 @@ let makeTableArgs = (
     pointInTimeRecovery: {
       enabled: true,
     }->Pulumi.Input.make,
-    restoreSourceName: ?restoreSourceName->Option.map(Pulumi.Input.make),
-    restoreDateTime: ?restoreSourceName->Option.flatMap(_ =>
-      restoreDateTime->Option.map(Pulumi.Input.make)
+    restoreSourceName: ?(restoreSourceName->Option.map(Pulumi.Input.make)),
+    restoreDateTime: ?(
+      restoreSourceName->Option.flatMap(_ => restoreDateTime->Option.map(Pulumi.Input.make))
     ),
-    restoreToLatestTime: ?restoreSourceName->Option.map(_ =>
-      restoreDateTime->Option.isNone->Pulumi.Input.make
+    restoreToLatestTime: ?(
+      restoreSourceName->Option.map(_ => restoreDateTime->Option.isNone->Pulumi.Input.make)
     ),
     ?streamEnabled,
     ?streamViewType,
@@ -162,7 +162,7 @@ let makeTable = (
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")
-    ->Option.flatMap(tables => tables->Js.Dict.get(name))
+    ->Option.flatMap(tables => tables->Dict.get(name))
 
   let (dependencies, registerResource) = Util_DynamoDb_TableManager.getDependencies()
 

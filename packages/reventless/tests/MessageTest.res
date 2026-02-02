@@ -77,7 +77,7 @@ describe("Message should", () => {
       event: UnknownPluginDetected,
     }
     let eventJson' = event'->Message.encodeEvent'(S.string, PluginSpec.eventSchema)
-    let eventId = idOfEvent'Json(eventJson')->Option.getExn
+    let eventId = idOfEvent'Json(eventJson')->Option.getOrThrow
 
     expect(eventId)->toBe("testId")
   })

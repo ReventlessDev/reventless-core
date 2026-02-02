@@ -19,9 +19,9 @@ type getFile = (
   ~remotePath: string,
   ~localPath: string,
   ~options: SSH2.fastOptions=?,
-  ~callback: Js.Exn.t => unit,
+  ~callback: JsExn.t => unit,
 ) => promise<unit>
-type failFn = Js.Exn.t => unit
+type failFn = JsExn.t => unit
 type endFtpFn = unit => unit
 
 type downloadAction = (
@@ -44,11 +44,11 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
 
   client
   ->FTP.Client.onEnd(() => {
-    Js.log("Client.onEnd")
+    Console.log("Client.onEnd")
     resolve(result.contents)
   })
   ->FTP.Client.onError(err => {
-    resolve(Error(err->Js.Exn.message->Option.getOr("Error contains no message.")))
+    resolve(Error(err->JsExn.message->Option.getOr("Error contains no message.")))
     // client->FTP.Client.end_
   })
   ->FTP.Client.onTimeout(() =>
@@ -68,11 +68,11 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
 
           sftp
           ->FTP.onEnd(() => {
-            Js.log("FTPHandler: end sftp stream")
+            Console.log("FTPHandler: end sftp stream")
             // client->FTP.Client.end_
           })
           ->FTP.onError(err => {
-            Js.log2("FTPHandler: Error:", err)
+            Console.log2("FTPHandler: Error:", err)
             client->FTP.Client.error(err->FTP.toJsError)->ignore
             endFtp()
           })
@@ -84,24 +84,24 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             | entities =>
               result :=
                 (await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp))->Ok
-            | exception Js.Exn.Error(e) => result := e->Reventless.Util.Error.message->Error
+            | exception JsExn(e) => result := e->Reventless.Util.Error.message->Error
             }
           | Upload(readableStream, filename) =>
             let ws =
               (path ++ ("/" ++ filename))
               ->Message.log("FTPHandler: path for write stream")
-              ->(FTP.createWriteStream(sftp, ~path=_))
+              ->FTP.createWriteStream(sftp, ~path=_)
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
-                Js.log("FTPHandler: writable ended")
+                Console.log("FTPHandler: writable ended")
               })
               ->NodeStreams.Writable.onClose(() => {
                 result := Ok(true) // Workaround: since Node 18 there is no call to onFinish() anymore
-                Js.log("FTPHandler: writable closed")
+                Console.log("FTPHandler: writable closed")
                 endFtp()
               })
               ->NodeStreams.Writable.onError(err => {
-                Js.Console.error2("FTPHandler: FTPHandler: Error in Write Stream:", err)
+                Console.error2("FTPHandler: FTPHandler: Error in Write Stream:", err)
                 FTP.makeError("FTPHandler: Error in Write Stream")->fail
               })
             await readableStream->NodeStreams.pipeline0(ws)

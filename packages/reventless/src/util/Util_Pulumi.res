@@ -6,7 +6,7 @@ module Output = {
       let (set, output) = {
         let set = ref(_eventCollector => ())
         let output =
-          Js.Promise.make((~resolve, ~reject as _) => set := resolve)
+          Promise.make((resolve, _) => set := resolve)
           ->Pulumi.Output.fromPromise
           ->Pulumi.Output.unwrap
         (set.contents, output)

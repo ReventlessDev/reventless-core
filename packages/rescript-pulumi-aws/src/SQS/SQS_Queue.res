@@ -18,7 +18,7 @@ module RedrivePolicy = {
     ~maxReceiveCount,
   ) =>
     redrivePolicy(~deadLetterTargetArn, ~maxReceiveCount)
-    ->Js.Json.stringifyAny
+    ->JSON.stringifyAny
     ->Option.getOr("{}")
 }
 

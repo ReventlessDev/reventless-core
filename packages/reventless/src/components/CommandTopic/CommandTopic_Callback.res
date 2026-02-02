@@ -17,7 +17,7 @@ module Make = (Spec: CommandTopic.Spec, Ops: Ops with module Spec = Spec): T => 
       switch json->Message.decodeCommand'(Spec.Id.schema, Spec.commandSchema) {
       | command' => Some({CommandTopic.reference, command: command'})
       | exception err =>
-        let commandStr = json->Js.Json.stringify
+        let commandStr = json->JSON.stringify
         Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
         None
       }
@@ -26,9 +26,9 @@ module Make = (Spec: CommandTopic.Spec, Ops: Ops with module Spec = Spec): T => 
     | res =>
       Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
       res
-    | exception Js.Exn.Error(e) =>
+    | exception JsExn(e) =>
       Logger.error(~loc=__LOC__, "Couldn't handle commands", e)
-      Js.Exn.raiseError(__LOC__ ++ `Error: Couldn't handle commands`) // TODO: exception details
+      JsError.throwWithMessage(__LOC__ ++ `Error: Couldn't handle commands`) // TODO: exception details
     }
   }
 }

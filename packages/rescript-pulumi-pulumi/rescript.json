@@ -1,15 +1,9 @@
 {
   "name": "@reventless/rescript-pulumi-pulumi",
-  "version": "0.1.1",
   "namespace": "Pulumi",
-  "suffix": ".res.js",
   "ppx-flags": [],
   "warnings": {
     "error": "-44+101"
-  },
-  "package-specs": {
-    "module": "commonjs",
-    "in-source": true
   },
   "sources": [
     {
@@ -17,11 +11,8 @@
       "subdirs": true
     }
   ],
-  "bs-dependencies": [
-    "@rescript/core"
+  "dependencies": [
   ],
-  "bsc-flags": [
-    "-open RescriptCore"
-  ],
-  "external-stdlib": "@rescript/std"
+  "compiler-flags": [
+  ]
 }

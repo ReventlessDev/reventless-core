@@ -22,9 +22,8 @@
   },
   "scripts": {
     "build": "rescript build",
-    "start": "rescript build -w",
+    "start": "rescript watch",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'",
     "test": "echo \"Error: There are no tests for rescript-aws-sdk.\" && exit 1"
   },
@@ -44,13 +43,9 @@
     "@reventless/rescript-node-streams": "^1.0.1"
   },
   "devDependencies": {
-    "@rescript/core": "^1.6.0",
-    "@rescript/std": "^11.1.4",
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   },
   "peerDependencies": {
-    "@rescript/core": "^1.6.0",
-    "@rescript/std": "^11.1.4",
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   }
 }

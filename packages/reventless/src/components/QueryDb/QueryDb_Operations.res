@@ -1,5 +1,5 @@
 module type Ops = {
-  let jsonOps: QueryDb.operations<string, Js.Json.t>
+  let jsonOps: QueryDb.operations<string, JSON.t>
 }
 
 module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Ops: Ops) => {
@@ -7,10 +7,10 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Ops: Ops) => {
     switch stateJson->Message.decode(ReadModelSpec.stateSchema) {
     | state => [state]
     | exception err =>
-      Js.log(
+      Console.log(
         `QueryDb: Error: Couldn't decode state for ${id->ReadModelSpec.Id.toString}: ${err
-          ->Js.Json.stringifyAny
-          ->Option.getExn}`,
+          ->JSON.stringifyAny
+          ->Option.getOrThrow}`,
       )
       []
     }
@@ -22,25 +22,25 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Ops: Ops) => {
     }
 
   let save = async (id, state, saveMode, ttl) =>
-    switch state->Message.encode(ReadModelSpec.stateSchema)->Js.Json.decodeObject {
+    switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
     | Some(dict) =>
-      dict->Js.Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
-      let json = Js.Json.object_(dict)
+      dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
+      let json = JSON.Encode.object(dict)
       await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
-      Js.log2("QueryDB.saveState: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+      Console.log2("QueryDB.saveState: Error: Couldn't decodeObject:", state->JSON.stringifyAny)
       Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
     }
 
   let saveBatch = async states => {
     let batch = states->Array.filterMap(((id, state, ttl)) =>
-      switch state->Message.encode(ReadModelSpec.stateSchema)->Js.Json.decodeObject {
+      switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
       | Some(dict) =>
-        dict->Js.Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
-        let json = Js.Json.object_(dict)
+        dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
+        let json = JSON.Encode.object(dict)
         Some((id->ReadModelSpec.Id.toString, json, ttl))
       | None =>
-        Js.log2("QueryDB.saveStates: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+        Console.log2("QueryDB.saveStates: Error: Couldn't decodeObject:", state->JSON.stringifyAny)
         None
       }
     )

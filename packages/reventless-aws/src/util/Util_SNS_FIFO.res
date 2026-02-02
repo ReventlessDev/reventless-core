@@ -3,7 +3,7 @@ let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
   name,
   id,
   urn: arn,
-  info: name->Pulumi.Output.apply(_ => "")
+  info: name->Pulumi.Output.apply(_ => ""),
 }
 
 let findTopicInUnwrappedResources = resources =>
@@ -12,8 +12,8 @@ let findTopicInUnwrappedResources = resources =>
   ]) {
   | [] =>
     let err = "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources"
-    Js.log(err)
-    Js.Exn.raiseError(err)
+    Console.log(err)
+    JsError.throwWithMessage(err)
 
   | resources => resources->Array.getUnsafe(0)
   }

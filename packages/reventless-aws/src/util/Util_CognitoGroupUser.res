@@ -18,7 +18,7 @@ let makeAddRemoveUserToGroupPolicy = (
       ~name=name ++ "AddRemoveUserToGroup",
       ~args={
         PulumiAws.IAM.Policy.policy: PulumiAws.PolicyDocument.make(
-          ~id = name ++ "UserPoolPolicy",
+          ~id=name ++ "UserPoolPolicy",
           ~statements=[
             {
               sid: "AllowAdminAddRemoveUserToGroup",

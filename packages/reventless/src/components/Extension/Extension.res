@@ -7,7 +7,7 @@ type outputs = {
 }
 type t
 
-type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
+type eventHandler = (JSON.t, ReventlessSpec.Plugin.pluginDefinition) => promise<unit>
 
 module type T = {
   type operations = {incomingEventHandler: eventHandler, outgoingEventHandler: eventHandler}

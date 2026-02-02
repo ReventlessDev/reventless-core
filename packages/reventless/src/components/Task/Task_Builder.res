@@ -33,7 +33,7 @@ module Make = (
     let allCommandTopics = allAggregates->Aggregate.allCommandTopics
 
     let publishCommands: Task.publishCommands = (aggregateName, cmdJsons) => {
-      (publishToAggregates->Dict.get(aggregateName)->Option.getExn)(cmdJsons)
+      (publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow)(cmdJsons)
     }
 
     let config = Spec.setup(queryEngine, queryBucketName, opts)
@@ -60,12 +60,12 @@ module Make = (
         | CreateSchedule(schedule) =>
           switch operations {
           | Some(operations) => await operations.createSchedule(schedule)
-          | None => Js.log("No SideEffectHandler to create schedule")
+          | None => Console.log("No SideEffectHandler to create schedule")
           }
         | DeleteSchedule(scheduleId) =>
           switch operations {
           | Some(operations) => await operations.deleteSchedule(scheduleId)
-          | None => Js.log("No SideEffectHandler to delete schedule")
+          | None => Console.log("No SideEffectHandler to delete schedule")
           }
         }
       })
@@ -79,10 +79,12 @@ module Make = (
       | Some(sideEffectHandler) =>
         sideEffectHandler
         ->Component.operations
-        ->Pulumi.Output.apply(operations => async (event, context) => {
-          let taskActions = await handler(event, context)
-          await taskActions->taskActionsHandler(Some(operations))
-        })
+        ->Pulumi.Output.apply(operations =>
+          async (event, context) => {
+            let taskActions = await handler(event, context)
+            await taskActions->taskActionsHandler(Some(operations))
+          }
+        )
       | None =>
         (
           async (event, context) => {
@@ -115,7 +117,7 @@ module Make = (
               ),
               ~memorySize=4096,
               ~timeout=600,
-              ~name=bucketName
+              ~name=bucketName,
             ),
         )
 
@@ -151,6 +153,6 @@ module Make = (
         ~allAggregates,
         ...
       ),
-      ~opts
+      ~opts,
     )
 }

@@ -72,7 +72,7 @@ type consumedCapacity = {
   @as("GlobalSecondaryIndexes") globalSecondaryIndexes: dict<capacity>,
 }
 type itemCollectionMetric = {
-  @as("ItemCollectionKey") itemCollectionKey: Js.Json.t,
+  @as("ItemCollectionKey") itemCollectionKey: JSON.t,
   @as("SizeEstimateRangeGB") sizeEstimateRangeGB: array<float>,
 }
 type returnConsumedCapacity = [#INDEXES | #TOTAL | #NONE]
@@ -88,21 +88,21 @@ type returnValues = [
 type returnValuesOnConditionCheckFailure = [#NONE | #ALL_OLD]
 
 type select = [
-  | /** Returns all of the item attributes from the specified table or index. If you query a local secondary index, then for each matching item in the index, DynamoDB fetches the entire item from the parent table. If the index is configured to project all item attributes, then all of the data can be obtained from the local secondary index, and no fetching is required. */
-  #ALL_ATTRIBUTES
-  | /** Allowed only when querying an index. Retrieves all attributes that have been projected into the index. If the index is configured to project all attributes, this return value is equivalent to specifying ALL_ATTRIBUTES. */
-  #ALL_PROJECTED_ATTRIBUTES
-  | /** Returns the number of matching items, rather than the matching items themselves. Note that this uses the same quantity of read capacity units as getting the items, and is subject to the same item size calculations. */
-  #COUNT
-  | /** Returns only the attributes listed in ProjectionExpression. This return value is equivalent to specifying ProjectionExpression without specifying any value for Select. */
-  #SPECIFIC_ATTRIBUTES
+  /** Returns all of the item attributes from the specified table or index. If you query a local secondary index, then for each matching item in the index, DynamoDB fetches the entire item from the parent table. If the index is configured to project all item attributes, then all of the data can be obtained from the local secondary index, and no fetching is required. */
+  | #ALL_ATTRIBUTES
+  /** Allowed only when querying an index. Retrieves all attributes that have been projected into the index. If the index is configured to project all attributes, this return value is equivalent to specifying ALL_ATTRIBUTES. */
+  | #ALL_PROJECTED_ATTRIBUTES
+  /** Returns the number of matching items, rather than the matching items themselves. Note that this uses the same quantity of read capacity units as getting the items, and is subject to the same item size calculations. */
+  | #COUNT
+  /** Returns only the attributes listed in ProjectionExpression. This return value is equivalent to specifying ProjectionExpression without specifying any value for Select. */
+  | #SPECIFIC_ATTRIBUTES
 ]
 
-let getIntAttribute = (attributes: option<dict<Js.Json.t>>, name: string) => {
+let getIntAttribute = (attributes: option<dict<JSON.t>>, name: string) => {
   attributes->Option.flatMap(attribute =>
     attribute
-    ->Js.Dict.get(name)
-    ->Option.flatMap(value => value->Js.Json.decodeNumber)
+    ->Dict.get(name)
+    ->Option.flatMap(value => value->JSON.Decode.float)
     ->Option.map(number => number->Int.fromFloat)
   )
 }
@@ -118,15 +118,14 @@ module PutCommand = {
   - Expected
   */
   type input = {
-    /** Js.Json.t is not a json string but the already JSON.parsed value. This will be further used with the en-/decoding library - note: it's actually js object */
     @as("Item")
-    item: Js.Json.t,
+    item: JSON.t,
     @as("TableName") tableName: string,
     @as("ConditionExpression") conditionExpression?: string,
     @as("ExpressionAttributeNames") expressionAttributeNames?: dict<string>,
     /** this is actually a js object (key/value pairs)*/
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     @as("ReturnConsumedCapacity") returnConsumedCapacity?: returnConsumedCapacity,
     @as("ReturnItemCollectionMetrics") returnItemCollectionMetrics?: returnItemCollectionMetrics,
     @as("ReturnValues") returnValues?: returnValues,
@@ -136,7 +135,7 @@ module PutCommand = {
 
   type output = {
     @as("$metadata") metadata: Metadata.t,
-    @as("Attributes") attributes?: Js.Json.t,
+    @as("Attributes") attributes?: JSON.t,
     @as("ConsumedCapacity") consumedCapacity?: consumedCapacity,
     @as("ItemCollectionMetrics") itemCollectionMetrics?: itemCollectionMetric,
   }
@@ -146,10 +145,10 @@ module PutCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = input => Raw.send(client(), input)
+  let send: t => promise<output> = input => Raw.send(client(), input)
 }
 
 /** send individual put requests for any item
@@ -167,11 +166,11 @@ let putMany = (tableName, conditionalExpression, items) => {
     ->make
     ->send
   })
-  ->Js.Promise.all // FIXME: use allSettled (otherwise the first rejection in the array, will "cancel" out all others
+  ->Promise.all // FIXME: use allSettled (otherwise the first rejection in the array, will "cancel" out all others
 }
 
 /** send put request with a default conditionExpression */
-let putIfNotExists = (tableName, idKey, sortKey: option<Js.Nullable.t<string>>, item) => {
+let putIfNotExists = (tableName, idKey, sortKey: option<Nullable.t<string>>, item) => {
   open PutCommand
   {
     PutCommand.item,
@@ -221,68 +220,68 @@ module PutError = {
       retryable?: retryable, // TODO: extract to `DynamoDBServiceException` type and spread this type
       // this must be an object!
       @as("Item")
-      item: Js.Json.t,
+      item: JSON.t,
       /** `ConditionalCheckFailedException` */
       name: string,
     }
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module InternalServerError = {
     let name = "InternalServerError"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module InvalidEndpointException = {
     let name = "InvalidEndpointException"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module ItemCollectionSizeLimitExceededException = {
     let name = "ItemCollectionSizeLimitExceededException"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module ProvisionedThroughputExceededException = {
     let name = "ProvisionedThroughputExceededException"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module RequestLimitExceeded = {
     let name = "RequestLimitExceeded"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module ResourceNotFoundException = {
     let name = "ResourceNotFoundException"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module TransactionConflictException = {
     let name = "TransactionConflictException"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   module DynamoDBServiceException = {
     let name = "DynamoDBServiceException"
     type t
 
-    external ofJsExn: Js.Exn.t => t = "%identity"
+    external ofJsExn: JsExn.t => t = "%identity"
   }
 
   type t =
@@ -295,10 +294,10 @@ module PutError = {
     | ResourceNotFoundException(ResourceNotFoundException.t)
     | TransactionConflictException(TransactionConflictException.t)
     | DynamoDBServiceException(DynamoDBServiceException.t)
-    | Unknown(Js.Exn.t)
+    | Unknown(JsExn.t)
 
-  let classify: Js.Exn.t => t = exn => {
-    let name = exn->Js.Exn.name->Option.getOr("")
+  let classify: JsExn.t => t = exn => {
+    let name = exn->JsExn.name->Option.getOr("")
     if name == ConditionCheckFailedException.name {
       ConditionCheckFailedException(exn->ConditionCheckFailedException.ofJsExn)
     } else if name == InternalServerError.name {
@@ -336,16 +335,16 @@ module BatchWriteCommand = {
     this must be an object!
     */
     @as("Item")
-    item: Js.Json.t,
+    item: JSON.t,
   }
   type deleteRequest = {
     /** A map of attribute name to attribute values, representing the primary key of the item to delete. All of the table's primary key attributes must be specified, and their data types must match those of the table's key schema.
-    note: this uses Js.Json.t to have a single type for any value
-    note: Js.Json.t is _not_ the json stringified value!
+    note: this uses JSON.t to have a single type for any value
+    note: JSON.t is _not_ the json stringified value!
 
     */
     @as("Key")
-    key: dict<Js.Json.t>,
+    key: dict<JSON.t>,
   }
   /** use either putRequest _or_ deleteRequest: both being set will result in a runtime error!
   TODO: `@as` is not supported in rescript v10 -> use following code, when rescript v11 is used:
@@ -385,11 +384,11 @@ module BatchWriteCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
   /** batchWrite: max. batch size is 25 */
-  let send: t => Js.Promise.t<output> = input => Raw.send(client(), input)
+  let send: t => promise<output> = input => Raw.send(client(), input)
 }
 
 module UpdateCommand = {
@@ -404,7 +403,7 @@ module UpdateCommand = {
     For the primary key, you must provide all of the attributes. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.
     */
     @as("Key")
-    key: dict<Js.Json.t>,
+    key: dict<JSON.t>,
     /** The name of the table containing the item to update. You can also provide the Amazon Resource Name (ARN) of the table in this parameter. */
     @as("TableName")
     tableName: string,
@@ -416,7 +415,7 @@ module UpdateCommand = {
     expressionAttributeNames?: dict<string>,
     /** One or more values that can be substituted in an expression. */
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     /** Determines the level of detail about either provisioned or on-demand throughput consumption that is returned in the response */
     @as("ReturnConsumedCapacity")
     returnConsumedCapacity?: returnConsumedCapacity,
@@ -438,7 +437,7 @@ module UpdateCommand = {
     @as("$metadata") metadata: Metadata.t,
     /** A map of attribute values as they appear before or after the UpdateItem operation, as determined by the ReturnValues parameter.*/
     @as("Attributes")
-    attributes?: dict<Js.Json.t>,
+    attributes?: dict<JSON.t>,
     @as("ConsumedCapacity") consumedCapacity?: consumedCapacity,
     @as("ItemCollectionMetrics") itemCollectionMetrics?: itemCollectionMetric,
   }
@@ -448,10 +447,10 @@ module UpdateCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = input => Raw.send(client(), input)
+  let send: t => promise<output> = input => Raw.send(client(), input)
 }
 
 module DeleteCommand = {
@@ -465,7 +464,7 @@ module DeleteCommand = {
     tableName: string,
     /** A map of attribute names to values, representing the primary key of the item to delete. */
     @as("Key")
-    key: dict<Js.Json.t>,
+    key: dict<JSON.t>,
     /** A condition that must be satisfied in order for a conditional DeleteItem to succeed. */
     @as("ConditionExpression")
     conditionExpression?: string,
@@ -474,7 +473,7 @@ module DeleteCommand = {
     expressionAttributeNames?: dict<string>,
     /** One or more values that can be substituted in an expression. */
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     /** Determines the level of detail about either provisioned or on-demand throughput consumption that is returned in the response. */
     @as("ReturnConsumedCapacity")
     returnConsumedCapacity?: returnConsumedCapacity,
@@ -493,7 +492,7 @@ module DeleteCommand = {
     @as("$metadata") metadata: Metadata.t,
     /** A map of attribute names to values, representing the item as it appeared before the DeleteItem operation. This map appears in the response only if ReturnValues was specified as ALL_OLD in the request. */
     @as("Attributes")
-    attributes?: dict<Js.Json.t>,
+    attributes?: dict<JSON.t>,
     /** The capacity units consumed by the DeleteItem operation. The data returned includes the total provisioned throughput consumed, along with statistics for the table and any indexes involved in the operation. ConsumedCapacity is only returned if the ReturnConsumedCapacity parameter was specified. For more information, see Provisioned capacity mode 
 in the Amazon DynamoDB Developer Guide. */
     @as("ConsumedCapacity")
@@ -507,21 +506,21 @@ in the Amazon DynamoDB Developer Guide. */
   external make: input => t = "DeleteCommand"
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
-  let send: t => Js.Promise.t<output> = command => {
+  let send: t => promise<output> = command => {
     Raw.send(client(), command)
   }
 }
 
-let deleteById: (~tableName: string, ~id: string) => Js.Promise.t<DeleteCommand.output> = (
+let deleteById: (~tableName: string, ~id: string) => promise<DeleteCommand.output> = (
   ~tableName,
   ~id,
 ) => {
   open DeleteCommand
   {
     DeleteCommand.tableName,
-    key: [("id", id->Js.Json.string)]->Js.Dict.fromArray,
+    key: [("id", id->JSON.Encode.string)]->Dict.fromArray,
   }
   ->make
   ->send
@@ -532,9 +531,9 @@ let deleteByIdSort: (
   ~id: string,
   ~sortField: string,
   ~sortKey: string,
-) => Js.Promise.t<DeleteCommand.output> = (~tableName, ~id, ~sortField, ~sortKey) => {
+) => promise<DeleteCommand.output> = (~tableName, ~id, ~sortField, ~sortKey) => {
   let keyDict =
-    [("id", id->Js.Json.string), (sortField, sortKey->Js.Json.string)]->Js.Dict.fromArray
+    [("id", id->JSON.Encode.string), (sortField, sortKey->JSON.Encode.string)]->Dict.fromArray
   open DeleteCommand
   {
     DeleteCommand.tableName,
@@ -548,7 +547,7 @@ let delete: (
   ~sort: (string, string)=?,
   ~tableName: string,
   ~id: string,
-) => Js.Promise.t<DeleteCommand.output> = (~sort=?, ~tableName, ~id) =>
+) => promise<DeleteCommand.output> = (~sort=?, ~tableName, ~id) =>
   switch sort {
   | Some((sortField, sortKey)) => deleteByIdSort(~tableName, ~id, ~sortField, ~sortKey)
   | None => deleteById(~tableName, ~id)
@@ -562,7 +561,7 @@ module TransactWriteCommand = {
   type conditionCheck = {
     /** The primary key of the item to be checked. Each element consists of an attribute name and a value for that attribute. */
     @as("Key")
-    key: dict<Js.Json.t>,
+    key: dict<JSON.t>,
     /** Name of the table for the check item request. You can also provide the Amazon Resource Name (ARN) of the table in this parameter. */
     @as("TableName")
     tableName: string,
@@ -573,7 +572,7 @@ module TransactWriteCommand = {
     @as("ExpressionAttributeNames")
     expressionAttributeNames?: dict<string>,
     /* One or more values that can be substituted in an expression. */
-    @as("ExpressionAttributeValues") expressionAttributeValues?: dict<Js.Json.t>,
+    @as("ExpressionAttributeValues") expressionAttributeValues?: dict<JSON.t>,
     /** Use ReturnValuesOnConditionCheckFailure to get the item attributes if the ConditionCheck condition fails. */
     @as("ReturnValuesOnConditionCheckFailure")
     returnValuesOnConditionCheckFailure?: returnValuesOnConditionCheckFailure,
@@ -582,7 +581,7 @@ module TransactWriteCommand = {
   type delete = {
     /** The primary key of the item to be deleted. Each element consists of an attribute name and a value for that attribute. */
     @as("Key")
-    key: dict<Js.Json.t>,
+    key: dict<JSON.t>,
     /** Name of the table in which the item to be deleted resides. You can also provide the Amazon Resource Name (ARN) of the table in this parameter. */
     @as("TableName")
     tableName: string,
@@ -594,7 +593,7 @@ module TransactWriteCommand = {
     expressionAttributeNames?: dict<string>,
     /** One or more values that can be substituted in an expression. */
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     /** Use ReturnValuesOnConditionCheckFailure to get the item attributes if the Delete condition fails. */
     @as("ReturnValuesOnConditionCheckFailure")
     returnValuesOnConditionCheckFailure?: returnValuesOnConditionCheckFailure,
@@ -606,7 +605,7 @@ module TransactWriteCommand = {
     this must be an object!
     */
     @as("Item")
-    item: Js.Json.t,
+    item: JSON.t,
     /** Name of the table in which to write the item. You can also provide the Amazon Resource Name (ARN) of the table in this parameter. */
     @as("TableName")
     tableName: string,
@@ -618,7 +617,7 @@ module TransactWriteCommand = {
     expressionAttributeNames?: dict<string>,
     /** One or more values that can be substituted in an expression. */
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     /** se ReturnValuesOnConditionCheckFailure to get the item attributes if the Put condition fails. */
     @as("ReturnValuesOnConditionCheckFailure")
     returnValuesOnConditionCheckFailure?: returnValuesOnConditionCheckFailure,
@@ -627,7 +626,7 @@ module TransactWriteCommand = {
   type update = {
     /** The primary key of the item to be updated. Each element consists of an attribute name and a value for that attribute. */
     @as("Key")
-    key: dict<Js.Json.t>,
+    key: dict<JSON.t>,
     /** Name of the table for the UpdateItem request. You can also provide the Amazon Resource Name (ARN) of the table in this parameter. */
     @as("TableName")
     tableName: string,
@@ -642,7 +641,7 @@ module TransactWriteCommand = {
     expressionAttributeNames?: dict<string>,
     /** One or more values that can be substituted in an expression. */
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     /** Use ReturnValuesOnConditionCheckFailure to get the item attributes if the Update condition fails. */
     @as("ReturnValuesOnConditionCheckFailure")
     returnValuesOnConditionCheckFailure?: returnValuesOnConditionCheckFailure,
@@ -693,7 +692,7 @@ module TransactWriteCommand = {
 
   module Raw = {
     @send
-    external send: (client, input) => Js.Promise.t<output> = "send"
+    external send: (client, input) => promise<output> = "send"
   }
   let send = command => {
     Raw.send(client(), command)
@@ -716,13 +715,13 @@ module QueryCommand = {
     /** The primary key of the first item that this operation will evaluate. Use the value that was returned for LastEvaluatedKey in the previous operation.
     The data type for ExclusiveStartKey must be String, Number, or Binary. No set data types are allowed. */
     @as("ExclusiveStartKey")
-    exclusiveStartKey?: dict<Js.Json.t>,
+    exclusiveStartKey?: dict<JSON.t>,
     /** One or more substitution tokens for attribute names in an expression. */
     @as("ExpressionAttributeNames")
     expressionAttributeNames?: dict<string>,
     /** One or more values that can be substituted in an expression. */
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     /** A string that contains conditions that DynamoDB applies after the Query operation, but before the data is returned to you. Items that do not satisfy the FilterExpression criteria are not returned.
     A FilterExpression does not allow key attributes. You cannot define a filter expression based on a partition key or a sort key.
     A FilterExpression is applied after the items have already been read; the process of filtering does not consume any additional read capacity units. */
@@ -768,12 +767,12 @@ module QueryCommand = {
     this data type is an array of objects.
     */
     @as("Items")
-    items?: array<Js.Json.t>,
+    items?: array<JSON.t>,
     /** The primary key of the item where the operation stopped, inclusive of the previous result set. Use this value to start a new operation, excluding this value in the new request.
     If LastEvaluatedKey is empty, then the "last page" of results has been processed and there is no more data to be retrieved.
     If LastEvaluatedKey is not empty, it does not necessarily mean that there is more data in the result set. The only way to know when you have reached the end of the result set is when LastEvaluatedKey is empty. */
     @as("LastEvaluatedKey")
-    lastEvaluatedKey?: dict<Js.Json.t>,
+    lastEvaluatedKey?: dict<JSON.t>,
     /** The number of items evaluated, before any QueryFilter is applied. A high ScannedCount value with few, or no, Count results indicates an inefficient Query operation.
     If you did not use a filter in the request, then ScannedCount is the same as Count. */
     @as("ScannedCount")
@@ -785,10 +784,10 @@ module QueryCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 /* use this function if you expect, that the queried data could exceed
@@ -796,7 +795,7 @@ module QueryCommand = {
 let rec queryRecursive: (
   ~allResults: QueryCommand.output=?,
   ~params: QueryCommand.input,
-) => Js.Promise.t<QueryCommand.output> = async (
+) => promise<QueryCommand.output> = async (
   ~allResults={
     metadata: {
       attempts: 0,
@@ -836,9 +835,6 @@ let rec queryRecursive: (
   switch lastEvaluatedKey {
   | None => allResults
   | Some(lastEvaluatedKey) =>
-    //    let tmpParams = {"_ExclusiveStartKey": lastEvaluatedKey}
-    //   let params = Js.Obj.assign(params, tmpParams)
-
     let params = {
       ...params,
       exclusiveStartKey: lastEvaluatedKey,
@@ -854,7 +850,7 @@ let queryById = async (tableName, id) => {
       tableName,
       consistentRead: true,
       keyConditionExpression: "id=:id",
-      expressionAttributeValues: [(":id", id->Js.Json.string)]->Js.Dict.fromArray,
+      expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
     },
   ) {
   | result =>
@@ -862,10 +858,10 @@ let queryById = async (tableName, id) => {
     ->Option.getOr([])
     ->Array.map(js =>
       js
-      ->Js.Json.stringifyAny
+      ->JSON.stringifyAny
       ->Option.getOr("")
       // NOTE: default emptry string will raise exception if it gets parsed as json
-      ->Js.Json.parseExn
+      ->JSON.parseOrThrow
     )
   }
 }
@@ -886,13 +882,13 @@ module ScanCommand = {
     /** The primary key of the first item that this operation will evaluate. Use the value that was returned for LastEvaluatedKey in the previous operation.
     The data type for ExclusiveStartKey must be String, Number or Binary. No set data types are allowed. */
     @as("ExclusiveStartKey")
-    exclusiveStartKey?: dict<Js.Json.t>,
+    exclusiveStartKey?: dict<JSON.t>,
     /** One or more substitution tokens for attribute names in an expression. */
     @as("ExpressionAttributeNames")
     expressionAttributeNames?: dict<string>,
     /** One or more values that can be substituted in an expression. */
     @as("ExpressionAttributeValues")
-    expressionAttributeValues?: dict<Js.Json.t>,
+    expressionAttributeValues?: dict<JSON.t>,
     /** A string that contains conditions that DynamoDB applies after the Scan operation, but before the data is returned to you. Items that do not satisfy the FilterExpression criteria are not returned.
     A FilterExpression is applied after the items have already been read; the process of filtering does not consume any additional read capacity units. */
     @as("FilterExpression")
@@ -934,10 +930,10 @@ module ScanCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 /* use this function if you expect, that the scanned data could exceed
@@ -945,7 +941,7 @@ module ScanCommand = {
 let rec scanRecursive: (
   ~allResults: QueryCommand.output=?,
   ~params: ScanCommand.input,
-) => Js.Promise.t<QueryCommand.output> = async (
+) => promise<QueryCommand.output> = async (
   ~allResults={
     metadata: {
       attempts: 0,

@@ -97,6 +97,6 @@ module Make = (
       ~componentType=Counter.componentType->ComponentType.toString,
       ~name=name->ComponentType.name(Counter.componentType),
       ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl), ...),
-      ~opts
+      ~opts,
     )
 }

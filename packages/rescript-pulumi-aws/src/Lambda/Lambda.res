@@ -21,7 +21,7 @@ type clientContextEnv = {
 
 type clientContext = {
   client: clientContextClient,
-  @as("Custom") custom: option<Js.Json.t>,
+  @as("Custom") custom: option<JSON.t>,
   env: clientContextEnv,
 }
 
@@ -40,7 +40,7 @@ type context = {
 
 type userIdentity = {principalId: string}
 
-type eventHandler<'event, 'result> = ('event, context) => Js.Promise.t<'result>
+type eventHandler<'event, 'result> = ('event, context) => promise<'result>
 type eventHandlerNoResult<'event> = eventHandler<'event, unit>
 
 @send
@@ -112,7 +112,7 @@ module CallbackFunction = {
       ~vpcConfig=?,
       ~tags=?,
       ~environment={
-        variables: [("Environment", Pulumi.Pulumi.getStackName())]->Js.Dict.fromArray,
+        variables: [("Environment", Pulumi.Pulumi.getStackName())]->Dict.fromArray,
       },
     ) => {
       callback,

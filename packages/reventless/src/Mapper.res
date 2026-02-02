@@ -1,5 +1,5 @@
-type encode<'a> = 'a => Js.Json.t
-type decode<'a> = Js.Json.t => 'a
+type encode<'a> = 'a => JSON.t
+type decode<'a> = JSON.t => 'a
 
 module type GenericSource = {
   let name: string

@@ -10,8 +10,8 @@
 //   let toAbstractAction:
 //     (
 //       action('a),
-//       Js.Json.t => result('a, Decco.decodeError),
-//       'a => Js.Json.t
+//       JSON.t => result('a, Decco.decodeError),
+//       'a => JSON.t
 //     ) =>
 //     abstractAction;
 // };
@@ -29,7 +29,7 @@
 //     module Spec: Spec; // to be removed via destructive replace in functor call
 //     module Source: GenericSource;
 //     let targetName: string;
-//     let map: Js.Json.t => Spec.action(Js.Json.t);
+//     let map: JSON.t => Spec.action(JSON.t);
 //   };
 //   module Mapping =
 //          (
@@ -59,7 +59,7 @@
 //         ->Spec.toAbstractAction(Target.decode, Target.encode)
 //       | _ =>
 //         Js.Exn.raiseError(
-//           "Couldn't decode source:" ++ json->Js.Json.stringify,
+//           "Couldn't decode source:" ++ json->JSON.stringify,
 //         )
 //       };
 //     };
@@ -74,8 +74,8 @@
 //   module type Mapper = {
 //     module Spec: Spec; // to be removed via destructive replace in functor call
 //     let map:
-//       (~targetName: option(string), Js.Json.t) =>
-//       array(Spec.action(Js.Json.t));
+//       (~targetName: option(string), JSON.t) =>
+//       array(Spec.action(JSON.t));
 //   };
 //   module Mapper =
 //          (
@@ -96,7 +96,7 @@
 //       ->Array.filterMap((module Mapping: Mappings.Mapping) =>
 //           try (Some(json->Mapping.map)) {
 //           | exn =>
-//             Js.log2(
+//             Console.log2(
 //               "Mapping failed:",
 //               exn->Js.Exn.asJsExn->Option.map(Js.Exn.message),
 //             );

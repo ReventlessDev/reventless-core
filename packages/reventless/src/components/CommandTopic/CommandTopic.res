@@ -7,18 +7,18 @@ type allOutputs = dict<outputs>
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
 
-exception NotPublishedToChannel(Js.Promise.error)
+exception NotPublishedToChannel(exn)
 
 type topicItem<'command> = {
   command: 'command,
   reference: string,
 }
 
-type publish<'id, 'command> = Message.command'<'id, 'command> => Js.Promise.t<unit>
-type publishJsons = array<Message.commandJson> => Js.Promise.t<unit>
+type publish<'id, 'command> = Message.command'<'id, 'command> => promise<unit>
+type publishJsons = array<Message.commandJson> => promise<unit>
 
-type jsonCommandsHandler = array<topicItem<Js.Json.t>> => promise<array<result<string, string>>>
-type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
+type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<string, string>>>
+type commandsHandler<'command> = array<topicItem<'command>> => promise<
   array<result<string, string>>,
 >
 

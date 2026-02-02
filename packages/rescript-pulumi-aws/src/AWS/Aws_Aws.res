@@ -6,7 +6,7 @@ type getRegionResult = {description: string, endpoint: string, id: string, name:
 external getRegion: (
   ~args: getRegionArgs=?,
   ~opts: Pulumi.InvokeOptions.t=?,
-) => Js.Promise.t<getRegionResult> = "getRegion"
+) => promise<getRegionResult> = "getRegion"
 
 @module("@pulumi/aws")
 external getRegionSync: (

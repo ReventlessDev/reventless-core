@@ -1,6 +1,6 @@
 open ReventlessSpec.ReadModel_Spec
 
-type operations = QueryDb.operations<string, Js.Json.t>
+type operations = QueryDb.operations<string, JSON.t>
 
 type storage = {
   resources: array<ReventlessSpec.Adapter.resource>,

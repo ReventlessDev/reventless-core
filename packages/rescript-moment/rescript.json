@@ -1,13 +1,7 @@
 {
   "name": "@reventless/rescript-moment",
-  "suffix": ".res.js",
-  "bsc-flags": [
-    "-bs-super-errors"
+  "compiler-flags": [
   ],
-  "package-specs": {
-    "module": "commonjs",
-    "in-source": true
-  },
   "sources": [
     {
       "dir": "src",
@@ -18,9 +12,7 @@
       "subdirs": true
     }
   ],
-  "bs-dependencies": [
+  "dependencies": [
     "@glennsl/rescript-jest"
-  ],
-  "bs-dev-dependencies": [],
-  "external-stdlib": "@rescript/std"
+  ]
 }

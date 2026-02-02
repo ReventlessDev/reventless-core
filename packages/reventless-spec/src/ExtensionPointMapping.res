@@ -5,7 +5,7 @@ type callHandler<'msg> = (
   Schedule.delete,
   QueryEngine.operations,
   'msg,
-) => Js.Promise.t<unit>
+) => promise<unit>
 
 /* these actions are needed for Impl */
 type commandAction<'command, 'msg> =
@@ -14,7 +14,7 @@ type commandAction<'command, 'msg> =
 
 type eventAction<'event, 'msg> =
   | PublishEvent(string, 'event)
-  | PublishEventAsync(Js.Promise.t<(string, 'event)>)
+  | PublishEventAsync(promise<(string, 'event)>)
   | Call(callHandler<'msg>, 'msg)
 
 module type Spec = {

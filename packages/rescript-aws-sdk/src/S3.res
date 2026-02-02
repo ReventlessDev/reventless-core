@@ -38,10 +38,10 @@ module GetObjectCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = input => Raw.send(client(), input)
+  let send: t => promise<output> = input => Raw.send(client(), input)
 }
 
 module PutObjectCommand = {
@@ -69,10 +69,10 @@ module PutObjectCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = input => Raw.send(client(), input)
+  let send: t => promise<output> = input => Raw.send(client(), input)
 }
 
 module CompleteMultipartUploadCommand = {
@@ -166,7 +166,7 @@ module Upload = {
     }->Raw.make
   }
 
-  type done = Js.Promise.t<CompleteMultipartUploadCommand.output>
+  type done = promise<CompleteMultipartUploadCommand.output>
   @send
   external done: t => done = "done"
 }

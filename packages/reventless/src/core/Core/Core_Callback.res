@@ -4,7 +4,7 @@ module type Spec = {
 }
 
 module type T = {
-  let handleJsonEvents: array<Js.Json.t> => Js.Promise.t<unit>
+  let handleJsonEvents: array<JSON.t> => promise<unit>
 }
 
 module Make = (Spec: Spec): T => {
@@ -20,10 +20,10 @@ module Make = (Spec: Spec): T => {
       ->Array.map(handleEvent => {
         handleEvent(eventJson', Spec.pluginDefinition)
       })
-      ->Js.Promise.all
+      ->Promise.all
       ->Util.Promise.toUnit
     })
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
   }
 }

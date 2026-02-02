@@ -63,6 +63,6 @@ module Make = (
       ~componentType=EventCollector.componentType->ComponentType.toString,
       ~name,
       ~construct=construct(~eventTopics, ...),
-      ~opts=Some(opts)
+      ~opts=Some(opts),
     )
 }

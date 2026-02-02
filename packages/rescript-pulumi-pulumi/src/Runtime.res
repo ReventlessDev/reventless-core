@@ -5,8 +5,7 @@ module ResourceTransformationArgs = {
   module Props = {
     type t<'a> = 'a
     let update: (~props: t<'a>, 'b) => 'c = (~props, obj) => {
-      open Js.Obj
-      ()->empty->assign(obj)->assign(props)
+      ()->Object.make->Object.assign(obj)->Object.assign(props)
     }
   }
 

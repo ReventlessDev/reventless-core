@@ -14,28 +14,22 @@ type saveMode =
   | Overwrite
   | Any
 
-type load<'id, 'state> = 'id => Js.Promise.t<
-  result<array<'state>, ReventlessSpec.QueryDb.storageError>,
->
+type load<'id, 'state> = 'id => promise<result<array<'state>, ReventlessSpec.QueryDb.storageError>>
 type save<'id, 'state> = (
   'id,
   'state,
   saveMode,
   option<int>,
-) => Js.Promise.t<result<unit, ReventlessSpec.QueryDb.storageError>>
-type saveBatch<'id, 'state> = array<('id, 'state, option<int>)> => Js.Promise.t<
+) => promise<result<unit, ReventlessSpec.QueryDb.storageError>>
+type saveBatch<'id, 'state> = array<('id, 'state, option<int>)> => promise<
   result<unit, ReventlessSpec.QueryDb.storageError>,
 >
-type count<'id> = (
-  'id,
-  string,
-  int,
-) => Js.Promise.t<result<int, ReventlessSpec.QueryDb.storageError>>
+type count<'id> = ('id, string, int) => promise<result<int, ReventlessSpec.QueryDb.storageError>>
 type delete<'id> = (
   'id,
   option<(string, string)>,
-) => Js.Promise.t<result<unit, ReventlessSpec.QueryDb.storageError>>
-type deleteBatch<'id> = array<('id, option<(string, string)>)> => Js.Promise.t<
+) => promise<result<unit, ReventlessSpec.QueryDb.storageError>>
+type deleteBatch<'id> = array<('id, option<(string, string)>)> => promise<
   result<unit, ReventlessSpec.QueryDb.storageError>,
 >
 
@@ -59,7 +53,7 @@ module type T = {
 
 let allResolversMakers = allQueryDbs =>
   allQueryDbs
-  ->Js.Dict.values
+  ->Dict.valuesToArray
   ->Array.map((queryDb: outputs) => queryDb.resolversMaker)
 
 let storageErrorToString: ReventlessSpec.QueryDb.storageError => string = err =>

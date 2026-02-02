@@ -39,13 +39,13 @@ type query = (
   ~filterConfigs: array<Filter.config>=?,
   ~ascending: bool=?,
   ~limit: int=?,
-) => Js.Promise.t<array<Js.Json.t>>
+) => promise<array<JSON.t>>
 
 type scan = (
   ~readModelName: string,
   ~filterConfigs: array<Filter.config>,
   ~limit: int,
-) => Js.Promise.t<array<Js.Json.t>>
+) => promise<array<JSON.t>>
 
 type operations = {
   scan: scan,

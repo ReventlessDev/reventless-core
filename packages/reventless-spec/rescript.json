@@ -1,16 +1,11 @@
 {
   "name": "@reventless/reventless-spec",
   "namespace": "ReventlessSpec",
-  "suffix": ".res.js",
   "ppx-flags": [
     "sury-ppx/bin"
   ],
   "warnings": {
     "error": "-44+101"
-  },
-  "package-specs": {
-    "module": "commonjs",
-    "in-source": true
   },
   "sources": [
     {
@@ -18,16 +13,10 @@
       "subdirs": true
     }
   ],
-  "bs-dependencies": [
-    "@rescript/core",
+  "dependencies": [
     "sury",
     "@reventless/rescript-pulumi-pulumi"
   ],
-  "bsc-flags": [
-    "-open RescriptCore"
-  ],
-  "pinned-dependencies": [
-    "@reventless/rescript-pulumi-pulumi"
-  ],
-  "external-stdlib": "@rescript/std"
+  "compiler-flags": [
+  ]
 }

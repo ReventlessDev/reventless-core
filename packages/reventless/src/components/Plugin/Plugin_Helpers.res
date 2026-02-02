@@ -19,14 +19,14 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
     ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.make)
     ->Pulumi.Output.apply((plugin: pureOutputs) =>
       plugin.readModels
-      ->Js.Dict.get(queryDbName)
+      ->Dict.get(queryDbName)
       ->Option.map((readModel: ReadModel.outputs) => readModel.queryDb.resources)
       ->Option.getOr([])
     )
   }) {
   | Some(resources) => resources
   | None =>
-    Js.log("Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin $pluginName")
+    Console.log("Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin $pluginName")
     []->Pulumi.Output.make
   }
 
@@ -50,7 +50,7 @@ let serviceNameToEventHandlers: (
   array<eventHandlers>,
   eventHandlers => option<eventHandler>,
 ) => dict<array<eventHandler>> = (outputs, getServiceNames, handlers, getEventHandler) => {
-  let dict = Js.Dict.empty()
+  let dict = Dict.make()
   Belt.Array.zip(outputs, handlers)->Array.forEach(((outputs, eventHandlers)) => {
     eventHandlers
     ->getEventHandler
@@ -59,10 +59,10 @@ let serviceNameToEventHandlers: (
       ->getServiceNames
       ->Array.forEach(
         serviceName =>
-          switch dict->Js.Dict.get(serviceName) {
+          switch dict->Dict.get(serviceName) {
           | Some(eventHandlers) =>
-            Js.Dict.set(dict, serviceName, eventHandlers->Array.concat([eventHandler]))
-          | None => Js.Dict.set(dict, serviceName, [eventHandler])
+            Dict.set(dict, serviceName, eventHandlers->Array.concat([eventHandler]))
+          | None => Dict.set(dict, serviceName, [eventHandler])
           },
       )
     )
@@ -75,15 +75,15 @@ type readModel = {
   readModel: ReadModel.component,
 }
 
-let addEventMapperFns = Js.Dict.empty()
-let aggregateResources = Js.Dict.empty()
-let publishToAggregates = Js.Dict.empty()
+let addEventMapperFns = Dict.make()
+let aggregateResources = Dict.make()
+let publishToAggregates = Dict.make()
 
 let createAggregatesWithoutEventMappers = (aggregates, opts) =>
   aggregates
   ->Array.map((module(SpecificAggregate: Aggregate.T)) => {
     let aggregate = SpecificAggregate.make(~opts)
-    addEventMapperFns->Js.Dict.set(
+    addEventMapperFns->Dict.set(
       SpecificAggregate.Spec.name,
       (aggregate->Component.outputs).addEventMapper,
     )
@@ -91,14 +91,14 @@ let createAggregatesWithoutEventMappers = (aggregates, opts) =>
       (aggregate->Component.outputs).commandTopic->Pulumi.Output.apply(commandTopic =>
         commandTopic.resources
       )
-    aggregateResources->Js.Dict.set(SpecificAggregate.Spec.name, resources)
+    aggregateResources->Dict.set(SpecificAggregate.Spec.name, resources)
     let publishJsons =
       aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons)
-    publishToAggregates->Js.Dict.set(SpecificAggregate.Spec.name, publishJsons)
+    publishToAggregates->Dict.set(SpecificAggregate.Spec.name, publishJsons)
     aggregate->Component.outputs
   })
   ->Array.map(aggregate => {(aggregate.name, aggregate)})
-  ->Js.Dict.fromArray
+  ->Dict.fromArray
 
 let finishAggregates = (aggregates, aggregatesOutputs: dict<Aggregate.outputs>) => {
   let (eventMapperOutputs, commandTopicOutputs) =
@@ -122,7 +122,7 @@ let finishAggregates = (aggregates, aggregatesOutputs: dict<Aggregate.outputs>) 
       ->Pulumi.Output.apply(_ =>
         aggregates->Array.forEach(
           (module(SpecificAggregate: Aggregate.T)) => {
-            Js.log("Plugin_Builder: AggregateRuntimeBuilder.finish")
+            Console.log("Plugin_Builder: AggregateRuntimeBuilder.finish")
             SpecificAggregate.AggregateRuntimeBuilder.finish()
           },
         )
@@ -140,8 +140,8 @@ let addEventMappers = (aggregates, allEventTopics, queryEngine) => {
   aggregatesOutputs
 }
 
-let readModelNamesForSourceName = Js.Dict.empty()
-let publishToReadModels = Js.Dict.empty()
+let readModelNamesForSourceName = Dict.make()
+let publishToReadModels = Dict.make()
 
 let finishReadModels = readModels => {
   let _ =
@@ -157,25 +157,25 @@ let finishReadModels = readModels => {
 
 let extractReadModelsOutputs = readModels =>
   readModels
-  ->Js.Dict.fromArray
-  ->Js.Dict.entries
+  ->Dict.fromArray
+  ->Dict.toArray
   ->Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
-  ->Js.Dict.fromArray
+  ->Dict.fromArray
 
 let createReadModels = (readModels, allEventTopics, opts) => {
   let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
     let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
     (readModel->Component.outputs).sourceNames->Array.forEach(sourceName =>
-      switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
+      switch readModelNamesForSourceName->Dict.get(sourceName) {
       | Some(readModelNames) =>
-        readModelNamesForSourceName->Js.Dict.set(
+        readModelNamesForSourceName->Dict.set(
           sourceName,
           readModelNames->Array.concat([SpecificReadModel.Spec.name]),
         )
-      | None => Js.Dict.set(readModelNamesForSourceName, sourceName, [SpecificReadModel.Spec.name])
+      | None => Dict.set(readModelNamesForSourceName, sourceName, [SpecificReadModel.Spec.name])
       }
     )
-    publishToReadModels->Js.Dict.set(
+    publishToReadModels->Dict.set(
       SpecificReadModel.Spec.name,
       readModel
       ->Component.operations

@@ -88,7 +88,7 @@ module Make = (
       let resources = [eventLog.resources, eventLog.eventTopic.resources]->Array.flat
       commandTopic->AggregateRuntimeBuilder.forCommandTopic(
         ~handler,
-        ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...)
+        ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...),
       )
       commandTopic
     })
@@ -106,7 +106,7 @@ module Make = (
         let resources = (commandTopic->Component.outputs).resources
         commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
           ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
-          ~connect=SpecificCommandGenerator.connect(commandGenerator, ~resources, ...)
+          ~connect=SpecificCommandGenerator.connect(commandGenerator, ~resources, ...),
         )
         commandGenerator
       })
@@ -132,7 +132,7 @@ module Make = (
       commandGenerator: commandGenerator->Component.wrappedOutputs,
       commandTopic: commandTopic->Component.wrappedOutputs,
       eventLog: eventLog->Component.outputs,
-      addEventMapper: self->(addEventMapperFn(~opts, ...)),
+      addEventMapper: self->addEventMapperFn(~opts, ...),
     })
   }
 

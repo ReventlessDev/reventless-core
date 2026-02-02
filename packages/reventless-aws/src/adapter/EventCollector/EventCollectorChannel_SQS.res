@@ -24,9 +24,7 @@ let connect = (
 
   let queues = channelSpecs->Array.map(({channel}) => channel.parts.queue)
   let eventTopics =
-    channelSpecs->Array.reduce(Js.Dict.empty(), (acc, {eventTopics}) =>
-      acc->Dict.assign(eventTopics)
-    )
+    channelSpecs->Array.reduce(Dict.make(), (acc, {eventTopics}) => acc->Dict.assign(eventTopics))
   let resources = channelSpecs->Array.map(({resources}) => resources)->Array.flat
 
   lambda->connectLambda(name, lambdaRole, queues, eventTopics, resources, opts)
@@ -65,12 +63,12 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
     queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>
-      runtimeQueue->(EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...))
+      runtimeQueue->EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...)
     )
 
   let eventTopicResources =
     eventTopics
-    ->Js.Dict.values
+    ->Dict.valuesToArray
     ->Array.map(outputs => outputs.resources->Array.getUnsafe(0)) // FIXME
 
   {

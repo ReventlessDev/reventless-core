@@ -155,7 +155,7 @@ let createLambdaPolicy = (
             actions: Action("iam:PassRole"),
             resources: Resource("*"),
             conditions: {
-              stringEquals: Js.Dict.fromArray([
+              stringEquals: Dict.fromArray([
                 ("iam:PassedToService", ConditionValue("events.amazonaws.com")),
               ]),
             },

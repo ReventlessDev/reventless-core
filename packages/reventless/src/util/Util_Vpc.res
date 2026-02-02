@@ -16,7 +16,7 @@ let getVpcConfig: (
         PulumiAws.Lambda.CallbackFunction.Args.securityGroupIds: [securityGroupId],
         subnetIds: [subnetId],
       }
-    | _ => Js.Exn.raiseError("Output is not a Reventless Vpc Component")
+    | _ => JsError.throwWithMessage("Output is not a Reventless Vpc Component")
     }
   )
 }

@@ -37,9 +37,9 @@ let findResource = (resources, service) =>
         ->Pulumi.Output.all
         ->Pulumi.Output.apply(resources => {
           let resourcesStr = resources->Adapter.unwrappedToString
-          Js.log2(err, resourcesStr)
+          Console.log2(err, resourcesStr)
         })
-      Js.Exn.raiseError(err)
+      JsError.throwWithMessage(err)
     | matching => matching->Array.getUnsafe(0)
     }
   )
@@ -49,8 +49,8 @@ let findUnwrappedResource = (resources, service) =>
   switch resources->filterSupportedUnwrappedResources([service]) {
   | [] =>
     let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ${service} in resources: ${resources->Adapter.unwrappedToString}`
-    Js.log(err)
-    Js.Exn.raiseError(err)
+    Console.log(err)
+    JsError.throwWithMessage(err)
   | matching => matching->Array.getUnsafe(0)
   }
 
@@ -60,7 +60,7 @@ let findResourceInOutput = (resourcesOutput, service) =>
 let partitionSupportedResources = (allResources, supportedServices) => {
   let (names, resourceOutputs) =
     allResources
-    ->Js.Dict.entries
+    ->Dict.toArray
     ->Array.map(((name, resources)) => (
       name,
       resources->filterSupportedResources(supportedServices),

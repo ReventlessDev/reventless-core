@@ -33,7 +33,7 @@ describe("Logger", () => {
           msgId: "testMsgId",
           correlationId: "testCorrelationId",
         }
-        let metaStr = meta->Message.encode(Message.metaSchema)->Js.Json.stringify
+        let metaStr = meta->Message.encode(Message.metaSchema)->JSON.stringify
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {
@@ -75,7 +75,7 @@ describe("Logger", () => {
           msgId: "testMsgId",
           correlationId: "testCorrelationId",
         }
-        let metaStr = meta->Message.encode(Message.metaSchema)->Js.Json.stringify
+        let metaStr = meta->Message.encode(Message.metaSchema)->JSON.stringify
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {

@@ -28,11 +28,11 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
       queue->sendMessage(~delay, messageBody)
     }
   ) catch {
-  | Js.Exn.Error(e) =>
-    Js.log3("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e->Js.Exn.message)
-    let timeout = Js.Math.random_int(3000, 7000)
+  | JsExn(e) =>
+    Console.log3("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e->JsExn.message)
+    let timeout = Math.Int.random(3000, 7000)
     await Reventless.Util.Promise.finishTimeout(timeout)
-    Js.log(`Retry send after ${timeout->Js.Int.toString} ms ...`)
+    Console.log(`Retry send after ${timeout->Int.toString} ms ...`)
     await send(queue, queueService, commandJson)
   }
 }
@@ -40,7 +40,7 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
 let makeEntry = (queueService, {id, meta: {msgId: messageId}, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
 
-  // Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
+  // Console.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
   if queueService == AWS.SQS_FIFO {
     SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay)
   } else {
@@ -54,14 +54,14 @@ let rec sendMessages = async (queue, queueService, commandJsons) => {
   ->SQS.sendMessagesParallel(~queueId=queue.id) {
   | Ok() => ()
   | Error(failedIds) =>
-    Js.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
+    Console.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
     let commandJsonsToRetry =
       commandJsons->Array.filter(({meta: {msgId}}) =>
         failedIds->Belt.Array.some(failedId => failedId == msgId)
       )
-    let timeout = Js.Math.random_int(3000, 7000)
+    let timeout = Math.Int.random(3000, 7000)
     await Reventless.Util.Promise.finishTimeout(timeout)
-    Js.log2(`Retry sendMessages after ${timeout->Js.Int.toString} ms:`, commandJsonsToRetry)
+    Console.log2(`Retry sendMessages after ${timeout->Int.toString} ms:`, commandJsonsToRetry)
     await sendMessages(queue, queueService, commandJsonsToRetry)
   }
 }
@@ -79,30 +79,30 @@ let rec deleteMessages = async (entries, queue) =>
   switch await SQS.deleteMessagesParallel(~queueId=queue.id, entries) {
   | Ok() => ()
   | Error(failedIds) =>
-    Js.log2("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds)
+    Console.log2("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds)
     let entriesToRetry =
       entries
       ->Belt.Array.keepWithIndex((_, idx) => {
-        let id = idx->Js.Int.toString
+        let id = idx->Int.toString
         failedIds->Belt.Array.some(failedId => failedId == id)
       })
       ->Array.mapWithIndex((entry, idx) => {
-        AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Js.Int.toString,
+        AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Int.toString,
         receiptHandle: entry.receiptHandle,
       })
-    let timeout = Js.Math.random_int(3000, 7000)
+    let timeout = Math.Int.random(3000, 7000)
     await Reventless.Util.Promise.finishTimeout(timeout)
-    Js.log2(`Retry deleteMessages after ${timeout->Js.Int.toString} ms:`, entriesToRetry)
+    Console.log2(`Retry deleteMessages after ${timeout->Int.toString} ms:`, entriesToRetry)
     await deleteMessages(entriesToRetry, queue)
   }
 
 let parseSqsRecord = (record: PulumiAws.SQS.Queue.record) => {
   let eventStr = record.body
-  Js.log2("parseSqsRecord: eventStr:", eventStr)
-  switch eventStr->Js.Json.parseExn {
+  Console.log2("parseSqsRecord: eventStr:", eventStr)
+  switch eventStr->JSON.parseOrThrow {
   | json => Some(json)
   | exception err =>
-    Js.log3("parseSqsRecord: Couldn't parse event:", eventStr, err)
+    Console.log3("parseSqsRecord: Couldn't parse event:", eventStr, err)
     None
   }
 }

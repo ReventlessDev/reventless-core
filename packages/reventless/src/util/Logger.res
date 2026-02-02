@@ -23,13 +23,12 @@ external logItem: 'a => logItem = "%identity"
 external identity: 'a => 'a = "%identity"
 
 let createTag = (~level as _, ~loc) => {
-  let re = %re("/File \"(.*).res\", line (.*), characters (.*)-(.*)/")
-  switch Js.Re.exec_(re, loc->Option.getOr("")) {
+  let re = /File \"(.*).res\", line (.*), characters (.*)-(.*)/
+  switch RegExp.exec(re, loc->Option.getOr("")) {
   | Some(result) =>
     let captures =
       result
-      ->Js.Re.captures
-      ->Array.map(capture => capture->Js.Nullable.toOption)
+      ->RegExp.Result.matches
       ->Array.map(Option.getOr(_, ""))
     `${captures->Array.getUnsafe(1)}#${captures->Array.getUnsafe(2)}:`
   | _ => ""
@@ -50,7 +49,7 @@ let log: (
 
   // try to stringify, use raw value if unsuccessfull
   let (descStr, itemStr) = if stringify {
-    let itemStr = itemMapped->Js.Json.stringifyAny
+    let itemStr = itemMapped->JSON.stringifyAny
     let descStringified =
       itemStr->Option.mapOr(desc ++ " [ERROR: Couldn't stringify, displaying raw value!]", _ =>
         desc
@@ -62,14 +61,14 @@ let log: (
   }
 
   switch level {
-  | Warning => Js.Console.warn3(tag, descStr, itemStr)
-  | Error => Js.Console.error3(tag, descStr, itemStr)
+  | Warning => Console.warn3(tag, descStr, itemStr)
+  | Error => Console.error3(tag, descStr, itemStr)
   | Info
   | Custom(_) =>
-    Js.Console.info3(tag, descStr, itemStr)
+    Console.info3(tag, descStr, itemStr)
   | Debug => /*
         TODO: use js `console.debug`, when lambda FunctionLoggingConf setting has been incorporated into reventless-aws
-        previously: Js.Console.info3(tag, descStringified, itemStr)
+        previously: Console..info3(tag, descStringified, itemStr)
  */
     () // NOTE: noop for the time being to prevent consumption into CloudWatch logs
   }
@@ -82,8 +81,8 @@ let debug = log(~level=Level.Debug, ...)
 
 let commandJsonToLogMessage: Message.commandJson => string = ({id, meta, commandJson}) => {
   let commandName = commandJson->Message.variantNameOfJson
-  let commandStr = commandJson->Js.Json.stringify
-  let metaStr = meta->Message.encode(Message.metaSchema)->Js.Json.stringify
+  let commandStr = commandJson->JSON.stringify
+  let metaStr = meta->Message.encode(Message.metaSchema)->JSON.stringify
   `${commandName}(${id}): {"command":${commandStr},"meta":${metaStr},"id":${id}}`
 }
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {
@@ -113,5 +112,5 @@ let event'JsonToLogMessage = eventJson' => {
 }
 
 let logJsonEvent = (~loc=?, ~level=Level.Info, eventJson', desc) => {
-  event'JsonToLogMessage(eventJson')->(log(~loc?, ~level, desc, _))
+  event'JsonToLogMessage(eventJson')->log(~loc?, ~level, desc, _)
 }

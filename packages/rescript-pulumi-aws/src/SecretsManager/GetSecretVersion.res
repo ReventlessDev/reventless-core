@@ -26,12 +26,12 @@ external getSecretVersionOutput: (
 
 let decodeSecret = secret =>
   secret.secretString
-  ->Js.Json.parseExn
-  ->Js.Json.decodeObject
-  ->Option.getOr(Js.Dict.empty())
-  ->(Js.Dict.map(json => json->Js.Json.decodeString->Option.getOr(""), _))
+  ->JSON.parseOrThrow
+  ->JSON.Decode.object
+  ->Option.getOr(Dict.make())
+  ->Dict.mapValues(_, json => json->JSON.Decode.string->Option.getOr(""))
 
 let getSecretNames = arn =>
   getSecretVersionOutput(~args={secretId: arn})->Pulumi.Output.apply(secret =>
-    secret->decodeSecret->Js.Dict.keys
+    secret->decodeSecret->Dict.keysToArray
   )

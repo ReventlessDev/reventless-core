@@ -41,12 +41,12 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
     queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>
-      runtimeQueue->(EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...))
+      runtimeQueue->EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...)
     )
 
   let eventTopicResources =
     eventTopics
-    ->Js.Dict.values
+    ->Dict.valuesToArray
     ->Array.map(outputs => outputs.resources->Array.getUnsafe(0)) // FIXME
 
   {

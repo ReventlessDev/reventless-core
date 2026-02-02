@@ -8,13 +8,12 @@ type t<'a> = {}
 @send external get: t<'a> => 'a = "get"
 @send external asInput: t<'a> => Input.t<'a> = "%identity"
 @send external fromInput: Input.t<'a> => t<'a> = "%identity"
-@send external fromPromise: Js.Promise.t<'a> => t<'a> = "%identity"
+@send external fromPromise: promise<'a> => t<'a> = "%identity"
 @module("@pulumi/pulumi") @scope("Output") external isOutput: 'a => bool = "isInstance"
 
 /** DEPRECATED: Do not use this function!  */
-@send
-@deprecated("Do not use this function!!!")
-external promise: t<'a> => Js.Promise.t<'a> = "promise"
+@send @deprecated("Do not use this function!!!")
+external promise: t<'a> => promise<'a> = "promise"
 
 @send external unwrap: t<'a> => 'a = "%identity"
 
@@ -33,8 +32,7 @@ let allOpt: option<t<'a>> => t<option<'a>> = opt =>
   * Note: unwarps deeply nested outputs
   * e.g: Output.t({a: Output.t(string)}) wille result in Output.t({a: string})
   */
-@val
-@module("@pulumi/pulumi")
+@val @module("@pulumi/pulumi")
 external all: array<t<'a>> => t<array<'a>> = "all"
 @val @module("@pulumi/pulumi")
 external all2: ((t<'a>, t<'b>)) => t<('a, 'b)> = "all"

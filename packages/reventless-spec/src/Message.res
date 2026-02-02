@@ -23,7 +23,7 @@ type event'<'id, 'event> = {
   event: 'event,
 }
 
-let invalidEvent = (reason, event) => Js.log4("Invalid Event (", reason, "), Event:", event)
+let invalidEvent = (reason, event) => Console.log4("Invalid Event (", reason, "), Event:", event)
 
 @schema
 type statusChange = {
@@ -41,6 +41,6 @@ type command'<'id, 'command> = {
 type commandJson = {
   id: string,
   meta: meta,
-  commandJson: Js.Json.t,
+  commandJson: JSON.t,
   delay?: int,
 }

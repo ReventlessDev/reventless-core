@@ -23,7 +23,7 @@ let fifoQueue = SQS.Queue.make(
 )
 
 let callback: Lambda.eventHandlerNoResult<'a> = (evt, ctx) =>
-  Js.Promise.make((~resolve, ~reject as _) => resolve(Js.log3("DEAD LETTER ITEM:", evt, ctx)))
+  Promise.make((resolve, _) => resolve(Console.log3("DEAD LETTER ITEM:", evt, ctx)))
 
 let opts = {Pulumi.CustomResourceOptions.parent: queue->PulumiAws.SQS.Queue.toResource}
 let lambdaRole = IAM.Role.makeWithDefaultPolicy(
@@ -54,7 +54,7 @@ let createQueuePolicyDocument = (name, queueArn: string, handlerArn: string) => 
         actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
         resources: Resource(queueArn),
         conditions: {
-          arnEquals: Js.Dict.fromArray([("AWS:SourceArn", ConditionValue(handlerArn))]),
+          arnEquals: Dict.fromArray([("AWS:SourceArn", ConditionValue(handlerArn))]),
         },
       },
     ],

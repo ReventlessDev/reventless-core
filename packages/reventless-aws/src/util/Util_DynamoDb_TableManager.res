@@ -1,4 +1,4 @@
-let dependencies: ref<array<Js.Promise.t<Pulumi.Resource.t>>> = ref([])
+let dependencies: ref<array<promise<Pulumi.Resource.t>>> = ref([])
 
 type registerResource = Pulumi.Resource.t => unit
 
@@ -11,11 +11,11 @@ let getDependencies = () => {
   let deps =
     dependencies.contents
     ->Array.slice(~start, ~end)
-    ->Js.Promise.all
+    ->Promise.all
     ->Pulumi.Output.fromPromise
 
   let registerResource = ref(_ => ())
-  let promise = Js.Promise.make((~resolve, ~reject as _) => registerResource := resolve)
+  let promise = Promise.make((resolve, _) => registerResource := resolve)
 
   dependencies := dependencies.contents->Array.concat([promise])
 

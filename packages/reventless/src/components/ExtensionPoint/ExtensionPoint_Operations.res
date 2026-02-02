@@ -43,34 +43,34 @@ module Make = (
         []
       }
     | None =>
-      Js.Exn.raiseError(
-        "ExtensionPoint.Mapping: Missing mapping for " ++ eventJson'->Js.Json.stringify,
+      JsError.throwWithMessage(
+        "ExtensionPoint.Mapping: Missing mapping for " ++ eventJson'->JSON.stringify,
       )
     }
 
   let applyEventAction = async action =>
     switch action {
     | ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
-      Js.log2("ExtensionPoint_Operations.applyEventAction:", eventJson->Js.Json.stringify)
+      Console.log2("ExtensionPoint_Operations.applyEventAction:", eventJson->JSON.stringify)
       try await Ops.publishToEventTopic(id, meta, eventJson) catch {
-      | err => err->Js.log2("ExtensionPoint: Error on publishToEventTopic command:")
+      | err => err->Console.log2("ExtensionPoint: Error on publishToEventTopic command:")
       }
     | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
       let publishToEventTopic = async promise => {
         let (id, meta, eventJson) = await promise
         try await Ops.publishToEventTopic(id, meta, eventJson) catch {
-        | err => err->Js.log2("ExtensionPoint: Error on publishToEventTopic command:")
+        | err => err->Console.log2("ExtensionPoint: Error on publishToEventTopic command:")
         }
       }
       await promise->publishToEventTopic
     | AbstractCall(handler) =>
       try await handler() catch {
-      | err => err->Js.log2("ExtensionPoint: Error on calling handler:")
+      | err => err->Console.log2("ExtensionPoint: Error on calling handler:")
       }
     }
 
   let outgoingEventHandler = async (eventJson', _pluginDef) => {
-    Js.log2("ExtensionPoint_Operations.outgoingEventHandler:", eventJson'->Js.Json.stringify)
+    Console.log2("ExtensionPoint_Operations.outgoingEventHandler:", eventJson'->JSON.stringify)
     let eventActions = mapOutgoingEvent(
       eventJson',
       Mappings.mappings,
@@ -81,7 +81,7 @@ module Make = (
 
     await eventActions
     ->Array.map(applyEventAction)
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
   }
 }

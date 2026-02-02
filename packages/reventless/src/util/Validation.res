@@ -6,7 +6,7 @@ type t<'a, 'b> =
   | Failure('b)
   | Failures(array<'b>)
 
-type async<'a, 'b> = Js.Promise.t<t<'a, 'b>>
+type async<'a, 'b> = promise<t<'a, 'b>>
 
 let merge: (t<'a, 'b>, t<'a, 'b>) => t<'a, 'b> = (v1, v2) => {
   open Belt.Array
@@ -31,36 +31,36 @@ let merge: (t<'a, 'b>, t<'a, 'b>) => t<'a, 'b> = (v1, v2) => {
 }
 
 let defaultErrorHandler = err => {
-  Js.log(err)
+  Console.log(err)
   Failure("Couldn't resolve promise.")
 }
 
 let \"<+>" = merge
 
-let mergeAsync: (async<'a, 'b>, async<'a, 'b>, Js.Promise.error => t<'a, 'b>) => async<'a, 'b> = (
+let mergeAsync: (async<'a, 'b>, async<'a, 'b>, exn => t<'a, 'b>) => async<'a, 'b> = (
   a1,
   a2,
   handle,
 ) =>
-  Js.Promise.all2((a1, a2))
-  ->Js.Promise2.then(((v1, v2)) => Js.Promise.resolve(\"<+>"(v1, v2)))
-  ->Js.Promise2.catch(err => Js.Promise.resolve(err->handle))
+  Promise.all2((a1, a2))
+  ->Promise.then(((v1, v2)) => Promise.resolve(\"<+>"(v1, v2)))
+  ->Promise.catch(err => Promise.resolve(err->handle))
 
 let \"<?>" = (a1, a2) => mergeAsync(a1, a2, defaultErrorHandler)
 
-let mergeAsyncLeft: (async<'a, 'b>, t<'a, 'b>, Js.Promise.error => t<'a, 'b>) => async<'a, 'b> = (
+let mergeAsyncLeft: (async<'a, 'b>, t<'a, 'b>, exn => t<'a, 'b>) => async<'a, 'b> = (
   a1,
   v2,
   handler,
-) => mergeAsync(a1, Js.Promise.resolve(v2), handler)
+) => mergeAsync(a1, Promise.resolve(v2), handler)
 
 let \"<?+>" = (a1, v2) => mergeAsyncLeft(a1, v2, defaultErrorHandler)
 
-let mergeAsyncRight: (t<'a, 'b>, async<'a, 'b>, Js.Promise.error => t<'a, 'b>) => async<'a, 'b> = (
+let mergeAsyncRight: (t<'a, 'b>, async<'a, 'b>, exn => t<'a, 'b>) => async<'a, 'b> = (
   v1,
   a2,
   handler,
-) => mergeAsync(Js.Promise.resolve(v1), a2, handler)
+) => mergeAsync(Promise.resolve(v1), a2, handler)
 
 let \"<+?>" = (v1, a2) => mergeAsyncRight(v1, a2, defaultErrorHandler)
 

@@ -6,7 +6,7 @@ type client
 // Example ARN: arn:aws:sqs:eu-west-1:xxxxxx:MarketplaceServiceExtensionPointCommandTopic-0101023
 // Example URL: https://sqs.eu-west-1.amazonaws.com/xxxxxx/MarketplaceServiceExtensionPointCommandTopic-0101023
 let arn2Url = arn =>
-  switch arn->Js.String2.split(":") {
+  switch arn->String.split(":") {
   | [_, _, service, region, account, queueName] =>
     `https://${service}.${region}.amazonaws.com/${account}/${queueName}`
   | _ => ""
@@ -72,10 +72,10 @@ module SendMessageCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 let sendMessage = async (
@@ -90,24 +90,24 @@ let sendMessage = async (
       SendMessageCommand.make({
         queueUrl: queueId,
         messageBody,
-        messageGroupId: ?messageGroupId->Option.map(id =>
-          id->Js.String2.replaceByRe(%re("/ /g"), "")
-        ),
+        messageGroupId: ?(messageGroupId->Option.map(id => id->String.replaceRegExp(/ /g, ""))),
         ?messageDeduplicationId,
-        delaySeconds: ?delay->Option.map(delay =>
-          if delay > 900 {
-            Js.log2(
-              "WARNING: [" ++
-              (__MODULE__ ++
-              (":" ++
-              (__LINE__->string_of_int ++
-              ("] SQS.sendMessage was called with a delay set to higher than 900 seconds, " ++ "which is the maximum amount supported by AWS.")))),
-              "DelaySeconds was automatically set to 900 to prevent failure.",
-            )
-            900
-          } else {
-            delay
-          }
+        delaySeconds: ?(
+          delay->Option.map(delay =>
+            if delay > 900 {
+              Console.log2(
+                "WARNING: [" ++
+                (__MODULE__ ++
+                (":" ++
+                (__LINE__->Int.toString ++
+                ("] SQS.sendMessage was called with a delay set to higher than 900 seconds, " ++ "which is the maximum amount supported by AWS.")))),
+                "DelaySeconds was automatically set to 900 to prevent failure.",
+              )
+              900
+            } else {
+              delay
+            }
+          )
         ),
       }),
     )
@@ -157,18 +157,18 @@ module SendMessageBatchCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 let validateDelay = Option.map(_, delay =>
   if delay > 900 {
-    Js.log2(
+    Console.log2(
       "WARNING: [" ++
       (__MODULE__ ++
       (":" ++
-      (__LINE__->string_of_int ++
+      (__LINE__->Int.toString ++
       ("] SQS.sendMessage was called with a delay set to higher than 900 seconds, " ++ "which is the maximum amount supported by AWS.")))),
       "DelaySeconds was automatically set to 900 to prevent failure.",
     )
@@ -185,7 +185,7 @@ let makeBatchEntry = (
 ): SendMessageBatchCommand.sendMessageBatchEntry => {
   messageBody,
   id: messageId,
-  delaySeconds: ?delay->validateDelay,
+  delaySeconds: ?(delay->validateDelay),
 }
 
 let makeBatchEntryFifo = (
@@ -196,8 +196,8 @@ let makeBatchEntryFifo = (
 ): SendMessageBatchCommand.sendMessageBatchEntry => {
   messageBody,
   id: messageId,
-  delaySeconds: ?delay->validateDelay,
-  messageGroupId: groupId->Js.String2.replaceByRe(%re("/ /g"), ""),
+  delaySeconds: ?(delay->validateDelay),
+  messageGroupId: groupId->String.replaceRegExp(/ /g, ""),
 }
 
 let maxBatchMessages = 10 // defined by SQS
@@ -205,13 +205,13 @@ let maxBatchBytes = 262144 // defined by SQS
 
 //FIXME: 1:1 like handleDeleteBatchPromises, only difference is in types of parameters
 let handleSendBatchPromises: (
-  array<Js.Promise.t<SendMessageBatchCommand.output>>,
+  array<promise<SendMessageBatchCommand.output>>,
   array<SendMessageBatchCommand.sendMessageBatchEntry>,
   string,
-) => Js.Promise.t<array<array<string>>> = (promises, entries, name) => {
+) => promise<array<array<string>>> = (promises, entries, name) => {
   promises
   ->Array.mapWithIndex(async (promise, idx) => {
-    let batchNr = (idx + 1)->Js.Int.toString
+    let batchNr = (idx + 1)->Int.toString
     switch await promise {
     | response =>
       response.failed
@@ -220,7 +220,7 @@ let handleSendBatchPromises: (
         let id = failure.id
         let failureCode = failure.code
         let failureMessage = failure.message->Option.getOr("unknown message")
-        Js.log(
+        Console.log(
           `Error: SQS.${name} batch ${batchNr} entry failed: ${id}, ${failureCode}, ${failureMessage}`,
         )
         id
@@ -228,10 +228,10 @@ let handleSendBatchPromises: (
     | exception exn =>
       let error =
         exn
-        ->Js.Exn.asJsExn
-        ->Option.flatMap(exn => exn->Js.Exn.message)
+        ->JsExn.fromException
+        ->Option.flatMap(exn => exn->JsExn.message)
         ->Option.getOr("unknown error")
-      Js.log(`Error: SQS.${name} batch ${batchNr} failed: ${error}`)
+      Console.log(`Error: SQS.${name} batch ${batchNr} failed: ${error}`)
       let start = idx * maxBatchMessages
       let end = start + maxBatchMessages
       entries
@@ -239,7 +239,7 @@ let handleSendBatchPromises: (
       ->Array.map(entry => entry.id)
     }
   })
-  ->Js.Promise.all
+  ->Promise.all
 }
 
 let handleBatchResult = failedIds =>
@@ -260,7 +260,7 @@ let sendMessagesParallel = async (
   let sliceBatch = start => {
     let end = ref(start)
     let batchBytes = ref(0)
-    let messageBytes = () => (entries->Array.getUnsafe(end.contents)).messageBody->Js.String.length
+    let messageBytes = () => (entries->Array.getUnsafe(end.contents)).messageBody->String.length
     while (
       end.contents < totalMessageCount &&
       end.contents < start + maxBatchMessages &&
@@ -270,7 +270,7 @@ let sendMessagesParallel = async (
       end := end.contents + 1
     }
     if end.contents == start {
-      Js.Console.log("SQS.sendMessagesParallel: no message sent !!")
+      Console.log("SQS.sendMessagesParallel: no message sent !!")
     }
 
     (end.contents, entries->Array.slice(~start, ~end=end.contents))
@@ -282,16 +282,15 @@ let sendMessagesParallel = async (
     start := nextStart
 
     let messages = batchEntries->Array.map(({messageBody}) => messageBody)
-    let messageCountStr = messages->Array.length->Js.Int.toString
-    let messageBytes = messages->Array.map(message => message->Js.String.length)
+    let messageCountStr = messages->Array.length->Int.toString
+    let messageBytes = messages->Array.map(message => message->String.length)
     let batchBytes = messageBytes->Array.reduce(0, (acc, a) => acc + a)
-    let messageBytesStr =
-      messageBytes->Array.map(size => size->Js.Int.toString)->Js.Array2.joinWith(",")
-    Js.Console.log(
-      `SQS.sendMessagesParallel: batchNr:${batchNr.contents->Js.Int.toString} messageCount:${messageCountStr} batchBytes: ${batchBytes->Js.Int.toString}, messageBytes: ${messageBytesStr}`,
+    let messageBytesStr = messageBytes->Array.map(size => size->Int.toString)->Array.joinUnsafe(",")
+    Console.log(
+      `SQS.sendMessagesParallel: batchNr:${batchNr.contents->Int.toString} messageCount:${messageCountStr} batchBytes: ${batchBytes->Int.toString}, messageBytes: ${messageBytesStr}`,
     )
 
-    let _ = batchPromises->Js.Array2.push(
+    let _ = batchPromises->Array.push(
       SendMessageBatchCommand.make({
         queueUrl: queueId,
         entries: batchEntries,
@@ -317,9 +316,9 @@ module DeleteMessageCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module DeleteMessageBatchCommand = {
@@ -347,21 +346,21 @@ module DeleteMessageBatchCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 //FIXME: 1:1 like handleSendBatchPromises, only difference is in types of parameters
 let handleDeleteBatchPromises: (
-  array<Js.Promise.t<DeleteMessageBatchCommand.output>>,
+  array<promise<DeleteMessageBatchCommand.output>>,
   array<DeleteMessageBatchCommand.deleteMessageBatchEntry>,
   string,
-) => Js.Promise.t<array<array<string>>> = (promises, entries, name) => {
+) => promise<array<array<string>>> = (promises, entries, name) => {
   promises
   ->Array.mapWithIndex(async (promise, idx) => {
-    let batchNr = (idx + 1)->Js.Int.toString
+    let batchNr = (idx + 1)->Int.toString
     switch await promise {
     | output =>
       output.failed
@@ -370,7 +369,7 @@ let handleDeleteBatchPromises: (
         let id = failure.id
         let failureCode = failure.code
         let failureMessage = failure.message->Option.getOr("unknown message")
-        Js.log(
+        Console.log(
           `Error: SQS.${name} batch ${batchNr} entry failed: ${id}, ${failureCode}, ${failureMessage}`,
         )
         id
@@ -378,10 +377,10 @@ let handleDeleteBatchPromises: (
     | exception exn =>
       let error =
         exn
-        ->Js.Exn.asJsExn
-        ->Option.flatMap(exn => exn->Js.Exn.message)
+        ->JsExn.fromException
+        ->Option.flatMap(exn => exn->JsExn.message)
         ->Option.getOr("unknown error")
-      Js.log(`Error: SQS.${name} batch ${batchNr} failed: ${error}`)
+      Console.log(`Error: SQS.${name} batch ${batchNr} failed: ${error}`)
       let start = idx * maxBatchMessages
       let end = start + maxBatchMessages
       entries
@@ -389,7 +388,7 @@ let handleDeleteBatchPromises: (
       ->Array.map(entry => entry.id)
     }
   })
-  ->Js.Promise.all
+  ->Promise.all
 }
 
 let deleteMessagesParallel = async (
@@ -397,19 +396,20 @@ let deleteMessagesParallel = async (
   entries: array<DeleteMessageBatchCommand.deleteMessageBatchEntry>,
 ) => {
   let arraySize =
-    (entries->Array.length->float_of_int /. maxBatchMessages->Js.Int.toFloat)->Js.Math.ceil_int
-  (await Array.fromInitializer(~length=arraySize, batchNr => {
-    let start = batchNr * maxBatchMessages
-    let end = start + maxBatchMessages
-    DeleteMessageBatchCommand.send(
-      DeleteMessageBatchCommand.make({
-        queueUrl: queueId,
-        entries: entries->Array.slice(~start, ~end),
-      }),
-    )
-  })
-  ->handleDeleteBatchPromises(entries, "deleteMessagesParallel"))
-  ->handleBatchResult
+    (entries->Array.length->Int.toFloat /. maxBatchMessages->Int.toFloat)->Math.Int.ceil
+
+  (
+    await Array.fromInitializer(~length=arraySize, batchNr => {
+      let start = batchNr * maxBatchMessages
+      let end = start + maxBatchMessages
+      DeleteMessageBatchCommand.send(
+        DeleteMessageBatchCommand.make({
+          queueUrl: queueId,
+          entries: entries->Array.slice(~start, ~end),
+        }),
+      )
+    })->handleDeleteBatchPromises(entries, "deleteMessagesParallel")
+  )->handleBatchResult
 }
 
 module AddPermissionCommand = {
@@ -429,10 +429,10 @@ module AddPermissionCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module GetQueueAttributesCommand = {
@@ -457,10 +457,10 @@ module GetQueueAttributesCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module SetQueueAttributesCommand = {
@@ -477,10 +477,10 @@ module SetQueueAttributesCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 let getQueuePolicy = async queueArn => {
@@ -495,7 +495,7 @@ let getQueuePolicy = async queueArn => {
 }
 
 let setQueuePolicy = async (queueArn, policy: IAM.Policy.t) =>
-  switch policy->Js.Json.stringifyAny {
+  switch policy->JSON.stringifyAny {
   | Some(newPolicy) =>
     let _setQueueAttributesResponse = await SetQueueAttributesCommand.send(
       SetQueueAttributesCommand.make({
@@ -505,5 +505,5 @@ let setQueuePolicy = async (queueArn, policy: IAM.Policy.t) =>
         queueUrl: queueArn->arn2Url,
       }),
     )
-  | None => Js.log("Couldn't stringify policy")
+  | None => Console.log("Couldn't stringify policy")
   }

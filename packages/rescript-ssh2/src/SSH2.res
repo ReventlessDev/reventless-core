@@ -22,12 +22,12 @@ module Client = {
 
   @module("ssh2") @new external make: unit => t = "Client"
   @send external onReady: (t, @as("ready") _, unit => unit) => t = "on"
-  @send external onError: (t, @as("error") _, Js.Exn.t => unit) => t = "on"
+  @send external onError: (t, @as("error") _, JsExn.t => unit) => t = "on"
   @send external onTimeout: (t, @as("timeout") _, unit => unit) => t = "on"
   @send external onEnd: (t, @as("end") _, unit => unit) => t = "on"
   @send external connect: (t, config) => unit = "connect"
   @send external end_: t => unit = "end"
-  @send external error: (t, @as("error") _, Js.Exn.t) => bool = "emit"
+  @send external error: (t, @as("error") _, JsExn.t) => bool = "emit"
 
   /** Helper function to pass the client into the callback of onReady */
   let onReady: (t, t => unit) => t = (client, handler) => client->onReady(() => handler(client))
@@ -49,16 +49,16 @@ type entity = {
   TODO: hide behind an interface definition
  */
 @new
-external makeError: string => Js.Exn.t = "Error"
+external makeError: string => JsExn.t = "Error"
 
-external toSftpError: Js.Exn.t => error = "%identity"
-external toJsError: error => Js.Exn.t = "%identity"
+external toSftpError: JsExn.t => error = "%identity"
+external toJsError: error => JsExn.t = "%identity"
 
 /** Starts an SFTP session
   Returns `false` if you should wait for the `continue`event before sending any more traffic
  */
 @send
-external make: (Client.t, (option<Js.Exn.t>, t) => unit) => bool = "sftp"
+external make: (Client.t, (option<JsExn.t>, t) => unit) => bool = "sftp"
 
 /** Retrieves a directory listing
   Returns `false`if you should wait for the `continue`event before sending any more traffic.
@@ -102,7 +102,7 @@ external fastGet: (
   ~remotePath: string,
   ~localPath: string,
   ~options: fastOptions=?,
-  ~callback: option<Js.Exn.t> => unit,
+  ~callback: option<JsExn.t> => unit,
 ) => unit = "fastGet"
 
 /**
@@ -126,7 +126,7 @@ external createWriteStream: (
  */
 @send
 external error: (t, @as("error") _, error) => bool = "emit"
-let extendedError: (~originalError: error, ~customError: Js.Exn.t=?, t) => bool = (
+let extendedError: (~originalError: error, ~customError: JsExn.t=?, t) => bool = (
   ~originalError,
   ~customError=?,
   sftp,

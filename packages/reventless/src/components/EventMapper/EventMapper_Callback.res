@@ -4,7 +4,7 @@ module type CounterOps = {
 }
 
 module type CounterHandler = {
-  let commonEventsHandler: array<Js.Json.t> => promise<(
+  let commonEventsHandler: array<JSON.t> => promise<(
     promise<array<Reventless.Message.commandJson>>,
     array<Reventless.Counter.action>,
   )>
@@ -20,10 +20,10 @@ module MakeCounterHandler = (
 
   let findMapping = (mappings, eventJson') => {
     eventJson'
-    ->Js.Json.decodeObject
+    ->JSON.Decode.object
     ->Option.flatMap(eventObj' => {
       switch eventObj'
-      ->Js.Dict.get("meta")
+      ->Dict.get("meta")
       ->Option.map(metaJson => metaJson->Message.decode(Message.metaSchema)) {
       | Some(eventMeta) =>
         let source = eventMeta.service
@@ -31,19 +31,19 @@ module MakeCounterHandler = (
           mappings->Array.find((module(Mapping: Mappings.Mapping)) => Mapping.Source.name == source)
         switch mapping {
         | None =>
-          Js.log(`EventMapper.map: No mapping ${source} -> ${target} found`)
+          Console.log(`EventMapper.map: No mapping ${source} -> ${target} found`)
           None
         | Some(mapping) =>
           module Mapping = unpack(mapping)
           let source = Mapping.Source.name
-          Js.log(`EventMapper.map: found mapping ${source} -> ${target}`)
+          Console.log(`EventMapper.map: found mapping ${source} -> ${target}`)
           Some((eventObj', eventMeta, mapping))
         }
       | None =>
-        Js.log2("EventMapper_Callback.findMapping: Invalid JSON object:", eventJson')
+        Console.log2("EventMapper_Callback.findMapping: Invalid JSON object:", eventJson')
         None
       | exception err =>
-        Js.log2("EventMapper_Callback.findMapping: Couldn't decode meta:", err)
+        Console.log2("EventMapper_Callback.findMapping: Couldn't decode meta:", err)
         None
       }
     })
@@ -51,7 +51,7 @@ module MakeCounterHandler = (
 
   type action =
     | Counter(Counter.action)
-    | Publisher(Js.Promise.t<array<Message.commandJson>>)
+    | Publisher(promise<array<Message.commandJson>>)
 
   let createCommandJson = (~delay=?, id, meta, command) => {
     Message.id: id->Target.Id.toString,
@@ -69,9 +69,9 @@ module MakeCounterHandler = (
     actions->Array.map(action =>
       switch action {
       | ReventlessSpec.EventMapping.Publish(id, command) =>
-        Publisher([createCommandJson(id, eventMeta, command)]->Js.Promise.resolve)
+        Publisher([createCommandJson(id, eventMeta, command)]->Promise.resolve)
       | PublishDelayed(id, command, delay) =>
-        Publisher([createCommandJson(~delay, id, eventMeta, command)]->Js.Promise.resolve)
+        Publisher([createCommandJson(~delay, id, eventMeta, command)]->Promise.resolve)
       | PublishAsync(promise) =>
         let toCommandJson = async promise =>
           {await promise}->Array.map(((id, command)) => createCommandJson(id, eventMeta, command))
@@ -106,23 +106,23 @@ module MakeCounterHandler = (
           try {
             let idDecoded =
               eventObj
-              ->Js.Dict.get("id")
+              ->Dict.get("id")
               ->Option.map(id => id->Message.decode(Mapping.Source.Id.schema))
             let eventDecoded =
               eventObj
-              ->Js.Dict.get("event")
+              ->Dict.get("event")
               ->Option.map(event => event->Message.decode(Mapping.Source.eventSchema))
 
             switch (idDecoded, eventDecoded) {
             | (Some(eventId), Some(event)) =>
               Mapping.map(eventId, event, Ops.queryEngine)->processMappingActions(eventMeta)->Some
             | _ =>
-              Js.log2("EventMapper.map: Invalid event:", eventJson')
+              Console.log2("EventMapper.map: Invalid event:", eventJson')
               None
             }
           } catch {
           | err =>
-            Js.log3("EventMapper.map: Couldn't decode event:", eventJson', err)
+            Console.log3("EventMapper.map: Couldn't decode event:", eventJson', err)
             None
           }
         | None => None
@@ -137,20 +137,22 @@ module MakeCounterHandler = (
         }
       )
     let publisherEntries =
-      (await publisherActions
-      ->Array.map(action =>
-        switch action {
-        | Publisher(entries) => entries
-        | Counter(_) => Js.Exn.raiseError("Invalid EventMapper action")
-        }
+      (
+        await publisherActions
+        ->Array.map(action =>
+          switch action {
+          | Publisher(entries) => entries
+          | Counter(_) => JsError.throwWithMessage("Invalid EventMapper action")
+          }
+        )
+        ->Promise.all
       )
-      ->Js.Promise.all)
       ->Array.flat
-      ->Js.Promise.resolve
+      ->Promise.resolve
     let counterActions = counterActions->Array.map(x =>
       switch x {
       | Counter(action) => action
-      | Publisher(_) => Js.Exn.raiseError("Invalid EventMapper action")
+      | Publisher(_) => JsError.throwWithMessage("Invalid EventMapper action")
       }
     )
     (publisherEntries, counterActions)
@@ -159,7 +161,9 @@ module MakeCounterHandler = (
   let handleCounterEvents = async eventsJson' => {
     let (publisherEntries, countActions) = await commonEventsHandler(eventsJson')
     if countActions->Array.length > 0 {
-      Js.log("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!")
+      Console.log(
+        "EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!",
+      )
     }
     await Ops.publishJsons(await publisherEntries)
   }
@@ -169,7 +173,7 @@ module type EventCollectorOps = {
   let publishJsons: CommandTopic.publishJsons
   let count: Counter.count
   let addToCounterTarget: Counter.addToCounterTarget
-  let commonEventsHandler: array<Js.Json.t> => promise<(
+  let commonEventsHandler: array<JSON.t> => promise<(
     promise<array<Reventless.Message.commandJson>>,
     array<Reventless.Counter.action>,
   )>
@@ -186,10 +190,10 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
     | _ =>
       switch await Ops.count(countItems) {
       | exception e =>
-        Js.log2(__MODULE__ ++ ".doCount: count error", e)
-        let timeout = Js.Math.random_int(1000, 3000)
+        Console.log2(__MODULE__ ++ ".doCount: count error", e)
+        let timeout = Math.Int.random(1000, 3000)
         await Reventless.Util.Promise.finishTimeout(timeout)
-        Js.log(`Retry count after ${timeout->Js.Int.toString} ms`)
+        Console.log(`Retry count after ${timeout->Int.toString} ms`)
         await doCount(countItems)
       | _ => ()
       }
@@ -210,12 +214,12 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       | _ => None
       }
     )
-    Js.log2("EventMapper.eventCollectorEventsHandler: countItems:", countItems->Array.length)
+    Console.log2("EventMapper.eventCollectorEventsHandler: countItems:", countItems->Array.length)
     await doCount(countItems)
 
-    Js.log2(
+    Console.log2(
       "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
-      addToCounterTargetActions->Js.Json.stringifyAny,
+      addToCounterTargetActions->JSON.stringifyAny,
     )
     await addToCounterTargetActions
     ->Array.map(async x =>
@@ -224,7 +228,7 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       | _ => ()
       }
     )
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
 
     await Ops.publishJsons(await publisherEntries)

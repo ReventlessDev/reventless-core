@@ -55,21 +55,21 @@ module Make = (
         []
       }
     | None =>
-      Js.Exn.raiseError(
-        "ExtensionPoint.Mapping: Missing mapping for " ++ eventJson'->Js.Json.stringify,
+      JsError.throwWithMessage(
+        "ExtensionPoint.Mapping: Missing mapping for " ++ eventJson'->JSON.stringify,
       )
     }
 
   let publishAggregateCommand = async (aggregateName, cmdJson) => {
-    let pub = Ops.publishToAggregates->Js.Dict.get(aggregateName)->Option.getExn
+    let pub = Ops.publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow
     try await pub([cmdJson]) catch {
-    | err => Js.log2(`Extension: Error on publish command to aggregate ${aggregateName}:`, err)
+    | err => Console.log2(`Extension: Error on publish command to aggregate ${aggregateName}:`, err)
     }
   }
 
   let publishCorePluginExtensionPointCommand = async cmdJson =>
     try await Ops.publishToCorePluginExtensionPoint([cmdJson]) catch {
-    | err => Js.log2(`Extension: Error on publish command to Core.Plugin ExtensionPoint:`, err)
+    | err => Console.log2(`Extension: Error on publish command to Core.Plugin ExtensionPoint:`, err)
     }
 
   let forwardCommand = (extensionPointName, commandJson: Message.commandJson) => {
@@ -90,7 +90,7 @@ module Make = (
 
   let handle = async handler =>
     try await handler() catch {
-    | err => Js.log2("ExtensionPoint: Error on calling handler:", err)
+    | err => Console.log2("ExtensionPoint: Error on calling handler:", err)
     }
 
   let applyIncomingCommandAction = async action =>
@@ -110,7 +110,7 @@ module Make = (
             ->Array.map(((aggregateName, commandJson)) =>
               publishAggregateCommand(aggregateName, commandJson)
             )
-            ->Js.Promise.all
+            ->Promise.all
           )
           ->Util.Promise.toUnit
         }
@@ -142,28 +142,28 @@ module Make = (
       let apply = async commandActions => {
         await commandActions
         ->Array.map(applyIncomingCommandAction)
-        ->Js.Promise.all
+        ->Promise.all
         ->Util.Promise.toUnit
       }
       await commandActions->apply
 
       switch Ops.readModelNamesForSourceName
-      ->Js.Dict.get(event'.meta.service)
+      ->Dict.get(event'.meta.service)
       ->Option.map(readModelNames =>
         readModelNames
         ->Array.filterMap(readModelName =>
           Ops.publishToReadModels
-          ->Js.Dict.get(readModelName)
-          ->Option.map(enqueueEvent => enqueueEvent(0, event'.id, eventJson'->Js.Json.stringify))
+          ->Dict.get(readModelName)
+          ->Option.map(enqueueEvent => enqueueEvent(0, event'.id, eventJson'->JSON.stringify))
         ) // FIXME Error handling
-        ->Js.Promise.all
+        ->Promise.all
       ) {
       | Some(p) =>
         let _ = await p
       | None => ()
       }
 
-    | exception err => Js.log3("Could not decode event':", eventJson', err)
+    | exception err => Console.log3("Could not decode event':", eventJson', err)
     }
   }
 
@@ -171,7 +171,7 @@ module Make = (
     let commandActions = mapOutgoingEvent(eventJson', pluginDef)
     commandActions
     ->Array.map(applyOutgoingCommandAction)
-    ->Js.Promise.all
+    ->Promise.all
     ->Util.Promise.toUnit
   }
 }

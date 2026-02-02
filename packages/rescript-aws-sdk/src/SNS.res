@@ -55,19 +55,17 @@ module PublishCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 let publish = (~topicArn, ~messageGroupId=?, message) =>
   PublishCommand.send(
     PublishCommand.make({
       topicArn,
-      messageGroupId: ?messageGroupId->Option.map(id =>
-        id->Js.String2.replaceByRe(%re("/ /g"), "")
-      ),
+      messageGroupId: ?(messageGroupId->Option.map(id => id->String.replaceRegExp(/ /g, ""))),
       message,
     }),
   )
@@ -87,12 +85,11 @@ module SubscribeCommand = {
   type input = {
     @as("TopicArn") topicArn: string,
     @as("Protocol")
-    protocol: @string
-    [
+    protocol: [
       | #http
       | #https
       | #email
-      | @as("email-json") #emailJson
+      | #"email-json"
       | #sms
       | #sqs
       | #application
@@ -122,10 +119,10 @@ module SubscribeCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module UnsubscribeCommand = {
@@ -139,10 +136,10 @@ module UnsubscribeCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module ListSubscriptionsByTopicCommand = {
@@ -171,10 +168,10 @@ module ListSubscriptionsByTopicCommand = {
 
   module Raw = {
     @send
-    external send: (client, t) => Js.Promise.t<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
 
-  let send: t => Js.Promise.t<output> = command => Raw.send(client(), command)
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 let findSubscription = async (queueArn, topicArn) => {
@@ -198,9 +195,10 @@ let subscribeQueueToTopic = async (queueArn, topicArn) =>
         },
       }),
     )
-    Js.log2("subscribed:", subscriptionResponse.subscriptionArn)
+    Console.log2("subscribed:", subscriptionResponse.subscriptionArn)
 
-  | Some(subscription) => Js.log2("re-using existing subscription:", subscription.subscriptionArn)
+  | Some(subscription) =>
+    Console.log2("re-using existing subscription:", subscription.subscriptionArn)
   }
 
 let unsubscribeQueueFromTopic = async (queueArn, topicArn) =>
@@ -209,6 +207,6 @@ let unsubscribeQueueFromTopic = async (queueArn, topicArn) =>
     let _unsubscribeResponse = await UnsubscribeCommand.send(
       UnsubscribeCommand.make({subscriptionArn: subscription.subscriptionArn}),
     )
-    let _ = Js.log2("unsubscribed:", subscription.subscriptionArn)
-  | None => Js.log2("there is no subscription for queue:", queueArn)
+    let _ = Console.log2("unsubscribed:", subscription.subscriptionArn)
+  | None => Console.log2("there is no subscription for queue:", queueArn)
   }

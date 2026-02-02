@@ -7,7 +7,7 @@ include FastCSV
 let fromValidation: (Validation.t<unit, string>, callback) => calledBack = (validation, cb) =>
   switch validation {
   | Failure(msg) => cb->toInvalid(msg)
-  | Failures(msgs) => cb->toInvalid(msgs->Js.Array2.joinWith(", "))
+  | Failures(msgs) => cb->toInvalid(msgs->Array.joinUnsafe(", "))
   | Success(_)
   | Successes(_) =>
     cb->toValid

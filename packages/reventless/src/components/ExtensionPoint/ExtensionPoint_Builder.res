@@ -23,7 +23,7 @@ module Make = (
 
   let filterAggregateResources = (aggregateResources, aggregateNames) =>
     aggregateResources
-    ->Js.Dict.entries
+    ->Dict.toArray
     ->Array.filter(((name, _)) =>
       aggregateNames->Belt.Array.some(aggregateName => aggregateName == name)
     )
@@ -39,8 +39,7 @@ module Make = (
     name,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-    let childName =
-      name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
+    let childName = name->String.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
 
     module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicChannel)
     let commandTopic = SpecificCommandTopic.make(~name=childName, ~opts)
@@ -74,7 +73,7 @@ module Make = (
 
         commandTopic->ExtensionPointRuntimeBuilder.forCommandTopic(
           ~handler,
-          ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...)
+          ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...),
         )
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
@@ -126,6 +125,6 @@ module Make = (
         ~queryEngine,
         ...
       ),
-      ~opts
+      ~opts,
     )
 }

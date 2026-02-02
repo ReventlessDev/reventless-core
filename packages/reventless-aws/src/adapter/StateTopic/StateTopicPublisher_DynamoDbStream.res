@@ -2,9 +2,9 @@ let make: Reventless.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~al
   let queryDbResource =
     allQueryDbs
     ->Reventless.Util.ReadModel.queryDbStorageResources(
-      name->Js.String2.substring(
-        ~from=0,
-        ~to_=name->Js.String2.indexOf(ReadModel->Reventless.ComponentType.toName),
+      name->String.substring(
+        ~start=0,
+        ~end=name->String.indexOf(ReadModel->Reventless.ComponentType.toName),
       ),
     )
     ->Util.DynamoDbStream.findResource
@@ -15,7 +15,7 @@ let make: Reventless.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~al
       if service == AWS.DynamoDbStream.service {
         queryDbResource->Util_DynamoDbStream.toStreamResource
       } else {
-        Js.Exn.raiseError(
+        JsError.throwWithMessage(
           "StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_" ++ service,
         )
       }

@@ -6,13 +6,13 @@ let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) 
   )
 
   let _policy = PulumiAws.IAM.Policy.make(
-    ~name=name++"CloudWatchEventsPolicy",
+    ~name=name ++ "CloudWatchEventsPolicy",
     ~args={
       PulumiAws.IAM.Policy.policy: role.arn
       ->Pulumi.Output.apply(roleArn => {
         open PulumiAws.PolicyDocument
         PulumiAws.PolicyDocument.make(
-          ~id = name ++ "CloudWatchEventsPolicy",
+          ~id=name ++ "CloudWatchEventsPolicy",
           ~statements=[
             {
               sid: "AllowCloudWatchEvents",

@@ -1,15 +1,9 @@
 {
   "name": "@reventless/rescript-fast-csv",
-  "version": "0.1.1",
   "namespace": false,
-  "suffix": ".res.js",
   "ppx-flags": [],
   "warnings": {
     "error": "-44+101"
-  },
-  "package-specs": {
-    "module": "commonjs",
-    "in-source": true
   },
   "sources": [
     {
@@ -22,15 +16,9 @@
       "subdirs": true
     }
   ],
-  "bs-dependencies": [
-    "@rescript/core",
+  "dependencies": [
     "@reventless/rescript-node-streams"
   ],
-  "pinned-dependencies": [
-    "@reventless/rescript-node-streams"
-  ],
-  "bsc-flags": [
-    "-open RescriptCore"
-  ],
-  "external-stdlib": "@rescript/std"
+  "compiler-flags": [
+  ]
 }

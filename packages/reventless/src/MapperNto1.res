@@ -1,20 +1,21 @@
-type mapGeneric<'action> = Js.Json.t => 'action
+type mapGeneric<'action> = JSON.t => 'action
 type mapImpl<'msg, 'action> = 'msg => 'action
 
 let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<'action> = (
   decode,
   map,
-) => json =>
-  switch json->decode {
-  | msg => msg->map
-  | exception err =>
-    let jsonStr = json->Js.Json.stringify
-    Js.Exn.raiseError(
-      `Error: Couldn't decode source message: ${err
-        ->Js.Json.stringifyAny
-        ->Option.getExn}, ${jsonStr}`,
-    )
-  }
+) =>
+  json =>
+    switch json->decode {
+    | msg => msg->map
+    | exception err =>
+      let jsonStr = json->JSON.stringify
+      JsError.throwWithMessage(
+        `Error: Couldn't decode source message: ${err
+          ->JSON.stringifyAny
+          ->Option.getOrThrow}, ${jsonStr}`,
+      )
+    }
 
 module type Spec = {
   module type Source
@@ -26,7 +27,7 @@ module type Spec = {
 module type Mapper = {
   type targetState
   type action<'id, 'state>
-  let map: (~sourceName: option<string>, Js.Json.t) => array<action<'id, 'state>>
+  let map: (~sourceName: option<string>, JSON.t) => array<action<'id, 'state>>
 }
 
 module type Mapping = {
@@ -34,7 +35,7 @@ module type Mapping = {
   let sourceName: string
   type target
 
-  let map: Js.Json.t => Spec.action<string, target>
+  let map: JSON.t => Spec.action<string, target>
 }
 
 module type Mappings = {
@@ -66,7 +67,10 @@ module Mapper = (
     )->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
       try Some(json->Mapping.map) catch {
       | exn =>
-        Js.log2("Mapping failed:", exn->Js.Exn.asJsExn->Option.map(exn => exn->Js.Exn.message))
+        Console.log2(
+          "Mapping failed:",
+          exn->JsExn.fromException->Option.map(exn => exn->JsExn.message),
+        )
         None
       }
     )

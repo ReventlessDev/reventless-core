@@ -99,6 +99,6 @@ module Make = (
       ~componentType=ReadModel.componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~allEventTopics, ...),
-      ~opts
+      ~opts,
     )
 }

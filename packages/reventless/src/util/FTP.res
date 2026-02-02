@@ -10,25 +10,28 @@ let parseUrl: string => (
   /* port */ option<int>,
   /* url-path */ string,
 ) = url => {
-  let colonI = url->Js.String2.indexOf(":")
-  let slashI = url->Js.String2.indexOf("/")
-  open Js.String2
+  let colonI = url->String.indexOf(":")
+  let slashI = url->String.indexOf("/")
   switch (colonI > -1, slashI > -1) {
   | (true, true) =>
     let fst = colonI < slashI ? colonI : slashI
     let port =
       colonI < slashI
-        ? url->slice(~from=colonI + 1, ~to_=slashI)
-        : url->sliceToEnd(~from=colonI + 1)
+        ? url->String.slice(~start=colonI + 1, ~end=slashI)
+        : url->String.slice(~start=colonI + 1)
     let path =
       colonI < slashI
-        ? url->sliceToEnd(~from=slashI + 1)
-        : url->slice(~from=slashI + 1, ~to_=colonI)
-    (url->slice(~from=0, ~to_=fst), port->Int.fromString, path)
-  | (false, true) => (url->slice(~from=0, ~to_=slashI), None, url->sliceToEnd(~from=slashI + 1))
+        ? url->String.slice(~start=slashI + 1)
+        : url->String.slice(~start=slashI + 1, ~end=colonI)
+    (url->String.slice(~start=0, ~end=fst), port->Int.fromString, path)
+  | (false, true) => (
+      url->String.slice(~start=0, ~end=slashI),
+      None,
+      url->String.slice(~start=slashI + 1),
+    )
   | (true, false) => (
-      url->slice(~from=0, ~to_=colonI),
-      url->sliceToEnd(~from=colonI + 1)->Int.fromString,
+      url->String.slice(~start=0, ~end=colonI),
+      url->String.slice(~start=colonI + 1)->Int.fromString,
       "",
     )
   | (false, false) => (url, None, "")

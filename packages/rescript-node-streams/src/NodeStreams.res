@@ -4,7 +4,7 @@ type buffer
 
 module EventHandler = {
   @send
-  external onError: ('a, @as("error") _, Js.Exn.t => unit) => 'a = "on"
+  external onError: ('a, @as("error") _, JsExn.t => unit) => 'a = "on"
   @send
   external onClose: ('a, @as("close") _, unit => unit) => 'a = "on"
   @send external onEvent: ('a, string, 'b => unit) => 'a = "on"
@@ -98,7 +98,7 @@ external createWriteStream: string => Writable.t = "createWriteStream"
 @val @module("fs")
 external createReadStream: string => Readable.t = "createReadStream"
 @val @module("fs")
-external unlink: string => Js.Promise.t<unit> = "unlink"
+external unlink: string => promise<unit> = "unlink"
 
 module Readline = {
   type t
@@ -114,12 +114,11 @@ module Readline = {
 // NOTE: This node function is variadic (=takes n transform streams)
 // NOTE: documentation says, this returns <Stream>, we just bind to unit
 @val @module("stream") @scope("promises")
-external pipeline0: (Readable.t, Writable.t) => Js.Promise.t<unit> = "pipeline"
+external pipeline0: (Readable.t, Writable.t) => promise<unit> = "pipeline"
 @val @module("stream") @scope("promises")
-external pipeline: (Readable.t, Transform.t, Writable.t) => Js.Promise.t<unit> = "pipeline"
+external pipeline: (Readable.t, Transform.t, Writable.t) => promise<unit> = "pipeline"
 @val @module("stream") @scope("promises")
-external pipeline2: (Readable.t, Transform.t, Transform.t, Writable.t) => Js.Promise.t<unit> =
-  "pipeline"
+external pipeline2: (Readable.t, Transform.t, Transform.t, Writable.t) => promise<unit> = "pipeline"
 @val @module("stream") @scope("promises")
 external pipeline3: (
   Readable.t,
@@ -127,4 +126,4 @@ external pipeline3: (
   Transform.t,
   Transform.t,
   Writable.t,
-) => Js.Promise.t<unit> = "pipeline"
+) => promise<unit> = "pipeline"

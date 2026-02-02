@@ -21,4 +21,4 @@ module type T = {
 }
 
 let allQueryDbs = allReadModels =>
-  Js.Dict.map((readModel: outputs) => readModel.queryDb, allReadModels)
+  Dict.mapValues(allReadModels, (readModel: outputs) => readModel.queryDb)

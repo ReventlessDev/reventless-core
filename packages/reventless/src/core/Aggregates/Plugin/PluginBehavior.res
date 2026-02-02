@@ -76,7 +76,7 @@ let init: Behavior.init<state, event> = event =>
   | Disconnected(_)
   | Activated(_)
   | Deactivated(_) =>
-    raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
+    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
 let apply: Behavior.apply<state, event> = (state: state, event) =>
@@ -89,7 +89,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     | Disconnected(_)
     | Activated(_)
     | Deactivated(_) =>
-      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
+      throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Connected(pluginDefinition) =>
     switch event {
@@ -99,7 +99,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     | Connected(_)
     | Reconnected(_)
     | Activated(_) =>
-      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
+      throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Disconnected(pluginDefinition) =>
     switch event {
@@ -109,7 +109,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     | Connected(_)
     | Disconnected(_)
     | Activated(_) =>
-      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
+      throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Inactive(pluginDefinition) =>
     switch event {
@@ -119,6 +119,6 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     | Reconnected(_)
     | Disconnected(_)
     | Deactivated(_) =>
-      raise(Message.InvalidEvent(event->Message.encode(eventSchema)))
+      throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   }

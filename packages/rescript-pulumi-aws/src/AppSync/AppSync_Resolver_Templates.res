@@ -1,3 +1,9 @@
+let uncapitalize = str =>
+  switch String.get(str, 0) {
+  | None => ""
+  | Some(first) => String.concat(first->String.toLowerCase, String.slice(str, ~start=1))
+  }
+
 let getItemById = `
   {
     "version": "2017-02-28",
@@ -251,7 +257,7 @@ let queryByIndexSortFiltered = (~index: string, ~idField: string, ~sortField: st
   `->Pulumi.Input.make
 
 let authorizeIndexedAccessRequest = (~index: string, ~group: string) => {
-  let authIdName = group->StringLabels.uncapitalize_ascii ++ "Id"
+  let authIdName = group->uncapitalize ++ "Id"
   `
     #foreach($group in $context.identity.claims.get("cognito:groups"))
       #if($group == "${group}")
@@ -272,7 +278,7 @@ let authorizeIndexedAccessRequest = (~index: string, ~group: string) => {
 }
 
 let authorizeIndexedAccessResponse = (~group: string) => {
-  let authIdName = group->StringLabels.uncapitalize_ascii ++ "Id"
+  let authIdName = group->uncapitalize ++ "Id"
   `
     #if($ctx.error)
       $util.error($ctx.error.message, $ctx.error.type)

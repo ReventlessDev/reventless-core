@@ -32,9 +32,10 @@ module Make = (
     let (counterOperations, counterOutputs) = Mappings.counter->Option.mapOr(
       (
         Pulumi.Output.make({
-          Counter.count: async _items => Js.log("No counter deployed, but trying to use count"),
+          Counter.count: async _items =>
+            Console.log("No counter deployed, but trying to use count"),
           addToCounterTarget: async _target =>
-            Js.log("No counter deployed, but trying to use addToCounterTarget"),
+            Console.log("No counter deployed, but trying to use addToCounterTarget"),
         }),
         None,
       ),
@@ -116,6 +117,6 @@ module Make = (
         ~timeout,
         ...
       ),
-      ~opts
+      ~opts,
     )
 }

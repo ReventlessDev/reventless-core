@@ -1,30 +1,24 @@
 {
   "name": "@reventless/reventless-universe",
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
+  "private": true,
   "repository": {
     "type": "git",
     "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
   },
-  "scripts": {
-    "start": "lerna run build --scope reventless",
-    "wizard": "lerna-wizard",
-    "update": "lernaupdate",
-    "bootstrap": "lerna bootstrap",
-    "build": "lerna run build",
-    "rebuild": "lerna run rebuild",
-    "clean": "lerna run clean",
-    "test": "lerna run test"
+  "publishConfig": {
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "devDependencies": {
-    "rescript": "^11.1.4",
-    "lerna": "^6.1.0",
-    "lerna-update-wizard": "^1.1.2",
-    "lerna-wizard": "^1.1.1",
-    "rescript": "^9.1.2"
+    "lerna": "^9.0.3",
+    "rescript": "^12.1.0"
   },
-  "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.662.0"
+  "scripts": {
+    "build": "rescript build",
+    "watch": "rescript watch",
+    "clean": "rescript clean",
+    "format": "rescript format"
   }
 }

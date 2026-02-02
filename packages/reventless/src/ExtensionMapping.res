@@ -6,10 +6,8 @@ type extensionPointName = string
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommand(Aggregate.name, Message.commandJson)
-  | AbstractPublishAggregateCommandAsync(Js.Promise.t<(Aggregate.name, Message.commandJson)>)
-  | AbstractPublishAggregateCommandsAsync(
-      Js.Promise.t<array<(Aggregate.name, Message.commandJson)>>,
-    )
+  | AbstractPublishAggregateCommandAsync(promise<(Aggregate.name, Message.commandJson)>)
+  | AbstractPublishAggregateCommandsAsync(promise<array<(Aggregate.name, Message.commandJson)>>)
   | AbstractPublishPluginExtensionPointCommand(Message.commandJson)
   | AbstractPublishExtensionPointCommand(extensionPointName, Message.commandJson)
   | AbstractCall(Message.handler<unit>)
@@ -30,9 +28,7 @@ module type T = {
     ReventlessSpec.QueryEngine.operations,
   ) => array<abstractIncomingCommandAction>
 
-  let mapOutgoingEvent: option<
-    (Js.Json.t, pluginDefinition) => array<abstractOutgoingCommandAction>,
-  >
+  let mapOutgoingEvent: option<(JSON.t, pluginDefinition) => array<abstractOutgoingCommandAction>>
 }
 
 module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec): (
@@ -55,8 +51,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     queryEngine,
   ) => {
     let encodeAggregateCommandJson = (aggregateCmd, aggregateId) => {
-      let commandStr = aggregateCmd->Message.encode(Aggregate.commandSchema)->Js.Json.stringify
-      Js.log(
+      let commandStr = aggregateCmd->Message.encode(Aggregate.commandSchema)->JSON.stringify
+      Console.log(
         `ExtensionMapping incoming from ExtensionPoint ${extensionPointName} to Aggregate ${aggregateName}: Publishing command: ${commandStr} id: ${aggregateId}`,
       )
       {
@@ -67,8 +63,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     }
 
     let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-      let commandStr = commandJson->Js.Json.stringify
-      Js.log(
+      let commandStr = commandJson->JSON.stringify
+      Console.log(
         `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: ${action}: ${commandStr} id: ${id}`,
       )
       {
@@ -131,9 +127,9 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           ),
         )
       | Call(handler, callCommand) =>
-        Js.log2(
+        Console.log2(
           `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
-          callCommand->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
+          callCommand->Message.encode(Spec.callCommandSchema)->JSON.stringify,
         )
 
         AbstractCall(() => handler(callCommand))
@@ -147,8 +143,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     switch aggregateEvent'Json->Message.decodeEvent'(Aggregate.Id.schema, Aggregate.eventSchema) {
     | {id, meta, event} =>
       let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-        let commandStr = commandJson->Js.Json.stringify
-        Js.log(
+        let commandStr = commandJson->JSON.stringify
+        Console.log(
           `ExtensionMapping outgoing from Aggregate ${aggregateName}: ${action}: ${commandStr} id: ${id}`,
         )
         {
@@ -194,16 +190,16 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             ),
           )
         | Call(handler, callCommand) =>
-          Js.log2(
+          Console.log2(
             `ExtensionMapping outgoing from Aggregate ${aggregateName}: Handling call command`,
-            callCommand->Message.encode(Spec.callCommandSchema)->Js.Json.stringify,
+            callCommand->Message.encode(Spec.callCommandSchema)->JSON.stringify,
           )
 
           AbstractCall(() => handler(callCommand))
         }
       )
     | exception err =>
-      Js.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
+      Console.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
       []
     }
 

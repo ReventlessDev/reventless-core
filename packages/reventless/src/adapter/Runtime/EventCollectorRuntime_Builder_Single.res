@@ -32,25 +32,25 @@ module Make = (
     maxMemorySize: 0,
     maxTimeout: 0,
   })
-  let eventCollectorHandlers = Js.Dict.empty()
+  let eventCollectorHandlers = Dict.make()
 
-  let eventCollectorHandler = parentName => async (event: RuntimeEnvironment.event, context) => {
-    let desc = `eventCollectorHandler for ${parentName}:`
-    let _ =
-      await event
+  let eventCollectorHandler = parentName =>
+    async (event: RuntimeEnvironment.event, context) => {
+      let desc = `eventCollectorHandler for ${parentName}:`
+      let _ = await event
       ->RuntimeEnvironment.groupBySource
       ->Dict.toArray
       ->Array.map(async ((urn, event)) => {
-        switch eventCollectorHandlers->Js.Dict.get(urn) {
+        switch eventCollectorHandlers->Dict.get(urn) {
         | Some(handlers) =>
           let count = handlers->Array.length->Int.toString
-          Js.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
+          Console.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
           let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
-        | None => Js.log2(`${desc} no handler found:`, urn)
+        | None => Console.log2(`${desc} no handler found:`, urn)
         }
       })
       ->Promise.all
-  }
+    }
 
   let validateParent = (parent: Pulumi.Resource.t) => {
     let parentName = parent.name->Option.getOr("UnnamedParent")
@@ -62,18 +62,18 @@ module Make = (
           parts->Array.getUnsafe(parts->Array.length - 1)
         })
         ->Option.getOr("Unknown")
-      Js.log(`validateParent: parent ${parentName} type: ${pulumiType}`)
+      Console.log(`validateParent: parent ${parentName} type: ${pulumiType}`)
       switch (grandParent.contents, parentType.contents) {
       | (None, None) =>
         parentType := Some(pulumiType)
         grandParent := parent.parent
       | (Some(grandParent), _) if Some(grandParent) != parent.parent =>
         let grandParentName = grandParent.name->Option.getOr("UnnamedGrandParent")
-        Js.Exn.raiseError(
+        JsError.throwWithMessage(
           `registerRuntimeSpec: parent ${parentName} has different parent than ${grandParentName}`,
         )
       | (_, Some(parentType)) if parentType != pulumiType =>
-        Js.Exn.raiseError(
+        JsError.throwWithMessage(
           `registerRuntimeSpec: parent ${parentName} has different type ${pulumiType} than ${parentType}`,
         )
       | _ => ()
@@ -132,7 +132,7 @@ module Make = (
         (registered, urns, handler)
         ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((_, urns, handler)) => {
-          Js.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
+          Console.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
@@ -142,7 +142,9 @@ module Make = (
           })
         })
     | None =>
-      Js.Exn.raiseError(`forEventCollector: eventCollector ${eventCollectorName} has no parent`)
+      JsError.throwWithMessage(
+        `forEventCollector: eventCollector ${eventCollectorName} has no parent`,
+      )
     }
   }
 
@@ -165,14 +167,14 @@ module Make = (
 
         let _connectResources = EventCollectorChannel.connect(~name, ~channelSpecs, ~runtime, ~opts)
       | _ =>
-        Js.log3(
+        Console.log3(
           "EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set:",
           grandParent.contents->Option.map(grandParent =>
             `${grandParent.pulumiType} ${grandParent.name->Option.getOr("UnnamedGrandParent")}`
           ),
           parentType.contents,
         )
-        Js.Exn.raiseError(
+        JsError.throwWithMessage(
           "EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set",
         )
       }

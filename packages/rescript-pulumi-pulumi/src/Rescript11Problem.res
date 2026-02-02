@@ -21,7 +21,7 @@ module Problem = {
   type args = {id?: Input.t<string>}
 
   let args = {id: id->Output.make->Output.asInput}
-  Js.Console.log2("Problem: args:", args)
+  Console.log2("Problem: args:", args)
 }
 
 module Option1 = {
@@ -30,7 +30,7 @@ module Option1 = {
   type args = {id: Input.t<string>}
 
   let args = {id: id->Output.make->Output.asInput}
-  Js.Console.log2("Option1: args:", args)
+  Console.log2("Option1: args:", args)
 }
 
 module Option2 = {
@@ -39,7 +39,7 @@ module Option2 = {
   type args = {id?: string}
 
   let args = {id: "id"}
-  Js.Console.log2("Option2: args:", args)
+  Console.log2("Option2: args:", args)
 }
 
 module Option3 = {
@@ -51,5 +51,5 @@ module Option3 = {
     external make: (~id: Input.t<string>=?) => t = ""
   }
   let args = Args.make(~id=id->Output.make->Output.asInput)
-  Js.Console.log2("Option3: args:", args)
+  Console.log2("Option3: args:", args)
 }

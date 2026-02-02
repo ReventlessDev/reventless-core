@@ -5,5 +5,5 @@ let make = (~name, componentType) =>
     ("Environment", Pulumi.Pulumi.getStackName()),
     ("Plugin", Pulumi.Pulumi.getProjectName()),
   ]
-  ->Js.Dict.fromArray
+  ->Dict.fromArray
   ->Pulumi.Input.make

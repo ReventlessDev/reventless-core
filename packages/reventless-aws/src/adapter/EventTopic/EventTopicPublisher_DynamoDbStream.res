@@ -12,13 +12,13 @@ let make: Reventless.EventTopic_Adapter.publisherMaker = (
         if service == AWS.DynamoDbStream.service {
           storageResource->Util_DynamoDbStream.toStreamResource
         } else {
-          Js.Exn.raiseError(
+          JsError.throwWithMessage(
             "EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" ++ service,
           )
         }
       )
       ->Reventless.Adapter.outputToResource,
     ],
-    publishJson: Pulumi.Output.make((_, _, _) => Js.Promise.resolve()), // ignore
+    publishJson: Pulumi.Output.make((_, _, _) => Promise.resolve()), // ignore
   }
 }

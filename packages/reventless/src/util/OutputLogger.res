@@ -7,9 +7,11 @@ let logOutput: (
   Pulumi.Output.t<'a>,
 ) => unit = (~loc=?, ~map=?, ~stringify=?, ~level=?, desc, output) =>
   if output->Pulumi.Output.isOutput {
-    output->Pulumi.Output.apply(item => Logger.log(~loc?, ~map?, ~stringify?, ~level?, desc, item))->ignore
+    output
+    ->Pulumi.Output.apply(item => Logger.log(~loc?, ~map?, ~stringify?, ~level?, desc, item))
+    ->ignore
   } else {
-    let itemType = output->Js.typeof
+    let itemType = (output->typeof :> string)
     Logger.log(
       ~loc?,
       ~map?,

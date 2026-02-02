@@ -11,7 +11,7 @@ module Options = {
     /** default: "," */
     delimiter?: string,
     /** default: '"' */
-    quote?: Js.Nullable.t<string>,
+    quote?: Nullable.t<string>,
     /** default: '"' */
     escape?: string,
     /** default: false  | this could also be array(string), see setHeaders(t, array(string) */
@@ -50,11 +50,11 @@ type calledBack
  *    - bool if given record is valid
  *    - reason, why the given record was invalid
  */
-type callback = (Js.nullable<Js.Exn.t>, bool, option<reason>) => calledBack
+type callback = (Nullable.t<JsExn.t>, bool, option<reason>) => calledBack
 type validation = (row, callback) => calledBack
 
 type transformCalledBack
-type transformCallback = (Js.nullable<Js.Exn.t>, option<row>) => transformCalledBack
+type transformCallback = (Nullable.t<JsExn.t>, option<row>) => transformCalledBack
 type transformation = (row, transformCallback) => transformCalledBack
 
 type importerValidation = row => result<unit, string>
@@ -98,7 +98,7 @@ external validate: (csvParserStream, validation) => csvParserStream = "validate"
   ```rescript
     parseFile(~path="x")
     -> transform((row, cb) => {
-          Js.Dict.unsafeDeleteKey(. row, \"\"); /* remove property with empty name from row */
+          Dict.delete(row, \"\"); /* remove property with empty name from row */
           cb |> toValidTransformation(row); /* state a successfull transformation */
         })
   ```
@@ -110,17 +110,17 @@ external transform: (csvParserStream, transformation) => csvParserStream = "tran
   example:
   ```rescript
     parseFile(~path="x")
-    -> onError(err => err -> Js.Exn.message -> Js.log2("error during parsing:"))
+    -> onError(err => err -> Js.Exn.message -> Console.log2("error during parsing:"))
   ```
 */
 @send
-external onError: (csvParserStream, @as("error") _, Js.Exn.t => unit) => csvParserStream = "on"
+external onError: (csvParserStream, @as("error") _, JsExn.t => unit) => csvParserStream = "on"
 
 /** Register a handler to be called if a data-set were parsed and evaluated as valid
   example:
   ```rescript
     parseFile(~path="x"))
-    -> onData(row => row -> Js.log2("parsed line:"))
+    -> onData(row => row -> Console.log2("parsed line:"))
   ```
 */
 @send
@@ -130,7 +130,7 @@ external onData: (csvParserStream, @as("data") _, row => unit) => csvParserStrea
   example:
   ```rescript
     parseFile(~path="x"))
-    -> onEnd(rowCount => Js.log(`${rowCount->RescriptCore.Int.toString} rows parsed`))
+    -> onEnd(rowCount => Console.log(`${rowCount->RescriptCore.Int.toString} rows parsed`))
   ```
 */
 @send
@@ -145,8 +145,8 @@ external onEnd: (csvParserStream, @as("end") _, rowCount => unit) => csvParserSt
        )
     -> onInvalid((row, rowNumber, reason) =>
         switch (reason) {
-          | None => Js.log2(`line (${rowNumber->RescriptCore.Int.toString}) has too many/view records:`, row)
-          | Some(reason) => Js.log2(`line (${rowNumber->RescriptCore.Int.toString}) is invalid: ${reason}`, row)
+          | None => Console.log2(`line (${rowNumber->RescriptCore.Int.toString}) has too many/view records:`, row)
+          | Some(reason) => Console.log2(`line (${rowNumber->RescriptCore.Int.toString}) is invalid: ${reason}`, row)
         }
        )
   ```
@@ -166,26 +166,26 @@ external onInvalid: (
   TODO: hide behind an interface definition
  */
 @new
-external makeError: string => Js.Exn.t = "Error"
+external makeError: string => JsExn.t = "Error"
 
 /** Call the validation-callback function for an invalid data-set */
 let toInvalid: (callback, reason) => calledBack = (cb, reason) =>
-  cb(Js.Nullable.null, false, Some(reason))
+  cb(Nullable.null, false, Some(reason))
 
 /** Call the validation-callback function for a valid data-set */
-let toValid: callback => calledBack = cb => cb(Js.Nullable.null, true, None)
+let toValid: callback => calledBack = cb => cb(Nullable.null, true, None)
 
 /** Call the validation-callback function for an error in the data-set */
 let toError: (callback, reason) => calledBack = (cb, reason) =>
-  cb(Js.Nullable.return(makeError(reason)), false, Some(reason))
+  cb(Nullable.make(makeError(reason)), false, Some(reason))
 
 /** Call the transformation-callback function for a valid transformation */
 let toValidTransformation: (transformCallback, row) => transformCalledBack = (cb, row) =>
-  cb(Js.Nullable.null, Some(row))
+  cb(Nullable.null, Some(row))
 
 /** Call the transformation-callback function for an error in the transformation */
 let toErrorTransformation: (transformCallback, reason) => transformCalledBack = (cb, reason) =>
-  cb(Js.Nullable.return(makeError(reason)), None)
+  cb(Nullable.make(makeError(reason)), None)
 
 /** Register multiple validation-functions, which will be called separately
   The first reason of invalidation will be passed along with the data-invalid event
@@ -208,11 +208,12 @@ let validateMultiple: (array<validation>, csvParserStream) => csvParserStream = 
 /** Add callback for validation to Result - to be used in validation function
   TODO: hide behind an interface definition
 */
-let fromImporterValidation: importerValidation => validation = validation => (row, cb) =>
-  switch row->validation {
-  | Ok(_) => cb->toValid
-  | Error(msg) => cb->toInvalid(msg)
-  }
+let fromImporterValidation: importerValidation => validation = validation =>
+  (row, cb) =>
+    switch row->validation {
+    | Ok(_) => cb->toValid
+    | Error(msg) => cb->toInvalid(msg)
+    }
 
 /** Register a single validation function based on result
   example:

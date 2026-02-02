@@ -5,11 +5,9 @@
     "packages/*"
   ],
   "command": {
-    "bootstrap": {
-      "hoist": false
-    },
     "publish": {
       "registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
     }
-  }
+  },
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json"
 }

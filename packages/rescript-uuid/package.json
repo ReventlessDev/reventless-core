@@ -28,14 +28,12 @@
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
-    "@rescript/std": "^11.1.4",
     "uuid": "^11.0.0-0"
   },
   "devDependencies": {
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   },
   "peerDependencies": {
-    "@rescript/std": "^11.1.4",
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   }
 }

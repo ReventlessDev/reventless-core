@@ -6,10 +6,10 @@ type allOutputs = dict<outputs>
 
 type t
 
-type publish<'id, 'event> = array<Message.event'<'id, 'event>> => Js.Promise.t<unit>
-type publishJson = (string, Message.meta, Js.Json.t) => Js.Promise.t<unit>
+type publish<'id, 'event> = array<Message.event'<'id, 'event>> => promise<unit>
+type publishJson = (string, Message.meta, JSON.t) => promise<unit>
 
-exception NotPublishedToPublisher(Js.Promise.error)
+exception NotPublishedToPublisher(exn)
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T
@@ -62,5 +62,5 @@ let log = (eventTopics, description) => {
       service->Pulumi.Output.apply(service => `${name}(${service})`)
     )
     ->Pulumi.Output.all
-    ->Pulumi.Output.apply(topics => Js.log2(description, topics->Js.Array2.joinWith(", ")))
+    ->Pulumi.Output.apply(topics => Console.log2(description, topics->Array.joinUnsafe(", ")))
 }

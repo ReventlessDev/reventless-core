@@ -10,16 +10,16 @@ module Make = (Spec: Spec) => {
     let eventCollectorName = eventCollector->AWS.arn2Name
     let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
 
-    Js.log(
+    Console.log(
       `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
     )
     switch await AwsSdk.SNS.subscribeQueueToTopic(eventCollector, eventTopic) {
     | _ =>
-      Js.log(
+      Console.log(
         `Successful ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
       )
-    | exception Js.Exn.Error(e) =>
-      Js.log2(
+    | exception JsExn(e) =>
+      Console.log2(
         `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
         e,
       )
@@ -31,16 +31,16 @@ module Make = (Spec: Spec) => {
     let eventCollectorName = eventCollector->AWS.arn2Name
     let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
 
-    Js.log(
+    Console.log(
       `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
     )
     switch await AwsSdk.SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic) {
     | _ =>
-      Js.log(
+      Console.log(
         `Success: ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
       )
-    | exception Js.Exn.Error(e) =>
-      Js.log2(
+    | exception JsExn(e) =>
+      Console.log2(
         `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
         e,
       )
@@ -109,7 +109,7 @@ module Make = (Spec: Spec) => {
 
       await connectToExtensionPoints
       ->Array.concat(connectToExtensions)
-      ->Js.Promise.all
+      ->Promise.all
       ->Util.Promise.toUnit
 
     | DoDisconnectPlugin({
@@ -155,7 +155,7 @@ module Make = (Spec: Spec) => {
 
       await disconnectFromExtensionPoints
       ->Array.concat(disconnectFromExtensions)
-      ->Js.Promise.all
+      ->Promise.all
       ->Util.Promise.toUnit
 
     | _ => ()

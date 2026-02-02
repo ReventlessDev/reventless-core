@@ -9,9 +9,9 @@ let streamArnFromDynamoDbTableResource = (resource: ReventlessSpec.Adapter.resou
   (resource.info, resource.name)
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((tableInfo, tableName)) =>
-    switch tableInfo->Js.String2.split(",") {
-    | parts if parts->Array.length < 3 || parts->Array.getUnsafe(2)->Js.String2.trim == "" =>
-      Js.Exn.raiseError("No streamArn field given for table " ++ tableName)
+    switch tableInfo->String.split(",") {
+    | parts if parts->Array.length < 3 || parts->Array.getUnsafe(2)->String.trim == "" =>
+      JsError.throwWithMessage("No streamArn field given for table " ++ tableName)
     | parts => parts->Array.getUnsafe(2)
     }
   )
@@ -42,7 +42,7 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 open AwsSdk.DynamoDb_DynamoDb
 
 let enableStream = async tableName => {
-  Js.log(`${__MODULE__}: enableStream for ${tableName}`)
+  Console.log(`${__MODULE__}: enableStream for ${tableName}`)
 
   switch await UpdateTableCommand.make({
     tableName,
@@ -67,7 +67,7 @@ let verifyStream = (table: PulumiAws.DynamoDb.Table.t) =>
     | None
     | Some(false) =>
       enableStream(tableName)
-    | Some(true) => (true, Some(streamArn), streamLabel)->Js.Promise.resolve
+    | Some(true) => (true, Some(streamArn), streamLabel)->Promise.resolve
     }->Pulumi.Output.fromPromise
   )
 
@@ -103,7 +103,7 @@ let makeTable = (
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")
-    ->Option.flatMap(tables => tables->Js.Dict.get(name))
+    ->Option.flatMap(tables => tables->Dict.get(name))
 
   let (dependencies, registerResource) = Util_DynamoDb_TableManager.getDependencies()
 

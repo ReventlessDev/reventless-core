@@ -13,23 +13,19 @@
   },
   "scripts": {
     "build": "rescript build",
-    "start": "rescript build -w",
-    "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps"
+    "start": "rescript start",
+    "clean": "rescript clean"
   },
   "dependencies": {
-    "@rescript/core": "^1.6.0",
-    "@rescript/std": "^11.1.4",
     "@reventless/rescript-pulumi-pulumi": "^2.2.0",
     "jsonschema2graphql": "1.1.1",
-    "sury": "^10.0.4",
-    "sury-ppx": "^10.0.0"
+    "sury": "^11.0.0-alpha.4",
+    "sury-ppx": "^11.0.0-alpha.2"
   },
   "devDependencies": {
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   },
   "peerDependencies": {
-    "@rescript/std": "^11.1.4",
-    "rescript": "^11.1.4"
+    "rescript": "^12.1.0"
   }
 }

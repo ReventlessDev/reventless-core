@@ -5,12 +5,12 @@ type referencesState = {
 }
 
 let groupCountItemsByCounterId = countItems => {
-  let dict = Js.Dict.empty()
+  let dict = Dict.make()
   countItems->Array.forEach(({Counter.counterId: counterId, reference}) => {
-    let currentReferences = dict->Js.Dict.get(counterId)->Option.getOr([])
-    dict->Js.Dict.set(counterId, currentReferences->Array.concat([reference]))
+    let currentReferences = dict->Dict.get(counterId)->Option.getOr([])
+    dict->Dict.set(counterId, currentReferences->Array.concat([reference]))
   })
-  dict->Js.Dict.entries
+  dict->Dict.toArray
 }
 
 let logCountItems = countItems =>
@@ -18,8 +18,8 @@ let logCountItems = countItems =>
   ->groupCountItemsByCounterId
   ->Array.forEach(((counterId, references)) => {
     let size = references->Array.length
-    let referencesStr = references->Js.Array2.joinWith(",")
-    Js.log(`  ${size->Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`)
+    let referencesStr = references->Array.joinUnsafe(",")
+    Console.log(`  ${size->Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`)
   })
 
 exception NotCounted(string)
@@ -41,20 +41,20 @@ module Make = (Ops: Ops) => {
     switch result {
     | Ok(_) =>
       let batchSize = countItems->Array.length
-      Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Int.toString} reference(s):`)
+      Console.log(__MODULE__ ++ `: saved batch of ${batchSize->Int.toString} reference(s):`)
       countItems->logCountItems
     | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
       let batchSize = countItems->Array.length
-      Js.log(`Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`)
+      Console.log(`Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`)
       countItems->logCountItems
-      raise(NotCounted(err))
+      throw(NotCounted(err))
     | Error(_) =>
       let batchSize = countItems->Array.length
-      Js.log(
+      Console.log(
         `Unknown Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`,
       )
       countItems->logCountItems
-      raise(NotCounted("Unknown error"))
+      throw(NotCounted("Unknown error"))
     }
   }
 }
