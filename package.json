@@ -3,7 +3,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "ssh://git@github.com:ReventlessDev/reventless.git"
+    "url": "git+ssh://git@github.com/ReventlessDev/reventless.git"
   },
   "publishConfig": {
     "@reventless:registry": "https://npm.pkg.github.com"
@@ -20,5 +20,6 @@
     "watch": "rescript watch",
     "clean": "rescript clean",
     "format": "rescript format"
-  }
+  },
+  "version": ""
 }
