@@ -1,12 +1,12 @@
 {
-  "name": "@reventless/reventless-universe",
+  "name": "ReventlessDev",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
+    "url": "ssh://git@github.com:ReventlessDev/reventless.git"
   },
   "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+    "@reventless:registry": "https://npm.pkg.github.com"
   },
   "workspaces": [
     "packages/*"

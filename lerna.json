@@ -6,8 +6,36 @@
   ],
   "command": {
     "publish": {
-      "registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+      "registry": "https://npm.pkg.github.com",
+      "conventionalCommits": true,
+      "message": "chore(release): publish packages",
+      "ignoreChanges": [
+        "**/*.md",
+        "**/*.test.js",
+        "**/*.spec.js",
+        "**/test/**",
+        "**/tests/**",
+        "**/__tests__/**"
+      ]
+    },
+    "version": {
+      "conventionalCommits": true,
+      "message": "chore(release): version packages",
+      "allowBranch": ["main", "master"],
+      "createRelease": "github"
+    },
+    "bootstrap": {
+      "hoist": true,
+      "npmClientArgs": ["--no-package-lock"]
     }
   },
+  "ignoreChanges": [
+    "**/*.md",
+    "**/*.test.js",
+    "**/*.spec.js",
+    "**/test/**",
+    "**/tests/**",
+    "**/__tests__/**"
+  ],
   "$schema": "node_modules/lerna/schemas/lerna-schema.json"
 }

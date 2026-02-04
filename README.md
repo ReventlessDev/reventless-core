@@ -1,122 +1,115 @@
-# Reventless-Universe
+# Reventless
 
-This is a mono-repo, which contains all necessary packages for the Reventless framework.
+**Reventless** is a modern holistic approach for the development of event-based business applications, consisting of:
 
-For individual Readmes per package see inside the package's directory `./packages/*`:
+- A *Methodology* which covers the full delivery cycle
+- A *Programming Model* which focuses on business value
+- A *Domain Independent* reusable *Framework* to optimize operational costs
 
-- [rescript-aws-sdk](packages/rescript-aws-sdk/README.md): bindings for `aws-sdk`
-- [rescript-fast-csv](packages/rescript-fast-csv/README.md): bindings for `fast-csv`
-- [rescript-hash-obj](packages/rescript-hash-obj/README.md): bindings for `hash-obj`
-- [rescript-node-streams](packages/rescript-node-streams/README.md): bindings for streams in `node`
-- [rescript-pulumi-aws](packages/rescript-pulumi-aws/README.md): bindings for `@pulumi/pulumi-aws`
-- [rescript-pulumi-pulumi](packages/rescript-pulumi-pulumi/README.md): bindings for `@pulumi/pulumi`
-- [rescript-ssh2](packages/rescript-ssh2/README.md): bindings for `ssh2`
-- [rescript-uuid](packages/rescript-uuid/README.md): bindings for `uuid`
-- [reventless](packages/reventless/README.md): reventless framework (provider agnostic)
-- [reventless-aws](packages/reventless-aws/README.md): aws specifics for the reventless framework (adapter, preconficured components, etc.)
-- [reventless-ci](packages/reventless-ci/README.md): ci tooling for reventless projects (docker image, scripts, ci templates)
+It enables developers to focus on business value and ship fast by providing a hierarchical component model that guides towards best-practice architectural patterns, with everything evolving around commands & events that are part of a ubiquitous language shared across all stakeholders.
+
+This is a mono-repo containing all necessary packages for the Reventless framework.
+
+## Core Technologies & Patterns
+
+Reventless leverages modern architectural patterns and technologies:
+
+- **Domain-Driven Design (DDD)** - Aligns software design with business domains and ubiquitous language
+- **Event-Driven Architecture** - Asynchronous message-based communication between components
+- **Event Sourcing** - Stores application state as a sequence of events (source of truth)
+- **CQRS** - Separates read and write operations for optimized performance and scalability
+- **ReScript** - Type-safe functional programming language compiling to JavaScript, see [here](https://rescript-lang.org)
+- **AWS Serverless** - Cloud-native deployment using Lambda, DynamoDB, SQS, SNS, and more
+- **Infrastructure as Code (IaC)** - Automated infrastructure provisioning and management using [Pulumi](https://pulumi.com)
+- **Hierarchical Component Model** - Modular, reusable architectural components with built-in infrastructure definitions (via Pulumi)
+
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+
+- Setting up your development environment
+- Making changes and submitting pull requests
+- Commit message conventions (Conventional Commits)
+- Package management with Lerna
+- Publishing packages to GitHub Registry
+
+For release process documentation, see [RELEASE.md](RELEASE.md).
+
+## Packages
+
+For individual Readmes per package see inside the packages directory `./packages/*`:
+
+### ReScript Bindings
+
+- [rescript-aws-sdk](packages/rescript-aws-sdk/README.md): ReScript bindings for `aws-sdk`
+- [rescript-fast-csv](packages/rescript-fast-csv/README.md): ReScript bindings for `fast-csv`
+- [rescript-hash-obj](packages/rescript-hash-obj/README.md): ReScript bindings for `hash-obj`
+- [rescript-node-streams](packages/rescript-node-streams/README.md): ReScript bindings for streams in `node`
+- [rescript-pulumi-aws](packages/rescript-pulumi-aws/README.md): ReScript bindings for `@pulumi/pulumi-aws`
+- [rescript-pulumi-pulumi](packages/rescript-pulumi-pulumi/README.md): ReScript bindings for `@pulumi/pulumi`
+- [rescript-ssh2](packages/rescript-ssh2/README.md): ReScript bindings for `ssh2`
+- [rescript-uuid](packages/rescript-uuid/README.md): ReScript bindings for `uuid`
+
+### Reventless packages
+
 - [reventless-spec](packages/reventless-spec/README.md): types & interface files for the reventless framework
+- [reventless](packages/reventless/README.md): Reventless framework (cloud provider agnostic)
+- [reventless-aws](packages/reventless-aws/README.md): AWS specifics for the Reventless framework (adapter, pre-configured components, etc.)
+
+## Outdated Packages
+
+The following packages are outdated (located in `./packages_to migrate/*`) and need to be updated:
+
+- [rescript-k6](packages/rescript-k6/README.md): ReScript bindings for k6 - a modern load testing tool for developers and testers
+- [rescript-react-test-renderer](packages/rescript-react-test-renderer/README.md): ReScript bindings for react-test-renderer
+- [reventless-ci](packages/reventless-ci/README.md): ci tooling for reventless projects (docker image, scripts, ci templates)
 - [reventless-ui](packages/reventless-ui/README.md): react component library & core ui for reventless based applications
+- [routes](packages/routes/README.md): enables typed routing and bi-directional usage (route & link)
 
 ## Setup
 
-This repo uses [Lerna](https://lerna.js.org/) to manage all the packages.
+This repo uses [npm](https://docs.npmjs.com) and [Lerna](https://lerna.js.org) to manage all the packages.
 
-0. use a node version manager like [fnm](https://github.com/Schniz/fnm) and configure it to respect `.node_version` files *recursively* (if not present in current directory, try to traverse over parent directories to find a version file). For fnm, this can be done by setting the env var `FNM_VERSION_FILE_STRATEGY` to `recursive` (default is `local`). (see [fnm docs](https://github.com/Schniz/fnm/blob/master/docs/commands.md))
-1. install general devDependencies by invoking `npm install` in the repository's root directory
-2. invoke `lerna bootstrap` (if lerna is globally installed - otherwise `npm run bootstrap`) to download all dependencies of the packages in this repository and link them together
-3. Done!
-   You can find the separate packages inside of `./packages/PkgName`. Change to the desired directory and work on the package like you would usually do.
+### Prerequisites
 
-## Basic Usage Of Lerna
+- **Node.js**: Use the version specified in [`.node-version`](.node-version)
+- **Node Version Manager**: We recommend [fnm](https://github.com/Schniz/fnm) or [nvm](https://github.com/nvm-sh/nvm)
+- **Git**: For version control
 
-> A tool for managing JavaScript projects with multiple packages.
+### Installation Steps
 
-### Starting A New Package From Scratch
+1. **Configure Node Version Manager** (if using fnm)
+   
+   Configure fnm to respect `.node-version` files recursively by setting the environment variable:
+   ```bash
+   export FNM_VERSION_FILE_STRATEGY=recursive
+   ```
+   Add this to your shell profile (`.bashrc`, `.zshrc`, etc.) to make it permanent.
+   
+   See [fnm docs](https://github.com/Schniz/fnm/blob/master/docs/commands.md) for more details.
 
-Use the [wizard](#lerna-wizard) or [`lerna create`](https://github.com/lerna/lerna/tree/master/commands/create#readme) command to create a new directory in `./packages/` and bootstrap some files (like package.json).
+2. **Install Node.js**
+   
+   ```bash
+   fnm install
+   fnm use
+   ```
 
-### Linking Local Packages
+3. **Install Dependencies**
+   
+   From the repository's root directory:
+   ```bash
+   npm install
+   ```
+   
+   > **Note:** This project uses npm workspaces. Running `npm install` in the root will automatically install dependencies for all packages in the monorepo and link them together. The `lerna bootstrap` command is no longer necessary.
 
-If you work on a package (`A`), and you have a local package (`D` for dependency), that you want to make use of in `A`. [Local package means `D` is developed inside of this mono-repo, managed by lerna and not necessarily published to npm]. Add `D` to the dependencies in `package.json` of `A`. (mind to match the version) Then call `lerna bootstrap` and you're done.
+4. **Build All Packages** (optional)
+   
+   ```bash
+   npm run build
+   ```
 
-### Version & Publish Packages
+You're all set! Individual packages are located in [`./packages/`](./packages/). Navigate to any package directory to work on it.
 
-Run `npx lerna publish`: This will check for modifications in all packages since the last version and prompt for a new version (patch, mino, major, pre-release) for each modified package and all dependents of a modified package. After user confirmation correlating tags will be created and pushed, while the packges will also be published to the registry.
-
-If you only want to version, but not publish packages, run `npx lerna version`.
-
-### [Lerna Wizard](https://github.com/webuniverseio/lerna-wizard)
-
-> Command line wizard for lerna
-
-You can use the lerna wizard by running `npm run wizard` in the monorepo's root directoy. The wizard can help / guide you through the usage of lerna.
-
-### [Lerna Update Wizard](https://github.com/Anifacted/lerna-update-wizard)
-
-> A command line tool for bulk-updating lerna package dependencies
-
-You can use the lerna update wizard by running `npm run update` in the monorepo's root directory. This wizard can help / guide you through manipulations of dependencies.
-
-#### Features
-
-- Update dependencies across packages
-- Add new dependencies across packages
-- Deduplicate dependencies across packages
-- Add/Update multiple dependencies in one session
-- Auto-generate Git branch & commit
-- Non-interactive Mode
-
-## Publish A Package In Github Registry
-
-All the packages in this Monorepo can be published using the Github Registry. Therefore, a "Personal Access Token" with the privileges for "repo", "write:packages" and "read:packages" must be created in the "Github Settings". After that you can login into the registry on your local machine, using the following command:
-
-```sh
-npm login --registry=https://npm.pkg.github.com --scope=@reventless-universe
-```
-
-You will be prompted to enter your Github username, password and your public email. Instead of the password use the Personal Access Token you just created.
-
-After that you are able to run `npm install @reventless-universe/<package>` and publish packages with `npm publish`.
-
-## Publish A Package In GitLab Registry
-
-All the packages in this Monorepo can be published using the GitLub Registry. Therefore, a "Personal Access Token" with the privilege for "api" must be created in "User Settings / Access Tokens". After that you can login into the registry on your local machine, using the following command:
-
-```sh
-npm login --registry=https://npm.pkg.github.com --scope=@reventless
-```
-
-You will be prompted to enter your Github username, password and your public email. Instead of the password use the Personal Access Token you just created.
-
-After that you are able to run `npm install @reventless-universe/<package>` and publish packages with `npm publish`.
-
-## Dependencies of packages in this repository
-
-> //@TODO: This section is out of date and needs to be updated.
-
-How to read the following table:
-
-- packages are listed top to bottom
-- dependencies are listed left to right
-
-| Package / dep    | rescript-aws-sdk | rescript-fast-csv | rescript-hash-obj | rescript-node-streams | rescript-pulumi-aws | rescript-pulumi-pulumi | rescript-ssh2 | rescript-uuid |
-| ---------------- | :--------: | :---------: | :---------: | :-------------: | :-----------: | :--------------: | :-----: | :-----: |
-| rescript-aws-sdk       |            |             |             |        x        |               |                  |         |         |
-| rescript-fast-csv      |            |             |             |        x        |               |                  |         |         |
-| rescript-hash-obj      |            |             |             |                 |               |                  |         |         |
-| rescript-node-streams  |            |             |             |                 |               |                  |         |         |
-| rescript-pulumi-aws    |            |             |             |                 |               |        x         |         |         |
-| rescript-pulumi-pulumi |            |             |             |                 |               |                  |         |         |
-| rescript-ssh2          |            |             |             |        x        |               |                  |         |         |
-| rescript-uuid          |            |             |             |                 |               |                  |         |         |
-| reventless       |     x      |      x      |      x      |        x        |       x       |        x         |    x    |    x    |
-
-Therefore there is a natural order in which package updates should be published:
-
-| 0                | 1             | 2          |
-| ---------------- | ------------- | ---------- |
-| rescript-hash-obj      | rescript-aws-sdk    | reventless |
-| rescript-node-streams  | rescript-fast-csv   |            |
-| rescript-pulumi-pulumi | rescript-pulumi-aws |            |
-| rescript-uuid          | rescript-ssh2       |            |
