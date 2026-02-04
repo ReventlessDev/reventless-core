@@ -3,9 +3,6 @@
   "version": "0.9.0",
   "description": "ReScript bindings for Moment.js",
   "main": "lib/js/src/MomentRe.res.js",
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

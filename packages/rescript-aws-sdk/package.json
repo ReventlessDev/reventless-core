@@ -1,25 +1,8 @@
 {
   "name": "@reventless/rescript-aws-sdk",
   "version": "2.1.2",
-  "description": "Bucklescript / ReasonML bindings for aws-sdk",
-  "author": "Atos",
+  "description": "ReScript bindings for aws-sdk",
   "license": "MIT",
-  "keywords": [
-    "aws",
-    "sdk",
-    "bucklescript",
-    "reasonml",
-    "bs",
-    "bsb",
-    "reason"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git@gitlab.com:reventless/reventless-universe.git"
-  },
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

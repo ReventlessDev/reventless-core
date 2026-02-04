@@ -1,24 +1,8 @@
 {
   "name": "@reventless/rescript-ssh2",
   "version": "1.0.2",
-  "description": "Bucklescript / ReasonML bindings for ssh2",
-  "author": "Atos",
+  "description": "ReScript bindings for ssh2",
   "license": "MIT",
-  "keywords": [
-    "reasonml",
-    "bucklescript",
-    "bs",
-    "bsb",
-    "ssh2",
-    "binding"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git@gitlab.com:reventless/reventless-universe.git"
-  },
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

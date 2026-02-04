@@ -8,11 +8,6 @@
     "test": "node test/TestSuite.mjs && node test/TempTests.mjs",
     "test-doc-examples": "node scripts/DocTests.mjs"
   },
-  "keywords": [
-    "rescript"
-  ],
-  "homepage": "https://github.com/rescript-association/rescript-core",
-  "author": "ReScript Team",
   "license": "MIT",
   "files": [
     "README.md",

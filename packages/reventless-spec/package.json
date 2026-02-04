@@ -2,15 +2,7 @@
   "name": "@reventless/reventless-spec",
   "version": "2.3.0",
   "description": "Specifications for Reventless",
-  "author": "Atos",
-  "license": "proprietary",
-  "repository": {
-    "type": "git",
-    "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
-  },
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
+  "license": "MIT",
   "scripts": {
     "build": "rescript build",
     "start": "rescript start",

@@ -1,24 +1,8 @@
 {
   "name": "@reventless/rescript-hash-obj",
   "version": "1.1.1",
-  "description": "Bucklescript / ReasonML bindings for hash-obj",
-  "author": "Atos",
+  "description": "ReScript bindings for hash-obj",
   "license": "MIT",
-  "keywords": [
-    "reasonml",
-    "bucklescript",
-    "bs",
-    "bsb",
-    "hash",
-    "binding"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git@gitlab.com:reventless/reventless-universe.git"
-  },
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

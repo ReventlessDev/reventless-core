@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "description": "aws lambda layer to be used in reventless based projects",
   "private": true,
-  "author": "Christoph Porod-Wanasek <christoph.wanasek@atos.net>",
-  "homepage": "https://gitlab.com/reventless/reventless-universe#readme",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "main": "src/Main.bs.js",
   "directories": {
     "lib": "lib",
@@ -14,10 +12,6 @@
   "files": [
     "lib"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@gitlab.com/reventless/reventless-universe.git"
-  },
   "scripts": {
     "build": "node ./builder/index.js"
   },

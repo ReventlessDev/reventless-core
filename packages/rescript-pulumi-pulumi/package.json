@@ -2,22 +2,7 @@
   "name": "@reventless/rescript-pulumi-pulumi",
   "version": "2.2.0",
   "description": "ReScript bindings for @pulumi/pulumi",
-  "author": "Atos",
   "license": "MIT",
-  "keywords": [
-    "reasonml",
-    "bucklescript",
-    "bs",
-    "bsb",
-    "pulumi"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git@gitlab.com:reventless/reventless-universe.git"
-  },
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

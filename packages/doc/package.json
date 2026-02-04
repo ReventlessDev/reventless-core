@@ -3,24 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "documentation for reventless",
-  "keywords": [
-    "reventless",
-    "documentation",
-    "doc"
-  ],
-  "author": "Christoph Wanasek <christoph.wanasek@atos.net>",
-  "homepage": "https://gitlab.com/reventless/reventless-universe#readme",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "main": "",
   "directories": {},
   "files": [],
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@gitlab.com/reventless/reventless-universe.git"
-  },
-  "bugs": {
-    "url": "https://gitlab.com/reventless/reventless-universe/issues"
-  },
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",

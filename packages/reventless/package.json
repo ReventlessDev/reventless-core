@@ -1,16 +1,8 @@
 {
     "name": "@reventless/reventless",
     "version": "2.3.3",
-    "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
-    "author": "Atos",
-    "license": "proprietary",
-    "repository": {
-        "type": "git",
-        "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
-    },
-    "publishConfig": {
-        "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-    },
+    "description": "Core package for Reventless framework",
+    "license": "MIT",
     "jest": {
         "testMatch": [
             "**/tests/**/*Test.res.js"

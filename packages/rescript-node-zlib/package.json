@@ -2,21 +2,7 @@
   "name": "@reventless/rescript-node-zlib",
   "version": "1.0.1",
   "description": "ReScript bindings for node zlib",
-  "author": "Eviden",
   "license": "MIT",
-  "keywords": [
-    "rescript",
-    "node",
-    "zlib",
-    "binding"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git@gitlab.com:reventless/reventless-universe.git"
-  },
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",
