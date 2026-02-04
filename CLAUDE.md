@@ -9,7 +9,6 @@ This is a Lerna monorepo with packages in `packages/`. Use Node v22.17.1 (specif
 ### Monorepo-level commands
 ```bash
 npm install                    # Install root dependencies
-npm run bootstrap              # lerna bootstrap - link all packages
 npm run build                  # Build all packages
 npm run test                   # Run tests in all packages
 npm run clean                  # Clean all packages
