@@ -2,7 +2,7 @@
   "name": "@reventless/rescript-moment",
   "version": "0.9.0",
   "description": "ReScript bindings for Moment.js",
-  "main": "lib/js/src/MomentRe.res.js",
+  "main": "lib/js/src/MomentRe.res.mjs",
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

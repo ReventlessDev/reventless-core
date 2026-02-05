@@ -8,7 +8,7 @@
     "start": "rescript build -w",
     "clean": "rescript clean",
     "rebuild": "npm run clean && npm run build -- -with-deps",
-    "test": "echo \"Error: There are no tests for rescript-uuid.\" && exit 1",
+    "test": "echo \"There are no tests for rescript-uuid.\"",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
