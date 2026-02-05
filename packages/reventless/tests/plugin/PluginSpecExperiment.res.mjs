@@ -2,6 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 
+S.enableJson();
+
 let recordSchema = S.schema(s => ({
   a: s.m(S.meta(S.string, {
     description: "aaa"
@@ -26,4 +28,4 @@ export {
   recordSchema,
   variantSchema,
 }
-/* recordSchema Not a pure module */
+/*  Not a pure module */

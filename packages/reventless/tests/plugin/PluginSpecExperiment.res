@@ -1,3 +1,5 @@
+S.enableJson()
+
 @schema
 type record = {
   a: @s.meta({description: "aaa"}) string,
