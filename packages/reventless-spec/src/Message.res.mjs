@@ -2,6 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 
+S.enableJson();
+
 let metaSchema = S.schema(s => ({
   service: s.m(S.string),
   time: s.m(S.string),
@@ -42,4 +44,4 @@ export {
   statusChangeSchema,
   commandJsonSchema,
 }
-/* metaSchema Not a pure module */
+/*  Not a pure module */

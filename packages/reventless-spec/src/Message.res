@@ -1,3 +1,5 @@
+S.enableJson()
+
 @schema
 type service = string
 
