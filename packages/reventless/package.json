@@ -5,8 +5,9 @@
     "license": "MIT",
     "jest": {
         "testMatch": [
-            "**/tests/**/*Test.res.js"
-        ]
+            "<rootDir>/tests/**/*Test.res.mjs"
+        ],
+        "moduleFileExtensions": ["js", "mjs"]
     },
     "scripts": {
         "build": "rescript build",
@@ -14,7 +15,7 @@
         "clean": "rescript clean",
         "rebuild": "npm run clean && npm run build -- -with-deps",
         "deploy": "./scripts/deploy.sh",
-        "test": "jest",
+        "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
         "test:watch": "jest --watchAll",
         "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
         "dev": "jest --watchAll",
