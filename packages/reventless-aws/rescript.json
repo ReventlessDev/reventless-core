@@ -11,10 +11,6 @@
     {
       "dir": "src",
       "subdirs": true
-    },
-    {
-      "dir": "__tests__",
-      "type": "dev"
     }
   ],
   "dependencies": [

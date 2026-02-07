@@ -2,13 +2,18 @@
   "name": "@reventless/rescript-moment",
   "version": "0.9.0",
   "description": "ReScript bindings for Moment.js",
-  "main": "lib/js/src/MomentRe.res.mjs",
+  "jest": {
+      "testMatch": [
+          "<rootDir>/tests/**/*Test.res.mjs"
+      ],
+      "moduleFileExtensions": ["js", "mjs"]
+  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
     "deploy": "./scripts/deploy.sh",
-    "test": "jest",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",
     "watch:jest": "jest --coverage --watchAll",
