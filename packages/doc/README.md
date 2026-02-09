@@ -1,10 +1,19 @@
 # `Reventless Documentation`
-Documentation of `Reventless`.
+Documentation for the Reventless framework and UI components.
+
+## Repository Structure
+
+Reventless is split across two repositories:
+
+- **[reventless-core](https://github.com/yourorg/reventless-core)** (this repo) - Framework core, AWS adapters, ReScript bindings
+- **[reventless-ui](https://github.com/yourorg/reventless-ui)** - React UI components and routing utilities
+
+This documentation site covers both repositories and is maintained in the core repo.
 
 # WORK IN PROGRESS
 Note: This package is currently being worked on. Everything you see here may be subject to change or incomplete.
 
-You can find the [introduction](./md/introduction.md) at `./docs/introduction.md`.
+You can find the [introduction](./docs/index.md) at `./docs/index.md`.
 
 
 This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
