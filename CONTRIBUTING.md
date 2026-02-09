@@ -53,36 +53,32 @@ Before you begin, ensure you have:
    git checkout -b fix/your-bug-fix
    ```
 
-## Making Changes
-
-### Code Standards
+## Code Standards
 
 - Write clean, maintainable code
 - Follow existing code style and conventions
 - Add tests for new features
 - Update documentation as needed
 
-### Building and Testing
+## 🛠️ Development
 
-1. **Build the project**
-   
-   ```bash
-   npm run build
-   ```
+###  Commands (All Packages)
 
-2. **Run tests**
-   
-   Navigate to the specific package you're working on:
-   ```bash
-   cd packages/<package-name>
-   npm test
-   ```
+```bash
+npm run build        # Build all packages
+npm run watch        # Watch mode
+npm run clean        # Clean all packages
+npm run test         # Run tests
+```
 
-3. **Format your code**
-   
-   ```bash
-   npm run format
-   ```
+### Per-Package Commands
+
+```bash
+cd packages/<name>
+npm run build        # rescript build
+npm run start        # rescript build -w (watch mode)
+npm run test         # jest
+```
 
 ## Commit Guidelines
 
