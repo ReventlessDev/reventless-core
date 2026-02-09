@@ -1,9 +1,10 @@
 {
-  "name": "reventless",
+  "name": "@reventless/reventless-core",
   "private": true,
+  "description": "Reventless Core - Event-sourced CQRS framework for serverless infrastructure",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/ReventlessDev/reventless.git"
+    "url": "git+ssh://git@github.com/ReventlessDev/reventless-core.git"
   },
   "publishConfig": {
     "@reventless:registry": "https://npm.pkg.github.com"
