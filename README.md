@@ -54,22 +54,39 @@ This monorepo contains the following packages (located in `./packages/*`):
 
 ### Outdated Packages
 
-The following packages are outdated (located in `./packages_to migrate/*`) and need to be updated:
+The following packages are outdated (located in `./packages_to_migrate/*`) and need to be updated:
 
-- [rescript-k6](packages/rescript-k6/README.md): ReScript bindings for k6 - a modern load testing tool for developers and testers
-- [reventless-ci](packages/reventless-ci/README.md): ci tooling for reventless projects (docker image, scripts, ci templates)
+- [rescript-k6](packages_to_migrate/rescript-k6/README.md) - ReScript bindings for k6 load testing tool
+- [rescript-react-test-renderer](packages_to_migrate/rescript-react-test-renderer/README.md) - ReScript bindings for react-test-renderer
+- [reventless-ci](packages_to_migrate/reventless-ci/README.md) - CI tooling for Reventless projects
+- [reventless-ui](packages_to_migrate/reventless-ui/README.md) - React component library for Reventless applications
+- [routes](packages_to_migrate/routes/README.md) - Typed routing with bi-directional usage
 
 ---
 
-## Building Reventless Applications
+## 🚀 Getting Started
 
 ### Prerequisites
 
 - **Node.js**: v22.17.1 (specified in [`.node-version`](.node-version))
 - **ReScript**: 12.1.0
+- **Lerna**: 9.0.3
 - **Git**: For version control
 
-TODO: Add more details about the build process, deployment, and testing.
+### Quick Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Build all packages
+npm run build
+
+# Run tests
+npm run test
+```
+
+For detailed setup instructions, development workflow, and contributing guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📚 Documentation
 
@@ -85,7 +102,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed build commands and architecture overview
 
 ## 🔗 Related Repositories
 
-- **[reventless-ui](https://github.com/yourorg/reventless-ui)** - React components and UI library for Reventless applications
+- **[reventless-ui](https://github.com/ReventlessDev/reventless-ui)** - React components and UI library for Reventless applications
   - Uses `rescript-moment` from this repo via file reference
   - ReScript 11.1.4 for UI compatibility
 

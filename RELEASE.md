@@ -31,21 +31,15 @@ When commits are pushed to release branches, semantic-release will automatically
 
 ### Commit Analysis
 
-The project uses the following commit types to determine version bumps:
+The project uses [Conventional Commits](https://www.conventionalcommits.org/) to determine version bumps. Commits are analyzed to determine the appropriate version bump (major/minor/patch).
 
-| Commit Type | Version Bump | Description |
-|-------------|--------------|-------------|
-| `feat` | Minor | New features |
-| `fix` | Patch | Bug fixes |
-| `perf` | Patch | Performance improvements |
-| `refactor` | Patch | Code refactoring |
-| `build` | Patch | Build system changes |
-| `docs` (README scope) | Patch | Documentation updates |
-| `revert` | Patch | Reverted changes |
-| `test` | None | Test additions/updates |
-| `ci` | None | CI/CD changes |
-| `style` | None | Code style changes |
-| `BREAKING CHANGE:` | Major | Breaking changes (in commit footer) |
+For detailed commit message format and guidelines, see the [Commit Guidelines in CONTRIBUTING.md](CONTRIBUTING.md#commit-guidelines).
+
+**Quick Reference:**
+- `feat:` → Minor version bump
+- `fix:`, `perf:`, `refactor:`, `build:` → Patch version bump
+- `BREAKING CHANGE:` in footer → Major version bump
+- `test:`, `ci:`, `style:` → No release
 
 ## Release Branches
 

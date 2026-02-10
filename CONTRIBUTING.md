@@ -32,10 +32,10 @@ Before you begin, ensure you have:
    Fork this repository to your own GitHub account.
 
 2. **Clone Your Fork**
-   
+
    ```bash
    git clone <your-fork-url>
-   cd reventless
+   cd reventless-core
    ```
 
 3. **Set Up Development Environment**
@@ -227,12 +227,12 @@ This combines versioning and publishing in one command.
 
 #### Pre-release Versions
 
-For beta or alpha releases:
-
 ```bash
-npx lerna version prerelease --preid beta
-npx lerna version prerelease --preid alpha
+npx lerna version prerelease --preid beta   # Beta release
+npx lerna version prerelease --preid alpha  # Alpha release
 ```
+
+For detailed pre-release workflow and branch strategy, see [RELEASE.md](RELEASE.md#pre-release-versions).
 
 ### Dependency Management
 
@@ -272,35 +272,13 @@ This project uses an automated release process. For complete documentation on th
 - Version bumps are determined by [Conventional Commits](#commit-guidelines)
 - Release branches: `main` (production), `beta`, `alpha` (pre-releases)
 
-### Common Release Commands
-
-```bash
-# Manual version bump
-npx lerna version
-
-# Version and publish
-npx lerna publish
-
-# Pre-release
-npx lerna version prerelease --preid beta
-```
-
-See [RELEASE.md](RELEASE.md) for:
-- Detailed release workflow
+See [RELEASE.md](RELEASE.md) for complete documentation on:
+- Automated and manual release workflows
+- Version bumping rules and examples
+- Pre-release process (alpha/beta)
 - Troubleshooting guide
 - CI/CD configuration
-- Pre-release promotion process
 - Release checklist
-- Environment variable setup
-
-### Commit Types and Version Bumps
-
-| Commit Type | Version Impact |
-|-------------|----------------|
-| `feat` | Minor (1.0.0 → 1.1.0) |
-| `fix`, `perf`, `refactor`, `build` | Patch (1.0.0 → 1.0.1) |
-| `BREAKING CHANGE:` | Major (1.0.0 → 2.0.0) |
-| `test`, `ci`, `style` | No release |
 
 ## Publishing Packages
 
@@ -316,7 +294,7 @@ Packages in this monorepo are published to the GitHub Package Registry.
 2. Log in to the GitHub registry on your local machine:
 
    ```bash
-   npm login --registry=https://npm.pkg.github.com --scope=@reventless-universe
+   npm login --registry=https://npm.pkg.github.com --scope=@reventless
    ```
 
    You will be prompted for:
