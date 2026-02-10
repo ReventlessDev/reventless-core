@@ -11,7 +11,6 @@
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
-    "@rescript/std": "^11.1.4",
     "hash-obj": "^2.0.0"
   },
   "devDependencies": {
