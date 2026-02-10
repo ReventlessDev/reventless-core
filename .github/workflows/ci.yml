@@ -127,6 +127,9 @@ jobs:
             packages/*/*.mjs
           key: build-${{ runner.os }}-${{ github.sha }}
 
+      - name: Build packages (if cache miss)
+        run: npm run build
+
       - name: Run unit tests
         run: npm run test
         env:
