@@ -18,6 +18,8 @@ jobs:
       packages: write
       pull-requests: write
       issues: write
+      checks: read
+      actions: read
     steps:
       - name: Wait for CI and Security Scan
         uses: lewagon/wait-on-check-action@v1.3.4
