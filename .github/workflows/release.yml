@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta, alpha]
   workflow_dispatch:
     inputs:
       release_type:
@@ -25,7 +25,7 @@ jobs:
   release:
     name: Release Packages
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/alpha'
     permissions:
       contents: write
       packages: write
@@ -64,6 +64,21 @@ jobs:
       - name: Analyze commits for version bumps
         id: version-check
         run: |
+          # Determine branch type
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+          if [ "$BRANCH_NAME" = "alpha" ]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "prerelease_id=alpha" >> $GITHUB_OUTPUT
+          elif [ "$BRANCH_NAME" = "beta" ]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "prerelease_id=beta" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "prerelease_id=" >> $GITHUB_OUTPUT
+          fi
+
           # Get commits since last release
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$LAST_TAG" ]; then
@@ -80,7 +95,7 @@ jobs:
               echo "Commits since last release:"
               echo "$COMMITS"
               echo "has_changes=true" >> $GITHUB_OUTPUT
-              
+
               # Determine release type based on conventional commits
               if echo "$COMMITS" | grep -q "BREAKING CHANGE\|!:"; then
                 echo "release_type=major" >> $GITHUB_OUTPUT
@@ -96,17 +111,35 @@ jobs:
         if: steps.version-check.outputs.has_changes == 'true'
         run: |
           RELEASE_TYPE="${{ github.event.inputs.release_type || steps.version-check.outputs.release_type }}"
+          IS_PRERELEASE="${{ steps.version-check.outputs.is_prerelease }}"
+          PRERELEASE_ID="${{ steps.version-check.outputs.prerelease_id }}"
+          BRANCH_NAME="${{ steps.version-check.outputs.branch }}"
+
+          echo "Branch: $BRANCH_NAME"
           echo "Release type: $RELEASE_TYPE"
+          echo "Is prerelease: $IS_PRERELEASE"
+          echo "Prerelease ID: $PRERELEASE_ID"
 
           if [ "$RELEASE_TYPE" = "auto" ]; then
             RELEASE_TYPE="${{ steps.version-check.outputs.release_type }}"
           fi
 
-          # Use Lerna to version packages based on conventional commits
-          if [ "$RELEASE_TYPE" = "prerelease" ]; then
-            npx lerna version prerelease --conventional-commits --yes --no-push
+          # Use Lerna to version packages
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            # For alpha/beta branches, create prerelease versions
+            if [ "$RELEASE_TYPE" = "prerelease" ]; then
+              npx lerna version prerelease --preid $PRERELEASE_ID --conventional-commits --yes --no-push
+            else
+              # Prerelease with specific version bump (e.g., preminor, prepatch, premajor)
+              npx lerna version pre$RELEASE_TYPE --preid $PRERELEASE_ID --conventional-commits --yes --no-push
+            fi
           else
-            npx lerna version $RELEASE_TYPE --conventional-commits --yes --no-push
+            # For main branch, create regular versions
+            if [ "$RELEASE_TYPE" = "prerelease" ]; then
+              npx lerna version prerelease --conventional-commits --yes --no-push
+            else
+              npx lerna version $RELEASE_TYPE --conventional-commits --yes --no-push
+            fi
           fi
 
       - name: Generate changelogs
@@ -221,20 +254,28 @@ jobs:
       - name: Push version tags
         if: steps.version-check.outputs.has_changes == 'true'
         run: |
-          git push --follow-tags origin main
+          BRANCH_NAME="${{ steps.version-check.outputs.branch }}"
+          git push --follow-tags origin $BRANCH_NAME
 
       - name: Create GitHub releases
         if: steps.version-check.outputs.has_changes == 'true'
         run: |
+          IS_PRERELEASE="${{ steps.version-check.outputs.is_prerelease }}"
+          PRERELEASE_FLAG=""
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
           # Get all new tags created by Lerna
           NEW_TAGS=$(git tag --points-at HEAD)
 
           for tag in $NEW_TAGS; do
             package_name=$(echo $tag | sed 's/@reventless\///' | sed 's/@.*//')
             version=$(echo $tag | sed 's/.*@//')
-            
+
             echo "Creating release for $package_name@$version"
-            
+
             # Generate release notes from changelog
             if [ -f "packages/$package_name/CHANGELOG.md" ]; then
               # Extract the latest changelog entry
@@ -242,12 +283,13 @@ jobs:
             else
               RELEASE_NOTES="Release $version of $package_name"
             fi
-            
+
             # Create GitHub release
             gh release create "$tag" \
               --title "$package_name v$version" \
               --notes "$RELEASE_NOTES" \
-              --generate-notes
+              --generate-notes \
+              $PRERELEASE_FLAG
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
