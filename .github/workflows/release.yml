@@ -86,10 +86,16 @@ jobs:
           git status
 
       - name: Version packages with Lerna
+        timeout-minutes: 10
+        env:
+          HUSKY: 0
         run: |
           IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
           PREID="${{ steps.prerelease.outputs.preid }}"
           BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
+
+          # Disable git hooks to prevent hanging in CI
+          git config core.hooksPath /dev/null
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
