@@ -31,7 +31,7 @@ function createTag(param, loc) {
     return "";
   }
   let captures = result.slice(1).map(__x => Stdlib_Option.getOr(__x, ""));
-  return captures[1] + `#` + captures[2] + `:`;
+  return captures[0] + `#` + captures[1] + `:`;
 }
 
 function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {

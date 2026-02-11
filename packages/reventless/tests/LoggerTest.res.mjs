@@ -6,6 +6,8 @@ import * as Logger$Reventless from "../src/util/Logger.res.mjs";
 import * as Message$Reventless from "../src/Message.res.mjs";
 import * as PluginSpec$Reventless from "../src/core/Aggregates/Plugin/PluginSpec.res.mjs";
 
+S.enableJson();
+
 Jest.describe("Logger", () => {
   Jest.describe("commandJsonsToLogMessage", () => Jest.test("createTag", () => Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.createTag("Info", "File \"Aggregate.res\", line 214, characters 17-24")), "Aggregate#214:")));
   Jest.describe("commandJsonsToLogMessage", () => {

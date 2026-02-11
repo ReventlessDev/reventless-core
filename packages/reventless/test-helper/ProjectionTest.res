@@ -61,6 +61,8 @@ let handleActions = Projection.handleActions // create alias to avoid shadowing 
 module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   T with type sourceEvent := Projection.sourceEvent and type targetState := Projection.targetState
 ) => {
+  S.enableJson()
+
   let testId = ref(TestFixtures.id)
   let meta = ref(TestFixtures.meta)
 

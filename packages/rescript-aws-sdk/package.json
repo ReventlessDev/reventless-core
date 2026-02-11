@@ -8,7 +8,7 @@
     "start": "rescript watch",
     "clean": "rescript clean",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'",
-    "test": "echo \"Error: There are no tests for rescript-aws-sdk.\" && exit 1"
+    "test": "echo \"There are no tests for rescript-aws-sdk.\""
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-events": "^3.662.0",

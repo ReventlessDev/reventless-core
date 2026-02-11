@@ -5,6 +5,14 @@ draft: false
 sidebar_position: 1
 ---
 
+:::info Repository Structure
+Reventless is organized as two separate monorepos:
+- **[reventless-core](https://github.com/yourorg/reventless-core)** - Framework core, AWS adapters, ReScript bindings (16 packages)
+- **[reventless-ui](https://github.com/yourorg/reventless-ui)** - React UI components and routing (2 packages)
+
+This documentation covers both repositories.
+:::
+
 **Reventless** is a modern holistic approach for the development of event-based business applications, consisting of
 
 - a *Methodology* which covers the full delivery cycle

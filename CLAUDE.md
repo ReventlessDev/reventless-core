@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository Context
+
+This is **reventless-core** - one of two split monorepos:
+- **This repo (core)**: Framework core, AWS adapters, ReScript bindings (16 packages)
+- **Related repo (UI)**: [reventless-ui](https://github.com/yourorg/reventless-ui) - React components (2 packages)
+
+The UI repo depends on `rescript-moment` from this repo via file reference, requiring both repos to be co-located.
+
 ## Build Commands
 
 This is a Lerna monorepo with packages in `packages/`. Use Node v22.17.1 (specified in `.node-version`).
@@ -9,7 +17,6 @@ This is a Lerna monorepo with packages in `packages/`. Use Node v22.17.1 (specif
 ### Monorepo-level commands
 ```bash
 npm install                    # Install root dependencies
-npm run bootstrap              # lerna bootstrap - link all packages
 npm run build                  # Build all packages
 npm run test                   # Run tests in all packages
 npm run clean                  # Clean all packages
@@ -133,3 +140,22 @@ From the codebase documentation:
 - `...->ignore` in ReScript
 - `...->Pulumi.Output.apply(_, ...)` - prefer piped version
 - `option(Pulumi.Output.t('a))` - this type combination doesn't work correctly
+
+## Packages in This Repo (16 total)
+
+**Framework Core:**
+- reventless-spec, reventless, reventless-aws
+
+**ReScript Bindings (10):**
+- rescript-aws-sdk, rescript-pulumi-pulumi, rescript-pulumi-aws
+- rescript-uuid, rescript-fast-csv, rescript-hash-obj
+- rescript-node-streams, rescript-node-zlib, rescript-ssh2
+- rescript-moment (shared with UI repo)
+
+**Build & Documentation:**
+- reventless-gen, aws-lambda-layer, doc
+
+**Packages in UI Repo (separate repository):**
+- reventless-ui, routes
+
+The UI repo references `rescript-moment` from this repo using: `"file:../../../reventless-core/packages/rescript-moment"`

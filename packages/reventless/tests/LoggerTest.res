@@ -2,6 +2,8 @@ open Jest
 open Expect
 open Logger
 
+S.enableJson()
+
 describe("Logger", () => {
   describe("commandJsonsToLogMessage", () => {
     test(

@@ -32,6 +32,8 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
 ) => {
   module Spec = Spec
 
+  S.enableJson()
+
   let describe = Jest.describe
   let test = Jest.test
 

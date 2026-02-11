@@ -7,7 +7,7 @@
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "test": "echo \"Error: There are no tests for rescript-pulumi-pulumi.\" && exit 1",
+    "test": "echo \"There are no tests for rescript-pulumi-pulumi.\"",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {

@@ -1,24 +1,37 @@
 {
-  "name": "@reventless/reventless-universe",
+  "name": "@reventless/reventless-core",
   "private": true,
+  "description": "Reventless Core - Event-sourced CQRS framework for serverless infrastructure",
   "repository": {
     "type": "git",
-    "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
+    "url": "git+ssh://git@github.com/ReventlessDev/reventless-core.git"
   },
   "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+    "@reventless:registry": "https://npm.pkg.github.com"
   },
   "workspaces": [
     "packages/*"
   ],
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.1",
     "lerna": "^9.0.3",
-    "rescript": "^12.1.0"
+    "rescript": "^12.1.0",
+    "semantic-release": "^24.2.0"
   },
   "scripts": {
     "build": "rescript build",
     "watch": "rescript watch",
     "clean": "rescript clean",
-    "format": "rescript format"
-  }
+    "format": "rescript format",
+    "test": "lerna run test --concurrency=1",
+    "test:integration": "echo 'No integration tests configured' || exit 0",
+    "test:unit": "lerna run test --concurrency=1",
+    "test:coverage": "echo 'No coverage script configured' || exit 0"
+  },
+  "version": ""
 }

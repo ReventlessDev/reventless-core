@@ -30,7 +30,7 @@ let createTag = (~level as _, ~loc) => {
       result
       ->RegExp.Result.matches
       ->Array.map(Option.getOr(_, ""))
-    `${captures->Array.getUnsafe(1)}#${captures->Array.getUnsafe(2)}:`
+    `${captures->Array.getUnsafe(0)}#${captures->Array.getUnsafe(1)}:`
   | _ => ""
   }
 }

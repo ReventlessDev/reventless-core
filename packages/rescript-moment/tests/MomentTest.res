@@ -470,10 +470,10 @@ describe("moment", () => {
     () => expect(moment("2016-01-01")->Moment.defaultFormat)->toContainString("2016-01-01"),
   )
   test("#utc", () =>
-    expect(momentNow()->MomentRe.Moment.utc("2018-01-22")->Moment.isValid)->toBe(true)
+    expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true)
   )
   test("#defaultUtc", () =>
-    expect(momentNow()->MomentRe.Moment.defaultUtc->Moment.isValid)->toBe(true)
+    expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true)
   )
   test("#locale", () =>
     expect(

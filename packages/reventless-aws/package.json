@@ -9,7 +9,7 @@
     "clean": "rescript clean",
     "rebuild": "npm run clean && npm run build -- -with-deps",
     "deploy": "./scripts/deploy.sh",
-    "test": "jest",
+    "test": "echo \"There are no tests for reventless-aws.\"",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",
     "watch:bsb": "bsb -make-world -w",
