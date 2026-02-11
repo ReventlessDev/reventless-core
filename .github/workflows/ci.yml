@@ -203,7 +203,7 @@ jobs:
 
       - name: Analyze dependencies
         run: |
-          npx depcheck --ignores="@types/*,eslint-*,prettier,@rescript/*,lerna,rescript,semantic-release,@semantic-release/*,conventional-changelog-conventionalcommits"
+          npx depcheck --ignores="@types/*,eslint-*,prettier,@rescript/*,lerna,rescript"
           npx npm-check-updates --target minor
 
       - name: Check for circular dependencies
