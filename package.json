@@ -21,9 +21,9 @@
     "watch": "rescript watch",
     "clean": "rescript clean",
     "format": "rescript format",
-    "test": "lerna run test --concurrency=1",
+    "test": "lerna run test --concurrency=1 --no-progress",
     "test:integration": "echo 'No integration tests configured' || exit 0",
-    "test:unit": "lerna run test --concurrency=1",
+    "test:unit": "lerna run test --concurrency=1 --no-progress",
     "test:coverage": "echo 'No coverage script configured' || exit 0"
   },
   "version": ""
