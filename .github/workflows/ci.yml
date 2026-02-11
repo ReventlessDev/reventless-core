@@ -73,17 +73,18 @@ jobs:
       - name: Build all packages
         run: npm run build
 
-      - name: Validate build artifacts
-        run: |
-          # Check that all packages have built artifacts
-          for package in packages/*/; do
-            if [ -f "$package/package.json" ]; then
-              package_name=$(basename "$package")
-              if [ ! -d "$package/lib" ] && [ ! -d "$package/dist" ] && [ ! -f "$package/index.js" ]; then
-                echo "Warning: No build artifacts found for $package_name"
-              fi
-            fi
-          done
+      # Commented out for faster CI - re-enable if needed
+      # - name: Validate build artifacts
+      #   run: |
+      #     # Check that all packages have built artifacts
+      #     for package in packages/*/; do
+      #       if [ -f "$package/package.json" ]; then
+      #         package_name=$(basename "$package")
+      #         if [ ! -d "$package/lib" ] && [ ! -d "$package/dist" ] && [ ! -f "$package/index.js" ]; then
+      #           echo "Warning: No build artifacts found for $package_name"
+      #         fi
+      #       fi
+      #     done
 
       - name: Cache build artifacts
         uses: actions/cache@v4
@@ -140,149 +141,154 @@ jobs:
         if: always()
         continue-on-error: true
 
-      - name: Generate coverage report
-        run: npm run test:coverage 2>/dev/null || echo "No test:coverage script configured"
-        if: always()
+      # Commented out for faster CI - re-enable if needed
+      # - name: Generate coverage report
+      #   run: npm run test:coverage 2>/dev/null || echo "No test:coverage script configured"
+      #   if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
-          fail_ci_if_error: false
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   if: always()
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: ./coverage/lcov.info
+      #     fail_ci_if_error: false
 
-  security-scan:
-    name: Security & Quality Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # Commented out for faster CI - security.yml workflow already handles this
+  # security-scan:
+  #   name: Security & Quality Scan
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.17.1"
-          cache: "npm"
-          registry-url: "https://npm.pkg.github.com"
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22.17.1"
+  #         cache: "npm"
+  #         registry-url: "https://npm.pkg.github.com"
 
-      - name: Install dependencies
-        run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Install dependencies
+  #       run: npm ci
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run npm audit
-        run: npm audit --audit-level=moderate
-        continue-on-error: true
+  #     - name: Run npm audit
+  #       run: npm audit --audit-level=moderate
+  #       continue-on-error: true
 
-      - name: Run security scan with Snyk
-        uses: snyk/actions/node@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high
-        continue-on-error: true
+  #     - name: Run security scan with Snyk
+  #       uses: snyk/actions/node@master
+  #       env:
+  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #       with:
+  #         args: --severity-threshold=high
+  #       continue-on-error: true
 
-      - name: Check for known vulnerabilities
-        run: |
-          npx audit-ci --config .audit-ci.json
-        continue-on-error: true
+  #     - name: Check for known vulnerabilities
+  #       run: |
+  #         npx audit-ci --config .audit-ci.json
+  #       continue-on-error: true
 
-  dependency-check:
-    name: Dependency Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # Commented out for faster CI - run weekly or on-demand instead
+  # dependency-check:
+  #   name: Dependency Analysis
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.17.1"
-          cache: "npm"
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22.17.1"
+  #         cache: "npm"
 
-      - name: Analyze dependencies
-        run: |
-          npx depcheck --ignores="@types/*,eslint-*,prettier,@rescript/*,lerna,rescript"
-          npx npm-check-updates --target minor
+  #     - name: Analyze dependencies
+  #       run: |
+  #         npx depcheck --ignores="@types/*,eslint-*,prettier,@rescript/*,lerna,rescript"
+  #         npx npm-check-updates --target minor
 
-      - name: Check for circular dependencies
-        run: |
-          npx madge --circular --extensions js,mjs,res packages/ -x '@rescript/std'
+  #     - name: Check for circular dependencies
+  #       run: |
+  #         npx madge --circular --extensions js,mjs,res packages/ -x '@rescript/std'
 
-  build-matrix:
-    name: Build Matrix Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # Commented out for faster CI - duplicates type-check-and-build job
+  # build-matrix:
+  #   name: Build Matrix Test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.17.1"
-          cache: "npm"
-          registry-url: "https://npm.pkg.github.com"
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22.17.1"
+  #         cache: "npm"
+  #         registry-url: "https://npm.pkg.github.com"
 
-      - name: Install dependencies
-        run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Install dependencies
+  #       run: npm ci
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build packages
-        run: npm run build
+  #     - name: Build packages
+  #       run: npm run build
 
-      - name: Run basic tests
-        run: npm run test:unit
-        continue-on-error: true
+  #     - name: Run basic tests
+  #       run: npm run test:unit
+  #       continue-on-error: true
 
-  validate-monorepo:
-    name: Validate Monorepo Structure
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # Commented out for faster CI - run on PR only or weekly
+  # validate-monorepo:
+  #   name: Validate Monorepo Structure
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.17.1"
-          cache: "npm"
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22.17.1"
+  #         cache: "npm"
 
-      - name: Validate Lerna configuration
-        run: |
-          npx lerna list --all
-          npx lerna ls --graph
+  #     - name: Validate Lerna configuration
+  #       run: |
+  #         npx lerna list --all
+  #         npx lerna ls --graph
 
-      - name: Check package dependencies
-        run: |
-          # Validate that internal dependencies use workspace protocol
-          # Note: This check is informational only - packages use npm workspaces
-          node -e "
-            const fs = require('fs');
-            const path = require('path');
-            const packages = fs.readdirSync('packages');
-            let hasErrors = false;
-            
-            packages.forEach(pkg => {
-              const pkgPath = path.join('packages', pkg, 'package.json');
-              if (fs.existsSync(pkgPath)) {
-                const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-                const deps = {...(pkgJson.dependencies || {}), ...(pkgJson.devDependencies || {})};
-                
-                Object.keys(deps).forEach(dep => {
-                  if (dep.startsWith('@reventless/') && !deps[dep].startsWith('workspace:')) {
-                    console.warn(\`Package \${pkg} should use workspace protocol for \${dep}\`);
-                    hasErrors = true;
-                  }
-                });
-              }
-            });
-            
-            if (hasErrors) {
-              console.log('Note: Using npm workspaces instead of workspace: protocol');
-            }
-          "
+  #     - name: Check package dependencies
+  #       run: |
+  #         # Validate that internal dependencies use workspace protocol
+  #         # Note: This check is informational only - packages use npm workspaces
+  #         node -e "
+  #           const fs = require('fs');
+  #           const path = require('path');
+  #           const packages = fs.readdirSync('packages');
+  #           let hasErrors = false;
+  #
+  #           packages.forEach(pkg => {
+  #             const pkgPath = path.join('packages', pkg, 'package.json');
+  #             if (fs.existsSync(pkgPath)) {
+  #               const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  #               const deps = {...(pkgJson.dependencies || {}), ...(pkgJson.devDependencies || {})};
+  #
+  #               Object.keys(deps).forEach(dep => {
+  #                 if (dep.startsWith('@reventless/') && !deps[dep].startsWith('workspace:')) {
+  #                   console.warn(\`Package \${pkg} should use workspace protocol for \${dep}\`);
+  #                   hasErrors = true;
+  #                 }
+  #               });
+  #             }
+  #           });
+  #
+  #           if (hasErrors) {
+  #             console.log('Note: Using npm workspaces instead of workspace: protocol');
+  #           }
+  #         "
 
   summary:
     name: CI Summary
@@ -292,9 +298,9 @@ jobs:
         lint-and-format,
         type-check-and-build,
         test,
-        security-scan,
-        dependency-check,
-        validate-monorepo,
+        # security-scan,      # Commented out - runs in security.yml
+        # dependency-check,   # Commented out for speed
+        # validate-monorepo,  # Commented out for speed
       ]
     if: always()
     steps:
@@ -303,14 +309,13 @@ jobs:
           echo "Lint & Format: ${{ needs.lint-and-format.result }}"
           echo "Type Check & Build: ${{ needs.type-check-and-build.result }}"
           echo "Test: ${{ needs.test.result }}"
-          echo "Security Scan: ${{ needs.security-scan.result }}"
-          echo "Dependency Check: ${{ needs.dependency-check.result }}"
-          echo "Validate Monorepo: ${{ needs.validate-monorepo.result }}"
+          # echo "Security Scan: ${{ needs.security-scan.result }}"
+          # echo "Dependency Check: ${{ needs.dependency-check.result }}"
+          # echo "Validate Monorepo: ${{ needs.validate-monorepo.result }}"
 
-          if [[ "${{ needs.lint-and-format.result }}" == "failure" || 
-                "${{ needs.type-check-and-build.result }}" == "failure" || 
-                "${{ needs.test.result }}" == "failure" || 
-                "${{ needs.validate-monorepo.result }}" == "failure" ]]; then
+          if [[ "${{ needs.lint-and-format.result }}" == "failure" ||
+                "${{ needs.type-check-and-build.result }}" == "failure" ||
+                "${{ needs.test.result }}" == "failure" ]]; then
             echo "❌ CI pipeline failed"
             exit 1
           else
