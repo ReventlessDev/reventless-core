@@ -75,6 +75,15 @@ jobs:
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Clean uncommitted changes
+        run: |
+          # Discard any uncommitted changes from build process
+          # (build artifacts, generated files, etc.)
+          git status
+          git checkout -- .
+          git clean -fd
+          git status
+
       - name: Version packages with Lerna
         run: |
           IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
@@ -98,8 +107,7 @@ jobs:
         run: |
           npx lerna publish from-package \
             --registry=https://npm.pkg.github.com \
-            --yes \
-            --no-verify-access
+            --yes
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
