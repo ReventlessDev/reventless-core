@@ -7,7 +7,7 @@
     "url": "git+ssh://git@github.com/ReventlessDev/reventless-core.git"
   },
   "publishConfig": {
-    "@reventless:registry": "https://npm.pkg.github.com"
+    "registry": "https://npm.pkg.github.com"
   },
   "workspaces": [
     "packages/*"
