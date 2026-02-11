@@ -59,6 +59,17 @@ jobs:
           GIT_COMMITTER_NAME: "github-actions[bot]"
           GIT_COMMITTER_EMAIL: "github-actions[bot]@users.noreply.github.com"
 
+      - name: Publish packages to GitHub Package Registry
+        run: |
+          # Publish all packages that were versioned by semantic-release
+          # Uses 'from-package' to publish based on package.json versions
+          npx lerna publish from-package \
+            --registry=https://npm.pkg.github.com \
+            --yes \
+            --no-verify-access
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release-summary:
     name: Release Summary
     runs-on: ubuntu-latest
