@@ -78,9 +78,9 @@ jobs:
       - name: Clean uncommitted changes
         run: |
           # Discard any uncommitted changes from build process
-          # (build artifacts, generated files, etc.)
+          # (build artifacts, generated files, deleted files, etc.)
           git status
-          git checkout -- .
+          git reset --hard HEAD
           git clean -fd
           git status
 
