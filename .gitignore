@@ -14,6 +14,12 @@ coverage
 lerna-debug.log
 .playwright-mcp
 
+# ReScript compiled example files
+/packages/**/example/**/*.res.js
+/packages/**/example/**/*.res.mjs
+/packages/**/examples/**/*.res.js
+/packages/**/examples/**/*.res.mjs
+
 # Auto Claude data directory
 .auto-claude/
 
