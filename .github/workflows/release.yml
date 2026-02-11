@@ -1,9 +1,7 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: ["CI", "Security Scan"]
-    types: [completed]
+  push:
     branches: [main, beta, alpha]
   workflow_dispatch:
 
@@ -15,13 +13,20 @@ jobs:
   release:
     name: Release Packages
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
       packages: write
       pull-requests: write
       issues: write
     steps:
+      - name: Wait for CI and Security Scan
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-regexp: '(CI|Security Scan).*'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success
       - name: Checkout code
         uses: actions/checkout@v4
         with:
