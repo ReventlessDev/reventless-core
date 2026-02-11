@@ -3,11 +3,11 @@
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as SQS_Queue$PulumiAws from "@reventless/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
+import * as SQS_Queue$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventless/reventless/src/util/Util_Pulumi.res.mjs";
+import * as Util_Pulumi$Reventless from "@reventlessdev/reventless/src/util/Util_Pulumi.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
-import * as CommandTopic$Reventless from "@reventless/reventless/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as CommandTopic$Reventless from "@reventlessdev/reventless/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as CommandTopicChannel_Helpers$ReventlessAws from "./CommandTopicChannel_Helpers.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicChannel_SQS_Runtime.res.mjs";

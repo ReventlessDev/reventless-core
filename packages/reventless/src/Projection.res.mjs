@@ -10,7 +10,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Logger$Reventless from "./util/Logger.res.mjs";
 import * as Message$Reventless from "./Message.res.mjs";
 import * as QueryDb$Reventless from "./components/QueryDb/QueryDb.res.mjs";
-import * as QueryDb$ReventlessSpec from "@reventless/reventless-spec/src/components/QueryDb.res.mjs";
+import * as QueryDb$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/QueryDb.res.mjs";
 
 function Make(Source) {
   return Target => (MappingImpl => ({

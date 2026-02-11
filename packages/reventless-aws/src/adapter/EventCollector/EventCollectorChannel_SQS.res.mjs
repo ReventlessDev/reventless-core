@@ -2,11 +2,11 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as SQS_Queue$PulumiAws from "@reventless/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
+import * as SQS_Queue$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventless/reventless/src/util/Util_Pulumi.res.mjs";
+import * as Util_Pulumi$Reventless from "@reventlessdev/reventless/src/util/Util_Pulumi.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
-import * as EventCollector$Reventless from "@reventless/reventless/src/components/EventCollector/EventCollector.res.mjs";
+import * as EventCollector$Reventless from "@reventlessdev/reventless/src/components/EventCollector/EventCollector.res.mjs";
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as EventCollectorChannel_Helpers$ReventlessAws from "./EventCollectorChannel_Helpers.res.mjs";
 import * as EventCollectorChannel_SQS_Runtime$ReventlessAws from "./EventCollectorChannel_SQS_Runtime.res.mjs";

@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-pulumi-pulumi",
+  "name": "@reventlessdev/rescript-pulumi-pulumi",
   "namespace": "Pulumi",
   "ppx-flags": [],
   "warnings": {

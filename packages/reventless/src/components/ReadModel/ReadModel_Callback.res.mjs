@@ -2,7 +2,7 @@
 
 import * as Message$Reventless from "../../Message.res.mjs";
 import * as Projection$Reventless from "../../Projection.res.mjs";
-import * as Message$ReventlessSpec from "@reventless/reventless-spec/src/Message.res.mjs";
+import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
 import * as ProjectionMapper$Reventless from "../../ProjectionMapper.res.mjs";
 
 function Make(ReadModelSpec) {

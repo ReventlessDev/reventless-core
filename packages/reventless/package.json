@@ -1,5 +1,5 @@
 {
-    "name": "@reventless/reventless",
+    "name": "@reventlessdev/reventless",
     "version": "2.3.3",
     "description": "Core package for Reventless framework",
     "license": "MIT",
@@ -23,15 +23,15 @@
         "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
     },
     "dependencies": {
-        "@reventless/rescript-aws-sdk": "^2.1.2",
-        "@reventless/rescript-fast-csv": "^1.1.2",
-        "@reventless/rescript-hash-obj": "^1.1.1",
-        "@reventless/rescript-node-streams": "^1.0.1",
-        "@reventless/rescript-pulumi-aws": "^2.3.0",
-        "@reventless/rescript-pulumi-pulumi": "^2.2.0",
-        "@reventless/rescript-ssh2": "^1.0.2",
-        "@reventless/rescript-uuid": "^1.0.1",
-        "@reventless/reventless-spec": "^2.3.0"
+        "@reventlessdev/rescript-aws-sdk": "^2.1.2",
+        "@reventlessdev/rescript-fast-csv": "^1.1.2",
+        "@reventlessdev/rescript-hash-obj": "^1.1.1",
+        "@reventlessdev/rescript-node-streams": "^1.0.1",
+        "@reventlessdev/rescript-pulumi-aws": "^2.3.0",
+        "@reventlessdev/rescript-pulumi-pulumi": "^2.2.0",
+        "@reventlessdev/rescript-ssh2": "^1.0.2",
+        "@reventlessdev/rescript-uuid": "^1.0.1",
+        "@reventlessdev/reventless-spec": "^2.3.0"
     },
     "devDependencies": {
         "@glennsl/rescript-jest": "^0.13.1",

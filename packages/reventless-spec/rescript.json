@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/reventless-spec",
+  "name": "@reventlessdev/reventless-spec",
   "namespace": "ReventlessSpec",
   "ppx-flags": [
     "sury-ppx/bin"
@@ -15,7 +15,7 @@
   ],
   "dependencies": [
     "sury",
-    "@reventless/rescript-pulumi-pulumi"
+    "@reventlessdev/rescript-pulumi-pulumi"
   ],
   "compiler-flags": [
   ]

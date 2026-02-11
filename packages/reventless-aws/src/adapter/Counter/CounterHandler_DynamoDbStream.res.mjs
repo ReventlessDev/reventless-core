@@ -2,7 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Lambda$PulumiAws from "@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
+import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 import * as CounterHandler_DynamoDbStream_Runtime$ReventlessAws from "./CounterHandler_DynamoDbStream_Runtime.res.mjs";

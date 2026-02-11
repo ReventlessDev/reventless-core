@@ -2,7 +2,7 @@
 
 import * as ExtensionPoint_Builder$Reventless from "../../../components/ExtensionPoint/ExtensionPoint_Builder.res.mjs";
 import * as PluginExtensionPoint_Plugin$Reventless from "./PluginExtensionPoint_Plugin.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessSpec from "@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 let mappings = [PluginExtensionPoint_Plugin$Reventless.Mapping];
 

@@ -2,16 +2,16 @@
 
 import Component from "./Component";
 import * as Aws from "@pulumi/aws";
-import * as EC2_Eip$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_Eip.res.mjs";
-import * as EC2_Vpc$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_Vpc.res.mjs";
-import * as EC2_Subnet$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_Subnet.res.mjs";
+import * as EC2_Eip$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Eip.res.mjs";
+import * as EC2_Vpc$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Vpc.res.mjs";
+import * as EC2_Subnet$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Subnet.res.mjs";
 import * as ComponentType$Reventless from "../ComponentType.res.mjs";
-import * as EC2_NatGateway$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_NatGateway.res.mjs";
-import * as EC2_RouteTable$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_RouteTable.res.mjs";
-import * as EC2_VpcEndpoint$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_VpcEndpoint.res.mjs";
-import * as EC2_SecurityGroup$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_SecurityGroup.res.mjs";
-import * as EC2_InternetGateway$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_InternetGateway.res.mjs";
-import * as EC2_RouteTableAssociation$PulumiAws from "@reventless/rescript-pulumi-aws/src/EC2/EC2_RouteTableAssociation.res.mjs";
+import * as EC2_NatGateway$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_NatGateway.res.mjs";
+import * as EC2_RouteTable$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_RouteTable.res.mjs";
+import * as EC2_VpcEndpoint$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_VpcEndpoint.res.mjs";
+import * as EC2_SecurityGroup$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_SecurityGroup.res.mjs";
+import * as EC2_InternetGateway$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_InternetGateway.res.mjs";
+import * as EC2_RouteTableAssociation$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_RouteTableAssociation.res.mjs";
 
 function construct(self, name, availabilityZone) {
   let opts_parent = self;

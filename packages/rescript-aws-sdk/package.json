@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-aws-sdk",
+  "name": "@reventlessdev/rescript-aws-sdk",
   "version": "2.1.2",
   "description": "ReScript bindings for aws-sdk",
   "license": "MIT",
@@ -23,7 +23,7 @@
     "@aws-sdk/client-sqs": "^3.658.1",
     "@aws-sdk/lib-dynamodb": "^3.662.0",
     "@aws-sdk/lib-storage": "^3.658.1",
-    "@reventless/rescript-node-streams": "^1.0.1"
+    "@reventlessdev/rescript-node-streams": "^1.0.1"
   },
   "devDependencies": {
     "rescript": "^12.1.0"

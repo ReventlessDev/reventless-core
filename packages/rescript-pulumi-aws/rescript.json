@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-pulumi-aws",
+  "name": "@reventlessdev/rescript-pulumi-aws",
   "namespace": "PulumiAws",
   "ppx-flags": [
         "sury-ppx/bin"
@@ -15,8 +15,8 @@
   ],
   "dependencies": [
     "sury",
-    "@reventless/rescript-pulumi-pulumi",
-    "@reventless/rescript-aws-sdk"
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/rescript-aws-sdk"
   ],
   "compiler-flags": [
   ]

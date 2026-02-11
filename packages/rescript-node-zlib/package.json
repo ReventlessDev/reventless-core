@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-node-zlib",
+  "name": "@reventlessdev/rescript-node-zlib",
   "version": "1.0.1",
   "description": "ReScript bindings for node zlib",
   "license": "MIT",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@rescript/std": "^11.1.4",
-    "@reventless/rescript-node-streams": "^1.0.1"
+    "@reventlessdev/rescript-node-streams": "^1.0.1"
   },
   "devDependencies": {
     "rescript": "^12.1.0"

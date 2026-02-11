@@ -2,7 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventless/reventless/src/util/Util_Adapter.res.mjs";
+import * as Util_Adapter$Reventless from "@reventlessdev/reventless/src/util/Util_Adapter.res.mjs";
 
 function toResource(param) {
   let name = param.name;

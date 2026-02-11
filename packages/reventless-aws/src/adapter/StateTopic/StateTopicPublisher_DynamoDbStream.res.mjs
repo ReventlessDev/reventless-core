@@ -2,9 +2,9 @@
 
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventless/reventless/src/adapter/Adapter.res.mjs";
-import * as ComponentType$Reventless from "@reventless/reventless/src/ComponentType.res.mjs";
-import * as Util_ReadModel$Reventless from "@reventless/reventless/src/util/Util_ReadModel.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
+import * as ComponentType$Reventless from "@reventlessdev/reventless/src/ComponentType.res.mjs";
+import * as Util_ReadModel$Reventless from "@reventlessdev/reventless/src/util/Util_ReadModel.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
 function make(name, param, allQueryDbs) {

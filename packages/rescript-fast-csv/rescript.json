@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-fast-csv",
+  "name": "@reventlessdev/rescript-fast-csv",
   "namespace": false,
   "ppx-flags": [],
   "warnings": {
@@ -17,7 +17,7 @@
     }
   ],
   "dependencies": [
-    "@reventless/rescript-node-streams"
+    "@reventlessdev/rescript-node-streams"
   ],
   "compiler-flags": [
   ]

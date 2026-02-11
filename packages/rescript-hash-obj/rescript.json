@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-hash-obj",
+  "name": "@reventlessdev/rescript-hash-obj",
   "namespace": false,
   "ppx-flags": [],
   "warnings": {

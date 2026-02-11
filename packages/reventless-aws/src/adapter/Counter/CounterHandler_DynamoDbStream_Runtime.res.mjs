@@ -6,7 +6,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
-import * as DynamoDb_DocumentClient$AwsSdk from "@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
+import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_DynamoDbStream_Runtime.res.mjs";
 
 async function addToCounterTarget(table, param) {

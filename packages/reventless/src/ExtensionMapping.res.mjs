@@ -3,7 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$Reventless from "./Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as PluginExtensionPointSpec$ReventlessSpec from "@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
   return MappingImpl => {

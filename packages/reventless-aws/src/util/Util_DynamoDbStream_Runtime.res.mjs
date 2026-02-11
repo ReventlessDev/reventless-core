@@ -3,9 +3,9 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Message$Reventless from "@reventless/reventless/src/Message.res.mjs";
-import * as DynamoDb_Util$AwsSdk from "@reventless/rescript-aws-sdk/src/DynamoDb_Util.res.mjs";
-import * as Util_AdapterRuntime$Reventless from "@reventless/reventless/src/util/Util_AdapterRuntime.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
+import * as DynamoDb_Util$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_Util.res.mjs";
+import * as Util_AdapterRuntime$Reventless from "@reventlessdev/reventless/src/util/Util_AdapterRuntime.res.mjs";
 
 function buildJsonEvent$p(dict) {
   let match = dict["type"];

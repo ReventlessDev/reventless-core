@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-aws-sdk",
+  "name": "@reventlessdev/rescript-aws-sdk",
   "namespace": "AwsSdk",
   "ppx-flags": [],
   "warnings": {
@@ -17,7 +17,7 @@
     }
   ],
   "dependencies": [
-    "@reventless/rescript-node-streams"
+    "@reventlessdev/rescript-node-streams"
   ],
   "compiler-flags": [
   ]

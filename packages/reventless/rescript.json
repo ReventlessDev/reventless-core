@@ -1,5 +1,5 @@
 {
-    "name": "@reventless/reventless",
+    "name": "@reventlessdev/reventless",
     "namespace": "Reventless",
     "ppx-flags": [
         "sury-ppx/bin"
@@ -24,15 +24,15 @@
     "dependencies": [
         "sury",
         "@glennsl/rescript-jest",
-        "@reventless/rescript-aws-sdk",
-        "@reventless/rescript-fast-csv",
-        "@reventless/rescript-hash-obj",
-        "@reventless/rescript-node-streams",
-        "@reventless/rescript-pulumi-aws",
-        "@reventless/rescript-pulumi-pulumi",
-        "@reventless/rescript-ssh2",
-        "@reventless/rescript-uuid",
-        "@reventless/reventless-spec"
+        "@reventlessdev/rescript-aws-sdk",
+        "@reventlessdev/rescript-fast-csv",
+        "@reventlessdev/rescript-hash-obj",
+        "@reventlessdev/rescript-node-streams",
+        "@reventlessdev/rescript-pulumi-aws",
+        "@reventlessdev/rescript-pulumi-pulumi",
+        "@reventlessdev/rescript-ssh2",
+        "@reventlessdev/rescript-uuid",
+        "@reventlessdev/reventless-spec"
     ],
     "compiler-flags": [
     ]

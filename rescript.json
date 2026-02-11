@@ -1,19 +1,19 @@
 {
   "name": "reventless",
   "dependencies": [
-    "@reventless/rescript-aws-sdk",
-    "@reventless/rescript-fast-csv",
-    "@reventless/rescript-hash-obj",
-    "@reventless/rescript-moment",
-    "@reventless/rescript-node-streams",
-    "@reventless/rescript-node-zlib",
-    "@reventless/rescript-pulumi-aws",
-    "@reventless/rescript-pulumi-pulumi",
-    "@reventless/rescript-ssh2",
-    "@reventless/rescript-uuid",
-    "@reventless/reventless",
-    "@reventless/reventless-aws",
-    "@reventless/reventless-spec"
+    "@reventlessdev/rescript-aws-sdk",
+    "@reventlessdev/rescript-fast-csv",
+    "@reventlessdev/rescript-hash-obj",
+    "@reventlessdev/rescript-moment",
+    "@reventlessdev/rescript-node-streams",
+    "@reventlessdev/rescript-node-zlib",
+    "@reventlessdev/rescript-pulumi-aws",
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/rescript-ssh2",
+    "@reventlessdev/rescript-uuid",
+    "@reventlessdev/reventless",
+    "@reventlessdev/reventless-aws",
+    "@reventlessdev/reventless-spec"
   ],
   "sources": [],
   "package-specs": {

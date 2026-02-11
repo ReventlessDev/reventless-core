@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Message$Reventless from "../../../Message.res.mjs";
-import * as Plugin$ReventlessSpec from "@reventless/reventless-spec/src/components/Plugin.res.mjs";
+import * as Plugin$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as PluginSpec$Reventless from "./PluginSpec.res.mjs";
 
 let stateSchema = S.union([

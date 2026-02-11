@@ -78,7 +78,7 @@ For each package in the monorepo, ensure:
 
 ```json
 {
-  "name": "@reventless/package-name",
+  "name": "@reventlessdev/package-name",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
@@ -130,7 +130,7 @@ echo "@reventless:registry=https://npm.pkg.github.com" >> ~/.npmrc
 echo "//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN" >> ~/.npmrc
 
 # Test installation
-npm install @reventless/reventless
+npm install @reventlessdev/reventless
 ```
 
 ## Package Publishing Order
@@ -138,23 +138,23 @@ npm install @reventless/reventless
 The release workflow publishes packages in dependency order:
 
 ### Tier 0 (No Dependencies)
-- `@reventless/rescript-hash-obj`
-- `@reventless/rescript-node-streams`
-- `@reventless/rescript-pulumi-pulumi`
-- `@reventless/rescript-uuid`
+- `@reventlessdev/rescript-hash-obj`
+- `@reventlessdev/rescript-node-streams`
+- `@reventlessdev/rescript-pulumi-pulumi`
+- `@reventlessdev/rescript-uuid`
 
 ### Tier 1 (Depends on Tier 0)
-- `@reventless/rescript-aws-sdk`
-- `@reventless/rescript-fast-csv`
-- `@reventless/rescript-pulumi-aws`
-- `@reventless/rescript-ssh2`
+- `@reventlessdev/rescript-aws-sdk`
+- `@reventlessdev/rescript-fast-csv`
+- `@reventlessdev/rescript-pulumi-aws`
+- `@reventlessdev/rescript-ssh2`
 
 ### Tier 2 (Depends on Tier 0 & 1)
-- `@reventless/reventless`
-- `@reventless/reventless-aws`
-- `@reventless/reventless-spec`
-- `@reventless/reventless-ui`
-- `@reventless/reventless-ci`
+- `@reventlessdev/reventless`
+- `@reventlessdev/reventless-aws`
+- `@reventlessdev/reventless-spec`
+- `@reventlessdev/reventless-ui`
+- `@reventlessdev/reventless-ci`
 
 ## Conventional Commits
 
@@ -218,7 +218,7 @@ Monitor build status at:
 **Solutions**:
 - Verify `GITHUB_TOKEN` has packages:write permission
 - Check package.json `publishConfig` is correct
-- Ensure package name follows `@reventless/` scope
+- Ensure package name follows `@reventlessdev/` scope
 
 #### 2. CI Tests Fail
 **Symptoms**: Tests pass locally but fail in CI

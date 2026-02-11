@@ -2,19 +2,19 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as IAM$PulumiAws from "@reventless/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
-import * as Output$Pulumi from "@reventless/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Lambda$PulumiAws from "@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
+import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventless/reventless/src/adapter/Adapter.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventless/reventless/src/util/Util_Pulumi.res.mjs";
-import * as Util_Adapter$Reventless from "@reventless/reventless/src/util/Util_Adapter.res.mjs";
-import * as PolicyDocument$PulumiAws from "@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
-import * as AppSync_Resolver$PulumiAws from "@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
+import * as Util_Pulumi$Reventless from "@reventlessdev/reventless/src/util/Util_Pulumi.res.mjs";
+import * as Util_Adapter$Reventless from "@reventlessdev/reventless/src/util/Util_Adapter.res.mjs";
+import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
-import * as AppSync_Resolver_Templates$PulumiAws from "@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
+import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
 
 function handleResolversEvent(generateCommand) {
   return Pulumi.output((event, _context) => generateCommand(event));

@@ -3,12 +3,12 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Id$ReventlessSpec from "@reventless/reventless-spec/src/Id.res.mjs";
+import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Logger$Reventless from "../../util/Logger.res.mjs";
 import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Promise$Reventless from "../../util/Util_Promise.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessSpec from "@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {

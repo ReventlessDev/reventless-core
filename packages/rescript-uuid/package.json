@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-uuid",
+  "name": "@reventlessdev/rescript-uuid",
   "version": "1.0.1",
   "description": "ReScript bindings for node streams",
   "license": "MIT",

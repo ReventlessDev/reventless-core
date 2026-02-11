@@ -2,7 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as PolicyDocument$PulumiAws from "@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 
 function addUserGroup(name, userPoolId) {
   return new (Aws.cognito.UserGroup)("UserGroup-" + name, {

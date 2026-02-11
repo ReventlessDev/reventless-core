@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-node-zlib",
+  "name": "@reventlessdev/rescript-node-zlib",
   "namespace": false,
   "ppx-flags": [],
   "warnings": {
@@ -20,6 +20,6 @@
     }
   ],
   "dependencies": [
-    "@reventless/rescript-node-streams"
+    "@reventlessdev/rescript-node-streams"
   ]
 }

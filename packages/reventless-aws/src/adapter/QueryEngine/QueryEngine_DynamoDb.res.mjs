@@ -5,12 +5,12 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Logger$Reventless from "@reventless/reventless/src/util/Logger.res.mjs";
-import * as Adapter$Reventless from "@reventless/reventless/src/adapter/Adapter.res.mjs";
+import * as Logger$Reventless from "@reventlessdev/reventless/src/util/Logger.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
-import * as DynamoDb_DocumentClient$AwsSdk from "@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
-import * as Util_QueryDbRuntime$Reventless from "@reventless/reventless/src/util/Util_QueryDbRuntime.res.mjs";
+import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
+import * as Util_QueryDbRuntime$Reventless from "@reventlessdev/reventless/src/util/Util_QueryDbRuntime.res.mjs";
 
 function toJson(x) {
   switch (x.TAG) {

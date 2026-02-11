@@ -2,12 +2,12 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Output$Pulumi from "@reventless/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Lambda$PulumiAws from "@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
-import * as Adapter$Reventless from "@reventless/reventless/src/adapter/Adapter.res.mjs";
+import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
-import * as PolicyDocument$PulumiAws from "@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 
 function createQueuePolicy(queue, name, lambda, opts) {

@@ -3,11 +3,11 @@
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Lambda$PulumiAws from "@reventless/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
-import * as Adapter$Reventless from "@reventless/reventless/src/adapter/Adapter.res.mjs";
+import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
 import * as Util_S3$ReventlessAws from "../../util/Util_S3.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventless/reventless/src/util/Util_Pulumi.res.mjs";
-import * as PolicyDocument$PulumiAws from "@reventless/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Util_Pulumi$Reventless from "@reventlessdev/reventless/src/util/Util_Pulumi.res.mjs";
+import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as TaskBucket_S3_Runtime$ReventlessAws from "./TaskBucket_S3_Runtime.res.mjs";
 

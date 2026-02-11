@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-node-streams",
+  "name": "@reventlessdev/rescript-node-streams",
   "namespace": false,
   "ppx-flags": [],
   "warnings": {

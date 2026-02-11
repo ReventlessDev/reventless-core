@@ -3,7 +3,7 @@
 import * as Message$Reventless from "./Message.res.mjs";
 import * as MapperNto1$Reventless from "./MapperNto1.res.mjs";
 import * as Projection$Reventless from "./Projection.res.mjs";
-import * as Projection_Spec$ReventlessSpec from "@reventless/reventless-spec/src/Projection_Spec.res.mjs";
+import * as Projection_Spec$ReventlessSpec from "@reventlessdev/reventless-spec/src/Projection_Spec.res.mjs";
 
 function MakeGenericTargetFromStateTarget(StateTarget) {
   let decode = json => Message$Reventless.decode(json, StateTarget.stateSchema);

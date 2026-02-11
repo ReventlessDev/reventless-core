@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/reventless-gen",
+  "name": "@reventlessdev/reventless-gen",
   "version": "0.2.0",
   "description": "Code generator for Reventless",
   "license": "MIT",

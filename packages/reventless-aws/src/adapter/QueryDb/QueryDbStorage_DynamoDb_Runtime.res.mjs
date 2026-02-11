@@ -4,8 +4,8 @@ import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
-import * as Util_Error$Reventless from "@reventless/reventless/src/util/Util_Error.res.mjs";
-import * as DynamoDb_DocumentClient$AwsSdk from "@reventless/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
+import * as Util_Error$Reventless from "@reventlessdev/reventless/src/util/Util_Error.res.mjs";
+import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
 function load(table) {

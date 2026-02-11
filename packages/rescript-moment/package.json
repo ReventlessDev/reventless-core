@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-moment",
+  "name": "@reventlessdev/rescript-moment",
   "version": "0.9.0",
   "description": "ReScript bindings for Moment.js",
   "jest": {

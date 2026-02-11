@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-ssh2",
+  "name": "@reventlessdev/rescript-ssh2",
   "namespace": false,
   "ppx-flags": [],
   "warnings": {
@@ -15,6 +15,6 @@
     }
   ],
   "dependencies": [
-    "@reventless/rescript-node-streams"
+    "@reventlessdev/rescript-node-streams"
   ]
 }

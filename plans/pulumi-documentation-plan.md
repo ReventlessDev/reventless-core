@@ -10,8 +10,8 @@ Based on my analysis of the reventless codebase, here are the key findings about
 ### Pulumi Dependencies
 - **@pulumi/pulumi**: ~3.184.0 (core Pulumi SDK)
 - **@pulumi/aws**: ~6.83.0 (AWS provider)
-- **@reventless/rescript-pulumi-pulumi**: ^2.2.0 (ReScript bindings for core Pulumi)
-- **@reventless/rescript-pulumi-aws**: ^2.3.0 (ReScript bindings for AWS provider)
+- **@reventlessdev/rescript-pulumi-pulumi**: ^2.2.0 (ReScript bindings for core Pulumi)
+- **@reventlessdev/rescript-pulumi-aws**: ^2.3.0 (ReScript bindings for AWS provider)
 
 ### Key Usage Patterns Identified
 
@@ -122,8 +122,8 @@ Reventless components extend `Pulumi.ComponentResource` to create reusable infra
 ## ReScript Bindings
 
 Reventless includes custom ReScript bindings for Pulumi:
-- **@reventless/rescript-pulumi-pulumi**: Core Pulumi bindings
-- **@reventless/rescript-pulumi-aws**: AWS provider bindings
+- **@reventlessdev/rescript-pulumi-pulumi**: Core Pulumi bindings
+- **@reventlessdev/rescript-pulumi-aws**: AWS provider bindings
 
 These bindings provide:
 - Type-safe access to Pulumi APIs

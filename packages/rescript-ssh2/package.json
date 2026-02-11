@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-ssh2",
+  "name": "@reventlessdev/rescript-ssh2",
   "version": "1.0.2",
   "description": "ReScript bindings for ssh2",
   "license": "MIT",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@rescript/std": "^11.1.4",
-    "@reventless/rescript-node-streams": "^1.0.1",
+    "@reventlessdev/rescript-node-streams": "^1.0.1",
     "ssh2": "^1.14.0"
   },
   "devDependencies": {

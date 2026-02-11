@@ -9,13 +9,13 @@ import * as Aggregate$Reventless from "../Aggregate/Aggregate.res.mjs";
 import * as Component$Reventless from "../Component.res.mjs";
 import * as ReadModel$Reventless from "../ReadModel/ReadModel.res.mjs";
 import * as Interstack$Reventless from "../../util/Interstack.res.mjs";
-import * as StackReference$Pulumi from "@reventless/rescript-pulumi-pulumi/src/StackReference.res.mjs";
+import * as StackReference$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/StackReference.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 import * as Plugin_Helpers$Reventless from "./Plugin_Helpers.res.mjs";
 import * as AdapterDeploytime$Reventless from "../../adapter/AdapterDeploytime.res.mjs";
 import * as Heartbeat_Builder$Reventless from "../Heartbeat/Heartbeat_Builder.res.mjs";
-import * as ExtensionMapping$ReventlessSpec from "@reventless/reventless-spec/src/ExtensionMapping.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessSpec from "@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/ExtensionMapping.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => {

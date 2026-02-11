@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-node-streams",
+  "name": "@reventlessdev/rescript-node-streams",
   "version": "1.0.1",
   "description": "ReScript bindings for node streams",
   "license": "MIT",

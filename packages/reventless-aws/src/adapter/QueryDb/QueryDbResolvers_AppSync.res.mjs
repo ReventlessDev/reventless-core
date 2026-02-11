@@ -2,15 +2,15 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
-import * as Adapter$Reventless from "@reventless/reventless/src/adapter/Adapter.res.mjs";
-import * as Util_QueryDb$Reventless from "@reventless/reventless/src/util/Util_QueryDb.res.mjs";
-import * as Plugin_Helpers$Reventless from "@reventless/reventless/src/components/Plugin/Plugin_Helpers.res.mjs";
-import * as AppSync_Function$PulumiAws from "@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.mjs";
-import * as AppSync_Resolver$PulumiAws from "@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
+import * as Util_QueryDb$Reventless from "@reventlessdev/reventless/src/util/Util_QueryDb.res.mjs";
+import * as Plugin_Helpers$Reventless from "@reventlessdev/reventless/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as AppSync_Function$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.mjs";
+import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
-import * as AppSync_DataSource$PulumiAws from "@reventless/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
-import * as AppSync_Resolver_Templates$PulumiAws from "@reventless/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
+import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
+import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
 
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
   let name$1 = Stdlib_String.capitalize(name);

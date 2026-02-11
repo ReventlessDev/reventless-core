@@ -1,5 +1,5 @@
 {
-  "name": "@reventless/rescript-uuid",
+  "name": "@reventlessdev/rescript-uuid",
   "namespace": false,
   "ppx-flags": [],
   "warnings": {
