@@ -42,6 +42,40 @@ npx lerna publish              # Version and publish all changed packages
 npx lerna version              # Version only without publishing
 ```
 
+## Commit Message Conventions
+
+This project uses [Conventional Commits](https://conventionalcommits.org) for automated versioning and changelog generation via Lerna.
+
+### Dependency Updates
+
+Categorize dependency updates based on their **impact** to determine changelog visibility:
+
+**Include in changelog (`fix:` or `feat:`):**
+```bash
+# Security updates - ALWAYS include
+fix(deps): update package-x to address CVE-2024-xxxxx
+
+# Bug fixes via dependencies
+fix(deps): update aws-sdk to fix S3 multipart upload issue
+
+# Breaking changes (triggers major version bump)
+feat(deps)!: upgrade rescript to v12 (breaking change)
+
+# New features from dependencies
+feat(deps): add new aws-sdk feature for improved performance
+```
+
+**Exclude from changelog (`chore:`):**
+```bash
+# Routine patch updates with no functional impact
+chore(deps): update dev dependencies to latest patches
+
+# Build tooling updates
+chore(deps): update lerna to v8.2.5
+```
+
+**Key principle:** If a dependency change affects users, fixes a bug, adds a feature, or has security implications, use `fix:` or `feat:` so it appears in the CHANGELOG. Use `chore:` only for routine maintenance updates.
+
 ## Architecture
 
 Reventless is an **event-sourced CQRS framework** for serverless infrastructure, written in **ReScript** (formerly ReasonML/BuckleScript).
