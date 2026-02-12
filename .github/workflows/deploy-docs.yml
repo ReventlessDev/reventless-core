@@ -42,27 +42,50 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         continue-on-error: true
         run: |
-          echo "Attempting to download existing documentation from GitHub Pages..."
+          echo "🔍 Checking if GitHub Pages is enabled and has existing documentation..."
           PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
 
-          # Try to download existing documentation using wget mirror mode
-          # This preserves the directory structure
-          wget --mirror --no-parent --no-host-directories \
-            --directory-prefix=build-output \
-            --cut-dirs=1 \
-            --quiet \
-            --reject="*.html.tmp" \
-            "${PAGES_URL}/" 2>&1 || true
+          # Check if GitHub Pages URL is accessible with a simple HTTP request
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PAGES_URL}/" || echo "000")
 
-          # Clean up wget artifacts
-          rm -f build-output/robots.txt* 2>/dev/null || true
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✓ GitHub Pages is enabled and accessible (HTTP $HTTP_STATUS)"
+            echo "📥 Downloading existing documentation to preserve non-updated versions..."
 
-          if [ -d "build-output" ] && [ "$(ls -A build-output 2>/dev/null)" ]; then
-            echo "✓ Downloaded existing documentation"
-            du -sh build-output/* 2>/dev/null || echo "  (empty)"
+            # Download existing documentation using wget mirror mode
+            if wget --mirror --no-parent --no-host-directories \
+              --directory-prefix=build-output \
+              --cut-dirs=1 \
+              --quiet \
+              --reject="*.html.tmp" \
+              --timeout=30 \
+              --tries=3 \
+              "${PAGES_URL}/" 2>&1; then
+
+              # Clean up wget artifacts
+              rm -f build-output/robots.txt* 2>/dev/null || true
+
+              echo "✓ Successfully downloaded existing documentation"
+              echo "📊 Current documentation structure:"
+              du -sh build-output/* 2>/dev/null || echo "  (empty)"
+            else
+              echo "⚠️  wget failed, but continuing with fresh build"
+            fi
+          elif [ "$HTTP_STATUS" = "404" ]; then
+            echo "ℹ️  GitHub Pages not yet published (HTTP 404)"
+            echo "   This is normal for first deployment - building from scratch"
+          elif [ "$HTTP_STATUS" = "000" ]; then
+            echo "⚠️  Could not connect to GitHub Pages URL"
+            echo "   GitHub Pages might not be enabled yet - building from scratch"
+            echo "   💡 Enable it at: https://github.com/${{ github.repository }}/settings/pages"
           else
-            echo "ℹ No existing documentation found - will build from scratch"
+            echo "⚠️  Unexpected HTTP status: $HTTP_STATUS"
+            echo "   Building from scratch anyway"
           fi
+
+          # Ensure build-output directory exists regardless of download outcome
+          mkdir -p build-output
+          echo "✅ Ready to build documentation"
 
       - name: Determine branches to build
         id: branches
@@ -294,3 +317,23 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Deployment status
+        run: |
+          if [ "${{ steps.deployment.outcome }}" = "success" ]; then
+            echo "✅ Documentation deployed successfully!"
+            echo "🌐 View at: ${{ steps.deployment.outputs.page_url }}"
+          else
+            echo "❌ Deployment failed"
+            echo ""
+            echo "📋 Common reasons:"
+            echo "  1. GitHub Pages is not enabled in repository settings"
+            echo "  2. Pages source is not set to 'GitHub Actions'"
+            echo ""
+            echo "🔧 To fix:"
+            echo "  1. Go to: https://github.com/${{ github.repository }}/settings/pages"
+            echo "  2. Under 'Build and deployment', set Source to 'GitHub Actions'"
+            echo "  3. Re-run this workflow"
+            exit 1
+          fi
