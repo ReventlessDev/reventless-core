@@ -13,7 +13,7 @@
     "packages/*"
   ],
   "devDependencies": {
-    "lerna": "^9.0.3",
+    "lerna": "^8.1.8",
     "rescript": "^12.1.0"
   },
   "scripts": {
