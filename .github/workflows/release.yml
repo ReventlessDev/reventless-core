@@ -99,13 +99,102 @@ jobs:
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
-            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --yes --no-push
+            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore doc --ignore aws-lambda-layer --yes --no-push
           else
             echo "Creating regular release versions"
-            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --yes --no-push
+            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore doc --ignore aws-lambda-layer --yes --no-push
           fi
 
           echo "Lerna version completed successfully"
+
+      - name: Update documentation CHANGELOG
+        run: |
+          CHANGELOG_FILE="packages/doc/CHANGELOG.md"
+          GITHUB_REPO="ReventlessDev/reventless-core"
+
+          # Get the last commit that modified the CHANGELOG (excluding this workflow)
+          LAST_CHANGELOG_COMMIT=$(git log -1 --format="%H" --skip=0 -- "$CHANGELOG_FILE" 2>/dev/null || echo "")
+
+          # Determine the range to search
+          if [ -z "$LAST_CHANGELOG_COMMIT" ]; then
+            # If CHANGELOG never updated, get commits from last 30 days
+            SINCE_DATE=$(date -u -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-30d +%Y-%m-%d)
+            COMMIT_RANGE="--since=$SINCE_DATE"
+          else
+            COMMIT_RANGE="$LAST_CHANGELOG_COMMIT..HEAD"
+          fi
+
+          # Get commits affecting doc package
+          COMMITS=$(git log --format="%H|%s|%ad" --date=short $COMMIT_RANGE -- "packages/doc/**" 2>/dev/null || echo "")
+
+          # If no new commits, skip
+          if [ -z "$COMMITS" ]; then
+            echo "No new documentation changes to record"
+            exit 0
+          fi
+
+          echo "Found documentation changes to record"
+
+          # Create temporary file for new entries
+          TEMP_ENTRIES=$(mktemp)
+
+          # Process commits and group by date
+          CURRENT_DATE=""
+          while IFS='|' read -r hash subject date; do
+            # Skip if empty line
+            [ -z "$hash" ] && continue
+
+            # Add date header if new date
+            if [ "$date" != "$CURRENT_DATE" ]; then
+              if [ -n "$CURRENT_DATE" ]; then
+                echo "" >> "$TEMP_ENTRIES"
+              fi
+              echo "### $date" >> "$TEMP_ENTRIES"
+              CURRENT_DATE="$date"
+            fi
+
+            # Format entry with commit link (truncate hash to 7 chars)
+            SHORT_HASH="${hash:0:7}"
+            echo "- $subject ([$SHORT_HASH](https://github.com/$GITHUB_REPO/commit/$hash))" >> "$TEMP_ENTRIES"
+          done <<< "$COMMITS"
+
+          # Insert new entries into CHANGELOG after "## Changes" header
+          TEMP_CHANGELOG=$(mktemp)
+
+          awk -v new_entries_file="$TEMP_ENTRIES" '
+            /^## Changes$/ {
+              print $0
+              print ""
+              while ((getline line < new_entries_file) > 0) {
+                print line
+              }
+              close(new_entries_file)
+              # Skip the next empty line if it exists
+              getline
+              if ($0 != "") {
+                print $0
+              }
+              next
+            }
+            {print}
+          ' "$CHANGELOG_FILE" > "$TEMP_CHANGELOG"
+
+          # Replace original file
+          mv "$TEMP_CHANGELOG" "$CHANGELOG_FILE"
+          rm -f "$TEMP_ENTRIES"
+
+          # Stage the changes
+          git add "$CHANGELOG_FILE"
+
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit to CHANGELOG"
+          else
+            git commit -m "docs: update documentation CHANGELOG
+
+[skip ci]"
+            echo "Documentation CHANGELOG updated successfully"
+          fi
 
       - name: Build release artifacts
         run: |
