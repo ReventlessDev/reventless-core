@@ -1,5 +1,5 @@
 {
-  "name": "reventless",
+  "name": "@reventlessdev/reventless-core",
   "dependencies": [
     "@reventlessdev/rescript-aws-sdk",
     "@reventlessdev/rescript-fast-csv",
