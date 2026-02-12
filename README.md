@@ -1,5 +1,24 @@
 # Reventless-Universe
 
+> [!IMPORTANT]
+> **This branch (main) is outdated and no longer actively maintained.**
+>
+> The Reventless framework is currently being reworked with significant improvements and modernization. Active development is happening on the **[`alpha`](https://github.com/ReventlessDev/reventless-core/tree/alpha)** branch.
+>
+> **About Reventless:**
+> - ✅ Battle-tested in production since **2019**
+> - 🔓 Previously proprietary, now **open source** (MIT License)
+> - 🚀 Event-sourced CQRS framework for AWS serverless
+> - 📦 Monorepo with 16 packages (framework core, AWS adapters, ReScript bindings)
+>
+> **For the latest code and documentation:**
+> - 📖 [Documentation](https://reventlessdev.github.io/reventless-core/) (multi-version: latest, beta, alpha)
+> - 🔀 [Alpha Branch](https://github.com/ReventlessDev/reventless-core/tree/alpha) - Active development
+> - 🧪 [Beta Branch](https://github.com/ReventlessDev/reventless-core/tree/beta) - Pre-release testing
+> - 📋 [Issues & Discussions](https://github.com/ReventlessDev/reventless-core/issues)
+
+---
+
 This is a mono-repo, which contains all necessary packages for the Reventless framework.
 
 For individual Readmes per package see inside the package's directory `./packages/*`:
