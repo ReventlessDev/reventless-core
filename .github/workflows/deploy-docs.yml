@@ -38,8 +38,102 @@ jobs:
       - name: Create build directory structure
         run: mkdir -p build-output
 
-      - name: Build Main (Latest) Documentation
+      - name: Download existing documentation
+        if: github.event_name != 'workflow_dispatch'
+        continue-on-error: true
         run: |
+          echo "Attempting to download existing documentation from GitHub Pages..."
+          PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+
+          # Try to download existing documentation using wget mirror mode
+          # This preserves the directory structure
+          wget --mirror --no-parent --no-host-directories \
+            --directory-prefix=build-output \
+            --cut-dirs=1 \
+            --quiet \
+            --reject="*.html.tmp" \
+            "${PAGES_URL}/" 2>&1 || true
+
+          # Clean up wget artifacts
+          rm -f build-output/robots.txt* 2>/dev/null || true
+
+          if [ -d "build-output" ] && [ "$(ls -A build-output 2>/dev/null)" ]; then
+            echo "✓ Downloaded existing documentation"
+            du -sh build-output/* 2>/dev/null || echo "  (empty)"
+          else
+            echo "ℹ No existing documentation found - will build from scratch"
+          fi
+
+      - name: Determine branches to build
+        id: branches
+        run: |
+          # Determine which branches to build
+          # On workflow_dispatch, build all versions
+          # On push, build only the current branch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Building all versions (manual trigger)"
+            BUILD_ALL=true
+          else
+            echo "Building only changed branch: ${{ github.ref_name }}"
+            BUILD_ALL=false
+          fi
+
+          # Check which branches exist
+          MAIN_EXISTS=false
+          BETA_EXISTS=false
+          ALPHA_EXISTS=false
+
+          if git show-ref --verify --quiet refs/remotes/origin/main; then
+            MAIN_EXISTS=true
+            echo "✓ main branch exists"
+          else
+            echo "✗ main branch does not exist"
+          fi
+
+          if git show-ref --verify --quiet refs/remotes/origin/beta; then
+            BETA_EXISTS=true
+            echo "✓ beta branch exists"
+          else
+            echo "✗ beta branch does not exist"
+          fi
+
+          if git show-ref --verify --quiet refs/remotes/origin/alpha; then
+            ALPHA_EXISTS=true
+            echo "✓ alpha branch exists"
+          else
+            echo "✗ alpha branch does not exist"
+          fi
+
+          # Determine what to build
+          if [ "$BUILD_ALL" = "true" ]; then
+            echo "build_main=$MAIN_EXISTS" >> $GITHUB_OUTPUT
+            echo "build_beta=$BETA_EXISTS" >> $GITHUB_OUTPUT
+            echo "build_alpha=$ALPHA_EXISTS" >> $GITHUB_OUTPUT
+          else
+            # Only build the current branch
+            if [ "${{ github.ref_name }}" = "main" ] && [ "$MAIN_EXISTS" = "true" ]; then
+              echo "build_main=true" >> $GITHUB_OUTPUT
+            else
+              echo "build_main=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [ "${{ github.ref_name }}" = "beta" ] && [ "$BETA_EXISTS" = "true" ]; then
+              echo "build_beta=true" >> $GITHUB_OUTPUT
+            else
+              echo "build_beta=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [ "${{ github.ref_name }}" = "alpha" ] && [ "$ALPHA_EXISTS" = "true" ]; then
+              echo "build_alpha=true" >> $GITHUB_OUTPUT
+            else
+              echo "build_alpha=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Build Main (Latest) Documentation
+        if: steps.branches.outputs.build_main == 'true'
+        run: |
+          echo "Building main documentation..."
           git checkout main
           cd packages/doc
           npm ci
@@ -55,7 +149,9 @@ jobs:
           cp -r packages/doc/build/* build-output/
 
       - name: Build Beta Documentation
+        if: steps.branches.outputs.build_beta == 'true'
         run: |
+          echo "Building beta documentation..."
           git checkout beta
           cd packages/doc
           npm ci
@@ -76,7 +172,9 @@ jobs:
           cp -r packages/doc/build/* build-output/beta/
 
       - name: Build Alpha Documentation
+        if: steps.branches.outputs.build_alpha == 'true'
         run: |
+          echo "Building alpha documentation..."
           git checkout alpha
           cd packages/doc
           npm ci
