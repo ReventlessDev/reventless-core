@@ -21,12 +21,17 @@
     "version": {
       "conventionalCommits": true,
       "message": "chore(release): version packages",
-      "allowBranch": ["main", "master"],
+      "allowBranch": [
+        "main",
+        "master"
+      ],
       "createRelease": "github"
     },
     "bootstrap": {
       "hoist": true,
-      "npmClientArgs": ["--no-package-lock"]
+      "npmClientArgs": [
+        "--no-package-lock"
+      ]
     }
   },
   "ignoreChanges": [
