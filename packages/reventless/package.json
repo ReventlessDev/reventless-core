@@ -1,13 +1,16 @@
 {
     "name": "@reventlessdev/reventless",
-    "version": "2.3.3",
+    "version": "3.0.0-alpha.0",
     "description": "Core package for Reventless framework",
     "license": "MIT",
     "jest": {
         "testMatch": [
             "<rootDir>/tests/**/*Test.res.mjs"
         ],
-        "moduleFileExtensions": ["js", "mjs"]
+        "moduleFileExtensions": [
+            "js",
+            "mjs"
+        ]
     },
     "scripts": {
         "build": "rescript build",
@@ -23,15 +26,15 @@
         "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
     },
     "dependencies": {
-        "@reventlessdev/rescript-aws-sdk": "^2.1.2",
-        "@reventlessdev/rescript-fast-csv": "^1.1.2",
-        "@reventlessdev/rescript-hash-obj": "^1.1.1",
-        "@reventlessdev/rescript-node-streams": "^1.0.1",
-        "@reventlessdev/rescript-pulumi-aws": "^2.3.0",
-        "@reventlessdev/rescript-pulumi-pulumi": "^2.2.0",
-        "@reventlessdev/rescript-ssh2": "^1.0.2",
-        "@reventlessdev/rescript-uuid": "^1.0.1",
-        "@reventlessdev/reventless-spec": "^2.3.0"
+        "@reventlessdev/rescript-aws-sdk": "^2.1.3-alpha.0",
+        "@reventlessdev/rescript-fast-csv": "^1.1.3-alpha.0",
+        "@reventlessdev/rescript-hash-obj": "^1.1.2-alpha.0",
+        "@reventlessdev/rescript-node-streams": "^1.0.2-alpha.0",
+        "@reventlessdev/rescript-pulumi-aws": "^2.3.1-alpha.0",
+        "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.0",
+        "@reventlessdev/rescript-ssh2": "^1.0.3-alpha.0",
+        "@reventlessdev/rescript-uuid": "^1.0.2-alpha.0",
+        "@reventlessdev/reventless-spec": "^2.3.1-alpha.0"
     },
     "devDependencies": {
         "@glennsl/rescript-jest": "^0.13.1",

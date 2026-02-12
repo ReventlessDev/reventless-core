@@ -1,12 +1,15 @@
 {
   "name": "@reventlessdev/rescript-moment",
-  "version": "0.9.0",
+  "version": "0.9.1-alpha.0",
   "description": "ReScript bindings for Moment.js",
   "jest": {
-      "testMatch": [
-          "<rootDir>/tests/**/*Test.res.mjs"
-      ],
-      "moduleFileExtensions": ["js", "mjs"]
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ]
   },
   "scripts": {
     "build": "rescript build",
@@ -29,7 +32,7 @@
     "moment": "^2.30.1",
     "rescript": "^12.1.0"
   },
-    "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
-    }
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
 }

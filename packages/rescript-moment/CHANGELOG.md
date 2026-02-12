@@ -1,5 +1,22 @@
 # Change Log
 
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 0.9.1-alpha.0 (2026-02-12)
+
+
+### Bug Fixes
+
+* **publish:** add publishConfig to packages for GitHub Package Registry ([987a00a](https://github.com/ReventlessDev/reventless-core/commit/987a00af049fed112aa91fd53d8fad719cd80c94))
+* **rescript-moment:** fix ESM imports and update moment to 2.30.1 ([33f9340](https://github.com/ReventlessDev/reventless-core/commit/33f9340b633c4d8689d3ded5d2e1a81c1853f361))
+
+
+
+
+
+# Change Log
+
 ## [v0.2.3](https://github.com/reasonml-community/bs-moment/tree/v0.2.3) (2018-02-08)
 [Full Changelog](https://github.com/reasonml-community/bs-moment/compare/v0.2.2...v0.2.3)
 

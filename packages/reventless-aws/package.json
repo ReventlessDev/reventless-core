@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-aws",
-  "version": "2.3.3",
+  "version": "3.0.0-alpha.0",
   "description": "AWS adapters for Reventless",
   "license": "MIT",
   "scripts": {
@@ -18,11 +18,11 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
-    "@reventlessdev/rescript-aws-sdk": "^2.1.2",
-    "@reventlessdev/rescript-pulumi-aws": "^2.3.0",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.2.0",
-    "@reventlessdev/reventless": "^2.3.3",
-    "@reventlessdev/reventless-spec": "^2.3.0"
+    "@reventlessdev/rescript-aws-sdk": "^2.1.3-alpha.0",
+    "@reventlessdev/rescript-pulumi-aws": "^2.3.1-alpha.0",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.0",
+    "@reventlessdev/reventless": "^3.0.0-alpha.0",
+    "@reventlessdev/reventless-spec": "^2.3.1-alpha.0"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
@@ -33,7 +33,7 @@
   "peerDependencies": {
     "rescript": "^12.1.0"
   },
-    "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
-    }
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
 }

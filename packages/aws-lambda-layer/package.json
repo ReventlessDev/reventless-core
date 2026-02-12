@@ -1,6 +1,6 @@
 {
   "name": "aws-lambda-layer",
-  "version": "0.1.0",
+  "version": "0.1.1-alpha.0",
   "description": "aws lambda layer to be used in reventless based projects",
   "private": true,
   "license": "MIT",
