@@ -8,6 +8,7 @@
     "publish": {
       "registry": "https://npm.pkg.github.com",
       "conventionalCommits": true,
+      "changelogPreset": "./changelog.config.js",
       "message": "chore(release): publish packages",
       "ignoreChanges": [
         "**/*.md",
@@ -20,6 +21,7 @@
     },
     "version": {
       "conventionalCommits": true,
+      "changelogPreset": "./changelog.config.js",
       "message": "chore(release): version packages",
       "allowBranch": [
         "main",
