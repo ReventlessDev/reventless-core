@@ -13,16 +13,14 @@ const config = {
   favicon: "img/logo.svg",
 
   // Set the production url of your site here
-  url: "https://gitlab.com",
+  url: "https://reventlessdev.github.io",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/reventless/reventless-universe",
+  baseUrl: "/reventless-core/",
 
-  // TODO:
   // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: "eviden", // Usually your GitHub org/user name.
-  projectName: "reventless", // Usually your repo name.
+  organizationName: "ReventlessDev", // Usually your GitHub org/user name.
+  projectName: "reventless-core", // Usually your repo name.
 
   onBrokenLinks: "warn",
   onBrokenMarkdownLinks: "warn",
@@ -51,7 +49,7 @@ const config = {
         docs: {
           sidebarPath: "./sidebars.js",
           editUrl:
-            "https://gitlab.com/reventless/reventless-universe/-/tree/main/packages/doc/",
+            "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
         },
         /*
         blog: {
@@ -99,8 +97,8 @@ const config = {
           // },
           // { to: '/blog', label: 'Blog', position: 'left' },
           {
-            href: "https://gitlab.com/reventless/reventless-universe",
-            label: "GitLab",
+            href: "https://github.com/ReventlessDev/reventless-core",
+            label: "GitHub",
             position: "right",
           },
         ],
@@ -142,8 +140,8 @@ const config = {
             title: "More",
             items: [
               {
-                label: "GitLab",
-                href: "https://gitlab.com/reventless/reventless-universe",
+                label: "GitHub",
+                href: "https://github.com/ReventlessDev/reventless-core",
               },
             ],
           },
