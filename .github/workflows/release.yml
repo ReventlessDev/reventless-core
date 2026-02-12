@@ -190,9 +190,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit to CHANGELOG"
           else
-            git commit -m "docs: update documentation CHANGELOG
-
-[skip ci]"
+            git commit -m "docs: update documentation CHANGELOG" -m "[skip ci]"
             echo "Documentation CHANGELOG updated successfully"
           fi
 
