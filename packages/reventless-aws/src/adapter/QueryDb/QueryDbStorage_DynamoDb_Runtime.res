@@ -1,11 +1,10 @@
 open AwsSdk.DynamoDb.DocumentClient
 open Util_DynamoDb_Runtime
 open Belt.Result
-open Reventless.Util.Error
 
 let load = table =>
   async id =>
-    switch await queryById(table, id) {
+    switch await Util_DynamoDb_Runtime.queryById(table, id) {
     | arr => arr->Ok
     | exception JsExn(e) =>
       let errorMsg = e->Reventless.Util.Error.message
@@ -92,7 +91,10 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
         | (Some(Error(error)), _) =>
           Some(`Batch ${batchNr->Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
         | (_, Some(reason)) =>
-          let error = (reason->Reventless.Util.Error.ofPromise).message
+          let error = switch reason {
+          | JsExn(e) => e->JsExn.message->Option.getOr("Unknown error")
+          | _ => "Unknown error"
+          }
           Some(`Batch ${batchNr->Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
         | _ => None
         }
@@ -127,7 +129,7 @@ let saveBatch = table =>
     | [] => Ok()
     | [(id, json, ttl)] => await save(table)(id, json, Any, ttl)
     | items =>
-      let tableName = table.name
+      let _tableName = table.name
       let ids = items->Array.map(((id, _, _)) => id)
       await items
       ->Array.map(((_id, json, ttl)) => {
@@ -187,7 +189,7 @@ let deleteBatch = table =>
     | [] => Ok()
     | [(id, sort)] => await delete(table)(id, sort)
     | items =>
-      let tableName = table.name
+      let _tableName = table.name
       let ids = items->Array.map(((id, _)) => id)
       await items
       ->Array.map(((id, sort)) =>

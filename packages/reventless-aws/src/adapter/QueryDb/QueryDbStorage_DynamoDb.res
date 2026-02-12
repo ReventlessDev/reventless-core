@@ -1,17 +1,23 @@
 open PulumiAws
 open DynamoDb.Table
-open ReventlessSpec.ReadModel_Spec
 
 type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<IAM.Role.t>
 
-let globalSecondaryIndexes = indexes =>
+let globalSecondaryIndexes = (indexes: array<ReventlessSpec.ReadModel_Spec.indexConfig>) =>
   indexes
-  ->Array.map(({index, projectionType} as indexConfig) => {
+  ->Array.map((indexConfig: ReventlessSpec.ReadModel_Spec.indexConfig) => {
+    let {index, projectionType} = indexConfig
     let (projectionType, includes) = switch projectionType {
-    | ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
-    | KEYS_ONLY as _projection => (KEYS_ONLY, None)
-    | INCLUDE(includes) => (INCLUDE, Some(includes))
+    | ReventlessSpec.ReadModel_Spec.ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
+    | ReventlessSpec.ReadModel_Spec.KEYS_ONLY as _projection => (
+        PulumiAws.DynamoDb.Table.KEYS_ONLY,
+        None,
+      )
+    | ReventlessSpec.ReadModel_Spec.INCLUDE(includes) => (
+        PulumiAws.DynamoDb.Table.INCLUDE,
+        Some(includes),
+      )
     }
     {
       name: index,
@@ -23,17 +29,18 @@ let globalSecondaryIndexes = indexes =>
   })
   ->Pulumi.Input.make
 
-let attributes = (sortField, indexes) =>
+let attributes = (sortField, indexes: array<ReventlessSpec.ReadModel_Spec.indexConfig>) =>
   [
     [{name: "id", type_: "S"}],
     sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
     indexes
-    ->Array.map(({index, type_} as indexConfig) =>
+    ->Array.map((indexConfig: ReventlessSpec.ReadModel_Spec.indexConfig) => {
+      let {index, type_} = indexConfig
       [
         [{name: index, type_}],
         indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
       ]->Array.flat
-    )
+    })
     ->Array.flat,
   ]->Array.flat
 

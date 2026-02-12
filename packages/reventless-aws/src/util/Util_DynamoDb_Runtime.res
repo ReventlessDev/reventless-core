@@ -104,9 +104,9 @@ let purgeTimeAttributeName = "reventlessPurgeTime"
 let calcPurgeTime = ttl => {
   let now_ms = Reventless.Message.now()
   let now_s = now_ms /. 1000.0
-  let now_s_rounded = now_s->int_of_float
+  let now_s_rounded = now_s->Float.toInt
 
-  (now_s_rounded + ttl)->float_of_int
+  (now_s_rounded + ttl)->Int.toFloat
 }
 let insertTtl: (JSON.t, option<int>) => JSON.t = (json, ttl) =>
   ttl

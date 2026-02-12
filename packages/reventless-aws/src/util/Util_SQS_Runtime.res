@@ -19,13 +19,13 @@ let sendMessage = (queue, ~delay=?, messageBody) =>
 let sendFifoMessage = (queue, ~delay=?, ~messageGroupId, messageBody) =>
   SQS.sendMessage(~queueId=queue.id, ~messageBody, ~messageGroupId, ~delay?)
 
-let rec send = async (queue, queueService, {id, delay} as commandJson) => {
+let rec send = async (queue, queueService, commandJson) => {
   let messageBody = commandJson->toMessageBody
   try await (
     if queueService == AWS.SQS_FIFO {
-      queue->sendFifoMessage(~messageGroupId=id, ~delay, messageBody)
+      queue->sendFifoMessage(~messageGroupId=commandJson.id, ~delay=?commandJson.delay, messageBody)
     } else {
-      queue->sendMessage(~delay, messageBody)
+      queue->sendMessage(~delay=?commandJson.delay, messageBody)
     }
   ) catch {
   | JsExn(e) =>
@@ -37,14 +37,15 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   }
 }
 
-let makeEntry = (queueService, {id, meta: {msgId: messageId}, delay} as commandJson) => {
+let makeEntry = (queueService, commandJson) => {
+  let {id, meta: {msgId: messageId}} = commandJson
   let messageBody = commandJson->toMessageBody
 
   // Console.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
   if queueService == AWS.SQS_FIFO {
-    SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay)
+    SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay=?commandJson.delay)
   } else {
-    SQS.makeBatchEntry(~messageId, ~messageBody, ~delay)
+    SQS.makeBatchEntry(~messageId, ~messageBody, ~delay=?commandJson.delay)
   }
 }
 

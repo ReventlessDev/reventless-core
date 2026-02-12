@@ -9,7 +9,7 @@ type counterHandler = (~references: array<(string, int)>, ~counts: array<JSON.t>
 let groupByCounterId = references => {
   let dict = Dict.make()
   references->Array.forEach(((reference, inc)) => {
-    let counterId = reference->Counter.unmakeId->fst
+    let counterId = reference->Counter.unmakeId->Pair.first
     let current = dict->Dict.get(counterId)->Option.getOr(0)
     dict->Dict.set(counterId, current + inc)
   })
@@ -66,10 +66,6 @@ module Make = (Spec: Spec) => {
             __MODULE__ ++
             `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
           )
-          None
-        | _ =>
-          let stateStr = state->JSON.stringify
-          Console.log(__MODULE__ ++ `.counterHandler: couldn't decode state ${stateStr}`)
           None
         }
       ),

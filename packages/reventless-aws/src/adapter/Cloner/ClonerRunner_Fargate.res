@@ -106,8 +106,8 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     (secretsManagerAccessPolicy.arn, taskRunnerPolicy.arn, vpcConfig, secrets)
     ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((
-      secretsManagerAccessPolicyArn,
-      taskRunnerPolicyArn,
+      _secretsManagerAccessPolicyArn,
+      _taskRunnerPolicyArn,
       vpcConfig,
       secrets,
     )) => {

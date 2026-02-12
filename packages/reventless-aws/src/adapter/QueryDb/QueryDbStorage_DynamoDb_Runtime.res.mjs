@@ -2,6 +2,8 @@
 
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Util_Error$Reventless from "@reventlessdev/reventless/src/util/Util_Error.res.mjs";
@@ -129,7 +131,7 @@ async function writeMultiple(writeRequests, op, ids, table) {
     if (match$1 === undefined) {
       return;
     }
-    let error = match$1.message;
+    let error = match$1.RE_EXN_ID === "JsExn" ? Stdlib_Option.getOr(Stdlib_JsExn.message(match$1._1), "Unknown error") : "Unknown error";
     return `Batch ` + batchNr.toString() + `: ` + count + ` ids:` + batchIdsStr + `: ` + error;
   }), x => x);
   if (errors.length !== 0) {
@@ -298,4 +300,4 @@ export {
   $$delete,
   deleteBatch,
 }
-/* @aws-sdk/lib-dynamodb Not a pure module */
+/* Stdlib_JsExn Not a pure module */
