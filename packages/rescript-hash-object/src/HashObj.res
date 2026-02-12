@@ -9,5 +9,5 @@ module Options = {
   }
 }
 
-@module
-external hashDict: (~dict: dict<string>, ~options: Options.t=?) => string = "hash-obj"
+@module("hash-object") @default
+external hashDict: (~dict: dict<string>, ~options: Options.t=?) => string = "default"

@@ -1,17 +1,17 @@
 {
-  "name": "@reventlessdev/rescript-hash-obj",
+  "name": "@reventlessdev/rescript-hash-object",
   "version": "1.1.2-alpha.1",
-  "description": "ReScript bindings for hash-obj",
+  "description": "ReScript bindings for hash-object",
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "test": "echo \"There are no tests for rescript-hash-obj.\"",
+    "test": "echo \"There are no tests for rescript-hash-object.\"",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
-    "hash-obj": "^2.0.0"
+    "hash-object": "^5.1.0"
   },
   "devDependencies": {
     "rescript": "^12.1.0"
