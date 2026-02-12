@@ -89,6 +89,8 @@ jobs:
         timeout-minutes: 10
         env:
           HUSKY: 0
+          TERM: dumb
+          NO_COLOR: 1
         run: |
           IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
           PREID="${{ steps.prerelease.outputs.preid }}"
@@ -99,10 +101,10 @@ jobs:
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
-            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --yes --no-push --loglevel=error
+            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --yes --no-push --loglevel=silent 2>&1 | cat
           else
             echo "Creating regular release versions"
-            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --yes --no-push --loglevel=error
+            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --yes --no-push --loglevel=silent 2>&1 | cat
           fi
 
           echo "Lerna version completed successfully"
