@@ -3,7 +3,7 @@
   "dependencies": [
     "@reventlessdev/rescript-aws-sdk",
     "@reventlessdev/rescript-fast-csv",
-    "@reventlessdev/rescript-hash-obj",
+    "@reventlessdev/rescript-hash-object",
     "@reventlessdev/rescript-moment",
     "@reventlessdev/rescript-node-streams",
     "@reventlessdev/rescript-node-zlib",
