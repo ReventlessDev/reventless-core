@@ -139,9 +139,15 @@ jobs:
 
           for tag in $NEW_TAGS; do
             # Extract package name and version from tag
-            # Tags are in format: @reventless/package-name@version or package-name@version
-            package_name=$(echo $tag | sed 's/@reventless\///' | sed 's/@.*//')
+            # Tags are in format: @reventlessdev/package-name@version or package-name@version
+            package_name=$(echo $tag | sed 's/@reventlessdev\///' | sed 's/@.*//')
             version=$(echo $tag | sed 's/.*@//')
+
+            # Skip private packages (doc, aws-lambda-layer)
+            if [ "$package_name" = "doc" ] || [ "$package_name" = "aws-lambda-layer" ]; then
+              echo "Skipping private package: $package_name"
+              continue
+            fi
 
             echo "Creating release for $package_name@$version"
 
