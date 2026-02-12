@@ -12,7 +12,7 @@
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
-    "uuid": "^11.0.0-0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "rescript": "^12.1.0"
