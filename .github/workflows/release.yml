@@ -99,10 +99,10 @@ jobs:
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
-            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --yes --no-push --stream --loglevel=error
+            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --yes --no-push --loglevel=error
           else
             echo "Creating regular release versions"
-            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --yes --no-push --stream --loglevel=error
+            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --yes --no-push --loglevel=error
           fi
 
           echo "Lerna version completed successfully"
