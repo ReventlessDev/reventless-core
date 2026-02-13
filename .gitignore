@@ -5,7 +5,7 @@
 .history
 .vscode
 npm-debug.log
-/lib
+**/lib
 /node_modules/
 /packages/**/node_modules/
 .grapqhl_ppx_cache
