@@ -1,8 +1,9 @@
-const conventionalChangelogAngular = require('conventional-changelog-angular');
+const angular = require('conventional-changelog-angular');
 
-module.exports = conventionalChangelogAngular.then(config => {
-  // Modify the main template to reduce blank lines
-  config.writerOpts.mainTemplate = `{{> header}}
+module.exports = function(config) {
+  return angular(config).then(preset => {
+    // Modify the main template to reduce blank lines
+    preset.writerOpts.mainTemplate = `{{> header}}
 
 {{#each commitGroups}}
 {{#if title}}
@@ -16,5 +17,6 @@ module.exports = conventionalChangelogAngular.then(config => {
 {{> footer}}
 `;
 
-  return config;
-});
+    return preset;
+  });
+};
