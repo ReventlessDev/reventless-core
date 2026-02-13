@@ -24,7 +24,7 @@ type args = {
 external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
   "IdentityPool"
 
-// FIXME: This is very FIDAP-Specific and should be split up into generic- and FIDAP- parts
+// FIXME: This is very application Specific and should be split up into generic- and application parts
 let make = (
   ~userPoolId: Pulumi.Output.t<string>,
   ~userPoolClientId: Pulumi.Input.t<string>,
