@@ -17,6 +17,7 @@ const sidebars = {
   docSidebar: [
     'index',
     'get-started',
+    'development-process',
     'rescript-syntax',
     'component-overview',
     'unit-testing',
