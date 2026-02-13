@@ -59,7 +59,7 @@ In an event-sourced system Events are the single source of truth. (note: any sys
 
 ## Aggregate Spec
 
-An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behavior](#behavior), EventMapper, [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
+An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behavior](#behavior), EventMapper, [ReadModel Projections](readmodel.md#projections), [Extensionpoint Mappings](extensionpoint.md#extensionpoint-mappings), [Extension Mappings](extension.md#extension-mappings))
 
 ### Example
 
@@ -105,7 +105,7 @@ type error =
   | NotExisting
 ```
 
-For information about `@decco` see [Decco annotation](../inner-workings/serialization.md#decco-annotation).
+For information about `@schema` see [Schema annotation](../inner-workings/serialization.md#schema-annotation).
 
 ### Id
 
@@ -424,7 +424,7 @@ Mapping function from source `Event` to target `Command`.
 
 ### Mapping module type
 
-For the following array of mappings a Mapping module type has to be defined, which constrains the `Target` to the `Target` module type defined above. This has to be done due to [ReScript Functor Syntax](../rescript-syntax.md#functors-higher-order-functions).
+For the following array of mappings a Mapping module type has to be defined, which constrains the `Target` to the `Target` module type defined above. This has to be done due to [ReScript Functor Syntax](../rescript-syntax.md#functors).
 
 ### mappings
 

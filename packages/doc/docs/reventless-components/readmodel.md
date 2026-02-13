@@ -71,7 +71,7 @@ let config = ReventlessSpec.ReadModel.Spec.config(
 )
 ```
 
-For information about `@decco` see [Decco annotation](../inner-workings/serialization.md#decco-annotation).
+For information about `@schema` see [Schema annotation](../inner-workings/serialization.md#schema-annotation).
 
 ### Id
 
