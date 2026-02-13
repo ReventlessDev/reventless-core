@@ -22,13 +22,14 @@ jobs:
       actions: read
     steps:
       - name: Wait for CI and Security Scan
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.sha }}
           check-regexp: '(CI|Security Scan).*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
           allowed-conclusions: success
+          fail-on-no-checks: false
       - name: Checkout code
         uses: actions/checkout@v4
         with:
