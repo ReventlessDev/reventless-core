@@ -4,13 +4,12 @@
   "description": "aws lambda layer to be used in reventless based projects",
   "private": true,
   "license": "MIT",
-  "main": "src/Main.bs.js",
+  "main": "src/index.js",
   "directories": {
-    "lib": "lib",
-    "test": "__tests__"
+    "lib": "src"
   },
   "files": [
-    "lib"
+    "src"
   ],
   "scripts": {
     "build": "node ./builder/index.js"

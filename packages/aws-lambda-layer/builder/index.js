@@ -1,6 +1,6 @@
 import { join as joinPath, resolve as resolvePath, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url'
-import { build as buildLayer } from '../lib/index.js';
+import { build as buildLayer } from '../src/index.js';
 import { decco, moment, bsMoment, objectAssign, rescriptDependent, reventless, bsPlatformDependent, rescriptCore } from './postprocess.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
