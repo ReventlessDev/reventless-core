@@ -1,15 +1,13 @@
 .DS_Store
 .merlin
-.bsb.lock
 .env
 .history
 .vscode
 npm-debug.log
-/lib
+**/lib
 /node_modules/
 /packages/**/node_modules/
 .grapqhl_ppx_cache
-tmp-bs-platform
 coverage
 lerna-debug.log
 .playwright-mcp
