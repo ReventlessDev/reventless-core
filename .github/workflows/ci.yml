@@ -307,12 +307,8 @@ jobs:
     steps:
       - name: Check all jobs status
         run: |
-          # echo "Lint & Format: ${{ needs.lint-and-format.result }}"
           echo "Type Check & Build: ${{ needs.type-check-and-build.result }}"
           echo "Test: ${{ needs.test.result }}"
-          # echo "Security Scan: ${{ needs.security-scan.result }}"
-          # echo "Dependency Check: ${{ needs.dependency-check.result }}"
-          # echo "Validate Monorepo: ${{ needs.validate-monorepo.result }}"
 
           if [[ "${{ needs.type-check-and-build.result }}" == "failure" ||
                 "${{ needs.test.result }}" == "failure" ]]; then
