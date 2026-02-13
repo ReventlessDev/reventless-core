@@ -7,7 +7,7 @@
 npm-debug.log
 /lib
 /node_modules/
-/packages/*/node_modules/
+/packages/**/node_modules/
 .grapqhl_ppx_cache
 tmp-bs-platform
 coverage

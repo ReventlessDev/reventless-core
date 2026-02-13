@@ -1,0 +1,24 @@
+{
+  "name": "@reventlessdev/reventless-core",
+  "dependencies": [
+    "@reventlessdev/rescript-aws-sdk",
+    "@reventlessdev/rescript-fast-csv",
+    "@reventlessdev/rescript-hash-obj",
+    "@reventlessdev/rescript-moment",
+    "@reventlessdev/rescript-node-streams",
+    "@reventlessdev/rescript-node-zlib",
+    "@reventlessdev/rescript-pulumi-aws",
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/rescript-ssh2",
+    "@reventlessdev/rescript-uuid",
+    "@reventlessdev/reventless",
+    "@reventlessdev/reventless-aws",
+    "@reventlessdev/reventless-spec"
+  ],
+  "sources": [],
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs"
+}
