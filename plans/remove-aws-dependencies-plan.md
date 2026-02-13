@@ -65,12 +65,12 @@ This makes it impossible to use Reventless with other cloud providers (GCP, Azur
 
 // Provider-agnostic interface for plugin runtime operations
 type topicSubscriptionOps = {
-  subscribeQueueToTopic: (string, string) => promise<unit>,
-  unsubscribeQueueFromTopic: (string, string) => promise<unit>,
+  subscribeChannelToTopic: (~channelId: string, ~topicId: string) => promise<unit>,
+  unsubscribeChannelFromTopic: (~channelId: string, ~topicId: string) => promise<unit>,
 }
 
 type messagePublishOps = {
-  sendMessageToQueue: (~queueId: string, ~messageBody: string) => promise<unit>,
+  sendMessageToChannel: (~channelId: string, ~messageBody: string) => promise<unit>,
 }
 
 type operations = {
@@ -86,7 +86,7 @@ type operations = {
 
 type operations = {
   validateName: string => string,
-  arnToName: string => string,
+  urnName: string => string,
 }
 ```
 
@@ -106,7 +106,7 @@ mv packages/reventless/src/util/AWS.res \
 
 Keep existing functions:
 - `validateName` - sanitizes resource names
-- `arn2Name` - extracts name from ARN
+- `urnName` - extracts name from URN
 
 **2.2 Create ResourceNaming.res in reventless-aws**
 
@@ -115,7 +115,7 @@ Keep existing functions:
 
 let operations: ReventlessSpec.ResourceNaming.operations = {
   validateName: Util_ResourceNaming.validateName,
-  arnToName: Util_ResourceNaming.arn2Name,
+  urnName: Util_ResourceNaming.urnName,
 }
 ```
 
@@ -162,21 +162,21 @@ Example: `packages/reventless-aws/src/components/ClonerRunner_Fargate.res` likel
 ```rescript
 // packages/reventless-aws/src/util/Util_TopicSubscription_Runtime.res
 
-let subscribe = async (eventCollector, eventTopic) => {
-  switch await AwsSdk.SNS.subscribeQueueToTopic(eventCollector, eventTopic) {
+let subscribe = async (~channelId, ~topicId) => {
+  switch await AwsSdk.SNS.subscribeQueueToTopic(~queueArn=channelId, ~topicArn=topicId) {
   | _ => ()
   | exception JsExn(e) => {
-      Console.error2("Failed to subscribe queue to topic:", e)
+      Console.error2("Failed to subscribe channel to topic:", e)
       raise(JsExn(e))
     }
   }
 }
 
-let unsubscribe = async (eventCollector, eventTopic) => {
-  switch await AwsSdk.SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic) {
+let unsubscribe = async (~channelId, ~topicId) => {
+  switch await AwsSdk.SNS.unsubscribeQueueFromTopic(~queueArn=channelId, ~topicArn=topicId) {
   | _ => ()
   | exception JsExn(e) => {
-      Console.error2("Failed to unsubscribe queue from topic:", e)
+      Console.error2("Failed to unsubscribe channel from topic:", e)
       raise(JsExn(e))
     }
   }
@@ -188,11 +188,11 @@ let unsubscribe = async (eventCollector, eventTopic) => {
 ```rescript
 // packages/reventless-aws/src/util/Util_PluginMessage_Runtime.res
 
-let sendMessage = async (~queueId, ~messageBody) => {
-  switch await AwsSdk.SQS.sendMessage(~queueId, ~messageBody) {
+let sendMessage = async (~channelId, ~messageBody) => {
+  switch await AwsSdk.SQS.sendMessage(~queueUrl=channelId, ~messageBody) {
   | _ => ()
   | exception err => {
-      Console.error2("Failed to send message to queue:", err)
+      Console.error2("Failed to send message to channel:", err)
       raise(err)
     }
   }
@@ -206,11 +206,11 @@ let sendMessage = async (~queueId, ~messageBody) => {
 
 let operations: ReventlessSpec.PluginRuntimeOperations.operations = {
   topicSubscription: {
-    subscribeQueueToTopic: Util_TopicSubscription_Runtime.subscribe,
-    unsubscribeQueueFromTopic: Util_TopicSubscription_Runtime.unsubscribe,
+    subscribeChannelToTopic: Util_TopicSubscription_Runtime.subscribe,
+    unsubscribeChannelFromTopic: Util_TopicSubscription_Runtime.unsubscribe,
   },
   messagePublish: {
-    sendMessageToQueue: Util_PluginMessage_Runtime.sendMessage,
+    sendMessageToChannel: Util_PluginMessage_Runtime.sendMessage,
   },
 }
 ```
@@ -234,14 +234,14 @@ module type Spec = {
 
 module Make = (Spec: Spec) => {
   let subscribe = async (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-    let eventTopicName = eventTopic->Spec.resourceNaming.arnToName
-    let eventCollectorName = eventCollector->Spec.resourceNaming.arnToName
+    let eventTopicName = eventTopic->Spec.resourceNaming.urnName
+    let eventCollectorName = eventCollector->Spec.resourceNaming.urnName
     let _sid = (extensionPointName ++ ("-" ++ pluginId))->Spec.resourceNaming.validateName
 
     Console.log(...)
-    switch await Spec.runtimeOps.topicSubscription.subscribeQueueToTopic(
-      eventCollector,
-      eventTopic,
+    switch await Spec.runtimeOps.topicSubscription.subscribeChannelToTopic(
+      ~channelId=eventCollector,
+      ~topicId=eventTopic,
     ) {
     | _ => Console.log(...)
     | exception JsExn(e) => Console.log2(...)
@@ -249,7 +249,7 @@ module Make = (Spec: Spec) => {
   }
 
   let unsubscribe = async (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-    // Similar changes using Spec.runtimeOps.topicSubscription.unsubscribeQueueFromTopic
+    // Similar changes using Spec.runtimeOps.topicSubscription.unsubscribeChannelFromTopic
     ...
   }
 
@@ -260,7 +260,7 @@ module Make = (Spec: Spec) => {
 
 **Key changes:**
 - Add `runtimeOps` and `resourceNaming` to `Spec` module type
-- Replace `AWS.arn2Name` with `Spec.resourceNaming.arnToName`
+- Replace `AWS.arn2Name` with `Spec.resourceNaming.urnName`
 - Replace `AWS.validateName` with `Spec.resourceNaming.validateName`
 - Replace `AwsSdk.SNS.*` calls with `Spec.runtimeOps.topicSubscription.*`
 
@@ -289,8 +289,8 @@ let forwardCommand = async (
         let extensionPoint = plugin.extensionPoints->Array.find(...)
         switch extensionPoint {
         | Some(extensionPoint) =>
-          switch await runtimeOps.messagePublish.sendMessageToQueue(
-            ~queueId=extensionPoint.commandTopic,
+          switch await runtimeOps.messagePublish.sendMessageToChannel(
+            ~channelId=extensionPoint.commandTopic,
             ~messageBody=command,
           ) {
           | _ => Console.log3(...)
@@ -352,13 +352,13 @@ Update to accept resource naming operations:
 ```rescript
 // packages/reventless/src/util/Schedule.res
 
-let forQueue = (name, queueId, resourceNaming: ReventlessSpec.ResourceNaming.operations) =>
-  name->resourceNaming.validateName ++ ("-" ++ queueId->String.split("-")->Array.getUnsafe(1))
+let forChannel = (~name, ~channelId, ~resourceNaming: ReventlessSpec.ResourceNaming.operations) =>
+  name->resourceNaming.validateName ++ ("-" ++ channelId->String.split("-")->Array.getUnsafe(1))
 
 let create = (
-  scheduler: Scheduler.operations,
-  queueResources,
-  resourceNaming: ReventlessSpec.ResourceNaming.operations,
+  ~scheduler: Scheduler.operations,
+  ~channelResources,
+  ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
 ) =>
   async schedule => {
     let name = schedule.name->resourceNaming.validateName
@@ -367,9 +367,9 @@ let create = (
   }
 
 let delete = (
-  scheduler: Scheduler.operations,
-  queueResources,
-  resourceNaming: ReventlessSpec.ResourceNaming.operations,
+  ~scheduler: Scheduler.operations,
+  ~channelResources,
+  ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
 ) =>
   async name => {
     let name = name->resourceNaming.validateName
@@ -487,7 +487,7 @@ Search for any code importing moved components:
 grep -r "Reventless\.Vpc" packages/ --include="*.res"
 
 # Find references to AWS utility
-grep -r "AWS\.validateName\|AWS\.arn2Name" packages/reventless/ --include="*.res"
+grep -r "AWS\.validateName\|AWS\.urnName" packages/reventless/ --include="*.res"
 ```
 
 All should be updated to use either:
