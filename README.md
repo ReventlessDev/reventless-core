@@ -1,7 +1,7 @@
-# Reventless-Universe
+# Reventless
 
 > [!IMPORTANT]
-> **This branch (main) is outdated and no longer actively maintained.**
+> **This branch (main) is outdated.**
 >
 > The Reventless framework is currently being reworked with significant improvements and modernization. Active development is happening on the **[`alpha`](https://github.com/ReventlessDev/reventless-core/tree/alpha)** branch.
 >
@@ -33,9 +33,7 @@ For individual Readmes per package see inside the package's directory `./package
 - [rescript-uuid](packages/rescript-uuid/README.md): bindings for `uuid`
 - [reventless](packages/reventless/README.md): reventless framework (provider agnostic)
 - [reventless-aws](packages/reventless-aws/README.md): aws specifics for the reventless framework (adapter, preconficured components, etc.)
-- [reventless-ci](packages/reventless-ci/README.md): ci tooling for reventless projects (docker image, scripts, ci templates)
 - [reventless-spec](packages/reventless-spec/README.md): types & interface files for the reventless framework
-- [reventless-ui](packages/reventless-ui/README.md): react component library & core ui for reventless based applications
 
 ## Setup
 
