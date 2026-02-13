@@ -6,6 +6,10 @@ module ExtensionPointRuntimeBuilder = Reventless.ExtensionPointRuntime_Builder_P
 )
 
 module Make: Reventless.ExtensionPoint.T = Reventless.PluginExtensionPoint_Builder.Make(
+  {
+    let runtimeOps = PluginRuntimeOperations.operations
+    let environment = PulumiAws.Lambda.environment->Option.getOr("unknown")
+  },
   RuntimeEnvironment,
   CommandTopicChannel,
   EventTopicPublisher.SNS,

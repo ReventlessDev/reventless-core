@@ -17,8 +17,8 @@ import * as Heartbeat_Builder$Reventless from "../Heartbeat/Heartbeat_Builder.re
 import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/ExtensionMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
-function Make(RuntimeEnvironment) {
-  return EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => {
+function Make(Spec) {
+  return RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => {
     let make = (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, tasks, scheduler, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (extra, extra$1) => {
       let id = Plugin$Reventless.makeId(extra$1, version);
       let opts_parent = Component$Reventless.toPulumiResource(extra);
@@ -45,7 +45,7 @@ function Make(RuntimeEnvironment) {
         let publishToAggregates = param[2];
         let coreExtensionPoints = param[0];
         let aggregatesOutputs = Plugin_Helpers$Reventless.addEventMappers(aggregates, allEventTopics, queryEngine);
-        let match = Plugin_Helpers$Reventless.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, opts);
+        let match = Plugin_Helpers$Reventless.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
         let extensionPointsOutputs = match[0];
         let coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Stdlib_JsError.throwWithMessage("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
         let corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
@@ -76,9 +76,9 @@ function Make(RuntimeEnvironment) {
           extensions: extensionsDefinitions,
           eventCollector: param[1]
         }));
-        let match$3 = Plugin_Helpers$Reventless.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$Reventless.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+        let match$3 = Plugin_Helpers$Reventless.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$Reventless.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
         EventCollectorHelper.connect(match$2[0], eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, match$3[1], match$1[1], match[1], match$3[0]);
-        let tasksOutputs = Plugin_Helpers$Reventless.createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, opts);
+        let tasksOutputs = Plugin_Helpers$Reventless.createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
         let resolvers = Plugin_Helpers$Reventless.createResolvers(allQueryDbs);
         let SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
         let heartbeat = SpecificHeartbeat.make(childName, opts);
@@ -124,7 +124,7 @@ function Make(RuntimeEnvironment) {
     return {
       make: make
     };
-  }))));
+  })))));
 }
 
 export {

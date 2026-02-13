@@ -9,6 +9,7 @@ module type Ops = {
   let commandTopicResources: array<Adapter.unwrappedResource>
   let scheduler: Scheduler.operations
   let queryEngine: ReventlessSpec.QueryEngine.operations
+  let resourceNaming: ReventlessSpec.ResourceNaming.operations
 }
 
 module Make = (
@@ -23,15 +24,15 @@ module Make = (
       )
     ) // TODO: handle multiple mappings for same Aggregate name
 
-  let mapOutgoingEvent = (eventJson', mappings, scheduler, queue, queryEngine) =>
+  let mapOutgoingEvent = (eventJson', mappings, scheduler, queue, queryEngine, resourceNaming) =>
     switch eventJson'->Message.serviceNameOfMsg->findOutgoingMapping(mappings) {
     | Some(module(Mapping)) =>
       switch Mapping.mapOutgoingEvent {
       | Some(mapOutgoingEvent) =>
         mapOutgoingEvent(
           eventJson',
-          Schedule.create(scheduler, queue),
-          Schedule.delete(scheduler, queue),
+          Schedule.create(~scheduler, ~channelResources=queue, ~resourceNaming),
+          Schedule.delete(~scheduler, ~channelResources=queue, ~resourceNaming),
           queryEngine,
         )
       | None =>
@@ -77,6 +78,7 @@ module Make = (
       Ops.scheduler,
       Ops.commandTopicResources,
       Ops.queryEngine,
+      Ops.resourceNaming,
     )
 
     await eventActions

@@ -14,7 +14,7 @@ import * as SideEffectHandler_Callback$Reventless from "./SideEffectHandler_Call
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => (SpecificEventCollector => (EventCollectorRuntimeBuilder => {
-    let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, memorySizeOpt, timeoutOpt, opts) => {
+    let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySizeOpt, timeoutOpt, opts) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
       return Component$Reventless.make(ComponentType$Reventless.toString(SideEffectHandler$Reventless.componentType), name, (extra, extra$1) => {
@@ -42,8 +42,8 @@ function Make(RuntimeEnvironment) {
           let eventCollectorResources = param[1];
           return {
             enqueueEvent: param[0].enqueueEvent,
-            createSchedule: Schedule$Reventless.create(scheduler, eventCollectorResources),
-            deleteSchedule: Schedule$Reventless.$$delete(scheduler, eventCollectorResources)
+            createSchedule: Schedule$Reventless.create(scheduler, eventCollectorResources, resourceNaming),
+            deleteSchedule: Schedule$Reventless.$$delete(scheduler, eventCollectorResources, resourceNaming)
           };
         }));
         return Component$Reventless.setOutputs(extra, {

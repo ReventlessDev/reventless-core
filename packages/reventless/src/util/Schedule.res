@@ -18,8 +18,8 @@ module DateCalc = {
   }
 }
 
-let forQueue = (name, queueId) =>
-  name->AWS.validateName ++ ("-" ++ queueId->String.split("-")->Array.getUnsafe(1))
+let forChannel = (~name, ~channelId, ~resourceNaming: ReventlessSpec.ResourceNaming.operations) =>
+  name->resourceNaming.validateName ++ ("-" ++ channelId->String.split("-")->Array.getUnsafe(1))
 
 let minutesFromNow = minutes => {
   let m = Date.make()->DateCalc.addMinutes(minutes)
@@ -62,12 +62,16 @@ let nextTime = (h: hour, m: minute) => {
 exception ScheduleNotCreated(schedule)
 exception ScheduleNotDeleted(string)
 
-let create = (scheduler: Scheduler.operations, queueResources) =>
+let create = (
+  ~scheduler: Scheduler.operations,
+  ~channelResources,
+  ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+) =>
   async schedule => {
-    let name = schedule.name->AWS.validateName
+    let name = schedule.name->resourceNaming.validateName
     let schedule = {...schedule, name}
     let createSchedule = scheduler.createSchedule
-    switch await createSchedule(queueResources, schedule) {
+    switch await createSchedule(channelResources, schedule) {
     | _ => Console.log2("Schedule.create: created", schedule)
     | exception err => {
         Console.log3("Schedule.create: couldn't create", schedule, err)
@@ -76,11 +80,15 @@ let create = (scheduler: Scheduler.operations, queueResources) =>
     }
   }
 
-let delete = (scheduler: Scheduler.operations, queueResources) =>
+let delete = (
+  ~scheduler: Scheduler.operations,
+  ~channelResources,
+  ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+) =>
   async name => {
-    let name = name->AWS.validateName
+    let name = name->resourceNaming.validateName
     let deleteSchedule = scheduler.deleteSchedule
-    switch await deleteSchedule(queueResources, name) {
+    switch await deleteSchedule(channelResources, name) {
     | _ => Console.log2("Schedule.delete: deleted", name)
     | exception err => {
         Console.log3("Schedule.delete: couldn't delete", name, err)

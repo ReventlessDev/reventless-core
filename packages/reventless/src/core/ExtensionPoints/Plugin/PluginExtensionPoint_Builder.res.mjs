@@ -4,23 +4,23 @@ import * as ExtensionPoint_Builder$Reventless from "../../../components/Extensio
 import * as PluginExtensionPoint_Plugin$Reventless from "./PluginExtensionPoint_Plugin.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
-let mappings = [PluginExtensionPoint_Plugin$Reventless.Mapping];
-
-let Mappings = {
-  mappings: mappings
-};
-
-function Make(RuntimeEnvironment) {
-  return CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => ExtensionPoint_Builder$Reventless.Make({
-    name: PluginExtensionPointSpec$ReventlessSpec.name,
-    commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
-    eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
-    callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
-  })(Mappings)(RuntimeEnvironment)(CommandTopicChannel)(EventTopicAdapter)(ExtensionPointRuntimeBuilder)));
+function Make(Spec) {
+  return RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => {
+    let PluginMappingInstance = PluginExtensionPoint_Plugin$Reventless.Make(Spec);
+    let mappings = [PluginMappingInstance.Mapping];
+    let Mappings = {
+      mappings: mappings
+    };
+    return ExtensionPoint_Builder$Reventless.Make({
+      name: PluginExtensionPointSpec$ReventlessSpec.name,
+      commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
+      eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
+      callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
+    })(Mappings)(RuntimeEnvironment)(CommandTopicChannel)(EventTopicAdapter)(ExtensionPointRuntimeBuilder);
+  })));
 }
 
 export {
-  Mappings,
   Make,
 }
 /* ExtensionPoint_Builder-Reventless Not a pure module */

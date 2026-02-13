@@ -25,6 +25,7 @@ module Make = (
     ~scheduler,
     ~publishToAggregates,
     ~queryEngine,
+    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     ~allAggregates,
     self,
     taskName,
@@ -47,6 +48,7 @@ module Make = (
           ~allCommandTopics,
           ~queryEngine,
           ~scheduler,
+          ~resourceNaming,
           ~opts,
         )
       )
@@ -139,6 +141,7 @@ module Make = (
     ~scheduler,
     ~publishToAggregates,
     ~queryEngine,
+    ~resourceNaming,
     ~allAggregates,
     ~opts,
   ) =>
@@ -150,6 +153,7 @@ module Make = (
         ~scheduler,
         ~publishToAggregates,
         ~queryEngine,
+        ~resourceNaming,
         ~allAggregates,
         ...
       ),

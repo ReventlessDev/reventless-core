@@ -8,7 +8,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Util_Vpc$Reventless from "@reventlessdev/reventless/src/util/Util_Vpc.res.mjs";
+import * as Util_Vpc$ReventlessAws from "../../util/Util_Vpc.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as GetSecretVersion$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.mjs";
@@ -56,7 +56,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
     role: taskExecutionRole.id
   }, opts);
   let vpcStackName = Stdlib_Option.getOrThrow(new Pulumi.Config("vpc").get("stack"), undefined);
-  let vpcConfig = Util_Vpc$Reventless.getVpcConfig(vpcStackName, "vpc");
+  let vpcConfig = Util_Vpc$ReventlessAws.getVpcConfig(vpcStackName, "vpc");
   let secrets = Pulumi.all(secretUrns.map(urn => GetSecretVersion$PulumiAws.getSecretNames(urn).apply(names => names.map(name => ({
     name: name,
     valueFrom: urn + `:` + name + `::`

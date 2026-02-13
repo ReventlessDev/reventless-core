@@ -9,6 +9,7 @@ module type Spec = {
   let commandTopicResources: array<Adapter.unwrappedResource>
   let scheduler: Scheduler.operations
   let queryEngine: ReventlessSpec.QueryEngine.operations
+  let resourceNaming: ReventlessSpec.ResourceNaming.operations
 }
 
 module type T = {
@@ -25,13 +26,13 @@ module Make = (
 ): (T with module MappingSpec = MappingSpec) => {
   module MappingSpec = MappingSpec
 
-  let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, queue) =>
+  let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, resourceNaming, queue) =>
     mappings
     ->Array.map((module(Mapping: Mappings.Mapping)) =>
       Mapping.mapIncomingCommands(
         topicItems,
-        Schedule.create(scheduler, queue),
-        Schedule.delete(scheduler, queue),
+        Schedule.create(~scheduler, ~channelResources=queue, ~resourceNaming),
+        Schedule.delete(~scheduler, ~channelResources=queue, ~resourceNaming),
         queryEngine,
       )
     )
@@ -74,6 +75,7 @@ module Make = (
         Mappings.mappings,
         Spec.scheduler,
         Spec.queryEngine,
+        Spec.resourceNaming,
         Spec.commandTopicResources,
       )
 

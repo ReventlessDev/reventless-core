@@ -2,18 +2,23 @@ module type Spec = {
   let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
   let extensionPointsOutputs: array<ExtensionPoint.unwrappedOutputs>
   let extensionsOutputs: array<Extension.outputs>
+  let runtimeOps: ReventlessSpec.PluginRuntimeOperations.operations
+  let resourceNaming: ReventlessSpec.ResourceNaming.operations
 }
 
 module Make = (Spec: Spec) => {
   let subscribe = async (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-    let eventTopicName = eventTopic->AWS.arn2Name
-    let eventCollectorName = eventCollector->AWS.arn2Name
-    let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
+    let eventTopicName = eventTopic->Spec.resourceNaming.urnName
+    let eventCollectorName = eventCollector->Spec.resourceNaming.urnName
+    let _sid = (extensionPointName ++ ("-" ++ pluginId))->Spec.resourceNaming.validateName
 
     Console.log(
       `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
     )
-    switch await AwsSdk.SNS.subscribeQueueToTopic(eventCollector, eventTopic) {
+    switch await Spec.runtimeOps.topicSubscription.subscribeChannelToTopic(
+      ~channelId=eventCollector,
+      ~topicId=eventTopic,
+    ) {
     | _ =>
       Console.log(
         `Successful ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
@@ -27,14 +32,17 @@ module Make = (Spec: Spec) => {
   }
 
   let unsubscribe = async (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-    let eventTopicName = eventTopic->AWS.arn2Name
-    let eventCollectorName = eventCollector->AWS.arn2Name
-    let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
+    let eventTopicName = eventTopic->Spec.resourceNaming.urnName
+    let eventCollectorName = eventCollector->Spec.resourceNaming.urnName
+    let _sid = (extensionPointName ++ ("-" ++ pluginId))->Spec.resourceNaming.validateName
 
     Console.log(
       `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
     )
-    switch await AwsSdk.SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic) {
+    switch await Spec.runtimeOps.topicSubscription.unsubscribeChannelFromTopic(
+      ~channelId=eventCollector,
+      ~topicId=eventTopic,
+    ) {
     | _ =>
       Console.log(
         `Success: ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,

@@ -14,7 +14,7 @@ import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 
 function Make(Config) {
   return RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (CoreRuntimeBuilder => {
-    let construct = (version, extensionPoints, aggregates, readModels, scheduler, self, param) => {
+    let construct = (version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, self, param) => {
       let opts_parent = Component$Reventless.toPulumiResource(self);
       let opts = {
         parent: opts_parent
@@ -33,7 +33,7 @@ function Make(Config) {
       ]).apply(param => {
         let queryEngine = param[2];
         let aggregatesOutputs = Core_Helpers$Reventless.addEventMappers(aggregates, allEventTopics, queryEngine);
-        let match = Core_Helpers$Reventless.createExtensionPoints(extensionPoints, param[0], param[1], param[3], queryEngine, opts);
+        let match = Core_Helpers$Reventless.createExtensionPoints(extensionPoints, param[0], param[1], param[3], queryEngine, resourceNaming, opts);
         let extensionPointsOutputs = match[0];
         let aggregateNames = Stdlib_Array.reduce(extensionPointsOutputs.map(extensionPointOutputs => Belt_SetString.fromArray(extensionPointOutputs.aggregateNames)), undefined, Belt_SetString.union);
         let eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames);
@@ -61,7 +61,7 @@ function Make(Config) {
         cloner: Component$Reventless.outputs(cloner)
       });
     };
-    let make = (version, extensionPoints, aggregates, readModels, scheduler) => Component$Reventless.make(ComponentType$Reventless.toString(Core$Reventless.componentType), "Core", (extra, extra$1) => construct(version, extensionPoints, aggregates, readModels, scheduler, extra, extra$1), undefined);
+    let make = (version, extensionPoints, aggregates, readModels, scheduler) => Component$Reventless.make(ComponentType$Reventless.toString(Core$Reventless.componentType), "Core", (extra, extra$1, extra$2) => construct(version, extensionPoints, aggregates, readModels, scheduler, extra, extra$1, extra$2), undefined);
     return {
       construct: construct,
       make: make

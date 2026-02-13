@@ -194,6 +194,7 @@ let createExtensionPoints = (
   ~publishToAggregates,
   ~scheduler,
   ~queryEngine,
+  ~resourceNaming,
   ~opts,
 ) =>
   extensionPoints
@@ -203,6 +204,7 @@ let createExtensionPoints = (
       ~publishToAggregates,
       ~scheduler,
       ~queryEngine,
+      ~resourceNaming,
       ~opts=Some(opts),
     )
     (
@@ -279,6 +281,8 @@ let createConnectPluginExtension = (
   ~readModelNamesForSourceName,
   ~publishToReadModels,
   ~queryEngine,
+  ~runtimeOps,
+  ~resourceNaming,
   ~opts,
 ) =>
   (
@@ -293,6 +297,8 @@ let createConnectPluginExtension = (
       let pluginDefinition = pluginDefinition
       let extensionPointsOutputs = extensionPointsOutputs
       let extensionsOutputs = extensionsOutputs
+      let runtimeOps = runtimeOps
+      let resourceNaming = resourceNaming
     })
     let connectPluginExtension = ConnectPluginExtension.make(
       ~publishToCorePluginExtensionPoint,
@@ -320,6 +326,7 @@ let createTasks = (
   ~scheduler,
   ~publishToAggregates,
   ~queryEngine,
+  ~resourceNaming,
   ~opts,
 ) => {
   tasksOutputs :=
@@ -330,6 +337,7 @@ let createTasks = (
         ~scheduler,
         ~publishToAggregates,
         ~queryEngine,
+        ~resourceNaming,
         ~allAggregates=aggregatesOutputs,
         ~opts=Some(opts),
       )->Component.outputs

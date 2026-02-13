@@ -22,7 +22,7 @@ function Make(Spec) {
       let name = param[0];
       return Belt_Array.some(aggregateNames, aggregateName => aggregateName === name);
     }).map(param => param[1]).flat();
-    let make = (aggregateResources, publishToAggregates, scheduler, queryEngine, opts) => Component$Reventless.make(ComponentType$Reventless.toString(ExtensionPoint$Reventless.componentType), Spec.name, (extra, extra$1) => {
+    let make = (aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts) => Component$Reventless.make(ComponentType$Reventless.toString(ExtensionPoint$Reventless.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$Reventless.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
@@ -40,7 +40,8 @@ function Make(Spec) {
           publishToAggregates: publishToAggregates,
           commandTopicResources: commandTopicResources,
           scheduler: scheduler,
-          queryEngine: queryEngine
+          queryEngine: queryEngine,
+          resourceNaming: resourceNaming
         })(Spec)(Mappings);
         let handler = SpecificCommandTopic.makeHandler(commandTopic, ExtensionPointCallback.handleIncomingCommands);
         let resources = filterAggregateResources(aggregateResources, aggregateNames);
@@ -55,7 +56,8 @@ function Make(Spec) {
             publishToEventTopic: param.publishJson,
             commandTopicResources: commandTopicResources,
             scheduler: scheduler,
-            queryEngine: queryEngine
+            queryEngine: queryEngine,
+            resourceNaming: resourceNaming
           });
           return [
             commandTopic,

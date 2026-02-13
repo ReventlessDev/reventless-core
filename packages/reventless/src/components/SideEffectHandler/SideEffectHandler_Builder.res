@@ -13,6 +13,7 @@ module Make = (
     ~targets=?,
     ~queryEngine,
     ~scheduler,
+    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     ~memorySize,
     ~timeout,
     self,
@@ -63,8 +64,16 @@ module Make = (
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply((({enqueueEvent}, eventCollectorResources)) => {
         SideEffectHandler.enqueueEvent,
-        createSchedule: Schedule.create(scheduler, eventCollectorResources),
-        deleteSchedule: Schedule.delete(scheduler, eventCollectorResources),
+        createSchedule: Schedule.create(
+          ~scheduler,
+          ~channelResources=eventCollectorResources,
+          ~resourceNaming,
+        ),
+        deleteSchedule: Schedule.delete(
+          ~scheduler,
+          ~channelResources=eventCollectorResources,
+          ~resourceNaming,
+        ),
       }),
     )
 
@@ -82,6 +91,7 @@ module Make = (
     ~targets=?,
     ~queryEngine,
     ~scheduler,
+    ~resourceNaming,
     ~memorySize=2048,
     ~timeout=180,
     ~opts=?,
@@ -96,6 +106,7 @@ module Make = (
         ~targets?,
         ~queryEngine,
         ~scheduler,
+        ~resourceNaming,
         ~memorySize,
         ~timeout,
         ...

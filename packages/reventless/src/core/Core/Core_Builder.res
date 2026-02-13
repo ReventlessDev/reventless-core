@@ -17,6 +17,7 @@ module Make = (
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
+    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     self,
     _,
   ) => {
@@ -47,6 +48,7 @@ module Make = (
             ~publishToAggregates,
             ~scheduler,
             ~queryEngine,
+            ~resourceNaming,
             ~opts,
           )
 

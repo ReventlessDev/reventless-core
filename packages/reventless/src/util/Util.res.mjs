@@ -26,8 +26,6 @@ let QueryDbRuntime;
 
 let ReadModel;
 
-let VPC;
-
 export {
   baseName,
   Adapter,
@@ -40,6 +38,5 @@ export {
   QueryDb,
   QueryDbRuntime,
   ReadModel,
-  VPC,
 }
 /* No side effect */

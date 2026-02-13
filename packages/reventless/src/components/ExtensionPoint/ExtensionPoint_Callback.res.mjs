@@ -7,7 +7,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 
 function Make(Spec) {
   return MappingSpec => (Mappings => {
-    let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, queue) => mappings.map(Mapping => Mapping.mapIncomingCommands(topicItems, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine)).flat();
+    let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, resourceNaming, queue) => mappings.map(Mapping => Mapping.mapIncomingCommands(topicItems, Schedule$Reventless.create(scheduler, queue, resourceNaming), Schedule$Reventless.$$delete(scheduler, queue, resourceNaming), queryEngine)).flat();
     let applyCommandAction = async action => {
       if (action.TAG === "AbstractPublishCommand") {
         let cmdJson = action._2;
@@ -48,7 +48,7 @@ function Make(Spec) {
       };
     };
     let handleIncomingCommands = async topicItems => {
-      let commandActions = mapIncomingCommands(topicItems, Mappings.mappings, Spec.scheduler, Spec.queryEngine, Spec.commandTopicResources);
+      let commandActions = mapIncomingCommands(topicItems, Mappings.mappings, Spec.scheduler, Spec.queryEngine, Spec.resourceNaming, Spec.commandTopicResources);
       return await Promise.all(commandActions.map(applyCommandAction));
     };
     return {

@@ -90,7 +90,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
   }
 
   let vpcStackName = Pulumi.Config.make(Some("vpc"))->Pulumi.Config.get("stack")->Option.getOrThrow
-  let vpcConfig = Reventless.Util.VPC.getVpcConfig(~stackName=vpcStackName, ~outputName="vpc")
+  let vpcConfig = Util_Vpc.getVpcConfig(~stackName=vpcStackName, ~outputName="vpc")
 
   let secrets =
     secretUrns

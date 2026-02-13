@@ -11,7 +11,7 @@ import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 
 function Make(Spec) {
   return RuntimeEnvironment => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (TaskRuntimeBuilder => (TaskBucket => (SpecificSideEffectHandler => {
-    let make = (queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Task$Reventless.componentType), Spec.name, (extra, extra$1) => {
+    let make = (queryBucketName, scheduler, publishToAggregates, queryEngine, resourceNaming, allAggregates, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Task$Reventless.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$Reventless.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
@@ -19,7 +19,7 @@ function Make(Spec) {
       let allCommandTopics = Aggregate$Reventless.allCommandTopics(allAggregates);
       let publishCommands = (aggregateName, cmdJsons) => Stdlib_Option.getOrThrow(publishToAggregates[aggregateName], undefined)(cmdJsons);
       let config = Spec.setup(queryEngine, queryBucketName, opts);
-      let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$Reventless.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, undefined, undefined, opts));
+      let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$Reventless.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, resourceNaming, undefined, undefined, opts));
       let taskActionsHandler = (taskActions, operations) => Util_Promise$Reventless.toUnit(Promise.all(taskActions.map(async taskAction => {
         switch (taskAction.TAG) {
           case "PublishCommands" :

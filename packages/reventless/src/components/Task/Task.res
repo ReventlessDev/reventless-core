@@ -41,6 +41,7 @@ type maker = (
   ~scheduler: Scheduler.operations,
   ~publishToAggregates: dict<CommandTopic.publishJsons>,
   ~queryEngine: ReventlessSpec.QueryEngine.operations,
+  ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
   ~allAggregates: dict<Aggregate.outputs>,
   ~opts: option<Pulumi.ComponentResource.options>,
 ) => component

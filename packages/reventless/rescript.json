@@ -24,11 +24,9 @@
     "dependencies": [
         "sury",
         "@glennsl/rescript-jest",
-        "@reventlessdev/rescript-aws-sdk",
         "@reventlessdev/rescript-fast-csv",
         "@reventlessdev/rescript-hash-object",
         "@reventlessdev/rescript-node-streams",
-        "@reventlessdev/rescript-pulumi-aws",
         "@reventlessdev/rescript-pulumi-pulumi",
         "@reventlessdev/rescript-ssh2",
         "@reventlessdev/rescript-uuid",

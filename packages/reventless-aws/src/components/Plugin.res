@@ -2,6 +2,11 @@ module EventCollectorChannel = EventCollectorChannel.SQS
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
 include Reventless.Plugin_Builder.Make(
+  {
+    let runtimeOps = PluginRuntimeOperations.operations
+    let resourceNaming = Util_ResourceNaming.operations
+    let environment = PulumiAws.Lambda.environment->Option.getOr("unknown")
+  },
   RuntimeEnvironment,
   EventCollectorChannel,
   QueryEngine.DynamoDb,

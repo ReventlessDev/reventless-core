@@ -26,6 +26,7 @@ module type T = {
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
+    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
 }

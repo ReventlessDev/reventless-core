@@ -1,6 +1,13 @@
 open Plugin_Helpers
 
+module type Spec = {
+  let runtimeOps: ReventlessSpec.PluginRuntimeOperations.operations
+  let resourceNaming: ReventlessSpec.ResourceNaming.operations
+  let environment: string
+}
+
 module Make = (
+  Spec: Spec,
   RuntimeEnvironment: Runtime.Environment,
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
@@ -64,6 +71,7 @@ module Make = (
             ~publishToAggregates,
             ~scheduler,
             ~queryEngine,
+            ~resourceNaming=Spec.resourceNaming,
             ~opts,
           )
 
@@ -162,6 +170,8 @@ module Make = (
           ~readModelNamesForSourceName,
           ~publishToReadModels,
           ~queryEngine,
+          ~runtimeOps=Spec.runtimeOps,
+          ~resourceNaming=Spec.resourceNaming,
           ~opts,
         )
         let _ = EventCollectorHelper.connect(
@@ -183,6 +193,7 @@ module Make = (
           ~scheduler,
           ~publishToAggregates,
           ~queryEngine,
+          ~resourceNaming=Spec.resourceNaming,
           ~opts,
         )
 

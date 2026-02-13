@@ -11,16 +11,16 @@ import * as Util_Promise$Reventless from "../../util/Util_Promise.res.mjs";
 function Make(MappingSpec) {
   return Mappings => (Ops => {
     let findOutgoingMapping = (aggregateNameOpt, mappings) => Stdlib_Option.flatMap(aggregateNameOpt, aggregateName => mappings.find(Mapping => Mapping.aggregateName === aggregateName));
-    let mapOutgoingEvent = (eventJson$p, mappings, scheduler, queue, queryEngine) => {
+    let mapOutgoingEvent = (eventJson$p, mappings, scheduler, queue, queryEngine, resourceNaming) => {
       let Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(eventJson$p), mappings);
       if (Mapping === undefined) {
         return Stdlib_JsError.throwWithMessage("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(eventJson$p));
       }
       let mapOutgoingEvent$1 = Mapping.mapOutgoingEvent;
       if (mapOutgoingEvent$1 !== undefined) {
-        return mapOutgoingEvent$1(eventJson$p, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
+        return mapOutgoingEvent$1(eventJson$p, Schedule$Reventless.create(scheduler, queue, resourceNaming), Schedule$Reventless.$$delete(scheduler, queue, resourceNaming), queryEngine);
       } else {
-        Logger$Reventless.error("File \"ExtensionPoint_Operations.res\", line 39, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+        Logger$Reventless.error("File \"ExtensionPoint_Operations.res\", line 40, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
         return [];
       }
     };
@@ -60,7 +60,7 @@ function Make(MappingSpec) {
     };
     let outgoingEventHandler = async (eventJson$p, _pluginDef) => {
       console.log("ExtensionPoint_Operations.outgoingEventHandler:", JSON.stringify(eventJson$p));
-      let eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Ops.scheduler, Ops.commandTopicResources, Ops.queryEngine);
+      let eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Ops.scheduler, Ops.commandTopicResources, Ops.queryEngine, Ops.resourceNaming);
       return await Util_Promise$Reventless.toUnit(Promise.all(eventActions.map(applyEventAction)));
     };
     return {

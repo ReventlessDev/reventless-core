@@ -22,6 +22,7 @@ module type T = {
     ~targets: array<string>=?,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~scheduler: Scheduler.operations,
+    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.options=?,

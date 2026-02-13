@@ -35,6 +35,7 @@ module Make = (
     ~publishToAggregates,
     ~scheduler: Scheduler.operations,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
+    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     self,
     name,
   ) => {
@@ -61,6 +62,7 @@ module Make = (
             let commandTopicResources = commandTopicResources
             let scheduler = scheduler
             let queryEngine = queryEngine
+            let resourceNaming = resourceNaming
           },
           Spec,
           Mappings,
@@ -90,6 +92,7 @@ module Make = (
               let commandTopicResources = commandTopicResources
               let scheduler = scheduler
               let queryEngine = queryEngine
+              let resourceNaming = resourceNaming
             },
           )
 
@@ -114,7 +117,14 @@ module Make = (
     })
   }
 
-  let make = (~aggregateResources, ~publishToAggregates, ~scheduler, ~queryEngine, ~opts) =>
+  let make = (
+    ~aggregateResources,
+    ~publishToAggregates,
+    ~scheduler,
+    ~queryEngine,
+    ~resourceNaming,
+    ~opts,
+  ) =>
     Component.make(
       ~componentType=ExtensionPoint.componentType->ComponentType.toString,
       ~name=Spec.name,
@@ -123,6 +133,7 @@ module Make = (
         ~publishToAggregates,
         ~scheduler,
         ~queryEngine,
+        ~resourceNaming,
         ...
       ),
       ~opts,
