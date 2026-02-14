@@ -23,46 +23,16 @@ const PackageCategories = [
     ],
   },
   {
-    title: 'Developer Tools',
-    description: 'Tools to help you build and maintain Reventless applications',
+    title: 'Build & Documentation',
+    description: 'Tools to help you build and document Reventless applications',
     packages: [
       {
         name: 'reventless-gen',
         description: 'Code generation utilities for scaffolding Reventless projects',
       },
       {
-        name: 'reventless-ci',
-        description: 'Continuous integration helpers and scripts',
-      },
-      {
-        name: 'reventless-ui',
-        description: 'UI components and utilities for building frontends',
-      },
-      {
-        name: 'reventless-contribution-cli',
-        description: 'CLI tool for managing contributions and releases',
-      },
-    ],
-  },
-  {
-    title: 'ReScript Bindings',
-    description: 'Type-safe ReScript bindings for essential libraries',
-    packages: [
-      {
-        name: 'rescript-aws-sdk',
-        description: 'Bindings for AWS SDK (DynamoDB, S3, SQS, SNS, Lambda)',
-      },
-      {
-        name: 'rescript-pulumi-pulumi',
-        description: 'Bindings for Pulumi core infrastructure-as-code',
-      },
-      {
-        name: 'rescript-pulumi-aws',
-        description: 'Bindings for Pulumi AWS provider',
-      },
-      {
-        name: 'rescript-uuid',
-        description: 'UUID generation bindings',
+        name: 'doc',
+        description: 'Docusaurus-based documentation site for the framework',
       },
     ],
   },
@@ -76,6 +46,64 @@ const PackageCategories = [
       },
     ],
   },
+  {
+    title: 'ReScript - AWS & Infrastructure',
+    description: 'ReScript bindings for AWS services and infrastructure-as-code',
+    packages: [
+      {
+        name: 'rescript-aws-sdk',
+        description: 'Bindings for AWS SDK (DynamoDB, S3, SQS, SNS, Lambda)',
+      },
+      {
+        name: 'rescript-pulumi-pulumi',
+        description: 'Bindings for Pulumi core infrastructure-as-code',
+      },
+      {
+        name: 'rescript-pulumi-aws',
+        description: 'Bindings for Pulumi AWS provider',
+      },
+    ],
+  },
+  {
+    title: 'ReScript - Node.js',
+    description: 'ReScript bindings for Node.js core libraries',
+    packages: [
+      {
+        name: 'rescript-node-streams',
+        description: 'Bindings for Node.js streams API',
+      },
+      {
+        name: 'rescript-node-zlib',
+        description: 'Bindings for Node.js zlib compression library',
+      },
+    ],
+  },
+  {
+    title: 'ReScript - Utilities',
+    description: 'ReScript bindings for common utility libraries',
+    packages: [
+      {
+        name: 'rescript-uuid',
+        description: 'UUID generation bindings',
+      },
+      {
+        name: 'rescript-fast-csv',
+        description: 'Bindings for fast-csv library for CSV parsing and formatting',
+      },
+      {
+        name: 'rescript-hash-object',
+        description: 'Bindings for object hashing utilities',
+      },
+      {
+        name: 'rescript-moment',
+        description: 'Bindings for Moment.js date/time library (shared with UI repo)',
+      },
+      {
+        name: 'rescript-ssh2',
+        description: 'Bindings for SSH2 client library',
+      },
+    ],
+  }
 ];
 
 function Package({name, description}) {
