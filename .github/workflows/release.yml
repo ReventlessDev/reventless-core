@@ -25,7 +25,7 @@ jobs:
         uses: lewagon/wait-on-check-action@v1.5.0
         with:
           ref: ${{ github.sha }}
-          check-regexp: '(CI|Security Scan).*'
+          check-regexp: "(CI|Security Scan).*"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
           allowed-conclusions: success
@@ -242,7 +242,10 @@ jobs:
             # Generate release notes from changelog if it exists
             if [ -f "packages/$package_name/CHANGELOG.md" ]; then
               # Extract the latest changelog entry
-              RELEASE_NOTES=$(awk '/^## / {if (found) exit; found=1; next} found' "packages/$package_name/CHANGELOG.md")
+              CHANGELOG_ENTRY=$(awk '/^## / {if (found) exit; found=1; next} found' "packages/$package_name/CHANGELOG.md")
+              
+              # Create release notes with changelog link (using printf for proper formatting)
+              RELEASE_NOTES=$(printf '%s\n\n**Full Changelog**: https://github.com/${{ github.repository }}/blob/main/packages/%s/CHANGELOG.md' "$CHANGELOG_ENTRY" "$package_name")
             else
               RELEASE_NOTES="Release $version of $package_name"
             fi
@@ -251,7 +254,6 @@ jobs:
             gh release create "$tag" \
               --title "$package_name v$version" \
               --notes "$RELEASE_NOTES" \
-              --generate-notes \
               $PRERELEASE_FLAG || echo "Release already exists or failed for $tag"
           done
         env:
