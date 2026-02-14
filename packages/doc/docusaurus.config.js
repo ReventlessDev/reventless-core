@@ -10,7 +10,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 const config = {
   title: "Reventless",
   tagline: "Ship Value Fast",
-  favicon: "img/logo.svg",
+  favicon: "img/logo.png",
 
   // Set the production url of your site here
   url: "https://reventlessdev.github.io",
@@ -96,7 +96,7 @@ const config = {
         title: "Reventless",
         logo: {
           alt: 'Reventless Logo',
-          src: 'img/logo.svg',
+          src: 'img/logo.png',
         },
         items: [
           {
