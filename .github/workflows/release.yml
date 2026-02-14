@@ -216,6 +216,7 @@ jobs:
       - name: Create GitHub releases
         run: |
           IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
+          BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
           PRERELEASE_FLAG=""
 
           if [ "$IS_PRERELEASE" = "true" ]; then
@@ -232,7 +233,7 @@ jobs:
             version=$(echo $tag | sed 's/.*@//')
 
             # Skip private packages (doc, aws-lambda-layer)
-            if [ "$package_name" = "doc" ] || [ "$package_name" = "aws-lambda-layer" ]; then
+            if [ "$package_name" = "doc" ] || [ "$package_name" = "awcs-lambda-layer" ]; then
               echo "Skipping private package: $package_name"
               continue
             fi
@@ -245,7 +246,7 @@ jobs:
               CHANGELOG_ENTRY=$(awk '/^## / {if (found) exit; found=1; next} found' "packages/$package_name/CHANGELOG.md")
               
               # Create release notes with changelog link (using printf for proper formatting)
-              RELEASE_NOTES=$(printf '%s\n\n**Full Changelog**: https://github.com/${{ github.repository }}/blob/main/packages/%s/CHANGELOG.md' "$CHANGELOG_ENTRY" "$package_name")
+              RELEASE_NOTES=$(printf '%s\n\n**Changelog**: https://github.com/${{ github.repository }}/blob/%s/packages/%s/CHANGELOG.md' "$CHANGELOG_ENTRY" "$BRANCH_NAME" "$package_name")
             else
               RELEASE_NOTES="Release $version of $package_name"
             fi
