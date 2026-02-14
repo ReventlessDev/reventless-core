@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/reventless-aws.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/reventless-aws)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+
 # `reventless-aws`
 
 Reventless suplements to run Reventless applications on Amazon AWS.
@@ -6,7 +10,7 @@ This package extends `reventless`.
 ## Usage
 
 - Add `reventless-aws` to your dependencies in `package.json`.
-- Add `reventless-aws` to your dependencies in `bsconfig.json`.
+- Add `reventless-aws` to your dependencies in `rescript.json`.
 - For general information see this monorepo's [readme](../../README.md)
 
 ## Introduction
@@ -37,7 +41,7 @@ E.g. adapter for the `EventLog` could choose to store it's data in a database-se
 Please remember to update the changelog for any modifications accordingly!
 
 
-### Fodler Structure
+### Folder Structure
 
 ```sh
 reventless-aws

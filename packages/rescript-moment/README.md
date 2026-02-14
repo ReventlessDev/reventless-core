@@ -1,7 +1,8 @@
-# rescript-moment
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-moment.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-moment)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
 
-[![CI](https://github.com/Jimexist/bs-moment/actions/workflows/ci.yml/badge.svg)](https://github.com/Jimexist/bs-moment/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/bs-moment.svg)](https://www.npmjs.com/package/bs-moment)
+# rescript-moment
 
 ReScript bindings for [Moment.js](https://momentjs.com/).
 

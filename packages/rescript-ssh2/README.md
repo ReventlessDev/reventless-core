@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-ssh2.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-ssh2)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+
 # `rescript-ssh2`
 
 ReScript bindings for [ssh2](https://github.com/mscdex/ssh2) - SSH2 client and server modules for Node.js.
@@ -278,8 +282,3 @@ sftp->SSH2.onError(err => {
 
 - [ssh2 Documentation](https://github.com/mscdex/ssh2)
 - [ssh2 TypeScript Definitions](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/ssh2/index.d.ts)
-
-## Contribution
-
-### Changelog
-Please remember to update the changelog for any modifications accordingly!

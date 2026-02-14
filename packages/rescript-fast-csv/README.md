@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-fast-csv.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-fast-csv)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+
 # `rescript-fast-csv`
 
 ReScript bindings for [fast-csv](https://github.com/C2FO/fast-csv), a fast and flexible CSV parsing library for Node.js.
@@ -288,7 +292,3 @@ parseFile(~path="data.csv")
 - `toError(callback, reason)` - Mark validation as error
 - `toValidTransformation(callback, row)` - Complete transformation successfully
 - `toErrorTransformation(callback, reason)` - Mark transformation as failed
-
-## Contribution
-### Changelog
-Please remember to update the changelog for any modifications accordingly!

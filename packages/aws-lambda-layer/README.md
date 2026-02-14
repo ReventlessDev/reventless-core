@@ -164,10 +164,10 @@ const options = {
   excludeModules: ['rescript', 'treeverse', 'pacote', 'aws-sdk', ...],
   excludedFileFormats: ['.res', '.resi', '.ts', '.cts'],
 
-  // Registry authentication (GitLab)
+  // Registry authentication (GitHub)
   gitlabOpts: {
-    "@reventless:registry": "https://gitlab.com/api/v4/packages/npm/",
-    "//gitlab.com/api/v4/projects/.../packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
+    "@reventless:registry": "https://github.com/api/v4/packages/npm/",
+    "//github.com/api/v4/projects/.../packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
     ...
   }
 };
@@ -366,17 +366,17 @@ When attached to a Lambda function, the layer is extracted to `/opt/`, making pa
 
 ## GitHub Migration
 
-### Current State (GitLab)
+### Current State (GitHub)
 
-The builder currently authenticates with GitLab Package Registry:
+The builder currently authenticates with GitHub Package Registry:
 
 ```javascript
 gitlabOpts: {
-  "@reventless:registry": "https://gitlab.com/api/v4/packages/npm/",
-  "//gitlab.com/api/v4/projects/40879371/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
-  "//gitlab.com/api/v4/projects/43406890/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
-  "//gitlab.com/api/v4/projects/24127696/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
-  "//gitlab.com/api/v4/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN
+  "@reventless:registry": "https://github.com/api/v4/packages/npm/",
+  "//github.com/api/v4/projects/40879371/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
+  "//github.com/api/v4/projects/43406890/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
+  "//github.com/api/v4/projects/24127696/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
+  "//github.com/api/v4/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN
 }
 ```
 
@@ -397,11 +397,11 @@ githubOpts: {
 - GitHub uses a **single, unified registry** for all packages in an organization
 - No per-project authentication URLs
 - Simpler authentication with just `GITHUB_TOKEN`
-- Registry URL: `https://npm.pkg.github.com` (not GitLab's `/api/v4/` path)
+- Registry URL: `https://npm.pkg.github.com` (not GitHub's `/api/v4/` path)
 
 #### 2. Update Environment Variables
 
-**Before (GitLab):**
+**Before (GitHub):**
 ```bash
 export NPM_GITLAB_TOKEN="glpat-xxxxxxxxxxxxxxxxxxxxx"
 ```
@@ -423,12 +423,12 @@ export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxxx"
 
 Ensure all Reventless packages use the correct scope:
 
-**Current (GitLab):**
+**Current (GitHub):**
 ```json
 {
   "name": "@reventless/reventless-aws",
   "publishConfig": {
-    "registry": "https://gitlab.com/api/v4/packages/npm/"
+    "registry": "https://github.com/api/v4/packages/npm/"
   }
 }
 ```
@@ -463,11 +463,11 @@ Ensure all Reventless packages use the correct scope:
    excludeModules: ['rescript', 'treeverse', 'pacote', ...npmPackages],
    excludedFileFormats: ['.res', '.resi', '.ts', '.cts'],
 -  gitlabOpts: {
--    "@reventless:registry": "https://gitlab.com/api/v4/packages/npm/",
--    "//gitlab.com/api/v4/projects/40879371/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
--    "//gitlab.com/api/v4/projects/43406890/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
--    "//gitlab.com/api/v4/projects/24127696/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
--    "//gitlab.com/api/v4/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN
+-    "@reventless:registry": "https://github.com/api/v4/packages/npm/",
+-    "//github.com/api/v4/projects/40879371/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
+-    "//github.com/api/v4/projects/43406890/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
+-    "//github.com/api/v4/projects/24127696/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN,
+-    "//github.com/api/v4/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN
 -  }
 +  githubOpts: {
 +    "@reventlessdev:registry": "https://npm.pkg.github.com",
@@ -484,8 +484,8 @@ Similar changes to registry configuration.
 
 **Before:**
 ```
-@reventless:registry=https://gitlab.com/api/v4/packages/npm/
-//gitlab.com/api/v4/packages/npm/:_authToken=${NPM_GITLAB_TOKEN}
+@reventless:registry=https://github.com/api/v4/packages/npm/
+//github.com/api/v4/packages/npm/:_authToken=${NPM_GITLAB_TOKEN}
 ```
 
 **After:**
@@ -497,7 +497,7 @@ Similar changes to registry configuration.
 #### 6. Update Documentation References
 
 - [ ] Update `package.json` `bugs.url` field
-- [ ] Update references to GitLab in comments
+- [ ] Update references to GitHub in comments
 - [ ] Update README examples
 
 ---

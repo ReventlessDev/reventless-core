@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-hash-object.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-hash-object)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+
 # `rescript-hash-obj`
 
 ReasonML / Bucklescript bindings for [hash-obj](https://github.com/puleos/object-hash).
@@ -108,7 +112,3 @@ let hash = hashDict(
   },
 )
 ```
-
-## Contribution
-### Changelog
-Please remember to update the changelog for any modifications accordingly!

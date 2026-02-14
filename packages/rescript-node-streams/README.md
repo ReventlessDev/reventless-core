@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-node-streams.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-node-streams)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+
 # `rescript-node-streams`
 
 ReScript bindings for [Node.js streams](https://nodejs.org/docs/latest-v12.x/api/stream.html).
@@ -276,8 +280,3 @@ Common events across stream types:
 - Use `pipeline` functions for automatic cleanup and error handling
 - The `->ignore` at the end of event handler chains discards the returned stream value
 - Readable streams switch to "flowing mode" when `data` event handlers are attached
-
-## Contribution
-
-### Changelog
-Please remember to update the changelog for any modifications accordingly!

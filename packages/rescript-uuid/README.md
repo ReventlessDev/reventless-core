@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-uuid.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-uuid)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+
 # rescript-uuid
 
 ReScript bindings for [uuid](https://github.com/uuidjs/uuid) - RFC4122 UUID generation.
@@ -136,7 +140,3 @@ Js.Console.log2("v5 (custom namespace):", customId)
 - **v5** is preferred over **v3** when you need namespace-based UUIDs (SHA-1 vs MD5)
 - **v1** includes timestamp and MAC address, which may have privacy implications
 
-## Contribution
-
-### Changelog
-Please remember to update the changelog for any modifications accordingly!

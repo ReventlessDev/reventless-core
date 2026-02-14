@@ -1,4 +1,10 @@
+[![npm version](https://img.shields.io/npm/v/@reventlessdev/reventless.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/reventless)
+[![GitHub package version](https://img.shields.io/github/v/release/ReventlessDev/reventless-core?label=release)](https://github.com/ReventlessDev/reventless-core/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+
 # Reventless
+
 Reventless is a toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.
 
 It's based on the following technologies:
@@ -118,8 +124,8 @@ This command will run 3 Shell-Scripts:
 **🚨 We encountered some deployment issues, when using npm link. Therefore we discourage using this technic for the time being❗**
 
 ### Setup the new project
-* add a new "deploy key" in [gitlab](https://gitlab.com/atos-austria/reason/reventless/settings/repository/deploy_token/create#js-deploy-tokens)
-* add "private repository" with the new deploy-token to the new project: `"reventless": "git+https://USER-TOKEN:PASSWORD-TOKEN@gitlab.com/atos-austria/reason/reventless.git"`
+* add a new "deploy key" in [gitlab](https://github.com/atos-austria/reason/reventless/settings/repository/deploy_token/create#js-deploy-tokens)
+* add "private repository" with the new deploy-token to the new project: `"reventless": "git+https://USER-TOKEN:PASSWORD-TOKEN@github.com/atos-austria/reason/reventless.git"`
 * run `npm install` for the new project
 
 ### Setup the framework project to use the local version in the new version
@@ -141,7 +147,7 @@ This command will run 3 Shell-Scripts:
 * OPTIONAL: to delete the global symlink of the framework run `npm uninstall` inside the framework's directory
 
 ## Ressources
-* [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
+* [Project Wiki](https://github.com/atos-austria/reason/reventless/wikis/home)
 
 # Coding Guidelines
 
