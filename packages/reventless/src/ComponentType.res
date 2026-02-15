@@ -20,6 +20,8 @@ type t =
   | Core
   | Heartbeat
   | Cloner
+  | DcbEventLog
+  | CommandHandler
 
 let toString = componentType =>
   switch componentType {
@@ -44,6 +46,8 @@ let toString = componentType =>
   | Core => "Core"
   | Heartbeat => "Heartbeat"
   | Cloner => "Cloner"
+  | DcbEventLog => "DcbEventLog"
+  | CommandHandler => "CommandHandler"
   }
 
 let ofString = str =>
@@ -69,6 +73,8 @@ let ofString = str =>
   | "Core" => Core->Some
   | "Heartbeat" => Heartbeat->Some
   | "Cloner" => Cloner->Some
+  | "DcbEventLog" => DcbEventLog->Some
+  | "CommandHandler" => CommandHandler->Some
   | _ => None
   }
 
@@ -95,6 +101,8 @@ let toName = componentType =>
   | Core => "Core"
   | Heartbeat => "Heartbeat"
   | Cloner => "Cloner"
+  | DcbEventLog => "DcbEventLog"
+  | CommandHandler => "CmdHandler"
   }
 
 let name = (name, t) => name ++ t->toName

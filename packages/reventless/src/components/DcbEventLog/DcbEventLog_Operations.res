@@ -1,0 +1,73 @@
+module type Ops = {
+  module Spec: DcbEventLog.Spec
+  let storage: DcbEventLog_Adapter.operations
+  let publishJson: EventTopic.publishJson
+}
+
+module type T = {
+  module Spec: DcbEventLog.Spec
+  let read: DcbEventLog.read<Spec.event>
+  let append: DcbEventLog.append<Spec.event>
+}
+
+module Make = (Spec: DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
+  T with module Spec = Spec
+) => {
+  module Spec = Spec
+
+  let encodeEvent = (event: Spec.event): DcbEventLog_Adapter.rawStoredEvent => {
+    let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
+    let (eventType, data) = json->Message.splitMessage
+    let tags = DcbTag.extractTags(Spec.eventSchema, event)
+    {
+      eventType,
+      data: JSON.Object(data),
+      tags,
+    }
+  }
+
+  let decodeEvent = (raw: DcbEventLog_Adapter.rawSequencedEvent): DcbEventLog.sequencedEvent<
+    Spec.event,
+  > => {
+    let json = Message.combineMessage(raw.eventType, raw.data->JSON.Decode.object->Option.getOr(Dict.make()))
+    let event = json->S.parseJsonOrThrow(Spec.eventSchema)
+    {
+      position: raw.position,
+      event,
+      tags: raw.tags,
+    }
+  }
+
+  let publishToEventTopic = async (events: array<Spec.event>) => {
+    let _ = await events
+    ->Array.map(async event => {
+      let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
+      let meta = Message.generateMeta(~service=Spec.name)
+      try await Ops.publishJson(Spec.name, meta, json) catch {
+      | JsExn(err) =>
+        Console.log2(`DcbEventLog(${Spec.name}): EventTopic.publish Error:`, err)
+      }
+    })
+    ->Promise.all
+  }
+
+  let append = async (events: array<Spec.event>, ~condition: option<DcbTag.appendCondition>=?) => {
+    let rawEvents = events->Array.map(encodeEvent)
+    let result = await Ops.storage.append(rawEvents, ~condition?)
+    switch result {
+    | Ok(position) =>
+      await publishToEventTopic(events)
+      Ok(position)
+    | Error(_) as err => err
+    }
+  }
+
+  let read = async (~query: DcbTag.query, ~after: option<DcbTag.sequencePosition>=?) => {
+    let rawResult = await Ops.storage.read(~query, ~after?)
+    let events = rawResult.events->Array.map(decodeEvent)
+    {
+      DcbEventLog.events,
+      headPosition: ?rawResult.headPosition,
+    }
+  }
+}

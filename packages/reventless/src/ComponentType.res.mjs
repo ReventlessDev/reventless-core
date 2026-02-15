@@ -46,6 +46,10 @@ function toString(componentType) {
       return "Heartbeat";
     case "Cloner" :
       return "Cloner";
+    case "DcbEventLog" :
+      return "DcbEventLog";
+    case "CommandHandler" :
+      return "CommandHandler";
   }
 }
 
@@ -57,12 +61,16 @@ function ofString(str) {
       return "Cloner";
     case "CommandGenerator" :
       return "CommandGenerator";
+    case "CommandHandler" :
+      return "CommandHandler";
     case "CommandTopic" :
       return "CommandTopic";
     case "Core" :
       return "Core";
     case "Counter" :
       return "Counter";
+    case "DcbEventLog" :
+      return "DcbEventLog";
     case "EventCollector" :
       return "EventCollector";
     case "EventLog" :
@@ -142,6 +150,10 @@ function toName(componentType) {
       return "Heartbeat";
     case "Cloner" :
       return "Cloner";
+    case "DcbEventLog" :
+      return "DcbEventLog";
+    case "CommandHandler" :
+      return "CmdHandler";
   }
 }
 

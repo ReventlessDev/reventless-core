@@ -1,0 +1,81 @@
+// --- Tag types ---
+type tag = {key: string, value: string}
+
+type queryItem = {
+  eventTypes?: array<string>,
+  tags?: array<tag>,
+}
+
+type query = array<queryItem>
+
+type sequencePosition = string
+
+type appendCondition = {
+  query: query,
+  after?: sequencePosition,
+}
+
+// --- Sury metadata for tag annotation ---
+
+let dcbTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name="tag")
+
+let string: S.t<string> = S.string->S.Metadata.set(~id=dcbTagId, true)
+let int: S.t<int> = S.int->S.Metadata.set(~id=dcbTagId, true)
+
+// --- Tag extraction from sury schemas ---
+
+external toUnknownSchema: S.t<'a> => S.t<unknown> = "%identity"
+
+let isTagged = (fieldSchema: S.t<unknown>) =>
+  S.Metadata.get(fieldSchema, ~id=dcbTagId)->Option.isSome
+
+let jsonValueToString = json =>
+  switch json {
+  | JSON.String(s) => s
+  | JSON.Number(n) => n->Float.toString
+  | JSON.Boolean(b) => b ? "true" : "false"
+  | _ => json->JSON.stringify
+  }
+
+let extractTagsFromProperties = (properties: dict<S.t<unknown>>, jsonDict: dict<JSON.t>) =>
+  properties
+  ->Dict.toArray
+  ->Array.filterMap(((fieldName, fieldSchema)) =>
+    if isTagged(fieldSchema) {
+      jsonDict
+      ->Dict.get(fieldName)
+      ->Option.map(jsonValue => {key: fieldName, value: jsonValue->jsonValueToString})
+    } else {
+      None
+    }
+  )
+
+let extractTagsFromJson = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
+  switch schema {
+  | Union({anyOf}) =>
+    switch json->JSON.Decode.object {
+    | Some(jsonDict) =>
+      anyOf->Array.reduce([], (acc, variantSchema) =>
+        if acc->Array.length > 0 {
+          acc
+        } else {
+          switch variantSchema {
+          | Object({properties}) => extractTagsFromProperties(properties, jsonDict)
+          | _ => []
+          }
+        }
+      )
+    | None => []
+    }
+  | Object({properties}) =>
+    switch json->JSON.Decode.object {
+    | Some(jsonDict) => extractTagsFromProperties(properties, jsonDict)
+    | None => []
+    }
+  | _ => []
+  }
+
+let extractTags = (schema: S.t<'a>, value: 'a): array<tag> => {
+  let json = value->S.reverseConvertToJsonOrThrow(schema)
+  extractTagsFromJson(schema->toUnknownSchema, json)
+}
