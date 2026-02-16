@@ -19,10 +19,31 @@ module Make = (
   }
   type component = Component.t<DcbEventLog.t, DcbEventLog.outputs, operations>
 
+  // Extract indexes from event schema
+  let indexes: array<string> = {
+    let taggedFields = DcbTag.extractTaggedFields(Spec.eventSchema)
+
+    // Create single-tag indexes
+    let singleTagIndexes = taggedFields->Array.map(tagKey => `tag_${tagKey}`)
+
+    // Add composite index if there are multiple tagged fields
+    let compositeIndex = if taggedFields->Array.length > 1 {
+      ["tag_composite"]
+    } else {
+      []
+    }
+
+    Array.concat(singleTagIndexes, compositeIndex)
+  }
+
   let construct = (self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
-    let storage = Storage.make(~name=name->ComponentType.name(DcbEventLog.componentType), ~opts)
+    let storage = Storage.make(
+      ~name=name->ComponentType.name(DcbEventLog.componentType),
+      ~indexes,
+      ~opts,
+    )
 
     module SpecificEventTopic = EventTopic_Builder.Make(EventTopicSpec, EventTopicPublisher)
     let eventTopic = SpecificEventTopic.make(

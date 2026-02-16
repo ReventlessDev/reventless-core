@@ -32,7 +32,11 @@ type storage = {
   operations: Pulumi.Output.t<operations>,
 }
 
-type storageMaker = (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage
+type storageMaker = (
+  ~name: string,
+  ~indexes: array<string>, // GSI names (e.g., ["tag_courseId", "tag_composite"])
+  ~opts: Pulumi.CustomResourceOptions.t,
+) => storage
 
 module type Storage = {
   let make: storageMaker

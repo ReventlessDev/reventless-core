@@ -13,25 +13,43 @@
 | Build verification | Done | All 196 modules compile |
 | Regression tests | Done | All 49 existing tests pass |
 
-### Part 2: DynamoDB Adapter — NOT STARTED
+### Part 2: DynamoDB Adapter — COMPLETED
 
 | Step | Status | Notes |
 |------|--------|-------|
-| DcbEventLogStorage_DynamoDb.res | Pending | Deploy-time: DynamoDB table + GSI |
-| DcbEventLogStorage_DynamoDb_Runtime.res | Pending | Runtime: read + conditional append |
+| DcbEventLogStorage_DynamoDb.res | Done | Deploy-time: DynamoDB table + dynamic GSIs (schema-driven) |
+| DcbEventLogStorage_DynamoDb_Runtime.res | Done | Runtime: read + conditional append with tag-based queries |
+| DcbEventLogStorage.res | Done | Module export for DynamoDB adapter |
+| Dynamic GSI generation | Done | Indexes extracted from event schema via `DcbTag.extractTaggedFields` |
+| Simplified adapter interface | Done | Changed from `indexConfig` record to `array<string>` |
+| Build verification | Done | reventless: 7 modules, reventless-aws: 73 modules |
 
 ### Verification Tests — COMPLETED
 
 | Step | Status | Notes |
 |------|--------|-------|
 | DcbTag.extractTags unit tests | Done | 16 tests: `jsonValueToString`, `isTagged`, `extractTags` (Union, Object, command schemas) |
+| DcbTag.extractTaggedFields unit tests | Done | 14 tests: Union schemas, Object schemas, edge cases, complex schemas |
 | DcbEventLog operations unit tests | Done | 11 tests: round-trip encode/decode, append/publish, read filtering |
 | CommandHandler_Callback unit tests | Done | 13 tests: happy path, decide errors, retry on conflict, conditional append, batch |
 | Test fixtures & in-memory mock storage | Done | `DcbFixtures.res` with specs, mock storage factory |
+| **All tests passing** | Done | **103 tests total (33 DCB-specific)** |
 
 ---
 
-## Deviations from Original Plan
+## Implementation Notes and Deviations
+
+### Part 2 Refinements (DynamoDB Adapter)
+
+1. **Dynamic GSI generation**: Instead of hardcoding GSI configurations, the adapter now generates indexes dynamically from the event schema. The `DcbEventLog_Builder` calls `DcbTag.extractTaggedFields(Spec.eventSchema)` to introspect which fields are tagged and creates GSIs accordingly.
+
+2. **Simplified adapter interface**: Changed from `indexConfig` record type (`{tagKey: string, indexName: string}`) to just `array<string>` (GSI names). The `tagKey` field was never used by the runtime, so it was unnecessary overhead.
+
+3. **DcbTag module location**: Moved from `components/DcbTag.res` to `components/DcbEventLog/DcbTag.res` for better module cohesion. ReScript automatically handles module path resolution.
+
+4. **extractTaggedFields function**: Added to `DcbTag.res` to enable schema introspection. Returns sorted array of field names that have `@s.matches(DcbTag.*)` annotations. Supports both Union (variant) and Object (record) schemas.
+
+### Part 1 Deviations
 
 1. **ComponentType location**: The plan referenced `packages/reventless-spec/src/adapter/Adapter.res` for ComponentType, but it actually lives in `packages/reventless/src/ComponentType.res`. No spec-level change was needed.
 
@@ -407,33 +425,54 @@ module Make = (
 
 ---
 
-## Part 2: DynamoDB Adapter (`packages/reventless-aws`) — Separate Step
+## Part 2: DynamoDB Adapter (`packages/reventless-aws`) — COMPLETED
 
-Included here as a sketch for the adapter interface designed in Part 1. Detailed design planned separately.
-
-### Storage Model (Sketch)
+### Storage Model (Implemented)
 
 **Events Table**:
-- Partition key: `pk` (string) — bounded context name or partition strategy
-- Sort key: `position` (string) — global sequence position (auto-assigned)
-- Attributes: `eventType`, `data` (JSON), `tags` (list of maps)
+- Partition key: `id` (string) — fixed value "dcb" (single partition per bounded context)
+- Sort key: `position` (string) — timestamp-prefixed UUID for lexicographic ordering
+- Attributes: `eventType`, `data` (JSON), `tags` (array of `{key, value}`)
+- Tag attributes: `tag_{keyName}` — Individual tag values for single-tag GSI queries
+- `tag_composite` — Sorted composite key for multi-tag AND queries (e.g., `"courseId:c123#studentId:s456"`)
 
-**Tags GSI** (Global Secondary Index for querying by tag):
-- Partition key: `tagKey#tagValue` (composite string, e.g., `courseId#c123`)
-- Sort key: `position`
-- Enables efficient query: "all events with tag courseId=c123 after position X"
+**Dynamic GSIs** (Generated from event schema at build time):
+- Per tagged field: GSI with hash key `tag_{fieldName}`, range key `position`, projection ALL
+- Composite GSI: hash key `tag_composite`, range key `position`, projection ALL (only if 2+ tagged fields)
+- Example: Schema with `courseId` and `studentId` tags generates 3 GSIs: `tag_courseId`, `tag_studentId`, `tag_composite`
 
-**Conditional Append**:
-- Use DynamoDB transactions or conditional writes
-- Check that no events matching the query exist after the specified position
+**Position Generation**:
+- Timestamp-prefixed UUID: `${Date.getTime()}-${Uuid.v4()}`
+- Provides lexicographic ordering without coordination overhead
+- Batch appends use sequence suffix: `basePosition-000`, `basePosition-001`, etc.
 
-### Files (Sketch)
+**Conditional Append** (Read-before-write):
+1. If condition provided: read events matching query after specified position
+2. If conflicts found (events exist): return Error("conflict")
+3. If no conflicts: write events with generated position
+4. Race window is small and acceptable for DCB's eventual consistency semantics
+5. CommandHandler retries on conflict (up to 3 times)
+
+### Files (Implemented)
 
 ```
 packages/reventless-aws/src/adapter/DcbEventLog/
-  DcbEventLogStorage_DynamoDb.res          # Deploy-time: DynamoDB table + GSI
-  DcbEventLogStorage_DynamoDb_Runtime.res  # Runtime: read + conditional append
+  DcbEventLogStorage_DynamoDb.res          # Deploy-time: DynamoDB table + dynamic GSIs
+  DcbEventLogStorage_DynamoDb_Runtime.res  # Runtime: read (tag queries) + conditional append
+  DcbEventLogStorage.res                   # Module export (follows existing pattern)
 ```
+
+**Key Implementation Functions** (DcbEventLogStorage_DynamoDb_Runtime.res):
+- `generatePosition()` — Creates timestamp-prefixed UUID
+- `toItem(position, rawStoredEvent)` — Converts event to DynamoDB item with tag attributes
+- `fromItem(json)` — Converts DynamoDB item back to rawSequencedEvent
+- `tagToAttributeName(tagKey)` — Maps field name to DynamoDB attribute (e.g., "courseId" → "tag_courseId")
+- `compositeTagKey(tags)` — Creates sorted composite key for multi-tag queries
+- `queryBySingleTag(table, tagKey, tagValue, ~after?)` — Queries single-tag GSI
+- `queryByCompositeTags(table, tags, ~after?)` — Queries composite GSI
+- `read(~query, ~after?)` — Executes queries (OR logic), merges results, deduplicates by position
+- `append(events, ~condition?)` — Conditional append with read-before-write pattern
+- `writeEventsWithPosition(table, events, basePosition)` — Batch writes with position sequencing
 
 ---
 
@@ -506,12 +545,13 @@ type event =
 | `CommandHandler/CommandHandler_Callback.res` | Core DCB flow: extract tags → read → reduce → decide → conditional append |
 | `CommandHandler/CommandHandler_Builder.res` | Factory: takes shared DcbEventLog, creates CommandTopic |
 
-### New files in `packages/reventless-aws/src/adapter/` (Part 2, later):
+### New files in `packages/reventless-aws/src/adapter/` (Part 2, completed):
 
 | File | Purpose |
 |------|---------|
-| `DcbEventLog/DcbEventLogStorage_DynamoDb.res` | Deploy-time: DynamoDB table + GSI creation |
-| `DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res` | Runtime: read (query by tags) + conditional append |
+| `DcbEventLog/DcbEventLogStorage_DynamoDb.res` | Deploy-time: DynamoDB table + dynamic GSI creation from schema |
+| `DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res` | Runtime: read (tag-based queries with deduplication) + conditional append |
+| `DcbEventLog/DcbEventLogStorage.res` | Module export for DynamoDB adapter |
 
 ### Existing files modified:
 

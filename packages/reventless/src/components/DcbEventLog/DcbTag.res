@@ -79,3 +79,48 @@ let extractTags = (schema: S.t<'a>, value: 'a): array<tag> => {
   let json = value->S.reverseConvertToJsonOrThrow(schema)
   extractTagsFromJson(schema->toUnknownSchema, json)
 }
+
+// --- Extract tagged field names from event schema ---
+
+let extractTaggedFields = (schema: S.t<'event>): array<string> => {
+  // Convert to unknown schema for introspection
+  let unknownSchema: S.t<unknown> = schema->Obj.magic
+
+  switch unknownSchema {
+  | Union({anyOf}) =>
+    // For union types, collect tagged fields from all variants
+    let allFields = anyOf->Array.flatMap(variantSchema =>
+      switch variantSchema {
+      | Object({properties}) =>
+        properties
+        ->Dict.toArray
+        ->Array.filterMap(((fieldName, fieldSchema)) =>
+          if isTagged(fieldSchema) {
+            Some(fieldName)
+          } else {
+            None
+          }
+        )
+      | _ => []
+      }
+    )
+    // Deduplicate field names using Set
+    let fieldSet = Set.make()
+    allFields->Array.forEach(field => fieldSet->Set.add(field))
+    Array.fromIterator(fieldSet->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
+
+  | Object({properties}) =>
+    properties
+    ->Dict.toArray
+    ->Array.filterMap(((fieldName, fieldSchema)) =>
+      if isTagged(fieldSchema) {
+        Some(fieldName)
+      } else {
+        None
+      }
+    )
+    ->Array.toSorted((a, b) => String.compare(a, b))
+
+  | _ => []
+  }
+}

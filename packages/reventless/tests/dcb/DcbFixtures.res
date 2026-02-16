@@ -207,3 +207,56 @@ let testMeta: Message.meta = {
   msgId: "msg-1",
   correlationId: "corr-1",
 }
+
+// --- Test schemas for extractTaggedFields tests ---
+
+@schema
+type plainRecord = {
+  name: string,
+  value: int,
+}
+
+@schema
+type multiTagRecord = {
+  userId: @s.matches(DcbTag.string) string,
+  tenantId: @s.matches(DcbTag.string) string,
+  data: string,
+}
+
+@schema
+type emptyVariant =
+  | Empty
+
+@schema
+type intTagEvent =
+  | CountEvent({count: @s.matches(DcbTag.int) int})
+
+@schema
+type mixedEvent =
+  | EventA({id: @s.matches(DcbTag.string) string, name: string})
+  | EventB({id: @s.matches(DcbTag.string) string, count: int})
+  | EventC({untaggedField: string})
+
+@schema
+type complexEvent =
+  | UserCreated({userId: @s.matches(DcbTag.string) string, name: string})
+  | UserUpdated({userId: @s.matches(DcbTag.string) string, email: string})
+  | OrderPlaced({
+      orderId: @s.matches(DcbTag.string) string,
+      userId: @s.matches(DcbTag.string) string,
+      amount: float,
+    })
+  | OrderShipped({
+      orderId: @s.matches(DcbTag.string) string,
+      trackingId: @s.matches(DcbTag.string) string,
+    })
+  | PaymentProcessed({paymentId: @s.matches(DcbTag.string) string, amount: float})
+
+@schema
+type multiFieldEvent =
+  | EventWithMultipleTags({
+      userId: @s.matches(DcbTag.string) string,
+      tenantId: @s.matches(DcbTag.string) string,
+      sessionId: @s.matches(DcbTag.string) string,
+    })
+

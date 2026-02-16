@@ -2,7 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
-import * as DcbTag$Reventless from "../../src/components/DcbTag.res.mjs";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as DcbTag$Reventless from "../../src/components/DcbEventLog/DcbTag.res.mjs";
 import * as DcbFixtures$Reventless from "./DcbFixtures.res.mjs";
 
 Jest.describe("DcbTag:", () => {
@@ -86,6 +87,60 @@ Jest.describe("DcbTag:", () => {
         key: "itemId",
         value: "item-3"
       }]));
+  });
+  Jest.describe("extractTaggedFields from schema", () => {
+    Jest.describe("Union (variant) schemas", () => {
+      Jest.test("extracts all unique tagged field names from event schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema)), [
+        "amount",
+        "category",
+        "itemId"
+      ]));
+      Jest.test("extracts tagged field names from command schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.TestCommandSpec.commandSchema)), ["itemId"]));
+      Jest.test("returns empty array for untagged variant schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.UntaggedEventSpec.eventSchema)), []));
+      Jest.test("deduplicates field names across variants", () => {
+        let fields = DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema);
+        return Jest.Expect.toEqual(Jest.Expect.expect(fields), [
+          "amount",
+          "category",
+          "itemId"
+        ]);
+      });
+      Jest.test("returns sorted field names", () => {
+        let fields = DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema);
+        let sorted = fields.toSorted(Primitive_string.compare);
+        return Jest.Expect.toEqual(Jest.Expect.expect(fields), sorted);
+      });
+    });
+    Jest.describe("Object (record) schemas", () => {
+      Jest.test("extracts tagged field names from object schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.objectEventSchema)), ["tenantId"]));
+      Jest.test("returns empty array for object with no tagged fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.plainRecordSchema)), []));
+      Jest.test("extracts multiple tagged fields from object schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.multiTagRecordSchema)), [
+        "tenantId",
+        "userId"
+      ]));
+    });
+    Jest.describe("Edge cases", () => {
+      Jest.test("handles variants with no payload (SimpleEvent)", () => {
+        let fields = DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema);
+        return Jest.Expect.toBeGreaterThan(Jest.Expect.expect(fields.length), 0);
+      });
+      Jest.test("handles schema with mix of tagged and untagged fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.mixedEventSchema)), ["id"]));
+      Jest.test("handles empty schema gracefully", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.emptyVariantSchema)), []));
+      Jest.test("handles schema with int tags", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.intTagEventSchema)), ["count"]));
+    });
+    Jest.describe("Complex schemas", () => {
+      Jest.test("extracts from schema with many variants and fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.complexEventSchema)), [
+        "orderId",
+        "paymentId",
+        "trackingId",
+        "userId"
+      ]));
+      Jest.test("handles variants with multiple tagged fields in same variant", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$Reventless.multiFieldEventSchema)), [
+        "sessionId",
+        "tenantId",
+        "userId"
+      ]));
+    });
   });
 });
 

@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
 let dcbTagId = S.Metadata.Id.make("dcb", "tag");
 
@@ -78,6 +79,36 @@ function extractTags(schema, value) {
   return extractTagsFromJson(schema, json);
 }
 
+function extractTaggedFields(schema) {
+  switch (schema.type) {
+    case "object" :
+      return Stdlib_Array.filterMap(Object.entries(schema.properties), param => {
+        if (isTagged(param[1])) {
+          return param[0];
+        }
+      }).toSorted(Primitive_string.compare);
+    case "union" :
+      let allFields = schema.anyOf.flatMap(variantSchema => {
+        if (variantSchema.type === "object") {
+          return Stdlib_Array.filterMap(Object.entries(variantSchema.properties), param => {
+            if (isTagged(param[1])) {
+              return param[0];
+            }
+          });
+        } else {
+          return [];
+        }
+      });
+      let fieldSet = new Set();
+      allFields.forEach(field => {
+        fieldSet.add(field);
+      });
+      return Array.from(fieldSet.values()).toSorted(Primitive_string.compare);
+    default:
+      return [];
+  }
+}
+
 export {
   dcbTagId,
   string,
@@ -87,5 +118,6 @@ export {
   extractTagsFromProperties,
   extractTagsFromJson,
   extractTags,
+  extractTaggedFields,
 }
 /* dcbTagId Not a pure module */

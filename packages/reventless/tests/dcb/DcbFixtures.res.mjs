@@ -3,7 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as DcbTag$Reventless from "../../src/components/DcbTag.res.mjs";
+import * as DcbTag$Reventless from "../../src/components/DcbEventLog/DcbTag.res.mjs";
 
 S.enableJson();
 
@@ -269,6 +269,77 @@ function makeMockStorage() {
   };
 }
 
+let plainRecordSchema = S.schema(s => ({
+  name: s.m(S.string),
+  value: s.m(S.int)
+}));
+
+let multiTagRecordSchema = S.schema(s => ({
+  userId: s.m(DcbTag$Reventless.string),
+  tenantId: s.m(DcbTag$Reventless.string),
+  data: s.m(S.string)
+}));
+
+let emptyVariantSchema = S.literal("Empty");
+
+let intTagEventSchema = S.schema(s => ({
+  TAG: "CountEvent",
+  count: s.m(DcbTag$Reventless.int)
+}));
+
+let mixedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "EventA",
+    id: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "EventB",
+    id: s.m(DcbTag$Reventless.string),
+    count: s.m(S.int)
+  })),
+  S.schema(s => ({
+    TAG: "EventC",
+    untaggedField: s.m(S.string)
+  }))
+]);
+
+let complexEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "UserCreated",
+    userId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "UserUpdated",
+    userId: s.m(DcbTag$Reventless.string),
+    email: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    orderId: s.m(DcbTag$Reventless.string),
+    userId: s.m(DcbTag$Reventless.string),
+    amount: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "OrderShipped",
+    orderId: s.m(DcbTag$Reventless.string),
+    trackingId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "PaymentProcessed",
+    paymentId: s.m(DcbTag$Reventless.string),
+    amount: s.m(S.float)
+  }))
+]);
+
+let multiFieldEventSchema = S.schema(s => ({
+  TAG: "EventWithMultipleTags",
+  userId: s.m(DcbTag$Reventless.string),
+  tenantId: s.m(DcbTag$Reventless.string),
+  sessionId: s.m(DcbTag$Reventless.string)
+}));
+
 let testMeta = {
   service: "test",
   time: "2024-01-01T00:00:00Z",
@@ -286,5 +357,12 @@ export {
   posToInt,
   makeMockStorage,
   testMeta,
+  plainRecordSchema,
+  multiTagRecordSchema,
+  emptyVariantSchema,
+  intTagEventSchema,
+  mixedEventSchema,
+  complexEventSchema,
+  multiFieldEventSchema,
 }
 /*  Not a pure module */

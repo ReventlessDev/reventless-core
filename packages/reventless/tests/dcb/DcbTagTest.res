@@ -128,4 +128,100 @@ describe("DcbTag:", () => {
       )->toEqual([{DcbTag.key: "itemId", value: "item-3"}])
     )
   })
+
+  describe("extractTaggedFields from schema", () => {
+    describe("Union (variant) schemas", () => {
+      test("extracts all unique tagged field names from event schema", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.TestEventLogSpec.eventSchema))->toEqual([
+          "amount",
+          "category",
+          "itemId",
+        ])
+      )
+
+      test("extracts tagged field names from command schema", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.TestCommandSpec.commandSchema))->toEqual([
+          "itemId",
+        ])
+      )
+
+      test("returns empty array for untagged variant schema", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.UntaggedEventSpec.eventSchema))->toEqual([])
+      )
+
+      test("deduplicates field names across variants", () => {
+        // TestEventLogSpec has:
+        // - ItemCreated: itemId
+        // - ItemRenamed: itemId
+        // - CountUpdated: category, amount
+        // Should return sorted unique: ["amount", "category", "itemId"]
+        let fields = DcbTag.extractTaggedFields(DcbFixtures.TestEventLogSpec.eventSchema)
+        expect(fields)->toEqual(["amount", "category", "itemId"])
+      })
+
+      test("returns sorted field names", () => {
+        let fields = DcbTag.extractTaggedFields(DcbFixtures.TestEventLogSpec.eventSchema)
+        let sorted = fields->Array.toSorted((a, b) => String.compare(a, b))
+        // Verify alphabetical sorting - should already be sorted
+        expect(fields)->toEqual(sorted)
+      })
+    })
+
+    describe("Object (record) schemas", () => {
+      test("extracts tagged field names from object schema", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.objectEventSchema))->toEqual(["tenantId"])
+      )
+
+      test("returns empty array for object with no tagged fields", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.plainRecordSchema))->toEqual([])
+      )
+
+      test("extracts multiple tagged fields from object schema", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.multiTagRecordSchema))->toEqual([
+          "tenantId",
+          "userId",
+        ])
+      )
+    })
+
+    describe("Edge cases", () => {
+      test("handles variants with no payload (SimpleEvent)", () => {
+        // TestEventLogSpec includes SimpleEvent which has no payload
+        // Should still extract fields from other variants
+        let fields = DcbTag.extractTaggedFields(DcbFixtures.TestEventLogSpec.eventSchema)
+        expect(fields->Array.length)->toBeGreaterThan(0)
+      })
+
+      test("handles schema with mix of tagged and untagged fields", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.mixedEventSchema))->toEqual(["id"])
+      )
+
+      test("handles empty schema gracefully", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.emptyVariantSchema))->toEqual([])
+      )
+
+      test("handles schema with int tags", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.intTagEventSchema))->toEqual(["count"])
+      )
+    })
+
+    describe("Complex schemas", () => {
+      test("extracts from schema with many variants and fields", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.complexEventSchema))->toEqual([
+          "orderId",
+          "paymentId",
+          "trackingId",
+          "userId",
+        ])
+      )
+
+      test("handles variants with multiple tagged fields in same variant", () =>
+        expect(DcbTag.extractTaggedFields(DcbFixtures.multiFieldEventSchema))->toEqual([
+          "sessionId",
+          "tenantId",
+          "userId",
+        ])
+      )
+    })
+  })
 })

@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as DcbTag$Reventless from "../DcbTag.res.mjs";
+import * as DcbTag$Reventless from "../DcbEventLog/DcbTag.res.mjs";
 import * as Logger$Reventless from "../../util/Logger.res.mjs";
 
 function Make(Spec) {
