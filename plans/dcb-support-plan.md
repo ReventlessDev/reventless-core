@@ -20,14 +20,14 @@
 | DcbEventLogStorage_DynamoDb.res | Pending | Deploy-time: DynamoDB table + GSI |
 | DcbEventLogStorage_DynamoDb_Runtime.res | Pending | Runtime: read + conditional append |
 
-### Verification Tests — NOT STARTED
+### Verification Tests — COMPLETED
 
 | Step | Status | Notes |
 |------|--------|-------|
-| DcbTag.extractTags unit tests | Pending | |
-| DcbEventLog operations unit tests | Pending | |
-| CommandHandler_Callback unit tests | Pending | |
-| Integration test (in-memory adapter) | Pending | |
+| DcbTag.extractTags unit tests | Done | 16 tests: `jsonValueToString`, `isTagged`, `extractTags` (Union, Object, command schemas) |
+| DcbEventLog operations unit tests | Done | 11 tests: round-trip encode/decode, append/publish, read filtering |
+| CommandHandler_Callback unit tests | Done | 13 tests: happy path, decide errors, retry on conflict, conditional append, batch |
+| Test fixtures & in-memory mock storage | Done | `DcbFixtures.res` with specs, mock storage factory |
 
 ---
 
@@ -59,6 +59,18 @@
    ```
 
 6. **Module sealing removed for Spec modules**: `CommandTopicSpec` and `EventTopicSpec` created inside builders are NOT sealed with `: CommandTopic.Spec` / `: EventTopic.Spec` to keep Id types transparent and unifiable across module boundaries.
+
+7. **`@s.matches` annotation placement**: The `@s.matches(schema)` annotation must be placed on the **type expression** (after the colon), not on the field name. This is consistent with the sury-ppx README ("Applies to: type expressions"):
+   ```rescript
+   // Correct:
+   | StudentEnrolled({courseId: @s.matches(DcbTag.string) string})
+   // Wrong (silently ignored by ppx):
+   | StudentEnrolled({@s.matches(DcbTag.string) courseId: string})
+   ```
+
+8. **Payload-less variants not supported in DcbEventLog encode/decode**: Variants without payloads (e.g., `| SimpleEvent`) serialize to JSON strings via sury, but `Message.splitMessage`/`combineMessage` expect JSON objects with a `TAG` field. This means DCB events must always have inline record payloads with at least one field. This is consistent with DCB's design intent (events should carry tagged data for querying).
+
+9. **`ReventlessSpec.Id.String.t` is abstract**: When constructing `Message.command'` values for `CommandHandler.handleCommands`, the `id` field requires `ReventlessSpec.Id.String.makeFromString(str)` — plain strings don't unify with the sealed `Id.String.t` type.
 
 ---
 
