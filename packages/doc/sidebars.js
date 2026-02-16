@@ -16,10 +16,17 @@ const sidebars = {
   // Manual sidebar with ordering from general to specific
   docSidebar: [
     'index',
+    {
+      type: 'category',
+      label: 'Architecture',
+      items: [
+        'component-overview',
+        'architecture/aggregate-extension-connection',
+      ],
+    },
     'get-started',
     'development-process',
     'rescript-syntax',
-    'component-overview',
     'unit-testing',
     {
       type: 'category',
