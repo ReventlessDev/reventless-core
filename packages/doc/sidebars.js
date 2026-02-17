@@ -50,6 +50,14 @@ const sidebars = {
         'reventless-components/heartbeat',
         'reventless-components/scheduler',
         'reventless-components/sideeffecthandler',
+        'reventless-components/statechangeslice',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Event Modeling',
+      items: [
+        'event-modeling/statechangeslice-usage',
       ],
     },
     {
