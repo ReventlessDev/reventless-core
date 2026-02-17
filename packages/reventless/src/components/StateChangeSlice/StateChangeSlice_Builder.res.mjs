@@ -5,9 +5,9 @@ import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mj
 import * as Component$Reventless from "../Component.res.mjs";
 import * as Util_Pulumi$Reventless from "../../util/Util_Pulumi.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as CommandHandler$Reventless from "./CommandHandler.res.mjs";
+import * as StateChangeSlice$Reventless from "./StateChangeSlice.res.mjs";
 import * as CommandTopic_Builder$Reventless from "../CommandTopic/CommandTopic_Builder.res.mjs";
-import * as CommandHandler_Callback$Reventless from "./CommandHandler_Callback.res.mjs";
+import * as StateChangeSlice_Callback$Reventless from "./StateChangeSlice_Callback.res.mjs";
 
 function Make(Spec) {
   return CommandTopicChannel => {
@@ -15,14 +15,14 @@ function Make(Spec) {
       Id: Id$ReventlessSpec.$$String,
       commandSchema: Spec.commandSchema
     })(CommandTopicChannel);
-    let make = (dcbEventLog, opts) => Component$Reventless.make(ComponentType$Reventless.toString(CommandHandler$Reventless.componentType), Spec.name, (extra, extra$1) => {
+    let make = (dcbEventLog, opts) => Component$Reventless.make(ComponentType$Reventless.toString(StateChangeSlice$Reventless.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$Reventless.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let name = ComponentType$Reventless.name(extra$1, CommandHandler$Reventless.componentType);
+      let name = ComponentType$Reventless.name(extra$1, StateChangeSlice$Reventless.componentType);
       let commandTopic = Component$Reventless.operations(dcbEventLog).apply(dcbEventLogOps => {
-        let Callback = CommandHandler_Callback$Reventless.Make(Spec)({
+        let Callback = StateChangeSlice_Callback$Reventless.Make(Spec)({
           Spec: Spec,
           dcbEventLog: dcbEventLogOps
         });

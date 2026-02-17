@@ -13,14 +13,14 @@ type outputs = {
   resolvers: Pulumi.Output.t<array<ReventlessSpec.Adapter.resource>>,
   heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
-  commandHandlers: Pulumi.Output.t<dict<CommandHandler.outputs>>,
+  stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
 }
 
 type t
 type component = Component.t<t, outputs, unit>
 
-// DCB spec for plugin-wide event/command types and command handlers
-// Bundled together so the event type is shared between the DcbEventLog and all CommandHandlers
+// DCB spec for plugin-wide event/command types and state change slices
+// Bundled together so the event type is shared between the DcbEventLog and all StateChangeSlices
 module type DcbSpec = {
   @schema
   type event
@@ -28,7 +28,7 @@ module type DcbSpec = {
   @schema
   type command
 
-  let commandHandlers: array<module(CommandHandler.T with type dcbEvent = event)>
+  let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
 }
 
 module type T = {

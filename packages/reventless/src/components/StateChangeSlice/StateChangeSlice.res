@@ -1,4 +1,4 @@
-let componentType = ComponentType.CommandHandler
+let componentType = ComponentType.StateChangeSlice
 
 type t
 type outputs = {

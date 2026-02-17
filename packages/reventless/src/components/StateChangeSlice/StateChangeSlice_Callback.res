@@ -1,16 +1,16 @@
 module type Ops = {
-  module Spec: CommandHandler.Spec
+  module Spec: StateChangeSlice.Spec
   let dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event>
 }
 
 module type T = {
-  module Spec: CommandHandler.Spec
+  module Spec: StateChangeSlice.Spec
   let handleCommands: CommandTopic.commandsHandler<
     Message.command'<ReventlessSpec.Id.String.t, Spec.command>,
   >
 }
 
-module Make = (Spec: CommandHandler.Spec, Ops: Ops with module Spec = Spec): (
+module Make = (Spec: StateChangeSlice.Spec, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec
@@ -38,7 +38,7 @@ module Make = (Spec: CommandHandler.Spec, Ops: Ops with module Spec = Spec): (
 
       switch Spec.decide(decisionModel, command'.command) {
       | Ok(newEvents) if newEvents->Array.length == 0 =>
-        Logger.debug(~loc=__LOC__, `CommandHandler(${Spec.name})`, "no events generated")
+        Logger.debug(~loc=__LOC__, `StateChangeSlice(${Spec.name})`, "no events generated")
         Ok("ok")
       | Ok(newEvents) =>
         let condition: DcbTag.appendCondition = {
@@ -49,18 +49,18 @@ module Make = (Spec: CommandHandler.Spec, Ops: Ops with module Spec = Spec): (
         | Ok(_position) =>
           Logger.debug(
             ~loc=__LOC__,
-            `CommandHandler(${Spec.name})`,
+            `StateChangeSlice(${Spec.name})`,
             `${newEvents->Array.length->Int.toString} event(s) appended`,
           )
           Ok("ok")
         | Error(err) =>
           if retries > 0 {
-            Logger.info(~loc=__LOC__, `CommandHandler(${Spec.name}): conflict, retrying`, err)
+            Logger.info(~loc=__LOC__, `StateChangeSlice(${Spec.name}): conflict, retrying`, err)
             await attempt(~retries=retries - 1)
           } else {
             Logger.error(
               ~loc=__LOC__,
-              `CommandHandler(${Spec.name}): conflict, retries exhausted`,
+              `StateChangeSlice(${Spec.name}): conflict, retries exhausted`,
               err,
             )
             Error("conflict: retries exhausted")
@@ -68,7 +68,7 @@ module Make = (Spec: CommandHandler.Spec, Ops: Ops with module Spec = Spec): (
         }
       | Error(error) =>
         let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)->JSON.stringify
-        Logger.error(~loc=__LOC__, `CommandHandler(${Spec.name}): decide error`, errorJson)
+        Logger.error(~loc=__LOC__, `StateChangeSlice(${Spec.name}): decide error`, errorJson)
         Error(errorJson)
       }
     }
@@ -77,7 +77,7 @@ module Make = (Spec: CommandHandler.Spec, Ops: Ops with module Spec = Spec): (
   }
 
   let handleCommands = async topicItems => {
-    Logger.debug(~loc=__LOC__, "starting", "CommandHandler.handleCommands")
+    Logger.debug(~loc=__LOC__, "starting", "StateChangeSlice.handleCommands")
     let results = await topicItems
     ->Array.map(async ({CommandTopic.reference: reference, command}) => {
       switch await handleSingleCommand(command) {

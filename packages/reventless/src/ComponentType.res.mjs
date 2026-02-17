@@ -48,8 +48,8 @@ function toString(componentType) {
       return "Cloner";
     case "DcbEventLog" :
       return "DcbEventLog";
-    case "CommandHandler" :
-      return "CommandHandler";
+    case "StateChangeSlice" :
+      return "StateChangeSlice";
   }
 }
 
@@ -61,8 +61,6 @@ function ofString(str) {
       return "Cloner";
     case "CommandGenerator" :
       return "CommandGenerator";
-    case "CommandHandler" :
-      return "CommandHandler";
     case "CommandTopic" :
       return "CommandTopic";
     case "Core" :
@@ -97,6 +95,8 @@ function ofString(str) {
       return "Service";
     case "SideEffectHandler" :
       return "SideEffectHandler";
+    case "StateChangeSlice" :
+      return "StateChangeSlice";
     case "Task" :
       return "Task";
     case "Vpc" :
@@ -152,8 +152,8 @@ function toName(componentType) {
       return "Cloner";
     case "DcbEventLog" :
       return "DcbEventLog";
-    case "CommandHandler" :
-      return "CmdHandler";
+    case "StateChangeSlice" :
+      return "StateChgSlc";
   }
 }
 

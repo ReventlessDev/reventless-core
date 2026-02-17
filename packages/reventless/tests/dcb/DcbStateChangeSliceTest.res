@@ -19,7 +19,7 @@ module TestCmdOps = {
   }
 }
 
-module TestHandler = CommandHandler_Callback.Make(DcbFixtures.TestCommandSpec, TestCmdOps)
+module TestHandler = StateChangeSlice_Callback.Make(DcbFixtures.TestCommandSpec, TestCmdOps)
 
 let makeTopicItem = (reference, command): CommandTopic.topicItem<
   Message.command'<ReventlessSpec.Id.String.t, DcbFixtures.TestCommandSpec.command>,
@@ -34,7 +34,7 @@ let makeTopicItem = (reference, command): CommandTopic.topicItem<
 
 let _ = beforeEach(() => mock.reset())
 
-describe("CommandHandler_Callback:", () => {
+describe("StateChangeSlice_Callback:", () => {
   describe("handleCommands - happy path", () => {
     testPromise("CreateItem on empty log succeeds", async () => {
       let results = await TestHandler.handleCommands([

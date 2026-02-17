@@ -37,8 +37,8 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let childName = name->ComponentType.name(Plugin.componentType)
 
-    // Create DcbEventLog and CommandHandlers if DcbSpec provided
-    let (dcbEventLogOutputs, commandHandlersOutputs) = switch dcbSpec {
+    // Create DcbEventLog and StateChangeSlices if DcbSpec provided
+    let (dcbEventLogOutputs, stateChangeSlicesOutputs) = switch dcbSpec {
     | Some(module(DcbSpec)) => {
         module DcbEventLogSpec = {
           let name = name
@@ -54,12 +54,12 @@ module Make = (
         let dcbEventLog = DcbEventLog.make(~name=`${childName}-dcb-eventlog`, ~opts)
 
         let handlerOutputs =
-          DcbSpec.commandHandlers
+          DcbSpec.stateChangeSlices
           ->Array.map((
-            module(CommandHandler: CommandHandler.T with type dcbEvent = DcbSpec.event),
+            module(StateChangeSlice: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
           ) => {
-            let ch = CommandHandler.make(~dcbEventLog, ~opts)
-            (CommandHandler.Spec.name, ch->Component.outputs)
+            let ch = StateChangeSlice.make(~dcbEventLog, ~opts)
+            (StateChangeSlice.Spec.name, ch->Component.outputs)
           })
           ->Dict.fromArray
 
@@ -259,7 +259,7 @@ module Make = (
           extensionPoints: extensionPointsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           extensions: extensionsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           aggregates: aggregatesOutputs,
-          commandHandlers: commandHandlersOutputs,
+          stateChangeSlices: stateChangeSlicesOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
@@ -277,7 +277,7 @@ module Make = (
       extensionPoints: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
       extensions: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
       aggregates: pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
-      commandHandlers: pureOutputs->Pulumi.Output.apply(outputs => outputs.commandHandlers),
+      stateChangeSlices: pureOutputs->Pulumi.Output.apply(outputs => outputs.stateChangeSlices),
       readModels: pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
       tasks: pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
       resolvers: pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),

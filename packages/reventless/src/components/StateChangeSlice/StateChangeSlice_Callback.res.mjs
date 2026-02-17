@@ -20,7 +20,7 @@ function Make(Spec) {
         if (newEvents.TAG === "Ok") {
           let newEvents$1 = newEvents._0;
           if (newEvents$1.length === 0) {
-            Logger$Reventless.debug("File \"CommandHandler_Callback.res\", line 41, characters 26-33", undefined, undefined, `CommandHandler(` + Spec.name + `)`, "no events generated");
+            Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 41, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, "no events generated");
             return {
               TAG: "Ok",
               _0: "ok"
@@ -33,7 +33,7 @@ function Make(Spec) {
           };
           let _position = await Ops.dcbEventLog.append(newEvents$1, condition);
           if (_position.TAG === "Ok") {
-            Logger$Reventless.debug("File \"CommandHandler_Callback.res\", line 51, characters 17-24", undefined, undefined, `CommandHandler(` + Spec.name + `)`, newEvents$1.length.toString() + ` event(s) appended`);
+            Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 51, characters 17-24", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, newEvents$1.length.toString() + ` event(s) appended`);
             return {
               TAG: "Ok",
               _0: "ok"
@@ -41,10 +41,10 @@ function Make(Spec) {
           }
           let err = _position._0;
           if (retries > 0) {
-            Logger$Reventless.info("File \"CommandHandler_Callback.res\", line 58, characters 29-36", undefined, undefined, `CommandHandler(` + Spec.name + `): conflict, retrying`, err);
+            Logger$Reventless.info("File \"StateChangeSlice_Callback.res\", line 58, characters 29-36", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retrying`, err);
             return await attempt(retries - 1 | 0);
           } else {
-            Logger$Reventless.error("File \"CommandHandler_Callback.res\", line 62, characters 19-26", undefined, undefined, `CommandHandler(` + Spec.name + `): conflict, retries exhausted`, err);
+            Logger$Reventless.error("File \"StateChangeSlice_Callback.res\", line 62, characters 19-26", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`, err);
             return {
               TAG: "Error",
               _0: "conflict: retries exhausted"
@@ -52,7 +52,7 @@ function Make(Spec) {
           }
         }
         let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
-        Logger$Reventless.error("File \"CommandHandler_Callback.res\", line 71, characters 26-33", undefined, undefined, `CommandHandler(` + Spec.name + `): decide error`, errorJson);
+        Logger$Reventless.error("File \"StateChangeSlice_Callback.res\", line 71, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `): decide error`, errorJson);
         return {
           TAG: "Error",
           _0: errorJson
@@ -61,7 +61,7 @@ function Make(Spec) {
       return await attempt(3);
     };
     let handleCommands = async topicItems => {
-      Logger$Reventless.debug("File \"CommandHandler_Callback.res\", line 80, characters 22-29", undefined, undefined, "starting", "CommandHandler.handleCommands");
+      Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 80, characters 22-29", undefined, undefined, "starting", "StateChangeSlice.handleCommands");
       return await Promise.all(topicItems.map(async param => {
         let reference = param.reference;
         let match = await handleSingleCommand(param.command);

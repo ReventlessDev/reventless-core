@@ -42,10 +42,10 @@ function Make(Spec) {
           };
           let DcbEventLog = DcbEventLog_Builder$Reventless.Make(DcbEventLogSpec)(DcbEventLogStorage)(DcbEventTopicPublisher);
           let dcbEventLog = DcbEventLog.make(childName + `-dcb-eventlog`, opts);
-          let handlerOutputs = Object.fromEntries(dcbSpec.commandHandlers.map(CommandHandler => {
-            let ch = CommandHandler.make(dcbEventLog, opts);
+          let handlerOutputs = Object.fromEntries(dcbSpec.stateChangeSlices.map(StateChangeSlice => {
+            let ch = StateChangeSlice.make(dcbEventLog, opts);
             return [
-              CommandHandler.Spec.name,
+              StateChangeSlice.Spec.name,
               Component$Reventless.outputs(ch)
             ];
           }));
@@ -59,7 +59,7 @@ function Make(Spec) {
             {}
           ];
         }
-        let commandHandlersOutputs = match[1];
+        let stateChangeSlicesOutputs = match[1];
         let dcbEventLogOutputs = match[0];
         let aggregatesWithoutEventMappers = Plugin_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, opts);
         let allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
@@ -134,7 +134,7 @@ function Make(Spec) {
               el
             ])),
             aggregates: aggregatesOutputs,
-            commandHandlers: commandHandlersOutputs,
+            stateChangeSlices: stateChangeSlicesOutputs,
             readModels: readModelsOutputs,
             tasks: Object.fromEntries(tasksOutputs.map(el => [
               el.name,
@@ -158,7 +158,7 @@ function Make(Spec) {
           resolvers: pureOutputs.apply(outputs => outputs.resolvers),
           heartbeat: pureOutputs.apply(outputs => outputs.heartbeat),
           dcbEventLog: pureOutputs.apply(outputs => outputs.dcbEventLog),
-          commandHandlers: pureOutputs.apply(outputs => outputs.commandHandlers)
+          stateChangeSlices: pureOutputs.apply(outputs => outputs.stateChangeSlices)
         });
       }, opts);
     };

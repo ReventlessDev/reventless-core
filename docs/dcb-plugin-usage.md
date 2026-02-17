@@ -1,17 +1,17 @@
 # DCB Plugin Support
 
-The Plugin component supports an optional DCB (Dynamic Consistency Boundary) event log that can be shared across multiple command handlers.
+The Plugin component supports an optional DCB (Dynamic Consistency Boundary) event log that can be shared across multiple state change slices.
 
 ## Overview
 
 When you provide a DCB spec to the plugin:
 1. The plugin creates a single DCB event log using the spec and the plugin's name
-2. All command handlers receive this shared DCB event log
-3. Command handlers can read and append events to the same event log
+2. All state change slices receive this shared DCB event log
+3. State change slices can read and append events to the same event log
 
 ## Plugin.DcbSpec Module Type
 
-A `Plugin.DcbSpec` bundles the plugin-wide event/command schema together with the command handlers that operate on it. This ensures compile-time type safety between the event log and all handlers.
+A `Plugin.DcbSpec` bundles the plugin-wide event/command schema together with the state change slices that operate on it. This ensures compile-time type safety between the event log and all handlers.
 
 ```rescript
 module type DcbSpec = {
@@ -21,11 +21,11 @@ module type DcbSpec = {
   @schema
   type command
 
-  let commandHandlers: array<module(CommandHandler.T with type dcbEvent = event)>
+  let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
 }
 ```
 
-The `with type dcbEvent = event` constraint guarantees that every command handler's event type matches the DcbSpec's event type at compile time.
+The `with type dcbEvent = event` constraint guarantees that every state change slice's event type matches the DcbSpec's event type at compile time.
 
 ## Usage
 
@@ -42,9 +42,9 @@ module MyDcbEventLogSpec = {
 }
 ```
 
-### 2. Define command handler specs
+### 2. Define state change slice specs
 
-Each command handler spec references the shared DcbEventLog spec:
+Each state change slice spec references the shared DcbEventLog spec:
 
 ```rescript
 module CreateItemSpec = {
@@ -81,17 +81,17 @@ module CreateItemSpec = {
 }
 ```
 
-### 3. Build command handlers
+### 3. Build state change slices
 
-`CommandHandler_Builder.Make` takes the spec and a command topic channel adapter. The DcbEventLog is **not** provided here — it will be injected by the plugin at deploy time.
+`StateChangeSlice_Builder.Make` takes the spec and a command topic channel adapter. The DcbEventLog is **not** provided here — it will be injected by the plugin at deploy time.
 
 ```rescript
-module CreateItemHandler = CommandHandler_Builder.Make(
+module CreateItemHandler = StateChangeSlice_Builder.Make(
   CreateItemSpec,
   CommandTopic_SqsFifoAdapter.Channel,
 )
 
-module UpdateItemHandler = CommandHandler_Builder.Make(
+module UpdateItemHandler = StateChangeSlice_Builder.Make(
   UpdateItemSpec,
   CommandTopic_SqsFifoAdapter.Channel,
 )
@@ -109,9 +109,9 @@ module MyPluginDcbSpec = {
     | CreateItem({itemId: string, name: string})
     | UpdateItem({itemId: string, newName: string})
 
-  let commandHandlers = [
-    module(CreateItemHandler: CommandHandler.T with type dcbEvent = event),
-    module(UpdateItemHandler: CommandHandler.T with type dcbEvent = event),
+  let stateChangeSlices = [
+    module(CreateItemHandler: StateChangeSlice.T with type dcbEvent = event),
+    module(UpdateItemHandler: StateChangeSlice.T with type dcbEvent = event),
   ]
 }
 ```
@@ -136,17 +136,17 @@ The plugin outputs include:
 type outputs = {
   // ... existing outputs ...
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
-  commandHandlers: Pulumi.Output.t<dict<CommandHandler.outputs>>,
+  stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
 }
 ```
 
 - `dcbEventLog`: `Some(outputs)` if DCB was provided, `None` otherwise
-- `commandHandlers`: Dictionary of command handler outputs, keyed by handler name (from `Spec.name`)
+- `stateChangeSlices`: Dictionary of state change slice outputs, keyed by handler name (from `Spec.name`)
 
 ## Key Features
 
 - **Automatic Naming**: The DCB event log automatically uses the plugin name
-- **Shared State**: All command handlers operate on the same event log
-- **Compile-Time Type Safety**: The `with type dcbEvent = event` constraint ensures event types are consistent across the DcbEventLog and all CommandHandlers — no runtime casts needed
+- **Shared State**: All state change slices operate on the same event log
+- **Compile-Time Type Safety**: The `with type dcbEvent = event` constraint ensures event types are consistent across the DcbEventLog and all StateChangeSlices — no runtime casts needed
 - **Dynamic Querying**: Use DCB tags to query events across different entity types
 - **Flexible Boundaries**: Define consistency boundaries at the plugin level rather than aggregate level

@@ -21,7 +21,7 @@ type t =
   | Heartbeat
   | Cloner
   | DcbEventLog
-  | CommandHandler
+  | StateChangeSlice
 
 let toString = componentType =>
   switch componentType {
@@ -47,7 +47,7 @@ let toString = componentType =>
   | Heartbeat => "Heartbeat"
   | Cloner => "Cloner"
   | DcbEventLog => "DcbEventLog"
-  | CommandHandler => "CommandHandler"
+  | StateChangeSlice => "StateChangeSlice"
   }
 
 let ofString = str =>
@@ -74,7 +74,7 @@ let ofString = str =>
   | "Heartbeat" => Heartbeat->Some
   | "Cloner" => Cloner->Some
   | "DcbEventLog" => DcbEventLog->Some
-  | "CommandHandler" => CommandHandler->Some
+  | "StateChangeSlice" => StateChangeSlice->Some
   | _ => None
   }
 
@@ -102,7 +102,7 @@ let toName = componentType =>
   | Heartbeat => "Heartbeat"
   | Cloner => "Cloner"
   | DcbEventLog => "DcbEventLog"
-  | CommandHandler => "CmdHandler"
+  | StateChangeSlice => "StateChgSlc"
   }
 
 let name = (name, t) => name ++ t->toName

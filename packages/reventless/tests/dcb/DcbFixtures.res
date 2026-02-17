@@ -35,7 +35,7 @@ type objectEvent = {
 // --- Test Command Spec ---
 
 module TestCommandSpec = {
-  let name = "TestCommandHandler"
+  let name = "TestStateChangeSlice"
 
   module DcbEventLogSpec = TestEventLogSpec
 

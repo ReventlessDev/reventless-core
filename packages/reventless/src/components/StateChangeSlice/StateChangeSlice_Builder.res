@@ -1,7 +1,6 @@
-module Make = (
-  Spec: CommandHandler.Spec,
-  CommandTopicChannel: CommandTopic_Adapter.Channel,
-): (CommandHandler.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec) => {
+module Make = (Spec: StateChangeSlice.Spec, CommandTopicChannel: CommandTopic_Adapter.Channel): (
+  StateChangeSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
+) => {
   type dcbEvent = Spec.DcbEventLogSpec.event
   module Spec = Spec
 
@@ -19,13 +18,13 @@ module Make = (
     name,
   ) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
-    let name = name->ComponentType.name(CommandHandler.componentType)
+    let name = name->ComponentType.name(StateChangeSlice.componentType)
 
     let commandTopic =
       dcbEventLog
       ->Component.operations
       ->Pulumi.Output.apply(dcbEventLogOps => {
-        module Callback = CommandHandler_Callback.Make(
+        module Callback = StateChangeSlice_Callback.Make(
           Spec,
           {
             module Spec = Spec
@@ -47,18 +46,18 @@ module Make = (
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
         commandTopic
         ->Component.operations
-        ->Pulumi.Output.apply(({publishJsons}) => {CommandHandler.publishJsons: publishJsons})
+        ->Pulumi.Output.apply(({publishJsons}) => {StateChangeSlice.publishJsons: publishJsons})
       ),
     )
     self->Component.setOutputs({
-      CommandHandler.resources: (dcbEventLog->Component.outputs).resources,
+      StateChangeSlice.resources: (dcbEventLog->Component.outputs).resources,
       commandTopic: commandTopic->Component.wrappedOutputs,
     })
   }
 
-  let make = (~dcbEventLog, ~opts=?): CommandHandler.component =>
+  let make = (~dcbEventLog, ~opts=?): StateChangeSlice.component =>
     Component.make(
-      ~componentType=CommandHandler.componentType->ComponentType.toString,
+      ~componentType=StateChangeSlice.componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~dcbEventLog, ...),
       ~opts,
