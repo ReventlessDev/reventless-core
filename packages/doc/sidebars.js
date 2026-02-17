@@ -25,6 +25,7 @@ const sidebars = {
       items: [
         'component-overview',
         'architecture/aggregate-extension-connection',
+        'architecture/dcb',
       ],
     },
     {
