@@ -161,6 +161,25 @@ graph LR
 
 [Read more about the EventLog component.](./reventless-components/eventlog.md)
 
+### DcbEventLog
+
+The **DcbEventLog** (Dynamic Consistency Boundary Event Log) is the shared event storage component used by DCB state change slices. It provides tag-based querying and optimistic concurrency control for handling commands across multiple slices that share the same event log.
+
+```mermaid
+graph LR
+    StateChangeSlice1[Slice 1]:::statechangeslice -->|read/query| DcbEventLog[(DcbEventLog)]:::dcbeventlog
+    StateChangeSlice2[Slice 2]:::statechangeslice -->|read/query| DcbEventLog
+    DcbEventLog -->|publish events| EventTopic[Event Topic]:::eventtopic
+    StateChangeSlice1 -->|append| DcbEventLog
+    StateChangeSlice2 -->|append| DcbEventLog
+```
+
+- **responsibility**: tag-based event queries for decision model building; optimistic concurrency control; shared event storage for DCB slices
+- **in**: Events from StateChangeSlices (via `append` operation)
+- **out**: Events to EventTopic (automatic); Events to StateChangeSlices (via `read` operation)
+
+[Read more about the DcbEventLog component.](./reventless-components/dcbeventlog.md)
+
 ### CommandTopic
 
 The **CommandTopic** is the message queue component that delivers commands to Aggregates with strict ordering guarantees and reliable delivery. It ensures commands are processed exactly once per aggregate instance, in the order they were sent.

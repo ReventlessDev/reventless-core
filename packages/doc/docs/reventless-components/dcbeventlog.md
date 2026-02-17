@@ -1,0 +1,384 @@
+---
+title: DcbEventLog
+date: 2026-02-17
+draft: false
+---
+
+For a short summary of DcbEventLog, see [Reventless Components Overview.](../component-overview.md#dcbeventlog)
+
+:::info Framework Implementation
+This component follows the Reventless [Component Structure Pattern](../inner-workings/component-structure-pattern.md), using separate files for interface definitions ([`DcbEventLog.res`](../../reventless/src/components/DcbEventLog/DcbEventLog.res)), builder logic ([`DcbEventLog_Builder.res`](../../reventless/src/components/DcbEventLog/DcbEventLog_Builder.res)), operations ([`DcbEventLog_Operations.res`](../../reventless/src/components/DcbEventLog/DcbEventLog_Operations.res)), tag utilities ([`DcbTag.res`](../../reventless/src/components/DcbEventLog/DcbTag.res)), and adapter interface ([`DcbEventLog_Adapter.res`](../../reventless/src/components/DcbEventLog/DcbEventLog_Adapter.res)).
+:::
+
+## Overview
+
+```mermaid
+flowchart LR
+    Plugin[Plugin]:::plugin
+    DcbEventLog[(DcbEventLog)]:::dcbeventlog
+    Storage[DynamoDB]:::aws
+    EventTopic[Event Topic]:::eventtopic
+    StateChangeSlice1[Slice 1]:::statechangeslice
+    StateChangeSlice2[Slice 2]:::statechangeslice
+    
+    StateChangeSlice1 -->|read| DcbEventLog
+    StateChangeSlice2 -->|read| DcbEventLog
+    DcbEventLog -->|write| Storage
+    DcbEventLog -->|publish| EventTopic
+    StateChangeSlice1 -->|append| DcbEventLog
+    StateChangeSlice2 -->|append| DcbEventLog
+    
+    Plugin -->|creates| DcbEventLog
+
+    classDef plugin fill:#fff3e0
+    classDef dcbeventlog fill:#f1f8e9
+    classDef eventtopic fill:#fff8e1
+    classDef statechangeslice fill:#e0f2f1
+    classDef aws fill:#e3f2fd
+```
+
+The **DcbEventLog** (Dynamic Consistency Boundary Event Log) is the shared event storage component used by DCB state change slices. It provides append-only event storage with tag-based querying and optimistic concurrency control.
+
+## Purpose and Responsibilities
+
+- **Responsibility**: Store events durably in append-only fashion; enable tag-based queries for building decision models; publish events to EventTopic for fan-out to subscribers; handle optimistic concurrency conflicts
+- **In**: Events from StateChangeSlices (via `append` operation)
+- **Out**: Events to EventTopic (automatic publishing); events to StateChangeSlices (via `read` operation)
+- **Key Feature**: Supports tag-based querying for efficient decision model building, with automatic index creation from tagged fields
+
+## Relationship with DCB
+
+The DcbEventLog is a core component of the DCB architecture:
+
+```mermaid
+flowchart TB
+    subgraph DCB Architecture
+        Client[Client]
+        SQS[SQS FIFO Queue]
+        Lambda[DCB Lambda]
+        
+        subgraph Slices[State Change Slices]
+            Slice1[CreateItem Slice]
+            Slice2[RenameItem Slice]
+        end
+        
+        DcbEventLog[(DcbEventLog<br/>Shared Event Log)]
+        DynamoDB[(DynamoDB)]
+        EventTopic[(Event Topic)]
+        
+        subgraph Consumers[Event Consumers]
+            EventCollector[Event Collector]
+            ReadModel[Read Model]
+        end
+        
+        Client -->|commands| SQS
+        SQS -->|messages| Lambda
+        Lambda -->|routes| Slice1
+        Lambda -->|routes| Slice2
+        
+        Slice1 -->|"read(~query=itemId)"| DcbEventLog
+        Slice2 -->|"read(~query=itemId)"| DcbEventLog
+        DcbEventLog -->|query| DynamoDB
+        
+        Slice1 -->|"append(events)"| DcbEventLog
+        Slice2 -->|"append(events)"| DcbEventLog
+        DcbEventLog -->|write| DynamoDB
+        
+        DcbEventLog -->|publish| EventTopic
+        EventTopic -->|fan-out| EventCollector
+        EventCollector -->|events| ReadModel
+    end
+```
+
+## Module Types
+
+### `DcbEventLog.Spec`
+
+Defines the event type for the DCB event log:
+
+```rescript
+module type Spec = {
+  @schema
+  type event
+}
+```
+
+The `event` type is a variant type where fields marked with `@s.matches(DcbTag.string)` or `@s.matches(DcbTag.int)` become DCB tags used for querying.
+
+### `DcbEventLog.T`
+
+The component interface:
+
+```rescript
+module type T = {
+  module Spec: Spec
+
+  type component = component<operations<Spec.event>>
+
+  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
+}
+```
+
+## Operations
+
+The DcbEventLog provides two primary operations:
+
+```rescript
+type operations<'event> = {
+  read: read<'event>,
+  append: append<'event>,
+}
+```
+
+### Read Operation
+
+Reads events from the log based on a tag query:
+
+```rescript
+type read<'event> = (
+  ~query: DcbTag.query,
+  ~after: DcbTag.sequencePosition=?,
+) => promise<readResult<'event>>
+
+type readResult<'event> = {
+  events: array<sequencedEvent<'event>>,
+  headPosition?: DcbTag.sequencePosition,
+}
+```
+
+**Parameters:**
+- `query`: Array of query items specifying event types and/or tags to filter by
+- `after`: Optional sequence position to read after (for pagination or replay from specific point)
+
+**Returns:**
+- Array of sequenced events (with position, event, and tags)
+- `headPosition`: The position of the last event (used for optimistic concurrency)
+
+### Append Operation
+
+Appends new events to the log:
+
+```rescript
+type append<'event> = (
+  array<'event>,
+  ~condition: DcbTag.appendCondition=?,
+) => promise<result<DcbTag.sequencePosition, string>>
+```
+
+**Parameters:**
+- `events`: Array of events to append
+- `condition`: Optional optimistic concurrency condition
+
+**Returns:**
+- `Ok(position)` with the new sequence position on success
+- `Error(message)` on failure
+
+## DcbTag System
+
+The DcbTag system enables efficient tag-based querying of events.
+
+### Tag Types
+
+```rescript
+type tag = {key: string, value: string}
+
+type queryItem = {
+  eventTypes?: array<string>,
+  tags?: array<tag>,
+}
+
+type query = array<queryItem>
+
+type sequencePosition = string
+
+type appendCondition = {
+  query: query,
+  after?: sequencePosition,
+}
+```
+
+### Tag Annotation
+
+Fields in event types are marked as DCB tags using special schema annotations:
+
+```rescript
+module MyDcbEventLogSpec = {
+  @schema
+  type event =
+    | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
+    | ItemRenamed({itemId: @s.matches(DcbTag.string) string, newName: string})
+    | CountUpdated({category: @s.matches(DcbTag.string) string, amount: @s.matches(DcbTag.int) int})
+}
+```
+
+The `@s.matches(DcbTag.string)` and `@s.matches(DcbTag.int)` annotations mark fields as queryable tags.
+
+### Available Tag Schemas
+
+```rescript
+// String tag - for textual identifiers
+let string: S.t<string> = S.string->S.Metadata.set(~id=dcbTagId, true)
+
+// Integer tag - for numeric identifiers
+let int: S.t<int> = S.int->S.Metadata.set(~id=dcbTagId, true)
+```
+
+### Tag Extraction Functions
+
+The `DcbTag` module provides functions for working with tags:
+
+```rescript
+// Extract tags from an event instance
+let extractTags: (schema: S.t<'a>, value: 'a) => array<tag>
+
+// Extract all tagged field names from a schema
+let extractTaggedFields: (schema: S.t<'event>) => array<string>
+
+// Extract event type names from event schema
+let extractEventTypes: (schema: S.t<'event>) => array<string>
+
+// Check if a schema field is tagged
+let isTagged: (fieldSchema: S.t<unknown>) => bool
+```
+
+## Index Creation
+
+The DcbEventLog automatically creates DynamoDB indexes based on tagged fields:
+
+```rescript
+// From DcbEventLog_Builder.res
+let indexes: array<string> = {
+  let taggedFields = DcbTag.extractTaggedFields(Spec.eventSchema)
+
+  // Create single-tag indexes: tag_itemId, tag_category, etc.
+  let singleTagIndexes = taggedFields->Array.map(tagKey => `tag_${tagKey}`)
+
+  // Add composite index if there are multiple tagged fields
+  let compositeIndex = if taggedFields->Array.length > 1 {
+    ["tag_composite"]
+  } else {
+    []
+  }
+
+  Array.concat(singleTagIndexes, compositeIndex)
+}
+```
+
+This enables efficient queries by individual tags or combinations of tags.
+
+## Optimistic Concurrency Control
+
+The DcbEventLog supports optimistic concurrency through conditional appends:
+
+```mermaid
+sequenceDiagram
+    participant Slice as StateChangeSlice
+    participant DcbEventLog as DcbEventLog
+    participant DynamoDB as DynamoDB
+    
+    Slice->>DcbEventLog: "read(~query)"
+    activate DcbEventLog
+    DcbEventLog->>DynamoDB: Query events by tags
+    DynamoDB-->>DcbEventLog: events + headPosition
+    deactivate DcbEventLog
+    
+    Note over Slice: headPosition captured
+    
+    Slice->>DcbEventLog: append(events, ~condition={query, after: headPosition})
+    activate DcbEventLog
+    DcbEventLog->>DynamoDB: Conditional write (if no events after headPosition)
+    
+    alt Success (no conflict)
+        DynamoDB-->>DcbEventLog: Ok(position)
+        DcbEventLog-->>Slice: Ok(position)
+    else Conflict detected
+        DynamoDB-->>DcbEventLog: ConditionalCheckFailed
+        DcbEventLog-->>Slice: Error("conditional check failed")
+        Note over Slice: Will retry with fresh read
+    end
+```
+
+The flow:
+1. **Read**: Query events and capture `headPosition`
+2. **Decide**: Process command against accumulated state
+3. **Append with condition**: Include `headPosition` in the append condition
+4. **Conflict detection**: If another process appended events after `headPosition`, the conditional write fails
+5. **Retry**: StateChangeSlice retries with a fresh read (up to 3 times)
+
+## Pulumi Outputs
+
+```rescript
+type outputs = {
+  resources: array<ReventlessSpec.Adapter.resource>,
+  eventTopic: EventTopic.outputs,
+}
+```
+
+**Resources:**
+- DynamoDB table for event storage
+- Global Secondary Indexes (GSIs) for tag queries
+- SNS topic for event publishing
+- IAM roles for DynamoDB and SNS access
+
+## Example Usage
+
+### Defining Event Log Spec
+
+```rescript
+module MyDcbEventLogSpec = {
+  @schema
+  type event =
+    | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
+    | ItemRenamed({itemId: @s.matches(DcbTag.string) string, newName: string})
+    | ItemDeleted({itemId: @s.matches(DcbTag.string) string})
+}
+```
+
+### Querying Events
+
+```rescript
+// Read all ItemCreated and ItemRenamed events for a specific itemId
+let result = await dcbEventLog.read(
+  ~query=[{
+    eventTypes: ["ItemCreated", "ItemRenamed"],
+    tags: [{key: "itemId", value: "item-123"}],
+  }],
+)
+
+// Access events and head position
+let events = result.events
+let headPosition = result.headPosition
+```
+
+### Appending Events
+
+```rescript
+// Simple append (no concurrency control)
+let position = await dcbEventLog.append([
+  MyDcbEventLogSpec.ItemCreated({itemId: "item-123", name: "Test Item"}),
+])
+
+// Conditional append (optimistic concurrency)
+let position = await dcbEventLog.append(
+  [MyDcbEventLogSpec.ItemRenamed({itemId: "item-123", newName: "New Name"})],
+  ~condition={
+    query: [{eventTypes: ["ItemCreated", "ItemRenamed"], tags: [{key: "itemId", value: "item-123"}]}],
+    after: previousHeadPosition,
+  },
+)
+```
+
+## Related Components
+
+- **[StateChangeSlice](./statechangeslice.md)** - Processes commands against the DcbEventLog using a decision model
+- **[CommandTopic](./commandtopic.md)** - Routes commands to StateChangeSlices
+- **[Plugin](./plugin.md)** - Creates and manages DcbEventLog for DCB plugins
+- **[EventCollector](./eventcollector.md)** - Consumes events published by DcbEventLog
+- **[EventTopic](./eventtopic.md)** - Distributes events to subscribers
+- **[ReadModel](./readmodel.md)** - Builds projections from DcbEventLog events
+
+## Architecture Documentation
+
+For deeper understanding of DCB architecture:
+- **[DCB Architecture](../architecture/dcb.md)** - Complete DCB architecture overview
+- **[Event Modeling: StateChangeSlice Usage](../event-modeling/statechangeslice-usage.md)** - How to use StateChangeSlice in practice
