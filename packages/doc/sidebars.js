@@ -16,6 +16,9 @@ const sidebars = {
   // Manual sidebar with ordering from general to specific
   docSidebar: [
     'index',
+    'get-started',
+    'development-process',
+    'rescript-syntax',
     {
       type: 'category',
       label: 'Architecture',
@@ -24,10 +27,6 @@ const sidebars = {
         'architecture/aggregate-extension-connection',
       ],
     },
-    'get-started',
-    'development-process',
-    'rescript-syntax',
-    'unit-testing',
     {
       type: 'category',
       label: 'Components',
@@ -68,6 +67,7 @@ const sidebars = {
         'reventless-common-modules/config',
       ],
     },
+    'unit-testing',
     {
       type: 'category',
       label: 'AWS Adapters',
