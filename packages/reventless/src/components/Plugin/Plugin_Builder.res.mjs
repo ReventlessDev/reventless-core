@@ -42,7 +42,7 @@ function Make(Spec) {
           };
           let DcbEventLog = DcbEventLog_Builder$Reventless.Make(DcbEventLogSpec)(DcbEventLogStorage)(DcbEventTopicPublisher);
           let dcbEventLog = DcbEventLog.make(childName + `-dcb-eventlog`, opts);
-          let handlers = Object.fromEntries(dcbSpec.commandHandlers.map(CommandHandler => {
+          let handlerOutputs = Object.fromEntries(dcbSpec.commandHandlers.map(CommandHandler => {
             let ch = CommandHandler.make(dcbEventLog, opts);
             return [
               CommandHandler.Spec.name,
@@ -51,7 +51,7 @@ function Make(Spec) {
           }));
           match = [
             Component$Reventless.outputs(dcbEventLog),
-            handlers
+            handlerOutputs
           ];
         } else {
           match = [
