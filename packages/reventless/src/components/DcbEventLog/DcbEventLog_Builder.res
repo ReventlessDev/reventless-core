@@ -56,6 +56,7 @@ module Make = (
           Spec,
           {
             module Spec = Spec
+            let name = name
             let storage = storageOps
             let publishJson = eventTopicOps.publishJson
           },

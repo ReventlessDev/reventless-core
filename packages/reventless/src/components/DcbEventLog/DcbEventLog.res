@@ -34,8 +34,6 @@ type operations<'event> = {
 }
 
 module type Spec = {
-  let name: string
-
   @schema
   type event
 }

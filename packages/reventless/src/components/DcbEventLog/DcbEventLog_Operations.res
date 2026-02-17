@@ -1,5 +1,6 @@
 module type Ops = {
   module Spec: DcbEventLog.Spec
+  let name: string
   let storage: DcbEventLog_Adapter.operations
   let publishJson: EventTopic.publishJson
 }
@@ -14,6 +15,7 @@ module Make = (Spec: DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec
+  let name = Ops.name
 
   let encodeEvent = (event: Spec.event): DcbEventLog_Adapter.rawStoredEvent => {
     let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
@@ -42,10 +44,10 @@ module Make = (Spec: DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
     let _ = await events
     ->Array.map(async event => {
       let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
-      let meta = Message.generateMeta(~service=Spec.name)
-      try await Ops.publishJson(Spec.name, meta, json) catch {
+      let meta = Message.generateMeta(~service=name)
+      try await Ops.publishJson(name, meta, json) catch {
       | JsExn(err) =>
-        Console.log2(`DcbEventLog(${Spec.name}): EventTopic.publish Error:`, err)
+        Console.log2(`DcbEventLog(${name}): EventTopic.publish Error:`, err)
       }
     })
     ->Promise.all

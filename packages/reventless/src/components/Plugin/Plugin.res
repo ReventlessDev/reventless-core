@@ -25,9 +25,6 @@ module type DcbSpec = {
   @schema
   type event
 
-  @schema
-  type command
-
   let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
 }
 

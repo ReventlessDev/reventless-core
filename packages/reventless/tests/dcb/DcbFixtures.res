@@ -3,8 +3,6 @@ S.enableJson()
 // --- Test Event Log Spec (events with DCB tags) ---
 
 module TestEventLogSpec = {
-  let name = "TestDcbEventLog"
-
   @schema
   type event =
     | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
@@ -16,8 +14,6 @@ module TestEventLogSpec = {
 // --- Untagged Event Spec (for negative tests) ---
 
 module UntaggedEventSpec = {
-  let name = "UntaggedEventLog"
-
   @schema
   type event =
     | PlainEvent({name: string, value: int})
@@ -77,7 +73,6 @@ module TestCommandSpec = {
     | NoOp => Ok([])
     }
 
-  let queryEventTypes = ["ItemCreated", "ItemRenamed"]
 }
 
 // --- Mock Storage ---

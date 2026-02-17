@@ -2,6 +2,7 @@
 
 import * as Component$Reventless from "../../components/Component.res.mjs";
 import * as Heartbeat$Reventless from "../../components/Heartbeat/Heartbeat.res.mjs";
+import * as CommandTopic$Reventless from "../../components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 import * as EventCollector$Reventless from "../../components/EventCollector/EventCollector.res.mjs";
 
@@ -33,11 +34,20 @@ function Make(RuntimeEnvironment) {
         parent: resource
       }));
     };
+    let forDcbCommandTopic = (handler, connect, memorySizeOpt, timeoutOpt, dcbCommandTopic) => {
+      let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
+      let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
+      let resource = Component$Reventless.toPulumiResource(dcbCommandTopic);
+      return connect(RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(handler => RuntimeEnvironment.asEventHandler(handler)), memorySize, timeout, {
+        parent: resource
+      }));
+    };
     let finish = () => {};
     return {
       EventCollectorChannel: EventCollectorChannel,
       forPluginEventCollector: forPluginEventCollector,
       forPluginHeartbeat: forPluginHeartbeat,
+      forDcbCommandTopic: forDcbCommandTopic,
       finish: finish
     };
   };

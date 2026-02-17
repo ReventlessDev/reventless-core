@@ -27,7 +27,6 @@ let eventSchema = S.union([
 ]);
 
 let TestEventLogSpec = {
-  name: "TestDcbEventLog",
   eventSchema: eventSchema
 };
 
@@ -41,7 +40,6 @@ let eventSchema$1 = S.union([
 ]);
 
 let UntaggedEventSpec = {
-  name: "UntaggedEventLog",
   eventSchema: eventSchema$1
 };
 
@@ -128,11 +126,6 @@ function decide(model, command) {
   }
 }
 
-let queryEventTypes = [
-  "ItemCreated",
-  "ItemRenamed"
-];
-
 let TestCommandSpec_initialDecisionModel = {
   exists: false,
   currentName: undefined
@@ -145,8 +138,7 @@ let TestCommandSpec = {
   errorSchema: errorSchema,
   initialDecisionModel: TestCommandSpec_initialDecisionModel,
   reduce: reduce,
-  decide: decide,
-  queryEventTypes: queryEventTypes
+  decide: decide
 };
 
 function posToInt(pos) {

@@ -1,65 +1,66 @@
-module Make = (Spec: StateChangeSlice.Spec, CommandTopicChannel: CommandTopic_Adapter.Channel): (
+module Make = (Spec: StateChangeSlice.Spec): (
   StateChangeSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
 ) => {
   type dcbEvent = Spec.DcbEventLogSpec.event
   module Spec = Spec
+  module Callback = StateChangeSlice_Callback.Make(Spec)
 
-  module CommandTopicSpec = {
-    module Id = ReventlessSpec.Id.String
-    @schema
-    type command = Spec.command
+  let makeJsonHandler = (dcbEventLogOps: DcbEventLog.operations<dcbEvent>) => {
+    let handler: CommandTopic.jsonCommandsHandler = async items => {
+      let decodedItems = items->Array.filterMap(({
+        CommandTopic.reference: reference,
+        command: json,
+      }) => {
+        switch json->Message.decodeCommand'(ReventlessSpec.Id.String.schema, Spec.commandSchema) {
+        | command' => Some({CommandTopic.reference, command: command'})
+        | exception err =>
+          let commandStr = json->JSON.stringify
+          Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
+          None
+        }
+      })
+      await Callback.handleCommands(dcbEventLogOps, decodedItems)
+    }
+    handler
   }
-
-  module SpecificCommandTopic = CommandTopic_Builder.Make(CommandTopicSpec, CommandTopicChannel)
 
   let construct = (
     ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
+    ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     self,
-    name,
+    _name,
   ) => {
-    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
-    let name = name->ComponentType.name(StateChangeSlice.componentType)
+    let commandSchema: S.t<unknown> = Spec.commandSchema->S.castToUnknown
+    let commandTypeNames = CommandTopic.extractTypeNamesFromSchema(commandSchema)
 
-    let commandTopic =
+    let _ =
       dcbEventLog
       ->Component.operations
       ->Pulumi.Output.apply(dcbEventLogOps => {
-        module Callback = StateChangeSlice_Callback.Make(
-          Spec,
-          {
-            module Spec = Spec
-            let dcbEventLog = dcbEventLogOps
-          },
+        let jsonHandler = makeJsonHandler(dcbEventLogOps)
+        CommandTopic.registerHandler(
+          ~schema=commandSchema,
+          ~handler=jsonHandler,
+          ~typeNames=commandTypeNames,
         )
-        let commandTopic = SpecificCommandTopic.make(
-          ~name,
-          ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
-        )
-        let _handler = SpecificCommandTopic.makeHandler(
-          ~commandTopic,
-          ~commandsHandler=Callback.handleCommands,
-        )
-        commandTopic
       })
 
     self->Component.setOperations(
-      commandTopic->Pulumi.Output.flatMap(commandTopic =>
-        commandTopic
-        ->Component.operations
-        ->Pulumi.Output.apply(({publishJsons}) => {StateChangeSlice.publishJsons: publishJsons})
-      ),
+      publishJsons->Pulumi.Output.apply(publishJsons => {
+        let ops: StateChangeSlice.operations = {publishJsons: publishJsons}
+        ops
+      }),
     )
     self->Component.setOutputs({
       StateChangeSlice.resources: (dcbEventLog->Component.outputs).resources,
-      commandTopic: commandTopic->Component.wrappedOutputs,
     })
   }
 
-  let make = (~dcbEventLog, ~opts=?): StateChangeSlice.component =>
+  let make = (~dcbEventLog, ~publishJsons, ~opts=?): StateChangeSlice.component =>
     Component.make(
       ~componentType=StateChangeSlice.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~dcbEventLog, ...),
+      ~construct=construct(~dcbEventLog, ~publishJsons, ...),
       ~opts,
     )
 }

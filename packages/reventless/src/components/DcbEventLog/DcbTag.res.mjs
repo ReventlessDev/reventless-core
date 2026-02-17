@@ -79,6 +79,39 @@ function extractTags(schema, value) {
   return extractTagsFromJson(schema, json);
 }
 
+function extractEventTypes(schema) {
+  switch (schema.type) {
+    case "object" :
+      return Stdlib_Option.getOr(Stdlib_Option.flatMap(schema.items.find(item => item.location === "TAG"), item => {
+        let match = item.schema;
+        if (match.type !== "string") {
+          return;
+        }
+        let $$const = match.const;
+        if ($$const !== undefined) {
+          return [$$const];
+        }
+      }), []);
+    case "union" :
+      return Stdlib_Array.filterMap(schema.anyOf, variantSchema => {
+        if (variantSchema.type === "object") {
+          return Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+            let match = item.schema;
+            if (match.type !== "string") {
+              return;
+            }
+            let $$const = match.const;
+            if ($$const !== undefined) {
+              return $$const;
+            }
+          });
+        }
+      });
+    default:
+      return [];
+  }
+}
+
 function extractTaggedFields(schema) {
   switch (schema.type) {
     case "object" :
@@ -118,6 +151,7 @@ export {
   extractTagsFromProperties,
   extractTagsFromJson,
   extractTags,
+  extractEventTypes,
   extractTaggedFields,
 }
 /* dcbTagId Not a pure module */

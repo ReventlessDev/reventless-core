@@ -58,6 +58,24 @@ module Make = (
     connect(~runtime)
   }
 
+  let forDcbCommandTopic = (
+    ~handler,
+    ~connect,
+    ~memorySize=1024,
+    ~timeout=30,
+    dcbCommandTopic,
+  ) => {
+    let resource = dcbCommandTopic->Component.toPulumiResource
+    let runtime = RuntimeEnvironment.make(
+      ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
+      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
+      ~memorySize,
+      ~timeout,
+      ~opts={Pulumi.ComponentResource.parent: resource},
+    )
+    connect(~runtime)
+  }
+
   // let forDeadLetterQueue = (~handler, ~memorySize=1024, ~timeout=30, plugin) => {
   // }
 

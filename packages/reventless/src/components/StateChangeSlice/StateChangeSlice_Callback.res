@@ -1,35 +1,32 @@
-module type Ops = {
-  module Spec: StateChangeSlice.Spec
-  let dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event>
-}
-
 module type T = {
   module Spec: StateChangeSlice.Spec
-  let handleCommands: CommandTopic.commandsHandler<
-    Message.command'<ReventlessSpec.Id.String.t, Spec.command>,
-  >
+  let handleCommands: (
+    DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
+    array<CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, Spec.command>>>,
+  ) => promise<array<result<string, string>>>
 }
 
-module Make = (Spec: StateChangeSlice.Spec, Ops: Ops with module Spec = Spec): (
-  T with module Spec = Spec
-) => {
+module Make = (Spec: StateChangeSlice.Spec): (T with module Spec = Spec) => {
   module Spec = Spec
+
+  let queryEventTypes = DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)
 
   let maxRetries = 3
 
   let handleSingleCommand = async (
+    dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
     command': Message.command'<ReventlessSpec.Id.String.t, Spec.command>,
   ) => {
     let commandTags = DcbTag.extractTags(Spec.commandSchema, command'.command)
     let query: DcbTag.query = [
       {
-        eventTypes: Spec.queryEventTypes,
+        eventTypes: queryEventTypes,
         tags: commandTags,
       },
     ]
 
     let rec attempt = async (~retries) => {
-      let readResult = await Ops.dcbEventLog.read(~query)
+      let readResult = await dcbEventLog.read(~query)
 
       let decisionModel =
         readResult.events
@@ -45,7 +42,7 @@ module Make = (Spec: StateChangeSlice.Spec, Ops: Ops with module Spec = Spec): (
           query,
           after: ?readResult.headPosition,
         }
-        switch await Ops.dcbEventLog.append(newEvents, ~condition) {
+        switch await dcbEventLog.append(newEvents, ~condition) {
         | Ok(_position) =>
           Logger.debug(
             ~loc=__LOC__,
@@ -76,11 +73,11 @@ module Make = (Spec: StateChangeSlice.Spec, Ops: Ops with module Spec = Spec): (
     await attempt(~retries=maxRetries)
   }
 
-  let handleCommands = async topicItems => {
+  let handleCommands = async (dcbEventLog, topicItems) => {
     Logger.debug(~loc=__LOC__, "starting", "StateChangeSlice.handleCommands")
     let results = await topicItems
     ->Array.map(async ({CommandTopic.reference: reference, command}) => {
-      switch await handleSingleCommand(command) {
+      switch await handleSingleCommand(dcbEventLog, command) {
       | Ok(_) => Ok(reference)
       | Error(_) => Error(reference)
       }

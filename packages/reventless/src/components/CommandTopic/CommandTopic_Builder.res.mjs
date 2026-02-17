@@ -9,6 +9,44 @@ import * as CommandTopic_Operations$Reventless from "./CommandTopic_Operations.r
 
 function Make(Spec) {
   return Channel => {
+    let extractTypeNameFromJson = json => {
+      if (typeof json !== "object" || json === null || Array.isArray(json)) {
+        return "";
+      }
+      let match = json["TAG"];
+      if (typeof match === "string") {
+        return match;
+      } else {
+        return "";
+      }
+    };
+    let filteringHandler = async jsonItems => {
+      let allResults = [];
+      let processItem = async item => {
+        let reference = item.reference;
+        let json = item.command;
+        let typeName = extractTypeNameFromJson(json);
+        let handlers = CommandTopic$Reventless.getHandlers(typeName);
+        let handlerPromises = handlers.map(async handlerEntry => {
+          try {
+            let results = await handlerEntry.handler([{
+                command: json,
+                reference: reference
+              }]);
+            allResults.push(...results);
+            return;
+          } catch (exn) {
+            return;
+          }
+        });
+        await Promise.all(handlerPromises);
+      };
+      let itemPromises = jsonItems.map(async item => {
+        await processItem(item);
+      });
+      await Promise.all(itemPromises);
+      return allResults;
+    };
     let construct = (self, name) => {
       let opts_parent = Component$Reventless.toPulumiResource(self);
       let opts = {
@@ -41,6 +79,7 @@ function Make(Spec) {
       let channel = commandTopic.channel;
       channel.connect(name, channel, runtime, resources, opts);
     };
+    let registerHandler = (param, schema, handler, typeNames) => CommandTopic$Reventless.registerHandler(schema, handler, typeNames);
     let makeHandler = (commandTopic, commandsHandler) => {
       let channel = commandTopic.channel;
       let Callback = CommandTopic_Callback$Reventless.Make(Spec)({
@@ -49,11 +88,17 @@ function Make(Spec) {
       });
       return channel.handleChannelEvent(Callback.handleJsonCommands);
     };
+    let makeFilteringHandler = commandTopic => {
+      let channel = commandTopic.channel;
+      return channel.handleChannelEvent(filteringHandler);
+    };
     let make = (name, opts) => Component$Reventless.make(ComponentType$Reventless.toString(CommandTopic$Reventless.componentType), name, construct, opts);
     return {
       Spec: Spec,
       connect: connect,
+      registerHandler: registerHandler,
       makeHandler: makeHandler,
+      makeFilteringHandler: makeFilteringHandler,
       make: make
     };
   };

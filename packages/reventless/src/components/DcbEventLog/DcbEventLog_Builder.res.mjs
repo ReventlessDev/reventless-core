@@ -35,6 +35,7 @@ function Make(Spec) {
         let publishJson = param[1].publishJson;
         let Ops = DcbEventLog_Operations$Reventless.Make(Spec)({
           Spec: Spec,
+          name: name,
           storage: param[0],
           publishJson: publishJson
         });

@@ -80,6 +80,42 @@ let extractTags = (schema: S.t<'a>, value: 'a): array<tag> => {
   extractTagsFromJson(schema->toUnknownSchema, json)
 }
 
+// --- Extract event type names from event schema ---
+// For a variant type like `type event = ItemCreated({...}) | ItemRenamed({...})`,
+// this extracts ["ItemCreated", "ItemRenamed"]
+
+let extractEventTypes = (schema: S.t<'event>): array<string> => {
+  let unknownSchema: S.t<unknown> = schema->Obj.magic
+  switch unknownSchema {
+  | Union({anyOf}) =>
+    anyOf->Array.filterMap(variantSchema =>
+      switch variantSchema {
+      | Object({items}) =>
+        items
+        ->Array.find(item => item.location == "TAG")
+        ->Option.flatMap(item =>
+          switch item.schema {
+          | String({const}) => Some(const)
+          | _ => None
+          }
+        )
+      | _ => None
+      }
+    )
+  | Object({items}) =>
+    items
+    ->Array.find(item => item.location == "TAG")
+    ->Option.flatMap(item =>
+      switch item.schema {
+      | String({const}) => Some([const])
+      | _ => None
+      }
+    )
+    ->Option.getOr([])
+  | _ => []
+  }
+}
+
 // --- Extract tagged field names from event schema ---
 
 let extractTaggedFields = (schema: S.t<'event>): array<string> => {

@@ -14,47 +14,30 @@ let publishJson = mock.mockPublishJson;
 
 let TestDcbOps = {
   Spec: DcbFixtures$Reventless.TestEventLogSpec,
+  name: "TestDcbEventLog",
   storage: storage,
   publishJson: publishJson
 };
 
 let EventLogOps = DcbEventLog_Operations$Reventless.Make(DcbFixtures$Reventless.TestEventLogSpec)(TestDcbOps);
 
-let dcbEventLog_read = EventLogOps.read;
+let testDcbEventLog_read = EventLogOps.read;
 
-let dcbEventLog_append = EventLogOps.append;
+let testDcbEventLog_append = EventLogOps.append;
 
-let dcbEventLog = {
-  read: dcbEventLog_read,
-  append: dcbEventLog_append
-};
-
-let TestCmdOps = {
-  Spec: undefined,
-  dcbEventLog: dcbEventLog
+let testDcbEventLog = {
+  read: testDcbEventLog_read,
+  append: testDcbEventLog_append
 };
 
 let TestHandler = StateChangeSlice_Callback$Reventless.Make({
   name: DcbFixtures$Reventless.TestCommandSpec.name,
   DcbEventLogSpec: DcbFixtures$Reventless.TestEventLogSpec,
-  commandSchema: DcbFixtures$Reventless.TestCommandSpec.commandSchema,
   errorSchema: DcbFixtures$Reventless.TestCommandSpec.errorSchema,
   initialDecisionModel: DcbFixtures$Reventless.TestCommandSpec.initialDecisionModel,
   reduce: DcbFixtures$Reventless.TestCommandSpec.reduce,
   decide: DcbFixtures$Reventless.TestCommandSpec.decide,
-  queryEventTypes: DcbFixtures$Reventless.TestCommandSpec.queryEventTypes
-})({
-  Spec: {
-    name: DcbFixtures$Reventless.TestCommandSpec.name,
-    DcbEventLogSpec: DcbFixtures$Reventless.TestEventLogSpec,
-    commandSchema: DcbFixtures$Reventless.TestCommandSpec.commandSchema,
-    errorSchema: DcbFixtures$Reventless.TestCommandSpec.errorSchema,
-    initialDecisionModel: DcbFixtures$Reventless.TestCommandSpec.initialDecisionModel,
-    reduce: DcbFixtures$Reventless.TestCommandSpec.reduce,
-    decide: DcbFixtures$Reventless.TestCommandSpec.decide,
-    queryEventTypes: DcbFixtures$Reventless.TestCommandSpec.queryEventTypes
-  },
-  dcbEventLog: dcbEventLog
+  commandSchema: DcbFixtures$Reventless.TestCommandSpec.commandSchema
 });
 
 function makeTopicItem(reference, command) {
@@ -73,7 +56,7 @@ beforeEach(() => mock.reset());
 Jest.describe("StateChangeSlice_Callback:", () => {
   Jest.describe("handleCommands - happy path", () => {
     Jest.testPromise("CreateItem on empty log succeeds", undefined, async () => {
-      let results = await TestHandler.handleCommands([makeTopicItem("ref-1", {
+      let results = await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -92,7 +75,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     Jest.testPromise("stored event has correct tags", undefined, async () => {
-      await TestHandler.handleCommands([makeTopicItem("ref-1", {
+      await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -105,7 +88,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
     });
   });
   Jest.describe("handleCommands - decide returns Ok([])", () => Jest.testPromise("NoOp returns Ok without storing events", undefined, async () => {
-    let results = await TestHandler.handleCommands([makeTopicItem("ref-noop", "NoOp")]);
+    let results = await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-noop", "NoOp")]);
     return Jest.Expect.toEqual(Jest.Expect.expect([
       results,
       mock.getEvents().length
@@ -118,12 +101,12 @@ Jest.describe("StateChangeSlice_Callback:", () => {
     ]);
   }));
   Jest.describe("handleCommands - decide returns Error", () => Jest.testPromise("CreateItem when item exists returns Error", undefined, async () => {
-    await TestHandler.handleCommands([makeTopicItem("ref-1", {
+    await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
         name: "Test"
       })]);
-    let results = await TestHandler.handleCommands([makeTopicItem("ref-2", {
+    let results = await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-2", {
         TAG: "CreateItem",
         itemId: "item-1",
         name: "Duplicate"
@@ -136,7 +119,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
   Jest.describe("handleCommands - retry on conflict", () => {
     Jest.testPromise("retries and succeeds after 1 append failure", undefined, async () => {
       mock.failNextAppends.contents = 1;
-      let results = await TestHandler.handleCommands([makeTopicItem("ref-1", {
+      let results = await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -154,7 +137,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
     });
     Jest.testPromise("returns Error after retries exhausted (4 failures)", undefined, async () => {
       mock.failNextAppends.contents = 4;
-      let results = await TestHandler.handleCommands([makeTopicItem("ref-1", {
+      let results = await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -172,12 +155,12 @@ Jest.describe("StateChangeSlice_Callback:", () => {
     });
   });
   Jest.describe("handleCommands - conditional append", () => Jest.testPromise("RenameItem after CreateItem uses headPosition in condition", undefined, async () => {
-    await TestHandler.handleCommands([makeTopicItem("ref-1", {
+    await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
         name: "Test"
       })]);
-    let results = await TestHandler.handleCommands([makeTopicItem("ref-2", {
+    let results = await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-2", {
         TAG: "RenameItem",
         itemId: "item-1",
         newName: "Updated"
@@ -195,7 +178,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
   }));
   Jest.describe("handleCommands - batch", () => {
     Jest.testPromise("multiple successful commands", undefined, async () => {
-      let results = await TestHandler.handleCommands([
+      let results = await TestHandler.handleCommands(testDcbEventLog, [
         makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
@@ -219,12 +202,12 @@ Jest.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     Jest.testPromise("mixed success and failure", undefined, async () => {
-      await TestHandler.handleCommands([makeTopicItem("ref-0", {
+      await TestHandler.handleCommands(testDcbEventLog, [makeTopicItem("ref-0", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Existing"
         })]);
-      let results = await TestHandler.handleCommands([
+      let results = await TestHandler.handleCommands(testDcbEventLog, [
         makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-2",
@@ -248,7 +231,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     Jest.testPromise("empty batch returns empty array", undefined, async () => {
-      let results = await TestHandler.handleCommands([]);
+      let results = await TestHandler.handleCommands(testDcbEventLog, []);
       return Jest.Expect.toEqual(Jest.Expect.expect(results), []);
     });
   });
@@ -258,7 +241,7 @@ export {
   mock,
   TestDcbOps,
   EventLogOps,
-  TestCmdOps,
+  testDcbEventLog,
   TestHandler,
   makeTopicItem,
 }

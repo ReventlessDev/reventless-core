@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as CommandTopic_Helpers$Reventless from "./CommandTopic_Helpers.res.mjs";
 
 let NotPublishedToChannel = /* @__PURE__ */Primitive_exceptions.create("CommandTopic-Reventless.NotPublishedToChannel");
 
@@ -22,9 +23,21 @@ function filter(allCommandTopics, names) {
 
 let componentType = "CommandTopic";
 
+let extractTypeNamesFromSchema = CommandTopic_Helpers$Reventless.extractTypeNamesFromSchema;
+
+let globalRegistry = CommandTopic_Helpers$Reventless.globalRegistry;
+
+let registerHandler = CommandTopic_Helpers$Reventless.registerHandler;
+
+let getHandlers = CommandTopic_Helpers$Reventless.getHandlers;
+
 export {
   componentType,
   NotPublishedToChannel,
+  extractTypeNamesFromSchema,
+  globalRegistry,
+  registerHandler,
+  getHandlers,
   toUnwrappedOutputs,
   filter,
 }

@@ -9,6 +9,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 
 function Make(Spec) {
   return Ops => {
+    let name = Ops.name;
     let encodeEvent = event => {
       let json = S.reverseConvertToJsonOrThrow(event, Spec.eventSchema);
       let match = Message$Reventless.splitMessage(json);
@@ -31,13 +32,13 @@ function Make(Spec) {
     let publishToEventTopic = async events => {
       await Promise.all(events.map(async event => {
         let json = S.reverseConvertToJsonOrThrow(event, Spec.eventSchema);
-        let meta = Message$Reventless.generateMeta(Spec.name, undefined, undefined);
+        let meta = Message$Reventless.generateMeta(name, undefined, undefined);
         try {
-          return await Ops.publishJson(Spec.name, meta, json);
+          return await Ops.publishJson(name, meta, json);
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
           if (err.RE_EXN_ID === "JsExn") {
-            console.log(`DcbEventLog(` + Spec.name + `): EventTopic.publish Error:`, err._1);
+            console.log(`DcbEventLog(` + name + `): EventTopic.publish Error:`, err._1);
             return;
           }
           throw err;

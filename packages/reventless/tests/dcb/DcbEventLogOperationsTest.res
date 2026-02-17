@@ -5,6 +5,7 @@ let mock = DcbFixtures.makeMockStorage()
 
 module TestOps: DcbEventLog_Operations.Ops with module Spec = DcbFixtures.TestEventLogSpec = {
   module Spec = DcbFixtures.TestEventLogSpec
+  let name = "TestDcbEventLog"
   let storage = mock.operations
   let publishJson = mock.mockPublishJson
 }

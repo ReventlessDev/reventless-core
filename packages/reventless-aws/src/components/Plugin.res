@@ -15,4 +15,5 @@ include Reventless.Plugin_Builder.Make(
   Reventless.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment, EventCollectorChannel),
   DcbEventLogStorage.DynamoDb,
   EventTopicPublisher.DynamoDbStream,
+  CommandTopicChannel.SQS_FIFO,
 )

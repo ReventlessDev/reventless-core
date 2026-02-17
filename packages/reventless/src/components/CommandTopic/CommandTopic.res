@@ -9,15 +9,11 @@ type component<'operations> = Component.t<t, outputs, 'operations>
 
 exception NotPublishedToChannel(exn)
 
-type topicItem<'command> = {
-  command: 'command,
-  reference: string,
-}
+include CommandTopic_Helpers
 
 type publish<'id, 'command> = Message.command'<'id, 'command> => promise<unit>
 type publishJsons = array<Message.commandJson> => promise<unit>
 
-type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<string, string>>>
 type commandsHandler<'command> = array<topicItem<'command>> => promise<
   array<result<string, string>>,
 >
@@ -49,9 +45,22 @@ module type T = {
     component,
   ) => unit
 
+  let registerHandler: (
+    ~commandTopic: component,
+    ~schema: S.t<unknown>,
+    ~handler: jsonCommandsHandler,
+    ~typeNames: array<string>,
+  ) => unit
+
   let makeHandler: (
     ~commandTopic: component,
     ~commandsHandler: commandsHandler,
+  ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
+
+  // Returns the filtering handler output for runtime connection
+  // Registers the handler with the channel's event routing
+  let makeFilteringHandler: (
+    component,
   ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component

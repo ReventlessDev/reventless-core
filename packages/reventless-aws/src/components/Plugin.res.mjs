@@ -9,6 +9,7 @@ import * as PluginRuntime_Builder_Micro$Reventless from "@reventlessdev/reventle
 import * as EventCollectorChannel_SQS$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "../adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
+import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
 import * as CommandTopicRemoteChannel_SQS$ReventlessAws from "../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.mjs";
 import * as HeartbeatRunner_CloudWatchEvents$ReventlessAws from "../adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
@@ -35,7 +36,9 @@ let include = Plugin_Builder$Reventless.Make({
 })({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
-}))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws);
+}))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+  make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+});
 
 let EventCollectorChannel;
 

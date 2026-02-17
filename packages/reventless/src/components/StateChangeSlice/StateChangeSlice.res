@@ -3,7 +3,6 @@ let componentType = ComponentType.StateChangeSlice
 type t
 type outputs = {
   resources: array<ReventlessSpec.Adapter.resource>,
-  commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
 }
 type operations = {publishJsons: CommandTopic.publishJsons}
 type component = Component.t<t, outputs, operations>
@@ -25,7 +24,8 @@ module type Spec = {
   let reduce: (decisionModel, DcbEventLogSpec.event) => decisionModel
   let decide: (decisionModel, command) => result<array<DcbEventLogSpec.event>, error>
 
-  let queryEventTypes: array<string>
+  // Schema for the command type - used for schema-based filtering
+  let commandSchema: S.t<command>
 }
 
 module type T = {
@@ -34,6 +34,7 @@ module type T = {
 
   let make: (
     ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
+    ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

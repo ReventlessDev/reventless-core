@@ -19,6 +19,7 @@ module Make = (
     and type runtimeParts = RuntimeEnvironment.parts,
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
+  DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
 ): Plugin.T => {
   let construct = (
     ~version: string,
@@ -38,10 +39,10 @@ module Make = (
     let childName = name->ComponentType.name(Plugin.componentType)
 
     // Create DcbEventLog and StateChangeSlices if DcbSpec provided
-    let (dcbEventLogOutputs, stateChangeSlicesOutputs) = switch dcbSpec {
+    // Also captures handler and connect function for runtime setup
+    let (dcbEventLogOutputs, stateChangeSlicesOutputs, dcbRuntimeOpt) = switch dcbSpec {
     | Some(module(DcbSpec)) => {
         module DcbEventLogSpec = {
-          let name = name
           @schema
           type event = DcbSpec.event
         }
@@ -51,21 +52,57 @@ module Make = (
           DcbEventLogStorage,
           DcbEventTopicPublisher,
         )
-        let dcbEventLog = DcbEventLog.make(~name=`${childName}-dcb-eventlog`, ~opts)
+        let dcbEventLog = DcbEventLog.make(~name=name, ~opts)
+
+        // Create shared CommandTopic for all StateChangeSlices
+        module DcbCommandTopicSpec = {
+          module Id = ReventlessSpec.Id.String
+          // Accept any command - filtering happens via schema-based registration
+          @schema
+          type command = JSON.t
+        }
+        module DcbCommandTopic = CommandTopic_Builder.Make(
+          DcbCommandTopicSpec,
+          DcbCommandTopicChannel,
+        )
+        let dcbCommandTopic = DcbCommandTopic.make(
+          ~name=`${childName}-dcb-command-topic`,
+          ~opts,
+        )
+
+        let publishJsons =
+          dcbCommandTopic
+          ->Component.operations
+          ->Pulumi.Output.apply(ops => ops.publishJsons)
 
         let handlerOutputs =
           DcbSpec.stateChangeSlices
           ->Array.map((
             module(StateChangeSlice: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
           ) => {
-            let ch = StateChangeSlice.make(~dcbEventLog, ~opts)
+            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~opts)
             (StateChangeSlice.Spec.name, ch->Component.outputs)
           })
           ->Dict.fromArray
 
-        (Some(dcbEventLog->Component.outputs), handlerOutputs)
+        // Filtering handler for the shared DCB command topic Lambda
+        let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
+        // Resources the Lambda needs access to (DcbEventLog resources from all slices)
+        let dcbResources =
+          handlerOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources)
+        let dcbConnectFn = (~runtime) =>
+          DcbCommandTopic.connect(~runtime, ~resources=dcbResources, dcbCommandTopic)
+
+        // Capture the forDcbCommandTopic call in a closure while DcbCommandTopic is in scope
+        let dcbRuntimeSetup = () =>
+          dcbCommandTopic->PluginRuntimeBuilder.forDcbCommandTopic(
+            ~handler=dcbHandler,
+            ~connect=dcbConnectFn,
+          )
+
+        (Some(dcbEventLog->Component.outputs), handlerOutputs, Some(dcbRuntimeSetup))
       }
-    | None => (None, Dict.make())
+    | None => (None, Dict.make(), None)
     }
 
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(opts)
@@ -250,6 +287,9 @@ module Make = (
             ...
           ),
         )
+
+        // Connect DCB command topic to its Lambda runtime (if DCB is configured)
+        dcbRuntimeOpt->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
 
         {
           id,

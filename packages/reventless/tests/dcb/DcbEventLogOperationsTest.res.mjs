@@ -14,6 +14,7 @@ let publishJson = mock.mockPublishJson;
 
 let TestOps = {
   Spec: DcbFixtures$Reventless.TestEventLogSpec,
+  name: "TestDcbEventLog",
   storage: storage,
   publishJson: publishJson
 };

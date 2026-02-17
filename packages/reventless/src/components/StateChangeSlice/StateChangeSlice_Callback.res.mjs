@@ -6,82 +6,81 @@ import * as DcbTag$Reventless from "../DcbEventLog/DcbTag.res.mjs";
 import * as Logger$Reventless from "../../util/Logger.res.mjs";
 
 function Make(Spec) {
-  return Ops => {
-    let handleSingleCommand = async command$p => {
-      let commandTags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
-      let query = [{
-          eventTypes: Spec.queryEventTypes,
-          tags: commandTags
-        }];
-      let attempt = async retries => {
-        let readResult = await Ops.dcbEventLog.read(query, undefined);
-        let decisionModel = Stdlib_Array.reduce(readResult.events.map(se => se.event), Spec.initialDecisionModel, Spec.reduce);
-        let newEvents = Spec.decide(decisionModel, command$p.command);
-        if (newEvents.TAG === "Ok") {
-          let newEvents$1 = newEvents._0;
-          if (newEvents$1.length === 0) {
-            Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 41, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, "no events generated");
-            return {
-              TAG: "Ok",
-              _0: "ok"
-            };
-          }
-          let condition_after = readResult.headPosition;
-          let condition = {
-            query: query,
-            after: condition_after
-          };
-          let _position = await Ops.dcbEventLog.append(newEvents$1, condition);
-          if (_position.TAG === "Ok") {
-            Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 51, characters 17-24", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, newEvents$1.length.toString() + ` event(s) appended`);
-            return {
-              TAG: "Ok",
-              _0: "ok"
-            };
-          }
-          let err = _position._0;
-          if (retries > 0) {
-            Logger$Reventless.info("File \"StateChangeSlice_Callback.res\", line 58, characters 29-36", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retrying`, err);
-            return await attempt(retries - 1 | 0);
-          } else {
-            Logger$Reventless.error("File \"StateChangeSlice_Callback.res\", line 62, characters 19-26", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`, err);
-            return {
-              TAG: "Error",
-              _0: "conflict: retries exhausted"
-            };
-          }
-        }
-        let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
-        Logger$Reventless.error("File \"StateChangeSlice_Callback.res\", line 71, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `): decide error`, errorJson);
-        return {
-          TAG: "Error",
-          _0: errorJson
-        };
-      };
-      return await attempt(3);
-    };
-    let handleCommands = async topicItems => {
-      Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 80, characters 22-29", undefined, undefined, "starting", "StateChangeSlice.handleCommands");
-      return await Promise.all(topicItems.map(async param => {
-        let reference = param.reference;
-        let match = await handleSingleCommand(param.command);
-        if (match.TAG === "Ok") {
+  let queryEventTypes = DcbTag$Reventless.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
+  let handleSingleCommand = async (dcbEventLog, command$p) => {
+    let commandTags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
+    let query = [{
+        eventTypes: queryEventTypes,
+        tags: commandTags
+      }];
+    let attempt = async retries => {
+      let readResult = await dcbEventLog.read(query, undefined);
+      let decisionModel = Stdlib_Array.reduce(readResult.events.map(se => se.event), Spec.initialDecisionModel, Spec.reduce);
+      let newEvents = Spec.decide(decisionModel, command$p.command);
+      if (newEvents.TAG === "Ok") {
+        let newEvents$1 = newEvents._0;
+        if (newEvents$1.length === 0) {
+          Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 38, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, "no events generated");
           return {
             TAG: "Ok",
-            _0: reference
-          };
-        } else {
-          return {
-            TAG: "Error",
-            _0: reference
+            _0: "ok"
           };
         }
-      }));
+        let condition_after = readResult.headPosition;
+        let condition = {
+          query: query,
+          after: condition_after
+        };
+        let _position = await dcbEventLog.append(newEvents$1, condition);
+        if (_position.TAG === "Ok") {
+          Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 48, characters 17-24", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, newEvents$1.length.toString() + ` event(s) appended`);
+          return {
+            TAG: "Ok",
+            _0: "ok"
+          };
+        }
+        let err = _position._0;
+        if (retries > 0) {
+          Logger$Reventless.info("File \"StateChangeSlice_Callback.res\", line 55, characters 29-36", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retrying`, err);
+          return await attempt(retries - 1 | 0);
+        } else {
+          Logger$Reventless.error("File \"StateChangeSlice_Callback.res\", line 59, characters 19-26", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`, err);
+          return {
+            TAG: "Error",
+            _0: "conflict: retries exhausted"
+          };
+        }
+      }
+      let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
+      Logger$Reventless.error("File \"StateChangeSlice_Callback.res\", line 68, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `): decide error`, errorJson);
+      return {
+        TAG: "Error",
+        _0: errorJson
+      };
     };
-    return {
-      Spec: Spec,
-      handleCommands: handleCommands
-    };
+    return await attempt(3);
+  };
+  let handleCommands = async (dcbEventLog, topicItems) => {
+    Logger$Reventless.debug("File \"StateChangeSlice_Callback.res\", line 77, characters 22-29", undefined, undefined, "starting", "StateChangeSlice.handleCommands");
+    return await Promise.all(topicItems.map(async param => {
+      let reference = param.reference;
+      let match = await handleSingleCommand(dcbEventLog, param.command);
+      if (match.TAG === "Ok") {
+        return {
+          TAG: "Ok",
+          _0: reference
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: reference
+        };
+      }
+    }));
+  };
+  return {
+    Spec: Spec,
+    handleCommands: handleCommands
   };
 }
 
