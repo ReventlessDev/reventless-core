@@ -1,23 +1,25 @@
 module type Ops = {
   module Spec: CommandHandler.Spec
-  module DcbEventLog: DcbEventLog.T with module Spec = Spec.DcbEventLog
-  let dcbEventLog: DcbEventLog.operations
+  let dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event>
 }
 
 module type T = {
   module Spec: CommandHandler.Spec
-  let handleCommands: CommandTopic.commandsHandler<Message.command'<ReventlessSpec.Id.String.t, Spec.command>>
+  let handleCommands: CommandTopic.commandsHandler<
+    Message.command'<ReventlessSpec.Id.String.t, Spec.command>,
+  >
 }
 
-module Make = (
-  Spec: CommandHandler.Spec,
-  Ops: Ops with module Spec = Spec,
-): (T with module Spec = Spec) => {
+module Make = (Spec: CommandHandler.Spec, Ops: Ops with module Spec = Spec): (
+  T with module Spec = Spec
+) => {
   module Spec = Spec
 
   let maxRetries = 3
 
-  let handleSingleCommand = async (command': Message.command'<ReventlessSpec.Id.String.t, Spec.command>) => {
+  let handleSingleCommand = async (
+    command': Message.command'<ReventlessSpec.Id.String.t, Spec.command>,
+  ) => {
     let commandTags = DcbTag.extractTags(Spec.commandSchema, command'.command)
     let query: DcbTag.query = [
       {
@@ -36,11 +38,7 @@ module Make = (
 
       switch Spec.decide(decisionModel, command'.command) {
       | Ok(newEvents) if newEvents->Array.length == 0 =>
-        Logger.debug(
-          ~loc=__LOC__,
-          `CommandHandler(${Spec.name})`,
-          "no events generated",
-        )
+        Logger.debug(~loc=__LOC__, `CommandHandler(${Spec.name})`, "no events generated")
         Ok("ok")
       | Ok(newEvents) =>
         let condition: DcbTag.appendCondition = {
@@ -57,11 +55,7 @@ module Make = (
           Ok("ok")
         | Error(err) =>
           if retries > 0 {
-            Logger.info(
-              ~loc=__LOC__,
-              `CommandHandler(${Spec.name}): conflict, retrying`,
-              err,
-            )
+            Logger.info(~loc=__LOC__, `CommandHandler(${Spec.name}): conflict, retrying`, err)
             await attempt(~retries=retries - 1)
           } else {
             Logger.error(
@@ -74,11 +68,7 @@ module Make = (
         }
       | Error(error) =>
         let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)->JSON.stringify
-        Logger.error(
-          ~loc=__LOC__,
-          `CommandHandler(${Spec.name}): decide error`,
-          errorJson,
-        )
+        Logger.error(~loc=__LOC__, `CommandHandler(${Spec.name}): decide error`, errorJson)
         Error(errorJson)
       }
     }

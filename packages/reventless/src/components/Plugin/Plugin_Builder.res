@@ -17,6 +17,8 @@ module Make = (
   PluginRuntimeBuilder: PluginRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
+  DcbEventLogStorage: DcbEventLog_Adapter.Storage,
+  DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
 ): Plugin.T => {
   let construct = (
     ~version: string,
@@ -27,11 +29,44 @@ module Make = (
     ~readModels: array<module(ReadModel.T)>,
     ~tasks: array<module(Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
+    ~dcbSpec: option<module(Plugin.DcbSpec)>,
     self,
     name,
   ) => {
     let id = Plugin.makeId(name, version)
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let childName = name->ComponentType.name(Plugin.componentType)
+
+    // Create DcbEventLog and CommandHandlers if DcbSpec provided
+    let (dcbEventLogOutputs, commandHandlersOutputs) = switch dcbSpec {
+    | Some(module(DcbSpec)) => {
+        module DcbEventLogSpec = {
+          let name = name
+          @schema
+          type event = DcbSpec.event
+        }
+
+        module DcbEventLog = DcbEventLog_Builder.Make(
+          DcbEventLogSpec,
+          DcbEventLogStorage,
+          DcbEventTopicPublisher,
+        )
+        let dcbEventLog = DcbEventLog.make(~name=`${childName}-dcb-eventlog`, ~opts)
+
+        let handlerOutputs =
+          DcbSpec.commandHandlers
+          ->Array.map((
+            module(CommandHandler: CommandHandler.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            let ch = CommandHandler.make(~dcbEventLog, ~opts)
+            (CommandHandler.Spec.name, ch->Component.outputs)
+          })
+          ->Dict.fromArray
+
+        (Some(dcbEventLog->Component.outputs), handlerOutputs)
+      }
+    | None => (None, Dict.make())
+    }
 
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
@@ -224,10 +259,12 @@ module Make = (
           extensionPoints: extensionPointsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           extensions: extensionsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           aggregates: aggregatesOutputs,
+          commandHandlers: commandHandlersOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
           heartbeat: heartbeat->Component.outputs,
+          dcbEventLog: dcbEventLogOutputs,
         }
       })
     }
@@ -240,10 +277,12 @@ module Make = (
       extensionPoints: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
       extensions: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
       aggregates: pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
+      commandHandlers: pureOutputs->Pulumi.Output.apply(outputs => outputs.commandHandlers),
       readModels: pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
       tasks: pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
       resolvers: pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
       heartbeat: pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
+      dcbEventLog: pureOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
     })
   }
 
@@ -251,12 +290,13 @@ module Make = (
     ~name,
     ~version,
     ~heartbeatInterval,
-    ~extensionPoints,
-    ~extensions,
-    ~aggregates,
-    ~readModels,
-    ~tasks,
+    ~extensionPoints=[],
+    ~extensions=[],
+    ~aggregates=[],
+    ~readModels=[],
+    ~tasks=[],
     ~scheduler,
+    ~dcbSpec=?,
     ~opts=?,
   ) =>
     Component.make(
@@ -271,6 +311,7 @@ module Make = (
         ~readModels,
         ~tasks,
         ~scheduler,
+        ~dcbSpec,
         ...
       ),
       ~opts,

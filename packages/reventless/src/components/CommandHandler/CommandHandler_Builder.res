@@ -1,10 +1,9 @@
 module Make = (
   Spec: CommandHandler.Spec,
-  DcbEventLog: DcbEventLog.T with module Spec = Spec.DcbEventLog,
   CommandTopicChannel: CommandTopic_Adapter.Channel,
-): (CommandHandler.T with module Spec = Spec and module DcbEventLogModule = DcbEventLog) => {
+): (CommandHandler.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec) => {
+  type dcbEvent = Spec.DcbEventLogSpec.event
   module Spec = Spec
-  module DcbEventLogModule = DcbEventLog
 
   module CommandTopicSpec = {
     module Id = ReventlessSpec.Id.String
@@ -14,31 +13,35 @@ module Make = (
 
   module SpecificCommandTopic = CommandTopic_Builder.Make(CommandTopicSpec, CommandTopicChannel)
 
-  let construct = (~dcbEventLog: DcbEventLog.component, self, name) => {
+  let construct = (
+    ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
+    self,
+    name,
+  ) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(CommandHandler.componentType)
 
-    let commandTopic = dcbEventLog
-    ->Component.operations
-    ->Pulumi.Output.apply(dcbEventLogOps => {
-      module Callback = CommandHandler_Callback.Make(
-        Spec,
-        {
-          module Spec = Spec
-          module DcbEventLog = DcbEventLog
-          let dcbEventLog = dcbEventLogOps
-        },
-      )
-      let commandTopic = SpecificCommandTopic.make(
-        ~name,
-        ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
-      )
-      let _handler = SpecificCommandTopic.makeHandler(
-        ~commandTopic,
-        ~commandsHandler=Callback.handleCommands,
-      )
-      commandTopic
-    })
+    let commandTopic =
+      dcbEventLog
+      ->Component.operations
+      ->Pulumi.Output.apply(dcbEventLogOps => {
+        module Callback = CommandHandler_Callback.Make(
+          Spec,
+          {
+            module Spec = Spec
+            let dcbEventLog = dcbEventLogOps
+          },
+        )
+        let commandTopic = SpecificCommandTopic.make(
+          ~name,
+          ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
+        )
+        let _handler = SpecificCommandTopic.makeHandler(
+          ~commandTopic,
+          ~commandsHandler=Callback.handleCommands,
+        )
+        commandTopic
+      })
 
     self->Component.setOperations(
       commandTopic->Pulumi.Output.flatMap(commandTopic =>

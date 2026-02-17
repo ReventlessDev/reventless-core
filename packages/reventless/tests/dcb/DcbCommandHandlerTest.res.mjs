@@ -20,15 +20,6 @@ let TestDcbOps = {
 
 let EventLogOps = DcbEventLog_Operations$Reventless.Make(DcbFixtures$Reventless.TestEventLogSpec)(TestDcbOps);
 
-function make(param, param$1) {
-  return 0;
-}
-
-let TestDcbEventLog = {
-  Spec: undefined,
-  make: make
-};
-
 let dcbEventLog_read = EventLogOps.read;
 
 let dcbEventLog_append = EventLogOps.append;
@@ -40,13 +31,12 @@ let dcbEventLog = {
 
 let TestCmdOps = {
   Spec: undefined,
-  DcbEventLog: undefined,
   dcbEventLog: dcbEventLog
 };
 
 let TestHandler = CommandHandler_Callback$Reventless.Make({
   name: DcbFixtures$Reventless.TestCommandSpec.name,
-  DcbEventLog: DcbFixtures$Reventless.TestEventLogSpec,
+  DcbEventLogSpec: DcbFixtures$Reventless.TestEventLogSpec,
   commandSchema: DcbFixtures$Reventless.TestCommandSpec.commandSchema,
   errorSchema: DcbFixtures$Reventless.TestCommandSpec.errorSchema,
   initialDecisionModel: DcbFixtures$Reventless.TestCommandSpec.initialDecisionModel,
@@ -56,17 +46,13 @@ let TestHandler = CommandHandler_Callback$Reventless.Make({
 })({
   Spec: {
     name: DcbFixtures$Reventless.TestCommandSpec.name,
-    DcbEventLog: DcbFixtures$Reventless.TestEventLogSpec,
+    DcbEventLogSpec: DcbFixtures$Reventless.TestEventLogSpec,
     commandSchema: DcbFixtures$Reventless.TestCommandSpec.commandSchema,
     errorSchema: DcbFixtures$Reventless.TestCommandSpec.errorSchema,
     initialDecisionModel: DcbFixtures$Reventless.TestCommandSpec.initialDecisionModel,
     reduce: DcbFixtures$Reventless.TestCommandSpec.reduce,
     decide: DcbFixtures$Reventless.TestCommandSpec.decide,
     queryEventTypes: DcbFixtures$Reventless.TestCommandSpec.queryEventTypes
-  },
-  DcbEventLog: {
-    Spec: DcbFixtures$Reventless.TestEventLogSpec,
-    make: make
   },
   dcbEventLog: dcbEventLog
 });
@@ -272,7 +258,6 @@ export {
   mock,
   TestDcbOps,
   EventLogOps,
-  TestDcbEventLog,
   TestCmdOps,
   TestHandler,
   makeTopicItem,

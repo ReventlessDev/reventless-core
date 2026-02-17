@@ -140,7 +140,7 @@ let TestCommandSpec_initialDecisionModel = {
 
 let TestCommandSpec = {
   name: "TestCommandHandler",
-  DcbEventLog: undefined,
+  DcbEventLogSpec: undefined,
   commandSchema: commandSchema,
   errorSchema: errorSchema,
   initialDecisionModel: TestCommandSpec_initialDecisionModel,

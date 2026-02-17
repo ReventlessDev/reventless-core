@@ -13,4 +13,6 @@ include Reventless.Plugin_Builder.Make(
   CommandTopicRemoteChannel.SQS,
   HeartbeatRunner.CloudwatchEvents,
   Reventless.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment, EventCollectorChannel),
+  DcbEventLogStorage.DynamoDb,
+  EventTopicPublisher.DynamoDbStream,
 )

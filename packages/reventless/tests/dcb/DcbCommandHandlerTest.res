@@ -11,23 +11,9 @@ module TestDcbOps: DcbEventLog_Operations.Ops with module Spec = DcbFixtures.Tes
 
 module EventLogOps = DcbEventLog_Operations.Make(DcbFixtures.TestEventLogSpec, TestDcbOps)
 
-// Stub module satisfying DcbEventLog.T (make is never called in tests)
-module TestDcbEventLog = {
-  module Spec = DcbFixtures.TestEventLogSpec
-
-  type operations = {
-    read: DcbEventLog.read<Spec.event>,
-    append: DcbEventLog.append<Spec.event>,
-  }
-  type component = DcbEventLog.component<operations>
-
-  let make = (~name as _, ~opts as _=?): component => Obj.magic(0)
-}
-
 module TestCmdOps = {
   module Spec = DcbFixtures.TestCommandSpec
-  module DcbEventLog = TestDcbEventLog
-  let dcbEventLog: DcbEventLog.operations = {
+  let dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event> = {
     read: EventLogOps.read,
     append: EventLogOps.append,
   }

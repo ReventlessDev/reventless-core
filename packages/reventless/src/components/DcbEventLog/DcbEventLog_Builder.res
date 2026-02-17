@@ -13,11 +13,7 @@ module Make = (
     type event = Spec.event
   }
 
-  type operations = {
-    read: DcbEventLog.read<Spec.event>,
-    append: DcbEventLog.append<Spec.event>,
-  }
-  type component = Component.t<DcbEventLog.t, DcbEventLog.outputs, operations>
+  type component = Component.t<DcbEventLog.t, DcbEventLog.outputs, DcbEventLog.operations<Spec.event>>
 
   // Extract indexes from event schema
   let indexes: array<string> = {
@@ -66,7 +62,7 @@ module Make = (
         )
 
         {
-          read: Ops.read,
+          DcbEventLog.read: Ops.read,
           append: Ops.append,
         }
       }),

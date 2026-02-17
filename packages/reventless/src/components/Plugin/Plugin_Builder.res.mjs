@@ -14,117 +14,158 @@ import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 import * as Plugin_Helpers$Reventless from "./Plugin_Helpers.res.mjs";
 import * as AdapterDeploytime$Reventless from "../../adapter/AdapterDeploytime.res.mjs";
 import * as Heartbeat_Builder$Reventless from "../Heartbeat/Heartbeat_Builder.res.mjs";
+import * as DcbEventLog_Builder$Reventless from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/ExtensionMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
-  return RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => {
-    let make = (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, tasks, scheduler, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (extra, extra$1) => {
-      let id = Plugin$Reventless.makeId(extra$1, version);
-      let opts_parent = Component$Reventless.toPulumiResource(extra);
-      let opts = {
-        parent: opts_parent
-      };
-      let aggregatesWithoutEventMappers = Plugin_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, opts);
-      let allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
-      let readModelsOutputs = Plugin_Helpers$Reventless.createReadModels(readModels, allEventTopics, opts);
-      let allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
-      let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-      let coreExtensionPoints = Stdlib_Option.mapOr(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
-      let pureOutputs = Pulumi.all([
-        coreExtensionPoints,
-        Pulumi.all(Plugin_Helpers$Reventless.aggregateResources),
-        Pulumi.all(Plugin_Helpers$Reventless.publishToAggregates),
-        Pulumi.all(Plugin_Helpers$Reventless.publishToReadModels),
-        scheduler,
-        queryEngine
-      ]).apply(param => {
-        let queryEngine = param[5];
-        let scheduler = param[4];
-        let publishToReadModels = param[3];
-        let publishToAggregates = param[2];
-        let coreExtensionPoints = param[0];
-        let aggregatesOutputs = Plugin_Helpers$Reventless.addEventMappers(aggregates, allEventTopics, queryEngine);
-        let match = Plugin_Helpers$Reventless.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
-        let extensionPointsOutputs = match[0];
-        let coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Stdlib_JsError.throwWithMessage("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
-        let corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
-        let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
-        let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
-        let match$1 = Plugin_Helpers$Reventless.createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
-        let extensionsOutputs = match$1[0];
-        let extensionPointsDefinitions = Plugin_Helpers$Reventless.extractExtensionPointDefinitions(extensionPointsOutputs);
-        let extensionsDefinitions = Plugin_Helpers$Reventless.extractExtensionDefinitions(extensionsOutputs);
-        let collectAggregateNames = ex => Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
-        let extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs.flatMap(ex => ex.aggregateNames));
-        let extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(ex => ex.aggregateNames));
-        let eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
-        eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
-          resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.unwrappedToResource)
+  return RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => {
+    let make = (name, version, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, scheduler, dcbSpec, opts) => {
+      let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
+      let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
+      let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
+      let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
+      let tasks = tasksOpt !== undefined ? tasksOpt : [];
+      return Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (extra, extra$1) => {
+        let id = Plugin$Reventless.makeId(extra$1, version);
+        let opts_parent = Component$Reventless.toPulumiResource(extra);
+        let opts = {
+          parent: opts_parent
         };
         let childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
-        let EventCollectorHelper = Plugin_Helpers$Reventless.MakeEventCollectorHelper(RuntimeEnvironment)(EventCollectorChannel)(PluginRuntimeBuilder);
-        let match$2 = EventCollectorHelper.make(childName, eventTopics, opts);
-        let pluginDefinition = Pulumi.all([
-          extensionPointsDefinitions,
-          match$2[2]
-        ]).apply(param => ({
-          id: id,
-          name: extra$1,
-          version: version,
-          extensionPoints: param[0],
-          extensions: extensionsDefinitions,
-          eventCollector: param[1]
-        }));
-        let match$3 = Plugin_Helpers$Reventless.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$Reventless.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
-        EventCollectorHelper.connect(match$2[0], eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, match$3[1], match$1[1], match[1], match$3[0]);
-        let tasksOutputs = Plugin_Helpers$Reventless.createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
-        let resolvers = Plugin_Helpers$Reventless.createResolvers(allQueryDbs);
-        let SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
-        let heartbeat = SpecificHeartbeat.make(childName, opts);
-        let handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
-        PluginRuntimeBuilder.forPluginHeartbeat(handler, none => SpecificHeartbeat.connect(none, corePluginExtensionPointCommandTopicRemoteChannel, heartbeatInterval, heartbeat), undefined, undefined, heartbeat);
-        return {
-          id: id,
-          version: version,
-          heartbeatInterval: heartbeatInterval,
-          eventCollector: match$2[1],
-          extensionPoints: Object.fromEntries(extensionPointsOutputs.map(el => [
-            el.name,
-            el
-          ])),
-          extensions: Object.fromEntries(extensionsOutputs.map(el => [
-            el.name,
-            el
-          ])),
-          aggregates: aggregatesOutputs,
-          readModels: readModelsOutputs,
-          tasks: Object.fromEntries(tasksOutputs.map(el => [
-            el.name,
-            el
-          ])),
-          resolvers: resolvers,
-          heartbeat: Component$Reventless.outputs(heartbeat)
-        };
-      });
-      return Component$Reventless.setOutputs(extra, {
-        id: pureOutputs.apply(outputs => outputs.id),
-        version: pureOutputs.apply(outputs => outputs.version),
-        heartbeatInterval: pureOutputs.apply(outputs => outputs.heartbeatInterval),
-        eventCollector: pureOutputs.apply(outputs => outputs.eventCollector),
-        extensionPoints: pureOutputs.apply(outputs => outputs.extensionPoints),
-        extensions: pureOutputs.apply(outputs => outputs.extensions),
-        aggregates: pureOutputs.apply(outputs => outputs.aggregates),
-        readModels: pureOutputs.apply(outputs => outputs.readModels),
-        tasks: pureOutputs.apply(outputs => outputs.tasks),
-        resolvers: pureOutputs.apply(outputs => outputs.resolvers),
-        heartbeat: pureOutputs.apply(outputs => outputs.heartbeat)
-      });
-    }, opts);
+        let match;
+        if (dcbSpec !== undefined) {
+          let DcbEventLogSpec_eventSchema = dcbSpec.eventSchema;
+          let DcbEventLogSpec = {
+            name: extra$1,
+            eventSchema: DcbEventLogSpec_eventSchema
+          };
+          let DcbEventLog = DcbEventLog_Builder$Reventless.Make(DcbEventLogSpec)(DcbEventLogStorage)(DcbEventTopicPublisher);
+          let dcbEventLog = DcbEventLog.make(childName + `-dcb-eventlog`, opts);
+          let handlers = Object.fromEntries(dcbSpec.commandHandlers.map(CommandHandler => {
+            let ch = CommandHandler.make(dcbEventLog, opts);
+            return [
+              CommandHandler.Spec.name,
+              Component$Reventless.outputs(ch)
+            ];
+          }));
+          match = [
+            Component$Reventless.outputs(dcbEventLog),
+            handlers
+          ];
+        } else {
+          match = [
+            undefined,
+            {}
+          ];
+        }
+        let commandHandlersOutputs = match[1];
+        let dcbEventLogOutputs = match[0];
+        let aggregatesWithoutEventMappers = Plugin_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, opts);
+        let allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
+        let readModelsOutputs = Plugin_Helpers$Reventless.createReadModels(readModels, allEventTopics, opts);
+        let allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
+        let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+        let coreExtensionPoints = Stdlib_Option.mapOr(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
+        let pureOutputs = Pulumi.all([
+          coreExtensionPoints,
+          Pulumi.all(Plugin_Helpers$Reventless.aggregateResources),
+          Pulumi.all(Plugin_Helpers$Reventless.publishToAggregates),
+          Pulumi.all(Plugin_Helpers$Reventless.publishToReadModels),
+          scheduler,
+          queryEngine
+        ]).apply(param => {
+          let queryEngine = param[5];
+          let scheduler = param[4];
+          let publishToReadModels = param[3];
+          let publishToAggregates = param[2];
+          let coreExtensionPoints = param[0];
+          let aggregatesOutputs = Plugin_Helpers$Reventless.addEventMappers(aggregates, allEventTopics, queryEngine);
+          let match = Plugin_Helpers$Reventless.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
+          let extensionPointsOutputs = match[0];
+          let coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Stdlib_JsError.throwWithMessage("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
+          let corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
+          let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
+          let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
+          let match$1 = Plugin_Helpers$Reventless.createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
+          let extensionsOutputs = match$1[0];
+          let extensionPointsDefinitions = Plugin_Helpers$Reventless.extractExtensionPointDefinitions(extensionPointsOutputs);
+          let extensionsDefinitions = Plugin_Helpers$Reventless.extractExtensionDefinitions(extensionsOutputs);
+          let collectAggregateNames = ex => Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
+          let extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs.flatMap(ex => ex.aggregateNames));
+          let extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(ex => ex.aggregateNames));
+          let eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
+          eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
+            resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.unwrappedToResource)
+          };
+          let childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
+          let EventCollectorHelper = Plugin_Helpers$Reventless.MakeEventCollectorHelper(RuntimeEnvironment)(EventCollectorChannel)(PluginRuntimeBuilder);
+          let match$2 = EventCollectorHelper.make(childName, eventTopics, opts);
+          let pluginDefinition = Pulumi.all([
+            extensionPointsDefinitions,
+            match$2[2]
+          ]).apply(param => ({
+            id: id,
+            name: extra$1,
+            version: version,
+            extensionPoints: param[0],
+            extensions: extensionsDefinitions,
+            eventCollector: param[1]
+          }));
+          let match$3 = Plugin_Helpers$Reventless.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$Reventless.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
+          EventCollectorHelper.connect(match$2[0], eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, match$3[1], match$1[1], match[1], match$3[0]);
+          let tasksOutputs = Plugin_Helpers$Reventless.createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
+          let resolvers = Plugin_Helpers$Reventless.createResolvers(allQueryDbs);
+          let SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
+          let heartbeat = SpecificHeartbeat.make(childName, opts);
+          let handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
+          PluginRuntimeBuilder.forPluginHeartbeat(handler, none => SpecificHeartbeat.connect(none, corePluginExtensionPointCommandTopicRemoteChannel, heartbeatInterval, heartbeat), undefined, undefined, heartbeat);
+          return {
+            id: id,
+            version: version,
+            heartbeatInterval: heartbeatInterval,
+            eventCollector: match$2[1],
+            extensionPoints: Object.fromEntries(extensionPointsOutputs.map(el => [
+              el.name,
+              el
+            ])),
+            extensions: Object.fromEntries(extensionsOutputs.map(el => [
+              el.name,
+              el
+            ])),
+            aggregates: aggregatesOutputs,
+            commandHandlers: commandHandlersOutputs,
+            readModels: readModelsOutputs,
+            tasks: Object.fromEntries(tasksOutputs.map(el => [
+              el.name,
+              el
+            ])),
+            resolvers: resolvers,
+            heartbeat: Component$Reventless.outputs(heartbeat),
+            dcbEventLog: dcbEventLogOutputs
+          };
+        });
+        return Component$Reventless.setOutputs(extra, {
+          id: pureOutputs.apply(outputs => outputs.id),
+          version: pureOutputs.apply(outputs => outputs.version),
+          heartbeatInterval: pureOutputs.apply(outputs => outputs.heartbeatInterval),
+          eventCollector: pureOutputs.apply(outputs => outputs.eventCollector),
+          extensionPoints: pureOutputs.apply(outputs => outputs.extensionPoints),
+          extensions: pureOutputs.apply(outputs => outputs.extensions),
+          aggregates: pureOutputs.apply(outputs => outputs.aggregates),
+          readModels: pureOutputs.apply(outputs => outputs.readModels),
+          tasks: pureOutputs.apply(outputs => outputs.tasks),
+          resolvers: pureOutputs.apply(outputs => outputs.resolvers),
+          heartbeat: pureOutputs.apply(outputs => outputs.heartbeat),
+          dcbEventLog: pureOutputs.apply(outputs => outputs.dcbEventLog),
+          commandHandlers: pureOutputs.apply(outputs => outputs.commandHandlers)
+        });
+      }, opts);
+    };
     return {
       make: make
     };
-  })))));
+  })))))));
 }
 
 export {

@@ -7,10 +7,12 @@ type pureOutputs = {
   extensionPoints: dict<ExtensionPoint.outputs>,
   extensions: dict<Extension.outputs>,
   aggregates: dict<Aggregate.outputs>,
+  commandHandlers: dict<CommandHandler.outputs>,
   readModels: dict<ReadModel.outputs>,
   tasks: dict<Task.outputs>,
   resolvers: array<ReventlessSpec.Adapter.resource>,
   heartbeat: Heartbeat.outputs,
+  dcbEventLog: option<DcbEventLog.outputs>,
 }
 
 let getRemoteStorageResources = (pluginName, queryDbName) =>

@@ -10,7 +10,7 @@ import * as CommandTopic_Builder$Reventless from "../CommandTopic/CommandTopic_B
 import * as CommandHandler_Callback$Reventless from "./CommandHandler_Callback.res.mjs";
 
 function Make(Spec) {
-  return DcbEventLog => (CommandTopicChannel => {
+  return CommandTopicChannel => {
     let SpecificCommandTopic = CommandTopic_Builder$Reventless.Make({
       Id: Id$ReventlessSpec.$$String,
       commandSchema: Spec.commandSchema
@@ -24,7 +24,6 @@ function Make(Spec) {
       let commandTopic = Component$Reventless.operations(dcbEventLog).apply(dcbEventLogOps => {
         let Callback = CommandHandler_Callback$Reventless.Make(Spec)({
           Spec: Spec,
-          DcbEventLog: DcbEventLog,
           dcbEventLog: dcbEventLogOps
         });
         let commandTopic = SpecificCommandTopic.make(name, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts));
@@ -41,10 +40,9 @@ function Make(Spec) {
     }, opts);
     return {
       Spec: Spec,
-      DcbEventLogModule: DcbEventLog,
       make: make
     };
-  });
+  };
 }
 
 export {

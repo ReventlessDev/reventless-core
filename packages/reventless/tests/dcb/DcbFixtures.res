@@ -37,7 +37,7 @@ type objectEvent = {
 module TestCommandSpec = {
   let name = "TestCommandHandler"
 
-  module DcbEventLog = TestEventLogSpec
+  module DcbEventLogSpec = TestEventLogSpec
 
   @schema
   type command =
@@ -139,7 +139,7 @@ let makeMockStorage = (): mockStorage => {
       ->Option.map(e => e.position)
     {
       DcbEventLog_Adapter.events: filtered,
-      headPosition: ?headPosition,
+      ?headPosition,
     }
   }
 
@@ -224,12 +224,10 @@ type multiTagRecord = {
 }
 
 @schema
-type emptyVariant =
-  | Empty
+type emptyVariant = Empty
 
 @schema
-type intTagEvent =
-  | CountEvent({count: @s.matches(DcbTag.int) int})
+type intTagEvent = CountEvent({count: @s.matches(DcbTag.int) int})
 
 @schema
 type mixedEvent =
@@ -259,4 +257,3 @@ type multiFieldEvent =
       tenantId: @s.matches(DcbTag.string) string,
       sessionId: @s.matches(DcbTag.string) string,
     })
-

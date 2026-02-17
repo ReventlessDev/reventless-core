@@ -11,7 +11,7 @@ type component = Component.t<t, outputs, operations>
 module type Spec = {
   let name: string
 
-  module DcbEventLog: DcbEventLog.Spec
+  module DcbEventLogSpec: DcbEventLog.Spec
 
   @schema
   type command
@@ -22,19 +22,18 @@ module type Spec = {
   type decisionModel
   let initialDecisionModel: decisionModel
 
-  let reduce: (decisionModel, DcbEventLog.event) => decisionModel
-
-  let decide: (decisionModel, command) => result<array<DcbEventLog.event>, error>
+  let reduce: (decisionModel, DcbEventLogSpec.event) => decisionModel
+  let decide: (decisionModel, command) => result<array<DcbEventLogSpec.event>, error>
 
   let queryEventTypes: array<string>
 }
 
 module type T = {
+  type dcbEvent
   module Spec: Spec
-  module DcbEventLogModule: DcbEventLog.T with module Spec = Spec.DcbEventLog
 
   let make: (
-    ~dcbEventLog: DcbEventLogModule.component,
+    ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

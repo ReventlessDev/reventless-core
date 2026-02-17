@@ -28,6 +28,11 @@ type append<'event> = (
   ~condition: DcbTag.appendCondition=?,
 ) => promise<result<DcbTag.sequencePosition, string>>
 
+type operations<'event> = {
+  read: read<'event>,
+  append: append<'event>,
+}
+
 module type Spec = {
   let name: string
 
@@ -38,11 +43,7 @@ module type Spec = {
 module type T = {
   module Spec: Spec
 
-  type operations = {
-    read: read<Spec.event>,
-    append: append<Spec.event>,
-  }
-  type component = component<operations>
+  type component = component<operations<Spec.event>>
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }
