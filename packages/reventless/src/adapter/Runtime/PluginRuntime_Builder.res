@@ -12,6 +12,11 @@ module type T = {
     runtimeParts,
     Heartbeat.component,
   >
+  let forDcbCommandTopic: Runtime.forComponent<
+    Runtime.eventHandler<'callbackEvent, context, unit>,
+    runtimeParts,
+    CommandTopic.component<'op>,
+  >
   // let forDeadLetterQueue: Runtime.forComponent<'h, runtimeParts, Plugin.component>
   let finish: unit => unit
 }

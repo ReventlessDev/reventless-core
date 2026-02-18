@@ -17,6 +17,9 @@ module Make = (
   PluginRuntimeBuilder: PluginRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
+  DcbEventLogStorage: DcbEventLog_Adapter.Storage,
+  DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
+  DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
 ): Plugin.T => {
   let construct = (
     ~version: string,
@@ -27,11 +30,98 @@ module Make = (
     ~readModels: array<module(ReadModel.T)>,
     ~tasks: array<module(Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
+    ~dcbSpec: option<module(Plugin.DcbSpec)>,
     self,
     name,
   ) => {
     let id = Plugin.makeId(name, version)
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let childName = name->ComponentType.name(Plugin.componentType)
+
+    // Create DcbEventLog and StateChangeSlices if DcbSpec provided
+    // Also captures handler and connect function for runtime setup
+    let (
+      dcbEventLogOutputs,
+      stateChangeSlicesOutputs,
+      stateViewSlicesOutputs,
+      dcbRuntimeOpt,
+    ) = switch dcbSpec {
+    | Some(module(DcbSpec)) => {
+        module DcbEventLogSpec = {
+          @schema
+          type event = DcbSpec.event
+        }
+
+        module DcbEventLog = DcbEventLog_Builder.Make(
+          DcbEventLogSpec,
+          DcbEventLogStorage,
+          DcbEventTopicPublisher,
+        )
+        let dcbEventLog = DcbEventLog.make(~name, ~opts)
+
+        // Create shared CommandTopic for all StateChangeSlices
+        module DcbCommandTopicSpec = {
+          module Id = ReventlessSpec.Id.String
+          // Accept any command - filtering happens via schema-based registration
+          @schema
+          type command = JSON.t
+        }
+        module DcbCommandTopic = CommandTopic_Builder.Make(
+          DcbCommandTopicSpec,
+          DcbCommandTopicChannel,
+        )
+        let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
+
+        let publishJsons =
+          dcbCommandTopic
+          ->Component.operations
+          ->Pulumi.Output.apply(ops => ops.publishJsons)
+
+        let stateChangeSlicesOutputs =
+          DcbSpec.stateChangeSlices
+          ->Array.map((
+            module(StateChangeSlice: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~opts)
+            (StateChangeSlice.Spec.name, ch->Component.outputs)
+          })
+          ->Dict.fromArray
+
+        // Create StateViewSlices - each gets its own QueryDb and subscribes to DcbEventLog events
+        let stateViewSlicesOutputs =
+          DcbSpec.stateViewSlices
+          ->Array.map((
+            module(StateViewSlice: StateViewSlice.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            let sv = StateViewSlice.make(~dcbEventLog, ~opts)
+            (StateViewSlice.Spec.name, sv->Component.outputs)
+          })
+          ->Dict.fromArray
+
+        // Filtering handler for the shared DCB command topic Lambda
+        let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
+        // Resources the Lambda needs access to (DcbEventLog resources from all slices)
+        let dcbResources =
+          stateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources)
+        let dcbConnectFn = (~runtime) =>
+          DcbCommandTopic.connect(~runtime, ~resources=dcbResources, dcbCommandTopic)
+
+        // Capture the forDcbCommandTopic call in a closure while DcbCommandTopic is in scope
+        let dcbRuntimeSetup = () =>
+          dcbCommandTopic->PluginRuntimeBuilder.forDcbCommandTopic(
+            ~handler=dcbHandler,
+            ~connect=dcbConnectFn,
+          )
+
+        (
+          Some(dcbEventLog->Component.outputs),
+          stateChangeSlicesOutputs,
+          stateViewSlicesOutputs,
+          Some(dcbRuntimeSetup),
+        )
+      }
+    | None => (None, Dict.make(), Dict.make(), None)
+    }
 
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
@@ -216,6 +306,9 @@ module Make = (
           ),
         )
 
+        // Connect DCB command topic to its Lambda runtime (if DCB is configured)
+        dcbRuntimeOpt->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
+
         {
           id,
           version,
@@ -224,10 +317,13 @@ module Make = (
           extensionPoints: extensionPointsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           extensions: extensionsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           aggregates: aggregatesOutputs,
+          stateChangeSlices: stateChangeSlicesOutputs,
+          stateViewSlices: stateViewSlicesOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
           heartbeat: heartbeat->Component.outputs,
+          dcbEventLog: dcbEventLogOutputs,
         }
       })
     }
@@ -240,10 +336,13 @@ module Make = (
       extensionPoints: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
       extensions: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
       aggregates: pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
+      stateChangeSlices: pureOutputs->Pulumi.Output.apply(outputs => outputs.stateChangeSlices),
+      stateViewSlices: pureOutputs->Pulumi.Output.apply(outputs => outputs.stateViewSlices),
       readModels: pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
       tasks: pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
       resolvers: pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
       heartbeat: pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
+      dcbEventLog: pureOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
     })
   }
 
@@ -251,12 +350,13 @@ module Make = (
     ~name,
     ~version,
     ~heartbeatInterval,
-    ~extensionPoints,
-    ~extensions,
-    ~aggregates,
-    ~readModels,
-    ~tasks,
+    ~extensionPoints=[],
+    ~extensions=[],
+    ~aggregates=[],
+    ~readModels=[],
+    ~tasks=[],
     ~scheduler,
+    ~dcbSpec=?,
     ~opts=?,
   ) =>
     Component.make(
@@ -271,6 +371,7 @@ module Make = (
         ~readModels,
         ~tasks,
         ~scheduler,
+        ~dcbSpec,
         ...
       ),
       ~opts,

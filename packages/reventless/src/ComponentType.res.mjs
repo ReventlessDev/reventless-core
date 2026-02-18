@@ -46,6 +46,12 @@ function toString(componentType) {
       return "Heartbeat";
     case "Cloner" :
       return "Cloner";
+    case "DcbEventLog" :
+      return "DcbEventLog";
+    case "StateChangeSlice" :
+      return "StateChangeSlice";
+    case "StateViewSlice" :
+      return "StateViewSlice";
   }
 }
 
@@ -63,6 +69,8 @@ function ofString(str) {
       return "Core";
     case "Counter" :
       return "Counter";
+    case "DcbEventLog" :
+      return "DcbEventLog";
     case "EventCollector" :
       return "EventCollector";
     case "EventLog" :
@@ -89,6 +97,10 @@ function ofString(str) {
       return "Service";
     case "SideEffectHandler" :
       return "SideEffectHandler";
+    case "StateChangeSlice" :
+      return "StateChangeSlice";
+    case "StateViewSlice" :
+      return "StateViewSlice";
     case "Task" :
       return "Task";
     case "Vpc" :
@@ -142,6 +154,12 @@ function toName(componentType) {
       return "Heartbeat";
     case "Cloner" :
       return "Cloner";
+    case "DcbEventLog" :
+      return "DcbEventLog";
+    case "StateChangeSlice" :
+      return "StateChgSlc";
+    case "StateViewSlice" :
+      return "StateViewSlice";
   }
 }
 
