@@ -540,9 +540,19 @@ All component specs that need to be moved from `reventless` to `reventless-spec`
 All component files that reference the moved specs must be updated to use `ReventlessSpec.Foo_Spec.T` instead of local `Spec` definitions.
 
 ### Phase 2: Framework Primitives (Medium Priority)
-1. Move handler types to spec
-2. Ensure all core plugin spec types are accessible
-3. Document the public API surface
+1. Move handler types to spec ✅ DONE
+   - Created: `packages/reventless-spec/src/Handler.res`
+   - Contains: `handler`, `commandHandler`, `commandsHandler`, `eventsHandler`, `errorHandler` types
+   - Accessible via: `ReventlessSpec.Handler.T` (module type) or individual type aliases
+2. Ensure all core plugin spec types are accessible ✅ DONE
+   - Plugin types already in reventless-spec: `Plugin.res`, `PluginExtensionPointSpec.res`
+3. Document the public API surface - Pending
+
+#### Deferred Items:
+- **Plugin.DcbSpec** - Deferred
+  - Requires simplified T types for StateChangeSlice.T and StateViewSlice.T
+  - These component T types have internal reventless dependencies (DcbEventLog.component, etc.)
+  - Cannot move until simplified T types are created in reventless-spec
 
 ### Phase 3: Cleanup (Lower Priority)
 1. Clean up duplicate type definitions between spec and impl
