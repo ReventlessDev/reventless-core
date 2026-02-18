@@ -590,3 +590,147 @@ grep -r "module type Spec" packages/reventless/src/components/*/
 ```
 
 Each found should be evaluated for moving to reventless-spec following this guide's pattern.
+
+---
+
+# Application Dependencies and the Platform Coupling Problem
+
+## The Question
+
+Applications use component builders from `reventless` or `reventless-aws` to create components. This means they have direct dependencies on implementation packages. Does this make the spec/impl split pointless?
+
+**No — but the split's value needs to be understood correctly, and there are concrete improvements available.**
+
+---
+
+## What the Split Already Achieves
+
+Domain code — `Spec`, `Behavior`, `EventMappings` — only imports from `reventless-spec`. These modules:
+- Compile and test without AWS SDK, DynamoDB, Lambda, or any infrastructure
+- Are portable to alternative platform implementations
+- Version independently from the implementation
+
+The split is working. The remaining coupling is in the **wiring/assembly code** — the code that calls builders to compose components. This is known as the **Composition Root** and it is *legitimately* coupled to the platform. That's its job.
+
+---
+
+## Current Layering (Observed)
+
+```
+reventless-spec   — types and module types (public contract, no infra)
+     ↑
+reventless        — generic builders, framework logic (depends on Pulumi types)
+     ↑
+reventless-aws    — pre-configured builders (DynamoDB, SQS, SNS, Lambda pre-wired)
+     ↑
+application       — domain code + ONE wiring file that calls builders
+```
+
+`reventless-aws` already dramatically reduces the coupling surface. `Aggregate_Builder_Micro.Make` takes only `(Config, Spec, Behavior, EventMappings)` — the four things the application defines. All AWS adapter wiring (DynamoDB, SQS_FIFO, DynamoDB streams, Lambda runtime) is internal to `reventless-aws`.
+
+---
+
+## Options for Reducing Application Coupling
+
+### Option A — Composition Root Convention (zero code changes) ★ Recommended now
+
+Establish and enforce the rule: **only the Composition Root file may import from `reventless-aws`**.
+
+```
+app/
+├── domain/
+│   ├── MySpec.res        ← imports reventless-spec only
+│   ├── MyBehavior.res    ← imports reventless-spec only
+│   └── MyMappings.res    ← imports reventless-spec only
+└── index.res             ← Composition Root: imports reventless-aws here
+```
+
+`index.res` is the Pulumi stack entry point. It is *allowed* to know about the platform. All domain and business logic is isolated.
+
+This requires no code changes. It is the minimum viable answer and is already achievable with the current design.
+
+### Option B — Platform Module Type in reventless-spec (recommended next step)
+
+Add an abstract `Platform.T` module type to `reventless-spec` that captures the factory surface applications need. Applications can then write their plugin assembly as a functor over the platform rather than importing a concrete platform package.
+
+```rescript
+// reventless-spec/src/Platform.res
+module type T = {
+  module Aggregate: {
+    module Make: (
+      Spec: Aggregate.Spec,
+      Behavior: Behavior.T,
+      Mappings: EventMapper.Mappings,
+    ) => Aggregate.T
+  }
+  module ReadModel: {
+    module Make: (
+      Spec: ReadModel_Spec.T,
+      Mappings: Projection.Mappings,
+    ) => ReadModel.T
+  }
+  // Plugin, Task, etc.
+}
+```
+
+Application plugin assembly becomes a functor over the platform:
+
+```rescript
+// app/MyPlugin.res — only imports reventless-spec
+module Make = (Platform: ReventlessSpec.Platform.T) => {
+  module MyAggregate = Platform.Aggregate.Make(MySpec, MyBehavior, MyMappings)
+  module MyReadModel = Platform.ReadModel.Make(MyRmSpec, MyMappings)
+  // ...
+}
+
+// index.res — only place that imports reventless-aws
+module App = MyPlugin.Make(ReventlessAws.Platform)
+```
+
+`reventless-aws` would expose a concrete `Platform` module satisfying `Platform.T` — the pre-configured AWS builders already exist; they just need to be assembled under a common namespace.
+
+**Benefits:**
+- `MyPlugin.res` and all domain files only depend on `reventless-spec`
+- The concrete platform (`ReventlessAws.Platform`) is injected at one point
+- `MyPlugin.res` is portable and unit-testable with a mock platform
+
+**What `reventless-aws` needs to add:**
+```rescript
+// reventless-aws/src/Platform.res
+module Aggregate = {
+  module Make = Aggregate_Builder.Make  // already exists
+}
+module ReadModel = {
+  module Make = ReadModel_Builder.Make  // already exists
+}
+// ... etc.
+```
+
+This is an additive, non-breaking change.
+
+### Option C — `reventless-aws-app` Package (more invasive)
+
+Create a fifth package that wraps `reventless-aws` with a higher-level API and hides all builder details. Applications depend only on `reventless-spec` and `reventless-aws-app`.
+
+```
+reventless-spec → reventless-aws-app (simple assembly API)
+                  └── reventless-aws (hidden)
+                      └── reventless
+                          └── reventless-spec
+```
+
+This is the most radical cut. Only warranted if Option B proves insufficient or if the goal is to provide a zero-boilerplate getting-started experience.
+
+---
+
+## Recommendation Summary
+
+| Goal | Approach |
+|---|---|
+| Isolate domain code from infrastructure now | Option A (Convention) — no code changes needed |
+| Make plugin assembly platform-portable | Option B (Platform.T in reventless-spec) |
+| Zero framework API surface for application developers | Option C (new package) |
+
+**Start with Option A.** The spec/impl split already achieves domain isolation. Document the Composition Root convention and enforce it via code review.
+
+**Implement Option B** when you want to enable testing the plugin assembly itself with a mock platform, or when you want the framework to guarantee that application modules cannot accidentally import from `reventless-aws`.
