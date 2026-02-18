@@ -18,6 +18,9 @@ Client → SQS (DCB Command Topic) → filteringHandler
                                ▼
                     DcbEventLog (shared, one per plugin)
                     read → reduce → decide → append
+                               │
+                               ▼
+                    StateViewSlice (projects events to QueryDb)
 ```
 
 One SQS FIFO queue per plugin receives all commands. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type. Slices that don't handle a command type are never called.
@@ -34,6 +37,7 @@ module type DcbSpec = {
   type event
 
   let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
+  let stateViewSlices: array<module(StateViewSlice.T with type dcbEvent = event)>
 }
 ```
 
@@ -61,6 +65,25 @@ module type Spec = {
 }
 ```
 
+### `StateViewSlice.Spec`
+
+```rescript
+module type Spec = {
+  let name: string
+
+  module DcbEventLogSpec: DcbEventLog.Spec  // shared event log spec
+
+  @schema
+  type event  // event type from DcbEventLog
+
+  @schema
+  type state  // state type for the read model
+
+  // Projection function: transforms events into projection actions
+  let project: (option<state>, DcbEventLogSpec.event) => array<ReventlessSpec.Projection.Spec.action<string, state>>
+}
+```
+
 ### `StateChangeSlice.T`
 
 ```rescript
@@ -71,6 +94,20 @@ module type T = {
   let make: (
     ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
+}
+```
+
+### `StateViewSlice.T`
+
+```rescript
+module type T = {
+  type dcbEvent
+  module Spec: Spec
+
+  let make: (
+    ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }
@@ -204,6 +241,10 @@ module MyDcbSpec = {
     module(CreateItemSlice: StateChangeSlice.T with type dcbEvent = event),
     module(RenameItemSlice: StateChangeSlice.T with type dcbEvent = event),
   ]
+
+  let stateViewSlices = [
+    module(ItemReadViewSlice: StateViewSlice.T with type dcbEvent = event),
+  ]
 }
 ```
 
@@ -226,11 +267,13 @@ type outputs = {
   // ...existing outputs...
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
   stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
+  stateViewSlices: Pulumi.Output.t<dict<StateViewSlice.outputs>>,
 }
 ```
 
 - `dcbEventLog`: `Some(outputs)` when `~dcbSpec` is provided, `None` otherwise
 - `stateChangeSlices`: keyed by `Spec.name`, contains resources for each slice
+- `stateViewSlices`: keyed by `Spec.name`, contains resources and queryDb for each slice
 
 ## Architecture
 
@@ -241,8 +284,9 @@ When DCB is configured, `Plugin_Builder.Make.construct` does the following:
 1. **Creates one `DcbEventLog`** using `DcbSpec.event` and the plugin name
 2. **Creates one `DcbCommandTopic`** — typed as `command = JSON.t` (accepts all JSON)
 3. **Constructs each `StateChangeSlice`** — passes both shared resources; each slice registers its JSON handler in the global registry
-4. **Calls `DcbCommandTopic.makeFilteringHandler`** — wires `filteringHandler` to the SQS channel
-5. **Calls `PluginRuntimeBuilder.forDcbCommandTopic`** — creates the Lambda and connects it to SQS
+4. **Constructs each `StateViewSlice`** — each slice gets its own QueryDb and subscribes to DcbEventLog events
+5. **Calls `DcbCommandTopic.makeFilteringHandler`** — wires `filteringHandler` to the SQS channel
+6. **Calls `PluginRuntimeBuilder.forDcbCommandTopic`** — creates the Lambda and connects it to SQS
 
 ```rescript
 // Inside Plugin_Builder.Make.construct, when dcbSpec = Some(module(DcbSpec)):
@@ -261,6 +305,11 @@ let publishJsons =
 // Each StateChangeSlice.make call registers its handler in the global registry
 DcbSpec.stateChangeSlices->Array.map(module(Slice: StateChangeSlice.T with type dcbEvent = DcbSpec.event) => {
   Slice.make(~dcbEventLog, ~publishJsons, ~opts)
+})
+
+// Each StateViewSlice.make creates its own QueryDb and subscribes to DcbEventLog events
+DcbSpec.stateViewSlices->Array.map(module(Slice: StateViewSlice.T with type dcbEvent = DcbSpec.event) => {
+  Slice.make(~dcbEventLog, ~opts)
 })
 
 // Capture the forDcbCommandTopic call in a closure while DcbCommandTopic is in scope,
@@ -325,6 +374,18 @@ let filteringHandler: jsonCommandsHandler = async jsonItems => {
 4. Calls `Spec.decide(decisionModel, command)` to produce new events or an error
 5. Appends with optimistic concurrency: `dcbEventLog.append(newEvents, ~condition={query, after: headPosition})`
 6. Retries up to 3 times on append conflict (position changed between read and write)
+
+### `StateViewSlice_Callback`: Projection Logic
+
+`StateViewSlice_Callback.Make(Spec)` produces a module that handles events from the DcbEventLog and projects them into a QueryDb-backed read model.
+
+`eventsHandler(queryDbOps, events)` processes each event:
+
+1. For each event, calls `Spec.project(currentState, event)` to generate projection actions
+2. Uses `Projection.handleActions` to apply the actions to QueryDb (Set, Delete, etc.)
+3. Returns the updated state
+
+Unlike StateChangeSlice which handles commands and decides on events, StateViewSlice simply projects events into its read model.
 
 ### `Plugin_Builder.Make` Functor Parameters
 
