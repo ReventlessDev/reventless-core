@@ -40,7 +40,7 @@ const config = {
         language: ["en"],
         indexDocs: true,
         indexBlog: false,
-        docsRouteBasePath: "/docs",
+        docsRouteBasePath: ["/app", "/framework", "/cloud-provider", "/aws"],
         // Enable search in dev mode by using the production index
         removeDefaultStopWordFilter: true,
         // Highlight search terms
@@ -57,16 +57,60 @@ const config = {
     locales: ["en"],
   },
 
+  plugins: [
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        // No id = this is the 'default' docs plugin instance.
+        // Required so the search bar's useDocsData() hook can find it.
+        path: "docs-app",
+        routeBasePath: "app",
+        sidebarPath: "./sidebars-app.js",
+        editUrl:
+          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+      },
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "framework",
+        path: "docs-framework",
+        routeBasePath: "framework",
+        sidebarPath: "./sidebars-framework.js",
+        editUrl:
+          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+      },
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "cloud-provider",
+        path: "docs-cloud-provider",
+        routeBasePath: "cloud-provider",
+        sidebarPath: "./sidebars-cloud-provider.js",
+        editUrl:
+          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+      },
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "aws",
+        path: "docs-aws",
+        routeBasePath: "aws",
+        sidebarPath: "./sidebars-aws.js",
+        editUrl:
+          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+      },
+    ],
+  ],
+
   presets: [
     [
       "classic",
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
-        docs: {
-          sidebarPath: "./sidebars.js",
-          editUrl:
-            "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
-        },
+        docs: false,
         /*
         blog: {
           showReadingTime: true,
@@ -101,17 +145,31 @@ const config = {
         items: [
           {
             type: "docSidebar",
-            sidebarId: "docSidebar",
+            sidebarId: "appSidebar",
             position: "left",
-            label: "Documentation",
+            label: "App Guide",
           },
-          // {
-          //   type: 'docSidebar',
-          //   sidebarId: 'tutorialSidebar',
-          //   position: 'left',
-          //   label: 'Tutorial',
-          // },
-          // { to: '/blog', label: 'Blog', position: 'left' },
+          {
+            type: "docSidebar",
+            sidebarId: "frameworkSidebar",
+            docsPluginId: "framework",
+            position: "left",
+            label: "Framework",
+          },
+          {
+            type: "docSidebar",
+            sidebarId: "cloudProviderSidebar",
+            docsPluginId: "cloud-provider",
+            position: "left",
+            label: "Cloud Providers",
+          },
+          {
+            type: "docSidebar",
+            sidebarId: "awsSidebar",
+            docsPluginId: "aws",
+            position: "left",
+            label: "AWS",
+          },
           {
             href: "https://github.com/ReventlessDev/reventless-core",
             label: "GitHub",
@@ -123,15 +181,32 @@ const config = {
         style: "dark",
         links: [
           {
-            title: "Documentation",
+            title: "App Developer Guide",
             items: [
               {
-                label: "Getting Started",
-                to: "/docs/",
+                label: "Get Started",
+                to: "/app/get-started",
               },
               {
                 label: "Components",
-                to: "/docs/reventless-components-overview",
+                to: "/app/component-overview",
+              },
+            ],
+          },
+          {
+            title: "Developer Guides",
+            items: [
+              {
+                label: "Framework",
+                to: "/framework",
+              },
+              {
+                label: "Cloud Providers",
+                to: "/cloud-provider",
+              },
+              {
+                label: "AWS",
+                to: "/aws",
               },
             ],
           },
@@ -292,14 +367,14 @@ const config = {
             .commandtopic .nodeLabel {
               /*color: #66f;*/
               }
-            
+
             .commandgenerator > rect {
               fill: #88ccff;
               }
             .commandgenerator .nodeLabel {
               /*color: #66f;*/
               }
-            
+
             .client > rect {
             /* TODO */
             }
