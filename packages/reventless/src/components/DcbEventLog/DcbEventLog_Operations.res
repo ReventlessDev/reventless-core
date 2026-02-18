@@ -1,17 +1,17 @@
 module type Ops = {
-  module Spec: DcbEventLog.Spec
+  module Spec: ReventlessSpec.DcbEventLog_Spec.T
   let name: string
   let storage: DcbEventLog_Adapter.operations
   let publishJson: EventTopic.publishJson
 }
 
 module type T = {
-  module Spec: DcbEventLog.Spec
+  module Spec: ReventlessSpec.DcbEventLog_Spec.T
   let read: DcbEventLog.read<Spec.event>
   let append: DcbEventLog.append<Spec.event>
 }
 
-module Make = (Spec: DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
+module Make = (Spec: ReventlessSpec.DcbEventLog_Spec.T, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec
