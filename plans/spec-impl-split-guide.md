@@ -559,6 +559,14 @@ All component files that reference the moved specs must be updated to use `Reven
 2. Add .resi files to hide internal types
 3. Create simplified app-level exports
 
+#### Phase 3 Status: Investigated
+- **Handler types** exist in both `reventless-spec/src/Handler.res` and `reventless/src/Message.res`
+  - Kept current structure - Handler.res serves as API reference, Message.res has implementation types
+  - Module resolution complexity prevents simple consolidation
+- **.resi files**: Found existing examples (Component.resi). Adding more is a larger refactoring task, deferred.
+- **App-level exports**: Would require more design work, deferred.
+- **Verification**: ✅ All builds pass, 103 tests pass
+
 ---
 
 ## Summary Table: Recommended Moves

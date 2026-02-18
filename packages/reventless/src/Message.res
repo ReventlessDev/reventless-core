@@ -53,8 +53,6 @@ let now = () => Date.make()->Date.getTime
 
 let nowAsISOString = () => Date.make()->Date.toISOString
 
-type handler<'msg> = 'msg => promise<unit>
-
 let toMessageBody = ({id, meta, commandJson}) => {
   let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()}
   [
@@ -70,6 +68,8 @@ let toMessageBody = ({id, meta, commandJson}) => {
 type commandHandler<'id, 'command> = command'<'id, 'command> => promise<unit>
 
 type commandsHandler<'id, 'command> = ('id, array<command'<'id, 'command>>) => promise<unit>
+
+type handler<'msg> = 'msg => promise<unit>
 
 let serviceNameOfMsg = msgJson =>
   switch msgJson->JSON.Decode.object {
