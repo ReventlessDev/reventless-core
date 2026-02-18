@@ -1,12 +1,12 @@
 module type T = {
-  module Spec: StateChangeSlice.Spec
+  module Spec: ReventlessSpec.StateChangeSlice_Spec.T
   let handleCommands: (
     DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
     array<CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, Spec.command>>>,
   ) => promise<array<result<string, string>>>
 }
 
-module Make = (Spec: StateChangeSlice.Spec): (T with module Spec = Spec) => {
+module Make = (Spec: ReventlessSpec.StateChangeSlice_Spec.T): (T with module Spec = Spec) => {
   module Spec = Spec
 
   let queryEventTypes = DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)

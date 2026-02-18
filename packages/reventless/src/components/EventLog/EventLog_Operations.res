@@ -1,17 +1,17 @@
 module type Ops = {
-  module Spec: EventLog.Spec
+  module Spec: ReventlessSpec.EventLog_Spec.T
   module EventTopic: EventTopic.T with module Spec.Id = Spec.Id and type Spec.event = Spec.event
   let eventTopic: EventTopic.operations
   let storage: EventLog_Adapter.operations
 }
 
 module type T = {
-  module Spec: EventLog.Spec
+  module Spec: ReventlessSpec.EventLog_Spec.T
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
 }
 
-module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
+module Make = (Spec: ReventlessSpec.EventLog_Spec.T, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec

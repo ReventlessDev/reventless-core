@@ -11,15 +11,8 @@ type publishJson = (string, Message.meta, JSON.t) => promise<unit>
 
 exception NotPublishedToPublisher(exn)
 
-module type Spec = {
-  module Id: ReventlessSpec.Id.T
-
-  @schema
-  type event
-}
-
 module type T = {
-  module Spec: Spec
+  module Spec: ReventlessSpec.EventTopic_Spec.T
 
   type publish = publish<Spec.Id.t, Spec.event>
   type operations = {publish: publish, publishJson: publishJson}
