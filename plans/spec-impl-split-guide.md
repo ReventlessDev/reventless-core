@@ -546,7 +546,13 @@ All component files that reference the moved specs must be updated to use `Reven
    - Accessible via: `ReventlessSpec.Handler.T` (module type) or individual type aliases
 2. Ensure all core plugin spec types are accessible ✅ DONE
    - Plugin types already in reventless-spec: `Plugin.res`, `PluginExtensionPointSpec.res`
-3. Document the public API surface - Pending
+3. Move `Behavior.T` to reventless-spec ✅ DONE
+   - Created: `packages/reventless-spec/src/Behavior.res`
+   - Contains `resolverConfig` type and `module type T` for aggregate business logic
+   - All type dependencies (`Message.context`, `Handler.errorHandler`, `S.t`) are spec-level
+   - Structurally compatible with `Reventless.Behavior.T` (identical underlying types)
+4. Create `Platform.T` in reventless ✅ DONE (see Corrected Option B below)
+5. Document the public API surface - Pending
 
 #### Deferred Items:
 - **Plugin.DcbSpec** - Deferred
@@ -725,12 +731,226 @@ This is the most radical cut. Only warranted if Option B proves insufficient or 
 
 ## Recommendation Summary
 
-| Goal | Approach |
-|---|---|
-| Isolate domain code from infrastructure now | Option A (Convention) — no code changes needed |
-| Make plugin assembly platform-portable | Option B (Platform.T in reventless-spec) |
-| Zero framework API surface for application developers | Option C (new package) |
+| Goal | Approach | Status |
+|---|---|---|
+| Isolate domain code from infrastructure now | Option A (Convention) — no code changes needed | ✅ Done |
+| Make plugin assembly platform-portable | Option B (Platform.T in reventless — see deep dive below) | ✅ Done |
+| Zero framework API surface for application developers | Option C (new package) | Not started |
 
-**Start with Option A.** The spec/impl split already achieves domain isolation. Document the Composition Root convention and enforce it via code review.
+**Option A** — The spec/impl split already achieves domain isolation. Document the Composition Root convention and enforce it via code review.
 
-**Implement Option B** when you want to enable testing the plugin assembly itself with a mock platform, or when you want the framework to guarantee that application modules cannot accidentally import from `reventless-aws`.
+**Option B** — Implemented as `Reventless.Platform.T` (not `reventless-spec` — see deep dive below for the type-system constraints that prevent this). `ReventlessAws.Platform.Make(Config)` provides the concrete AWS implementation. Application plugin assembly code can now be written as a functor over `Reventless.Platform.T` without importing `reventless-aws`.
+
+---
+
+## Option B Deep Dive: Why Platform.T Cannot Live in reventless-spec
+
+The Option B description above uses simplified pseudocode. After a detailed investigation of the actual type signatures, putting `Platform.T` in `reventless-spec` is **not feasible** without significantly restructuring the component type system. This section explains the specific blockers.
+
+### The Three Type Categories in Platform.T
+
+A `Platform.T.Aggregate.Make` functor has three parts:
+
+```
+module Make: (Input modules...) => Output module type
+```
+
+Each category has different constraints on where it can live.
+
+---
+
+### Category 1: Input Module Types — Partially Moveable
+
+**`Aggregate.Spec`** — Already in `reventless-spec`. ✅
+
+**`Behavior.T`** — Currently in `reventless/src/Behavior.res`. This type only references:
+- `S.t<'command>` — sury schema, globally available
+- `Message.context` — in `reventless-spec/src/Message.res`
+- `Message.errorHandler` — defined in `reventless/src/Message.res` as `('error, 'command, ReventlessSpec.Message.context) => array<'event>`, itself only using spec types
+
+`Behavior.T` **can be moved to `reventless-spec`**. All its type dependencies are spec-level.
+
+**`EventMapper.Mappings`** — Currently in `reventless/src/components/EventMapper/EventMapper.res`:
+```rescript
+module type Mappings = {
+  module Target: ReventlessSpec.EventMapping.Target
+  module type Mapping = ReventlessSpec.EventMapping.T with module Target := Target
+  let mappings: array<module(Mapping)>
+  let counter: option<module(Counter.T)>   // ← BLOCKER
+}
+```
+
+`Counter.T` is in `reventless` and has:
+```rescript
+module type T = {
+  let make: (
+    ~name: string,
+    ~counterEventsHandler: counterEventsHandler,
+    ~ttl: int=?,
+    ~opts: Pulumi.ComponentResource.options=?,   // ← Pulumi type
+  ) => component
+}
+```
+
+`Pulumi.ComponentResource.options` cannot be in `reventless-spec`. A **simplified** `EventMapper_Spec.Mappings` without the `counter` field could be defined in spec, but it would be a different type from `EventMapper.Mappings` — see the compatibility problem below.
+
+**`ExtensionPoint.Mappings`** — References `ExtensionPointMapping.T` (in reventless-spec ✅) but also cannot easily change signatures due to `counter` references in mapping logic.
+
+---
+
+### Category 2: Output Module Types — Cannot Move
+
+The return type of each `Make` functor is the critical blocker.
+
+**`Aggregate.T`** (in `reventless`):
+```rescript
+module type T = {
+  module Spec: ReventlessSpec.Aggregate.Spec
+  module AggregateRuntimeBuilder: AggregateRuntime_Builder.T   // ← internal reventless type
+  let make: (~opts: Pulumi.ComponentResource.options=?) => component  // ← Pulumi type
+}
+```
+
+**`ReadModel.T`** (in `reventless`):
+```rescript
+module type T = {
+  module Spec: ReventlessSpec.ReadModel_Spec.T
+  module EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T  // ← internal
+  let make: (~allEventTopics: ..., ~opts: ...) => component
+}
+```
+
+**`Plugin.T.make`** (in `reventless`):
+```rescript
+let make: (
+  ~scheduler: Pulumi.Output.t<Scheduler.operations>,  // ← Pulumi type
+  ~opts: Pulumi.ComponentResource.options=?,          // ← Pulumi type
+  ...
+) => component
+```
+
+These output types contain `Pulumi.*` types, internal adapter module types, and component infrastructure types — none of which can live in `reventless-spec` without pulling in the entire infrastructure dependency.
+
+---
+
+### Category 3: The Abstract Output Type Dead End
+
+One might propose defining a **minimal abstract output type** in reventless-spec:
+
+```rescript
+// reventless-spec/src/Platform.res
+module type AggregateOutput = {
+  module Spec: Aggregate.Spec
+  // minimal — no Pulumi, no internals
+}
+
+module type T = {
+  module Aggregate: {
+    module Make: (...) => AggregateOutput
+  }
+  module Plugin: {
+    let make: (~aggregates: array<module(AggregateOutput)>=?, ...) => unit
+  }
+}
+```
+
+This fails at the concrete implementation boundary. The concrete `Plugin.make` internally calls `Reventless.Plugin_Builder.make(~aggregates: array<module(Aggregate.T)>)`. But the application passed `array<module(AggregateOutput)>` (weaker type). `AggregateOutput` is a structural subtype of `Aggregate.T` — a module satisfying `Aggregate.T` also satisfies `AggregateOutput`, but **not vice versa**. The concrete plugin builder cannot safely use `array<module(AggregateOutput)>` where `array<module(Aggregate.T)>` is required.
+
+Even with OCaml's abstract module types inside module type signatures (`module type AggregateT` inside `module type T`), the same problem applies: the concrete platform reveals `AggregateT = Reventless.Aggregate.T`, but the abstract view from `reventless-spec` loses this information, breaking the Plugin boundary.
+
+---
+
+### The Config Problem
+
+`Aggregate_Builder_Micro.Make` and `ReadModel_Builder_Single.Make` take `Config: Config.T` as their first argument:
+
+```rescript
+// reventless-aws/src/components/Aggregate_Builder_Micro.res
+module Make = (
+  Config: Config.T,                         // ← AWS Config with Pulumi types
+  Spec: ReventlessSpec.Aggregate.Spec,
+  Behavior: Reventless.Behavior.T with module Spec := Spec,
+  EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
+): Reventless.Aggregate.T
+```
+
+`Config.T` in `reventless-aws` is:
+```rescript
+module type T = Reventless.Config.T
+  with type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
+  and type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
+```
+
+For `Platform.T.Aggregate.Make` to not include Config (so app code stays clean), Config must be **pre-applied** at the point the Platform is created. This means the concrete Platform itself is a **functor over Config**:
+
+```rescript
+// reventless-aws/src/Platform.res
+module Make = (Config: Config.T): Reventless.Platform.T => { ... }
+```
+
+Application code would then do:
+```rescript
+// index.res (Composition Root — imports reventless-aws)
+module Platform = ReventlessAws.Platform.Make(Config)
+module App = MyPlugin.Make(Platform)
+```
+
+This design is clean, but it requires `Reventless.Platform.T` (not `ReventlessSpec.Platform.T`) because all the component output types are in `reventless`.
+
+---
+
+### Summary: What Can and Cannot Move to reventless-spec
+
+| Type | Can move? | Reason |
+|---|---|---|
+| `Behavior.T` | ✅ Yes | Only uses `Message.context`, `Handler.errorHandler`, `S.t` — all spec-compatible |
+| Simplified `EventMapper_Spec.Mappings` (no `counter`) | ✅ Partial | Without `Counter.T` dependency — but different type from `EventMapper.Mappings` |
+| `Aggregate.T` (output) | ❌ No | Contains `AggregateRuntimeBuilder`, `Pulumi.ComponentResource.options` |
+| `ReadModel.T` (output) | ❌ No | Contains `EventCollectorRuntimeBuilder`, Pulumi types |
+| `Plugin.T.make` signature | ❌ No | `~scheduler: Pulumi.Output.t<Scheduler.operations>` |
+| `Counter.T` | ❌ No | `~opts: Pulumi.ComponentResource.options` |
+| `Config.T` | ❌ No | AWS Pulumi resource types |
+
+---
+
+### Corrected Option B: Platform.T in `reventless`
+
+The practical implementation of Option B is:
+
+```
+Platform.T lives in reventless (not reventless-spec)
+ReventlessAws.Platform.Make(Config) satisfies Reventless.Platform.T
+```
+
+This still achieves the key goal — **application assembly code is decoupled from `reventless-aws`**:
+
+```
+app/MySpec.res        ← imports reventless-spec only
+app/MyBehavior.res    ← imports reventless-spec only (if Behavior.T moved there)
+app/MyMappings.res    ← imports reventless-spec only
+app/MyPlugin.res      ← imports reventless (for Platform.T) — NOT reventless-aws
+index.res             ← Composition Root: imports reventless-aws, creates Platform.Make(Config)
+```
+
+The domain-to-platform gap becomes:
+- Domain code: `reventless-spec` only ✅
+- Assembly code: `reventless` only (for `Platform.T`, `Behavior.T`, `EventMapper.Mappings`) ✅
+- **Not** `reventless-aws` ✅
+- Composition Root only: `reventless-aws` ✅
+
+### Implementation Status: ✅ DONE
+
+**In `reventless-spec`:**
+- `packages/reventless-spec/src/Behavior.res` ✅ — `resolverConfig` type and `module type T`
+
+**In `reventless`:**
+- `packages/reventless/src/Platform.res` ✅ — `module type T` with builders for Aggregate, ReadModel, ExtensionPoint, Task, Counter, StateChangeSlice, StateViewSlice, DcbEventLog
+
+**In `reventless-aws`:**
+- `packages/reventless-aws/src/Platform.res` ✅ — `module Make(Config: Config.T): Reventless.Platform.T` with all AWS builders pre-wired
+
+**Verification:**
+- ✅ `cd packages/reventless-spec && npm run build` — compiles
+- ✅ `cd packages/reventless && npm run build` — compiles
+- ✅ `cd packages/reventless-aws && npm run build` — compiles
+- ✅ `cd packages/reventless && npm test` — 103 tests passed
