@@ -14,6 +14,7 @@ type outputs = {
   heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
   stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
+  stateViewSlices: Pulumi.Output.t<dict<StateViewSlice.outputs>>,
 }
 
 type t
@@ -26,6 +27,7 @@ module type DcbSpec = {
   type event
 
   let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
+  let stateViewSlices: array<module(StateViewSlice.T with type dcbEvent = event)>
 }
 
 module type T = {

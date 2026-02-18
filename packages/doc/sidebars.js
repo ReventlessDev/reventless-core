@@ -51,6 +51,7 @@ const sidebars = {
         'reventless-components/scheduler',
         'reventless-components/sideeffecthandler',
         'reventless-components/statechangeslice',
+        'reventless-components/stateviewslice',
         'reventless-components/task',
       ],
     },
@@ -59,6 +60,7 @@ const sidebars = {
       label: 'Event Modeling',
       items: [
         'event-modeling/statechangeslice-usage',
+        'event-modeling/stateviewslice-usage',
       ],
     },
     {

@@ -50,6 +50,8 @@ function toString(componentType) {
       return "DcbEventLog";
     case "StateChangeSlice" :
       return "StateChangeSlice";
+    case "StateViewSlice" :
+      return "StateViewSlice";
   }
 }
 
@@ -97,6 +99,8 @@ function ofString(str) {
       return "SideEffectHandler";
     case "StateChangeSlice" :
       return "StateChangeSlice";
+    case "StateViewSlice" :
+      return "StateViewSlice";
     case "Task" :
       return "Task";
     case "Vpc" :
@@ -154,6 +158,8 @@ function toName(componentType) {
       return "DcbEventLog";
     case "StateChangeSlice" :
       return "StateChgSlc";
+    case "StateViewSlice" :
+      return "StateViewSlice";
   }
 }
 

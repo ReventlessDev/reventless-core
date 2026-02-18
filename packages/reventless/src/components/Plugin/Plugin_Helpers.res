@@ -8,6 +8,7 @@ type pureOutputs = {
   extensions: dict<Extension.outputs>,
   aggregates: dict<Aggregate.outputs>,
   stateChangeSlices: dict<StateChangeSlice.outputs>,
+  stateViewSlices: dict<StateViewSlice.outputs>,
   readModels: dict<ReadModel.outputs>,
   tasks: dict<Task.outputs>,
   resolvers: array<ReventlessSpec.Adapter.resource>,

@@ -47,31 +47,41 @@ function Make(Spec) {
           })(DcbCommandTopicChannel);
           let dcbCommandTopic = DcbCommandTopic.make(childName + `-dcb-command-topic`, opts);
           let publishJsons = Component$Reventless.operations(dcbCommandTopic).apply(ops => ops.publishJsons);
-          let handlerOutputs = Object.fromEntries(dcbSpec.stateChangeSlices.map(StateChangeSlice => {
+          let stateChangeSlicesOutputs = Object.fromEntries(dcbSpec.stateChangeSlices.map(StateChangeSlice => {
             let ch = StateChangeSlice.make(dcbEventLog, publishJsons, opts);
             return [
               StateChangeSlice.Spec.name,
               Component$Reventless.outputs(ch)
             ];
           }));
+          let stateViewSlicesOutputs = Object.fromEntries(dcbSpec.stateViewSlices.map(StateViewSlice => {
+            let sv = StateViewSlice.make(dcbEventLog, opts);
+            return [
+              StateViewSlice.Spec.name,
+              Component$Reventless.outputs(sv)
+            ];
+          }));
           let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic);
-          let dcbResources = Object.values(handlerOutputs).flatMap(outputs => outputs.resources);
+          let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources);
           let dcbConnectFn = runtime => DcbCommandTopic.connect(runtime, dcbResources, dcbCommandTopic);
           let dcbRuntimeSetup = () => PluginRuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, undefined, undefined, dcbCommandTopic);
           match = [
             Component$Reventless.outputs(dcbEventLog),
-            handlerOutputs,
+            stateChangeSlicesOutputs,
+            stateViewSlicesOutputs,
             dcbRuntimeSetup
           ];
         } else {
           match = [
             undefined,
             {},
+            {},
             undefined
           ];
         }
-        let dcbRuntimeOpt = match[2];
-        let stateChangeSlicesOutputs = match[1];
+        let dcbRuntimeOpt = match[3];
+        let stateViewSlicesOutputs$1 = match[2];
+        let stateChangeSlicesOutputs$1 = match[1];
         let dcbEventLogOutputs = match[0];
         let aggregatesWithoutEventMappers = Plugin_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, opts);
         let allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
@@ -147,7 +157,8 @@ function Make(Spec) {
               el
             ])),
             aggregates: aggregatesOutputs,
-            stateChangeSlices: stateChangeSlicesOutputs,
+            stateChangeSlices: stateChangeSlicesOutputs$1,
+            stateViewSlices: stateViewSlicesOutputs$1,
             readModels: readModelsOutputs,
             tasks: Object.fromEntries(tasksOutputs.map(el => [
               el.name,
@@ -171,7 +182,8 @@ function Make(Spec) {
           resolvers: pureOutputs.apply(outputs => outputs.resolvers),
           heartbeat: pureOutputs.apply(outputs => outputs.heartbeat),
           dcbEventLog: pureOutputs.apply(outputs => outputs.dcbEventLog),
-          stateChangeSlices: pureOutputs.apply(outputs => outputs.stateChangeSlices)
+          stateChangeSlices: pureOutputs.apply(outputs => outputs.stateChangeSlices),
+          stateViewSlices: pureOutputs.apply(outputs => outputs.stateViewSlices)
         });
       }, opts);
     };
