@@ -1,5 +1,5 @@
 module Make = (
-  Spec: DcbEventLog.Spec,
+  Spec: ReventlessSpec.DcbEventLog_Spec.T,
   Storage: DcbEventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
 ): (DcbEventLog.T with module Spec = Spec) => {

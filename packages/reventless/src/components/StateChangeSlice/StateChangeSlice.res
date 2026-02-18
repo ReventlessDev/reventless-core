@@ -10,7 +10,7 @@ type component = Component.t<t, outputs, operations>
 module type Spec = {
   let name: string
 
-  module DcbEventLogSpec: DcbEventLog.Spec
+  module DcbEventLogSpec: ReventlessSpec.DcbEventLog_Spec.T
 
   @schema
   type command

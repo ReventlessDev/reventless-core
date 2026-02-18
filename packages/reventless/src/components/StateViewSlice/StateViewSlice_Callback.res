@@ -1,5 +1,5 @@
 module type T = {
-  module Spec: StateViewSlice.Spec
+  module Spec: ReventlessSpec.StateViewSlice_Spec.T
   type queryDbOperations
 
   let eventsHandler: (
@@ -8,7 +8,7 @@ module type T = {
   ) => promise<unit>
 }
 
-module Make = (Spec: StateViewSlice.Spec): (T with module Spec = Spec) => {
+module Make = (Spec: ReventlessSpec.StateViewSlice_Spec.T): (T with module Spec = Spec) => {
   module Spec = Spec
 
   type queryDbOperations = QueryDb.operations<string, Spec.state>

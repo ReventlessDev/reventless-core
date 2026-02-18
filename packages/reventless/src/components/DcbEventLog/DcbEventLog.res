@@ -33,13 +33,8 @@ type operations<'event> = {
   append: append<'event>,
 }
 
-module type Spec = {
-  @schema
-  type event
-}
-
 module type T = {
-  module Spec: Spec
+  module Spec: ReventlessSpec.DcbEventLog_Spec.T
 
   type component = component<operations<Spec.event>>
 

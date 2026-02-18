@@ -8,26 +8,9 @@ type outputs = {
 type operations = {enqueueEvent: EventCollector.enqueueEvent}
 type component = Component.t<t, outputs, operations>
 
-module type Spec = {
-  let name: string
-
-  module DcbEventLogSpec: DcbEventLog.Spec
-
-  @schema
-  type event
-
-  @schema
-  type state
-
-  let project: (
-    option<state>,
-    DcbEventLogSpec.event,
-  ) => array<ReventlessSpec.Projection.Spec.action<string, state>>
-}
-
 module type T = {
   type dcbEvent
-  module Spec: Spec
+  module Spec: ReventlessSpec.StateViewSlice_Spec.T
 
   let make: (
     ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
