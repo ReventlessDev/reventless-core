@@ -12,17 +12,8 @@ exception ReplayError(string)
 type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, string>>
 type replay<'id, 'event> = 'id => promise<array<'event>>
 
-module type Spec = {
-  module Id: ReventlessSpec.Id.T
-
-  let name: string
-
-  @schema
-  type event
-}
-
 module type T = {
-  module Spec: Spec
+  module Spec: ReventlessSpec.EventLog_Spec.T
 
   type operations = {
     append: append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,

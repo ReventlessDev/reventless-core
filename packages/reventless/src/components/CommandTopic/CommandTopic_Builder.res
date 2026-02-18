@@ -1,4 +1,4 @@
-module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): (
+module Make = (Spec: ReventlessSpec.CommandTopic_Spec.T, Channel: CommandTopic_Adapter.Channel): (
   CommandTopic.T with module Spec = Spec and type callbackEvent = Channel.callbackEvent
 ) => {
   module Spec = Spec
@@ -40,7 +40,7 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
 
       // Call each registered handler
       let handlerPromises = handlers->Array.map(async handlerEntry => {
-        let {CommandTopic.handler} = handlerEntry
+        let {CommandTopic.handler: handler} = handlerEntry
         try {
           let results = await handler([{CommandTopic.reference, command: json}])
           allResults->Array.pushMany(results)

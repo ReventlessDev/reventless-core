@@ -1,5 +1,5 @@
 module type Ops = {
-  module Spec: CommandTopic.Spec
+  module Spec: ReventlessSpec.CommandTopic_Spec.T
   let commandsHandler: CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 }
 
@@ -7,7 +7,7 @@ module type T = {
   let handleJsonCommands: CommandTopic.jsonCommandsHandler
 }
 
-module Make = (Spec: CommandTopic.Spec, Ops: Ops with module Spec = Spec): T => {
+module Make = (Spec: ReventlessSpec.CommandTopic_Spec.T, Ops: Ops with module Spec = Spec): T => {
   let handleJsonCommands = async jsonItems => {
     Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Array.length)
     let topicItems = jsonItems->Array.filterMap(({

@@ -18,15 +18,8 @@ type commandsHandler<'command> = array<topicItem<'command>> => promise<
   array<result<string, string>>,
 >
 
-module type Spec = {
-  module Id: ReventlessSpec.Id.T
-
-  @schema
-  type command
-}
-
 module type T = {
-  module Spec: Spec
+  module Spec: ReventlessSpec.CommandTopic_Spec.T
   type callbackEvent
 
   type publish = publish<Spec.Id.t, Spec.command>
@@ -59,9 +52,9 @@ module type T = {
 
   // Returns the filtering handler output for runtime connection
   // Registers the handler with the channel's event routing
-  let makeFilteringHandler: (
-    component,
-  ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
+  let makeFilteringHandler: component => Pulumi.Output.t<
+    Runtime.eventHandler<callbackEvent, 'context, unit>,
+  >
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }
