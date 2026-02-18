@@ -15,7 +15,7 @@ type abstractIncomingCommandAction =
 type abstractOutgoingCommandAction =
   | AbstractPublishPluginExtensionPointCommand(Message.commandJson)
   | AbstractPublishExtensionPointCommand(extensionPointName, Message.commandJson)
-  | AbstractCall(Message.handler<unit>)
+  | AbstractCall(ReventlessSpec.Handler.handler<unit>)
 
 module type T = {
   module ExtensionPoint: Spec
