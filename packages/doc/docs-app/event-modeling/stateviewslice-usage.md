@@ -57,7 +57,7 @@ let sliceComponent = ItemViewSlice.make(
 )
 ```
 
-The `StateViewSlice_Builder.Make` functor:
+The [`StateViewSlice_Builder.Make`](./rescript-syntax.md#functors) [module function](./rescript-syntax.md#functors):
 1. Creates a callback module with projection logic
 2. Sets up event handling from DcbEventLog
 3. Connects to QueryDb for state storage

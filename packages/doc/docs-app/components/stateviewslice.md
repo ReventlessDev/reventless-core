@@ -111,8 +111,8 @@ module MySpec = MyStateViewSliceSpec  // defines module matching StateViewSlice.
 |-------|------|-------------|
 | `name` | `string` | Unique identifier for this view slice |
 | `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
-| `event` | `@schema type` | Event type using `@schema` ppx for auto-generated schema |
-| `state` | `@schema type` | State type for the read model (schema auto-generated) |
+| `event` | `@schema` [type](./rescript-syntax.md#ppx) | Event type using `@schema` [ppx](./rescript-syntax.md#ppx) for auto-generated schema |
+| `state` | `@schema` [type](./rescript-syntax.md#ppx) | State type for the read model (schema auto-generated) |
 | `project` | `(option<state>, event) => array<Projection.action<state>>` | Function to transform event into state actions |
 
 ## Runtime Behavior

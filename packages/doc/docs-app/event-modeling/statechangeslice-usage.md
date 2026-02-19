@@ -62,7 +62,7 @@ let sliceComponent = CreateItemSlice.make(
 )
 ```
 
-The `StateChangeSlice_Builder.Make` functor:
+The [`StateChangeSlice_Builder.Make`](./rescript-syntax.md#functors) [module function](./rescript-syntax.md#functors):
 1. Creates a callback module with decision logic
 2. Sets up JSON command decoding
 3. Registers the handler in the global CommandTopic registry
