@@ -300,7 +300,7 @@ jobs:
 
       - name: Setup Pages
         id: setup-pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
         continue-on-error: true
 
       - name: Upload artifact
