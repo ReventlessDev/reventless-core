@@ -5,7 +5,9 @@ const sidebars = {
   appSidebar: [
     'index',
     'get-started',
-    'rescript-syntax',
+    'aggregate-based-plugin',
+    'dcb-based-plugin',
+    'plugin-system',
     'component-overview',
     'unit-testing',
     {
@@ -66,6 +68,7 @@ const sidebars = {
         'troubleshooting/common-issues',
       ],
     },
+    'rescript-syntax',
   ],
 };
 

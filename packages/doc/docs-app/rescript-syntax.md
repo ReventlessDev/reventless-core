@@ -209,22 +209,210 @@ let sayHiAdvanced = ({name: personName, age}) =>
 
 ## Modules
 
-TODO
+Modules are containers that group related code (types, functions, values) together. In ReScript, every `.res` file is automatically a module, with the filename becoming the module name.
+
+```rescript
+// MyModule.res
+type myType = string
+let myValue = "hello"
+
+let greet = (name) => myValue ++ " " ++ name
+```
+
+You can access module contents using dot notation:
+
+```rescript
+let x = MyModule.myValue  // "hello"
+let greeting = MyModule.greet("World")  // "hello World"
+```
 
 ### Module Types
 
-TODO
+Module types define the signature or contract that a module must implement. They are similar to interfaces in other languages.
+
+```rescript
+// Define a module type
+module type MyService = {
+  let name: string
+  let process: (string) => string
+}
+
+// A module implementing the type
+module MyServiceImpl: MyService = {
+  let name = "My Service"
+  let process = (input) => input ++ " processed"
+}
+```
+
+Module types are essential in Reventless for defining component specifications that can be satisfied by different implementations.
 
 ### First Class Modules
 
-TODO
+First-class modules allow you to treat modules as values that can be passed around, stored in data structures, and computed at runtime.
+
+```rescript
+// Create a module as a value
+module MyModule = {
+  let value = 42
+}
+
+// Pass a module to a function
+let printValue = (module M: { let value: int }) => {
+  Js.log(Js.Int.toString(M.value))
+}
+
+printValue(module MyModule)  // prints 42
+```
+
+In Reventless, first-class modules are used extensively for dependency injection and plugin composition:
+
+```rescript
+// A plugin that accepts module implementations
+let createPlugin = (module Aggregate: Aggregate.Spec, module ReadModel: ReadModel.Spec) => {
+  // Use the modules...
+}
+
+// Pass concrete implementations
+createPlugin(module(MyAggregate), module(MyReadModel))
+```
 
 ### Functors
 
-[Official Rescript documentation on functors.](https://rescript-lang.org/docs/manual/latest/module#module-functions-functors)
+**Functors** (also called **module functions**) are functions that take modules as input and return modules as output. They are the cornerstone of the Reventless framework's architecture.
 
-TODO
+```rescript
+// A functor definition
+module MakeLogger = (Config: { let prefix: string }) => {
+  let log = (message) => Js.log(Config.prefix ++ ": " ++ message)
+  let error = (message) => Js.log(Config.prefix ++ " ERROR: " ++ message)
+}
 
-### PPX
+// Apply the functor with configuration
+module InfoLogger = MakeLogger({ let prefix = "INFO" })
+module DebugLogger = MakeLogger({ let prefix = "DEBUG" })
 
-TODO
+InfoLogger.log("Application started")  // "INFO: Application started"
+DebugLogger.log("Application started")  // "DEBUG: Application started"
+```
+
+#### Why Functors are Essential in Reventless
+
+Functors serve several critical purposes in the framework:
+
+1. **Dependency Injection**
+   Functors allow components to receive their dependencies as parameters. This makes the framework provider-agnostic - the same component code can work with AWS, GCP, Azure, or any other cloud provider.
+
+   ```rescript
+   // A component that works with any event log implementation
+   module MakeAggregate = (EventLog: EventLog.Spec) => {
+     // The aggregate uses EventLog.append() but doesn't care about the implementation
+     let handle = (command) => {
+       // ... process command ...
+       EventLog.append(events)
+     }
+   }
+   
+   // Can use with AWS DynamoDB, in-memory, or any other implementation
+   module AwsAggregate = MakeAggregate(module(AwsEventLog))
+   module InMemoryAggregate = MakeAggregate(module(InMemoryEventLog))
+   ```
+
+2. **Type-Safe Configuration**
+   Functors enable compile-time verification that all required configuration is provided. Missing or incorrect configuration results in clear compiler errors.
+
+   ```rescript
+   // The builder requires specific configuration
+   module MakePlugin = (Config: Plugin.Config) => {
+     // Compiler ensures Config has all required fields
+     // Error at compile time if something is missing
+   }
+   ```
+
+3. **Code Reuse**
+   A single functor can generate multiple working implementations by varying the input modules. This DRYs up significant amounts of boilerplate code.
+
+   ```rescript
+   // One Aggregate functor works for all aggregates
+   module OrderAggregate = Aggregate.Make({ let name = "Order" })
+   module UserAggregate = Aggregate.Make({ let name = "User" })
+   module ProductAggregate = Aggregate.Make({ let name = "Product" })
+   ```
+
+4. **Abstraction Over Infrastructure**
+   Functors allow the framework to abstract over infrastructure details. Components define what operations they need (e.g., "append to event log") without knowing how it's implemented.
+
+   ```rescript
+   // The CommandHandler functor doesn't know about SQS, it just needs
+   // something that can send messages
+   module MakeCommandHandler = (Queue: CommandQueue.Spec) => {
+     let send = (command) => Queue.send(command)
+   }
+   ```
+
+#### Functor Syntax in Reventless
+
+Reventless uses a consistent naming convention for functors:
+
+```rescript
+// ComponentName.res - Defines the module type (spec)
+module type Spec = { ... }
+
+// ComponentName_Builder.res - Contains the Make functor
+module Make = (Spec: SomeSpec) => { ... }
+
+// Usage: Apply the functor to get a concrete implementation
+module MyComponent = MyComponent_Builder.Make(MySpec)
+```
+
+Common patterns in Reventless:
+- `Make` - Primary functor for creating component instances
+- `MakeFromCore` - Functor that requires the Core module
+- Builder functors typically accept a `Spec` module with configuration and type definitions
+
+## PPX
+
+PPX (PreProcessor eXtensions) are compile-time code generators that transform your code. Reventless uses PPX extensions to automatically generate boilerplate code.
+
+### @schema
+
+The `@schema` PPX generates serialization/deserialization code for types:
+
+```rescript
+@schema
+type command =
+  | CreateItem({name: string, quantity: int})
+  | DeleteItem({id: string})
+```
+
+This automatically generates:
+- `commandSchema: S.t<command>` - Type-safe schema for serialization
+- JSON encoding/decoding functions
+- Validation logic
+
+### @s.matches
+
+Used in DCB (Dynamic Consistency Boundary) contexts to mark fields as queryable tags:
+
+```rescript
+@schema
+type event =
+  | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
+  | ItemRenamed({itemId: @s.matches(DcbTag.string) string, newName: string})
+```
+
+The `@s.matches(DcbTag.string)` marks `itemId` as a DCB tag, enabling efficient lookups when building decision models.
+
+#### Why DCB Tags?
+
+In DCB-based plugins, multiple state change slices share a single event log. When processing a command, a slice needs to query relevant events to build its decision model. DCB tags allow efficient filtering:
+
+- `@s.matches(DcbTag.string)` - Tag for string-based entity IDs (e.g., `itemId`, `userId`)
+- `@s.matches(DcbTag.int)` - Tag for integer-based IDs
+
+The framework extracts these tagged fields and indexes events by them, enabling fast queries like "get all events for entity X".
+
+:::note Future simplification
+In a future version the DCB tag annotation will be simplified from `@s.matches(DcbTag.string)` to `@s.tag`. This is currently not supported by Sury.
+:::
+
+See [DCB-Based Plugin](./dcb-based-plugin.md) for how DCB tags are used in practice.

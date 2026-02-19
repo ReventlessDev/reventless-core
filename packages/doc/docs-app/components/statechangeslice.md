@@ -105,7 +105,7 @@ EventLogSpec:  module Dcb DcbEventLog.Spec
 |-------|------|-------------|
 | `name` | `string` | Unique identifier for this slice |
 | `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
-| `command` | `@schema type` | Command type using `@schema` ppx for auto-generated schema |
+| `command` | `@schema` [type](./rescript-syntax.md#ppx) | Command type using `@schema` [ppx](./rescript-syntax.md#ppx) for auto-generated schema |
 | `error` | `@schema type` | Error type for command processing failures |
 | `decisionModel` | `type` | The state type built from accumulated events |
 | `initialDecisionModel` | `decisionModel` | Starting state for new aggregates/entities |
