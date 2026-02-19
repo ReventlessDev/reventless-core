@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
-    "husky": "^4.2.5",
+    "husky": "^9.1.7",
     "moment": "^2.30.1",
     "rescript": "^12.1.0"
   },
