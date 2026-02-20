@@ -6,27 +6,33 @@ import * as PluginBehavior$Reventless from "@reventlessdev/reventless/src/core/A
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/NoEventMappings.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "../components/Aggregate_Builder_Single.res.mjs";
 
-function Make(Config) {
-  return Aggregate_Builder_Single$ReventlessAws.Make(Config)({
-    Id: Id$ReventlessSpec.$$String,
-    name: PluginSpec$Reventless.name,
-    commandSchema: PluginSpec$Reventless.commandSchema,
-    eventSchema: PluginSpec$Reventless.eventSchema,
-    errorSchema: PluginSpec$Reventless.errorSchema
-  })({
-    resolverConfig: PluginBehavior$Reventless.resolverConfig,
-    init: PluginBehavior$Reventless.init,
-    apply: PluginBehavior$Reventless.apply,
-    create: PluginBehavior$Reventless.create,
-    execute: PluginBehavior$Reventless.execute
-  })(NoEventMappings$Reventless.Make({
-    name: PluginSpec$Reventless.name,
-    Id: Id$ReventlessSpec.$$String,
-    commandSchema: PluginSpec$Reventless.commandSchema
-  }));
-}
+let include = Aggregate_Builder_Single$ReventlessAws.Make({
+  Id: Id$ReventlessSpec.$$String,
+  name: PluginSpec$Reventless.name,
+  commandSchema: PluginSpec$Reventless.commandSchema,
+  eventSchema: PluginSpec$Reventless.eventSchema,
+  errorSchema: PluginSpec$Reventless.errorSchema
+})({
+  resolverConfig: PluginBehavior$Reventless.resolverConfig,
+  init: PluginBehavior$Reventless.init,
+  apply: PluginBehavior$Reventless.apply,
+  create: PluginBehavior$Reventless.create,
+  execute: PluginBehavior$Reventless.execute
+})(NoEventMappings$Reventless.Make({
+  name: PluginSpec$Reventless.name,
+  Id: Id$ReventlessSpec.$$String,
+  commandSchema: PluginSpec$Reventless.commandSchema
+}));
+
+let Spec = include.Spec;
+
+let AggregateRuntimeBuilder = include.AggregateRuntimeBuilder;
+
+let make = include.make;
 
 export {
-  Make,
+  Spec,
+  AggregateRuntimeBuilder,
+  make,
 }
-/* Id-ReventlessSpec Not a pure module */
+/* include Not a pure module */

@@ -20,8 +20,8 @@ let AggregateRuntimeBuilder = AggregateRuntime_Builder_Micro$Reventless.Make({
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
 });
 
-function Make(Config) {
-  return Spec => (Behavior => (EventMappings => Aggregate_Builder$Reventless.Make(Config)(Spec)(Behavior)(EventMappings)({
+function Make(Spec) {
+  return Behavior => (EventMappings => Aggregate_Builder$Reventless.Make(Spec)(Behavior)(EventMappings)({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     asEventHandler: prim => prim
@@ -30,7 +30,7 @@ function Make(Config) {
   })(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
     connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-  })(AggregateRuntimeBuilder)));
+  })(AggregateRuntimeBuilder));
 }
 
 let CommandGeneratorResolvers;

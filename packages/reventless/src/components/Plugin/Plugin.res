@@ -31,15 +31,19 @@ module type DcbSpec = {
 }
 
 module type T = {
+  type api
+  type role
   let make: (
     ~name: string,
     ~version: string,
     ~heartbeatInterval: int,
     ~extensionPoints: array<module(ExtensionPoint.T)>=?,
     ~extensions: array<module(Extension.T)>=?,
-    ~aggregates: array<module(Aggregate.T)>=?,
-    ~readModels: array<module(ReadModel.T)>=?,
+    ~aggregates: array<module(Aggregate.T with type api = api)>=?,
+    ~readModels: array<module(ReadModel.T with type api = api and type role = role)>=?,
     ~tasks: array<module(Task.T)>=?,
+    ~api: api,
+    ~apiRole: role,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~dcbSpec: module(DcbSpec)=?,
     ~opts: Pulumi.ComponentResource.options=?,

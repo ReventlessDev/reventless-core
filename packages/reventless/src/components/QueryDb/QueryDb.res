@@ -45,10 +45,12 @@ type operations<'id, 'state> = {
 module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T
 
+  type api
+  type role
   type operations = operations<Spec.Id.t, Spec.state>
   type component = Component.t<t, outputs, operations>
 
-  let make: (~ttl: int=?, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (~api: api, ~apiRole: role, ~ttl: int=?, ~opts: Pulumi.ComponentResource.options=?) => component
 }
 
 let allResolversMakers = allQueryDbs =>

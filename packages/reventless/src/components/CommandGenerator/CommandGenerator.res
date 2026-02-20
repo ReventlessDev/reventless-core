@@ -23,8 +23,10 @@ type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type component = Component.t<t, outputs, unit>
 
 module type T = {
+  type api
   type runtimeParts
   let connect: (
+    ~api: api,
     ~resources: array<ReventlessSpec.Adapter.resource>,
     ~runtime: Runtime.environment<runtimeParts>,
     component,

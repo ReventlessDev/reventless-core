@@ -12,8 +12,8 @@ import * as CommandTopic_Builder$Reventless from "../CommandTopic/CommandTopic_B
 import * as EventCollector_Builder$Reventless from "../EventCollector/EventCollector_Builder.res.mjs";
 import * as CommandGenerator_Builder$Reventless from "../CommandGenerator/CommandGenerator_Builder.res.mjs";
 
-function Make(Config) {
-  return Spec => (Behavior => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => {
+function Make(Spec) {
+  return Behavior => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => {
     let SpecificEventLog = EventLog_Builder$Reventless.Make({
       Id: Spec.Id,
       name: Spec.name,
@@ -23,7 +23,7 @@ function Make(Config) {
       Id: Spec.Id,
       commandSchema: Spec.commandSchema
     })(CommandTopicChannel);
-    let SpecificCommandGenerator = CommandGenerator_Builder$Reventless.Make(Config)(Spec)(Behavior)(CommandGeneratorResolvers);
+    let SpecificCommandGenerator = CommandGenerator_Builder$Reventless.Make(Spec)(Behavior)(CommandGeneratorResolvers);
     let SpecificEventCollector = EventCollector_Builder$Reventless.Make(RuntimeEnvironment)(EventCollectorChannel);
     let SpecificEventMapper = EventMapper_Builder$Reventless.Make({
       name: Spec.name,
@@ -46,50 +46,49 @@ function Make(Config) {
       AggregateRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), undefined, undefined, commandTopic);
       return commandTopic;
     });
-    let createCommandGenerator = (commandTopic, name, opts) => Output$Pulumi.flatMap(commandTopic, commandTopic => Component$Reventless.operations(commandTopic).apply(param => {
+    let createCommandGenerator = (commandTopic, api, name, opts) => Output$Pulumi.flatMap(commandTopic, commandTopic => Component$Reventless.operations(commandTopic).apply(param => {
       let commandGenerator = SpecificCommandGenerator.make(name, opts);
       let resources = Component$Reventless.outputs(commandTopic).resources;
-      AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(param.publishJsons), none => SpecificCommandGenerator.connect(resources, none, commandGenerator), undefined, undefined, commandGenerator);
+      AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(param.publishJsons), none => SpecificCommandGenerator.connect(api, resources, none, commandGenerator), undefined, undefined, commandGenerator);
       return commandGenerator;
     }));
-    let construct = (self, name) => {
-      let opts_parent = Component$Reventless.toPulumiResource(self);
+    let make = (api, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Aggregate$Reventless.componentType), Spec.name, (extra, extra$1) => {
+      let opts_parent = Component$Reventless.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let name$1 = ComponentType$Reventless.name(name, Aggregate$Reventless.componentType);
-      let eventLog = SpecificEventLog.make(name$1, opts);
-      let commandTopic = createCommandTopic(eventLog, name$1, opts);
-      let commandGenerator = createCommandGenerator(commandTopic, name$1, opts);
-      Component$Reventless.setOperations(self, Output$Pulumi.flatMap(commandTopic, commandTopic => Component$Reventless.operations(commandTopic).apply(param => ({
+      let name = ComponentType$Reventless.name(extra$1, Aggregate$Reventless.componentType);
+      let eventLog = SpecificEventLog.make(name, opts);
+      let commandTopic = createCommandTopic(eventLog, name, opts);
+      let commandGenerator = createCommandGenerator(commandTopic, api, name, opts);
+      Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(commandTopic, commandTopic => Component$Reventless.operations(commandTopic).apply(param => ({
         publishJsons: param.publishJsons
       }))));
-      return Component$Reventless.setOutputs(self, {
+      return Component$Reventless.setOutputs(extra, {
         name: Spec.name,
         commandGenerator: Component$Reventless.wrappedOutputs(commandGenerator),
         commandTopic: Component$Reventless.wrappedOutputs(commandTopic),
         eventLog: Component$Reventless.outputs(eventLog),
         addEventMapper: (none, none$1) => {
           if (EventMappings.mappings.length === 0) {
-            return Component$Reventless.outputs(self);
+            return Component$Reventless.outputs(extra);
           }
           let eventMapper = Pulumi.all([
-            Component$Reventless.operations(self),
-            Component$Reventless.outputs(self).commandTopic
+            Component$Reventless.operations(extra),
+            Component$Reventless.outputs(extra).commandTopic
           ]).apply(param => SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts));
-          let newrecord = {...Component$Reventless.outputs(self)};
+          let newrecord = {...Component$Reventless.outputs(extra)};
           newrecord.eventMapper = eventMapper.apply(Component$Reventless.outputs);
           return newrecord;
         }
       });
-    };
-    let make = opts => Component$Reventless.make(ComponentType$Reventless.toString(Aggregate$Reventless.componentType), Spec.name, construct, opts);
+    }, opts);
     return {
       Spec: Spec,
       AggregateRuntimeBuilder: AggregateRuntimeBuilder,
       make: make
     };
-  })))))))));
+  }))))))));
 }
 
 export {

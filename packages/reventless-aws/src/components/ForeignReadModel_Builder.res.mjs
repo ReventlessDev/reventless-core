@@ -16,8 +16,8 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollect
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
 });
 
-function Make(Config) {
-  return Spec => (Mappings => ReadModel_Builder$Reventless.Make(Config)(Spec)(Mappings)({
+function Make(Spec) {
+  return Mappings => ReadModel_Builder$Reventless.Make(Spec)(Mappings)({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     asEventHandler: prim => prim
@@ -26,7 +26,7 @@ function Make(Config) {
   })(QueryDbResolvers_AppSync$ReventlessAws)({
     make: EventCollectorChannel_SQS$ReventlessAws.make,
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
-  })(EventCollectorRuntimeBuilder));
+  })(EventCollectorRuntimeBuilder);
 }
 
 let EventCollectorChannel;

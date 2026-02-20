@@ -22,8 +22,8 @@ import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
-  return RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
-    let make = (name, version, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, scheduler, dcbSpec, opts) => {
+  return ApiSpec => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
+    let make = (name, version, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, api, apiRole, scheduler, dcbSpec, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
@@ -83,9 +83,9 @@ function Make(Spec) {
         let stateViewSlicesOutputs$1 = match[2];
         let stateChangeSlicesOutputs$1 = match[1];
         let dcbEventLogOutputs = match[0];
-        let aggregatesWithoutEventMappers = Plugin_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, opts);
+        let aggregatesWithoutEventMappers = Plugin_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
-        let readModelsOutputs = Plugin_Helpers$Reventless.createReadModels(readModels, allEventTopics, opts);
+        let readModelsOutputs = Plugin_Helpers$Reventless.createReadModels(readModels, api, apiRole, allEventTopics, opts);
         let allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
         let coreExtensionPoints = Stdlib_Option.mapOr(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
@@ -190,7 +190,7 @@ function Make(Spec) {
     return {
       make: make
     };
-  }))))))));
+  })))))))));
 }
 
 export {

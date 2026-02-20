@@ -10,16 +10,16 @@ import * as QueryDb_Builder$Reventless from "../QueryDb/QueryDb_Builder.res.mjs"
 import * as ReadModel_Callback$Reventless from "./ReadModel_Callback.res.mjs";
 import * as EventCollector_Builder$Reventless from "../EventCollector/EventCollector_Builder.res.mjs";
 
-function Make(Config) {
-  return Spec => (Mappings => (RuntimeEnvironment => (QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => {
-    let make = (allEventTopics, opts) => Component$Reventless.make(ComponentType$Reventless.toString(ReadModel$Reventless.componentType), Spec.name, (extra, extra$1) => {
+function Make(Spec) {
+  return Mappings => (RuntimeEnvironment => (QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => {
+    let make = (api, apiRole, allEventTopics, opts) => Component$Reventless.make(ComponentType$Reventless.toString(ReadModel$Reventless.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$Reventless.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
       let name = ComponentType$Reventless.name(extra$1, ReadModel$Reventless.componentType);
-      let SpecificQueryDb = QueryDb_Builder$Reventless.Make(Config)(Spec)(QueryDbStorage)(QueryDbResolvers);
-      let queryDb = SpecificQueryDb.make(undefined, opts);
+      let SpecificQueryDb = QueryDb_Builder$Reventless.Make(Spec)(QueryDbStorage)(QueryDbResolvers);
+      let queryDb = SpecificQueryDb.make(api, apiRole, undefined, opts);
       let toProjectionOperations = param => {
         let deleteBatch = param.deleteBatch;
         let $$delete = param.delete;
@@ -71,7 +71,7 @@ function Make(Config) {
       EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
       make: make
     };
-  }))))));
+  })))));
 }
 
 export {

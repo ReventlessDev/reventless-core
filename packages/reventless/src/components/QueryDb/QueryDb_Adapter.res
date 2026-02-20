@@ -55,9 +55,9 @@ module type Resolvers = {
   let make: resolversMaker<api, role>
 }
 
-module NoResolvers = (Config: Config.T) => {
-  type api = Config.api
-  type role = Config.role
+module NoResolvers = (Storage: Storage) => {
+  type api = Storage.api
+  type role = Storage.role
 
   let make: resolversMaker<api, role> = (
     ~name as _: string,

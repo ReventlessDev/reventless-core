@@ -1,9 +1,8 @@
 module Make = (
-  Config: Config.T,
   Spec: ReventlessSpec.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
-  Resolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
-): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts) => {
+  Resolvers: CommandGenerator_Adapter.Resolvers,
+): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts and type api := Resolvers.api) => {
   let construct = (self, _name) => {
     let resources = Behavior.resolverConfig.fields->Array.map(field => {
       ReventlessSpec.Adapter.id: ""->Pulumi.Output.make,
@@ -15,7 +14,7 @@ module Make = (
     let _ = self->Component.setOutputs({CommandGenerator.resources: resources})
   }
 
-  let connect = (~resources, ~runtime, commandGenerator) => {
+  let connect = (~api: Resolvers.api, ~resources, ~runtime, commandGenerator) => {
     let commandGeneratorResource = commandGenerator->Component.toPulumiResource
     let name =
       commandGeneratorResource.name
@@ -25,7 +24,7 @@ module Make = (
 
     let resolvers = Resolvers.make(
       ~name,
-      ~api=Config.api,
+      ~api,
       ~fields=Behavior.resolverConfig.fields,
       ~runtime,
       ~resources,

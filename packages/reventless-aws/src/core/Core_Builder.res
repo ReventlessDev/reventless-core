@@ -1,10 +1,7 @@
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module EventCollectorChannel = EventCollectorChannel.SQS
 
-module Make = (
-  Config: Config.T with type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>,
-) => Reventless.Core_Builder.Make(
-  Config,
+include Reventless.Core_Builder.Make(
   RuntimeEnvironment,
   EventCollectorChannel,
   QueryEngine.DynamoDb,

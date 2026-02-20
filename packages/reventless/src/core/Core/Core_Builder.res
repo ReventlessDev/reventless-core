@@ -1,32 +1,35 @@
 open Core_Helpers
 
 module Make = (
-  Config: Config.T,
   RuntimeEnvironment: Runtime.Environment,
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
-  ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
+  ClonerRunner: Cloner.Adapter.Runner,
   CoreRuntimeBuilder: PluginRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
 ) => {
+  type api = ClonerRunner.api
+
   let construct = (
     ~version,
     ~extensionPoints: array<module(ExtensionPoint.T)>,
-    ~aggregates: array<module(Aggregate.T)>,
-    ~readModels: array<module(ReadModel.T)>,
+    ~aggregates: array<module(Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReadModel.T with type api = api and type role = 'role)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+    ~api: ClonerRunner.api,
+    ~apiRole: 'role,
     self,
     _,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = Core.componentType->ComponentType.toName
 
-    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(opts)
+    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
-    let readModelsOutputs = readModels->createReadModels(allEventTopics, opts)
+    let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
@@ -87,8 +90,8 @@ module Make = (
       })
       ->Pulumi.Output.unzip3
 
-    module Cloner = Cloner.Make(Config, ClonerRunner)
-    let cloner = Cloner.make(~opts)
+    module Cloner = Cloner.Make(ClonerRunner)
+    let cloner = Cloner.make(~api, ~opts)
 
     self->Component.setOutputs({
       Core.version,
@@ -102,11 +105,30 @@ module Make = (
     })
   }
 
-  let make = (~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler): Core.component =>
+  let make = (
+    ~version,
+    ~extensionPoints,
+    ~aggregates: array<module(Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReadModel.T with type api = api and type role = 'role)>,
+    ~scheduler,
+    ~api: ClonerRunner.api,
+    ~apiRole: 'role,
+    ~resourceNaming,
+  ): Core.component =>
     Component.make(
       ~componentType=Core.componentType->ComponentType.toString,
       ~name="Core",
-      ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler, ...),
+      ~construct=construct(
+        ~version,
+        ~extensionPoints,
+        ~aggregates,
+        ~readModels,
+        ~scheduler,
+        ~api,
+        ~apiRole,
+        ~resourceNaming,
+        ...
+      ),
       ~opts=None,
     )
 }

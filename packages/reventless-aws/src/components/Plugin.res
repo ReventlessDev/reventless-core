@@ -7,6 +7,10 @@ include Reventless.Plugin_Builder.Make(
     let resourceNaming = Util_ResourceNaming.operations
     let environment = PulumiAws.Lambda.environment->Option.getOr("unknown")
   },
+  {
+    type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
+    type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
+  },
   RuntimeEnvironment,
   EventCollectorChannel,
   QueryEngine.DynamoDb,

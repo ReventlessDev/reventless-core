@@ -14,7 +14,11 @@ module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T
   module EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
 
+  type api
+  type role
   let make: (
+    ~api: api,
+    ~apiRole: role,
     ~allEventTopics: EventTopic.allOutputs,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

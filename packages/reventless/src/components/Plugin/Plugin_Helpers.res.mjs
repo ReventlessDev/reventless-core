@@ -67,9 +67,9 @@ let aggregateResources = {};
 
 let publishToAggregates = {};
 
-function createAggregatesWithoutEventMappers(aggregates, opts) {
+function createAggregatesWithoutEventMappers(aggregates, api, opts) {
   return Object.fromEntries(aggregates.map(SpecificAggregate => {
-    let aggregate = SpecificAggregate.make(opts);
+    let aggregate = SpecificAggregate.make(api, opts);
     addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
     let resources = Component$Reventless.outputs(aggregate).commandTopic.apply(commandTopic => commandTopic.resources);
     aggregateResources[SpecificAggregate.Spec.name] = resources;
@@ -121,9 +121,9 @@ function extractReadModelsOutputs(readModels) {
   ]));
 }
 
-function createReadModels(readModels, allEventTopics, opts) {
+function createReadModels(readModels, api, apiRole, allEventTopics, opts) {
   let readModels$1 = readModels.map(SpecificReadModel => {
-    let readModel = SpecificReadModel.make(allEventTopics, opts);
+    let readModel = SpecificReadModel.make(api, apiRole, allEventTopics, opts);
     Component$Reventless.outputs(readModel).sourceNames.forEach(sourceName => {
       let readModelNames = readModelNamesForSourceName[sourceName];
       if (readModelNames !== undefined) {

@@ -1,11 +1,12 @@
 module Make = (
-  Config: Config.T,
   Spec: ReventlessSpec.ReadModel_Spec.T,
-  Storage: QueryDb_Adapter.Storage with type api = Config.api and type role = Config.role,
-  Resolvers: QueryDb_Adapter.Resolvers with type api = Config.api and type role = Config.role,
-): (QueryDb.T with module Spec = Spec) => {
+  Storage: QueryDb_Adapter.Storage,
+  Resolvers: QueryDb_Adapter.Resolvers with type api = Storage.api and type role = Storage.role,
+): (QueryDb.T with module Spec = Spec and type api = Storage.api and type role = Storage.role) => {
   module Spec = Spec
 
+  type api = Storage.api
+  type role = Storage.role
   type operations = QueryDb.operations<Spec.Id.t, Spec.state>
   type component = Component.t<QueryDb.t, QueryDb.outputs, operations>
 
@@ -62,11 +63,11 @@ module Make = (
     })
   }
 
-  let make = (~ttl=?, ~opts=?): component =>
+  let make = (~api: Storage.api, ~apiRole: Storage.role, ~ttl=?, ~opts=?): component =>
     Component.make(
       ~componentType=QueryDb.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~api=Config.api, ~apiRole=Config.apiRole, ~ttl?, ...),
+      ~construct=construct(~api, ~apiRole, ~ttl?, ...),
       ~opts,
     )
 }

@@ -4,8 +4,8 @@ import * as Counter_Builder$Reventless from "@reventlessdev/reventless/src/compo
 import * as CounterHandler_DynamoDbStream$ReventlessAws from "../adapter/Counter/CounterHandler_DynamoDbStream.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "../adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
 
-function Make(Config) {
-  return Counter_Builder$Reventless.Make(Config)(QueryDbStorage_DynamoDbStream$ReventlessAws)(CounterHandler_DynamoDbStream$ReventlessAws);
+function Make(ApiValues) {
+  return Counter_Builder$Reventless.Make(QueryDbStorage_DynamoDbStream$ReventlessAws)(ApiValues)(CounterHandler_DynamoDbStream$ReventlessAws);
 }
 
 export {

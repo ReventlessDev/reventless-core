@@ -8,6 +8,10 @@ module type Spec = {
 
 module Make = (
   Spec: Spec,
+  ApiSpec: {
+    type api
+    type role
+  },
   RuntimeEnvironment: Runtime.Environment,
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
@@ -20,17 +24,22 @@ module Make = (
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
   DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
-): Plugin.T => {
+): (Plugin.T with type api = ApiSpec.api and type role = ApiSpec.role) => {
+  type api = ApiSpec.api
+  type role = ApiSpec.role
+
   let construct = (
     ~version: string,
     ~heartbeatInterval: int,
     ~extensionPoints: array<module(ExtensionPoint.T)>,
     ~extensions: array<module(Extension.T)>,
-    ~aggregates: array<module(Aggregate.T)>,
-    ~readModels: array<module(ReadModel.T)>,
+    ~aggregates: array<module(Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReadModel.T with type api = api and type role = role)>,
     ~tasks: array<module(Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~dcbSpec: option<module(Plugin.DcbSpec)>,
+    ~api: api,
+    ~apiRole: role,
     self,
     name,
   ) => {
@@ -123,10 +132,10 @@ module Make = (
     | None => (None, Dict.make(), Dict.make(), None)
     }
 
-    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(opts)
+    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
-    let readModelsOutputs = readModels->createReadModels(allEventTopics, opts)
+    let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
@@ -352,9 +361,11 @@ module Make = (
     ~heartbeatInterval,
     ~extensionPoints=[],
     ~extensions=[],
-    ~aggregates=[],
-    ~readModels=[],
+    ~aggregates: array<module(Aggregate.T with type api = api)>=[],
+    ~readModels: array<module(ReadModel.T with type api = api and type role = role)>=[],
     ~tasks=[],
+    ~api: api,
+    ~apiRole: role,
     ~scheduler,
     ~dcbSpec=?,
     ~opts=?,
@@ -372,6 +383,8 @@ module Make = (
         ~tasks,
         ~scheduler,
         ~dcbSpec,
+        ~api,
+        ~apiRole,
         ...
       ),
       ~opts,

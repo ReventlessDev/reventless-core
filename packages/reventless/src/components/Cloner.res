@@ -12,7 +12,8 @@ type t
 type component = Component.t<t, outputs, unit>
 
 module type T = {
-  let make: (~opts: Pulumi.ComponentResource.options=?) => component
+  type api
+  let make: (~api: api, ~opts: Pulumi.ComponentResource.options=?) => component
 }
 
 module Adapter = {
@@ -35,8 +36,9 @@ module Adapter = {
   let noRunner = {resources: []->Pulumi.Output.make}
 }
 
-module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.api): T => {
-  let construct = (~api, self, name) => {
+module Make = (Runner: Adapter.Runner): (T with type api = Runner.api) => {
+  type api = Runner.api
+  let construct = (~api: Runner.api, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let fullQualifiedStackName = {
@@ -67,11 +69,11 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     self->Component.setOutputs({resources: runner.resources})
   }
 
-  let make = (~opts=?) =>
+  let make = (~api: Runner.api, ~opts=?) =>
     Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name=componentType->ComponentType.toString,
-      ~construct=construct(~api=Config.api, ...),
+      ~construct=construct(~api, ...),
       ~opts,
     )
 }

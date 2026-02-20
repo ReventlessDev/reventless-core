@@ -7,33 +7,36 @@ import * as PluginRuntime_Builder_Micro$Reventless from "@reventlessdev/reventle
 import * as EventCollectorChannel_SQS$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 
-function Make(Config) {
-  return Core_Builder$Reventless.Make(Config)({
-    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-    asEventHandler: prim => prim
-  })({
-    make: EventCollectorChannel_SQS$ReventlessAws.make,
-    connect: EventCollectorChannel_SQS$ReventlessAws.connect
-  })({
-    make: QueryEngine_DynamoDb$ReventlessAws.make
-  })(ClonerRunner_Fargate$ReventlessAws)(PluginRuntime_Builder_Micro$Reventless.Make({
-    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-    asEventHandler: prim => prim
-  })({
-    make: EventCollectorChannel_SQS$ReventlessAws.make,
-    connect: EventCollectorChannel_SQS$ReventlessAws.connect
-  }));
-}
+let include = Core_Builder$Reventless.Make({
+  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  asEventHandler: prim => prim
+})({
+  make: EventCollectorChannel_SQS$ReventlessAws.make,
+  connect: EventCollectorChannel_SQS$ReventlessAws.connect
+})({
+  make: QueryEngine_DynamoDb$ReventlessAws.make
+})(ClonerRunner_Fargate$ReventlessAws)(PluginRuntime_Builder_Micro$Reventless.Make({
+  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  asEventHandler: prim => prim
+})({
+  make: EventCollectorChannel_SQS$ReventlessAws.make,
+  connect: EventCollectorChannel_SQS$ReventlessAws.connect
+}));
 
 let RuntimeEnvironment;
 
 let EventCollectorChannel;
 
+let construct = include.construct;
+
+let make = include.make;
+
 export {
   RuntimeEnvironment,
   EventCollectorChannel,
-  Make,
+  construct,
+  make,
 }
-/* Core_Builder-Reventless Not a pure module */
+/* include Not a pure module */

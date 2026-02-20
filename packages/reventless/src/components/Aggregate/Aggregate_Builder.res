@@ -1,12 +1,10 @@
 module Make = (
-  Config: Config.T,
   Spec: ReventlessSpec.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
   RuntimeEnvironment: Runtime.Environment,
   CommandGeneratorResolvers: CommandGenerator_Adapter.Resolvers
-    with type api = Config.api
-    and type runtimeParts = RuntimeEnvironment.parts,
+    with type runtimeParts = RuntimeEnvironment.parts,
   CommandTopicChannel: CommandTopic_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
   EventLogStorage: EventLog_Adapter.Storage,
@@ -17,14 +15,15 @@ module Make = (
     with module CommandTopicChannel = CommandTopicChannel
     and module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
-): Aggregate.T => {
+): (Aggregate.T with type api = CommandGeneratorResolvers.api) => {
   module Spec = Spec
   module AggregateRuntimeBuilder = AggregateRuntimeBuilder
+
+  type api = CommandGeneratorResolvers.api
 
   module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
   module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
   module SpecificCommandGenerator = CommandGenerator_Builder.Make(
-    Config,
     Spec,
     Behavior,
     CommandGeneratorResolvers,
@@ -95,6 +94,7 @@ module Make = (
 
   let createCommandGenerator = (
     commandTopic: Pulumi.Output.t<SpecificCommandTopic.component>,
+    ~api: CommandGeneratorResolvers.api,
     name,
     opts,
   ) =>
@@ -106,19 +106,19 @@ module Make = (
         let resources = (commandTopic->Component.outputs).resources
         commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
           ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
-          ~connect=SpecificCommandGenerator.connect(commandGenerator, ~resources, ...),
+          ~connect=SpecificCommandGenerator.connect(commandGenerator, ~api, ~resources, ...),
         )
         commandGenerator
       })
     )
 
-  let construct = (self, name) => {
+  let construct = (~api: CommandGeneratorResolvers.api, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(Aggregate.componentType)
 
     let eventLog = SpecificEventLog.make(~name, ~opts)
     let commandTopic = eventLog->createCommandTopic(name, opts)
-    let commandGenerator = commandTopic->createCommandGenerator(name, opts)
+    let commandGenerator = commandTopic->createCommandGenerator(~api, name, opts)
 
     self->Component.setOperations(
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
@@ -136,11 +136,11 @@ module Make = (
     })
   }
 
-  let make = (~opts=?): Aggregate.component =>
+  let make = (~api: CommandGeneratorResolvers.api, ~opts=?): Aggregate.component =>
     Component.make(
       ~componentType=Aggregate.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct,
+      ~construct=construct(~api, ...),
       ~opts,
     )
 }

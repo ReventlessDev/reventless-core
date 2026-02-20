@@ -82,10 +82,15 @@ let addEventMapperFns = Dict.make()
 let aggregateResources = Dict.make()
 let publishToAggregates = Dict.make()
 
-let createAggregatesWithoutEventMappers = (aggregates, opts) =>
+let createAggregatesWithoutEventMappers = (
+  type a,
+  aggregates: array<module(Aggregate.T with type api = a)>,
+  ~api: a,
+  opts,
+) =>
   aggregates
-  ->Array.map((module(SpecificAggregate: Aggregate.T)) => {
-    let aggregate = SpecificAggregate.make(~opts)
+  ->Array.map((module(SpecificAggregate: Aggregate.T with type api = a)) => {
+    let aggregate = SpecificAggregate.make(~api, ~opts)
     addEventMapperFns->Dict.set(
       SpecificAggregate.Spec.name,
       (aggregate->Component.outputs).addEventMapper,
@@ -103,7 +108,11 @@ let createAggregatesWithoutEventMappers = (aggregates, opts) =>
   ->Array.map(aggregate => {(aggregate.name, aggregate)})
   ->Dict.fromArray
 
-let finishAggregates = (aggregates, aggregatesOutputs: dict<Aggregate.outputs>) => {
+let finishAggregates = (
+  type a,
+  aggregates: array<module(Aggregate.T with type api = a)>,
+  aggregatesOutputs: dict<Aggregate.outputs>,
+) => {
   let (eventMapperOutputs, commandTopicOutputs) =
     aggregatesOutputs
     ->Dict.valuesToArray
@@ -124,7 +133,7 @@ let finishAggregates = (aggregates, aggregatesOutputs: dict<Aggregate.outputs>) 
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(_ =>
         aggregates->Array.forEach(
-          (module(SpecificAggregate: Aggregate.T)) => {
+          (module(SpecificAggregate: Aggregate.T with type api = a)) => {
             Console.log("Plugin_Builder: AggregateRuntimeBuilder.finish")
             SpecificAggregate.AggregateRuntimeBuilder.finish()
           },
@@ -133,7 +142,12 @@ let finishAggregates = (aggregates, aggregatesOutputs: dict<Aggregate.outputs>) 
     )
 }
 
-let addEventMappers = (aggregates, allEventTopics, queryEngine) => {
+let addEventMappers = (
+  type a,
+  aggregates: array<module(Aggregate.T with type api = a)>,
+  allEventTopics,
+  queryEngine,
+) => {
   let aggregatesOutputs =
     addEventMapperFns->Dict.mapValues(addEventMapperFn =>
       addEventMapperFn(allEventTopics, queryEngine)
@@ -165,9 +179,17 @@ let extractReadModelsOutputs = readModels =>
   ->Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
   ->Dict.fromArray
 
-let createReadModels = (readModels, allEventTopics, opts) => {
-  let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
-    let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
+let createReadModels = (
+  type a,
+  type r,
+  readModels: array<module(ReadModel.T with type api = a and type role = r)>,
+  ~api: a,
+  ~apiRole: r,
+  allEventTopics,
+  opts,
+) => {
+  let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T with type api = a and type role = r)) => {
+    let readModel = SpecificReadModel.make(~api, ~apiRole, ~allEventTopics, ~opts)
     (readModel->Component.outputs).sourceNames->Array.forEach(sourceName =>
       switch readModelNamesForSourceName->Dict.get(sourceName) {
       | Some(readModelNames) =>

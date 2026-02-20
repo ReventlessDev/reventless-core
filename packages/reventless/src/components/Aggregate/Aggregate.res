@@ -35,5 +35,6 @@ module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec
   module AggregateRuntimeBuilder: AggregateRuntime_Builder.T
 
-  let make: (~opts: Pulumi.ComponentResource.options=?) => component
+  type api
+  let make: (~api: api, ~opts: Pulumi.ComponentResource.options=?) => component
 }

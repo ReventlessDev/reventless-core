@@ -7,8 +7,8 @@ import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 import * as CommandGenerator$Reventless from "./CommandGenerator.res.mjs";
 import * as CommandGenerator_Callback$Reventless from "./CommandGenerator_Callback.res.mjs";
 
-function Make(Config) {
-  return Spec => (Behavior => (Resolvers => {
+function Make(Spec) {
+  return Behavior => (Resolvers => {
     let construct = (self, _name) => {
       let resources = Behavior.resolverConfig.fields.map(field => ({
         name: Pulumi.output(""),
@@ -21,14 +21,14 @@ function Make(Config) {
         resources: resources
       });
     };
-    let connect = (resources, runtime, commandGenerator) => {
+    let connect = (api, resources, runtime, commandGenerator) => {
       let commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
       let name = ComponentType$Reventless.name(Stdlib_Option.getOr(commandGeneratorResource.__name, "Unnamed"), CommandGenerator$Reventless.componentType);
       let opts_parent = commandGeneratorResource;
       let opts = {
         parent: opts_parent
       };
-      let resolvers = Resolvers.make(name, Config.api, Behavior.resolverConfig.fields, runtime, resources, opts);
+      let resolvers = Resolvers.make(name, api, Behavior.resolverConfig.fields, runtime, resources, opts);
       Component$Reventless.setOutputs(commandGenerator, {
         resources: resolvers.resources
       });
@@ -45,7 +45,7 @@ function Make(Config) {
       makeHandler: makeHandler,
       make: make
     };
-  }));
+  });
 }
 
 export {

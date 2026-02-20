@@ -12,17 +12,17 @@ import * as ReadModel$Reventless from "../../components/ReadModel/ReadModel.res.
 import * as Core_Helpers$Reventless from "./Core_Helpers.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 
-function Make(Config) {
-  return RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (CoreRuntimeBuilder => {
-    let construct = (version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, self, param) => {
+function Make(RuntimeEnvironment) {
+  return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (CoreRuntimeBuilder => {
+    let construct = (version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, self, param) => {
       let opts_parent = Component$Reventless.toPulumiResource(self);
       let opts = {
         parent: opts_parent
       };
       let name = ComponentType$Reventless.toName(Core$Reventless.componentType);
-      let aggregatesWithoutEventMappers = Core_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, opts);
+      let aggregatesWithoutEventMappers = Core_Helpers$Reventless.createAggregatesWithoutEventMappers(aggregates, api, opts);
       let allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
-      let readModelsOutputs = Core_Helpers$Reventless.createReadModels(readModels, allEventTopics, opts);
+      let readModelsOutputs = Core_Helpers$Reventless.createReadModels(readModels, api, apiRole, allEventTopics, opts);
       let allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
       let match = Output$Pulumi.unzip3(Pulumi.all([
@@ -47,8 +47,8 @@ function Make(Config) {
           match$1[1]
         ];
       }));
-      let Cloner = Cloner$Reventless.Make(Config)(ClonerRunner);
-      let cloner = Cloner.make(opts);
+      let Cloner = Cloner$Reventless.Make(ClonerRunner);
+      let cloner = Cloner.make(api, opts);
       return Component$Reventless.setOutputs(self, {
         version: version,
         eventCollector: match[2],
@@ -61,12 +61,12 @@ function Make(Config) {
         cloner: Component$Reventless.outputs(cloner)
       });
     };
-    let make = (version, extensionPoints, aggregates, readModels, scheduler) => Component$Reventless.make(ComponentType$Reventless.toString(Core$Reventless.componentType), "Core", (extra, extra$1, extra$2) => construct(version, extensionPoints, aggregates, readModels, scheduler, extra, extra$1, extra$2), undefined);
+    let make = (version, extensionPoints, aggregates, readModels, scheduler, api, apiRole, resourceNaming) => Component$Reventless.make(ComponentType$Reventless.toString(Core$Reventless.componentType), "Core", (extra, extra$1) => construct(version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, extra, extra$1), undefined);
     return {
       construct: construct,
       make: make
     };
-  }))));
+  })));
 }
 
 export {

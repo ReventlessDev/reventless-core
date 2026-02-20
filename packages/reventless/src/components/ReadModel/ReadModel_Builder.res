@@ -1,28 +1,29 @@
 module Make = (
-  Config: Config.T,
   Spec: ReventlessSpec.ReadModel_Spec.T,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
   RuntimeEnvironment: Runtime.Environment,
-  QueryDbStorage: QueryDb_Adapter.Storage with type api = Config.api and type role = Config.role,
+  QueryDbStorage: QueryDb_Adapter.Storage,
   QueryDbResolvers: QueryDb_Adapter.Resolvers
-    with type api = Config.api
-    and type role = Config.role,
+    with type api = QueryDbStorage.api
+    and type role = QueryDbStorage.role,
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
   EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel,
-): (ReadModel.T with module Spec = Spec) => {
+): (ReadModel.T with module Spec = Spec and type api = QueryDbStorage.api and type role = QueryDbStorage.role) => {
   module Spec = Spec
   module EventCollectorRuntimeBuilder = EventCollectorRuntimeBuilder
 
+  type api = QueryDbStorage.api
+  type role = QueryDbStorage.role
   type projectionOperations = QueryDb.operations<string, Spec.state> // TODO: should we really use this "mixed" type?
 
-  let construct = (~allEventTopics, self, name) => {
+  let construct = (~api: QueryDbStorage.api, ~apiRole: QueryDbStorage.role, ~allEventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(ReadModel.componentType)
 
-    module SpecificQueryDb = QueryDb_Builder.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
-    let queryDb = SpecificQueryDb.make(~opts)
+    module SpecificQueryDb = QueryDb_Builder.Make(Spec, QueryDbStorage, QueryDbResolvers)
+    let queryDb = SpecificQueryDb.make(~api, ~apiRole, ~opts)
 
     let toProjectionOperations: SpecificQueryDb.operations => projectionOperations = ({
       load,
@@ -94,11 +95,11 @@ module Make = (
     })
   }
 
-  let make = (~allEventTopics, ~opts=?): ReadModel.component =>
+  let make = (~api: QueryDbStorage.api, ~apiRole: QueryDbStorage.role, ~allEventTopics, ~opts=?): ReadModel.component =>
     Component.make(
       ~componentType=ReadModel.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~allEventTopics, ...),
+      ~construct=construct(~api, ~apiRole, ~allEventTopics, ...),
       ~opts,
     )
 }

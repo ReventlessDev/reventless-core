@@ -20,7 +20,7 @@ let include = Plugin_Builder$Reventless.Make({
   runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
   resourceNaming: Util_ResourceNaming$ReventlessAws.operations,
   environment: environment
-})({
+})({})({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim

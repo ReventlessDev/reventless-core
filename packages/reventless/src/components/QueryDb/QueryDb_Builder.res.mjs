@@ -6,11 +6,9 @@ import * as Component$Reventless from "../Component.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 import * as QueryDb_Operations$Reventless from "./QueryDb_Operations.res.mjs";
 
-function Make(Config) {
-  return Spec => (Storage => (Resolvers => {
-    let make = (ttl, opts) => Component$Reventless.make(ComponentType$Reventless.toString(QueryDb$Reventless.componentType), Spec.name, (none, none$1) => {
-      let api = Config.api;
-      let apiRole = Config.apiRole;
+function Make(Spec) {
+  return Storage => (Resolvers => {
+    let make = (api, apiRole, ttl, opts) => Component$Reventless.make(ComponentType$Reventless.toString(QueryDb$Reventless.componentType), Spec.name, (none, none$1) => {
       let opts_parent = Component$Reventless.toPulumiResource(none);
       let opts = {
         parent: opts_parent
@@ -41,7 +39,7 @@ function Make(Config) {
       Spec: Spec,
       make: make
     };
-  }));
+  });
 }
 
 export {

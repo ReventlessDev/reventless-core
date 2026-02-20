@@ -11,8 +11,8 @@ import * as Counter_Callback$Reventless from "./Counter_Callback.res.mjs";
 import * as Counter_Operations$Reventless from "./Counter_Operations.res.mjs";
 import * as ReadModel_Spec$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/ReadModel/ReadModel_Spec.res.mjs";
 
-function Make(Config) {
-  return QueryDbStorage => (Handler => {
+function Make(QueryDbStorage) {
+  return ApiValues => (Handler => {
     let make = (name, counterEventsHandler, ttlOpt, opts) => {
       let ttl = ttlOpt !== undefined ? ttlOpt : 604800;
       return Component$Reventless.make(ComponentType$Reventless.toString(Counter$Reventless.componentType), ComponentType$Reventless.name(name, Counter$Reventless.componentType), (extra, extra$1) => {
@@ -27,7 +27,7 @@ function Make(Config) {
         };
         let name = extra$1 + "References";
         let config = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined);
-        let ReferencesDb = QueryDb_Builder$Reventless.Make(Config)({
+        let ReferencesDb = QueryDb_Builder$Reventless.Make({
           Id: {
             schema: Id$ReventlessSpec.StringPure.schema,
             make: prim => prim,
@@ -39,10 +39,10 @@ function Make(Config) {
           stateSchema: Counter_Operations$Reventless.referencesStateSchema,
           config: config,
           subIdConfig: undefined
-        })(QueryDbStorage)(QueryDb_Adapter$Reventless.NoResolvers(Config));
+        })(QueryDbStorage)(QueryDb_Adapter$Reventless.NoResolvers(QueryDbStorage));
         let name$1 = extra$1 + "Counts";
         let config$1 = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined);
-        let CountsDb = QueryDb_Builder$Reventless.Make(Config)({
+        let CountsDb = QueryDb_Builder$Reventless.Make({
           Id: {
             schema: Id$ReventlessSpec.StringPure.schema,
             make: prim => prim,
@@ -54,9 +54,9 @@ function Make(Config) {
           stateSchema: Counter_Callback$Reventless.countsStateSchema,
           config: config$1,
           subIdConfig: undefined
-        })(QueryDbStorage)(QueryDb_Adapter$Reventless.NoResolvers(Config));
-        let referencesDb = ReferencesDb.make(ttl$1, opts);
-        let countsDb = CountsDb.make(ttl$1, opts);
+        })(QueryDbStorage)(QueryDb_Adapter$Reventless.NoResolvers(QueryDbStorage));
+        let referencesDb = ReferencesDb.make(ApiValues.api, ApiValues.apiRole, ttl$1, opts);
+        let countsDb = CountsDb.make(ApiValues.api, ApiValues.apiRole, ttl$1, opts);
         let handler = Component$Reventless.operations(countsDb).apply(param => {
           let Callback = Counter_Callback$Reventless.Make({
             name: extra$1,

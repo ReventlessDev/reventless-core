@@ -19,19 +19,25 @@ let Mappings = {
   mappings: mappings
 };
 
-function Make(Config) {
-  return ReadModel_Builder_Single$ReventlessAws.Make(Config)({
-    Id: Id$ReventlessSpec.$$String,
-    name: PluginReadModelSpec$Reventless.name,
-    stateSchema: PluginReadModelSpec$Reventless.stateSchema,
-    config: PluginReadModelSpec$Reventless.config,
-    subIdConfig: undefined
-  })(Mappings);
-}
+let include = ReadModel_Builder_Single$ReventlessAws.Make({
+  Id: Id$ReventlessSpec.$$String,
+  name: PluginReadModelSpec$Reventless.name,
+  stateSchema: PluginReadModelSpec$Reventless.stateSchema,
+  config: PluginReadModelSpec$Reventless.config,
+  subIdConfig: undefined
+})(Mappings);
+
+let Spec = include.Spec;
+
+let EventCollectorRuntimeBuilder = include.EventCollectorRuntimeBuilder;
+
+let make = include.make;
 
 export {
   MappingsType,
   Mappings,
-  Make,
+  Spec,
+  EventCollectorRuntimeBuilder,
+  make,
 }
 /* MappingsType Not a pure module */
