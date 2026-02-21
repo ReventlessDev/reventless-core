@@ -2,7 +2,7 @@ module type Ops = {
   let publishJsons: CommandTopic.publishJsons
 }
 
-module Make = (Spec: ReventlessSpec.CommandTopic_Spec.T, Ops: Ops) => {
+module Make = (Spec: ReventlessSpec.CommandTopic.T, Ops: Ops) => {
   let publishJsons = async cmdJsons =>
     switch await Ops.publishJsons(cmdJsons) {
     | exception e =>

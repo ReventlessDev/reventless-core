@@ -32,10 +32,12 @@ module Make = (
     let (counterOperations, counterOutputs) = Mappings.counter->Option.mapOr(
       (
         Pulumi.Output.make({
-          Counter.count: async _items =>
-            Console.log("No counter deployed, but trying to use count"),
-          addToCounterTarget: async _target =>
-            Console.log("No counter deployed, but trying to use addToCounterTarget"),
+          let ops: Counter.operations = {
+            count: async _items => Console.log("No counter deployed, but trying to use count"),
+            addToCounterTarget: async _target =>
+              Console.log("No counter deployed, but trying to use addToCounterTarget"),
+          }
+          ops
         }),
         None,
       ),
@@ -45,7 +47,12 @@ module Make = (
           ~counterEventsHandler=CounterHandler.handleCounterEvents,
           ~opts,
         )
-        (counter->Component.operations, counter->Component.outputs->Some)
+        let counterComp: Component.t<
+          _,
+          ReventlessSpec.Counter.outputs,
+          ReventlessSpec.Counter.operations,
+        > = counter->Obj.magic
+        (counterComp->Component.operations, counterComp->Component.outputs->Some)
       },
     )
 
@@ -88,11 +95,12 @@ module Make = (
       }->Component.outputs
     )
 
-    self->Component.setOutputs({
-      EventMapper.name,
+    let outputs: EventMapper.outputs = {
+      name,
       eventCollector,
       counter: ?counterOutputs,
-    })
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let make = (

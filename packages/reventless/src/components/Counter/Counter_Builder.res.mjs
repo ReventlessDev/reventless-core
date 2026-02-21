@@ -5,11 +5,11 @@ import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mj
 import * as Counter$Reventless from "./Counter.res.mjs";
 import * as Component$Reventless from "../Component.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
+import * as ReadModel$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as QueryDb_Adapter$Reventless from "../QueryDb/QueryDb_Adapter.res.mjs";
 import * as QueryDb_Builder$Reventless from "../QueryDb/QueryDb_Builder.res.mjs";
 import * as Counter_Callback$Reventless from "./Counter_Callback.res.mjs";
 import * as Counter_Operations$Reventless from "./Counter_Operations.res.mjs";
-import * as ReadModel_Spec$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/ReadModel/ReadModel_Spec.res.mjs";
 
 function Make(QueryDbStorage) {
   return ApiValues => (Handler => {
@@ -26,7 +26,7 @@ function Make(QueryDbStorage) {
           parent: opts2_parent
         };
         let name = extra$1 + "References";
-        let config = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined);
+        let config = ReadModel$ReventlessSpec.config(undefined, undefined, undefined);
         let ReferencesDb = QueryDb_Builder$Reventless.Make({
           Id: {
             schema: Id$ReventlessSpec.StringPure.schema,
@@ -41,7 +41,7 @@ function Make(QueryDbStorage) {
           subIdConfig: undefined
         })(QueryDbStorage)(QueryDb_Adapter$Reventless.NoResolvers(QueryDbStorage));
         let name$1 = extra$1 + "Counts";
-        let config$1 = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined);
+        let config$1 = ReadModel$ReventlessSpec.config(undefined, undefined, undefined);
         let CountsDb = QueryDb_Builder$Reventless.Make({
           Id: {
             schema: Id$ReventlessSpec.StringPure.schema,
@@ -78,10 +78,13 @@ function Make(QueryDbStorage) {
             addToCounterTarget: param[1].addToCounterTarget
           };
         }));
-        return Component$Reventless.setOutputs(extra, {
-          referencesDb: Component$Reventless.outputs(referencesDb),
-          countsDb: Component$Reventless.outputs(countsDb)
-        });
+        let outputs_referencesDb = Component$Reventless.outputs(referencesDb);
+        let outputs_countsDb = Component$Reventless.outputs(countsDb);
+        let outputs = {
+          referencesDb: outputs_referencesDb,
+          countsDb: outputs_countsDb
+        };
+        return Component$Reventless.setOutputs(extra, outputs);
       }, opts);
     };
     return {

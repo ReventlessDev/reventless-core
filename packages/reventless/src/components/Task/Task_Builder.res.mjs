@@ -77,7 +77,8 @@ function Make(Spec) {
     }, opts);
     return {
       Spec: Spec,
-      make: make
+      make: make,
+      outputs: Component$Reventless.outputs
     };
   })))));
 }

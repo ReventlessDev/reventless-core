@@ -1,17 +1,15 @@
 let componentType = ComponentType.Extension
 
-type outputs = {
-  name: string,
-  extensionPointName: string,
-  aggregateNames: array<string>,
-}
+type outputs = ReventlessSpec.Extension.outputs
 type t
 
 type eventHandler = (JSON.t, ReventlessSpec.Plugin.pluginDefinition) => promise<unit>
+type operations = {incomingEventHandler: eventHandler, outgoingEventHandler: eventHandler}
+type component = Component.t<t, outputs, operations>
 
 module type T = {
-  type operations = {incomingEventHandler: eventHandler, outgoingEventHandler: eventHandler}
-  type component = Component.t<t, outputs, operations>
+  type operations = operations
+  type component = component
 
   let make: (
     ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
@@ -21,6 +19,7 @@ module type T = {
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
+  let outputs: component => outputs
 }
 
 module type Mappings = {

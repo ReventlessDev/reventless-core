@@ -5,7 +5,7 @@ open Util.DynamoDbStream_Runtime
 
 let addToCounterTarget = async (
   table: ReventlessSpec.Adapter.resource,
-  {Reventless.Counter.counterId: counterId, target, targetRef},
+  {ReventlessSpec.Counter.counterId: counterId, target, targetRef},
 ) => {
   Console.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
   let tableName = table.name->Pulumi.Output.get

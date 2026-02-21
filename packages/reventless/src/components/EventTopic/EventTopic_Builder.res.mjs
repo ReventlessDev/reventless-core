@@ -22,9 +22,10 @@ function Make(Spec) {
           publishJson: publishJson
         };
       }));
-      return Component$Reventless.setOutputs(extra, {
+      let outputs = {
         resources: publisher.resources
-      });
+      };
+      return Component$Reventless.setOutputs(extra, outputs);
     }, opts);
     return {
       Spec: Spec,

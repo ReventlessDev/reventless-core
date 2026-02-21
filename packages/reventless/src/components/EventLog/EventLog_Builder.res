@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.EventLog_Spec.T,
+  Spec: ReventlessSpec.EventLog.T,
   Storage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
 ): (EventLog.T with module Spec = Spec) => {
@@ -44,10 +44,11 @@ module Make = (
       }),
     )
 
-    self->Component.setOutputs({
-      EventLog.resources: storage.resources,
+    let outputs: EventLog.outputs = {
+      resources: storage.resources,
       eventTopic: eventTopic->Component.outputs,
-    })
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let make = (~name, ~opts=?): component =>

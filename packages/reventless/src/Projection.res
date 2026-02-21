@@ -1,13 +1,13 @@
-open ReventlessSpec.Projection.Spec // FIXME: open locally
-open ReventlessSpec.ReadModel_Spec // FIXME: open locally
+open ReventlessSpec.Projection // FIXME: open locally
+open ReventlessSpec.ReadModel // FIXME: open locally
 open Belt.Result // FIXME: open locally
 
 module Set = Belt.Set.String
 
 module Mapping = {
   module Make = (
-    Source: ReventlessSpec.Projection.Spec.Source,
-    Target: ReventlessSpec.Projection.Spec.Target,
+    Source: ReventlessSpec.Projection.Source,
+    Target: ReventlessSpec.Projection.Target,
     MappingImpl: ReventlessSpec.Projection.MappingImpl
       with type sourceEvent := Source.event
       and type targetState := Target.state,
@@ -37,7 +37,7 @@ module Mapping = {
 }
 
 module Mappings = {
-  module Make = (Target: ReventlessSpec.Projection.Spec.Target) => {
+  module Make = (Target: ReventlessSpec.Projection.Target) => {
     module type Mapping = ReventlessSpec.Projection.Mapping with type targetState = Target.state
   }
 }

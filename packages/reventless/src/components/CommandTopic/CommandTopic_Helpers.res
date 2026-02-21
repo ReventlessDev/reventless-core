@@ -1,7 +1,5 @@
-type topicItem<'command> = {
-  command: 'command,
-  reference: string,
-}
+// Re-export from spec so Reventless.CommandTopic.topicItem === ReventlessSpec.CommandTopic.topicItem
+type topicItem<'command> = ReventlessSpec.CommandTopic.topicItem<'command>
 
 type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<string, string>>>
 

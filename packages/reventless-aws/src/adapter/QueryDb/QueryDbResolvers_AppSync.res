@@ -1,5 +1,5 @@
 open PulumiAws.AppSync
-open ReventlessSpec.ReadModel_Spec
+open ReventlessSpec.ReadModel
 
 type api = Types.AppSync.api
 type role = Types.AppSync.role

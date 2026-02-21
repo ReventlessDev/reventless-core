@@ -33,10 +33,12 @@ function Make(RuntimeEnvironment) {
       Component$Reventless.setOperations(extra, channel.enqueueEvent.apply(enqueueEvent => ({
         enqueueEvent: enqueueEvent
       })));
-      return Component$Reventless.setOutputs(extra, {
+      let outputs_resources = channel.resources;
+      let outputs = {
         name: name,
-        resources: channel.resources
-      });
+        resources: outputs_resources
+      };
+      return Component$Reventless.setOutputs(extra, outputs);
     }, opts);
     return {
       connect: connect,

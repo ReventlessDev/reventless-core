@@ -7,3 +7,11 @@ type resource = {
 }
 
 type resources = dict<resource>
+
+type unwrappedResource = {
+  name: string,
+  id: string,
+  urn: string,
+  info: string,
+  service: string,
+}

@@ -180,7 +180,7 @@ let project = (currentState, event) =>
 |--------|-----------|----------------|
 | **Event Source** | Multiple EventTopics | Single DcbEventLog |
 | **Mappings** | Complex mapping system | Single projection function |
-| **Spec** | ReventlessSpec.ReadModel_Spec.T | Custom Spec with project function |
+| **Spec** | ReventlessSpec.ReadModel.Spec | Custom Spec with project function |
 | **Use Case** | General-purpose read models | DCB-specific view projections |
 
 ## Comparison with StateChangeSlice

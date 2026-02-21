@@ -184,7 +184,8 @@ function Make(Spec) {
     callHandler: callHandler,
     ConnectPluginMapping: ConnectPluginMapping,
     ConnectPluginMappings: ConnectPluginMappings,
-    make: include.make
+    make: include.make,
+    outputs: include.outputs
   };
 }
 

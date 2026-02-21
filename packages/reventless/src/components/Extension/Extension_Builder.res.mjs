@@ -26,20 +26,24 @@ function Make(Spec) {
         outgoingEventHandler: operations_outgoingEventHandler
       };
       Component$Reventless.setOperations(extra, Pulumi.output(operations));
-      return Component$Reventless.setOutputs(extra, {
-        name: extra$1,
-        extensionPointName: Spec.name,
-        aggregateNames: Stdlib_Array.filterMap(Mappings.mappings, Mapping => {
-          if (Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
-            return;
-          } else {
-            return Mapping.aggregateName;
-          }
-        })
+      let extOutputs_extensionPointName = Spec.name;
+      let extOutputs_aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => {
+        if (Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
+          return;
+        } else {
+          return Mapping.aggregateName;
+        }
       });
+      let extOutputs = {
+        name: extra$1,
+        extensionPointName: extOutputs_extensionPointName,
+        aggregateNames: extOutputs_aggregateNames
+      };
+      return Component$Reventless.setOutputs(extra, extOutputs);
     }, opts);
     return {
-      make: make
+      make: make,
+      outputs: Component$Reventless.outputs
     };
   };
 }

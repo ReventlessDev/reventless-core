@@ -11,7 +11,7 @@ let toRuntimeQueueOutput = ({name, id, arn}: PulumiAws.SQS.Queue.t) =>
     arn,
   })
 
-let toResource = (queue: PulumiAws.SQS.Queue.t) => {
+let toResource = (queue: PulumiAws.SQS.Queue.t): ReventlessSpec.Adapter.resource => {
   ReventlessSpec.Adapter.service: queue.name->Pulumi.Output.apply(_ => AWS.SQS.service),
   name: queue.name,
   id: queue.id,
@@ -57,7 +57,7 @@ let findUnwrappedResource = resources =>
   resources->Reventless.Util.AdapterRuntime.findUnwrappedResource(AWS.SQS.service)
 
 module Subscription = {
-  let toResource = ({eventSourceMapping: {id, arn}}: PulumiAws.SQS.Queue.eventSubscription) => {
+  let toResource = ({eventSourceMapping: {id, arn}}: PulumiAws.SQS.Queue.eventSubscription): ReventlessSpec.Adapter.resource => {
     ReventlessSpec.Adapter.service: id->Pulumi.Output.apply(_ => AWS.SQS.service),
     name: id,
     id,

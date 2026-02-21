@@ -80,7 +80,7 @@ let config = (~idResolvers=[], ~idsResolvers=[], ~indexes=[]) => {
   indexes,
 }
 
-module type T = {
+module type Spec = {
   module Id: Id.T
 
   let name: string
@@ -90,4 +90,28 @@ module type T = {
 
   let config: config
   let subIdConfig: option<subIdConfig<state>>
+}
+
+type outputs = {
+  name: string,
+  queryDb: QueryDb.outputs,
+  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
+  sourceNames: array<string>,
+}
+type operations = {enqueueEvent: EventCollector.enqueueEvent}
+
+module type T = {
+  module Spec: Spec
+  type api
+  type role
+  type component
+  let make: (
+    ~api: api,
+    ~apiRole: role,
+    ~allEventTopics: EventTopic.allOutputs,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
+  let outputs: component => outputs
+  let operations: component => Pulumi.Output.t<operations>
+  let finish: unit => unit
 }

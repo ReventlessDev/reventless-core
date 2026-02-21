@@ -18,14 +18,16 @@ module Make = (
 
     self->Component.setOperations(
       channel.enqueueEvent->Pulumi.Output.apply(enqueueEvent => {
-        EventCollector.enqueueEvent: enqueueEvent,
+        let ops: EventCollector.operations = {enqueueEvent: enqueueEvent}
+        ops
       }),
     )
 
-    self->Component.setOutputs({
-      EventCollector.name,
+    let outputs: EventCollector.outputs = {
+      name,
       resources: channel.resources,
-    })
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let connect = (~eventTopics, ~resources, ~runtime, eventCollector) => {

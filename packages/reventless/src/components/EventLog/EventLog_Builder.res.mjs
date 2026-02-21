@@ -36,10 +36,13 @@ function Make(Spec) {
           replay: Ops.replay
         };
       }));
-      return Component$Reventless.setOutputs(self, {
-        resources: storage.resources,
-        eventTopic: Component$Reventless.outputs(eventTopic)
-      });
+      let outputs_resources = storage.resources;
+      let outputs_eventTopic = Component$Reventless.outputs(eventTopic);
+      let outputs = {
+        resources: outputs_resources,
+        eventTopic: outputs_eventTopic
+      };
+      return Component$Reventless.setOutputs(self, outputs);
     };
     let make = (name, opts) => Component$Reventless.make(ComponentType$Reventless.toString(EventLog$Reventless.componentType), name, construct, opts);
     return {

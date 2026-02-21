@@ -14,9 +14,9 @@ module Make = (
 
   let construct = (
     ~version,
-    ~extensionPoints: array<module(ExtensionPoint.T)>,
-    ~aggregates: array<module(Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReadModel.T with type api = api and type role = 'role)>,
+    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
+    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = 'role)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     ~api: ClonerRunner.api,
@@ -43,7 +43,7 @@ module Make = (
       )
       ->Pulumi.Output.all4
       ->Pulumi.Output.apply(((aggregateResources, publishToAggregates, queryEngine, scheduler)) => {
-        let aggregatesOutputs = aggregates->addEventMappers(allEventTopics, queryEngine)
+        let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
 
         let (extensionPointsOutputs, extensionPointsOutgoingEventHandlers) =
           extensionPoints->createExtensionPoints(
@@ -108,8 +108,8 @@ module Make = (
   let make = (
     ~version,
     ~extensionPoints,
-    ~aggregates: array<module(Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReadModel.T with type api = api and type role = 'role)>,
+    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = 'role)>,
     ~scheduler,
     ~api: ClonerRunner.api,
     ~apiRole: 'role,

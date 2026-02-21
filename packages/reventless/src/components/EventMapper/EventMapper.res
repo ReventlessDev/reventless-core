@@ -2,11 +2,7 @@ module ReventlessEventCollector = EventCollector
 
 let componentType = ComponentType.EventMapper
 
-type outputs = {
-  name: string,
-  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
-  counter?: Counter.outputs,
-}
+type outputs = ReventlessSpec.EventMapper.outputs
 
 type t
 type component = Component.t<t, outputs, unit>

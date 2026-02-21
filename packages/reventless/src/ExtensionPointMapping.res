@@ -1,38 +1,7 @@
 open ReventlessSpec.ExtensionPointMapping
 
-/* these actions are internal to the Mapping Functor */
-type abstractCommandAction =
-  | AbstractPublishCommand(Aggregate.name, string, Message.commandJson)
-  | AbstractCall(string, unit => promise<unit>)
-
-type abstractEventAction<'extensionPointEvent> =
-  | AbstractPublishEvent(string, Message.meta, JSON.t)
-  | AbstractPublishEventAsync(promise<(string, Message.meta, JSON.t)>)
-  | AbstractCall(unit => promise<unit>)
-
-module type T = {
-  module ExtensionPoint: Spec
-
-  let aggregateName: string
-
-  let mapIncomingCommands: (
-    array<
-      CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, ExtensionPoint.command>>,
-    >,
-    ReventlessSpec.Schedule.create,
-    ReventlessSpec.Schedule.delete,
-    ReventlessSpec.QueryEngine.operations,
-  ) => array<abstractCommandAction>
-
-  let mapOutgoingEvent: option<
-    (
-      JSON.t,
-      ReventlessSpec.Schedule.create,
-      ReventlessSpec.Schedule.delete,
-      ReventlessSpec.QueryEngine.operations,
-    ) => array<abstractEventAction<ExtensionPoint.event>>,
-  >
-}
+// abstractCommandAction, abstractEventAction, and module type T are defined in
+// ReventlessSpec.ExtensionPointMapping and brought into scope via `open` above.
 
 module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec): (
   T with module ExtensionPoint := Spec
@@ -49,7 +18,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     queryEngine,
   ) =>
     topicItems
-    ->Array.map(({CommandTopic.reference: reference, command: {Message.id: id, command, meta}}) =>
+    ->Array.map(({ReventlessSpec.CommandTopic.reference: reference, command: {Message.id: id, command, meta}}) =>
       mapIncomingEventImpl(id->ReventlessSpec.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
         | PublishCommand(aggregateId, aggregateCmd) =>

@@ -1,10 +1,10 @@
 module type Spec = {
-  module ReadModelSpec: ReventlessSpec.ReadModel_Spec.T
+  module ReadModelSpec: ReventlessSpec.ReadModel.Spec
   let operations: QueryDb.operations<string, ReadModelSpec.state>
 }
 
 module Make = (
-  ReadModelSpec: ReventlessSpec.ReadModel_Spec.T,
+  ReadModelSpec: ReventlessSpec.ReadModel.Spec,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := ReadModelSpec,
   Spec: Spec with module ReadModelSpec = ReadModelSpec,
 ) => {

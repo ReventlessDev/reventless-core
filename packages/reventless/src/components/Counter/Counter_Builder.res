@@ -6,6 +6,8 @@ module Make = (
   },
   Handler: Counter_Adapter.Handler,
 ): Counter.T => {
+  type component = Counter.component
+
   let construct = (
     ~counterEventsHandler: Counter.counterEventsHandler,
     ~ttl: option<int>,
@@ -22,7 +24,7 @@ module Make = (
       type state = Counter_Operations.referencesState
 
       let subIdConfig = None
-      let config = ReventlessSpec.ReadModel_Spec.config()
+      let config = ReventlessSpec.ReadModel.config()
     }
 
     module ReferencesDb = QueryDb_Builder.Make(
@@ -38,7 +40,7 @@ module Make = (
       type state = Counter_Callback.countsState
 
       let subIdConfig = None
-      let config = ReventlessSpec.ReadModel_Spec.config()
+      let config = ReventlessSpec.ReadModel.config()
     }
     module CountsDb = QueryDb_Builder.Make(
       CountsSpec,
@@ -46,7 +48,12 @@ module Make = (
       QueryDb_Adapter.NoResolvers(QueryDbStorage),
     )
 
-    let referencesDb = ReferencesDb.make(~api=ApiValues.api, ~apiRole=ApiValues.apiRole, ~ttl?, ~opts)
+    let referencesDb = ReferencesDb.make(
+      ~api=ApiValues.api,
+      ~apiRole=ApiValues.apiRole,
+      ~ttl?,
+      ~opts,
+    )
     let countsDb = CountsDb.make(~api=ApiValues.api, ~apiRole=ApiValues.apiRole, ~ttl?, ~opts)
 
     let handler =
@@ -78,17 +85,19 @@ module Make = (
           let ttl = ttl
           let saveBatch = saveBatch
         })
-        {
-          Counter.count: Operations.count,
+        let ops: Counter.operations = {
+          count: Operations.count,
           addToCounterTarget: handler.addToCounterTarget,
         }
+        ops
       }),
     )
 
-    self->Component.setOutputs({
-      Counter.referencesDb: referencesDb->Component.outputs,
+    let outputs: Counter.outputs = {
+      referencesDb: referencesDb->Component.outputs,
       countsDb: countsDb->Component.outputs,
-    })
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec

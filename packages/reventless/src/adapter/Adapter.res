@@ -1,10 +1,4 @@
-type unwrappedResource = {
-  name: string,
-  id: string,
-  urn: string,
-  info: string,
-  service: string,
-}
+type unwrappedResource = ReventlessSpec.Adapter.unwrappedResource
 
 let outputToResource: Pulumi.Output.t<
   ReventlessSpec.Adapter.resource,
@@ -55,7 +49,10 @@ let unwrappedOutputToResource: Pulumi.Output.t<
 let resourceToUnwrappedOutput = (r: ReventlessSpec.Adapter.resource) =>
   (r.name, r.id, r.urn, r.info, r.service)
   ->Pulumi.Output.all5
-  ->Pulumi.Output.apply(((name, id, urn, info, service)) => {name, id, urn, info, service})
+  ->Pulumi.Output.apply(((name, id, urn, info, service)) => {
+    let result: unwrappedResource = {name, id, urn, info, service}
+    result
+  })
 
 let resourcesToUnwrappedOutput = (resources: array<ReventlessSpec.Adapter.resource>) =>
   resources

@@ -175,7 +175,7 @@ type state = {
 
 let name = "CatalogItem"
 
-open ReventlessSpec.ReadModel_Spec
+open ReventlessSpec.ReadModel
 let config = config()
 let subIdConfig = None
 ```
@@ -186,7 +186,7 @@ The Projection maps aggregate events to actions on the read model. Use `Projecti
 
 ```rescript
 // CatalogItemProjection.res
-open ReventlessSpec.Projection.Spec
+open ReventlessSpec.Projection
 
 module ItemMapping = Reventless.Projection.Mapping.Make(
   CatalogItemSpec,         // Source: name, Id, @schema type event
@@ -212,7 +212,7 @@ module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemReadModel
 let mappings: array<module(MappingsHelper.Mapping)> = [module(ItemMapping)]
 ```
 
-The available `action` variants are: `Create`, `Set`, `Update`, `UpdateWithDefault`, `Delete`, `DeleteIf`, `Ignore`, and others. See `ReventlessSpec.Projection.Spec` for the full list.
+The available `action` variants are: `Create`, `Set`, `Update`, `UpdateWithDefault`, `Delete`, `DeleteIf`, `Ignore`, and others. See `ReventlessSpec.Projection` for the full list.
 
 ### Step 5: Define Event Mappings (Optional)
 
@@ -241,7 +241,7 @@ module ItemCreatedMapping: ReventlessSpec.EventMapping.T = {
 }
 
 // Package mappings into the EventMapper.Mappings module type
-module EventMappings: Reventless.EventMapper.Mappings with module Target := NotificationSpec = {
+module EventMappings: ReventlessSpec.EventMapper.Mappings with module Target := NotificationSpec = {
   module Target = NotificationSpec
   module type Mapping = ReventlessSpec.EventMapping.T with module Target := NotificationSpec
   let mappings = [module(ItemCreatedMapping: Mapping)]
@@ -257,9 +257,9 @@ The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) 
 
 ```rescript
 // CatalogItemPlugin.res
-// Imports only `reventless`, not `reventless-aws`
+// Imports only `reventless-spec`, not `reventless` or `reventless-aws`
 
-module Make = (Platform: Reventless.Platform.T) => {
+module Make = (Platform: ReventlessSpec.Platform.T) => {
   // Build the aggregate component from spec + behavior + event mappings
   module ItemAggregate = Platform.Aggregate.Make(
     CatalogItemSpec,

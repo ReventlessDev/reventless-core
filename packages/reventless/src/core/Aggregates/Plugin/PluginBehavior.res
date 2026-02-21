@@ -12,7 +12,7 @@ type state =
 
 let resolverConfig = {
   {
-    Behavior.commandSchema,
+    ReventlessSpec.Behavior.commandSchema,
     fields: ["Plugin_Activate", "Plugin_Deactivate"],
   }
 }

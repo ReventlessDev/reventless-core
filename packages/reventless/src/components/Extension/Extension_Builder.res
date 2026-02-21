@@ -2,11 +2,8 @@ module Make = (
   Spec: ReventlessSpec.ExtensionMapping.Spec,
   Mappings: Extension.Mappings with module Spec := Spec,
 ): Extension.T => {
-  type operations = {
-    incomingEventHandler: Extension.eventHandler,
-    outgoingEventHandler: Extension.eventHandler,
-  }
-  type component = Component.t<Extension.t, Extension.outputs, operations>
+  type operations = Extension.operations
+  type component = Extension.component
 
   let construct = (
     ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
@@ -28,16 +25,14 @@ module Make = (
         let queryEngine = queryEngine
       },
     )
-    let operations = {
-      {
-        incomingEventHandler: Operations.incomingEventHandler,
-        outgoingEventHandler: Operations.outgoingEventHandler,
-      }
+    let operations: Extension.operations = {
+      incomingEventHandler: Operations.incomingEventHandler,
+      outgoingEventHandler: Operations.outgoingEventHandler,
     }
 
     self->Component.setOperations(operations->Pulumi.Output.make)
-    self->Component.setOutputs({
-      Extension.name,
+    let extOutputs: Extension.outputs = {
+      name,
       extensionPointName: Spec.name,
       aggregateNames: Mappings.mappings->Array.filterMap((module(Mapping)) =>
         Mapping.aggregateName == ReventlessSpec.ExtensionMapping.NoAggregate.name ||
@@ -45,7 +40,8 @@ module Make = (
           ? None
           : Some(Mapping.aggregateName)
       ),
-    })
+    }
+    self->Component.setOutputs(extOutputs)
   }
 
   let make = (
@@ -69,4 +65,6 @@ module Make = (
       ),
       ~opts,
     )
+
+  let outputs = Component.outputs
 }

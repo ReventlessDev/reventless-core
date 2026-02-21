@@ -22,7 +22,7 @@ function Make(Spec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let commandStr = JSON.stringify(json);
-        Logger$Reventless.error("File \"StateChangeSlice_Builder.res\", line 18, characters 28-35", undefined, undefined, `Couldn't decode command ` + commandStr + `:`, err);
+        Logger$Reventless.error("File \"StateChangeSlice_Builder.res\", line 20, characters 28-35", undefined, undefined, `Couldn't decode command ` + commandStr + `:`, err);
         return;
       }
       return {
@@ -42,9 +42,10 @@ function Make(Spec) {
     Component$Reventless.setOperations(extra, publishJsons.apply(publishJsons => ({
       publishJsons: publishJsons
     })));
-    return Component$Reventless.setOutputs(extra, {
+    let outputs = {
       resources: Component$Reventless.outputs(dcbEventLog).resources
-    });
+    };
+    return Component$Reventless.setOutputs(extra, outputs);
   }, opts);
   return {
     Spec: Spec,

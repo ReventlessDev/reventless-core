@@ -88,7 +88,7 @@ module type Spec = {
   type state  // state type for the read model
 
   // Projection function: transforms events into projection actions
-  let project: (option<state>, DcbEventLogSpec.event) => array<ReventlessSpec.Projection.Spec.action<string, state>>
+  let project: (option<state>, DcbEventLogSpec.event) => array<ReventlessSpec.Projection.action<string, state>>
 }
 ```
 

@@ -6,19 +6,15 @@ type unwrappedOutputs = {
   commandTopic: CommandTopic.unwrappedOutputs,
   eventTopic: EventTopic.unwrappedOutputs,
 }
-type outputs = {
-  name: string,
-  aggregateNames: array<string>,
-  commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
-  eventTopic: Pulumi.Output.t<EventTopic.outputs>,
-}
+type outputs = ReventlessSpec.ExtensionPoint.outputs
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
 
 type eventHandler = (JSON.t, ReventlessSpec.Plugin.pluginDefinition) => promise<unit>
+type operations = {outgoingEventHandler: eventHandler}
 
 module type T = {
-  type operations = {outgoingEventHandler: eventHandler}
+  type operations = operations
   type component = component<operations>
 
   let make: (
@@ -29,11 +25,12 @@ module type T = {
     ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
+  let outputs: component => outputs
 }
 
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec
-  module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+  module type Mapping = ReventlessSpec.ExtensionPointMapping.T with module ExtensionPoint := Spec
   let mappings: array<module(Mapping)>
 }
 

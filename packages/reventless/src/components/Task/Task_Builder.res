@@ -14,6 +14,7 @@ module Make = (
   SpecificSideEffectHandler: SideEffectHandler.T,
 ): Task.T => {
   module Spec = Spec
+  type component = Task.component
   // type handler = Runtime.eventHandler<
   //   TaskRuntimeBuilder.callbackEvent,
   //   TaskRuntimeBuilder.context,
@@ -159,4 +160,6 @@ module Make = (
       ),
       ~opts,
     )
+
+  let outputs = Component.outputs
 }

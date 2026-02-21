@@ -6,7 +6,7 @@ type referencesState = {
 
 let groupCountItemsByCounterId = countItems => {
   let dict = Dict.make()
-  countItems->Array.forEach(({Counter.counterId: counterId, reference}) => {
+  countItems->Array.forEach(({ReventlessSpec.Counter.counterId: counterId, reference}) => {
     let currentReferences = dict->Dict.get(counterId)->Option.getOr([])
     dict->Dict.set(counterId, currentReferences->Array.concat([reference]))
   })
@@ -32,7 +32,7 @@ module type Ops = {
 module Make = (Ops: Ops) => {
   let count = async countItems => {
     let result = await Ops.saveBatch(
-      countItems->Array.map(({Counter.counterId: counterId, reference, inc}) => {
+      countItems->Array.map(({ReventlessSpec.Counter.counterId: counterId, reference, inc}) => {
         let id = Counter.makeId((counterId, reference))
         let state: referencesState = {id, inc}
         (id, state, Ops.ttl)

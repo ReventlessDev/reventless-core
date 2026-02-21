@@ -46,7 +46,7 @@ let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) =>
     })
 }
 
-let subscribeQueue2SnsTopic = (queue, name, resources, opts) => {
+let subscribeQueue2SnsTopic = (queue, name, resources: array<ReventlessSpec.Adapter.unwrappedResource>, opts) => {
   let _snsTopicSubscriptions = resources->Array.map(resource => {
     Console.log3("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource)
     let subscription = Util_SQS.subscribeToSnsTopic(

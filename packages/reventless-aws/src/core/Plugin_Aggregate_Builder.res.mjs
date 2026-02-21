@@ -30,9 +30,18 @@ let AggregateRuntimeBuilder = include.AggregateRuntimeBuilder;
 
 let make = include.make;
 
+let outputs = include.outputs;
+
+let operations = include.operations;
+
+let finish = include.finish;
+
 export {
   Spec,
   AggregateRuntimeBuilder,
   make,
+  outputs,
+  operations,
+  finish,
 }
 /* include Not a pure module */

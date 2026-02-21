@@ -65,9 +65,10 @@ function Make(Spec) {
           publishJsons: Operations.publishJsons
         };
       }));
-      return Component$Reventless.setOutputs(self, {
+      let outputs = {
         resources: channel.resources
-      });
+      };
+      return Component$Reventless.setOutputs(self, outputs);
     };
     let connect = (runtime, resources, commandTopic) => {
       let commandTopicResource = Component$Reventless.toPulumiResource(commandTopic);

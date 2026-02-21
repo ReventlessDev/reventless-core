@@ -19,7 +19,7 @@ type eventHandler<'context> = Runtime.eventHandler<payload, 'context, string>
 type publishJsons = CommandTopic.publishJsons
 
 type t
-type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
+type outputs = ReventlessSpec.CommandGenerator.outputs
 type component = Component.t<t, outputs, unit>
 
 module type T = {

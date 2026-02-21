@@ -1,11 +1,8 @@
 let componentType = ComponentType.QueryDb
 
-type rec resolversResourcesMaker = dict<outputs> => array<ReventlessSpec.Adapter.resource>
-and outputs = {
-  resources: array<ReventlessSpec.Adapter.resource>,
-  resolversMaker: resolversResourcesMaker,
-}
-type allOutputs = dict<outputs>
+type outputs = ReventlessSpec.QueryDb.outputs
+type allOutputs = ReventlessSpec.QueryDb.allOutputs
+type resolversResourcesMaker = ReventlessSpec.QueryDb.resolversResourcesMaker
 
 type t
 
@@ -43,14 +40,19 @@ type operations<'id, 'state> = {
 }
 
 module type T = {
-  module Spec: ReventlessSpec.ReadModel_Spec.T
+  module Spec: ReventlessSpec.ReadModel.Spec
 
   type api
   type role
   type operations = operations<Spec.Id.t, Spec.state>
   type component = Component.t<t, outputs, operations>
 
-  let make: (~api: api, ~apiRole: role, ~ttl: int=?, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (
+    ~api: api,
+    ~apiRole: role,
+    ~ttl: int=?,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
 }
 
 let allResolversMakers = allQueryDbs =>

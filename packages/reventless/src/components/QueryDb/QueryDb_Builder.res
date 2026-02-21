@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.ReadModel_Spec.T,
+  Spec: ReventlessSpec.ReadModel.Spec,
   Storage: QueryDb_Adapter.Storage,
   Resolvers: QueryDb_Adapter.Resolvers with type api = Storage.api and type role = Storage.role,
 ): (QueryDb.T with module Spec = Spec and type api = Storage.api and type role = Storage.role) => {
@@ -57,10 +57,11 @@ module Make = (
       ~opts,
     )
 
-    self->Component.setOutputs({
-      QueryDb.resources: storage.resources->Array.concat(resolvers.resources),
+    let outputs: QueryDb.outputs = {
+      resources: storage.resources->Array.concat(resolvers.resources),
       resolversMaker: resolvers.resourcesMaker,
-    })
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let make = (~api: Storage.api, ~apiRole: Storage.role, ~ttl=?, ~opts=?): component =>

@@ -1,40 +1,26 @@
 let componentType = ComponentType.Task
 
 type t
-type outputs = {
-  name: string,
-  bucketNames?: dict<Pulumi.Output.t<string>>,
-  sideEffectSources?: array<string>,
-}
+type outputs = ReventlessSpec.Task.outputs
 
 type publishCommands = (/* ~aggregateName: */ string, array<Message.commandJson>) => promise<unit>
-type queryBucketName = (~taskName: string, ~bucketName: string=?) => string
+type queryBucketName = ReventlessSpec.Task.queryBucketName
 
-type operations = {publishCommands: publishCommands}
+type operations = ReventlessSpec.Task.operations
 type component = Component.t<t, outputs, operations>
 
-type taskAction =
+type taskAction = ReventlessSpec.Task.taskAction =
   | PublishCommands(string, array<Message.commandJson>)
   | CreateSchedule(ReventlessSpec.Schedule.schedule)
-  | DeleteSchedule(string) // TODO add other taskActions
-type bucketCallback = (~eventName: string, ~key: string) => promise<array<taskAction>>
-type bucketMode = Read | Write | ReadWrite
-type bucketSpec = {bucketName?: string, bucketMode: bucketMode, callback?: bucketCallback}
-type config = {
-  buckets?: array<bucketSpec>,
-  sideEffects?: Reventless.SideEffectHandler.sideEffects,
-}
+  | DeleteSchedule(string)
+type bucketCallback = ReventlessSpec.Task.bucketCallback
+type bucketMode = ReventlessSpec.Task.bucketMode = Read | Write | ReadWrite
+type bucketSpec = ReventlessSpec.Task.bucketSpec
+type sideEffects = ReventlessSpec.Task.sideEffects
+type config = ReventlessSpec.Task.config
+type setup = ReventlessSpec.Task.setup
 
-type setup = (
-  ReventlessSpec.QueryEngine.operations,
-  queryBucketName,
-  Pulumi.ComponentResource.options,
-) => config
-
-module type Spec = {
-  let name: string
-  let setup: setup
-}
+module type Spec = ReventlessSpec.Task.Spec
 
 type maker = (
   ~queryBucketName: queryBucketName,
@@ -48,6 +34,7 @@ type maker = (
 
 module type T = {
   module Spec: Spec
-
+  type component = Component.t<t, outputs, operations>
   let make: maker
+  let outputs: component => outputs
 }

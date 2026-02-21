@@ -12,9 +12,10 @@ function Make(ScheduledPublisher) {
     };
     let scheduledPublisher = ScheduledPublisher.make(name, opts);
     Component$Reventless.setOperations(self, scheduledPublisher.operations);
-    return Component$Reventless.setOutputs(self, {
+    let outputs = {
       resource: scheduledPublisher.resource
-    });
+    };
+    return Component$Reventless.setOutputs(self, outputs);
   };
   let make = opts => Component$Reventless.make(ComponentType$Reventless.toString(Scheduler$Reventless.componentType), ComponentType$Reventless.toName(Scheduler$Reventless.componentType), construct, opts);
   return {

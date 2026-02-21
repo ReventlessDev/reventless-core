@@ -42,11 +42,11 @@ let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) 
       urn: ""->Pulumi.Output.make,
       info: ""->Pulumi.Output.make,
     },
-    operations: {
-      Reventless.Scheduler.createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(
+    operations: ({
+      createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(
         role,
       ),
       deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
-    }->Pulumi.Output.make,
+    }: ReventlessSpec.Scheduler.operations)->Pulumi.Output.make,
   }
 }

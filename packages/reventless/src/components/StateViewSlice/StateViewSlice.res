@@ -1,19 +1,18 @@
 let componentType = ComponentType.StateViewSlice
 
 type t
-type outputs = {
-  resources: array<ReventlessSpec.Adapter.resource>,
-  queryDb: QueryDb.outputs,
-}
-type operations = {enqueueEvent: EventCollector.enqueueEvent}
+type outputs = ReventlessSpec.StateViewSlice.outputs
+type operations = ReventlessSpec.StateViewSlice.operations
 type component = Component.t<t, outputs, operations>
 
 module type T = {
   type dcbEvent
-  module Spec: ReventlessSpec.StateViewSlice_Spec.T
+  module Spec: ReventlessSpec.StateViewSlice.Spec
+  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
+  type component = Component.t<t, outputs, operations>
 
   let make: (
-    ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
+    ~dcbEventLog: dcbEventLogComponent,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

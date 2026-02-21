@@ -122,7 +122,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     | (None, _) =>
       store->deleteStates(id)
       Ok()->Promise.resolve
-    | (Some((_, subId)), Some({ReventlessSpec.ReadModel_Spec.getSubId: getSubId})) =>
+    | (Some((_, subId)), Some({ReventlessSpec.ReadModel.getSubId: getSubId})) =>
       store->deleteSubState(id, subId, getSubId)
       Ok()->Promise.resolve
     | _ => Ok()->Promise.resolve
@@ -131,7 +131,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     ids->Array.forEach(((id, subId)) =>
       switch (subId, Projection.subIdConfig) {
       | (None, _) => store->deleteStates(id)
-      | (Some((_, subId)), Some({ReventlessSpec.ReadModel_Spec.getSubId: getSubId})) =>
+      | (Some((_, subId)), Some({ReventlessSpec.ReadModel.getSubId: getSubId})) =>
         store->deleteSubState(id, subId, getSubId)
       | _ => ()
       }

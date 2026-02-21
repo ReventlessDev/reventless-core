@@ -1,9 +1,9 @@
 let componentType = ComponentType.EventCollector
 
-type enqueueEvent = (/* ~delay: */ int, /* ~id: */ string, /* ~message: */ string) => promise<unit>
+type enqueueEvent = ReventlessSpec.EventCollector.enqueueEvent
 
 type t
-type outputs = {name: string, resources: array<ReventlessSpec.Adapter.resource>}
+type outputs = ReventlessSpec.EventCollector.outputs
 type operations = {enqueueEvent: enqueueEvent}
 type component = Component.t<t, outputs, operations>
 

@@ -5,13 +5,18 @@ import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
 import * as StateViewSlice$Reventless from "./StateViewSlice.res.mjs";
 
 function Make(Spec) {
-  let make = (dcbEventLog, opts) => Component$Reventless.make(ComponentType$Reventless.toString(StateViewSlice$Reventless.componentType), Spec.name, (extra, extra$1) => Component$Reventless.setOutputs(extra, {
-    resources: Component$Reventless.outputs(dcbEventLog).resources,
-    queryDb: {
+  let make = (dcbEventLog, opts) => Component$Reventless.make(ComponentType$Reventless.toString(StateViewSlice$Reventless.componentType), Spec.name, (extra, extra$1) => {
+    let outputs_resources = Component$Reventless.outputs(dcbEventLog).resources;
+    let outputs_queryDb = {
       resources: [],
       resolversMaker: param => []
-    }
-  }), opts);
+    };
+    let outputs = {
+      resources: outputs_resources,
+      queryDb: outputs_queryDb
+    };
+    return Component$Reventless.setOutputs(extra, outputs);
+  }, opts);
   return {
     Spec: Spec,
     make: make

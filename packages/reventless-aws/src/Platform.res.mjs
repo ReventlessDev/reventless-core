@@ -9,12 +9,30 @@ import * as Aggregate_Builder_Micro$ReventlessAws from "./components/Aggregate_B
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 
-function Make(Config) {
-  let Make$1 = Spec => (Behavior => (EventMappings => Aggregate_Builder_Micro$ReventlessAws.Make(Config)(Spec)(Behavior)(EventMappings)));
+function Make(ApiValues) {
+  let Make$1 = Spec => (Behavior => (EventMappings => {
+    let $$let = Aggregate_Builder_Micro$ReventlessAws.Make(Spec)(Behavior)(EventMappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  }));
   let Aggregate = {
     Make: Make$1
   };
-  let Make$2 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Config)(Spec)(Mappings));
+  let Make$2 = Spec => (Mappings => {
+    let $$let = ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  });
   let ReadModel = {
     Make: Make$2
   };
@@ -26,7 +44,7 @@ function Make(Config) {
   let Task = {
     Make: Make$4
   };
-  let Counter = Counter_Builder$ReventlessAws.Make(Config);
+  let Counter = Counter_Builder$ReventlessAws.Make(ApiValues);
   let Make$5 = StateChangeSlice_Builder$ReventlessAws.Make;
   let StateChangeSlice = {
     Make: Make$5

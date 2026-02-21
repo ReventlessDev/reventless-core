@@ -2,16 +2,22 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
   Resolvers: CommandGenerator_Adapter.Resolvers,
-): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts and type api := Resolvers.api) => {
+): (
+  CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts and type api := Resolvers.api
+) => {
   let construct = (self, _name) => {
     let resources = Behavior.resolverConfig.fields->Array.map(field => {
-      ReventlessSpec.Adapter.id: ""->Pulumi.Output.make,
-      info: `Mutation.${field}`->Pulumi.Output.make,
-      name: ""->Pulumi.Output.make,
-      urn: ""->Pulumi.Output.make,
-      service: ""->Pulumi.Output.make,
+      let r: ReventlessSpec.Adapter.resource = {
+        id: ""->Pulumi.Output.make,
+        info: `Mutation.${field}`->Pulumi.Output.make,
+        name: ""->Pulumi.Output.make,
+        urn: ""->Pulumi.Output.make,
+        service: ""->Pulumi.Output.make,
+      }
+      r
     })
-    let _ = self->Component.setOutputs({CommandGenerator.resources: resources})
+    let outputs: CommandGenerator.outputs = {resources: resources}
+    let _ = self->Component.setOutputs(outputs)
   }
 
   let connect = (~api: Resolvers.api, ~resources, ~runtime, commandGenerator) => {
@@ -31,8 +37,8 @@ module Make = (
       ~opts,
     )
 
-    let _ =
-      commandGenerator->Component.setOutputs({CommandGenerator.resources: resolvers.resources})
+    let cgOutputs: CommandGenerator.outputs = {resources: resolvers.resources}
+    let _ = commandGenerator->Component.setOutputs(cgOutputs)
   }
 
   let makeHandler = (~publishJsons) => {

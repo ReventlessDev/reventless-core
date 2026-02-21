@@ -18,10 +18,11 @@ function Make(Runner) {
       parent: opts_parent
     };
     let runnerResources = Runner.make(name, remoteChannel, timeout, runtime, opts).resources;
-    Component$Reventless.setOutputs(heartbeat, {
+    let outputs = {
       name: name,
       resources: runnerResources
-    });
+    };
+    Component$Reventless.setOutputs(heartbeat, outputs);
   };
   let makeHandler = (id, timeoutOpt, publishToCorePluginExtensionPoint) => {
     let timeout = timeoutOpt !== undefined ? timeoutOpt : 10;

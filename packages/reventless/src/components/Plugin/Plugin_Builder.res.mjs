@@ -89,7 +89,7 @@ function Make(Spec) {
         let allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
         let coreExtensionPoints = Stdlib_Option.mapOr(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
-        let pureOutputs = Pulumi.all([
+        let builderOutputs = Pulumi.all([
           coreExtensionPoints,
           Pulumi.all(Plugin_Helpers$Reventless.aggregateResources),
           Pulumi.all(Plugin_Helpers$Reventless.publishToAggregates),
@@ -102,7 +102,7 @@ function Make(Spec) {
           let publishToReadModels = param[3];
           let publishToAggregates = param[2];
           let coreExtensionPoints = param[0];
-          let aggregatesOutputs = Plugin_Helpers$Reventless.addEventMappers(aggregates, allEventTopics, queryEngine);
+          let aggregatesOutputs = Plugin_Helpers$Reventless.addEventMappers(allEventTopics, queryEngine);
           let match = Plugin_Helpers$Reventless.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
           let extensionPointsOutputs = match[0];
           let coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Stdlib_JsError.throwWithMessage("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
@@ -169,22 +169,37 @@ function Make(Spec) {
             dcbEventLog: dcbEventLogOutputs
           };
         });
-        return Component$Reventless.setOutputs(extra, {
-          id: pureOutputs.apply(outputs => outputs.id),
-          version: pureOutputs.apply(outputs => outputs.version),
-          heartbeatInterval: pureOutputs.apply(outputs => outputs.heartbeatInterval),
-          eventCollector: pureOutputs.apply(outputs => outputs.eventCollector),
-          extensionPoints: pureOutputs.apply(outputs => outputs.extensionPoints),
-          extensions: pureOutputs.apply(outputs => outputs.extensions),
-          aggregates: pureOutputs.apply(outputs => outputs.aggregates),
-          readModels: pureOutputs.apply(outputs => outputs.readModels),
-          tasks: pureOutputs.apply(outputs => outputs.tasks),
-          resolvers: pureOutputs.apply(outputs => outputs.resolvers),
-          heartbeat: pureOutputs.apply(outputs => outputs.heartbeat),
-          dcbEventLog: pureOutputs.apply(outputs => outputs.dcbEventLog),
-          stateChangeSlices: pureOutputs.apply(outputs => outputs.stateChangeSlices),
-          stateViewSlices: pureOutputs.apply(outputs => outputs.stateViewSlices)
-        });
+        let pluginOutputs_id = builderOutputs.apply(outputs => outputs.id);
+        let pluginOutputs_version = builderOutputs.apply(outputs => outputs.version);
+        let pluginOutputs_heartbeatInterval = builderOutputs.apply(outputs => outputs.heartbeatInterval);
+        let pluginOutputs_eventCollector = builderOutputs.apply(outputs => outputs.eventCollector);
+        let pluginOutputs_extensionPoints = builderOutputs.apply(outputs => outputs.extensionPoints);
+        let pluginOutputs_extensions = builderOutputs.apply(outputs => outputs.extensions);
+        let pluginOutputs_aggregates = builderOutputs.apply(outputs => outputs.aggregates);
+        let pluginOutputs_readModels = builderOutputs.apply(outputs => outputs.readModels);
+        let pluginOutputs_tasks = builderOutputs.apply(outputs => outputs.tasks);
+        let pluginOutputs_resolvers = builderOutputs.apply(outputs => outputs.resolvers);
+        let pluginOutputs_heartbeat = builderOutputs.apply(outputs => outputs.heartbeat);
+        let pluginOutputs_dcbEventLog = builderOutputs.apply(outputs => outputs.dcbEventLog);
+        let pluginOutputs_stateChangeSlices = builderOutputs.apply(outputs => outputs.stateChangeSlices);
+        let pluginOutputs_stateViewSlices = builderOutputs.apply(outputs => outputs.stateViewSlices);
+        let pluginOutputs = {
+          id: pluginOutputs_id,
+          version: pluginOutputs_version,
+          heartbeatInterval: pluginOutputs_heartbeatInterval,
+          eventCollector: pluginOutputs_eventCollector,
+          extensionPoints: pluginOutputs_extensionPoints,
+          extensions: pluginOutputs_extensions,
+          aggregates: pluginOutputs_aggregates,
+          readModels: pluginOutputs_readModels,
+          tasks: pluginOutputs_tasks,
+          resolvers: pluginOutputs_resolvers,
+          heartbeat: pluginOutputs_heartbeat,
+          dcbEventLog: pluginOutputs_dcbEventLog,
+          stateChangeSlices: pluginOutputs_stateChangeSlices,
+          stateViewSlices: pluginOutputs_stateViewSlices
+        };
+        return Component$Reventless.setOutputs(extra, pluginOutputs);
       }, opts);
     };
     return {

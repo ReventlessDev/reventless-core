@@ -7,8 +7,8 @@ module ExtensionPointRuntimeBuilder = Reventless.ExtensionPointRuntime_Builder_P
 
 module Make = (
   Spec: ReventlessSpec.ExtensionPointMapping.Spec,
-  Mappings: Reventless.ExtensionPoint.Mappings with module Spec := Spec,
-): Reventless.ExtensionPoint.T => Reventless.ExtensionPoint_Builder.Make(
+  Mappings: ReventlessSpec.ExtensionPoint.Mappings with module Spec := Spec,
+): ReventlessSpec.ExtensionPoint.T => Reventless.ExtensionPoint_Builder.Make(
   Spec,
   Mappings,
   RuntimeEnvironment,

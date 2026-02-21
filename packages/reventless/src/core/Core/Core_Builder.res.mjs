@@ -32,7 +32,7 @@ function Make(RuntimeEnvironment) {
         scheduler
       ]).apply(param => {
         let queryEngine = param[2];
-        let aggregatesOutputs = Core_Helpers$Reventless.addEventMappers(aggregates, allEventTopics, queryEngine);
+        let aggregatesOutputs = Core_Helpers$Reventless.addEventMappers(allEventTopics, queryEngine);
         let match = Core_Helpers$Reventless.createExtensionPoints(extensionPoints, param[0], param[1], param[3], queryEngine, resourceNaming, opts);
         let extensionPointsOutputs = match[0];
         let aggregateNames = Stdlib_Array.reduce(extensionPointsOutputs.map(extensionPointOutputs => Belt_SetString.fromArray(extensionPointOutputs.aggregateNames)), undefined, Belt_SetString.union);

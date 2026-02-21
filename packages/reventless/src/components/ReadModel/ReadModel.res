@@ -1,27 +1,26 @@
 let componentType = ComponentType.ReadModel
 
 type t
-type outputs = {
-  name: string,
-  queryDb: QueryDb.outputs,
-  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
-  sourceNames: array<string>,
-}
-type operations = {enqueueEvent: EventCollector.enqueueEvent}
+type outputs = ReventlessSpec.ReadModel.outputs
+type operations = ReventlessSpec.ReadModel.operations
 type component = Component.t<t, outputs, operations>
 
 module type T = {
-  module Spec: ReventlessSpec.ReadModel_Spec.T
+  module Spec: ReventlessSpec.ReadModel.Spec
   module EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
 
   type api
   type role
+  type component = Component.t<t, outputs, operations>
   let make: (
     ~api: api,
     ~apiRole: role,
     ~allEventTopics: EventTopic.allOutputs,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
+  let outputs: component => outputs
+  let operations: component => Pulumi.Output.t<operations>
+  let finish: unit => unit
 }
 
 let allQueryDbs = allReadModels =>

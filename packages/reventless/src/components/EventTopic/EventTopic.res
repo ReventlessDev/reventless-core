@@ -1,18 +1,18 @@
 let componentType = ComponentType.EventTopic
 
 type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
-type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
-type allOutputs = dict<outputs>
+type outputs = ReventlessSpec.EventTopic.outputs
+type allOutputs = ReventlessSpec.EventTopic.allOutputs
 
 type t
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => promise<unit>
-type publishJson = (string, Message.meta, JSON.t) => promise<unit>
+type publishJson = ReventlessSpec.EventTopic.publishJson
 
 exception NotPublishedToPublisher(exn)
 
 module type T = {
-  module Spec: ReventlessSpec.EventTopic_Spec.T
+  module Spec: ReventlessSpec.EventTopic.T
 
   type publish = publish<Spec.Id.t, Spec.event>
   type operations = {publish: publish, publishJson: publishJson}

@@ -5,7 +5,8 @@ module Make = (ScheduledPublisher: Scheduler_Adapter.ScheduledPublisher): Schedu
     let scheduledPublisher = ScheduledPublisher.make(~name, ~opts)
 
     self->Component.setOperations(scheduledPublisher.operations)
-    self->Component.setOutputs({Scheduler.resource: scheduledPublisher.resource})
+    let outputs: Scheduler.outputs = {resource: scheduledPublisher.resource}
+    self->Component.setOutputs(outputs)
   }
 
   let make = (~opts=?): Scheduler.component =>

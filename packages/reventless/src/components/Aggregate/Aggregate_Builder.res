@@ -15,11 +15,12 @@ module Make = (
     with module CommandTopicChannel = CommandTopicChannel
     and module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
-): (Aggregate.T with type api = CommandGeneratorResolvers.api) => {
+): (Aggregate.T with type api = CommandGeneratorResolvers.api and type component = Aggregate.component) => {
   module Spec = Spec
   module AggregateRuntimeBuilder = AggregateRuntimeBuilder
 
   type api = CommandGeneratorResolvers.api
+  type component = Aggregate.component
 
   module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
   module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
@@ -124,16 +125,20 @@ module Make = (
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
         commandTopic
         ->Component.operations
-        ->Pulumi.Output.apply(({publishJsons}) => {Aggregate.publishJsons: publishJsons})
+        ->Pulumi.Output.apply(({publishJsons}) => {
+          let ops: Aggregate.operations = {publishJsons: publishJsons}
+          ops
+        })
       ),
     )
-    self->Component.setOutputs({
-      Aggregate.name: Spec.name,
+    let aggOutputs: Aggregate.outputs = {
+      name: Spec.name,
       commandGenerator: commandGenerator->Component.wrappedOutputs,
       commandTopic: commandTopic->Component.wrappedOutputs,
       eventLog: eventLog->Component.outputs,
       addEventMapper: self->addEventMapperFn(~opts, ...),
-    })
+    }
+    self->Component.setOutputs(aggOutputs)
   }
 
   let make = (~api: CommandGeneratorResolvers.api, ~opts=?): Aggregate.component =>
@@ -143,4 +148,8 @@ module Make = (
       ~construct=construct(~api, ...),
       ~opts,
     )
+
+  let outputs = Component.outputs
+  let operations = Component.operations
+  let finish = () => AggregateRuntimeBuilder.finish()
 }

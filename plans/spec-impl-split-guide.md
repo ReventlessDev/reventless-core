@@ -1,5 +1,84 @@
 # Package Split Guide: reventless-spec vs reventless
 
+> **Status (2026-02-22):** Platform-to-reventless-spec Phases 1–4 are complete. The current
+> state described in the sections below supersedes earlier content. The historical sections
+> are kept for reference but mark the state prior to Phase 1.
+
+## Current State (Post Phase 4)
+
+The split is **complete**. Application developers now depend **only on `reventless-spec`** for all
+plugin assembly, including `Platform.T`.
+
+### Dependency model
+
+```
+reventless-spec    — specs, behaviors, mappings, Platform.T, component T types, output types
+     ↑
+reventless         — component builders (Aggregate_Builder, ReadModel_Builder, …)
+                     Projection.Mapping.Make, Projection.Mappings.Make, NoEventMappings.Make
+     ↑
+reventless-aws     — AWS-wired concrete Platform.Make(Config), Plugin.make
+     ↑
+application
+  ├── domain/          ← depends on reventless-spec only
+  │   ├── MySpec.res
+  │   ├── MyBehavior.res
+  │   └── MyMappings.res
+  ├── plugin/          ← depends on reventless-spec only
+  │   ├── MyProjection.res  (uses Reventless.Projection.Mapping.Make)
+  │   └── MyPlugin.res      (module Make = (Platform: ReventlessSpec.Platform.T) => {...})
+  └── index.res        ← composition root; the ONLY file that imports reventless-aws
+```
+
+### Naming convention (current)
+
+Component specs and module types are consolidated into **single files per component** in
+`reventless-spec/src/components/`:
+
+| reventless-spec path | What it contains |
+|---|---|
+| `components/Aggregate.res` | `module type Spec` + output types + `module type T` |
+| `components/ReadModel.res` | `module type Spec` + config types + output types + `module type T` |
+| `components/DcbEventLog.res` | `module type Spec` + output types + `module type T` |
+| `components/StateChangeSlice.res` | `module type Spec` + output types + `module type T` |
+| `components/StateViewSlice.res` | `module type Spec` + output types + `module type T` |
+| `components/Task.res` | `module type Spec` + config/output types + `module type T` |
+| `components/Plugin.res` | plugin definition types + output types + `module type DcbSpec` + `module type T` |
+| `components/Counter.res` | output types + `module type T` |
+| `components/ExtensionPoint.res` | `module type Spec` + output types + `module type T` |
+| `components/Extension.res` | output types + `module type T` |
+| `components/EventMapper.res` | output types + `module type Mappings` |
+| `Platform.res` | `module type T` — factory interface for platform-agnostic assembly |
+
+**No `_Spec.res` suffix files exist anymore.** The old `ReadModel_Spec.T` is now `ReadModel.Spec`,
+`StateChangeSlice_Spec.T` is `StateChangeSlice.Spec`, etc.
+
+### Key module paths (quick reference)
+
+| Old path (pre-Phase 1) | Current path |
+|---|---|
+| `ReventlessSpec.ReadModel_Spec.T` | `ReventlessSpec.ReadModel.Spec` |
+| `ReventlessSpec.ReadModel_Spec.config` / `open ReadModel_Spec; config()` | `ReventlessSpec.ReadModel.config()` |
+| `ReventlessSpec.Projection.Spec.Set/Delete/…` | `ReventlessSpec.Projection.Set/Delete/…` |
+| `ReventlessSpec.StateChangeSlice_Spec.T` | `ReventlessSpec.StateChangeSlice.Spec` |
+| `ReventlessSpec.StateViewSlice_Spec.T` | `ReventlessSpec.StateViewSlice.Spec` |
+| `ReventlessSpec.DcbEventLog_Spec.T` | `ReventlessSpec.DcbEventLog.Spec` |
+| `Reventless.Platform.T` | `ReventlessSpec.Platform.T` |
+| `Reventless.EventMapper.Mappings` | `ReventlessSpec.EventMapper.Mappings` |
+| `Reventless.Plugin.DcbSpec` | `ReventlessSpec.Plugin.DcbSpec` |
+| `Reventless.StateChangeSlice.T` | `ReventlessSpec.StateChangeSlice.T` |
+| `Reventless.StateViewSlice.T` | `ReventlessSpec.StateViewSlice.T` |
+
+### What remains in reventless (intentionally)
+
+These types are internal builder concerns and must stay in reventless:
+- `Projection.Mapping.Make` / `Projection.Mappings.Make` — functor implementations
+- `NoEventMappings.Make` — utility functor
+- `Aggregate_Builder.*`, `ReadModel_Builder.*`, etc. — component builders
+- `AggregateRuntime_Builder.T`, `EventCollectorRuntime_Builder.T` — internal adapter types
+
+---
+
 ## Goal
 
 Split component definitions so that:
@@ -23,7 +102,11 @@ Keep in reventless when types reference:
 
 ---
 
-## Naming Convention
+## Naming Convention (Historical — Pre Phase 1)
+
+> **Note:** This naming convention was used before Phase 1. The current convention consolidates
+> spec and output types into a single file per component (no `_Spec` suffix). See "Current State"
+> above for the current naming convention.
 
 | reventless-spec file | Module type name | Full access path |
 |---|---|---|
@@ -901,56 +984,57 @@ This design is clean, but it requires `Reventless.Platform.T` (not `ReventlessSp
 
 ### Summary: What Can and Cannot Move to reventless-spec
 
+> **Note:** This table reflects the state before Phase 1. After Phases 1–4, all items marked
+> "❌ No" except `Config.T` have been moved to reventless-spec via the accessor function pattern
+> (see Phase 4 results in platform-to-reventless-spec.md).
+
 | Type | Can move? | Reason |
 |---|---|---|
 | `Behavior.T` | ✅ Yes | Only uses `Message.context`, `Handler.errorHandler`, `S.t` — all spec-compatible |
-| Simplified `EventMapper_Spec.Mappings` (no `counter`) | ✅ Partial | Without `Counter.T` dependency — but different type from `EventMapper.Mappings` |
-| `Aggregate.T` (output) | ❌ No | Contains `AggregateRuntimeBuilder`, `Pulumi.ComponentResource.options` |
-| `ReadModel.T` (output) | ❌ No | Contains `EventCollectorRuntimeBuilder`, Pulumi types |
-| `Plugin.T.make` signature | ❌ No | `~scheduler: Pulumi.Output.t<Scheduler.operations>` |
-| `Counter.T` | ❌ No | `~opts: Pulumi.ComponentResource.options` |
-| `Config.T` | ❌ No | AWS Pulumi resource types |
+| `EventMapper.Mappings` | ✅ Yes — **done in Phase 2** | Moved to `ReventlessSpec.EventMapper.Mappings` |
+| `Aggregate.T` (output) | ✅ Yes — **done in Phase 2** | Added via accessor function pattern; `AggregateRuntimeBuilder` stays in reventless |
+| `ReadModel.T` (output) | ✅ Yes — **done in Phase 2** | Same pattern |
+| `Plugin.T.make` + `DcbSpec` | ✅ Yes — **done in Phase 2** | Now in `ReventlessSpec.Plugin` |
+| `Counter.T` | ✅ Yes — **done in Phase 2** | Now in `ReventlessSpec.Counter.T` |
+| `Platform.T` | ✅ Yes — **done in Phase 3** | Now in `ReventlessSpec.Platform.T` |
+| `Config.T` | ❌ No | AWS Pulumi resource types; stays in reventless-aws |
 
 ---
 
-### Corrected Option B: Platform.T in `reventless`
+### Corrected Option B: Platform.T in `reventless-spec` (Final State)
 
-The practical implementation of Option B is:
+After completing Phases 1–4 of the platform-to-reventless-spec plan, `Platform.T` now lives in
+`reventless-spec` (not `reventless`). The original analysis that said this was impossible was
+resolved by the **accessor function pattern** (Phase 4) which provides `outputs`, `operations`,
+and `finish` functions on each spec-level T type, allowing `Plugin_Helpers.res` to work without
+needing `AggregateRuntimeBuilder` directly.
 
 ```
-Platform.T lives in reventless (not reventless-spec)
-ReventlessAws.Platform.Make(Config) satisfies Reventless.Platform.T
+Platform.T lives in reventless-spec
+ReventlessAws.Platform.Make(Config) satisfies ReventlessSpec.Platform.T
 ```
 
-This still achieves the key goal — **application assembly code is decoupled from `reventless-aws`**:
+The full dependency model:
 
 ```
 app/MySpec.res        ← imports reventless-spec only
-app/MyBehavior.res    ← imports reventless-spec only (if Behavior.T moved there)
+app/MyBehavior.res    ← imports reventless-spec only
 app/MyMappings.res    ← imports reventless-spec only
-app/MyPlugin.res      ← imports reventless (for Platform.T) — NOT reventless-aws
+app/MyProjection.res  ← imports reventless (for Projection.Mapping.Make)
+app/MyPlugin.res      ← imports reventless-spec only (Platform.T is there)
 index.res             ← Composition Root: imports reventless-aws, creates Platform.Make(Config)
 ```
 
-The domain-to-platform gap becomes:
-- Domain code: `reventless-spec` only ✅
-- Assembly code: `reventless` only (for `Platform.T`, `Behavior.T`, `EventMapper.Mappings`) ✅
-- **Not** `reventless-aws` ✅
-- Composition Root only: `reventless-aws` ✅
-
-### Implementation Status: ✅ DONE
+### Implementation Status: ✅ DONE (Phases 1–4 of platform-to-reventless-spec)
 
 **In `reventless-spec`:**
 - `packages/reventless-spec/src/Behavior.res` ✅ — `resolverConfig` type and `module type T`
-
-**In `reventless`:**
-- `packages/reventless/src/Platform.res` ✅ — `module type T` with builders for Aggregate, ReadModel, ExtensionPoint, Task, Counter, StateChangeSlice, StateViewSlice, DcbEventLog
+- `packages/reventless-spec/src/Platform.res` ✅ — `module type T` with builders for all component types
+- `packages/reventless-spec/src/components/*.res` ✅ — all component output types + module type T
 
 **In `reventless-aws`:**
-- `packages/reventless-aws/src/Platform.res` ✅ — `module Make(Config: Config.T): Reventless.Platform.T` with all AWS builders pre-wired
+- `packages/reventless-aws/src/Platform.res` ✅ — `module Make(ApiValues: {...}): ReventlessSpec.Platform.T`
 
 **Verification:**
-- ✅ `cd packages/reventless-spec && npm run build` — compiles
-- ✅ `cd packages/reventless && npm run build` — compiles
-- ✅ `cd packages/reventless-aws && npm run build` — compiles
-- ✅ `cd packages/reventless && npm test` — 103 tests passed
+- ✅ Full monorepo build: 442 modules, 0 errors
+- ✅ All tests pass

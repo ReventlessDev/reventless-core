@@ -15,7 +15,7 @@ module Make = (
   module PluginMappingInstance = PluginExtensionPoint_Plugin.Make(Spec)
 
   module Mappings = {
-    module type Mapping = ExtensionPointMapping.T
+    module type Mapping = ReventlessSpec.ExtensionPointMapping.T
       with module ExtensionPoint := ReventlessSpec.PluginExtensionPointSpec
 
     let mappings: array<module(Mapping)> = [module(PluginMappingInstance.Mapping)]

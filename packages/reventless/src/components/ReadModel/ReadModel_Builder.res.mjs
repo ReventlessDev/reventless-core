@@ -59,17 +59,25 @@ function Make(Spec) {
         return eventCollector;
       });
       Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, Component$Reventless.operations).apply(param => param.enqueueEvent));
-      return Component$Reventless.setOutputs(extra, {
+      let rmOutputs_queryDb = Component$Reventless.outputs(queryDb);
+      let rmOutputs_eventCollector = Component$Reventless.wrappedOutputs(eventCollector);
+      let rmOutputs_sourceNames = Belt_SetString.toArray(sourceNames);
+      let rmOutputs = {
         name: name,
-        queryDb: Component$Reventless.outputs(queryDb),
-        eventCollector: Component$Reventless.wrappedOutputs(eventCollector),
-        sourceNames: Belt_SetString.toArray(sourceNames)
-      });
+        queryDb: rmOutputs_queryDb,
+        eventCollector: rmOutputs_eventCollector,
+        sourceNames: rmOutputs_sourceNames
+      };
+      return Component$Reventless.setOutputs(extra, rmOutputs);
     }, opts);
+    let finish = () => EventCollectorRuntimeBuilder.finish();
     return {
       Spec: Spec,
       EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
-      make: make
+      make: make,
+      outputs: Component$Reventless.outputs,
+      operations: Component$Reventless.operations,
+      finish: finish
     };
   })))));
 }

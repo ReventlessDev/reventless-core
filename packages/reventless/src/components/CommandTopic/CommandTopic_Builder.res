@@ -1,4 +1,4 @@
-module Make = (Spec: ReventlessSpec.CommandTopic_Spec.T, Channel: CommandTopic_Adapter.Channel): (
+module Make = (Spec: ReventlessSpec.CommandTopic.T, Channel: CommandTopic_Adapter.Channel): (
   CommandTopic.T with module Spec = Spec and type callbackEvent = Channel.callbackEvent
 ) => {
   module Spec = Spec
@@ -32,7 +32,7 @@ module Make = (Spec: ReventlessSpec.CommandTopic_Spec.T, Channel: CommandTopic_A
     let allResults = []
 
     let processItem = async item => {
-      let {CommandTopic.reference: reference, command: json} = item
+      let {ReventlessSpec.CommandTopic.reference: reference, command: json} = item
       let typeName = extractTypeNameFromJson(json)
 
       // Look up handlers for this command type in the global registry
@@ -42,7 +42,7 @@ module Make = (Spec: ReventlessSpec.CommandTopic_Spec.T, Channel: CommandTopic_A
       let handlerPromises = handlers->Array.map(async handlerEntry => {
         let {CommandTopic.handler: handler} = handlerEntry
         try {
-          let results = await handler([{CommandTopic.reference, command: json}])
+          let results = await handler([{ReventlessSpec.CommandTopic.reference, command: json}])
           allResults->Array.pushMany(results)
         } catch {
         | _ => () // Skip if handler fails
@@ -80,9 +80,10 @@ module Make = (Spec: ReventlessSpec.CommandTopic_Spec.T, Channel: CommandTopic_A
       }),
     )
 
-    self->Component.setOutputs({
-      CommandTopic.resources: channel.resources,
-    })
+    let outputs: CommandTopic.outputs = {
+      resources: channel.resources,
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let connect = (~runtime, ~resources, commandTopic) => {

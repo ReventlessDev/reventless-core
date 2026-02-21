@@ -1,17 +1,12 @@
+open ReventlessSpec.Aggregate
+
 let componentType = ComponentType.Aggregate
 
 type t
-type rec addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.operations) => outputs
-and outputs = {
-  name: string,
-  commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
-  commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
-  eventLog: EventLog.outputs,
-  eventMapper?: Pulumi.Output.t<EventMapper.outputs>,
-  addEventMapper: addEventMapper,
-}
-type allOutputs = dict<outputs>
-type operations = {publishJsons: CommandTopic.publishJsons}
+type outputs = ReventlessSpec.Aggregate.outputs
+type addEventMapper = ReventlessSpec.Aggregate.addEventMapper
+type allOutputs = ReventlessSpec.Aggregate.allOutputs
+type operations = ReventlessSpec.Aggregate.operations
 type component = Component.t<t, outputs, operations>
 
 type name = string
@@ -36,5 +31,9 @@ module type T = {
   module AggregateRuntimeBuilder: AggregateRuntime_Builder.T
 
   type api
+  type component = Component.t<t, outputs, operations>
   let make: (~api: api, ~opts: Pulumi.ComponentResource.options=?) => component
+  let outputs: component => outputs
+  let operations: component => Pulumi.Output.t<operations>
+  let finish: unit => unit
 }

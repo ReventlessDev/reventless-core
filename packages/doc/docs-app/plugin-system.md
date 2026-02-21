@@ -20,15 +20,15 @@ Both approaches follow the same assembly pattern: write **platform-agnostic spec
 
 ## The Platform Abstraction
 
-The `Platform.T` module type is a factory interface that decouples your application code from infrastructure. Your plugin modules import only `reventless`; the actual AWS wiring lives in `reventless-aws` and is applied at the **composition root**.
+The `Platform.T` module type is a factory interface that decouples your application code from infrastructure. Your plugin modules import only `reventless-spec`; the actual AWS wiring lives in `reventless-aws` and is applied at the **composition root**.
 
 ```
 packages/
   my-plugin/
     CatalogItemSpec.res        ← only imports reventless-spec
     CatalogItemBehavior.res    ← only imports reventless-spec
-    CatalogItemProjection.res  ← only imports reventless
-    CatalogItemPlugin.res      ← only imports reventless, wraps in Make(Platform)
+    CatalogItemProjection.res  ← only imports reventless (for Projection.Mapping.Make)
+    CatalogItemPlugin.res      ← only imports reventless-spec, wraps in Make(Platform)
   infra/
     index.res                  ← imports reventless-aws, the only file that does
 ```
@@ -156,14 +156,14 @@ type state = {
 
 let name = "CatalogItem"
 
-open ReventlessSpec.ReadModel_Spec
+open ReventlessSpec.ReadModel
 let config = config()
 let subIdConfig = None
 ```
 
 ```rescript
 // CatalogItemProjection.res
-open ReventlessSpec.Projection.Spec
+open ReventlessSpec.Projection
 
 module ItemMapping = Reventless.Projection.Mapping.Make(
   CatalogItemSpec,
@@ -189,7 +189,7 @@ let mappings: array<module(MappingsHelper.Mapping)> = [module(ItemMapping)]
 
 ```rescript
 // CatalogItemPlugin.res
-module Make = (Platform: Reventless.Platform.T) => {
+module Make = (Platform: ReventlessSpec.Platform.T) => {
   module ItemAggregate = Platform.Aggregate.Make(
     CatalogItemSpec,
     CatalogItemBehavior,
@@ -237,23 +237,23 @@ type event =
 
 ```rescript
 // ItemCatalogPlugin.res
-module Make = (Platform: Reventless.Platform.T) => {
+module Make = (Platform: ReventlessSpec.Platform.T) => {
   module CreateItem = Platform.StateChangeSlice.Make(CreateItemSpec)
   module RenameItem = Platform.StateChangeSlice.Make(RenameItemSpec)
   module DeleteItem = Platform.StateChangeSlice.Make(DeleteItemSpec)
   module ItemView   = Platform.StateViewSlice.Make(ItemViewSpec)
 
-  module DcbSpec: Reventless.Plugin.DcbSpec = {
+  module DcbSpec: ReventlessSpec.Plugin.DcbSpec = {
     @schema
     type event = ItemEventLogSpec.event
 
-    let stateChangeSlices: array<module(Reventless.StateChangeSlice.T with type dcbEvent = event)> = [
+    let stateChangeSlices: array<module(ReventlessSpec.StateChangeSlice.T with type dcbEvent = event)> = [
       module(CreateItem),
       module(RenameItem),
       module(DeleteItem),
     ]
 
-    let stateViewSlices: array<module(Reventless.StateViewSlice.T with type dcbEvent = event)> = [
+    let stateViewSlices: array<module(ReventlessSpec.StateViewSlice.T with type dcbEvent = event)> = [
       module(ItemView),
     ]
   }

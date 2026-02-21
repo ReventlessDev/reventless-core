@@ -67,22 +67,26 @@ let aggregateResources = {};
 
 let publishToAggregates = {};
 
+let aggregateFinishFns = {};
+
 function createAggregatesWithoutEventMappers(aggregates, api, opts) {
   return Object.fromEntries(aggregates.map(SpecificAggregate => {
     let aggregate = SpecificAggregate.make(api, opts);
-    addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
-    let resources = Component$Reventless.outputs(aggregate).commandTopic.apply(commandTopic => commandTopic.resources);
+    let aggOutputs = SpecificAggregate.outputs(aggregate);
+    addEventMapperFns[SpecificAggregate.Spec.name] = aggOutputs.addEventMapper;
+    let resources = aggOutputs.commandTopic.apply(commandTopic => commandTopic.resources);
     aggregateResources[SpecificAggregate.Spec.name] = resources;
-    let publishJsons = Component$Reventless.operations(aggregate).apply(param => param.publishJsons);
+    let publishJsons = SpecificAggregate.operations(aggregate).apply(param => param.publishJsons);
     publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
-    return Component$Reventless.outputs(aggregate);
+    aggregateFinishFns[SpecificAggregate.Spec.name] = SpecificAggregate.finish;
+    return aggOutputs;
   }).map(aggregate => [
     aggregate.name,
     aggregate
   ]));
 }
 
-function finishAggregates(aggregates, aggregatesOutputs) {
+function finishAggregates(aggregatesOutputs) {
   let match = Belt_Array.unzip(Stdlib_Array.keepSome(Object.values(aggregatesOutputs).map(aggregateOutputs => Stdlib_Option.map(aggregateOutputs.eventMapper, eventMapper => [
     eventMapper,
     aggregateOutputs.commandTopic
@@ -91,16 +95,16 @@ function finishAggregates(aggregates, aggregatesOutputs) {
     Pulumi.all(match[0]),
     Pulumi.all(match[1])
   ]).apply(param => Pulumi.all(param[0].map(eventMapperOutput => eventMapperOutput.eventCollector)).apply(param => {
-    aggregates.forEach(SpecificAggregate => {
+    Object.values(aggregateFinishFns).forEach(finishFn => {
       console.log("Plugin_Builder: AggregateRuntimeBuilder.finish");
-      SpecificAggregate.AggregateRuntimeBuilder.finish();
+      finishFn();
     });
   }));
 }
 
-function addEventMappers(aggregates, allEventTopics, queryEngine) {
+function addEventMappers(allEventTopics, queryEngine) {
   let aggregatesOutputs = Stdlib_Dict.mapValues(addEventMapperFns, addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine));
-  finishAggregates(aggregates, aggregatesOutputs);
+  finishAggregates(aggregatesOutputs);
   return aggregatesOutputs;
 }
 
@@ -109,22 +113,24 @@ let readModelNamesForSourceName = {};
 let publishToReadModels = {};
 
 function finishReadModels(readModels) {
-  Pulumi.all(readModels.map(param => Component$Reventless.operations(param[1].readModel))).apply(param => {
-    readModels.forEach(param => param[1].module_.EventCollectorRuntimeBuilder.finish());
+  Pulumi.all(readModels.map(param => param[1].operations)).apply(param => {
+    readModels.forEach(param => param[1].finish());
   });
 }
 
 function extractReadModelsOutputs(readModels) {
   return Object.fromEntries(Object.entries(Object.fromEntries(readModels)).map(param => [
     param[0],
-    Component$Reventless.outputs(param[1].readModel)
+    param[1].outputs
   ]));
 }
 
 function createReadModels(readModels, api, apiRole, allEventTopics, opts) {
   let readModels$1 = readModels.map(SpecificReadModel => {
     let readModel = SpecificReadModel.make(api, apiRole, allEventTopics, opts);
-    Component$Reventless.outputs(readModel).sourceNames.forEach(sourceName => {
+    let rmOutputs = SpecificReadModel.outputs(readModel);
+    let rmOperations = SpecificReadModel.operations(readModel);
+    rmOutputs.sourceNames.forEach(sourceName => {
       let readModelNames = readModelNamesForSourceName[sourceName];
       if (readModelNames !== undefined) {
         readModelNamesForSourceName[sourceName] = readModelNames.concat([SpecificReadModel.Spec.name]);
@@ -132,12 +138,13 @@ function createReadModels(readModels, api, apiRole, allEventTopics, opts) {
         readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
       }
     });
-    publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(param => param.enqueueEvent);
+    publishToReadModels[SpecificReadModel.Spec.name] = rmOperations.apply(param => param.enqueueEvent);
     return [
       SpecificReadModel.Spec.name,
       {
-        module_: SpecificReadModel,
-        readModel: readModel
+        outputs: rmOutputs,
+        operations: rmOperations,
+        finish: SpecificReadModel.finish
       }
     ];
   });
@@ -149,7 +156,7 @@ function createExtensionPoints(extensionPoints, aggregateResources, publishToAgg
   return Belt_Array.unzip(extensionPoints.map(SpecificExtensionPoint => {
     let extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts);
     return [
-      Component$Reventless.outputs(extensionPoint),
+      SpecificExtensionPoint.outputs(extensionPoint),
       Component$Reventless.operations(extensionPoint).apply(param => param.outgoingEventHandler)
     ];
   }));
@@ -159,7 +166,7 @@ function createExtensions(extensions, publishToCorePluginExtensionPoint, publish
   return Belt_Array.unzip(extensions.map(SpecificExtension => {
     let extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     return [
-      Component$Reventless.outputs(extension),
+      SpecificExtension.outputs(extension),
       Component$Reventless.operations(extension).apply(param => ({
         outgoing: param.outgoingEventHandler,
         incoming: param.incomingEventHandler
@@ -213,7 +220,7 @@ let tasksOutputs = {
 };
 
 function createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, resourceNaming, opts) {
-  tasksOutputs.contents = tasks.map(SpecificTask => Component$Reventless.outputs(SpecificTask.make((taskName, bucketNameOpt) => {
+  tasksOutputs.contents = tasks.map(SpecificTask => SpecificTask.outputs(SpecificTask.make((taskName, bucketNameOpt) => {
     let bucketName = bucketNameOpt !== undefined ? bucketNameOpt : "Bucket";
     return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName, bucketName);
   }, scheduler, publishToAggregates, queryEngine, resourceNaming, aggregatesOutputs, opts)));
@@ -288,6 +295,7 @@ export {
   addEventMapperFns,
   aggregateResources,
   publishToAggregates,
+  aggregateFinishFns,
   createAggregatesWithoutEventMappers,
   finishAggregates,
   addEventMappers,

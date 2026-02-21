@@ -17,9 +17,10 @@ function Make(Spec) {
         info: Pulumi.output(`Mutation.` + field),
         service: Pulumi.output("")
       }));
-      Component$Reventless.setOutputs(self, {
+      let outputs = {
         resources: resources
-      });
+      };
+      Component$Reventless.setOutputs(self, outputs);
     };
     let connect = (api, resources, runtime, commandGenerator) => {
       let commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
@@ -29,9 +30,10 @@ function Make(Spec) {
         parent: opts_parent
       };
       let resolvers = Resolvers.make(name, api, Behavior.resolverConfig.fields, runtime, resources, opts);
-      Component$Reventless.setOutputs(commandGenerator, {
+      let cgOutputs = {
         resources: resolvers.resources
-      });
+      };
+      Component$Reventless.setOutputs(commandGenerator, cgOutputs);
     };
     let makeHandler = publishJsons => {
       let Callback = CommandGenerator_Callback$Reventless.Make({

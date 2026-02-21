@@ -73,44 +73,49 @@ let serviceNameToEventHandlers: (
   dict
 }
 
+// Captured read model data — stores extracted values instead of module+component
+// so that Plugin_Helpers can work with abstract spec-level component types.
 type readModel = {
-  module_: module(ReadModel.T),
-  readModel: ReadModel.component,
+  outputs: ReadModel.outputs,
+  operations: Pulumi.Output.t<ReadModel.operations>,
+  finish: unit => unit,
 }
 
 let addEventMapperFns = Dict.make()
 let aggregateResources = Dict.make()
 let publishToAggregates = Dict.make()
+// Finish functions captured from aggregate modules during createAggregatesWithoutEventMappers.
+let aggregateFinishFns = Dict.make()
 
 let createAggregatesWithoutEventMappers = (
   type a,
-  aggregates: array<module(Aggregate.T with type api = a)>,
+  aggregates: array<module(ReventlessSpec.Aggregate.T with type api = a)>,
   ~api: a,
   opts,
 ) =>
   aggregates
-  ->Array.map((module(SpecificAggregate: Aggregate.T with type api = a)) => {
+  ->Array.map((module(SpecificAggregate: ReventlessSpec.Aggregate.T with type api = a)) => {
     let aggregate = SpecificAggregate.make(~api, ~opts)
+    let aggOutputs = SpecificAggregate.outputs(aggregate)
     addEventMapperFns->Dict.set(
       SpecificAggregate.Spec.name,
-      (aggregate->Component.outputs).addEventMapper,
+      aggOutputs.addEventMapper,
     )
     let resources =
-      (aggregate->Component.outputs).commandTopic->Pulumi.Output.apply(commandTopic =>
+      aggOutputs.commandTopic->Pulumi.Output.apply(commandTopic =>
         commandTopic.resources
       )
     aggregateResources->Dict.set(SpecificAggregate.Spec.name, resources)
     let publishJsons =
-      aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons)
+      SpecificAggregate.operations(aggregate)->Pulumi.Output.apply(({publishJsons}) => publishJsons)
     publishToAggregates->Dict.set(SpecificAggregate.Spec.name, publishJsons)
-    aggregate->Component.outputs
+    aggregateFinishFns->Dict.set(SpecificAggregate.Spec.name, SpecificAggregate.finish)
+    aggOutputs
   })
   ->Array.map(aggregate => {(aggregate.name, aggregate)})
   ->Dict.fromArray
 
 let finishAggregates = (
-  type a,
-  aggregates: array<module(Aggregate.T with type api = a)>,
   aggregatesOutputs: dict<Aggregate.outputs>,
 ) => {
   let (eventMapperOutputs, commandTopicOutputs) =
@@ -132,19 +137,15 @@ let finishAggregates = (
       ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(_ =>
-        aggregates->Array.forEach(
-          (module(SpecificAggregate: Aggregate.T with type api = a)) => {
-            Console.log("Plugin_Builder: AggregateRuntimeBuilder.finish")
-            SpecificAggregate.AggregateRuntimeBuilder.finish()
-          },
-        )
+        aggregateFinishFns->Dict.valuesToArray->Array.forEach(finishFn => {
+          Console.log("Plugin_Builder: AggregateRuntimeBuilder.finish")
+          finishFn()
+        })
       )
     )
 }
 
 let addEventMappers = (
-  type a,
-  aggregates: array<module(Aggregate.T with type api = a)>,
   allEventTopics,
   queryEngine,
 ) => {
@@ -152,7 +153,7 @@ let addEventMappers = (
     addEventMapperFns->Dict.mapValues(addEventMapperFn =>
       addEventMapperFn(allEventTopics, queryEngine)
     )
-  aggregates->finishAggregates(aggregatesOutputs)
+  finishAggregates(aggregatesOutputs)
 
   aggregatesOutputs
 }
@@ -163,11 +164,11 @@ let publishToReadModels = Dict.make()
 let finishReadModels = readModels => {
   let _ =
     readModels
-    ->Array.map(((_, {readModel})) => readModel->Component.operations)
+    ->Array.map(((_, {operations})) => operations)
     ->Pulumi.Output.all
     ->Pulumi.Output.apply(_ =>
-      readModels->Array.forEach(((_, {module_: module(SpecificReadModel: ReadModel.T)})) => {
-        SpecificReadModel.EventCollectorRuntimeBuilder.finish()
+      readModels->Array.forEach(((_, {finish})) => {
+        finish()
       })
     )
 }
@@ -176,21 +177,23 @@ let extractReadModelsOutputs = readModels =>
   readModels
   ->Dict.fromArray
   ->Dict.toArray
-  ->Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
+  ->Array.map(((name, {outputs})) => (name, outputs))
   ->Dict.fromArray
 
 let createReadModels = (
   type a,
   type r,
-  readModels: array<module(ReadModel.T with type api = a and type role = r)>,
+  readModels: array<module(ReventlessSpec.ReadModel.T with type api = a and type role = r)>,
   ~api: a,
   ~apiRole: r,
   allEventTopics,
   opts,
 ) => {
-  let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T with type api = a and type role = r)) => {
+  let readModels = readModels->Array.map((module(SpecificReadModel: ReventlessSpec.ReadModel.T with type api = a and type role = r)) => {
     let readModel = SpecificReadModel.make(~api, ~apiRole, ~allEventTopics, ~opts)
-    (readModel->Component.outputs).sourceNames->Array.forEach(sourceName =>
+    let rmOutputs = SpecificReadModel.outputs(readModel)
+    let rmOperations = SpecificReadModel.operations(readModel)
+    rmOutputs.sourceNames->Array.forEach(sourceName =>
       switch readModelNamesForSourceName->Dict.get(sourceName) {
       | Some(readModelNames) =>
         readModelNamesForSourceName->Dict.set(
@@ -202,12 +205,10 @@ let createReadModels = (
     )
     publishToReadModels->Dict.set(
       SpecificReadModel.Spec.name,
-      readModel
-      ->Component.operations
-      ->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
+      rmOperations->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
     )
 
-    (SpecificReadModel.Spec.name, {module_: module(SpecificReadModel), readModel})
+    (SpecificReadModel.Spec.name, {outputs: rmOutputs, operations: rmOperations, finish: SpecificReadModel.finish})
   })
   readModels->finishReadModels
   readModels->extractReadModelsOutputs
@@ -223,7 +224,7 @@ let createExtensionPoints = (
   ~opts,
 ) =>
   extensionPoints
-  ->Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
+  ->Array.map((module(SpecificExtensionPoint: ReventlessSpec.ExtensionPoint.T)) => {
     let extensionPoint = SpecificExtensionPoint.make(
       ~aggregateResources,
       ~publishToAggregates,
@@ -232,9 +233,12 @@ let createExtensionPoints = (
       ~resourceNaming,
       ~opts=Some(opts),
     )
+    // Obj.magic is safe here: all ReventlessSpec.ExtensionPoint.T implementations in reventless
+    // return ExtensionPoint.component<ExtensionPoint.operations> at runtime.
+    let concreteEP: ExtensionPoint.component<ExtensionPoint.operations> = Obj.magic(extensionPoint)
     (
-      extensionPoint->Component.outputs,
-      extensionPoint
+      SpecificExtensionPoint.outputs(extensionPoint),
+      concreteEP
       ->Component.operations
       ->Pulumi.Output.apply(({outgoingEventHandler}) => outgoingEventHandler),
     )
@@ -250,7 +254,7 @@ let createExtensions = (
   ~opts,
 ) =>
   extensions
-  ->Array.map((module(SpecificExtension: Extension.T)) => {
+  ->Array.map((module(SpecificExtension: ReventlessSpec.Extension.T)) => {
     let extension = SpecificExtension.make(
       ~publishToCorePluginExtensionPoint,
       ~publishToAggregates,
@@ -259,9 +263,12 @@ let createExtensions = (
       ~queryEngine,
       ~opts=Some(opts),
     )
+    // Obj.magic is safe here: all ReventlessSpec.Extension.T implementations in reventless
+    // return Extension.component at runtime.
+    let concreteExt: Extension.component = Obj.magic(extension)
     (
-      extension->Component.outputs,
-      extension
+      SpecificExtension.outputs(extension),
+      concreteExt
       ->Component.operations
       ->Pulumi.Output.apply(({outgoingEventHandler, incomingEventHandler}) => {
         incoming: incomingEventHandler,
@@ -355,8 +362,8 @@ let createTasks = (
   ~opts,
 ) => {
   tasksOutputs :=
-    tasks->Array.map((module(SpecificTask: Task.T)) =>
-      SpecificTask.make(
+    tasks->Array.map((module(SpecificTask: ReventlessSpec.Task.T)) =>
+      SpecificTask.outputs(SpecificTask.make(
         ~queryBucketName=(~taskName, ~bucketName="Bucket") =>
           ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, ~taskName, ~bucketName),
         ~scheduler,
@@ -365,7 +372,7 @@ let createTasks = (
         ~resourceNaming,
         ~allAggregates=aggregatesOutputs,
         ~opts=Some(opts),
-      )->Component.outputs
+      ))
     )
   tasksOutputs.contents
 }

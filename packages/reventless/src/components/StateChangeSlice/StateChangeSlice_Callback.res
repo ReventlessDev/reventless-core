@@ -1,12 +1,12 @@
 module type T = {
-  module Spec: ReventlessSpec.StateChangeSlice_Spec.T
+  module Spec: ReventlessSpec.StateChangeSlice.Spec
   let handleCommands: (
     DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
     array<CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, Spec.command>>>,
   ) => promise<array<result<string, string>>>
 }
 
-module Make = (Spec: ReventlessSpec.StateChangeSlice_Spec.T): (T with module Spec = Spec) => {
+module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (T with module Spec = Spec) => {
   module Spec = Spec
 
   let queryEventTypes = DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)
@@ -76,7 +76,7 @@ module Make = (Spec: ReventlessSpec.StateChangeSlice_Spec.T): (T with module Spe
   let handleCommands = async (dcbEventLog, topicItems) => {
     Logger.debug(~loc=__LOC__, "starting", "StateChangeSlice.handleCommands")
     let results = await topicItems
-    ->Array.map(async ({CommandTopic.reference: reference, command}) => {
+    ->Array.map(async ({ReventlessSpec.CommandTopic.reference: reference, command}) => {
       switch await handleSingleCommand(dcbEventLog, command) {
       | Ok(_) => Ok(reference)
       | Error(_) => Error(reference)

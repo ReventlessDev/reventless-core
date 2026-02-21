@@ -17,10 +17,11 @@ module Make = (Runner: Heartbeat_Adapter.Runner): (
       Runner.make(~name, ~remoteChannel, ~timeout, ~runtime, ~opts).resources
     }
 
-    let _ = heartbeat->Component.setOutputs({
+    let outputs: Heartbeat.outputs = {
       name,
-      Heartbeat.resources: runnerResources,
-    })
+      resources: runnerResources,
+    }
+    let _ = heartbeat->Component.setOutputs(outputs)
   }
 
   let makeHandler = (~id, ~timeout=10, ~publishToCorePluginExtensionPoint) => {

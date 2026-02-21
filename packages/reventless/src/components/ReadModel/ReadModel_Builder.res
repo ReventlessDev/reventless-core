@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.ReadModel_Spec.T,
+  Spec: ReventlessSpec.ReadModel.Spec,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
   RuntimeEnvironment: Runtime.Environment,
   QueryDbStorage: QueryDb_Adapter.Storage,
@@ -10,15 +10,27 @@ module Make = (
     with type runtimeParts = RuntimeEnvironment.parts,
   EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel,
-): (ReadModel.T with module Spec = Spec and type api = QueryDbStorage.api and type role = QueryDbStorage.role) => {
+): (
+  ReadModel.T
+    with module Spec = Spec
+    and type api = QueryDbStorage.api
+    and type role = QueryDbStorage.role
+) => {
   module Spec = Spec
   module EventCollectorRuntimeBuilder = EventCollectorRuntimeBuilder
 
   type api = QueryDbStorage.api
   type role = QueryDbStorage.role
+  type component = ReadModel.component
   type projectionOperations = QueryDb.operations<string, Spec.state> // TODO: should we really use this "mixed" type?
 
-  let construct = (~api: QueryDbStorage.api, ~apiRole: QueryDbStorage.role, ~allEventTopics, self, name) => {
+  let construct = (
+    ~api: QueryDbStorage.api,
+    ~apiRole: QueryDbStorage.role,
+    ~allEventTopics,
+    self,
+    name,
+  ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(ReadModel.componentType)
 
@@ -87,19 +99,29 @@ module Make = (
       ->Pulumi.Output.flatMap(eventCollector => eventCollector->Component.operations)
       ->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
     )
-    self->Component.setOutputs({
-      ReadModel.name,
+    let rmOutputs: ReadModel.outputs = {
+      name,
       queryDb: queryDb->Component.outputs,
       eventCollector: eventCollector->Component.wrappedOutputs,
       sourceNames: sourceNames->Belt.Set.String.toArray,
-    })
+    }
+    self->Component.setOutputs(rmOutputs)
   }
 
-  let make = (~api: QueryDbStorage.api, ~apiRole: QueryDbStorage.role, ~allEventTopics, ~opts=?): ReadModel.component =>
+  let make = (
+    ~api: QueryDbStorage.api,
+    ~apiRole: QueryDbStorage.role,
+    ~allEventTopics,
+    ~opts=?,
+  ): ReadModel.component =>
     Component.make(
       ~componentType=ReadModel.componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~api, ~apiRole, ~allEventTopics, ...),
       ~opts,
     )
+
+  let outputs = Component.outputs
+  let operations = Component.operations
+  let finish = () => EventCollectorRuntimeBuilder.finish()
 }

@@ -1,4 +1,4 @@
-module Make = (Spec: ReventlessSpec.EventTopic_Spec.T, Publisher: EventTopic_Adapter.Publisher): (
+module Make = (Spec: ReventlessSpec.EventTopic.T, Publisher: EventTopic_Adapter.Publisher): (
   EventTopic.T with module Spec = Spec
 ) => {
   module Spec = Spec
@@ -32,7 +32,8 @@ module Make = (Spec: ReventlessSpec.EventTopic_Spec.T, Publisher: EventTopic_Ada
       }),
     )
 
-    self->Component.setOutputs({EventTopic.resources: publisher.resources})
+    let outputs: EventTopic.outputs = {resources: publisher.resources}
+    self->Component.setOutputs(outputs)
   }
 
   let make = (~name, ~storageResources, ~opts=?): component =>

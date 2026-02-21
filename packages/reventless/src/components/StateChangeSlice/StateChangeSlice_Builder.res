@@ -1,18 +1,20 @@
-module Make = (Spec: ReventlessSpec.StateChangeSlice_Spec.T): (
+module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (
   StateChangeSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
 ) => {
   type dcbEvent = Spec.DcbEventLogSpec.event
   module Spec = Spec
+  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
+  type component = StateChangeSlice.component
   module Callback = StateChangeSlice_Callback.Make(Spec)
 
   let makeJsonHandler = (dcbEventLogOps: DcbEventLog.operations<dcbEvent>) => {
     let handler: CommandTopic.jsonCommandsHandler = async items => {
       let decodedItems = items->Array.filterMap(({
-        CommandTopic.reference: reference,
+        ReventlessSpec.CommandTopic.reference: reference,
         command: json,
       }) => {
         switch json->Message.decodeCommand'(ReventlessSpec.Id.String.schema, Spec.commandSchema) {
-        | command' => Some({CommandTopic.reference, command: command'})
+        | command' => Some({ReventlessSpec.CommandTopic.reference, command: command'})
         | exception err =>
           let commandStr = json->JSON.stringify
           Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
@@ -51,9 +53,10 @@ module Make = (Spec: ReventlessSpec.StateChangeSlice_Spec.T): (
         ops
       }),
     )
-    self->Component.setOutputs({
-      StateChangeSlice.resources: (dcbEventLog->Component.outputs).resources,
-    })
+    let outputs: StateChangeSlice.outputs = {
+      resources: (dcbEventLog->Component.outputs).resources,
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let make = (~dcbEventLog, ~publishJsons, ~opts=?): StateChangeSlice.component =>

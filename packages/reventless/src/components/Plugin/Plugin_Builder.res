@@ -31,11 +31,11 @@ module Make = (
   let construct = (
     ~version: string,
     ~heartbeatInterval: int,
-    ~extensionPoints: array<module(ExtensionPoint.T)>,
-    ~extensions: array<module(Extension.T)>,
-    ~aggregates: array<module(Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReadModel.T with type api = api and type role = role)>,
-    ~tasks: array<module(Task.T)>,
+    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
+    ~extensions: array<module(ReventlessSpec.Extension.T)>,
+    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = role)>,
+    ~tasks: array<module(ReventlessSpec.Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~dcbSpec: option<module(Plugin.DcbSpec)>,
     ~api: api,
@@ -139,7 +139,7 @@ module Make = (
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
-    let pureOutputs = {
+    let builderOutputs = {
       let coreExtensionPoints =
         Interstack.coreStackReference->Option.mapOr(Pulumi.Output.make(None), coreStack =>
           coreStack->Pulumi.StackReference.getOutput("extensionPoints")
@@ -162,7 +162,7 @@ module Make = (
         scheduler,
         queryEngine,
       )) => {
-        let aggregatesOutputs = aggregates->addEventMappers(allEventTopics, queryEngine)
+        let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
 
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints->createExtensionPoints(
@@ -337,22 +337,23 @@ module Make = (
       })
     }
 
-    self->Component.setOutputs({
-      Plugin.id: pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
-      version: pureOutputs->Pulumi.Output.apply(outputs => outputs.version),
-      heartbeatInterval: pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeatInterval),
-      eventCollector: pureOutputs->Pulumi.Output.apply(outputs => outputs.eventCollector),
-      extensionPoints: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
-      extensions: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
-      aggregates: pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
-      stateChangeSlices: pureOutputs->Pulumi.Output.apply(outputs => outputs.stateChangeSlices),
-      stateViewSlices: pureOutputs->Pulumi.Output.apply(outputs => outputs.stateViewSlices),
-      readModels: pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
-      tasks: pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
-      resolvers: pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
-      heartbeat: pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
-      dcbEventLog: pureOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
-    })
+    let pluginOutputs: Plugin.outputs = {
+      id: builderOutputs->Pulumi.Output.apply(outputs => outputs.id),
+      version: builderOutputs->Pulumi.Output.apply(outputs => outputs.version),
+      heartbeatInterval: builderOutputs->Pulumi.Output.apply(outputs => outputs.heartbeatInterval),
+      eventCollector: builderOutputs->Pulumi.Output.apply(outputs => outputs.eventCollector),
+      extensionPoints: builderOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
+      extensions: builderOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
+      aggregates: builderOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
+      stateChangeSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateChangeSlices),
+      stateViewSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateViewSlices),
+      readModels: builderOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
+      tasks: builderOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
+      resolvers: builderOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
+      heartbeat: builderOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
+      dcbEventLog: builderOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
+    }
+    self->Component.setOutputs(pluginOutputs)
   }
 
   let make = (
@@ -361,8 +362,8 @@ module Make = (
     ~heartbeatInterval,
     ~extensionPoints=[],
     ~extensions=[],
-    ~aggregates: array<module(Aggregate.T with type api = api)>=[],
-    ~readModels: array<module(ReadModel.T with type api = api and type role = role)>=[],
+    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>=[],
+    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = role)>=[],
     ~tasks=[],
     ~api: api,
     ~apiRole: role,

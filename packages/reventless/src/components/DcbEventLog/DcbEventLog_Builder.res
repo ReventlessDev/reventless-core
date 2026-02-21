@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.DcbEventLog_Spec.T,
+  Spec: ReventlessSpec.DcbEventLog.Spec,
   Storage: DcbEventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
 ): (DcbEventLog.T with module Spec = Spec) => {
@@ -13,7 +13,11 @@ module Make = (
     type event = Spec.event
   }
 
-  type component = Component.t<DcbEventLog.t, DcbEventLog.outputs, DcbEventLog.operations<Spec.event>>
+  type component = Component.t<
+    DcbEventLog.t,
+    DcbEventLog.outputs,
+    DcbEventLog.operations<Spec.event>,
+  >
 
   // Extract indexes from event schema
   let indexes: array<string> = {
@@ -62,17 +66,19 @@ module Make = (
           },
         )
 
-        {
-          DcbEventLog.read: Ops.read,
+        let ops: DcbEventLog.operations<_> = {
+          read: Ops.read,
           append: Ops.append,
         }
+        ops
       }),
     )
 
-    self->Component.setOutputs({
-      DcbEventLog.resources: storage.resources,
+    let outputs: DcbEventLog.outputs = {
+      resources: storage.resources,
       eventTopic: eventTopic->Component.outputs,
-    })
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let make = (~name, ~opts=?): component =>

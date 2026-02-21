@@ -1,8 +1,8 @@
 let componentType = ComponentType.CommandTopic
 
 type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
-type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
-type allOutputs = dict<outputs>
+type outputs = ReventlessSpec.CommandTopic.outputs
+type allOutputs = ReventlessSpec.CommandTopic.allOutputs
 
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
@@ -12,14 +12,14 @@ exception NotPublishedToChannel(exn)
 include CommandTopic_Helpers
 
 type publish<'id, 'command> = Message.command'<'id, 'command> => promise<unit>
-type publishJsons = array<Message.commandJson> => promise<unit>
+type publishJsons = ReventlessSpec.CommandTopic.publishJsons
 
 type commandsHandler<'command> = array<topicItem<'command>> => promise<
   array<result<string, string>>,
 >
 
 module type T = {
-  module Spec: ReventlessSpec.CommandTopic_Spec.T
+  module Spec: ReventlessSpec.CommandTopic.T
   type callbackEvent
 
   type publish = publish<Spec.Id.t, Spec.command>

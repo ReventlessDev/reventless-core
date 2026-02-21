@@ -1,6 +1,6 @@
 let componentType = ComponentType.Heartbeat
 
-type outputs = {name: string, resources: array<ReventlessSpec.Adapter.resource>}
+type outputs = ReventlessSpec.Heartbeat.outputs
 
 type t
 type component = Component.t<t, outputs, unit>

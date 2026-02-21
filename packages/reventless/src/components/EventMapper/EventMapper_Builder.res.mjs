@@ -60,11 +60,13 @@ function Make(Target) {
           let handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
           return Component$Reventless.outputs((AggregateRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, eventCollector), eventCollector));
         });
-        return Component$Reventless.setOutputs(extra, {
+        let outputs_counter = match[1];
+        let outputs = {
           name: name,
           eventCollector: eventCollector,
-          counter: match[1]
-        });
+          counter: outputs_counter
+        };
+        return Component$Reventless.setOutputs(extra, outputs);
       }, opts);
     };
     return {

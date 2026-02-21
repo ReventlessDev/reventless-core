@@ -1,25 +1,16 @@
 let componentType = ComponentType.Counter
 
-type countItem = {
-  counterId: ReventlessSpec.Counter.counterId,
-  reference: ReventlessSpec.Counter.reference,
-  inc: int,
-}
+type countItem = ReventlessSpec.Counter.countItem
+type counterTargetRef = ReventlessSpec.Counter.counterTargetRef
 
-type counterTargetRef = {
-  counterId: ReventlessSpec.Counter.counterId,
-  target: int,
-  targetRef: ReventlessSpec.Counter.reference,
-}
-
-type count = array<countItem> => promise<unit>
-type addToCounterTarget = counterTargetRef => promise<unit>
+type count = ReventlessSpec.Counter.count
+type addToCounterTarget = ReventlessSpec.Counter.addToCounterTarget
 
 type counterEventsHandler = array<JSON.t> => promise<unit>
 
 type t
-type outputs = {referencesDb: QueryDb.outputs, countsDb: QueryDb.outputs}
-type operations = {count: count, addToCounterTarget: addToCounterTarget}
+type outputs = ReventlessSpec.Counter.outputs
+type operations = ReventlessSpec.Counter.operations
 type component = Component.t<t, outputs, operations>
 
 type action =
@@ -36,14 +27,7 @@ module Source = {
   type event = counterEvent
 }
 
-module type T = {
-  let make: (
-    ~name: string,
-    ~counterEventsHandler: counterEventsHandler,
-    ~ttl: int=?,
-    ~opts: Pulumi.ComponentResource.options=?,
-  ) => component
-}
+module type T = ReventlessSpec.Counter.T
 
 let separator = "#"
 let makeId = ((counterId, reference)) => counterId ++ (separator ++ reference)

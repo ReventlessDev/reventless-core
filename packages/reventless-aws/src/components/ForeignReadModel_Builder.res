@@ -6,7 +6,7 @@ module EventCollectorRuntimeBuilder = Reventless.EventCollectorRuntime_Builder_P
 )
 
 module Make = (
-  Spec: ReventlessSpec.ReadModel_Spec.T,
+  Spec: ReventlessSpec.ReadModel.Spec,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
 ) => Reventless.ReadModel_Builder.Make(
   Spec,

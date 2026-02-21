@@ -1,7 +1,4 @@
-type resolverConfig<'command> = {
-  commandSchema: S.t<'command>,
-  fields: array<string>,
-}
+type resolverConfig<'command> = ReventlessSpec.Behavior.resolverConfig<'command>
 
 type init<'state, 'event> = 'event => 'state
 type apply<'state, 'event> = ('state, 'event) => 'state

@@ -30,10 +30,13 @@ function Make(Spec) {
         };
       }));
       let resolvers = Resolvers.make(none$1, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, opts);
-      return Component$Reventless.setOutputs(none, {
-        resources: storage.resources.concat(resolvers.resources),
-        resolversMaker: resolvers.resourcesMaker
-      });
+      let outputs_resources = storage.resources.concat(resolvers.resources);
+      let outputs_resolversMaker = resolvers.resourcesMaker;
+      let outputs = {
+        resources: outputs_resources,
+        resolversMaker: outputs_resolversMaker
+      };
+      return Component$Reventless.setOutputs(none, outputs);
     }, opts);
     return {
       Spec: Spec,

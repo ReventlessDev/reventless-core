@@ -1,17 +1,17 @@
 module type Ops = {
-  module Spec: ReventlessSpec.DcbEventLog_Spec.T
+  module Spec: ReventlessSpec.DcbEventLog.Spec
   let name: string
   let storage: DcbEventLog_Adapter.operations
   let publishJson: EventTopic.publishJson
 }
 
 module type T = {
-  module Spec: ReventlessSpec.DcbEventLog_Spec.T
+  module Spec: ReventlessSpec.DcbEventLog.Spec
   let read: DcbEventLog.read<Spec.event>
   let append: DcbEventLog.append<Spec.event>
 }
 
-module Make = (Spec: ReventlessSpec.DcbEventLog_Spec.T, Ops: Ops with module Spec = Spec): (
+module Make = (Spec: ReventlessSpec.DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec
@@ -31,7 +31,10 @@ module Make = (Spec: ReventlessSpec.DcbEventLog_Spec.T, Ops: Ops with module Spe
   let decodeEvent = (raw: DcbEventLog_Adapter.rawSequencedEvent): DcbEventLog.sequencedEvent<
     Spec.event,
   > => {
-    let json = Message.combineMessage(raw.eventType, raw.data->JSON.Decode.object->Option.getOr(Dict.make()))
+    let json = Message.combineMessage(
+      raw.eventType,
+      raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
+    )
     let event = json->S.parseJsonOrThrow(Spec.eventSchema)
     {
       position: raw.position,
@@ -46,8 +49,7 @@ module Make = (Spec: ReventlessSpec.DcbEventLog_Spec.T, Ops: Ops with module Spe
       let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
       let meta = Message.generateMeta(~service=name)
       try await Ops.publishJson(name, meta, json) catch {
-      | JsExn(err) =>
-        Console.log2(`DcbEventLog(${name}): EventTopic.publish Error:`, err)
+      | JsExn(err) => Console.log2(`DcbEventLog(${name}): EventTopic.publish Error:`, err)
       }
     })
     ->Promise.all
@@ -67,9 +69,10 @@ module Make = (Spec: ReventlessSpec.DcbEventLog_Spec.T, Ops: Ops with module Spe
   let read = async (~query: DcbTag.query, ~after: option<DcbTag.sequencePosition>=?) => {
     let rawResult = await Ops.storage.read(~query, ~after?)
     let events = rawResult.events->Array.map(decodeEvent)
-    {
-      DcbEventLog.events,
+    let result: DcbEventLog.readResult<_> = {
+      events,
       headPosition: ?rawResult.headPosition,
     }
+    result
   }
 }

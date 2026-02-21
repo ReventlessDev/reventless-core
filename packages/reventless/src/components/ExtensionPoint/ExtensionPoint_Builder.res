@@ -10,8 +10,8 @@ module Make = (
 ): ExtensionPoint.T => {
   module Spec = Spec
 
-  type operations = {outgoingEventHandler: ExtensionPoint.eventHandler}
-  type component = Component.t<ExtensionPoint.t, ExtensionPoint.outputs, operations>
+  type operations = ExtensionPoint.operations
+  type component = ExtensionPoint.component<operations>
 
   module SpecWithId: ReventlessSpec.ExtensionPoint.Spec
     with type command = Spec.command
@@ -102,19 +102,20 @@ module Make = (
       ->Pulumi.Output.unzip3
 
     self->Component.setOperations(
-      outgoingEventHandler->Pulumi.Output.apply(outgoingEventHandler => {
-        outgoingEventHandler: outgoingEventHandler,
-      }),
+      outgoingEventHandler->Pulumi.Output.apply(outgoingEventHandler =>
+        ({outgoingEventHandler: outgoingEventHandler}: ExtensionPoint.operations)
+      ),
     )
 
-    self->Component.setOutputs({
-      ExtensionPoint.name,
+    let epOutputs: ExtensionPoint.outputs = {
+      name,
       aggregateNames,
       commandTopic: commandTopic->Pulumi.Output.apply(commandTopic =>
         commandTopic->Component.outputs
       ),
       eventTopic: eventTopic->Pulumi.Output.apply(eventTopic => eventTopic->Component.outputs),
-    })
+    }
+    self->Component.setOutputs(epOutputs)
   }
 
   let make = (
@@ -138,4 +139,6 @@ module Make = (
       ),
       ~opts,
     )
+
+  let outputs = Component.outputs
 }

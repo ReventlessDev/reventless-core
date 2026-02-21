@@ -1,9 +1,12 @@
 let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
-  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.SNS_FIFO.service),
-  name,
-  id,
-  urn: arn,
-  info: name->Pulumi.Output.apply(_ => ""),
+  let r: ReventlessSpec.Adapter.resource = {
+    service: name->Pulumi.Output.apply(_ => AWS.SNS_FIFO.service),
+    name,
+    id,
+    urn: arn,
+    info: name->Pulumi.Output.apply(_ => ""),
+  }
+  r
 }
 
 let findTopicInUnwrappedResources = resources =>

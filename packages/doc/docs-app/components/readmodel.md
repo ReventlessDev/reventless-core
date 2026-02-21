@@ -97,7 +97,7 @@ In this example, there is no sub id used, therefore `None` is provided
 
 ### config
 
-[`ReventlessSpec.ReadModel.Spec.config`](https://gitlab.com/reventless/reventless-universe/-/blob/master/packages/reventless-spec/src/components/ReadModel/ReadModel_Spec.res#L75) is a convenience function to create the actual config value. The function takes these optional arguments:
+`ReventlessSpec.ReadModel.config` is a convenience function to create the actual config value. The function takes these optional arguments:
 
 - `indexes`: enable performant access to the Read Model via different ids - an additional id may be any field of the state type  
   An index configuration is a record with these fields:
@@ -209,7 +209,7 @@ Example result of `customer("1234")` API query:
 
 ```rescript title="Customer_Projection.res" showLineNumbers
 open ReventlessSpec.Message
-open ReventlessSpec.Projection.Spec
+open ReventlessSpec.Projection
 open Customer_ReadModelSpec
 
 module Mapping = Reventless.Projection.Mapping.Make(

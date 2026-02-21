@@ -64,29 +64,39 @@ function Make(Spec) {
       Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(commandTopic, commandTopic => Component$Reventless.operations(commandTopic).apply(param => ({
         publishJsons: param.publishJsons
       }))));
-      return Component$Reventless.setOutputs(extra, {
-        name: Spec.name,
-        commandGenerator: Component$Reventless.wrappedOutputs(commandGenerator),
-        commandTopic: Component$Reventless.wrappedOutputs(commandTopic),
-        eventLog: Component$Reventless.outputs(eventLog),
-        addEventMapper: (none, none$1) => {
-          if (EventMappings.mappings.length === 0) {
-            return Component$Reventless.outputs(extra);
-          }
-          let eventMapper = Pulumi.all([
-            Component$Reventless.operations(extra),
-            Component$Reventless.outputs(extra).commandTopic
-          ]).apply(param => SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts));
-          let newrecord = {...Component$Reventless.outputs(extra)};
-          newrecord.eventMapper = eventMapper.apply(Component$Reventless.outputs);
-          return newrecord;
+      let aggOutputs_name = Spec.name;
+      let aggOutputs_commandGenerator = Component$Reventless.wrappedOutputs(commandGenerator);
+      let aggOutputs_commandTopic = Component$Reventless.wrappedOutputs(commandTopic);
+      let aggOutputs_eventLog = Component$Reventless.outputs(eventLog);
+      let aggOutputs_addEventMapper = (none, none$1) => {
+        if (EventMappings.mappings.length === 0) {
+          return Component$Reventless.outputs(extra);
         }
-      });
+        let eventMapper = Pulumi.all([
+          Component$Reventless.operations(extra),
+          Component$Reventless.outputs(extra).commandTopic
+        ]).apply(param => SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts));
+        let newrecord = {...Component$Reventless.outputs(extra)};
+        newrecord.eventMapper = eventMapper.apply(Component$Reventless.outputs);
+        return newrecord;
+      };
+      let aggOutputs = {
+        name: aggOutputs_name,
+        commandGenerator: aggOutputs_commandGenerator,
+        commandTopic: aggOutputs_commandTopic,
+        eventLog: aggOutputs_eventLog,
+        addEventMapper: aggOutputs_addEventMapper
+      };
+      return Component$Reventless.setOutputs(extra, aggOutputs);
     }, opts);
+    let finish = () => AggregateRuntimeBuilder.finish();
     return {
       Spec: Spec,
       AggregateRuntimeBuilder: AggregateRuntimeBuilder,
-      make: make
+      make: make,
+      outputs: Component$Reventless.outputs,
+      operations: Component$Reventless.operations,
+      finish: finish
     };
   }))))))));
 }

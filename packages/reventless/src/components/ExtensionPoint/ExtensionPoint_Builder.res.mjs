@@ -69,15 +69,19 @@ function Make(Spec) {
       Component$Reventless.setOperations(extra, match[2].apply(outgoingEventHandler => ({
         outgoingEventHandler: outgoingEventHandler
       })));
-      return Component$Reventless.setOutputs(extra, {
+      let epOutputs_commandTopic = match[0].apply(Component$Reventless.outputs);
+      let epOutputs_eventTopic = match[1].apply(Component$Reventless.outputs);
+      let epOutputs = {
         name: extra$1,
         aggregateNames: aggregateNames,
-        commandTopic: match[0].apply(Component$Reventless.outputs),
-        eventTopic: match[1].apply(Component$Reventless.outputs)
-      });
+        commandTopic: epOutputs_commandTopic,
+        eventTopic: epOutputs_eventTopic
+      };
+      return Component$Reventless.setOutputs(extra, epOutputs);
     }, opts);
     return {
-      make: make
+      make: make,
+      outputs: Component$Reventless.outputs
     };
   }))));
 }

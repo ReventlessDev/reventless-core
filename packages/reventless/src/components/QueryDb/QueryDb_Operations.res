@@ -2,7 +2,7 @@ module type Ops = {
   let jsonOps: QueryDb.operations<string, JSON.t>
 }
 
-module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Ops: Ops) => {
+module Make = (ReadModelSpec: ReventlessSpec.ReadModel.Spec, Ops: Ops) => {
   let decode = (id, stateJson) =>
     switch stateJson->Message.decode(ReadModelSpec.stateSchema) {
     | state => [state]

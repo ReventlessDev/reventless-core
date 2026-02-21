@@ -1,4 +1,4 @@
-open ReventlessSpec.ReadModel_Spec
+open ReventlessSpec.ReadModel
 
 type operations = QueryDb.operations<string, JSON.t>
 

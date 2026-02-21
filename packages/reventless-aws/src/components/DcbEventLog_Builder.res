@@ -1,4 +1,4 @@
-module Make = (Spec: ReventlessSpec.DcbEventLog_Spec.T): (
+module Make = (Spec: ReventlessSpec.DcbEventLog.Spec): (
   Reventless.DcbEventLog.T with module Spec = Spec
 ) => Reventless.DcbEventLog_Builder.Make(
   Spec,

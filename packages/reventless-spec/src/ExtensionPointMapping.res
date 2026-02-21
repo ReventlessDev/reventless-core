@@ -55,3 +55,39 @@ module type Impl = {
     mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.callCommand>,
   >
 }
+
+// Internal pre-compiled action types used by the ExtensionPoint runtime.
+// Created by ExtensionPointMapping.Make (in reventless); consumed by ExtensionPoint_Callback
+// and ExtensionPoint_Operations.
+type abstractCommandAction =
+  | AbstractPublishCommand(string, string, Message.commandJson)
+  | AbstractCall(string, unit => promise<unit>)
+
+type abstractEventAction<'extensionPointEvent> =
+  | AbstractPublishEvent(string, Message.meta, JSON.t)
+  | AbstractPublishEventAsync(promise<(string, Message.meta, JSON.t)>)
+  | AbstractCall(unit => promise<unit>)
+
+// Pre-compiled mapping module type. Created by ExtensionPointMapping.Make(Spec, Impl).
+// App developers call Make themselves; the result satisfies this type.
+module type T = {
+  module ExtensionPoint: Spec
+
+  let aggregateName: string
+
+  let mapIncomingCommands: (
+    array<CommandTopic.topicItem<Message.command'<Id.String.t, ExtensionPoint.command>>>,
+    Schedule.create,
+    Schedule.delete,
+    QueryEngine.operations,
+  ) => array<abstractCommandAction>
+
+  let mapOutgoingEvent: option<
+    (
+      JSON.t,
+      Schedule.create,
+      Schedule.delete,
+      QueryEngine.operations,
+    ) => array<abstractEventAction<ExtensionPoint.event>>,
+  >
+}
