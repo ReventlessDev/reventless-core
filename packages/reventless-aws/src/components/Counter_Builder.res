@@ -1,6 +1,6 @@
 module Make = (ApiValues: {
-  let api: Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
-  let apiRole: Pulumi.Output.t<PulumiAws.IAM.Role.t>
+  let api: Types.AppSync.api
+  let apiRole: Types.AppSync.role
 }) => Reventless.Counter_Builder.Make(
   QueryDbStorage_DynamoDbStream,
   ApiValues,

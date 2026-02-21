@@ -1,8 +1,8 @@
 open PulumiAws
 open DynamoDb.Table
 
-type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
-type role = Pulumi.Output.t<IAM.Role.t>
+type api = Types.AppSync.api
+type role = Types.AppSync.role
 
 let globalSecondaryIndexes = (indexes: array<ReventlessSpec.ReadModel_Spec.indexConfig>) =>
   indexes

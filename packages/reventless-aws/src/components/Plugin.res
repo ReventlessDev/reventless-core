@@ -8,8 +8,8 @@ include Reventless.Plugin_Builder.Make(
     let environment = PulumiAws.Lambda.environment->Option.getOr("unknown")
   },
   {
-    type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
-    type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
+    type api = Types.AppSync.api
+    type role = Types.AppSync.role
   },
   RuntimeEnvironment,
   EventCollectorChannel,

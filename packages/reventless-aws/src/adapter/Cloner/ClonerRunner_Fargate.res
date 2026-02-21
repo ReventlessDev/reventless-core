@@ -1,6 +1,6 @@
 open PulumiAws
 
-type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
+type api = Types.AppSync.api
 
 let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
   ~name,

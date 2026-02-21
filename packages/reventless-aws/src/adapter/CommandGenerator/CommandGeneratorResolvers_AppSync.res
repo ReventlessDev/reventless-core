@@ -1,4 +1,4 @@
-type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
+type api = Types.AppSync.api
 type runtimeParts = Util.Lambda.runtimeParts
 
 let handleResolversEvent = (generateCommand: Reventless.CommandGenerator.commandGenerator) =>

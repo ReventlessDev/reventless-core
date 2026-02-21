@@ -1,8 +1,8 @@
 open PulumiAws.AppSync
 open ReventlessSpec.ReadModel_Spec
 
-type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
-type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
+type api = Types.AppSync.api
+type role = Types.AppSync.role
 
 let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
   ~name: string,

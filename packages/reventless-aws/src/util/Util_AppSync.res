@@ -1,4 +1,4 @@
-let toResource: PulumiAws.AppSync.Resolver.t => ReventlessSpec.Adapter.resource = ({
+let toResource: Types.AppSync.resolver => ReventlessSpec.Adapter.resource = ({
   id,
   arn,
   type_,
