@@ -7,4 +7,4 @@ class Component extends pulumi.ComponentResource {
   };
 }
 
-exports.default = Component;
+module.exports = Component;
