@@ -51,6 +51,7 @@ module MakeEventCollectorHelper = (
         extensionPoints: [],
         extensions: [],
         eventCollector: "NOT-SET",
+        extensionProtocols: [],
       }
 
       module Callback = Core_Callback.Make({

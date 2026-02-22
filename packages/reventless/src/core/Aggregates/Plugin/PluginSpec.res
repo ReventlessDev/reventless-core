@@ -11,6 +11,8 @@ type command =
   | Disconnect
   | Activate
   | Deactivate
+  // Records a protocol-version incompatibility without changing plugin connection state.
+  | ReportIncompatibility(pluginDefinition)
 
 @schema
 type event =
@@ -20,6 +22,8 @@ type event =
   | Disconnected(pluginDefinition)
   | Activated(pluginDefinition)
   | Deactivated(pluginDefinition)
+  // Emitted when ReportIncompatibility is processed; carries the connecting plugin definition.
+  | IncompatiblePluginDetected(pluginDefinition)
 
 @schema
 type error =

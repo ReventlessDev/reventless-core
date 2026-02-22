@@ -33,6 +33,7 @@ describe("Message should", () => {
       ],
       extensions: [{name: "testExtension", extensionPointName: "testExtensionPoint"}],
       eventCollector: "testEventCollector",
+      extensionProtocols: [],
     })
     let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)

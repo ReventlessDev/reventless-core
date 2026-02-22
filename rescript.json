@@ -13,6 +13,7 @@
     "@reventlessdev/rescript-uuid",
     "@reventlessdev/reventless",
     "@reventlessdev/reventless-aws",
+    "@reventlessdev/reventless-interop",
     "@reventlessdev/reventless-spec"
   ],
   "sources": [],

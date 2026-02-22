@@ -6,6 +6,8 @@ import * as Message$Reventless from "../../../Message.res.mjs";
 import * as Schedule$Reventless from "../../../util/Schedule.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as PluginSpec$Reventless from "../../Aggregates/Plugin/PluginSpec.res.mjs";
+import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src/Compat.res.mjs";
+import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-interop/src/protocol/CompatMatrix.res.mjs";
 import * as PluginReadModelSpec$Reventless from "../../ReadModels/Plugin/PluginReadModelSpec.res.mjs";
 import * as ExtensionPointMapping$Reventless from "../../../ExtensionPointMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
@@ -69,13 +71,13 @@ function Make(Spec) {
       return;
     }
   };
-  let callHandler = async (createSchedule, deleteSchedule, queryEngine, callCommand) => {
-    switch (callCommand.TAG) {
+  let callHandler = async (createSchedule, deleteSchedule, queryEngine, directive) => {
+    switch (directive.TAG) {
       case "CreateDisconnectSchedule" :
-        let id = callCommand._0;
+        let id = directive._0;
         return await createSchedule({
           name: Spec.environment + ("-" + id),
-          rate: Schedule$Reventless.minutesFromNow(callCommand._1),
+          rate: Schedule$Reventless.minutesFromNow(directive._1),
           payload: JSON.stringify(Message$Reventless.encodeCommand$p({
             id: id,
             meta: Message$Reventless.generateMeta("Core.Plugin", undefined, "Scheduler"),
@@ -83,12 +85,12 @@ function Make(Spec) {
           }, S.string, PluginExtensionPointSpec$ReventlessSpec.commandSchema))
         });
       case "DeleteDisconnectSchedule" :
-        return await deleteSchedule(callCommand._0);
+        return await deleteSchedule(directive._0);
       case "DoConnectPlugin" :
       case "DoDisconnectPlugin" :
         return;
       case "ForwardCommand" :
-        let match = callCommand._0;
+        let match = directive._0;
         return await forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
     }
   };
@@ -129,14 +131,24 @@ function Make(Spec) {
           }
         ];
       case "ConnectPlugin" :
+        let pluginDefinition = cmd._0;
+        let protocolErrors = pluginDefinition.extensionProtocols.flatMap(proto => Compat$ReventlessInterop.validateProtocol(CompatMatrix$ReventlessInterop.corePlugin, proto.extensionPointName, proto.commandVersion, proto.eventVersion));
+        let reportAction = protocolErrors.length !== 0 ? (console.warn("[Core.Plugin] Protocol version mismatch for plugin", pluginDefinition.id, protocolErrors), [{
+              TAG: "PublishCommand",
+              _0: id,
+              _1: {
+                TAG: "ReportIncompatibility",
+                _0: pluginDefinition
+              }
+            }]) : [];
         return [{
             TAG: "PublishCommand",
             _0: id,
             _1: {
               TAG: "Connect",
-              _0: cmd._0
+              _0: pluginDefinition
             }
-          }];
+          }].concat(reportAction);
       case "ForwardCommand" :
         return [{
             TAG: "Call",
@@ -202,6 +214,15 @@ function Make(Spec) {
               _0: event._0
             }
           }];
+      case "IncompatiblePluginDetected" :
+        return [{
+            TAG: "PublishEvent",
+            _0: id,
+            _1: {
+              TAG: "IncompatiblePlugin",
+              _0: event._0
+            }
+          }];
     }
   };
   let Impl = {
@@ -213,7 +234,7 @@ function Make(Spec) {
     name: PluginExtensionPointSpec$ReventlessSpec.name,
     commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
     eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
-    callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
+    directiveSchema: PluginExtensionPointSpec$ReventlessSpec.directiveSchema
   })({
     Aggregate: {
       Id: Id$ReventlessSpec.$$String,

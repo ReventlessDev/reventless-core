@@ -16,6 +16,15 @@ type extensionDefinition = {
   extensionPointName: string,
 }
 
+// Protocol version declaration for a single extension point connection.
+// Carried in the ConnectPlugin handshake so the host can validate compatibility.
+@schema
+type extensionProtocol = {
+  extensionPointName: string,
+  commandVersion: string, // SemVer of the command schema the extension was compiled with
+  eventVersion: string, // SemVer of the event schema the extension was compiled with
+}
+
 @schema
 type pluginDefinition = {
   id: string,
@@ -24,6 +33,9 @@ type pluginDefinition = {
   extensionPoints: array<extensionPointDefinition>,
   extensions: array<extensionDefinition>,
   mutable eventCollector: string,
+  // Protocol version declarations for each extension point this plugin connects to.
+  // Use [] when the plugin does not need version negotiation.
+  extensionProtocols: array<extensionProtocol>,
 }
 
 type outputs = {

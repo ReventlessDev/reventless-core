@@ -68,3 +68,28 @@ let unwrappedToString = (resources: array<unwrappedResource>) => {
 }
 
 let urns = resources => resources->Array.map((resource: unwrappedResource) => resource.urn)
+
+// ---------------------------------------------------------------------------
+// Interop resource conversions
+// ReventlessInterop.Resource.t and unwrappedResource are structurally identical
+// (name, id, urn, info, service — all plain strings); these helpers bridge the
+// two type-system identities without runtime cost.
+// ---------------------------------------------------------------------------
+
+let fromInteropUnwrapped = (
+  {name, id, urn, info, service}: ReventlessInterop.Resource.t,
+): unwrappedResource => {name, id, urn, info, service}
+
+let fromInteropResource = (
+  {name, id, urn, info, service}: ReventlessInterop.Resource.t,
+): ReventlessSpec.Adapter.resource => {
+  id: id->Pulumi.Output.make,
+  name: name->Pulumi.Output.make,
+  urn: urn->Pulumi.Output.make,
+  info: info->Pulumi.Output.make,
+  service: service->Pulumi.Output.make,
+}
+
+let fromInteropResources = (rs: array<ReventlessInterop.Resource.t>): array<
+  ReventlessSpec.Adapter.resource,
+> => rs->Array.map(fromInteropResource)

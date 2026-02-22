@@ -5,13 +5,12 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as EventTopic$Reventless from "../EventTopic/EventTopic.res.mjs";
 import * as CommandTopic$Reventless from "../CommandTopic/CommandTopic.res.mjs";
 
-function toUnwrappedOutputs(outputs) {
+function toResolvedOutputs(outputs) {
   return Pulumi.all([
-    Output$Pulumi.flatMap(outputs.commandTopic, CommandTopic$Reventless.toUnwrappedOutputs),
-    Output$Pulumi.flatMap(outputs.eventTopic, EventTopic$Reventless.toUnwrappedOutputs)
+    Output$Pulumi.flatMap(outputs.commandTopic, CommandTopic$Reventless.toResolvedOutputs),
+    Output$Pulumi.flatMap(outputs.eventTopic, EventTopic$Reventless.toResolvedOutputs)
   ]).apply(param => ({
     name: outputs.name,
-    aggregateNames: outputs.aggregateNames,
     commandTopic: param[0],
     eventTopic: param[1]
   }));
@@ -21,6 +20,6 @@ let componentType = "ExtensionPoint";
 
 export {
   componentType,
-  toUnwrappedOutputs,
+  toResolvedOutputs,
 }
 /* Output-Pulumi Not a pure module */

@@ -14,8 +14,19 @@ function unwrappedToResource(param) {
 
 let stackRefResourceToResource = unwrappedToResource;
 
+function fromInteropResource(param) {
+  return {
+    name: Pulumi.output(param.name),
+    id: Pulumi.output(param.id),
+    urn: Pulumi.output(param.urn),
+    info: Pulumi.output(param.info),
+    service: Pulumi.output(param.service)
+  };
+}
+
 export {
   unwrappedToResource,
   stackRefResourceToResource,
+  fromInteropResource,
 }
 /* @pulumi/pulumi Not a pure module */

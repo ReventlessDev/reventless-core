@@ -19,7 +19,8 @@ module PluginMapping = Projection.Mapping.Make(
         by: user,
       }
       switch event {
-      | PluginSpec.UnknownPluginDetected => ReventlessSpec.Projection.Ignore
+      | PluginSpec.UnknownPluginDetected
+      | IncompatiblePluginDetected(_) => ReventlessSpec.Projection.Ignore
       | Connected({name, version, eventCollector, extensionPoints, extensions}) =>
         Set(
           id,

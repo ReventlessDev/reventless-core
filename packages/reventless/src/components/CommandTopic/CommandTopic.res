@@ -1,6 +1,5 @@
 let componentType = ComponentType.CommandTopic
 
-type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 type outputs = ReventlessSpec.CommandTopic.outputs
 type allOutputs = ReventlessSpec.CommandTopic.allOutputs
 
@@ -59,12 +58,24 @@ module type T = {
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }
 
-let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
+let toResolvedOutputs = (
+  outputs: outputs,
+): Pulumi.Output.t<ReventlessInterop.CommandTopic.resolvedOutputs> =>
   outputs.resources
   ->Adapter.resourcesToUnwrappedOutput
   ->Pulumi.Output.apply(resources => {
-    let unwrappedOutputs: unwrappedOutputs = {resources: resources}
-    unwrappedOutputs
+    let resolved: ReventlessInterop.CommandTopic.resolvedOutputs = {
+      resources: resources->Array.map(
+        (r: Adapter.unwrappedResource): ReventlessInterop.Resource.t => {
+          name: r.name,
+          id: r.id,
+          urn: r.urn,
+          info: r.info,
+          service: r.service,
+        },
+      ),
+    }
+    resolved
   })
 
 let filter = (allCommandTopics: allOutputs, names) =>

@@ -8,7 +8,7 @@ module type Spec = {
   @schema
   type event
   @schema
-  type callCommand
+  type directive
 }
 
 type outputs = {

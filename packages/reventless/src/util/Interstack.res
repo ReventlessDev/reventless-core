@@ -3,34 +3,51 @@ let coreStackReference =
   ->Pulumi.Config.get("stack")
   ->Option.map(stack => stack->Pulumi.StackReference.make)
 
-let stackDependencies =
-  {
-    open Pulumi.Config
-    make(Some("interstack"))->getObject("dependencies")
-  }
-  ->Option.getOr([])
-  ->Array.map(stackName => {
-    open Pulumi.StackReference
-    make(stackName)
-  })
-  ->Array.concat(coreStackReference->Option.mapOr([], coreStack => [coreStack]))
+// -----------------------------------------------------------------------
+// Typed, validated cross-stack queries using the reventless-interop engine.
+// Replaces the previous unchecked getOutputs() casts.
+//
+// Return type changed from:
+//   Pulumi.Output.t<array<T.outputs>>          (unchecked cast, silent wrong data)
+// to:
+//   Pulumi.Output.t<array<result<T.resolvedOutputs, ReventlessInterop.Compat.error>>>
+//                                              (validated, explicit error on mismatch)
+// -----------------------------------------------------------------------
 
-let getOutputs = name =>
-  stackDependencies
-  ->Array.map(stackRef => stackRef->Pulumi.StackReference.getOutput(name))
-  ->Pulumi.Output.all
-  ->Pulumi.Output.apply(outputs => outputs->Array.filterMap(x => x))
+module DefaultTaskQuery = ReventlessInterop.Query.Task.Make({
+  type t = ReventlessInterop.Task.resolvedOutputs
+  let requiredFields = ["name"]
+  let optionalFields = ["bucketNames", "sideEffectSources"]
+  let fromJson = (json: JSON.t) =>
+    try Ok(json->S.parseOrThrow(ReventlessInterop.Task.resolvedOutputsSchema))
+    catch {
+    | exn =>
+      let msg =
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
+      Error(msg)
+    }
+})
 
-let stackDependenciesTasks: Pulumi.Output.t<array<Task.outputs>> = getOutputs("tasks")
+module DefaultEventMapperQuery = ReventlessInterop.Query.EventMapper.Make({
+  type t = ReventlessInterop.EventMapper.resolvedOutputs
+  let requiredFields = ["name", "eventCollector"]
+  let optionalFields = ["counter"]
+  let fromJson = (json: JSON.t) =>
+    try Ok(json->S.parseOrThrow(ReventlessInterop.EventMapper.resolvedOutputsSchema))
+    catch {
+    | exn =>
+      let msg =
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
+      Error(msg)
+    }
+})
 
-let stackDependenciesEventMappers: Pulumi.Output.t<array<EventMapper.outputs>> = getOutputs(
-  "eventMappers",
-)
+// Typed cross-stack queries.  Each item is either Ok(resolvedOutputs) or
+// Error(Compat.error) describing which field was missing or which decode failed.
+let stackDependenciesTasks = DefaultTaskQuery.queryAll()
+let stackDependenciesEventMappers = DefaultEventMapperQuery.queryAll()
 
-let mergeMany: (Pulumi.Output.t<array<'a>>, array<'a>) => Pulumi.Output.t<array<'a>> = (
-  dependencies,
-  locals,
-) => dependencies->Pulumi.Output.apply(dependencies => locals->Array.concat(dependencies))
-
-let mergeTasks = mergeMany(stackDependenciesTasks, ...)
-let mergeEventMappers = mergeMany(stackDependenciesEventMappers, ...)
+// Merge local items with successfully queried remote items.
+// Remote errors are silently dropped; inspect queryAll() directly if you need them.
+let mergeTasks = DefaultTaskQuery.mergeWith
+let mergeEventMappers = DefaultEventMapperQuery.mergeWith

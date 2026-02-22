@@ -126,13 +126,13 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             ~action="Forward ExtensionPoint command",
           ),
         )
-      | Call(handler, callCommand) =>
+      | Call(handler, directive) =>
         Console.log2(
-          `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
-          callCommand->Message.encode(Spec.callCommandSchema)->JSON.stringify,
+          `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: Handling directive`,
+          directive->Message.encode(Spec.directiveSchema)->JSON.stringify,
         )
 
-        AbstractCall(() => handler(callCommand))
+        AbstractCall(() => handler(directive))
       }
     )
   }
@@ -189,13 +189,13 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
               ~action="Forward ExtensionPoint command",
             ),
           )
-        | Call(handler, callCommand) =>
+        | Call(handler, directive) =>
           Console.log2(
-            `ExtensionMapping outgoing from Aggregate ${aggregateName}: Handling call command`,
-            callCommand->Message.encode(Spec.callCommandSchema)->JSON.stringify,
+            `ExtensionMapping outgoing from Aggregate ${aggregateName}: Handling directive`,
+            directive->Message.encode(Spec.directiveSchema)->JSON.stringify,
           )
 
-          AbstractCall(() => handler(callCommand))
+          AbstractCall(() => handler(directive))
         }
       )
     | exception err =>

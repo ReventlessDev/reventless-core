@@ -22,6 +22,9 @@ type command =
 @schema
 type event =
   | UnknownPluginDetected
+  // Emitted when a connecting plugin declared incompatible protocol versions.
+  // The plugin is still connected; this event gives operators visibility.
+  | IncompatiblePlugin(pluginDefinition)
   | PluginConnected(pluginDefinition)
   | PluginReconnected(pluginDefinition)
   | PluginDisconnected(pluginDefinition)
@@ -29,7 +32,7 @@ type event =
   | PluginActivated(pluginDefinition)
 
 @schema
-type callCommand =
+type directive =
   | CreateDisconnectSchedule(string, timeout)
   | DeleteDisconnectSchedule(string)
   | DoConnectPlugin(pluginDefinition)

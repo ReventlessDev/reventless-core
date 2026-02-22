@@ -24,7 +24,7 @@ type mapIncomingEvent<
   'extensionPointEvent,
   'aggregateCommand,
   'extensionPointCommand,
-  'extensionPointCallCommand,
+  'extensionPointDirective,
 > = (
   string,
   'extensionPointEvent,
@@ -32,15 +32,15 @@ type mapIncomingEvent<
   PluginExtensionPointSpec.pluginDefinition,
   QueryEngine.operations,
 ) => array<
-  incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'extensionPointCallCommand>,
+  incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'extensionPointDirective>,
 >
 
-type mapOutgoingEvent<'aggregateEvent, 'extensionPointCommand, 'extensionPointCallCommand> = (
+type mapOutgoingEvent<'aggregateEvent, 'extensionPointCommand, 'extensionPointDirective> = (
   string,
   'aggregateEvent,
   Message.meta,
   PluginExtensionPointSpec.pluginDefinition,
-) => array<outgoingCommandAction<'extensionPointCommand, 'extensionPointCallCommand>>
+) => array<outgoingCommandAction<'extensionPointCommand, 'extensionPointDirective>>
 
 module type Spec = {
   let name: string
@@ -50,7 +50,7 @@ module type Spec = {
   @schema
   type event
   @schema
-  type callCommand
+  type directive
 }
 
 module type Impl = {
@@ -61,11 +61,11 @@ module type Impl = {
     ExtensionPoint.event,
     Aggregate.command,
     ExtensionPoint.command,
-    ExtensionPoint.callCommand,
+    ExtensionPoint.directive,
   >
 
   let mapOutgoingEvent: option<
-    mapOutgoingEvent<Aggregate.event, ExtensionPoint.command, ExtensionPoint.callCommand>,
+    mapOutgoingEvent<Aggregate.event, ExtensionPoint.command, ExtensionPoint.directive>,
   >
 }
 

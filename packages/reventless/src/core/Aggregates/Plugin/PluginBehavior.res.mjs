@@ -47,9 +47,14 @@ function execute(state, command, context, error) {
       } else {
         return [];
       }
-    } else {
+    } else if (command.TAG === "Connect") {
       return [{
           TAG: "Connected",
+          _0: command._0
+        }];
+    } else {
+      return [{
+          TAG: "IncompatiblePluginDetected",
           _0: command._0
         }];
     }
@@ -58,7 +63,14 @@ function execute(state, command, context, error) {
     case "Connected" :
       let pluginDefinition = state._0;
       if (typeof command === "object") {
-        return error("AlreadyConnected", command, context);
+        if (command.TAG === "Connect") {
+          return error("AlreadyConnected", command, context);
+        } else {
+          return [{
+              TAG: "IncompatiblePluginDetected",
+              _0: command._0
+            }];
+        }
       }
       switch (command) {
         case "Heartbeat" :
@@ -79,7 +91,14 @@ function execute(state, command, context, error) {
     case "Disconnected" :
       let pluginDefinition$1 = state._0;
       if (typeof command === "object") {
-        return error("IsDisconnected", command, context);
+        if (command.TAG === "ReportIncompatibility") {
+          return [{
+              TAG: "IncompatiblePluginDetected",
+              _0: command._0
+            }];
+        } else {
+          return error("IsDisconnected", command, context);
+        }
       }
       switch (command) {
         case "Heartbeat" :
@@ -97,7 +116,14 @@ function execute(state, command, context, error) {
       }
     case "Inactive" :
       if (typeof command === "object") {
-        return error("IsInactive", command, context);
+        if (command.TAG === "ReportIncompatibility") {
+          return [{
+              TAG: "IncompatiblePluginDetected",
+              _0: command._0
+            }];
+        } else {
+          return error("IsInactive", command, context);
+        }
       }
       switch (command) {
         case "Heartbeat" :
@@ -129,17 +155,21 @@ function apply(state, event) {
     if (typeof event !== "object") {
       return state;
     }
-    if (event.TAG === "Connected") {
-      return {
-        TAG: "Connected",
-        _0: event._0
-      };
+    switch (event.TAG) {
+      case "Connected" :
+        return {
+          TAG: "Connected",
+          _0: event._0
+        };
+      case "IncompatiblePluginDetected" :
+        return state;
+      default:
+        throw {
+          RE_EXN_ID: Message$Reventless.InvalidEvent,
+          _1: Message$Reventless.encode(event, PluginSpec$Reventless.eventSchema),
+          Error: new Error()
+        };
     }
-    throw {
-      RE_EXN_ID: Message$Reventless.InvalidEvent,
-      _1: Message$Reventless.encode(event, PluginSpec$Reventless.eventSchema),
-      Error: new Error()
-    };
   } else {
     switch (state.TAG) {
       case "Connected" :
@@ -162,6 +192,8 @@ function apply(state, event) {
               TAG: "Inactive",
               _0: pluginDefinition
             };
+          case "IncompatiblePluginDetected" :
+            return state;
           default:
             throw {
               RE_EXN_ID: Message$Reventless.InvalidEvent,
@@ -189,6 +221,8 @@ function apply(state, event) {
               TAG: "Inactive",
               _0: pluginDefinition$1
             };
+          case "IncompatiblePluginDetected" :
+            return state;
           default:
             throw {
               RE_EXN_ID: Message$Reventless.InvalidEvent,
@@ -204,17 +238,21 @@ function apply(state, event) {
             Error: new Error()
           };
         }
-        if (event.TAG === "Activated") {
-          return {
-            TAG: "Disconnected",
-            _0: state._0
-          };
+        switch (event.TAG) {
+          case "Activated" :
+            return {
+              TAG: "Disconnected",
+              _0: state._0
+            };
+          case "IncompatiblePluginDetected" :
+            return state;
+          default:
+            throw {
+              RE_EXN_ID: Message$Reventless.InvalidEvent,
+              _1: Message$Reventless.encode(event, PluginSpec$Reventless.eventSchema),
+              Error: new Error()
+            };
         }
-        throw {
-          RE_EXN_ID: Message$Reventless.InvalidEvent,
-          _1: Message$Reventless.encode(event, PluginSpec$Reventless.eventSchema),
-          Error: new Error()
-        };
     }
   }
 }

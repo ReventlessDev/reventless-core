@@ -181,12 +181,16 @@ module Make = (
             "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
           )
         }
-        let corePluginExtensionPointUnwrapped: ExtensionPoint.unwrappedOutputs =
-          coreExtensionPoints->Pulumi.StackReference.get(
-            ReventlessSpec.PluginExtensionPointSpec.name,
-          )
+        let corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
+          (
+            coreExtensionPoints->Pulumi.StackReference.get(
+              ReventlessSpec.PluginExtensionPointSpec.name,
+            )->Obj.magic: JSON.t
+          )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
         let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
-          corePluginExtensionPointUnwrapped.commandTopic.resources,
+          corePluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
+            Adapter.fromInteropUnwrapped,
+          ),
         )
         let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish
 
@@ -227,7 +231,7 @@ module Make = (
           ReventlessSpec.PluginExtensionPointSpec.name,
           {
             resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
-              AdapterDeploytime.unwrappedToResource,
+              AdapterDeploytime.fromInteropResource,
             ),
           },
         )
@@ -255,6 +259,7 @@ module Make = (
             extensionPoints: extensionPointsDefinitions,
             extensions: extensionsDefinitions,
             eventCollector: eventCollectorUrn,
+            extensionProtocols: [],
           })
 
         let (
@@ -353,7 +358,12 @@ module Make = (
       heartbeat: builderOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
       dcbEventLog: builderOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
     }
-    self->Component.setOutputs(pluginOutputs)
+    let _ = self->Component.setOutputs(pluginOutputs)
+
+    // Compute and store the _interopMeta stack export value.  User entry-point
+    // code retrieves it via Plugin_Helpers.getInteropMeta() and exports it
+    // alongside "tasks", "plugin", and "eventMappers".
+    interopMetaOutput := Some(builderOutputs->Pulumi.Output.apply(toInteropMeta))
   }
 
   let make = (

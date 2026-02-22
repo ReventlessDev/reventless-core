@@ -86,6 +86,30 @@ function urns(resources) {
   return resources.map(resource => resource.urn);
 }
 
+function fromInteropUnwrapped(param) {
+  return {
+    name: param.name,
+    id: param.id,
+    urn: param.urn,
+    info: param.info,
+    service: param.service
+  };
+}
+
+function fromInteropResource(param) {
+  return {
+    name: Pulumi.output(param.name),
+    id: Pulumi.output(param.id),
+    urn: Pulumi.output(param.urn),
+    info: Pulumi.output(param.info),
+    service: Pulumi.output(param.service)
+  };
+}
+
+function fromInteropResources(rs) {
+  return rs.map(fromInteropResource);
+}
+
 export {
   outputToResource,
   resourcesOutputToResource,
@@ -97,5 +121,8 @@ export {
   logResource,
   unwrappedToString,
   urns,
+  fromInteropUnwrapped,
+  fromInteropResource,
+  fromInteropResources,
 }
 /* Output-Pulumi Not a pure module */

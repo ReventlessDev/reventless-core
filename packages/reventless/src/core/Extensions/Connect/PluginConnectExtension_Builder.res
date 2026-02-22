@@ -1,6 +1,6 @@
 module type Spec = {
   let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
-  let extensionPointsOutputs: array<ExtensionPoint.unwrappedOutputs>
+  let extensionPointsOutputs: array<ReventlessInterop.ExtensionPoint.resolvedOutputs>
   let extensionsOutputs: array<Extension.outputs>
   let runtimeOps: ReventlessSpec.PluginRuntimeOperations.operations
   let resourceNaming: ReventlessSpec.ResourceNaming.operations
@@ -179,7 +179,7 @@ module Make = (Spec: Spec) => {
         ReventlessSpec.PluginExtensionPointSpec.event,
         Aggregate.command,
         ReventlessSpec.PluginExtensionPointSpec.command,
-        ReventlessSpec.PluginExtensionPointSpec.callCommand,
+        ReventlessSpec.PluginExtensionPointSpec.directive,
       > = (pluginId, event, _meta, _pluginDef, _queryEngine) => {
         let pluginDefinition = Spec.pluginDefinition
         let id = pluginDefinition.id

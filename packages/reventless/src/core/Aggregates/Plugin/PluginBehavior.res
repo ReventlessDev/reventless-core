@@ -25,7 +25,8 @@ let create: Behavior.create<command, event, error> = (command, context, error) =
   | Connect(_)
   | Disconnect
   | Activate
-  | Deactivate =>
+  | Deactivate
+  | ReportIncompatibility(_) =>
     error(NotExisting, command, context)
   }
 
@@ -35,6 +36,7 @@ let execute: Behavior.execute<state, command, event, error> = (state, command, c
     switch command {
     | Connect(pluginDefinition) => [(Connected(pluginDefinition): event)]
     | Heartbeat => [UnknownPluginDetected]
+    | ReportIncompatibility(pluginDefinition) => [IncompatiblePluginDetected(pluginDefinition)]
     | Disconnect
     | Activate
     | Deactivate => []
@@ -44,6 +46,7 @@ let execute: Behavior.execute<state, command, event, error> = (state, command, c
     | Disconnect => [Disconnected(pluginDefinition)]
     | Deactivate => [Deactivated(pluginDefinition)]
     | Heartbeat => [] // ignore
+    | ReportIncompatibility(incompatibleDef) => [IncompatiblePluginDetected(incompatibleDef)]
     | Connect(_)
     | Activate =>
       error(AlreadyConnected, command, context)
@@ -52,6 +55,7 @@ let execute: Behavior.execute<state, command, event, error> = (state, command, c
     switch command {
     | Heartbeat => [Reconnected(pluginDefinition)]
     | Deactivate => [Deactivated(pluginDefinition)]
+    | ReportIncompatibility(incompatibleDef) => [IncompatiblePluginDetected(incompatibleDef)]
     | Connect(_)
     | Disconnect
     | Activate =>
@@ -61,6 +65,7 @@ let execute: Behavior.execute<state, command, event, error> = (state, command, c
     switch command {
     | Activate => [Activated(pluginDefinition)]
     | Heartbeat => [] // ignore
+    | ReportIncompatibility(incompatibleDef) => [IncompatiblePluginDetected(incompatibleDef)]
     | Connect(_)
     | Disconnect
     | Deactivate =>
@@ -75,7 +80,8 @@ let init: Behavior.init<state, event> = event =>
   | Reconnected(_)
   | Disconnected(_)
   | Activated(_)
-  | Deactivated(_) =>
+  | Deactivated(_)
+  | IncompatiblePluginDetected(_) =>
     throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
@@ -85,6 +91,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     switch event {
     | UnknownPluginDetected => state
     | Connected(pluginDefinition) => Connected(pluginDefinition)
+    | IncompatiblePluginDetected(_) => state // no state change; observation only
     | Reconnected(_)
     | Disconnected(_)
     | Activated(_)
@@ -95,6 +102,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     switch event {
     | Disconnected(_) => Disconnected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
+    | IncompatiblePluginDetected(_) => state // no state change; observation only
     | UnknownPluginDetected
     | Connected(_)
     | Reconnected(_)
@@ -105,6 +113,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     switch event {
     | Reconnected(_) => Connected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
+    | IncompatiblePluginDetected(_) => state // no state change; observation only
     | UnknownPluginDetected
     | Connected(_)
     | Disconnected(_)
@@ -114,6 +123,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
   | Inactive(pluginDefinition) =>
     switch event {
     | Activated(_) => Disconnected(pluginDefinition)
+    | IncompatiblePluginDetected(_) => state // no state change; observation only
     | UnknownPluginDetected
     | Connected(_)
     | Reconnected(_)

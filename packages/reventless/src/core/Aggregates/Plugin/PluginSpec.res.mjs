@@ -11,7 +11,11 @@ let commandSchema = S.union([
   })),
   S.literal("Disconnect"),
   S.literal("Activate"),
-  S.literal("Deactivate")
+  S.literal("Deactivate"),
+  S.schema(s => ({
+    TAG: "ReportIncompatibility",
+    _0: s.m(Plugin$ReventlessSpec.pluginDefinitionSchema)
+  }))
 ]);
 
 let eventSchema = S.union([
@@ -34,6 +38,10 @@ let eventSchema = S.union([
   })),
   S.schema(s => ({
     TAG: "Deactivated",
+    _0: s.m(Plugin$ReventlessSpec.pluginDefinitionSchema)
+  })),
+  S.schema(s => ({
+    TAG: "IncompatiblePluginDetected",
     _0: s.m(Plugin$ReventlessSpec.pluginDefinitionSchema)
   }))
 ]);

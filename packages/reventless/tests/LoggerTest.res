@@ -67,6 +67,7 @@ describe("Logger", () => {
             ],
             extensions: [{name: "testExtension", extensionPointName: "testExtensionPoint"}],
             eventCollector: "testEventCollector",
+            extensionProtocols: [],
           }),
         ]
         let meta: Message.meta = {
@@ -88,7 +89,7 @@ describe("Logger", () => {
           },
         )
         let expected1 = `1/2: Heartbeat(0): {"command":"Heartbeat","meta":${metaStr},"id":0}`
-        let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector"}},"meta":${metaStr},"id":1}`
+        let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[]}},"meta":${metaStr},"id":1}`
         expect(commandJsonsToLogMessages(arr))->toEqual([expected1, expected2])
       },
     )

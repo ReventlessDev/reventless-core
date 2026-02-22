@@ -5,6 +5,7 @@ let pluginDefinition = {
   extensionPoints: [],
   extensions: [{name: "Core.Plugin.Test", extensionPointName: "Core.Plugin"}],
   eventCollector: "eventCollector",
+  extensionProtocols: [],
 }
 
 let state: PluginReadModelSpec.state = {
@@ -31,4 +32,5 @@ let pluginDefinition2 = {
   }),
   extensions: [],
   eventCollector: "eventCollector",
+  extensionProtocols: [],
 }

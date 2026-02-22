@@ -40,15 +40,15 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
               commandJson: aggregateCmd->Message.encode(Aggregate.commandSchema),
             },
           )
-        | Call(handler, callCommand) =>
+        | Call(handler, directive) =>
           Console.log2(
-            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
-            callCommand->Message.encode(Spec.callCommandSchema)->JSON.stringify,
+            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName}: Handling directive`,
+            directive->Message.encode(Spec.directiveSchema)->JSON.stringify,
           )
 
           AbstractCall(
             reference,
-            () => handler(createSchedule, deleteSchedule, queryEngine, callCommand),
+            () => handler(createSchedule, deleteSchedule, queryEngine, directive),
           )
         }
       )
@@ -96,13 +96,13 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             (id, meta, eventJson')
           }
           AbstractPublishEventAsync(promise->toEvent')
-        | Call(handler, callCmd) =>
+        | Call(handler, directive) =>
           Console.log2(
-            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling call command`,
-            callCmd->Message.encode(Spec.callCommandSchema)->JSON.stringify,
+            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling directive`,
+            directive->Message.encode(Spec.directiveSchema)->JSON.stringify,
           )
 
-          AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, callCmd))
+          AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, directive))
         }
       )
     | exception err =>

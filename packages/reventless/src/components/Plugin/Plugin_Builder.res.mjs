@@ -7,6 +7,7 @@ import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Plugin$Reventless from "./Plugin.res.mjs";
+import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
 import * as Aggregate$Reventless from "../Aggregate/Aggregate.res.mjs";
 import * as Component$Reventless from "../Component.res.mjs";
 import * as ReadModel$Reventless from "../ReadModel/ReadModel.res.mjs";
@@ -19,6 +20,7 @@ import * as Heartbeat_Builder$Reventless from "../Heartbeat/Heartbeat_Builder.re
 import * as DcbEventLog_Builder$Reventless from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$Reventless from "../CommandTopic/CommandTopic_Builder.res.mjs";
 import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/ExtensionMapping.res.mjs";
+import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
@@ -106,8 +108,8 @@ function Make(Spec) {
           let match = Plugin_Helpers$Reventless.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
           let extensionPointsOutputs = match[0];
           let coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Stdlib_JsError.throwWithMessage("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
-          let corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
-          let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
+          let corePluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
+          let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources.map(Adapter$Reventless.fromInteropUnwrapped));
           let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
           let match$1 = Plugin_Helpers$Reventless.createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
           let extensionsOutputs = match$1[0];
@@ -118,7 +120,7 @@ function Make(Spec) {
           let extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(ex => ex.aggregateNames));
           let eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
           eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
-            resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.unwrappedToResource)
+            resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.fromInteropResource)
           };
           let childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
           let EventCollectorHelper = Plugin_Helpers$Reventless.MakeEventCollectorHelper(RuntimeEnvironment)(EventCollectorChannel)(PluginRuntimeBuilder);
@@ -132,7 +134,8 @@ function Make(Spec) {
             version: version,
             extensionPoints: param[0],
             extensions: extensionsDefinitions,
-            eventCollector: param[1]
+            eventCollector: param[1],
+            extensionProtocols: []
           }));
           let match$3 = Plugin_Helpers$Reventless.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$Reventless.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
           EventCollectorHelper.connect(match$2[0], eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, match$3[1], match$1[1], match[1], match$3[0]);
@@ -199,7 +202,8 @@ function Make(Spec) {
           stateChangeSlices: pluginOutputs_stateChangeSlices,
           stateViewSlices: pluginOutputs_stateViewSlices
         };
-        return Component$Reventless.setOutputs(extra, pluginOutputs);
+        Component$Reventless.setOutputs(extra, pluginOutputs);
+        Plugin_Helpers$Reventless.interopMetaOutput.contents = builderOutputs.apply(Plugin_Helpers$Reventless.toInteropMeta);
       }, opts);
     };
     return {

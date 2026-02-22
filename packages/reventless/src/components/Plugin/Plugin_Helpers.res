@@ -1,5 +1,8 @@
-// TODO: find better naming
-type pureOutputs = {
+// Local-only intermediate type used by Plugin_Builder during construction.
+// All fields use Pulumi.Output.t-wrapped component output types because they
+// originate from freshly-built local components (not deserialized stack exports).
+// Cross-stack consumers use ReventlessInterop.Plugin.resolvedOutputs instead.
+type builderOutputs = {
   id: string,
   version: string,
   heartbeatInterval: int,
@@ -18,18 +21,66 @@ type pureOutputs = {
 
 let getRemoteStorageResources = (pluginName, queryDbName) =>
   switch Util_StackRefs.get(pluginName)->Option.map(stackRef => {
-    stackRef
-    ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.make)
-    ->Pulumi.Output.apply((plugin: pureOutputs) =>
-      plugin.readModels
-      ->Dict.get(queryDbName)
-      ->Option.map((readModel: ReadModel.outputs) => readModel.queryDb.resources)
-      ->Option.getOr([])
+    // Read both _interopMeta (for field-manifest validation) and "plugin" (the export).
+    // Both are annotated as option<JSON.t> so Pulumi's untyped output unifies with sury's JSON.t.
+    let metaOutput: Pulumi.Output.t<option<JSON.t>> =
+      stackRef->Pulumi.StackReference.getOutput("_interopMeta")
+    let pluginOutput: Pulumi.Output.t<option<JSON.t>> =
+      stackRef->Pulumi.StackReference.getOutput("plugin")
+
+    metaOutput->Pulumi.Output.flatMap(metaOpt =>
+      pluginOutput->Pulumi.Output.apply(pluginOpt =>
+        switch (metaOpt, pluginOpt) {
+        | (Some(rawMeta), Some(rawPlugin)) =>
+          switch ReventlessInterop.Query.parseMeta(rawMeta) {
+          | Ok(meta) =>
+            switch ReventlessInterop.Compat.validateAndProject(
+              ~stackName=pluginName,
+              ~meta,
+              ~outputName="plugin",
+              ~rawJson=rawPlugin,
+              ~requiredFields=["readModels"],
+              ~fromJson=json =>
+                try Ok(json->S.parseOrThrow(ReventlessInterop.Plugin.resolvedOutputsSchema))
+                catch {
+                | exn =>
+                  let msg =
+                    exn
+                    ->JsExn.fromException
+                    ->Option.flatMap(JsExn.message)
+                    ->Option.getOr("parse error")
+                  Error(msg)
+                },
+            ) {
+            | Ok(plugin) =>
+              plugin.readModels
+              ->Option.flatMap(readModels => readModels->Dict.get(queryDbName))
+              ->Option.map(readModel =>
+                readModel.queryDb.resources->Adapter.fromInteropResources
+              )
+              ->Option.getOr([])
+            | Error(err) =>
+              Console.log2(
+                `Plugin_Builder.getRemoteStorageResources: compat error for ${pluginName}:`,
+                err,
+              )
+              []
+            }
+          | Error(msg) =>
+            Console.log2(
+              `Plugin_Builder.getRemoteStorageResources: failed to parse _interopMeta for ${pluginName}:`,
+              msg,
+            )
+            []
+          }
+        | _ => []
+        }
+      )
     )
   }) {
   | Some(resources) => resources
   | None =>
-    Console.log("Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin $pluginName")
+    Console.log(`Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin ${pluginName}`)
     []->Pulumi.Output.make
   }
 
@@ -319,7 +370,7 @@ let createConnectPluginExtension = (
 ) =>
   (
     extensionPointsOutputs
-    ->Array.map(ExtensionPoint.toUnwrappedOutputs)
+    ->Array.map(ExtensionPoint.toResolvedOutputs)
     ->Pulumi.Output.all,
     pluginDefinition,
   )
@@ -407,7 +458,7 @@ module MakeEventCollectorHelper = (
     ~eventTopics: EventTopic.allOutputs,
     ~extensionPointsOutputs: array<ExtensionPoint.outputs>,
     ~extensionsOutputs: array<Extension.outputs>,
-    ~corePluginExtensionPointUnwrapped: ExtensionPoint.unwrappedOutputs,
+    ~corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs,
     ~pluginDefinition,
     ~connectPluginExtensionIncomingEventHandler,
     ~extensionsHandlers,
@@ -423,7 +474,7 @@ module MakeEventCollectorHelper = (
         ->Array.map(eventTopic => eventTopic.resources)
         ->Array.flat
         ->Array.concat(
-          corePluginExtensionPointUnwrapped.commandTopic.resources->Adapter.unwrappedToResources,
+          corePluginExtensionPointUnwrapped.commandTopic.resources->Adapter.fromInteropResources,
         )
       )
 
@@ -490,3 +541,101 @@ module MakeEventCollectorHelper = (
     })
   }
 }
+
+// ---------------------------------------------------------------------------
+// Interop metadata — computed from builderOutputs at deploy time and stored so
+// that the plugin's entry-point module can export it as `_interopMeta`.
+// ---------------------------------------------------------------------------
+
+// Module-level ref; follows the same mutable-state pattern as `tasksOutputs`
+// above.  Set by Plugin_Builder during construct(); read by user entry-point
+// code via `getInteropMeta()`.
+let interopMetaOutput: ref<option<Pulumi.Output.t<ReventlessInterop.ExportMeta.t>>> = ref(None)
+
+// Derive a field-name union across all tasks (field names present in at least
+// one task's serialized resolvedOutputs).  Optional fields only appear in the
+// union when they are Some in the source Task.outputs record.
+let taskFieldUnion = (tasks: dict<Task.outputs>): array<string> => {
+  module SSet = Belt.Set.String
+  tasks
+  ->Dict.valuesToArray
+  ->Array.reduce(SSet.empty, (acc, taskOutput) => {
+    // Convert Task.outputs → Task.resolvedOutputs using placeholders for nested
+    // Pulumi.Output.t values — we only need presence, not actual string content.
+    // ReScript optional fields must be set to the inner type (not option<_>) in
+    // record literals, so we use a switch to conditionally include them.
+    let resolved: ReventlessInterop.Task.resolvedOutputs =
+      switch (taskOutput.bucketNames, taskOutput.sideEffectSources) {
+      | (None, None) => {name: taskOutput.name}
+      | (Some(_), None) => {name: taskOutput.name, bucketNames: Dict.make()}
+      | (None, Some(src)) => {name: taskOutput.name, sideEffectSources: src}
+      | (Some(_), Some(src)) => {
+          name: taskOutput.name,
+          bucketNames: Dict.make(),
+          sideEffectSources: src,
+        }
+      }
+    ReventlessInterop.ExportMeta.fieldNamesOf(resolved, ReventlessInterop.Task.resolvedOutputsSchema)
+    ->Array.reduce(acc, SSet.add)
+  })
+  ->SSet.toArray
+}
+
+// Build an ExportMeta.t from builderOutputs.  Called inside a Pulumi.Output.apply
+// so all top-level Output.t wrappers in builderOutputs are already resolved.
+// Nested Output.t values (e.g. inside Task.bucketNames dict values) are still
+// pending — we use placeholder detection (Some vs None) rather than unwrapping.
+let toInteropMeta = (outputs: builderOutputs): ReventlessInterop.ExportMeta.t => {
+  // Include optional fields only when the corresponding dict is non-empty,
+  // so old publishers with empty dicts produce a conservative manifest.
+  // ReScript optional fields cannot be set via option<_> in record literals.
+  let hasReadModels = outputs.readModels->Dict.toArray->Array.length > 0
+  let hasExtensionPoints = outputs.extensionPoints->Dict.toArray->Array.length > 0
+  let pluginResolved: ReventlessInterop.Plugin.resolvedOutputs =
+    switch (hasReadModels, hasExtensionPoints) {
+    | (false, false) => {id: outputs.id, version: outputs.version}
+    | (true, false) => {id: outputs.id, version: outputs.version, readModels: Dict.make()}
+    | (false, true) => {id: outputs.id, version: outputs.version, extensionPoints: Dict.make()}
+    | (true, true) => {
+        id: outputs.id,
+        version: outputs.version,
+        readModels: Dict.make(),
+        extensionPoints: Dict.make(),
+      }
+    }
+
+  // EventMapper field manifest uses minimum required fields (counter presence
+  // cannot be checked without resolving inner Output.t — improved in later phase).
+  let eventMapperMinimal: ReventlessInterop.EventMapper.resolvedOutputs = {
+    name: "",
+    eventCollector: {name: "", resources: []},
+  }
+
+  {
+    version: ReventlessInterop.ExportMeta.version,
+    fields: Dict.fromArray([
+      ("tasks", taskFieldUnion(outputs.tasks)),
+      (
+        "eventMappers",
+        ReventlessInterop.ExportMeta.fieldNamesOf(
+          eventMapperMinimal,
+          ReventlessInterop.EventMapper.resolvedOutputsSchema,
+        ),
+      ),
+      (
+        "plugin",
+        ReventlessInterop.ExportMeta.fieldNamesOf(
+          pluginResolved,
+          ReventlessInterop.Plugin.resolvedOutputsSchema,
+        ),
+      ),
+    ]),
+  }
+}
+
+// Returns the computed interop meta Output.  Call this from the plugin's entry-
+// point module and export the result as `let _interopMeta = getInteropMeta()`.
+let getInteropMeta = () =>
+  interopMetaOutput.contents->Option.getOrThrow(
+    ~message="getInteropMeta() called before Plugin_Builder.construct()",
+  )

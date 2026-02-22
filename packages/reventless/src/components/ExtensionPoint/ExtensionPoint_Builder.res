@@ -16,7 +16,7 @@ module Make = (
   module SpecWithId: ReventlessSpec.ExtensionPoint.Spec
     with type command = Spec.command
     and type event = Spec.event
-    and type callCommand = Spec.callCommand = {
+    and type directive = Spec.directive = {
     include Spec
     module Id = ReventlessSpec.Id.String
   }

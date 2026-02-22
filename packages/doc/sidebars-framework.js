@@ -17,6 +17,7 @@ const sidebars = {
       items: [
         'architecture/aggregate-extension-connection',
         'architecture/dcb',
+        'architecture/extension-point-protocol-versioning',
       ],
     },
     {

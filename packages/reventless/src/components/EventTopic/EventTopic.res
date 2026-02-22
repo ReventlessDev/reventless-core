@@ -1,6 +1,5 @@
 let componentType = ComponentType.EventTopic
 
-type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 type outputs = ReventlessSpec.EventTopic.outputs
 type allOutputs = ReventlessSpec.EventTopic.allOutputs
 
@@ -25,12 +24,24 @@ module type T = {
   ) => component
 }
 
-let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
+let toResolvedOutputs = (
+  outputs: outputs,
+): Pulumi.Output.t<ReventlessInterop.EventTopic.resolvedOutputs> =>
   outputs.resources
   ->Adapter.resourcesToUnwrappedOutput
   ->Pulumi.Output.apply(resources => {
-    let unwrappedOutputs: unwrappedOutputs = {resources: resources}
-    unwrappedOutputs
+    let resolved: ReventlessInterop.EventTopic.resolvedOutputs = {
+      resources: resources->Array.map(
+        (r: Adapter.unwrappedResource): ReventlessInterop.Resource.t => {
+          name: r.name,
+          id: r.id,
+          urn: r.urn,
+          info: r.info,
+          service: r.service,
+        },
+      ),
+    }
+    resolved
   })
 let allOutputsToResources = allOutputs =>
   allOutputs

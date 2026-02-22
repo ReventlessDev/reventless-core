@@ -1,11 +1,5 @@
 let componentType = ComponentType.ExtensionPoint
 
-type unwrappedOutputs = {
-  name: string,
-  aggregateNames: array<string>,
-  commandTopic: CommandTopic.unwrappedOutputs,
-  eventTopic: EventTopic.unwrappedOutputs,
-}
 type outputs = ReventlessSpec.ExtensionPoint.outputs
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
@@ -34,18 +28,19 @@ module type Mappings = {
   let mappings: array<module(Mapping)>
 }
 
-let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
+let toResolvedOutputs = (
+  outputs: outputs,
+): Pulumi.Output.t<ReventlessInterop.ExtensionPoint.resolvedOutputs> =>
   (
-    outputs.commandTopic->Pulumi.Output.flatMap(CommandTopic.toUnwrappedOutputs),
-    outputs.eventTopic->Pulumi.Output.flatMap(EventTopic.toUnwrappedOutputs),
+    outputs.commandTopic->Pulumi.Output.flatMap(CommandTopic.toResolvedOutputs),
+    outputs.eventTopic->Pulumi.Output.flatMap(EventTopic.toResolvedOutputs),
   )
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((commandTopic, eventTopic)) => {
-    let unwrappedOutputs: unwrappedOutputs = {
+    let resolved: ReventlessInterop.ExtensionPoint.resolvedOutputs = {
       name: outputs.name,
-      aggregateNames: outputs.aggregateNames,
       commandTopic,
       eventTopic,
     }
-    unwrappedOutputs
+    resolved
   })

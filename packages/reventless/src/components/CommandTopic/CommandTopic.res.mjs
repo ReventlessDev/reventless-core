@@ -8,9 +8,15 @@ import * as CommandTopic_Helpers$Reventless from "./CommandTopic_Helpers.res.mjs
 
 let NotPublishedToChannel = /* @__PURE__ */Primitive_exceptions.create("CommandTopic-Reventless.NotPublishedToChannel");
 
-function toUnwrappedOutputs(outputs) {
+function toResolvedOutputs(outputs) {
   return Adapter$Reventless.resourcesToUnwrappedOutput(outputs.resources).apply(resources => ({
-    resources: resources
+    resources: resources.map(r => ({
+      name: r.name,
+      id: r.id,
+      urn: r.urn,
+      info: r.info,
+      service: r.service
+    }))
   }));
 }
 
@@ -38,7 +44,7 @@ export {
   globalRegistry,
   registerHandler,
   getHandlers,
-  toUnwrappedOutputs,
+  toResolvedOutputs,
   filter,
 }
 /* Adapter-Reventless Not a pure module */

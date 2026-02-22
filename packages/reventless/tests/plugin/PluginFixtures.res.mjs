@@ -12,7 +12,8 @@ let pluginDefinition = {
       name: "Core.Plugin.Test",
       extensionPointName: "Core.Plugin"
     }],
-  eventCollector: "eventCollector"
+  eventCollector: "eventCollector",
+  extensionProtocols: []
 };
 
 let state_name = pluginDefinition.name;
@@ -53,7 +54,8 @@ let pluginDefinition2 = {
     eventTopic: `eventTopic` + idx.toString()
   })),
   extensions: [],
-  eventCollector: "eventCollector"
+  eventCollector: "eventCollector",
+  extensionProtocols: []
 };
 
 export {

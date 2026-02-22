@@ -30,6 +30,7 @@
         "@reventlessdev/rescript-pulumi-pulumi",
         "@reventlessdev/rescript-ssh2",
         "@reventlessdev/rescript-uuid",
+        "@reventlessdev/reventless-interop",
         "@reventlessdev/reventless-spec"
     ],
     "compiler-flags": [

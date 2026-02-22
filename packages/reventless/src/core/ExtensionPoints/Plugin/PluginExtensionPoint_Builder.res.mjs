@@ -15,7 +15,7 @@ function Make(Spec) {
       name: PluginExtensionPointSpec$ReventlessSpec.name,
       commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
       eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
-      callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
+      directiveSchema: PluginExtensionPointSpec$ReventlessSpec.directiveSchema
     })(Mappings)(RuntimeEnvironment)(CommandTopicChannel)(EventTopicAdapter)(ExtensionPointRuntimeBuilder);
   })));
 }

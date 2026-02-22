@@ -28,6 +28,10 @@ let commandSchema = S.union([
 let eventSchema = S.union([
   S.literal("UnknownPluginDetected"),
   S.schema(s => ({
+    TAG: "IncompatiblePlugin",
+    _0: s.m(Plugin$ReventlessSpec.pluginDefinitionSchema)
+  })),
+  S.schema(s => ({
     TAG: "PluginConnected",
     _0: s.m(Plugin$ReventlessSpec.pluginDefinitionSchema)
   })),
@@ -49,7 +53,7 @@ let eventSchema = S.union([
   }))
 ]);
 
-let callCommandSchema = S.union([
+let directiveSchema = S.union([
   S.schema(s => ({
     TAG: "CreateDisconnectSchedule",
     _0: s.m(S.string),
@@ -83,6 +87,8 @@ let extensionPointDefinitionSchema = Plugin$ReventlessSpec.extensionPointDefinit
 
 let extensionDefinitionSchema = Plugin$ReventlessSpec.extensionDefinitionSchema;
 
+let extensionProtocolSchema = Plugin$ReventlessSpec.extensionProtocolSchema;
+
 let pluginDefinitionSchema = Plugin$ReventlessSpec.pluginDefinitionSchema;
 
 let timeoutSchema = S.int;
@@ -93,11 +99,12 @@ export {
   versionSchema,
   extensionPointDefinitionSchema,
   extensionDefinitionSchema,
+  extensionProtocolSchema,
   pluginDefinitionSchema,
   timeoutSchema,
   forwardCommandSchema,
   commandSchema,
   eventSchema,
-  callCommandSchema,
+  directiveSchema,
 }
 /* forwardCommandSchema Not a pure module */

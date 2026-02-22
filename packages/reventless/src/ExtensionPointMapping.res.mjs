@@ -40,13 +40,13 @@ function Make(Spec) {
               }
             };
           }
-          let callCommand = x._1;
+          let directive = x._1;
           let handler = x._0;
-          console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling call command`, JSON.stringify(Message$Reventless.encode(callCommand, Spec.callCommandSchema)));
+          console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
           return {
             TAG: "AbstractCall",
             _0: reference,
-            _1: () => handler(extra$1, extra$2, extra$3, callCommand)
+            _1: () => handler(extra$1, extra$2, extra$3, directive)
           };
         });
       }).flat();
@@ -106,12 +106,12 @@ function Make(Spec) {
               _0: toEvent$p(eventAction._0)
             };
           case "Call" :
-            let callCmd = eventAction._1;
+            let directive = eventAction._1;
             let handler = eventAction._0;
-            console.log(`ExtensionPointMapping: outgoing from Aggregate ` + aggregateName + `: Handling call command`, JSON.stringify(Message$Reventless.encode(callCmd, Spec.callCommandSchema)));
+            console.log(`ExtensionPointMapping: outgoing from Aggregate ` + aggregateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
             return {
               TAG: "AbstractCall",
-              _0: () => handler(extra$1, extra$2, extra$3, callCmd)
+              _0: () => handler(extra$1, extra$2, extra$3, directive)
             };
         }
       });

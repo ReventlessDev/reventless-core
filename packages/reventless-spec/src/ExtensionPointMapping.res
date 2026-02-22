@@ -25,21 +25,21 @@ module type Spec = {
   @schema
   type event
   @schema
-  type callCommand
+  type directive
 }
 
-type mapIncomingCommand<'extensionPointCommand, 'aggregateCommand, 'extensionPointCallCommand> = (
+type mapIncomingCommand<'extensionPointCommand, 'aggregateCommand, 'extensionPointDirective> = (
   string,
   'extensionPointCommand,
   Message.meta,
-) => array<commandAction<'aggregateCommand, 'extensionPointCallCommand>>
+) => array<commandAction<'aggregateCommand, 'extensionPointDirective>>
 
-type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'extensionPointCallCommand> = (
+type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'extensionPointDirective> = (
   string,
   'aggregateEvent,
   Message.meta,
   QueryEngine.operations,
-) => array<eventAction<'extensionPointEvent, 'extensionPointCallCommand>>
+) => array<eventAction<'extensionPointEvent, 'extensionPointDirective>>
 
 module type Impl = {
   module ExtensionPoint: Spec
@@ -48,11 +48,11 @@ module type Impl = {
   let mapIncomingCommand: mapIncomingCommand<
     ExtensionPoint.command,
     Aggregate.command,
-    ExtensionPoint.callCommand,
+    ExtensionPoint.directive,
   >
 
   let mapOutgoingEvent: option<
-    mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.callCommand>,
+    mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.directive>,
   >
 }
 

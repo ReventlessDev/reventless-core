@@ -122,6 +122,7 @@ function Make(Spec) {
         } else {
           return [];
         }
+      case "IncompatiblePlugin" :
       case "PluginDisconnected" :
       case "PluginActivated" :
         return [];
@@ -144,7 +145,7 @@ function Make(Spec) {
     name: PluginExtensionPointSpec$ReventlessSpec.name,
     commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
     eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
-    callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
+    directiveSchema: PluginExtensionPointSpec$ReventlessSpec.directiveSchema
   })({
     Aggregate: {
       Id: {
@@ -173,7 +174,7 @@ function Make(Spec) {
     name: PluginExtensionPointSpec$ReventlessSpec.name,
     commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
     eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
-    callCommandSchema: PluginExtensionPointSpec$ReventlessSpec.callCommandSchema
+    directiveSchema: PluginExtensionPointSpec$ReventlessSpec.directiveSchema
   })({
     name: name,
     mappings: mappings

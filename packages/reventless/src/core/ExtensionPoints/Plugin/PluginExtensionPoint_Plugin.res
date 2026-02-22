@@ -61,9 +61,9 @@ module Make = (Spec: Spec) => {
     createSchedule: ReventlessSpec.Schedule.create,
     deleteSchedule: ReventlessSpec.Schedule.delete,
     queryEngine: ReventlessSpec.QueryEngine.operations,
-    callCommand,
+    directive,
   ) =>
-    switch callCommand {
+    switch directive {
     | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
       await createSchedule({
         name: Spec.environment ++ ("-" ++ id),
@@ -94,7 +94,32 @@ module Make = (Spec: Spec) => {
           // 1 additional minute to allow additional latency
           Call(callHandler, CreateDisconnectSchedule(id, interval + 2)),
         ]
-      | ConnectPlugin(pluginDefinition) => [PublishCommand(id, Connect(pluginDefinition))]
+      | ConnectPlugin(pluginDefinition) =>
+        // Validate protocol versions declared by the connecting plugin.
+        // On mismatch, emit a ReportIncompatibility command so that an
+        // IncompatiblePlugin event is recorded; the connection still proceeds.
+        let protocolErrors =
+          pluginDefinition.extensionProtocols
+          ->Array.flatMap(proto =>
+            ReventlessInterop.Compat.validateProtocol(
+              ~host=ReventlessInterop.CompatMatrix.corePlugin,
+              ~extensionPointName=proto.extensionPointName,
+              ~commandVersion=proto.commandVersion,
+              ~eventVersion=proto.eventVersion,
+            )
+          )
+        let reportAction =
+          if protocolErrors->Array.length > 0 {
+            Console.warn3(
+              "[Core.Plugin] Protocol version mismatch for plugin",
+              pluginDefinition.id,
+              protocolErrors,
+            )
+            [PublishCommand(id, Aggregate.ReportIncompatibility(pluginDefinition))]
+          } else {
+            []
+          }
+        Array.concat([PublishCommand(id, Aggregate.Connect(pluginDefinition))], reportAction)
       | DisconnectPlugin => [
           PublishCommand(id, Disconnect),
           Call(callHandler, DeleteDisconnectSchedule(id)),
@@ -113,6 +138,9 @@ module Make = (Spec: Spec) => {
         | Disconnected(pluginDefinition) => [PublishEvent(id, PluginDisconnected(pluginDefinition))]
         | Deactivated(pluginDefinition) => [PublishEvent(id, PluginDeactivated(pluginDefinition))]
         | Activated(pluginDefinition) => [PublishEvent(id, PluginActivated(pluginDefinition))]
+        | IncompatiblePluginDetected(pluginDefinition) => [
+            PublishEvent(id, IncompatiblePlugin(pluginDefinition)),
+          ]
         },
     )
   }

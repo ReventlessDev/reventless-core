@@ -13,13 +13,20 @@ let extensionDefinitionSchema = S.schema(s => ({
   extensionPointName: s.m(S.string)
 }));
 
+let extensionProtocolSchema = S.schema(s => ({
+  extensionPointName: s.m(S.string),
+  commandVersion: s.m(S.string),
+  eventVersion: s.m(S.string)
+}));
+
 let pluginDefinitionSchema = S.schema(s => ({
   id: s.m(S.string),
   name: s.m(S.string),
   version: s.m(S.string),
   extensionPoints: s.m(S.array(extensionPointDefinitionSchema)),
   extensions: s.m(S.array(extensionDefinitionSchema)),
-  eventCollector: s.m(S.string)
+  eventCollector: s.m(S.string),
+  extensionProtocols: s.m(S.array(extensionProtocolSchema))
 }));
 
 let nameSchema = S.string;
@@ -31,6 +38,7 @@ export {
   versionSchema,
   extensionPointDefinitionSchema,
   extensionDefinitionSchema,
+  extensionProtocolSchema,
   pluginDefinitionSchema,
 }
 /* extensionPointDefinitionSchema Not a pure module */

@@ -117,6 +117,8 @@ function map(param) {
           statusChange: statusChange
         })
       };
+    case "IncompatiblePluginDetected" :
+      return "Ignore";
   }
   let match$4 = event._0;
   let extensions$3 = match$4.extensions;

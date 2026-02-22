@@ -10,9 +10,15 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 
 let NotPublishedToPublisher = /* @__PURE__ */Primitive_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
 
-function toUnwrappedOutputs(outputs) {
+function toResolvedOutputs(outputs) {
   return Adapter$Reventless.resourcesToUnwrappedOutput(outputs.resources).apply(resources => ({
-    resources: resources
+    resources: resources.map(r => ({
+      name: r.name,
+      id: r.id,
+      urn: r.urn,
+      info: r.info,
+      service: r.service
+    }))
   }));
 }
 
@@ -41,7 +47,7 @@ let componentType = "EventTopic";
 export {
   componentType,
   NotPublishedToPublisher,
-  toUnwrappedOutputs,
+  toResolvedOutputs,
   allOutputsToResources,
   filter,
   log,
