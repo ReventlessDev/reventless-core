@@ -13,8 +13,9 @@
     "@reventlessdev/rescript-uuid",
     "@reventlessdev/reventless",
     "@reventlessdev/reventless-aws",
-    "@reventlessdev/reventless-example-aggregate",
-    "@reventlessdev/reventless-example-dcb",
+    "@reventlessdev/aggregate-example-catalog",
+    "@reventlessdev/aggregate-example-ordering",
+    "@reventlessdev/example-dcb",
     "@reventlessdev/reventless-in-memory",
     "@reventlessdev/reventless-interop",
     "@reventlessdev/reventless-spec"

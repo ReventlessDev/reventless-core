@@ -2,7 +2,8 @@
   "version": "independent",
   "npmClient": "npm",
   "packages": [
-    "packages/*"
+    "packages/*",
+    "examples/**"
   ],
   "command": {
     "publish": {

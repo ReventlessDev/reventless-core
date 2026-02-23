@@ -10,7 +10,8 @@
     "registry": "https://npm.pkg.github.com"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/**"
   ],
   "devDependencies": {
     "conventional-changelog-reventless": "file:./conventional-changelog-reventless",
