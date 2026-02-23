@@ -40,7 +40,7 @@ const config = {
         language: ["en"],
         indexDocs: true,
         indexBlog: false,
-        docsRouteBasePath: ["/app", "/framework", "/cloud-provider", "/aws"],
+        docsRouteBasePath: ["/app", "/framework", "/cloud-provider", "/aws", "/online-shop"],
         // Enable search in dev mode by using the production index
         removeDefaultStopWordFilter: true,
         // Highlight search terms
@@ -99,6 +99,17 @@ const config = {
         path: "docs-aws",
         routeBasePath: "aws",
         sidebarPath: "./sidebars-aws.js",
+        editUrl:
+          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
+      },
+    ],
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "online-shop",
+        path: "docs-online-shop",
+        routeBasePath: "online-shop",
+        sidebarPath: "./sidebars-online-shop.js",
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -169,6 +180,13 @@ const config = {
             docsPluginId: "aws",
             position: "left",
             label: "AWS",
+          },
+          {
+            type: "docSidebar",
+            sidebarId: "onlineShopSidebar",
+            docsPluginId: "online-shop",
+            position: "left",
+            label: "Online Shop Example",
           },
           {
             href: "https://github.com/ReventlessDev/reventless-core",
