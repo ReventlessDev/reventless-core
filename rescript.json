@@ -13,6 +13,7 @@
     "@reventlessdev/rescript-uuid",
     "@reventlessdev/reventless",
     "@reventlessdev/reventless-aws",
+    "@reventlessdev/reventless-example-aggregate",
     "@reventlessdev/reventless-in-memory",
     "@reventlessdev/reventless-interop",
     "@reventlessdev/reventless-spec"
