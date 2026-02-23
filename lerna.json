@@ -3,6 +3,8 @@
   "npmClient": "npm",
   "packages": [
     "packages/*",
+    "rescript/*",
+    "reventless/*",
     "examples/**"
   ],
   "command": {

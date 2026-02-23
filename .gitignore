@@ -6,7 +6,7 @@
 npm-debug.log
 **/lib
 /node_modules/
-/packages/**/node_modules/
+**/node_modules/
 .grapqhl_ppx_cache
 coverage
 lerna-debug.log

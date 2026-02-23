@@ -11,6 +11,8 @@
   },
   "workspaces": [
     "packages/*",
+    "rescript/*",
+    "reventless/*",
     "examples/**"
   ],
   "devDependencies": {
