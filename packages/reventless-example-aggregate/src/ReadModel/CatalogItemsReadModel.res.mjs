@@ -14,7 +14,7 @@ let config = ReadModel$ReventlessSpec.config(undefined, undefined, undefined);
 
 let Id;
 
-let name = "CatalogItem";
+let name = "CatalogItems";
 
 let subIdConfig;
 

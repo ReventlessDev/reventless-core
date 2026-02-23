@@ -18,6 +18,8 @@
 @val external beforeEach: (unit => unit) => unit = "beforeEach"
 @val external afterEach: (unit => unit) => unit = "afterEach"
 @val external beforeAll: (unit => unit) => unit = "beforeAll"
+// Async variant of beforeAll — Jest awaits the returned promise before running tests.
+@val external beforeAllAsync: (unit => promise<unit>) => unit = "beforeAll"
 @val external afterAll: (unit => unit) => unit = "afterAll"
 
 // Registers an async test that Jest properly awaits before running the next test.

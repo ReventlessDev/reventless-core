@@ -3,18 +3,18 @@
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless/src/Projection.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/NoEventMappings.res.mjs";
-import * as CatalogItemSpec$ReventlessExampleAggregate from "./Aggregate/CatalogItemSpec.res.mjs";
+import * as CatalogItem$ReventlessExampleAggregate from "./Aggregate/CatalogItem.res.mjs";
 import * as CatalogItemBehavior$ReventlessExampleAggregate from "./Aggregate/CatalogItemBehavior.res.mjs";
-import * as CatalogItemProjection$ReventlessExampleAggregate from "./ReadModel/CatalogItemProjection.res.mjs";
-import * as CatalogItemReadModelSpec$ReventlessExampleAggregate from "./ReadModel/CatalogItemReadModelSpec.res.mjs";
+import * as CatalogItemsReadModel$ReventlessExampleAggregate from "./ReadModel/CatalogItemsReadModel.res.mjs";
+import * as CatalogItemsProjections$ReventlessExampleAggregate from "./ReadModel/CatalogItemsProjections.res.mjs";
 
 function Make(Platform) {
   let ItemAggregate = Platform.Aggregate.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: CatalogItemSpec$ReventlessExampleAggregate.name,
-    commandSchema: CatalogItemSpec$ReventlessExampleAggregate.commandSchema,
-    eventSchema: CatalogItemSpec$ReventlessExampleAggregate.eventSchema,
-    errorSchema: CatalogItemSpec$ReventlessExampleAggregate.errorSchema
+    name: CatalogItem$ReventlessExampleAggregate.name,
+    commandSchema: CatalogItem$ReventlessExampleAggregate.commandSchema,
+    eventSchema: CatalogItem$ReventlessExampleAggregate.eventSchema,
+    errorSchema: CatalogItem$ReventlessExampleAggregate.errorSchema
   })({
     resolverConfig: CatalogItemBehavior$ReventlessExampleAggregate.resolverConfig,
     init: CatalogItemBehavior$ReventlessExampleAggregate.init,
@@ -22,24 +22,24 @@ function Make(Platform) {
     create: CatalogItemBehavior$ReventlessExampleAggregate.create,
     execute: CatalogItemBehavior$ReventlessExampleAggregate.execute
   })(NoEventMappings$Reventless.Make({
-    name: CatalogItemSpec$ReventlessExampleAggregate.name,
+    name: CatalogItem$ReventlessExampleAggregate.name,
     Id: Id$ReventlessSpec.$$String,
-    commandSchema: CatalogItemSpec$ReventlessExampleAggregate.commandSchema
+    commandSchema: CatalogItem$ReventlessExampleAggregate.commandSchema
   }));
   let MappingsHelper = Projection$Reventless.Mappings.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: CatalogItemReadModelSpec$ReventlessExampleAggregate.name,
-    stateSchema: CatalogItemReadModelSpec$ReventlessExampleAggregate.stateSchema,
+    name: CatalogItemsReadModel$ReventlessExampleAggregate.name,
+    stateSchema: CatalogItemsReadModel$ReventlessExampleAggregate.stateSchema,
     subIdConfig: undefined
   });
   let Mappings = {
-    mappings: CatalogItemProjection$ReventlessExampleAggregate.mappings
+    mappings: CatalogItemsProjections$ReventlessExampleAggregate.mappings
   };
   let ItemReadModel = Platform.ReadModel.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: CatalogItemReadModelSpec$ReventlessExampleAggregate.name,
-    stateSchema: CatalogItemReadModelSpec$ReventlessExampleAggregate.stateSchema,
-    config: CatalogItemReadModelSpec$ReventlessExampleAggregate.config,
+    name: CatalogItemsReadModel$ReventlessExampleAggregate.name,
+    stateSchema: CatalogItemsReadModel$ReventlessExampleAggregate.stateSchema,
+    config: CatalogItemsReadModel$ReventlessExampleAggregate.config,
     subIdConfig: undefined
   })(Mappings);
   return {

@@ -38,9 +38,9 @@ let _ = ReventlessInMemory.TestRunner.setup()
 
 module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module ItemAgg = AggregateMaker.Make(
-  CatalogItemSpec,
+  CatalogItem,
   CatalogItemBehavior,
-  Reventless.NoEventMappings.Make(CatalogItemSpec),
+  Reventless.NoEventMappings.Make(CatalogItem),
 )
 
 let agg = ItemAgg.make(~api=())
@@ -70,8 +70,8 @@ describe("CatalogItem E2E:", () => {
   testPromise("CreateItem command publishes 1 event to the event topic", async () => {
     let ops = await agg->ItemAgg.operations->ReventlessInMemory.TestRunner.resolve
     let commandJson =
-      CatalogItemSpec.CreateItem({itemId: "item-1", name: "Widget", description: "A widget"})
-      ->Reventless.Message.encode(CatalogItemSpec.commandSchema)
+      CatalogItem.CreateItem({itemId: "item-1", name: "Widget", description: "A widget"})
+      ->Reventless.Message.encode(CatalogItem.commandSchema)
     await ops.publishJsons([
       {
         ReventlessSpec.Message.id: "item-1",
@@ -86,11 +86,11 @@ describe("CatalogItem E2E:", () => {
     // item-1 was created in a previous test run; state persists in the in-memory storage
     let ops = await agg->ItemAgg.operations->ReventlessInMemory.TestRunner.resolve
     let commandJson =
-      CatalogItemSpec.UpdateItem({
+      CatalogItem.UpdateItem({
         itemId: "item-1",
         name: "Updated Widget",
         description: "An updated widget",
-      })->Reventless.Message.encode(CatalogItemSpec.commandSchema)
+      })->Reventless.Message.encode(CatalogItem.commandSchema)
     await ops.publishJsons([
       {
         ReventlessSpec.Message.id: "item-1",
@@ -107,8 +107,8 @@ describe("CatalogItem E2E:", () => {
       // item-1 already exists from the first test — duplicate create is silently rejected
       let ops = await agg->ItemAgg.operations->ReventlessInMemory.TestRunner.resolve
       let commandJson =
-        CatalogItemSpec.CreateItem({itemId: "item-1", name: "Duplicate", description: "Dup"})
-        ->Reventless.Message.encode(CatalogItemSpec.commandSchema)
+        CatalogItem.CreateItem({itemId: "item-1", name: "Duplicate", description: "Dup"})
+        ->Reventless.Message.encode(CatalogItem.commandSchema)
       await ops.publishJsons([
         {
           ReventlessSpec.Message.id: "item-1",

@@ -6,7 +6,7 @@ import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
-import * as CatalogItemSpec$ReventlessExampleAggregate from "../../src/Aggregate/CatalogItemSpec.res.mjs";
+import * as CatalogItem$ReventlessExampleAggregate from "../../src/Aggregate/CatalogItem.res.mjs";
 import * as CatalogItemBehavior$ReventlessExampleAggregate from "../../src/Aggregate/CatalogItemBehavior.res.mjs";
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -25,10 +25,10 @@ let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
 
 let ItemAgg = AggregateMaker.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: CatalogItemSpec$ReventlessExampleAggregate.name,
-  commandSchema: CatalogItemSpec$ReventlessExampleAggregate.commandSchema,
-  eventSchema: CatalogItemSpec$ReventlessExampleAggregate.eventSchema,
-  errorSchema: CatalogItemSpec$ReventlessExampleAggregate.errorSchema
+  name: CatalogItem$ReventlessExampleAggregate.name,
+  commandSchema: CatalogItem$ReventlessExampleAggregate.commandSchema,
+  eventSchema: CatalogItem$ReventlessExampleAggregate.eventSchema,
+  errorSchema: CatalogItem$ReventlessExampleAggregate.errorSchema
 })({
   resolverConfig: CatalogItemBehavior$ReventlessExampleAggregate.resolverConfig,
   init: CatalogItemBehavior$ReventlessExampleAggregate.init,
@@ -36,9 +36,9 @@ let ItemAgg = AggregateMaker.Make({
   create: CatalogItemBehavior$ReventlessExampleAggregate.create,
   execute: CatalogItemBehavior$ReventlessExampleAggregate.execute
 })(NoEventMappings$Reventless.Make({
-  name: CatalogItemSpec$ReventlessExampleAggregate.name,
+  name: CatalogItem$ReventlessExampleAggregate.name,
   Id: Id$ReventlessSpec.$$String,
-  commandSchema: CatalogItemSpec$ReventlessExampleAggregate.commandSchema
+  commandSchema: CatalogItem$ReventlessExampleAggregate.commandSchema
 }));
 
 let agg = ItemAgg.make(undefined, undefined);
@@ -63,7 +63,7 @@ describe("CatalogItem E2E:", () => {
       itemId: "item-1",
       name: "Widget",
       description: "A widget"
-    }, CatalogItemSpec$ReventlessExampleAggregate.commandSchema);
+    }, CatalogItem$ReventlessExampleAggregate.commandSchema);
     await ops.publishJsons([{
         id: "item-1",
         meta: testMeta,
@@ -78,7 +78,7 @@ describe("CatalogItem E2E:", () => {
       itemId: "item-1",
       name: "Updated Widget",
       description: "An updated widget"
-    }, CatalogItemSpec$ReventlessExampleAggregate.commandSchema);
+    }, CatalogItem$ReventlessExampleAggregate.commandSchema);
     await ops.publishJsons([{
         id: "item-1",
         meta: testMeta,
@@ -93,7 +93,7 @@ describe("CatalogItem E2E:", () => {
       itemId: "item-1",
       name: "Duplicate",
       description: "Dup"
-    }, CatalogItemSpec$ReventlessExampleAggregate.commandSchema);
+    }, CatalogItem$ReventlessExampleAggregate.commandSchema);
     await ops.publishJsons([{
         id: "item-1",
         meta: testMeta,

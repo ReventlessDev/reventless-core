@@ -2,8 +2,8 @@
 
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless/src/Projection.res.mjs";
-import * as CatalogItemSpec$ReventlessExampleAggregate from "../Aggregate/CatalogItemSpec.res.mjs";
-import * as CatalogItemReadModelSpec$ReventlessExampleAggregate from "./CatalogItemReadModelSpec.res.mjs";
+import * as CatalogItem$ReventlessExampleAggregate from "../Aggregate/CatalogItem.res.mjs";
+import * as CatalogItemsReadModel$ReventlessExampleAggregate from "./CatalogItemsReadModel.res.mjs";
 
 function map(param) {
   let event = param.event;
@@ -19,6 +19,18 @@ function map(param) {
           description: event.description,
           archived: false
         }
+      };
+    case "ItemRenamed" :
+      let newName = event.newName;
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => ({
+          itemId: state.itemId,
+          name: newName,
+          description: state.description,
+          archived: state.archived
+        })
       };
     case "ItemUpdated" :
       let d = event.description;
@@ -50,21 +62,21 @@ function map(param) {
 
 let ItemMapping = Projection$Reventless.Mapping.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: CatalogItemSpec$ReventlessExampleAggregate.name,
-  eventSchema: CatalogItemSpec$ReventlessExampleAggregate.eventSchema
+  name: CatalogItem$ReventlessExampleAggregate.name,
+  eventSchema: CatalogItem$ReventlessExampleAggregate.eventSchema
 })({
   Id: Id$ReventlessSpec.$$String,
-  name: CatalogItemReadModelSpec$ReventlessExampleAggregate.name,
-  stateSchema: CatalogItemReadModelSpec$ReventlessExampleAggregate.stateSchema,
+  name: CatalogItemsReadModel$ReventlessExampleAggregate.name,
+  stateSchema: CatalogItemsReadModel$ReventlessExampleAggregate.stateSchema,
   subIdConfig: undefined
 })({
   map: map
 });
 
-let MappingsHelper = Projection$Reventless.Mappings.Make({
+let Mappings = Projection$Reventless.Mappings.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: CatalogItemReadModelSpec$ReventlessExampleAggregate.name,
-  stateSchema: CatalogItemReadModelSpec$ReventlessExampleAggregate.stateSchema,
+  name: CatalogItemsReadModel$ReventlessExampleAggregate.name,
+  stateSchema: CatalogItemsReadModel$ReventlessExampleAggregate.stateSchema,
   subIdConfig: undefined
 });
 
@@ -72,7 +84,7 @@ let mappings = [ItemMapping];
 
 export {
   ItemMapping,
-  MappingsHelper,
+  Mappings,
   mappings,
 }
 /* ItemMapping Not a pure module */

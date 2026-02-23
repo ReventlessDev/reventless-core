@@ -3,17 +3,18 @@
 
 module Make = (Platform: ReventlessSpec.Platform.T) => {
   module ItemAggregate = Platform.Aggregate.Make(
-    CatalogItemSpec,
+    CatalogItem,
     CatalogItemBehavior,
-    Reventless.NoEventMappings.Make(CatalogItemSpec),
+    Reventless.NoEventMappings.Make(CatalogItem),
   )
 
-  module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemReadModelSpec)
+  module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemsReadModel)
 
-  module Mappings: ReventlessSpec.Projection.Mappings with module Target := CatalogItemReadModelSpec = {
+  module Mappings: ReventlessSpec.Projection.Mappings
+    with module Target := CatalogItemsReadModel = {
     module type Mapping = MappingsHelper.Mapping
-    let mappings = CatalogItemProjection.mappings
+    let mappings = CatalogItemsProjections.mappings
   }
 
-  module ItemReadModel = Platform.ReadModel.Make(CatalogItemReadModelSpec, Mappings)
+  module ItemReadModel = Platform.ReadModel.Make(CatalogItemsReadModel, Mappings)
 }

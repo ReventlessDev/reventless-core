@@ -11,7 +11,7 @@ type state = {
   archived: bool,
 }
 
-let name = "CatalogItem"
+let name = "CatalogItems"
 
 open ReventlessSpec.ReadModel
 let config = config()

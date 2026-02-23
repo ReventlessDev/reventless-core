@@ -10,6 +10,11 @@ let commandSchema = S.union([
     description: s.m(S.string)
   })),
   S.schema(s => ({
+    TAG: "RenameItem",
+    itemId: s.m(S.string),
+    newName: s.m(S.string)
+  })),
+  S.schema(s => ({
     TAG: "UpdateItem",
     itemId: s.m(S.string),
     name: s.m(S.string),
@@ -27,6 +32,11 @@ let eventSchema = S.union([
     itemId: s.m(S.string),
     name: s.m(S.string),
     description: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ItemRenamed",
+    itemId: s.m(S.string),
+    newName: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "ItemUpdated",

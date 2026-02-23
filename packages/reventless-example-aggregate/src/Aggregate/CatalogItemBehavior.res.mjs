@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
-import * as CatalogItemSpec$ReventlessExampleAggregate from "./CatalogItemSpec.res.mjs";
+import * as CatalogItem$ReventlessExampleAggregate from "./CatalogItem.res.mjs";
 
 let stateSchema = S.union([
   S.schema(s => ({
@@ -16,26 +16,23 @@ let stateSchema = S.union([
 let resolverConfig_fields = [];
 
 let resolverConfig = {
-  commandSchema: CatalogItemSpec$ReventlessExampleAggregate.commandSchema,
+  commandSchema: CatalogItem$ReventlessExampleAggregate.commandSchema,
   fields: resolverConfig_fields
 };
 
 function init(event) {
-  switch (event.TAG) {
-    case "ItemCreated" :
-      return {
-        TAG: "Active",
-        name: event.name,
-        description: event.description
-      };
-    case "ItemUpdated" :
-    case "ItemArchived" :
-      throw {
-        RE_EXN_ID: Message$Reventless.InvalidEvent,
-        _1: Message$Reventless.encode(event, CatalogItemSpec$ReventlessExampleAggregate.eventSchema),
-        Error: new Error()
-      };
+  if (event.TAG === "ItemCreated") {
+    return {
+      TAG: "Active",
+      name: event.name,
+      description: event.description
+    };
   }
+  throw {
+    RE_EXN_ID: Message$Reventless.InvalidEvent,
+    _1: Message$Reventless.encode(event, CatalogItem$ReventlessExampleAggregate.eventSchema),
+    Error: new Error()
+  };
 }
 
 function apply(state, event) {
@@ -43,6 +40,12 @@ function apply(state, event) {
     return state;
   }
   switch (event.TAG) {
+    case "ItemRenamed" :
+      return {
+        TAG: "Active",
+        name: event.newName,
+        description: state.description
+      };
     case "ItemCreated" :
     case "ItemUpdated" :
       return {
@@ -56,46 +59,47 @@ function apply(state, event) {
 }
 
 function create(command, _context, errorHandler) {
-  switch (command.TAG) {
-    case "CreateItem" :
-      return [{
-          TAG: "ItemCreated",
-          itemId: command.itemId,
-          name: command.name,
-          description: command.description
-        }];
-    case "UpdateItem" :
-    case "ArchiveItem" :
-      return errorHandler("ItemNotFound", command, _context);
+  if (command.TAG === "CreateItem") {
+    return [{
+        TAG: "ItemCreated",
+        itemId: command.itemId,
+        name: command.name,
+        description: command.description
+      }];
+  } else {
+    return errorHandler("ItemNotFound", command, _context);
   }
 }
 
 function execute(state, command, context, errorHandler) {
   if (typeof state !== "object") {
-    switch (command.TAG) {
-      case "CreateItem" :
-      case "UpdateItem" :
-        return errorHandler("ItemAlreadyArchived", command, context);
-      case "ArchiveItem" :
-        return [];
+    if (command.TAG === "ArchiveItem") {
+      return [];
+    } else {
+      return errorHandler("ItemAlreadyArchived", command, context);
     }
-  } else {
-    switch (command.TAG) {
-      case "CreateItem" :
-        return errorHandler("ItemAlreadyExists", command, context);
-      case "UpdateItem" :
-        return [{
-            TAG: "ItemUpdated",
-            itemId: command.itemId,
-            name: command.name,
-            description: command.description
-          }];
-      case "ArchiveItem" :
-        return [{
-            TAG: "ItemArchived",
-            itemId: command.itemId
-          }];
-    }
+  }
+  switch (command.TAG) {
+    case "CreateItem" :
+      return errorHandler("ItemAlreadyExists", command, context);
+    case "RenameItem" :
+      return [{
+          TAG: "ItemRenamed",
+          itemId: command.itemId,
+          newName: command.newName
+        }];
+    case "UpdateItem" :
+      return [{
+          TAG: "ItemUpdated",
+          itemId: command.itemId,
+          name: command.name,
+          description: command.description
+        }];
+    case "ArchiveItem" :
+      return [{
+          TAG: "ItemArchived",
+          itemId: command.itemId
+        }];
   }
 }
 
