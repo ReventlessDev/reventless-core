@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
-import * as Product$ReventlessdevAggregateExampleCatalog from "./Product.res.mjs";
+import * as Product$ReventlessdevExampleAggregateCatalog from "./Product.res.mjs";
 
 let stateSchema = S.schema(s => ({
   name: s.m(S.string),
@@ -13,7 +13,7 @@ let stateSchema = S.schema(s => ({
 let resolverConfig_fields = [];
 
 let resolverConfig = {
-  commandSchema: Product$ReventlessdevAggregateExampleCatalog.commandSchema,
+  commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema,
   fields: resolverConfig_fields
 };
 
@@ -27,7 +27,7 @@ function init(event) {
   }
   throw {
     RE_EXN_ID: Message$Reventless.InvalidEvent,
-    _1: Message$Reventless.encode(event, Product$ReventlessdevAggregateExampleCatalog.eventSchema),
+    _1: Message$Reventless.encode(event, Product$ReventlessdevExampleAggregateCatalog.eventSchema),
     Error: new Error()
   };
 }

@@ -55,12 +55,31 @@ let extractTagsFromJson = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
   | Union({anyOf}) =>
     switch json->JSON.Decode.object {
     | Some(jsonDict) =>
+      let jsonTag = jsonDict->Dict.get("TAG")->Option.flatMap(j =>
+        switch j {
+        | JSON.String(s) => Some(s)
+        | _ => None
+        }
+      )
       anyOf->Array.reduce([], (acc, variantSchema) =>
         if acc->Array.length > 0 {
           acc
         } else {
           switch variantSchema {
-          | Object({properties}) => extractTagsFromProperties(properties, jsonDict)
+          | Object({items, properties}) =>
+            let variantTag = items
+              ->Array.find(item => item.location == "TAG")
+              ->Option.flatMap(item =>
+                switch item.schema {
+                | String({const}) => Some(const)
+                | _ => None
+                }
+              )
+            if variantTag == jsonTag {
+              extractTagsFromProperties(properties, jsonDict)
+            } else {
+              []
+            }
           | _ => []
           }
         }

@@ -3,80 +3,80 @@
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless/src/Projection.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/NoEventMappings.res.mjs";
-import * as Order$ReventlessdevAggregateExampleOrdering from "./Aggregate/Order.res.mjs";
-import * as Customer$ReventlessdevAggregateExampleOrdering from "./Aggregate/Customer.res.mjs";
-import * as OrderBehavior$ReventlessdevAggregateExampleOrdering from "./Aggregate/OrderBehavior.res.mjs";
-import * as OrdersReadModel$ReventlessdevAggregateExampleOrdering from "./ReadModel/OrdersReadModel.res.mjs";
-import * as CustomerBehavior$ReventlessdevAggregateExampleOrdering from "./Aggregate/CustomerBehavior.res.mjs";
-import * as OrdersProjections$ReventlessdevAggregateExampleOrdering from "./ReadModel/OrdersProjections.res.mjs";
-import * as CustomersReadModel$ReventlessdevAggregateExampleOrdering from "./ReadModel/CustomersReadModel.res.mjs";
-import * as CustomersProjections$ReventlessdevAggregateExampleOrdering from "./ReadModel/CustomersProjections.res.mjs";
+import * as Order$ReventlessdevExampleAggregateOrdering from "./Aggregate/Order.res.mjs";
+import * as Customer$ReventlessdevExampleAggregateOrdering from "./Aggregate/Customer.res.mjs";
+import * as OrderBehavior$ReventlessdevExampleAggregateOrdering from "./Aggregate/OrderBehavior.res.mjs";
+import * as OrdersReadModel$ReventlessdevExampleAggregateOrdering from "./ReadModel/OrdersReadModel.res.mjs";
+import * as CustomerBehavior$ReventlessdevExampleAggregateOrdering from "./Aggregate/CustomerBehavior.res.mjs";
+import * as OrdersProjections$ReventlessdevExampleAggregateOrdering from "./ReadModel/OrdersProjections.res.mjs";
+import * as CustomersReadModel$ReventlessdevExampleAggregateOrdering from "./ReadModel/CustomersReadModel.res.mjs";
+import * as CustomersProjections$ReventlessdevExampleAggregateOrdering from "./ReadModel/CustomersProjections.res.mjs";
 
 function Make(Platform) {
   let CustomerAggregate = Platform.Aggregate.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: Customer$ReventlessdevAggregateExampleOrdering.name,
-    commandSchema: Customer$ReventlessdevAggregateExampleOrdering.commandSchema,
-    eventSchema: Customer$ReventlessdevAggregateExampleOrdering.eventSchema,
-    errorSchema: Customer$ReventlessdevAggregateExampleOrdering.errorSchema
+    name: Customer$ReventlessdevExampleAggregateOrdering.name,
+    commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema,
+    eventSchema: Customer$ReventlessdevExampleAggregateOrdering.eventSchema,
+    errorSchema: Customer$ReventlessdevExampleAggregateOrdering.errorSchema
   })({
-    resolverConfig: CustomerBehavior$ReventlessdevAggregateExampleOrdering.resolverConfig,
-    init: CustomerBehavior$ReventlessdevAggregateExampleOrdering.init,
-    apply: CustomerBehavior$ReventlessdevAggregateExampleOrdering.apply,
-    create: CustomerBehavior$ReventlessdevAggregateExampleOrdering.create,
-    execute: CustomerBehavior$ReventlessdevAggregateExampleOrdering.execute
+    resolverConfig: CustomerBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
+    init: CustomerBehavior$ReventlessdevExampleAggregateOrdering.init,
+    apply: CustomerBehavior$ReventlessdevExampleAggregateOrdering.apply,
+    create: CustomerBehavior$ReventlessdevExampleAggregateOrdering.create,
+    execute: CustomerBehavior$ReventlessdevExampleAggregateOrdering.execute
   })(NoEventMappings$Reventless.Make({
-    name: Customer$ReventlessdevAggregateExampleOrdering.name,
+    name: Customer$ReventlessdevExampleAggregateOrdering.name,
     Id: Id$ReventlessSpec.$$String,
-    commandSchema: Customer$ReventlessdevAggregateExampleOrdering.commandSchema
+    commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema
   }));
   let OrderAggregate = Platform.Aggregate.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: Order$ReventlessdevAggregateExampleOrdering.name,
-    commandSchema: Order$ReventlessdevAggregateExampleOrdering.commandSchema,
-    eventSchema: Order$ReventlessdevAggregateExampleOrdering.eventSchema,
-    errorSchema: Order$ReventlessdevAggregateExampleOrdering.errorSchema
+    name: Order$ReventlessdevExampleAggregateOrdering.name,
+    commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema,
+    eventSchema: Order$ReventlessdevExampleAggregateOrdering.eventSchema,
+    errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema
   })({
-    resolverConfig: OrderBehavior$ReventlessdevAggregateExampleOrdering.resolverConfig,
-    init: OrderBehavior$ReventlessdevAggregateExampleOrdering.init,
-    apply: OrderBehavior$ReventlessdevAggregateExampleOrdering.apply,
-    create: OrderBehavior$ReventlessdevAggregateExampleOrdering.create,
-    execute: OrderBehavior$ReventlessdevAggregateExampleOrdering.execute
+    resolverConfig: OrderBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
+    init: OrderBehavior$ReventlessdevExampleAggregateOrdering.init,
+    apply: OrderBehavior$ReventlessdevExampleAggregateOrdering.apply,
+    create: OrderBehavior$ReventlessdevExampleAggregateOrdering.create,
+    execute: OrderBehavior$ReventlessdevExampleAggregateOrdering.execute
   })(NoEventMappings$Reventless.Make({
-    name: Order$ReventlessdevAggregateExampleOrdering.name,
+    name: Order$ReventlessdevExampleAggregateOrdering.name,
     Id: Id$ReventlessSpec.$$String,
-    commandSchema: Order$ReventlessdevAggregateExampleOrdering.commandSchema
+    commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema
   }));
   Projection$Reventless.Mappings.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: CustomersReadModel$ReventlessdevAggregateExampleOrdering.name,
-    stateSchema: CustomersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
+    name: CustomersReadModel$ReventlessdevExampleAggregateOrdering.name,
+    stateSchema: CustomersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
     subIdConfig: undefined
   });
   let CustomerMappings = {
-    mappings: CustomersProjections$ReventlessdevAggregateExampleOrdering.mappings
+    mappings: CustomersProjections$ReventlessdevExampleAggregateOrdering.mappings
   };
   let CustomerReadModel = Platform.ReadModel.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: CustomersReadModel$ReventlessdevAggregateExampleOrdering.name,
-    stateSchema: CustomersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
-    config: CustomersReadModel$ReventlessdevAggregateExampleOrdering.config,
+    name: CustomersReadModel$ReventlessdevExampleAggregateOrdering.name,
+    stateSchema: CustomersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
+    config: CustomersReadModel$ReventlessdevExampleAggregateOrdering.config,
     subIdConfig: undefined
   })(CustomerMappings);
   Projection$Reventless.Mappings.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: OrdersReadModel$ReventlessdevAggregateExampleOrdering.name,
-    stateSchema: OrdersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
+    name: OrdersReadModel$ReventlessdevExampleAggregateOrdering.name,
+    stateSchema: OrdersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
     subIdConfig: undefined
   });
   let OrderMappings = {
-    mappings: OrdersProjections$ReventlessdevAggregateExampleOrdering.mappings
+    mappings: OrdersProjections$ReventlessdevExampleAggregateOrdering.mappings
   };
   let OrderReadModel = Platform.ReadModel.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: OrdersReadModel$ReventlessdevAggregateExampleOrdering.name,
-    stateSchema: OrdersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
-    config: OrdersReadModel$ReventlessdevAggregateExampleOrdering.config,
+    name: OrdersReadModel$ReventlessdevExampleAggregateOrdering.name,
+    stateSchema: OrdersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
+    config: OrdersReadModel$ReventlessdevExampleAggregateOrdering.config,
     subIdConfig: undefined
   })(OrderMappings);
   return {

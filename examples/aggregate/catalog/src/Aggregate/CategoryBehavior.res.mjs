@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
-import * as Category$ReventlessdevAggregateExampleCatalog from "./Category.res.mjs";
+import * as Category$ReventlessdevExampleAggregateCatalog from "./Category.res.mjs";
 
 let stateSchema = S.union([
   S.schema(s => ({
@@ -15,7 +15,7 @@ let stateSchema = S.union([
 let resolverConfig_fields = [];
 
 let resolverConfig = {
-  commandSchema: Category$ReventlessdevAggregateExampleCatalog.commandSchema,
+  commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema,
   fields: resolverConfig_fields
 };
 
@@ -30,7 +30,7 @@ function init(event) {
     case "CategoryArchived" :
       throw {
         RE_EXN_ID: Message$Reventless.InvalidEvent,
-        _1: Message$Reventless.encode(event, Category$ReventlessdevAggregateExampleCatalog.eventSchema),
+        _1: Message$Reventless.encode(event, Category$ReventlessdevExampleAggregateCatalog.eventSchema),
         Error: new Error()
       };
   }

@@ -2,8 +2,8 @@
 
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless/src/Projection.res.mjs";
-import * as Customer$ReventlessdevAggregateExampleOrdering from "../Aggregate/Customer.res.mjs";
-import * as CustomersReadModel$ReventlessdevAggregateExampleOrdering from "./CustomersReadModel.res.mjs";
+import * as Customer$ReventlessdevExampleAggregateOrdering from "../Aggregate/Customer.res.mjs";
+import * as CustomersReadModel$ReventlessdevExampleAggregateOrdering from "./CustomersReadModel.res.mjs";
 
 function map(param) {
   let event = param.event;
@@ -60,12 +60,12 @@ function map(param) {
 
 let CustomerMapping = Projection$Reventless.Mapping.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: Customer$ReventlessdevAggregateExampleOrdering.name,
-  eventSchema: Customer$ReventlessdevAggregateExampleOrdering.eventSchema
+  name: Customer$ReventlessdevExampleAggregateOrdering.name,
+  eventSchema: Customer$ReventlessdevExampleAggregateOrdering.eventSchema
 })({
   Id: Id$ReventlessSpec.$$String,
-  name: CustomersReadModel$ReventlessdevAggregateExampleOrdering.name,
-  stateSchema: CustomersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
+  name: CustomersReadModel$ReventlessdevExampleAggregateOrdering.name,
+  stateSchema: CustomersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
   subIdConfig: undefined
 })({
   map: map
@@ -73,8 +73,8 @@ let CustomerMapping = Projection$Reventless.Mapping.Make({
 
 let Mappings = Projection$Reventless.Mappings.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: CustomersReadModel$ReventlessdevAggregateExampleOrdering.name,
-  stateSchema: CustomersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
+  name: CustomersReadModel$ReventlessdevExampleAggregateOrdering.name,
+  stateSchema: CustomersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
   subIdConfig: undefined
 });
 

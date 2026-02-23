@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
-import * as Order$ReventlessdevAggregateExampleOrdering from "./Order.res.mjs";
+import * as Order$ReventlessdevExampleAggregateOrdering from "./Order.res.mjs";
 
 let stateSchema = S.union([
   S.schema(s => ({
@@ -17,7 +17,7 @@ let stateSchema = S.union([
 let resolverConfig_fields = [];
 
 let resolverConfig = {
-  commandSchema: Order$ReventlessdevAggregateExampleOrdering.commandSchema,
+  commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema,
   fields: resolverConfig_fields
 };
 
@@ -33,7 +33,7 @@ function init(event) {
     case "OrderCancelled" :
       throw {
         RE_EXN_ID: Message$Reventless.InvalidEvent,
-        _1: Message$Reventless.encode(event, Order$ReventlessdevAggregateExampleOrdering.eventSchema),
+        _1: Message$Reventless.encode(event, Order$ReventlessdevExampleAggregateOrdering.eventSchema),
         Error: new Error()
       };
   }

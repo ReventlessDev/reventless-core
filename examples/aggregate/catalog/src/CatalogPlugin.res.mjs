@@ -3,80 +3,80 @@
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless/src/Projection.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/NoEventMappings.res.mjs";
-import * as Product$ReventlessdevAggregateExampleCatalog from "./Aggregate/Product.res.mjs";
-import * as Category$ReventlessdevAggregateExampleCatalog from "./Aggregate/Category.res.mjs";
-import * as ProductBehavior$ReventlessdevAggregateExampleCatalog from "./Aggregate/ProductBehavior.res.mjs";
-import * as CategoryBehavior$ReventlessdevAggregateExampleCatalog from "./Aggregate/CategoryBehavior.res.mjs";
-import * as ProductsReadModel$ReventlessdevAggregateExampleCatalog from "./ReadModel/ProductsReadModel.res.mjs";
-import * as CategoriesReadModel$ReventlessdevAggregateExampleCatalog from "./ReadModel/CategoriesReadModel.res.mjs";
-import * as ProductsProjections$ReventlessdevAggregateExampleCatalog from "./ReadModel/ProductsProjections.res.mjs";
-import * as CategoriesProjections$ReventlessdevAggregateExampleCatalog from "./ReadModel/CategoriesProjections.res.mjs";
+import * as Product$ReventlessdevExampleAggregateCatalog from "./Aggregate/Product.res.mjs";
+import * as Category$ReventlessdevExampleAggregateCatalog from "./Aggregate/Category.res.mjs";
+import * as ProductBehavior$ReventlessdevExampleAggregateCatalog from "./Aggregate/ProductBehavior.res.mjs";
+import * as CategoryBehavior$ReventlessdevExampleAggregateCatalog from "./Aggregate/CategoryBehavior.res.mjs";
+import * as ProductsReadModel$ReventlessdevExampleAggregateCatalog from "./ReadModel/ProductsReadModel.res.mjs";
+import * as CategoriesReadModel$ReventlessdevExampleAggregateCatalog from "./ReadModel/CategoriesReadModel.res.mjs";
+import * as ProductsProjections$ReventlessdevExampleAggregateCatalog from "./ReadModel/ProductsProjections.res.mjs";
+import * as CategoriesProjections$ReventlessdevExampleAggregateCatalog from "./ReadModel/CategoriesProjections.res.mjs";
 
 function Make(Platform) {
   let ProductAggregate = Platform.Aggregate.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: Product$ReventlessdevAggregateExampleCatalog.name,
-    commandSchema: Product$ReventlessdevAggregateExampleCatalog.commandSchema,
-    eventSchema: Product$ReventlessdevAggregateExampleCatalog.eventSchema,
-    errorSchema: Product$ReventlessdevAggregateExampleCatalog.errorSchema
+    name: Product$ReventlessdevExampleAggregateCatalog.name,
+    commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema,
+    eventSchema: Product$ReventlessdevExampleAggregateCatalog.eventSchema,
+    errorSchema: Product$ReventlessdevExampleAggregateCatalog.errorSchema
   })({
-    resolverConfig: ProductBehavior$ReventlessdevAggregateExampleCatalog.resolverConfig,
-    init: ProductBehavior$ReventlessdevAggregateExampleCatalog.init,
-    apply: ProductBehavior$ReventlessdevAggregateExampleCatalog.apply,
-    create: ProductBehavior$ReventlessdevAggregateExampleCatalog.create,
-    execute: ProductBehavior$ReventlessdevAggregateExampleCatalog.execute
+    resolverConfig: ProductBehavior$ReventlessdevExampleAggregateCatalog.resolverConfig,
+    init: ProductBehavior$ReventlessdevExampleAggregateCatalog.init,
+    apply: ProductBehavior$ReventlessdevExampleAggregateCatalog.apply,
+    create: ProductBehavior$ReventlessdevExampleAggregateCatalog.create,
+    execute: ProductBehavior$ReventlessdevExampleAggregateCatalog.execute
   })(NoEventMappings$Reventless.Make({
-    name: Product$ReventlessdevAggregateExampleCatalog.name,
+    name: Product$ReventlessdevExampleAggregateCatalog.name,
     Id: Id$ReventlessSpec.$$String,
-    commandSchema: Product$ReventlessdevAggregateExampleCatalog.commandSchema
+    commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema
   }));
   let CategoryAggregate = Platform.Aggregate.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: Category$ReventlessdevAggregateExampleCatalog.name,
-    commandSchema: Category$ReventlessdevAggregateExampleCatalog.commandSchema,
-    eventSchema: Category$ReventlessdevAggregateExampleCatalog.eventSchema,
-    errorSchema: Category$ReventlessdevAggregateExampleCatalog.errorSchema
+    name: Category$ReventlessdevExampleAggregateCatalog.name,
+    commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema,
+    eventSchema: Category$ReventlessdevExampleAggregateCatalog.eventSchema,
+    errorSchema: Category$ReventlessdevExampleAggregateCatalog.errorSchema
   })({
-    resolverConfig: CategoryBehavior$ReventlessdevAggregateExampleCatalog.resolverConfig,
-    init: CategoryBehavior$ReventlessdevAggregateExampleCatalog.init,
-    apply: CategoryBehavior$ReventlessdevAggregateExampleCatalog.apply,
-    create: CategoryBehavior$ReventlessdevAggregateExampleCatalog.create,
-    execute: CategoryBehavior$ReventlessdevAggregateExampleCatalog.execute
+    resolverConfig: CategoryBehavior$ReventlessdevExampleAggregateCatalog.resolverConfig,
+    init: CategoryBehavior$ReventlessdevExampleAggregateCatalog.init,
+    apply: CategoryBehavior$ReventlessdevExampleAggregateCatalog.apply,
+    create: CategoryBehavior$ReventlessdevExampleAggregateCatalog.create,
+    execute: CategoryBehavior$ReventlessdevExampleAggregateCatalog.execute
   })(NoEventMappings$Reventless.Make({
-    name: Category$ReventlessdevAggregateExampleCatalog.name,
+    name: Category$ReventlessdevExampleAggregateCatalog.name,
     Id: Id$ReventlessSpec.$$String,
-    commandSchema: Category$ReventlessdevAggregateExampleCatalog.commandSchema
+    commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema
   }));
   Projection$Reventless.Mappings.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: ProductsReadModel$ReventlessdevAggregateExampleCatalog.name,
-    stateSchema: ProductsReadModel$ReventlessdevAggregateExampleCatalog.stateSchema,
+    name: ProductsReadModel$ReventlessdevExampleAggregateCatalog.name,
+    stateSchema: ProductsReadModel$ReventlessdevExampleAggregateCatalog.stateSchema,
     subIdConfig: undefined
   });
   let ProductMappings = {
-    mappings: ProductsProjections$ReventlessdevAggregateExampleCatalog.mappings
+    mappings: ProductsProjections$ReventlessdevExampleAggregateCatalog.mappings
   };
   let ProductReadModel = Platform.ReadModel.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: ProductsReadModel$ReventlessdevAggregateExampleCatalog.name,
-    stateSchema: ProductsReadModel$ReventlessdevAggregateExampleCatalog.stateSchema,
-    config: ProductsReadModel$ReventlessdevAggregateExampleCatalog.config,
+    name: ProductsReadModel$ReventlessdevExampleAggregateCatalog.name,
+    stateSchema: ProductsReadModel$ReventlessdevExampleAggregateCatalog.stateSchema,
+    config: ProductsReadModel$ReventlessdevExampleAggregateCatalog.config,
     subIdConfig: undefined
   })(ProductMappings);
   Projection$Reventless.Mappings.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: CategoriesReadModel$ReventlessdevAggregateExampleCatalog.name,
-    stateSchema: CategoriesReadModel$ReventlessdevAggregateExampleCatalog.stateSchema,
+    name: CategoriesReadModel$ReventlessdevExampleAggregateCatalog.name,
+    stateSchema: CategoriesReadModel$ReventlessdevExampleAggregateCatalog.stateSchema,
     subIdConfig: undefined
   });
   let CategoryMappings = {
-    mappings: CategoriesProjections$ReventlessdevAggregateExampleCatalog.mappings
+    mappings: CategoriesProjections$ReventlessdevExampleAggregateCatalog.mappings
   };
   let CategoryReadModel = Platform.ReadModel.Make({
     Id: Id$ReventlessSpec.$$String,
-    name: CategoriesReadModel$ReventlessdevAggregateExampleCatalog.name,
-    stateSchema: CategoriesReadModel$ReventlessdevAggregateExampleCatalog.stateSchema,
-    config: CategoriesReadModel$ReventlessdevAggregateExampleCatalog.config,
+    name: CategoriesReadModel$ReventlessdevExampleAggregateCatalog.name,
+    stateSchema: CategoriesReadModel$ReventlessdevExampleAggregateCatalog.stateSchema,
+    config: CategoriesReadModel$ReventlessdevExampleAggregateCatalog.config,
     subIdConfig: undefined
   })(CategoryMappings);
   return {

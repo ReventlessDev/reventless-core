@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
-import * as Customer$ReventlessdevAggregateExampleOrdering from "./Customer.res.mjs";
+import * as Customer$ReventlessdevExampleAggregateOrdering from "./Customer.res.mjs";
 
 let stateSchema = S.union([
   S.schema(s => ({
@@ -16,7 +16,7 @@ let stateSchema = S.union([
 let resolverConfig_fields = [];
 
 let resolverConfig = {
-  commandSchema: Customer$ReventlessdevAggregateExampleOrdering.commandSchema,
+  commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema,
   fields: resolverConfig_fields
 };
 
@@ -30,7 +30,7 @@ function init(event) {
   }
   throw {
     RE_EXN_ID: Message$Reventless.InvalidEvent,
-    _1: Message$Reventless.encode(event, Customer$ReventlessdevAggregateExampleOrdering.eventSchema),
+    _1: Message$Reventless.encode(event, Customer$ReventlessdevExampleAggregateOrdering.eventSchema),
     Error: new Error()
   };
 }

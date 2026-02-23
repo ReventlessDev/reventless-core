@@ -2,8 +2,8 @@
 
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless/src/Projection.res.mjs";
-import * as Order$ReventlessdevAggregateExampleOrdering from "../Aggregate/Order.res.mjs";
-import * as OrdersReadModel$ReventlessdevAggregateExampleOrdering from "./OrdersReadModel.res.mjs";
+import * as Order$ReventlessdevExampleAggregateOrdering from "../Aggregate/Order.res.mjs";
+import * as OrdersReadModel$ReventlessdevExampleAggregateOrdering from "./OrdersReadModel.res.mjs";
 
 function map(param) {
   let event = param.event;
@@ -47,12 +47,12 @@ function map(param) {
 
 let OrderMapping = Projection$Reventless.Mapping.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: Order$ReventlessdevAggregateExampleOrdering.name,
-  eventSchema: Order$ReventlessdevAggregateExampleOrdering.eventSchema
+  name: Order$ReventlessdevExampleAggregateOrdering.name,
+  eventSchema: Order$ReventlessdevExampleAggregateOrdering.eventSchema
 })({
   Id: Id$ReventlessSpec.$$String,
-  name: OrdersReadModel$ReventlessdevAggregateExampleOrdering.name,
-  stateSchema: OrdersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
+  name: OrdersReadModel$ReventlessdevExampleAggregateOrdering.name,
+  stateSchema: OrdersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
   subIdConfig: undefined
 })({
   map: map
@@ -60,8 +60,8 @@ let OrderMapping = Projection$Reventless.Mapping.Make({
 
 let Mappings = Projection$Reventless.Mappings.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: OrdersReadModel$ReventlessdevAggregateExampleOrdering.name,
-  stateSchema: OrdersReadModel$ReventlessdevAggregateExampleOrdering.stateSchema,
+  name: OrdersReadModel$ReventlessdevExampleAggregateOrdering.name,
+  stateSchema: OrdersReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
   subIdConfig: undefined
 });
 

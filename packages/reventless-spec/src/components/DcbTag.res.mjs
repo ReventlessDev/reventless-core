@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
 let dcbTagId = S.Metadata.Id.make("dcb", "tag");
@@ -56,19 +57,37 @@ function extractTagsFromJson(schema, json) {
       }
     case "union" :
       let jsonDict$1 = Stdlib_JSON.Decode.object(json);
-      if (jsonDict$1 !== undefined) {
-        return Stdlib_Array.reduce(schema.anyOf, [], (acc, variantSchema) => {
-          if (acc.length !== 0) {
-            return acc;
-          } else if (variantSchema.type === "object") {
-            return extractTagsFromProperties(variantSchema.properties, jsonDict$1);
-          } else {
-            return [];
-          }
-        });
-      } else {
+      if (jsonDict$1 === undefined) {
         return [];
       }
+      let jsonTag = Stdlib_Option.flatMap(jsonDict$1["TAG"], j => {
+        if (typeof j === "string") {
+          return j;
+        }
+      });
+      return Stdlib_Array.reduce(schema.anyOf, [], (acc, variantSchema) => {
+        if (acc.length !== 0) {
+          return acc;
+        }
+        if (variantSchema.type !== "object") {
+          return [];
+        }
+        let variantTag = Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+          let match = item.schema;
+          if (match.type !== "string") {
+            return;
+          }
+          let $$const = match.const;
+          if ($$const !== undefined) {
+            return $$const;
+          }
+        });
+        if (Primitive_object.equal(variantTag, jsonTag)) {
+          return extractTagsFromProperties(variantSchema.properties, jsonDict$1);
+        } else {
+          return [];
+        }
+      });
     default:
       return [];
   }

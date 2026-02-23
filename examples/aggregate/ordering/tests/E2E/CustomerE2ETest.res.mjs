@@ -6,8 +6,8 @@ import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
-import * as Customer$ReventlessdevAggregateExampleOrdering from "../../src/Aggregate/Customer.res.mjs";
-import * as CustomerBehavior$ReventlessdevAggregateExampleOrdering from "../../src/Aggregate/CustomerBehavior.res.mjs";
+import * as Customer$ReventlessdevExampleAggregateOrdering from "../../src/Aggregate/Customer.res.mjs";
+import * as CustomerBehavior$ReventlessdevExampleAggregateOrdering from "../../src/Aggregate/CustomerBehavior.res.mjs";
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
@@ -25,20 +25,20 @@ let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
 
 let CustomerAgg = AggregateMaker.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: Customer$ReventlessdevAggregateExampleOrdering.name,
-  commandSchema: Customer$ReventlessdevAggregateExampleOrdering.commandSchema,
-  eventSchema: Customer$ReventlessdevAggregateExampleOrdering.eventSchema,
-  errorSchema: Customer$ReventlessdevAggregateExampleOrdering.errorSchema
+  name: Customer$ReventlessdevExampleAggregateOrdering.name,
+  commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema,
+  eventSchema: Customer$ReventlessdevExampleAggregateOrdering.eventSchema,
+  errorSchema: Customer$ReventlessdevExampleAggregateOrdering.errorSchema
 })({
-  resolverConfig: CustomerBehavior$ReventlessdevAggregateExampleOrdering.resolverConfig,
-  init: CustomerBehavior$ReventlessdevAggregateExampleOrdering.init,
-  apply: CustomerBehavior$ReventlessdevAggregateExampleOrdering.apply,
-  create: CustomerBehavior$ReventlessdevAggregateExampleOrdering.create,
-  execute: CustomerBehavior$ReventlessdevAggregateExampleOrdering.execute
+  resolverConfig: CustomerBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
+  init: CustomerBehavior$ReventlessdevExampleAggregateOrdering.init,
+  apply: CustomerBehavior$ReventlessdevExampleAggregateOrdering.apply,
+  create: CustomerBehavior$ReventlessdevExampleAggregateOrdering.create,
+  execute: CustomerBehavior$ReventlessdevExampleAggregateOrdering.execute
 })(NoEventMappings$Reventless.Make({
-  name: Customer$ReventlessdevAggregateExampleOrdering.name,
+  name: Customer$ReventlessdevExampleAggregateOrdering.name,
   Id: Id$ReventlessSpec.$$String,
-  commandSchema: Customer$ReventlessdevAggregateExampleOrdering.commandSchema
+  commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema
 }));
 
 let agg = CustomerAgg.make(undefined, undefined);
@@ -63,7 +63,7 @@ describe("Customer E2E:", () => {
       customerId: "cust-1",
       email: "alice@example.com",
       address: "123 Main St"
-    }, Customer$ReventlessdevAggregateExampleOrdering.commandSchema);
+    }, Customer$ReventlessdevExampleAggregateOrdering.commandSchema);
     await ops.publishJsons([{
         id: "cust-1",
         meta: testMeta,
@@ -77,7 +77,7 @@ describe("Customer E2E:", () => {
       TAG: "UpdateEmail",
       customerId: "cust-1",
       email: "alice2@example.com"
-    }, Customer$ReventlessdevAggregateExampleOrdering.commandSchema);
+    }, Customer$ReventlessdevExampleAggregateOrdering.commandSchema);
     await ops.publishJsons([{
         id: "cust-1",
         meta: testMeta,
@@ -92,7 +92,7 @@ describe("Customer E2E:", () => {
       customerId: "cust-1",
       email: "duplicate@example.com",
       address: "Dup"
-    }, Customer$ReventlessdevAggregateExampleOrdering.commandSchema);
+    }, Customer$ReventlessdevExampleAggregateOrdering.commandSchema);
     await ops.publishJsons([{
         id: "cust-1",
         meta: testMeta,

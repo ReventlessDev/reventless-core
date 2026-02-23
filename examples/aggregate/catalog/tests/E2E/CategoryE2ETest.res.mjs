@@ -6,8 +6,8 @@ import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
-import * as Category$ReventlessdevAggregateExampleCatalog from "../../src/Aggregate/Category.res.mjs";
-import * as CategoryBehavior$ReventlessdevAggregateExampleCatalog from "../../src/Aggregate/CategoryBehavior.res.mjs";
+import * as Category$ReventlessdevExampleAggregateCatalog from "../../src/Aggregate/Category.res.mjs";
+import * as CategoryBehavior$ReventlessdevExampleAggregateCatalog from "../../src/Aggregate/CategoryBehavior.res.mjs";
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
@@ -25,20 +25,20 @@ let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
 
 let CategoryAgg = AggregateMaker.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: Category$ReventlessdevAggregateExampleCatalog.name,
-  commandSchema: Category$ReventlessdevAggregateExampleCatalog.commandSchema,
-  eventSchema: Category$ReventlessdevAggregateExampleCatalog.eventSchema,
-  errorSchema: Category$ReventlessdevAggregateExampleCatalog.errorSchema
+  name: Category$ReventlessdevExampleAggregateCatalog.name,
+  commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema,
+  eventSchema: Category$ReventlessdevExampleAggregateCatalog.eventSchema,
+  errorSchema: Category$ReventlessdevExampleAggregateCatalog.errorSchema
 })({
-  resolverConfig: CategoryBehavior$ReventlessdevAggregateExampleCatalog.resolverConfig,
-  init: CategoryBehavior$ReventlessdevAggregateExampleCatalog.init,
-  apply: CategoryBehavior$ReventlessdevAggregateExampleCatalog.apply,
-  create: CategoryBehavior$ReventlessdevAggregateExampleCatalog.create,
-  execute: CategoryBehavior$ReventlessdevAggregateExampleCatalog.execute
+  resolverConfig: CategoryBehavior$ReventlessdevExampleAggregateCatalog.resolverConfig,
+  init: CategoryBehavior$ReventlessdevExampleAggregateCatalog.init,
+  apply: CategoryBehavior$ReventlessdevExampleAggregateCatalog.apply,
+  create: CategoryBehavior$ReventlessdevExampleAggregateCatalog.create,
+  execute: CategoryBehavior$ReventlessdevExampleAggregateCatalog.execute
 })(NoEventMappings$Reventless.Make({
-  name: Category$ReventlessdevAggregateExampleCatalog.name,
+  name: Category$ReventlessdevExampleAggregateCatalog.name,
   Id: Id$ReventlessSpec.$$String,
-  commandSchema: Category$ReventlessdevAggregateExampleCatalog.commandSchema
+  commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema
 }));
 
 let agg = CategoryAgg.make(undefined, undefined);
@@ -62,7 +62,7 @@ describe("Category E2E:", () => {
       TAG: "AddCategory",
       categoryId: "cat-1",
       name: "Electronics"
-    }, Category$ReventlessdevAggregateExampleCatalog.commandSchema);
+    }, Category$ReventlessdevExampleAggregateCatalog.commandSchema);
     await ops.publishJsons([{
         id: "cat-1",
         meta: testMeta,
@@ -76,7 +76,7 @@ describe("Category E2E:", () => {
       TAG: "RenameCategory",
       categoryId: "cat-1",
       name: "Consumer Electronics"
-    }, Category$ReventlessdevAggregateExampleCatalog.commandSchema);
+    }, Category$ReventlessdevExampleAggregateCatalog.commandSchema);
     await ops.publishJsons([{
         id: "cat-1",
         meta: testMeta,
@@ -90,7 +90,7 @@ describe("Category E2E:", () => {
       TAG: "AddCategory",
       categoryId: "cat-1",
       name: "Duplicate"
-    }, Category$ReventlessdevAggregateExampleCatalog.commandSchema);
+    }, Category$ReventlessdevExampleAggregateCatalog.commandSchema);
     await ops.publishJsons([{
         id: "cat-1",
         meta: testMeta,

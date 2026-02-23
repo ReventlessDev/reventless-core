@@ -6,8 +6,8 @@ import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
-import * as Order$ReventlessdevAggregateExampleOrdering from "../../src/Aggregate/Order.res.mjs";
-import * as OrderBehavior$ReventlessdevAggregateExampleOrdering from "../../src/Aggregate/OrderBehavior.res.mjs";
+import * as Order$ReventlessdevExampleAggregateOrdering from "../../src/Aggregate/Order.res.mjs";
+import * as OrderBehavior$ReventlessdevExampleAggregateOrdering from "../../src/Aggregate/OrderBehavior.res.mjs";
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
@@ -25,20 +25,20 @@ let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
 
 let OrderAgg = AggregateMaker.Make({
   Id: Id$ReventlessSpec.$$String,
-  name: Order$ReventlessdevAggregateExampleOrdering.name,
-  commandSchema: Order$ReventlessdevAggregateExampleOrdering.commandSchema,
-  eventSchema: Order$ReventlessdevAggregateExampleOrdering.eventSchema,
-  errorSchema: Order$ReventlessdevAggregateExampleOrdering.errorSchema
+  name: Order$ReventlessdevExampleAggregateOrdering.name,
+  commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema,
+  eventSchema: Order$ReventlessdevExampleAggregateOrdering.eventSchema,
+  errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema
 })({
-  resolverConfig: OrderBehavior$ReventlessdevAggregateExampleOrdering.resolverConfig,
-  init: OrderBehavior$ReventlessdevAggregateExampleOrdering.init,
-  apply: OrderBehavior$ReventlessdevAggregateExampleOrdering.apply,
-  create: OrderBehavior$ReventlessdevAggregateExampleOrdering.create,
-  execute: OrderBehavior$ReventlessdevAggregateExampleOrdering.execute
+  resolverConfig: OrderBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
+  init: OrderBehavior$ReventlessdevExampleAggregateOrdering.init,
+  apply: OrderBehavior$ReventlessdevExampleAggregateOrdering.apply,
+  create: OrderBehavior$ReventlessdevExampleAggregateOrdering.create,
+  execute: OrderBehavior$ReventlessdevExampleAggregateOrdering.execute
 })(NoEventMappings$Reventless.Make({
-  name: Order$ReventlessdevAggregateExampleOrdering.name,
+  name: Order$ReventlessdevExampleAggregateOrdering.name,
   Id: Id$ReventlessSpec.$$String,
-  commandSchema: Order$ReventlessdevAggregateExampleOrdering.commandSchema
+  commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema
 }));
 
 let agg = OrderAgg.make(undefined, undefined);
@@ -63,7 +63,7 @@ describe("Order E2E:", () => {
       orderId: "ord-1",
       customerId: "cust-1",
       productIds: ["prod-1"]
-    }, Order$ReventlessdevAggregateExampleOrdering.commandSchema);
+    }, Order$ReventlessdevExampleAggregateOrdering.commandSchema);
     await ops.publishJsons([{
         id: "ord-1",
         meta: testMeta,
@@ -76,7 +76,7 @@ describe("Order E2E:", () => {
     let commandJson = Message$Reventless.encode({
       TAG: "ShipOrder",
       orderId: "ord-1"
-    }, Order$ReventlessdevAggregateExampleOrdering.commandSchema);
+    }, Order$ReventlessdevExampleAggregateOrdering.commandSchema);
     await ops.publishJsons([{
         id: "ord-1",
         meta: testMeta,
@@ -91,7 +91,7 @@ describe("Order E2E:", () => {
       orderId: "ord-1",
       customerId: "cust-1",
       productIds: ["prod-1"]
-    }, Order$ReventlessdevAggregateExampleOrdering.commandSchema);
+    }, Order$ReventlessdevExampleAggregateOrdering.commandSchema);
     await ops.publishJsons([{
         id: "ord-1",
         meta: testMeta,
