@@ -51,3 +51,18 @@ The same domain is implemented twice — once using each core Reventless plugin 
 | [DCB-Based](./dcb-based) | Single shared event log with tag-filtered reads | Per command (optimistic) | Cross-entity consistency, simpler infrastructure |
 
 Both implementations cover the **Catalog** Plugin and serve as a concrete reference for comparing the two approaches side by side.
+
+---
+
+## Comparing the Two Approaches
+
+| Aspect | Aggregate-Based | DCB-Based |
+|---|---|---|
+| Event storage | One log per aggregate instance | Single shared log per Plugin |
+| Consistency boundary | Per aggregate instance (sequential) | Per command (optimistic concurrency) |
+| State for decisions | Full aggregate state | Minimal `decisionModel` per slice |
+| Cross-entity consistency | Not directly supported | Supported — slices can read across items |
+| Read model wiring | Separate projection mapping modules | `project` function inline in the slice |
+| Infrastructure footprint | More event log tables | Fewer tables, more events per table |
+
+Choose the aggregate-based approach when entity lifecycles are independent and you want the simplest possible consistency model. Choose DCB when you need consistency across multiple entities in the same command, or when you want to avoid the overhead of per-instance event streams.

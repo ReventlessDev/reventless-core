@@ -28,7 +28,7 @@ A product listing with a name, description, and price. Product events are tagged
 
 | State View Slices | Events | Read Models |
 |---|---|---|
-| `ProductView` | `ProductAdded`, `ProductNameUpdated`, `ProductDescriptionUpdated`, `ProductPriceUpdated` | `Products` |
+| `ProductsView` | `ProductAdded`, `ProductNameUpdated`, `ProductDescriptionUpdated`, `ProductPriceUpdated` | `Products` |
 
 ### Chapter: Category
 
@@ -63,7 +63,7 @@ A registered buyer with contact details and account status. Customer events are 
 
 | State View Slices | Events | Read Models |
 |---|---|---|
-| `CustomerView` | `CustomerRegistered`, `EmailUpdated`, `AddressUpdated`, `CustomerDeactivated` | `Customers` |
+| `CustomersView` | `CustomerRegistered`, `EmailUpdated`, `AddressUpdated`, `CustomerDeactivated` | `Customers` |
 
 ### Chapter: Order
 
@@ -77,7 +77,7 @@ A confirmed purchase referencing product IDs and a customer. Order events are ta
 
 | State View Slices | Events | Read Models |
 |---|---|---|
-| `OrderView` | `OrderPlaced`, `OrderShipped`, `OrderCancelled` | `Orders` |
+| `OrdersView` | `OrderPlaced`, `OrderShipped`, `OrderCancelled` | `Orders` |
 
 ---
 
@@ -89,23 +89,35 @@ As with the aggregate-based approach, `Order` references products by `ProductId`
 
 ## Implementation
 
-The following walkthrough uses the **ItemCatalog** example from `examples/dcb/`, covering create, rename, and archive operations for catalog items.
+The following walkthrough uses the **Catalog** Plugin from `examples/dcb/catalog/` — the `Product` chapter with its StateChangeSlices, StateViewSlice, and the `CatalogPlugin` that wires everything together.
 
 ### 1. DCB Event Log Spec
 
-The event log spec defines all events in the Plugin and marks which fields are **DCB tags** — indexed values the framework uses to filter events per item.
+The event log spec defines **all events in the Plugin** — from every chapter — in a single shared type. Tag fields are annotated with `@s.matches(Reventless.DcbTag.string)` so the framework can index them and filter events by entity when processing a command.
 
 ```rescript
-// ItemEventLog.res
+// CatalogEventLog.res
 
 @schema
 type event =
-  | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
-  | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
-  | ItemArchived({itemId: @s.matches(Reventless.DcbTag.string) string})
+  | ProductAdded({
+      productId: @s.matches(Reventless.DcbTag.string) string,
+      name: string,
+      description: string,
+      price: float,
+    })
+  | ProductNameUpdated({productId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | ProductDescriptionUpdated({
+      productId: @s.matches(Reventless.DcbTag.string) string,
+      description: string,
+    })
+  | ProductPriceUpdated({productId: @s.matches(Reventless.DcbTag.string) string, price: float})
+  | CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | CategoryRenamed({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | CategoryArchived({categoryId: @s.matches(Reventless.DcbTag.string) string})
 ```
 
-The `@s.matches(Reventless.DcbTag.string)` annotation on `itemId` tells the framework to index that field as a tag. When a command handler requests events for a given `itemId`, only the matching subset is loaded from the shared log — even though all items share the same physical storage.
+All events from `Product` and `Category` live in the same type. Each entity uses a different tag field name (`productId` vs `categoryId`), so the framework can filter precisely per entity.
 
 ### 2. StateChangeSlices
 
@@ -114,196 +126,169 @@ Each command is handled by a **StateChangeSlice** — a self-contained module th
 - **`command`** — the command type it handles
 - **`error`** — the business errors it can return
 - **`decisionModel`** — the minimal state needed to validate the command
-- **`reduce`** — how to fold events into the decision model
+- **`initialDecisionModel`** — the starting value before any events are replayed
+- **`reduce`** — how to fold relevant events into the decision model
 - **`decide`** — the business rule: given the current model, accept or reject the command
 
-#### CreateItem
+#### AddProduct — creation
 
-Rejects duplicate creation via optimistic concurrency: if `ItemCreated` is already in the log for this `itemId`, the command fails.
+`AddProduct` creates a new product. The decision model only needs to know whether a product with this `productId` already exists. If it does, the command is rejected.
 
 ```rescript
-// CreateItem.res
+// AddProduct.res
 
-let name = "CreateItem"
-module DcbEventLogSpec = ItemEventLog
+open CatalogEventLog
+
+let name = "AddProduct"
+module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | CreateItem({
-      itemId: @s.matches(Reventless.DcbTag.string) string,
+  | AddProduct({
+      productId: @s.matches(Reventless.DcbTag.string) string,
       name: string,
+      description: string,
+      price: float,
     })
 
 @schema
-type error = | ItemAlreadyExists
+type error = | ProductAlreadyExists
 
-type decisionModel = {exists: bool, archived: bool}
+type decisionModel = {exists: bool}
 
-let initialDecisionModel = {exists: false, archived: false}
+let initialDecisionModel = {exists: false}
 
 let reduce = (model, event) =>
   switch event {
-  | ItemEventLog.ItemCreated(_) => {exists: true, archived: false}
-  | ItemEventLog.ItemArchived(_) => {...model, archived: true}
+  | ProductAdded(_) => {exists: true}
   | _ => model
   }
 
 let decide = (model, command) =>
   switch command {
-  | CreateItem({itemId, name}) =>
-    if model.exists { Error(ItemAlreadyExists) }
-    else { Ok([ItemEventLog.ItemCreated({itemId, name})]) }
+  | AddProduct({productId, name, description, price}) =>
+    if model.exists {
+      Error(ProductAlreadyExists)
+    } else {
+      Ok([ProductAdded({productId, name, description, price})])
+    }
   }
 ```
 
-#### RenameItem
+The `reduce` function only reacts to `ProductAdded` — any other event in the shared log is passed through unchanged. The `decide` function checks the single `exists` flag and either returns an error or emits a `ProductAdded` event.
 
-Requires the item to exist and not be archived before accepting the rename.
+#### UpdateProductPrice — update with idempotency
+
+`UpdateProductPrice` modifies an existing product's price. The decision model tracks both existence and the current price, allowing the handler to reject unknown products and skip writes when the price has not changed.
 
 ```rescript
-// RenameItem.res
+// UpdateProductPrice.res
 
-let name = "RenameItem"
-module DcbEventLogSpec = ItemEventLog
+open CatalogEventLog
+
+let name = "UpdateProductPrice"
+module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | RenameItem({
-      itemId: @s.matches(Reventless.DcbTag.string) string,
-      newName: string,
-    })
+  | UpdateProductPrice({productId: @s.matches(Reventless.DcbTag.string) string, price: float})
 
 @schema
-type error =
-  | ItemNotFound
-  | ItemAlreadyArchived
+type error = | ProductNotFound
 
-type decisionModel = {exists: bool, archived: bool}
+type decisionModel = {exists: bool, currentPrice: float}
 
-let initialDecisionModel = {exists: false, archived: false}
+let initialDecisionModel = {exists: false, currentPrice: 0.0}
 
 let reduce = (model, event) =>
   switch event {
-  | ItemEventLog.ItemCreated(_) => {exists: true, archived: false}
-  | ItemEventLog.ItemArchived(_) => {...model, archived: true}
+  | ProductAdded({price}) => {exists: true, currentPrice: price}
+  | ProductPriceUpdated({price}) => {...model, currentPrice: price}
   | _ => model
   }
 
 let decide = (model, command) =>
   switch command {
-  | RenameItem({itemId, newName}) =>
-    if !model.exists    { Error(ItemNotFound) }
-    else if model.archived { Error(ItemAlreadyArchived) }
-    else { Ok([ItemEventLog.ItemRenamed({itemId, newName})]) }
+  | UpdateProductPrice({productId, price}) =>
+    if !model.exists {
+      Error(ProductNotFound)
+    } else if price == model.currentPrice {
+      Ok([]) // idempotent — price unchanged
+    } else {
+      Ok([ProductPriceUpdated({productId, price})])
+    }
   }
 ```
 
-#### ArchiveItem
-
-Archives an item. Idempotent — if the item is already archived the command succeeds with no new events.
-
-```rescript
-// ArchiveItem.res
-
-let name = "ArchiveItem"
-module DcbEventLogSpec = ItemEventLog
-
-@schema
-type command = | ArchiveItem({itemId: @s.matches(Reventless.DcbTag.string) string})
-
-@schema
-type error = | ItemNotFound
-
-type decisionModel = {exists: bool, archived: bool}
-
-let initialDecisionModel = {exists: false, archived: false}
-
-let reduce = (model, event) =>
-  switch event {
-  | ItemEventLog.ItemCreated(_) => {exists: true, archived: false}
-  | ItemEventLog.ItemArchived(_) => {...model, archived: true}
-  | _ => model
-  }
-
-let decide = (model, command) =>
-  switch command {
-  | ArchiveItem({itemId}) =>
-    if !model.exists   { Error(ItemNotFound) }
-    else if model.archived { Ok([]) } // idempotent — already archived
-    else { Ok([ItemEventLog.ItemArchived({itemId})]) }
-  }
-```
+The `reduce` function reacts to both `ProductAdded` (to capture the initial price) and `ProductPriceUpdated` (to track subsequent changes). This is the pattern for update slices that need to compare against the current state. Returning `Ok([])` when the price is unchanged makes the command idempotent — safe to retry without side effects.
 
 ### 3. StateViewSlice
 
-A **StateViewSlice** builds the query-side projection. It consumes events from the shared log and emits `Set` instructions that update the read store keyed by `itemId`.
+A **StateViewSlice** builds the query-side projection. It consumes events from the shared log and emits `Set` or `Update` instructions that maintain the read store.
+
+There are two projection actions:
+
+- **`Set(id, state)`** — creates or fully replaces the stored state for `id`
+- **`Update(id, state => state)`** — applies a partial update to the existing state for `id`
 
 ```rescript
-// ItemView.res
+// ProductsView.res
 
-let name = "ItemView"
-module DcbEventLogSpec = ItemEventLog
+open ReventlessSpec.Projection
+open CatalogEventLog
+
+let name = "ProductsView"
+module DcbEventLogSpec = CatalogEventLog
 
 @schema
-type event = ItemEventLog.event
+type event = CatalogEventLog.event
 
 @schema
-type state = {itemId: string, name: string, archived: bool}
+type state = {productId: string, name: string, description: string, price: float}
 
-let project = (existingState, event) =>
+let project = (_, event) =>
   switch event {
-  | ItemEventLog.ItemCreated({itemId, name}) =>
-      [ReventlessSpec.Projection.Set(itemId, {itemId, name, archived: false})]
-  | ItemEventLog.ItemRenamed({itemId, newName}) =>
-      switch existingState {
-      | Some(state) =>
-        [ReventlessSpec.Projection.Set(itemId, {...state, name: newName})]
-      | None => []
-      }
-  | ItemEventLog.ItemArchived({itemId}) =>
-      switch existingState {
-      | Some(state) =>
-        [ReventlessSpec.Projection.Set(itemId, {...state, archived: true})]
-      | None => []
-      }
+  | ProductAdded({productId, name, description, price}) => [
+      Set(productId, {productId, name, description, price}),
+    ]
+  | ProductNameUpdated({productId, name}) => [Update(productId, state => {...state, name})]
+  | ProductDescriptionUpdated({productId, description}) => [
+      Update(productId, state => {...state, description}),
+    ]
+  | ProductPriceUpdated({productId, price}) => [Update(productId, state => {...state, price})]
+  | _ => [] // Category events are not handled by this view
   }
 ```
 
-Unlike the aggregate-based read model, the `project` function receives the current stored state (`existingState`) directly — there is no separate event-to-read-model mapping layer.
+`ProductAdded` uses `Set` because it establishes the full initial state for a new product. All subsequent events use `Update` because they only modify one field of an already-stored record — there is no need to re-specify fields that have not changed.
+
+Unlike the aggregate-based read model, the projection logic lives directly in the slice — no separate mapping module is needed.
 
 ### 4. Plugin
 
-The plugin composes the DCB event log, all StateChangeSlices, and the StateViewSlice using any `Platform` implementation:
+The plugin composes the DCB event log, all StateChangeSlices, and all StateViewSlices using any `Platform` implementation:
 
 ```rescript
-// ItemCatalogPlugin.res
+// CatalogPlugin.res
 
 module Make = (Platform: ReventlessSpec.Platform.T) => {
-  module ItemEventLogMaker = Platform.DcbEventLog.Make(ItemEventLog)
+  module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
 
-  module CreateItemSlice  = Platform.StateChangeSlice.Make(CreateItem)
-  module RenameItemSlice  = Platform.StateChangeSlice.Make(RenameItem)
-  module ArchiveItemSlice = Platform.StateChangeSlice.Make(ArchiveItem)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
+  module UpdateProductNameSlice = Platform.StateChangeSlice.Make(UpdateProductName)
+  module UpdateProductDescriptionSlice = Platform.StateChangeSlice.Make(UpdateProductDescription)
+  module UpdateProductPriceSlice = Platform.StateChangeSlice.Make(UpdateProductPrice)
 
-  module ItemViewSlice = Platform.StateViewSlice.Make(ItemView)
+  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
 
-  module DcbSpec = ItemEventLog
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory)
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory)
+
+  module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView)
+
+  module DcbSpec = CatalogEventLog
 }
 ```
 
-At deploy time, the plugin is instantiated with a concrete platform — in-memory for tests, AWS for production. The shared event log and all slices are wired together by passing the same `dcbEventLog` instance to each slice.
-
----
-
-## Comparing the Two Approaches
-
-| Aspect | Aggregate-Based | DCB-Based |
-|---|---|---|
-| Event storage | One log per aggregate instance | Single shared log per Plugin |
-| Consistency boundary | Per aggregate instance (sequential) | Per command (optimistic concurrency) |
-| State for decisions | Full aggregate state | Minimal `decisionModel` per slice |
-| Cross-entity consistency | Not directly supported | Supported — slices can read across items |
-| Read model wiring | Separate projection mapping modules | `project` function inline in the slice |
-| Infrastructure footprint | More event log tables | Fewer tables, more events per table |
-
-Choose the aggregate-based approach when entity lifecycles are independent and you want the simplest possible consistency model. Choose DCB when you need consistency across multiple entities in the same command, or when you want to avoid the overhead of per-instance event streams.
+The plugin is a pure composition root — no logic lives here. Swapping `Platform` is the only change needed to move from an in-memory test environment to a full AWS deployment.
