@@ -186,7 +186,7 @@ const config = {
             sidebarId: "onlineShopSidebar",
             docsPluginId: "online-shop",
             position: "left",
-            label: "Online Shop Example",
+            label: "Example",
           },
           {
             href: "https://github.com/ReventlessDev/reventless-core",

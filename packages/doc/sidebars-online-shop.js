@@ -4,6 +4,8 @@
 const sidebars = {
   onlineShopSidebar: [
     'get-started',
+    'aggregate-based',
+    'dcb-based',
     {
       type: 'category',
       label: 'Catalog',
