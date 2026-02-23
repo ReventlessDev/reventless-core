@@ -13,33 +13,77 @@ A command handler reads only the events it cares about (filtered by tag), makes 
 
 ## Plugin 1: Catalog
 
-Manages the product catalogue — what is available for sale and how it is organized.
+Manages the product catalogue — what is available for sale and how it is organized. In the DCB approach, all catalog events live in a single shared event log. Each entity is identified by a tag field embedded in its event payloads, which the framework uses to filter events for that specific entity when processing a command.
 
-**Catalog Items** have a name and a lifecycle (active or archived). Instead of separate `Product` and `Category` aggregates, the DCB implementation unifies item management in a single shared event log. Each item is identified by its `itemId` tag, which the framework uses to filter events for a specific item when evaluating a command.
+### Chapter: Product
 
-| Operations | Events |
-|---|---|
-| Create an item | `ItemCreated` |
-| Rename an item | `ItemRenamed` |
-| Archive an item | `ItemArchived` |
+A product listing with a name, description, and price. Product events are tagged by `productId`.
 
-## Plugin 2: Ordering
+| State Change Slices | Commands | Events |
+|---|---|---|
+| `AddProduct` | `AddProduct` | `ProductAdded` |
+| `UpdateProductName` | `UpdateProductName` | `ProductNameUpdated` |
+| `UpdateProductDescription` | `UpdateProductDescription` | `ProductDescriptionUpdated` |
+| `UpdateProductPrice` | `UpdateProductPrice` | `ProductPriceUpdated` |
 
-Handles the purchase flow — who is buying and what they ordered. The same shared-log approach applies: customer and order events live in one log, tagged by `customerId` or `orderId` respectively.
+| State View Slices | Events | Read Models |
+|---|---|---|
+| `ProductView` | `ProductAdded`, `ProductNameUpdated`, `ProductDescriptionUpdated`, `ProductPriceUpdated` | `Products` |
 
-| Operations | Events |
-|---|---|
-| Register a customer | `CustomerRegistered` |
-| Update customer details | `EmailUpdated`, `AddressUpdated` |
-| Deactivate a customer | `CustomerDeactivated` |
-| Place an order | `OrderPlaced` |
-| Ship or cancel an order | `OrderShipped`, `OrderCancelled` |
+### Chapter: Category
+
+A named grouping of products (e.g. "Books", "Electronics"). Category events are tagged by `categoryId`. `Product` entities reference a `categoryId` by value.
+
+| State Change Slices | Commands | Events |
+|---|---|---|
+| `AddCategory` | `AddCategory` | `CategoryAdded` |
+| `RenameCategory` | `RenameCategory` | `CategoryRenamed` |
+| `ArchiveCategory` | `ArchiveCategory` | `CategoryArchived` |
+
+| State View Slices | Events | Read Models |
+|---|---|---|
+| `CategoryView` | `CategoryAdded`, `CategoryRenamed`, `CategoryArchived` | `Categories` |
 
 ---
 
-## Cross-Context Integration
+## Plugin 2: Ordering
 
-As with the aggregate-based approach, `Order` references products by `ProductId` — integration by ID, not by object. The shared event log does not change this boundary: each Plugin still has its own DCB event log; they communicate only through IDs.
+Handles the purchase flow — who is buying and what they ordered. Customer and order events share a single event log, with each entity identified by its own tag.
+
+### Chapter: Customer
+
+A registered buyer with contact details and account status. Customer events are tagged by `customerId`.
+
+| State Change Slices | Commands | Events |
+|---|---|---|
+| `RegisterCustomer` | `RegisterCustomer` | `CustomerRegistered` |
+| `UpdateEmail` | `UpdateEmail` | `EmailUpdated` |
+| `UpdateAddress` | `UpdateAddress` | `AddressUpdated` |
+| `DeactivateCustomer` | `DeactivateCustomer` | `CustomerDeactivated` |
+
+| State View Slices | Events | Read Models |
+|---|---|---|
+| `CustomerView` | `CustomerRegistered`, `EmailUpdated`, `AddressUpdated`, `CustomerDeactivated` | `Customers` |
+
+### Chapter: Order
+
+A confirmed purchase referencing product IDs and a customer. Order events are tagged by `orderId`.
+
+| State Change Slices | Commands | Events |
+|---|---|---|
+| `PlaceOrder` | `PlaceOrder` | `OrderPlaced` |
+| `ShipOrder` | `ShipOrder` | `OrderShipped` |
+| `CancelOrder` | `CancelOrder` | `OrderCancelled` |
+
+| State View Slices | Events | Read Models |
+|---|---|---|
+| `OrderView` | `OrderPlaced`, `OrderShipped`, `OrderCancelled` | `Orders` |
+
+---
+
+## Cross-Plugin Integration
+
+As with the aggregate-based approach, `Order` references products by `ProductId` — integration by ID, not by object. Each Plugin still has its own DCB event log; they communicate only through IDs.
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/aggregate-example-ordering",
-  "version": "1.0.0-alpha.0",
+  "version": "3.0.0-alpha.0",
   "description": "Online Shop example — Ordering bounded context (Customer & Order aggregates)",
   "private": true,
   "license": "MIT",

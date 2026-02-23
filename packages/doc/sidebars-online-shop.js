@@ -4,8 +4,16 @@
 const sidebars = {
   onlineShopSidebar: [
     'get-started',
-    'aggregate-based',
-    'dcb-based',
+    {
+      type: 'doc',
+      id: 'aggregate-based',
+      label: 'Aggregate based plugin',
+    },
+    {
+      type: 'doc',
+      id: 'dcb-based',
+      label: 'DCB based plugin',
+    },
     {
       type: 'category',
       label: 'Catalog',

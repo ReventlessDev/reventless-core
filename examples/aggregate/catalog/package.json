@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/aggregate-example-catalog",
-  "version": "1.0.0-alpha.0",
+  "version": "3.0.0-alpha.0",
   "description": "Online Shop example — Catalog bounded context (Product & Category aggregates)",
   "private": true,
   "license": "MIT",
