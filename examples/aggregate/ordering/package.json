@@ -1,5 +1,5 @@
 {
-  "name": "@reventlessdev/aggregate-example-ordering",
+  "name": "@reventlessdev/example-aggregate-ordering",
   "version": "3.0.0-alpha.0",
   "description": "Online Shop example — Ordering bounded context (Customer & Order aggregates)",
   "private": true,
