@@ -1,5 +1,6 @@
 // Pure unit tests for ProductsView StateViewSlice projection.
 
+open ReventlessSpec
 open Jest
 open Expect
 
@@ -14,7 +15,7 @@ let baseProduct: ProductsView.state = {
 let applyFirstUpdate = (actions, baseState) =>
   actions->Array.reduce(baseState, (s, action) =>
     switch action {
-    | ReventlessSpec.Projection.Update(_, fn) => fn(s)
+    | Projection.Update(_, fn) => fn(s)
     | _ => s
     })
 
@@ -31,7 +32,7 @@ describe("ProductsView.project:", () => {
         }),
       ),
     )->toEqual([
-      ReventlessSpec.Projection.Set(
+      Projection.Set(
         "p1",
         {ProductsView.productId: "p1", name: "Laptop", description: "A laptop", price: 999.99},
       ),

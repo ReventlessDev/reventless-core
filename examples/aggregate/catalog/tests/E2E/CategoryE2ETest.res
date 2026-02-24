@@ -1,7 +1,7 @@
 // End-to-end test for the Category aggregate using the in-memory platform.
 
-open Reventless.AsyncTest
-open Reventless.AsyncTest.Expect
+open ReventlessInMemory.AsyncTest
+open ReventlessInMemory.AsyncTest.Expect
 open ReventlessSpec
 
 module Bus = ReventlessInMemory.InMemory_Bus.Make()
@@ -18,7 +18,7 @@ module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module CategoryAgg = AggregateMaker.Make(
   Category,
   CategoryBehavior,
-  Reventless.NoEventMappings.Make(Category),
+  ReventlessInMemory.NoEventMappings.Make(Category),
 )
 
 let agg = CategoryAgg.make(~api=())
@@ -40,7 +40,7 @@ describe("Category E2E:", () => {
   testPromise("AddCategory command publishes 1 event to the event topic", async () => {
     let ops = await agg->CategoryAgg.operations->ReventlessInMemory.TestRunner.resolve
     let commandJson =
-      Category.AddCategory({categoryId: "cat-1", name: "Electronics"})->Reventless.Message.encode(
+      Category.AddCategory({categoryId: "cat-1", name: "Electronics"})->Message.encode(
         Category.commandSchema,
       )
     await ops.publishJsons([{Message.id: "cat-1", meta: testMeta, commandJson}])
@@ -53,7 +53,7 @@ describe("Category E2E:", () => {
       Category.RenameCategory({
         categoryId: "cat-1",
         name: "Consumer Electronics",
-      })->Reventless.Message.encode(Category.commandSchema)
+      })->Message.encode(Category.commandSchema)
     await ops.publishJsons([{Message.id: "cat-1", meta: testMeta, commandJson}])
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -63,7 +63,7 @@ describe("Category E2E:", () => {
     async () => {
       let ops = await agg->CategoryAgg.operations->ReventlessInMemory.TestRunner.resolve
       let commandJson =
-        Category.AddCategory({categoryId: "cat-1", name: "Duplicate"})->Reventless.Message.encode(
+        Category.AddCategory({categoryId: "cat-1", name: "Duplicate"})->Message.encode(
           Category.commandSchema,
         )
       await ops.publishJsons([{Message.id: "cat-1", meta: testMeta, commandJson}])

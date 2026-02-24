@@ -1,7 +1,8 @@
 // Categories read model specification.
 // Query-side state for product categories.
 
-module Id = ReventlessSpec.Id.String
+open ReventlessSpec
+module Id = Id.String
 
 @schema
 type state = {

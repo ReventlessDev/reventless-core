@@ -18,9 +18,9 @@ module Make = (): ReventlessSpec.Platform.T => {
   module Aggregate = {
     module Make = (
       Spec: ReventlessSpec.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
-      EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
-    ): ReventlessSpec.Aggregate.T => AggregateMaker.Make(Spec, Behavior, EventMappings)
+      Behavior: ReventlessSpec.Behavior.T with module Spec := Spec,
+      EventMappings: ReventlessSpec.EventMapper.Mappings with module Target := Spec,
+    ) => AggregateMaker.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
@@ -40,7 +40,7 @@ module Make = (): ReventlessSpec.Platform.T => {
 
   module Task = {
     module Make = (
-      Spec: Reventless.Task.Spec,
+      Spec: ReventlessSpec.Task.Spec,
     ): (ReventlessSpec.Task.T with module Spec = Spec) => TaskMaker.Make(Spec)
   }
 

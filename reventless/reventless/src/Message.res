@@ -16,9 +16,6 @@ module type Service = {
 
 include ReventlessSpec.Message
 
-let decode = (json, schema: S.t<'a>) => json->S.parseJsonOrThrow(schema)
-let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(schema)
-
 let toEventSchema' = (idSchema, eventSchema) =>
   S.object(s => {
     id: s.field("id", idSchema),
@@ -146,7 +143,6 @@ module type Events = {
   type event
 }
 
-exception InvalidEvent(JSON.t)
 exception InvalidCommand(JSON.t)
 
 @val @scope("JSON") @deprecated("use JSON.stringify() or JSON.stringifyAny()")

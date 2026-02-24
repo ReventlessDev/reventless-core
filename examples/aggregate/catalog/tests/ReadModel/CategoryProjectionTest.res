@@ -1,7 +1,7 @@
 // Unit tests for Category projection mappings.
 // Uses the ProjectionTest DSL for async projection testing.
 
-include Reventless.ProjectionTest.Make(CategoriesProjections.CategoryMapping)
+include ReventlessInMemory.ProjectionTest.Make(CategoriesProjections.CategoryMapping)
 
 describe("CategoryProjection:", () => {
   test("CategoryAdded sets initial read model state", () =>

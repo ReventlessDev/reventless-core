@@ -3,7 +3,7 @@
 
 open Order
 
-include Reventless.BehaviorTest.Make(Order, OrderBehavior)
+include ReventlessInMemory.BehaviorTest.Make(Order, OrderBehavior)
 
 describe("OrderBehavior:", () => {
   describe("PlaceOrder", () => {

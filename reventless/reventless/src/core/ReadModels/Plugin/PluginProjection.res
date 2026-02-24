@@ -9,7 +9,7 @@ module Util = {
   )
 }
 
-module PluginMapping = Projection.Mapping.Make(
+module PluginMapping = ReventlessSpec.Projection.Mapping.Make(
   PluginSpec,
   PluginReadModelSpec,
   {
@@ -102,7 +102,7 @@ module PluginMapping = Projection.Mapping.Make(
   },
 )
 
-module Mappings = Reventless.Projection.Mappings.Make(PluginReadModelSpec)
+module Mappings = ReventlessSpec.Projection.Mappings.Make(PluginReadModelSpec)
 //module type Mapping = ReventlessSpec.Projection.Mapping
 //with type targetState := PluginReadModelSpec.state
 

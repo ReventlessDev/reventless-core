@@ -3,7 +3,6 @@
 
 open ReventlessSpec.Message
 open ReventlessSpec.Projection
-open Reventless.Projection
 open Order
 
 module OrderMapping = Mapping.Make(

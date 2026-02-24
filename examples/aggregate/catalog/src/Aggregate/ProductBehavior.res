@@ -1,6 +1,7 @@
 // Product aggregate behavior.
 // Implements the state machine for adding and updating products.
 
+open ReventlessSpec
 open Product
 
 module Spec = Product
@@ -9,7 +10,7 @@ module Spec = Product
 type state = {name: string, description: string, price: float}
 
 let resolverConfig = {
-  ReventlessSpec.Behavior.commandSchema,
+  Behavior.commandSchema,
   fields: [],
 }
 
@@ -19,7 +20,7 @@ let init = event =>
   | ProductNameUpdated(_)
   | ProductDescriptionUpdated(_)
   | ProductPriceUpdated(_) =>
-    throw(Reventless.Message.InvalidEvent(event->Reventless.Message.encode(eventSchema)))
+    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
 let apply = (state, event) =>

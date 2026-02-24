@@ -16,13 +16,23 @@ function Make(Bus) {
   let AggregateRuntimeBuilder = AggregateRuntime_Builder_InMemory$ReventlessInMemory.Make(Bus)({
     make: CommandTopicChannel.make
   })(EventCollectorChannel);
-  let Make$1 = Spec => (Behavior => (EventMappings => Aggregate_Builder$Reventless.Make(Spec)(Behavior)(EventMappings)({
-    make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
-    groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    asEventHandler: prim => prim
-  })(CommandGeneratorResolvers_InMemory$ReventlessInMemory)({
-    make: CommandTopicChannel.make
-  })(EventLogStorage_InMemory$ReventlessInMemory)(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder)));
+  let Make$1 = Spec => (Behavior => (EventMappings => {
+    let include = Aggregate_Builder$Reventless.Make(Spec)(Behavior)(EventMappings)({
+      make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
+      groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+      asEventHandler: prim => prim
+    })(CommandGeneratorResolvers_InMemory$ReventlessInMemory)({
+      make: CommandTopicChannel.make
+    })(EventLogStorage_InMemory$ReventlessInMemory)(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder);
+    return {
+      Spec: include.Spec,
+      AggregateRuntimeBuilder: include.AggregateRuntimeBuilder,
+      make: include.make,
+      outputs: include.outputs,
+      finish: include.finish,
+      operations: include.operations
+    };
+  }));
   return {
     RuntimeEnvironment: undefined,
     CommandTopicChannel: CommandTopicChannel,

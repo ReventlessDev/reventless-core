@@ -1,7 +1,8 @@
 // Orders read model specification.
 // Query-side state for customer orders.
 
-module Id = ReventlessSpec.Id.String
+open ReventlessSpec
+module Id = Id.String
 
 @schema
 type state = {

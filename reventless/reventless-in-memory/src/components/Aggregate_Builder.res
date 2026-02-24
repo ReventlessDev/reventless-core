@@ -14,10 +14,10 @@ module Make = (Bus: InMemory_Bus.T) => {
 
   module Make = (
     Spec: ReventlessSpec.Aggregate.Spec,
-    Behavior: Reventless.Behavior.T with module Spec := Spec,
-    EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
-  ) =>
-    Reventless.Aggregate_Builder.Make(
+    Behavior: ReventlessSpec.Behavior.T with module Spec := Spec,
+    EventMappings: ReventlessSpec.EventMapper.Mappings with module Target := Spec,
+  ) => {
+    include Reventless.Aggregate_Builder.Make(
       Spec,
       Behavior,
       EventMappings,
@@ -29,4 +29,8 @@ module Make = (Bus: InMemory_Bus.T) => {
       EventCollectorChannel,
       AggregateRuntimeBuilder,
     )
+    // Re-shadow `operations` with explicit spec return type so callers without
+    // reventless in scope can still access ops.publishJsons (transparent alias).
+    let operations: component => Pulumi.Output.t<ReventlessSpec.Aggregate.operations> = operations
+  }
 }

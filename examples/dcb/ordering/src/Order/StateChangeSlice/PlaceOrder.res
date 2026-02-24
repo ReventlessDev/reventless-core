@@ -1,6 +1,7 @@
 // PlaceOrder StateChangeSlice.
 // Handles the PlaceOrder command; rejects duplicate placement.
 
+open ReventlessSpec
 open OrderingEventLog
 
 let name = "PlaceOrder"
@@ -10,7 +11,7 @@ module DcbEventLogSpec = OrderingEventLog
 @schema
 type command =
   | PlaceOrder({
-      orderId: @s.matches(Reventless.DcbTag.string) string,
+      orderId: @s.matches(DcbTag.string) string,
       customerId: string,
       productIds: array<string>,
     })

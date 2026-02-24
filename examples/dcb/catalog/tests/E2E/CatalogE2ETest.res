@@ -2,8 +2,9 @@
 // Verifies the full command → DCB event log → event topic pipeline for both
 // Product and Category entities without any cloud infrastructure.
 
-open Reventless.AsyncTest
-open Reventless.AsyncTest.Expect
+open ReventlessSpec
+open ReventlessInMemory.AsyncTest
+open ReventlessInMemory.AsyncTest.Expect
 
 // ─────────────────────────────────────────────────────────────
 // Isolated bus for this test suite
@@ -46,7 +47,7 @@ module RenameCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(Re
 module ArchiveCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ArchiveCategory)
 
 // publishJsons routing — dispatches each command to its registered StateChangeSlice handler.
-let publishJsons: ReventlessSpec.CommandTopic.publishJsons = async cmdJsons => {
+let publishJsons: CommandTopic.publishJsons = async cmdJsons => {
   let _ = await cmdJsons
   ->Array.map(async cmdJson => {
     let typeName = switch cmdJson.commandJson {
@@ -65,15 +66,15 @@ let publishJsons: ReventlessSpec.CommandTopic.publishJsons = async cmdJsons => {
     let fullBody = JSON.Encode.object(
       Dict.fromArray([
         ("id", JSON.Encode.string(cmdJson.id)),
-        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(ReventlessSpec.Message.metaSchema)),
+        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Message.metaSchema)),
         ("command", cmdJson.commandJson),
       ]),
     )
-    let handlers = Reventless.CommandTopic.getHandlers(typeName)
+    let handlers = ReventlessInMemory.CommandTopic.getHandlers(typeName)
     let _ = await handlers
     ->Array.map(async entry => {
       let _ = await entry.handler([
-        {ReventlessSpec.CommandTopic.reference: cmdJson.id, command: fullBody},
+        {CommandTopic.reference: cmdJson.id, command: fullBody},
       ])
     })
     ->Promise.all
@@ -102,7 +103,7 @@ let _archiveCategorySlice =
 // Test helpers
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: ReventlessSpec.Message.meta = {
+let testMeta: Message.meta = {
   service: "example-dcb-catalog-test",
   time: "2024-01-01T00:00:00.000Z",
   ip: "127.0.0.1",
@@ -112,7 +113,7 @@ let testMeta: ReventlessSpec.Message.meta = {
 }
 
 let dispatch = async (commandJson, entityId) =>
-  await publishJsons([{ReventlessSpec.Message.id: entityId, meta: testMeta, commandJson}])
+  await publishJsons([{Message.id: entityId, meta: testMeta, commandJson}])
 
 // ─────────────────────────────────────────────────────────────
 // Tests
@@ -120,7 +121,7 @@ let dispatch = async (commandJson, entityId) =>
 
 describe("Catalog DCB E2E:", () => {
   let _ = beforeAllAsync(async () => {
-    let _ = await eventLog->Reventless.Component.operations->ReventlessInMemory.TestRunner.resolve
+    let _ = await eventLog->CatalogEventLogMaker.operations->ReventlessInMemory.TestRunner.resolve
   })
 
   let _ = beforeEach(() => {
@@ -136,7 +137,7 @@ describe("Catalog DCB E2E:", () => {
         name: "Laptop",
         description: "A laptop",
         price: 999.99,
-      })->Reventless.Message.encode(AddProduct.commandSchema)
+      })->Message.encode(AddProduct.commandSchema)
     await dispatch(cmd, "prod-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -148,7 +149,7 @@ describe("Catalog DCB E2E:", () => {
         name: "Duplicate",
         description: "Dup",
         price: 1.0,
-      })->Reventless.Message.encode(AddProduct.commandSchema)
+      })->Message.encode(AddProduct.commandSchema)
     await dispatch(cmd, "prod-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
@@ -156,7 +157,7 @@ describe("Catalog DCB E2E:", () => {
   testPromise("UpdateProductName on existing product publishes 1 event", async () => {
     let cmd =
       UpdateProductName.UpdateProductName({productId: "prod-1", name: "Gaming Laptop"})
-      ->Reventless.Message.encode(UpdateProductName.commandSchema)
+      ->Message.encode(UpdateProductName.commandSchema)
     await dispatch(cmd, "prod-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -164,7 +165,7 @@ describe("Catalog DCB E2E:", () => {
   testPromise("UpdateProductName on non-existent product produces 0 events (ProductNotFound)", async () => {
     let cmd =
       UpdateProductName.UpdateProductName({productId: "no-such-product", name: "Ghost"})
-      ->Reventless.Message.encode(UpdateProductName.commandSchema)
+      ->Message.encode(UpdateProductName.commandSchema)
     await dispatch(cmd, "no-such-product")
     expect(capturedEventCount.contents)->toBe(0)
   })
@@ -174,7 +175,7 @@ describe("Catalog DCB E2E:", () => {
   testPromise("AddCategory publishes 1 event", async () => {
     let cmd =
       AddCategory.AddCategory({categoryId: "cat-1", name: "Electronics"})
-      ->Reventless.Message.encode(AddCategory.commandSchema)
+      ->Message.encode(AddCategory.commandSchema)
     await dispatch(cmd, "cat-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -182,7 +183,7 @@ describe("Catalog DCB E2E:", () => {
   testPromise("duplicate AddCategory produces 0 events (CategoryAlreadyExists)", async () => {
     let cmd =
       AddCategory.AddCategory({categoryId: "cat-1", name: "Duplicate"})
-      ->Reventless.Message.encode(AddCategory.commandSchema)
+      ->Message.encode(AddCategory.commandSchema)
     await dispatch(cmd, "cat-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
@@ -190,7 +191,7 @@ describe("Catalog DCB E2E:", () => {
   testPromise("RenameCategory on existing category publishes 1 event", async () => {
     let cmd =
       RenameCategory.RenameCategory({categoryId: "cat-1", name: "Consumer Electronics"})
-      ->Reventless.Message.encode(RenameCategory.commandSchema)
+      ->Message.encode(RenameCategory.commandSchema)
     await dispatch(cmd, "cat-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -198,7 +199,7 @@ describe("Catalog DCB E2E:", () => {
   testPromise("ArchiveCategory publishes 1 event", async () => {
     let cmd =
       ArchiveCategory.ArchiveCategory({categoryId: "cat-1"})
-      ->Reventless.Message.encode(ArchiveCategory.commandSchema)
+      ->Message.encode(ArchiveCategory.commandSchema)
     await dispatch(cmd, "cat-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -206,7 +207,7 @@ describe("Catalog DCB E2E:", () => {
   testPromise("duplicate ArchiveCategory is idempotent (0 events)", async () => {
     let cmd =
       ArchiveCategory.ArchiveCategory({categoryId: "cat-1"})
-      ->Reventless.Message.encode(ArchiveCategory.commandSchema)
+      ->Message.encode(ArchiveCategory.commandSchema)
     await dispatch(cmd, "cat-1")
     expect(capturedEventCount.contents)->toBe(0)
   })

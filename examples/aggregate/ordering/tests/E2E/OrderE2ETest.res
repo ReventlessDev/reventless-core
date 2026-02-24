@@ -1,7 +1,7 @@
 // End-to-end test for the Order aggregate using the in-memory platform.
 
-open Reventless.AsyncTest
-open Reventless.AsyncTest.Expect
+open ReventlessInMemory.AsyncTest
+open ReventlessInMemory.AsyncTest.Expect
 open ReventlessSpec
 
 module Bus = ReventlessInMemory.InMemory_Bus.Make()
@@ -15,7 +15,7 @@ let _ = Bus.subscribeToEvents("OrderAggrEventTopic", async (_, _, _) => {
 let _ = ReventlessInMemory.TestRunner.setup()
 
 module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
-module OrderAgg = AggregateMaker.Make(Order, OrderBehavior, Reventless.NoEventMappings.Make(Order))
+module OrderAgg = AggregateMaker.Make(Order, OrderBehavior, ReventlessInMemory.NoEventMappings.Make(Order))
 
 let agg = OrderAgg.make(~api=())
 
@@ -40,7 +40,7 @@ describe("Order E2E:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productIds: ["prod-1"],
-      })->Reventless.Message.encode(Order.commandSchema)
+      })->Message.encode(Order.commandSchema)
     await ops.publishJsons([{Message.id: "ord-1", meta: testMeta, commandJson}])
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -48,7 +48,7 @@ describe("Order E2E:", () => {
   testPromise("ShipOrder on placed order publishes 1 event", async () => {
     let ops = await agg->OrderAgg.operations->ReventlessInMemory.TestRunner.resolve
     let commandJson =
-      Order.ShipOrder({orderId: "ord-1"})->Reventless.Message.encode(Order.commandSchema)
+      Order.ShipOrder({orderId: "ord-1"})->Message.encode(Order.commandSchema)
     await ops.publishJsons([{Message.id: "ord-1", meta: testMeta, commandJson}])
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -62,7 +62,7 @@ describe("Order E2E:", () => {
           orderId: "ord-1",
           customerId: "cust-1",
           productIds: ["prod-1"],
-        })->Reventless.Message.encode(Order.commandSchema)
+        })->Message.encode(Order.commandSchema)
       await ops.publishJsons([{Message.id: "ord-1", meta: testMeta, commandJson}])
       expect(capturedEventCount.contents)->toBe(0)
     },

@@ -17,20 +17,7 @@ function Make($star) {
   let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
   let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
   let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
-  let Make$1 = Spec => (Behavior => (EventMappings => {
-    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make,
-      outputs: $$let.outputs,
-      operations: $$let.operations,
-      finish: $$let.finish
-    };
-  }));
-  let Aggregate = {
-    Make: Make$1
-  };
-  let Make$2 = Spec => (Mappings => {
+  let Make$1 = Spec => (Mappings => {
     let $$let = ReadModelMaker.Make(Spec)(Mappings);
     return {
       Spec: $$let.Spec,
@@ -41,31 +28,45 @@ function Make($star) {
     };
   });
   let ReadModel = {
+    Make: Make$1
+  };
+  let Make$2 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
+  let ExtensionPoint = {
     Make: Make$2
   };
-  let Make$3 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
-  let ExtensionPoint = {
+  let Make$3 = Spec => TaskMaker.Make(Spec);
+  let Task = {
     Make: Make$3
   };
-  let Make$4 = Spec => TaskMaker.Make(Spec);
-  let Task = {
+  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
+  let Make$4 = StateChangeSlice_Builder$ReventlessInMemory.Make;
+  let StateChangeSlice = {
     Make: Make$4
   };
-  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$5 = StateChangeSlice_Builder$ReventlessInMemory.Make;
-  let StateChangeSlice = {
+  let Make$5 = StateViewSlice_Builder$ReventlessInMemory.Make;
+  let StateViewSlice = {
     Make: Make$5
   };
-  let Make$6 = StateViewSlice_Builder$ReventlessInMemory.Make;
-  let StateViewSlice = {
+  let Make$6 = Spec => DcbEventLogMaker.Make(Spec);
+  let DcbEventLog = {
     Make: Make$6
   };
-  let Make$7 = Spec => DcbEventLogMaker.Make(Spec);
-  let DcbEventLog = {
-    Make: Make$7
-  };
   return {
-    Aggregate: Aggregate,
+    Aggregate: {
+      Make: funarg => (funarg$1 => {
+        let $$let = EventMappings => AggregateMaker.Make(funarg)(funarg$1)(EventMappings);
+        return funarg => {
+          let $$let$1 = $$let(funarg);
+          return {
+            Spec: $$let$1.Spec,
+            make: $$let$1.make,
+            outputs: $$let$1.outputs,
+            operations: $$let$1.operations,
+            finish: $$let$1.finish
+          };
+        };
+      })
+    },
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,
     Task: Task,

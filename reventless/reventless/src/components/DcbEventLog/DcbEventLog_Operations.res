@@ -20,7 +20,7 @@ module Make = (Spec: ReventlessSpec.DcbEventLog.Spec, Ops: Ops with module Spec 
   let encodeEvent = (event: Spec.event): DcbEventLog_Adapter.rawStoredEvent => {
     let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
-    let tags = DcbTag.extractTags(Spec.eventSchema, event)
+    let tags = ReventlessSpec.DcbTag.extractTags(Spec.eventSchema, event)
     {
       eventType,
       data: JSON.Object(data),
@@ -55,7 +55,7 @@ module Make = (Spec: ReventlessSpec.DcbEventLog.Spec, Ops: Ops with module Spec 
     ->Promise.all
   }
 
-  let append = async (events: array<Spec.event>, ~condition: option<DcbTag.appendCondition>=?) => {
+  let append = async (events: array<Spec.event>, ~condition: option<ReventlessSpec.DcbTag.appendCondition>=?) => {
     let rawEvents = events->Array.map(encodeEvent)
     let result = await Ops.storage.append(rawEvents, ~condition?)
     switch result {
@@ -66,7 +66,7 @@ module Make = (Spec: ReventlessSpec.DcbEventLog.Spec, Ops: Ops with module Spec 
     }
   }
 
-  let read = async (~query: DcbTag.query, ~after: option<DcbTag.sequencePosition>=?) => {
+  let read = async (~query: ReventlessSpec.DcbTag.query, ~after: option<ReventlessSpec.DcbTag.sequencePosition>=?) => {
     let rawResult = await Ops.storage.read(~query, ~after?)
     let events = rawResult.events->Array.map(decodeEvent)
     let result: DcbEventLog.readResult<_> = {

@@ -9,7 +9,7 @@ module type T = {
 module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  let queryEventTypes = DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)
+  let queryEventTypes = ReventlessSpec.DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)
 
   let maxRetries = 3
 
@@ -17,8 +17,8 @@ module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (T with module Spec 
     dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
     command': Message.command'<ReventlessSpec.Id.String.t, Spec.command>,
   ) => {
-    let commandTags = DcbTag.extractTags(Spec.commandSchema, command'.command)
-    let query: DcbTag.query = [
+    let commandTags = ReventlessSpec.DcbTag.extractTags(Spec.commandSchema, command'.command)
+    let query: ReventlessSpec.DcbTag.query = [
       {
         eventTypes: queryEventTypes,
         tags: commandTags,
@@ -38,7 +38,7 @@ module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (T with module Spec 
         Logger.debug(~loc=__LOC__, `StateChangeSlice(${Spec.name})`, "no events generated")
         Ok("ok")
       | Ok(newEvents) =>
-        let condition: DcbTag.appendCondition = {
+        let condition: ReventlessSpec.DcbTag.appendCondition = {
           query,
           after: ?readResult.headPosition,
         }

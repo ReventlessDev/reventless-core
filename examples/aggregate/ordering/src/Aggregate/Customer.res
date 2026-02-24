@@ -1,7 +1,8 @@
 // Customer aggregate specification.
 // A registered buyer with contact details and account status.
 
-module Id = ReventlessSpec.Id.String
+open ReventlessSpec
+module Id = Id.String
 
 let name = "Customer"
 

@@ -3,9 +3,9 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as DcbTag$Reventless from "./DcbTag.res.mjs";
 import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as DcbTag$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
 function Make(Spec) {
   return Ops => {
@@ -13,7 +13,7 @@ function Make(Spec) {
     let encodeEvent = event => {
       let json = S.reverseConvertToJsonOrThrow(event, Spec.eventSchema);
       let match = Message$Reventless.splitMessage(json);
-      let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, event);
+      let tags = DcbTag$ReventlessSpec.extractTags(Spec.eventSchema, event);
       return {
         eventType: match[0],
         data: match[1],

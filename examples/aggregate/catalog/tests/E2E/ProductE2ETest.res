@@ -1,7 +1,7 @@
 // End-to-end test for the Product aggregate using the in-memory platform.
 
-open Reventless.AsyncTest
-open Reventless.AsyncTest.Expect
+open ReventlessInMemory.AsyncTest
+open ReventlessInMemory.AsyncTest.Expect
 open ReventlessSpec
 
 module Bus = ReventlessInMemory.InMemory_Bus.Make()
@@ -18,7 +18,7 @@ module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module ProductAgg = AggregateMaker.Make(
   Product,
   ProductBehavior,
-  Reventless.NoEventMappings.Make(Product),
+  ReventlessInMemory.NoEventMappings.Make(Product),
 )
 
 let agg = ProductAgg.make(~api=())
@@ -44,7 +44,7 @@ describe("Product E2E:", () => {
       name: "Laptop",
       description: "A laptop",
       price: 999.99,
-    })->Reventless.Message.encode(Product.commandSchema)
+    })->Message.encode(Product.commandSchema)
     await ops.publishJsons([{Message.id: "prod-1", meta: testMeta, commandJson}])
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -55,7 +55,7 @@ describe("Product E2E:", () => {
       Product.UpdateProductName({
         productId: "prod-1",
         name: "Gaming Laptop",
-      })->Reventless.Message.encode(Product.commandSchema)
+      })->Message.encode(Product.commandSchema)
     await ops.publishJsons([{Message.id: "prod-1", meta: testMeta, commandJson}])
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -69,7 +69,7 @@ describe("Product E2E:", () => {
         name: "Duplicate",
         description: "Dup",
         price: 1.0,
-      })->Reventless.Message.encode(Product.commandSchema)
+      })->Message.encode(Product.commandSchema)
       await ops.publishJsons([{Message.id: "prod-1", meta: testMeta, commandJson}])
       expect(capturedEventCount.contents)->toBe(0)
     },

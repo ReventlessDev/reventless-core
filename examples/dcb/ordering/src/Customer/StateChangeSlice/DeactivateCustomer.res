@@ -1,6 +1,7 @@
 // DeactivateCustomer StateChangeSlice.
 // Requires customer to exist; idempotent if already deactivated.
 
+open ReventlessSpec
 open OrderingEventLog
 
 let name = "DeactivateCustomer"
@@ -9,7 +10,7 @@ module DcbEventLogSpec = OrderingEventLog
 
 @schema
 type command =
-  | DeactivateCustomer({customerId: @s.matches(Reventless.DcbTag.string) string})
+  | DeactivateCustomer({customerId: @s.matches(DcbTag.string) string})
 
 @schema
 type error = | CustomerNotFound

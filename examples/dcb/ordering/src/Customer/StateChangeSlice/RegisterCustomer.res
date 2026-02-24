@@ -1,6 +1,7 @@
 // RegisterCustomer StateChangeSlice.
 // Handles the RegisterCustomer command; rejects duplicate registration.
 
+open ReventlessSpec
 open OrderingEventLog
 
 let name = "RegisterCustomer"
@@ -10,7 +11,7 @@ module DcbEventLogSpec = OrderingEventLog
 @schema
 type command =
   | RegisterCustomer({
-      customerId: @s.matches(Reventless.DcbTag.string) string,
+      customerId: @s.matches(DcbTag.string) string,
       email: string,
       address: string,
     })

@@ -1,6 +1,7 @@
 // UpdateProductDescription StateChangeSlice.
 // Requires product to exist; idempotent when description is unchanged.
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "UpdateProductDescription"
@@ -10,7 +11,7 @@ module DcbEventLogSpec = CatalogEventLog
 @schema
 type command =
   | UpdateProductDescription({
-      productId: @s.matches(Reventless.DcbTag.string) string,
+      productId: @s.matches(DcbTag.string) string,
       description: string,
     })
 

@@ -1,30 +1,30 @@
 type rawStoredEvent = {
   eventType: string,
   data: JSON.t,
-  tags: array<DcbTag.tag>,
+  tags: array<ReventlessSpec.DcbTag.tag>,
 }
 
 type rawSequencedEvent = {
-  position: DcbTag.sequencePosition,
+  position: ReventlessSpec.DcbTag.sequencePosition,
   eventType: string,
   data: JSON.t,
-  tags: array<DcbTag.tag>,
+  tags: array<ReventlessSpec.DcbTag.tag>,
 }
 
 type rawReadResult = {
   events: array<rawSequencedEvent>,
-  headPosition?: DcbTag.sequencePosition,
+  headPosition?: ReventlessSpec.DcbTag.sequencePosition,
 }
 
 type operations = {
   read: (
-    ~query: DcbTag.query,
-    ~after: DcbTag.sequencePosition=?,
+    ~query: ReventlessSpec.DcbTag.query,
+    ~after: ReventlessSpec.DcbTag.sequencePosition=?,
   ) => promise<rawReadResult>,
   append: (
     array<rawStoredEvent>,
-    ~condition: DcbTag.appendCondition=?,
-  ) => promise<result<DcbTag.sequencePosition, string>>,
+    ~condition: ReventlessSpec.DcbTag.appendCondition=?,
+  ) => promise<result<ReventlessSpec.DcbTag.sequencePosition, string>>,
 }
 
 type storage = {

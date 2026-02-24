@@ -4,7 +4,7 @@
 open Product
 open ProductsReadModel
 
-include Reventless.ProjectionTest.Make(ProductsProjections.ProductMapping)
+include ReventlessInMemory.ProjectionTest.Make(ProductsProjections.ProductMapping)
 
 describe("ProductProjection:", () => {
   test("ProductAdded sets initial read model state", () =>

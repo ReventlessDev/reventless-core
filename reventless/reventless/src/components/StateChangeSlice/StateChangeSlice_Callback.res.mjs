@@ -2,13 +2,13 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as DcbTag$Reventless from "../DcbEventLog/DcbTag.res.mjs";
 import * as Logger$Reventless from "../../util/Logger.res.mjs";
+import * as DcbTag$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
 function Make(Spec) {
-  let queryEventTypes = DcbTag$Reventless.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
+  let queryEventTypes = DcbTag$ReventlessSpec.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
   let handleSingleCommand = async (dcbEventLog, command$p) => {
-    let commandTags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
+    let commandTags = DcbTag$ReventlessSpec.extractTags(Spec.commandSchema, command$p.command);
     let query = [{
         eventTypes: queryEventTypes,
         tags: commandTags

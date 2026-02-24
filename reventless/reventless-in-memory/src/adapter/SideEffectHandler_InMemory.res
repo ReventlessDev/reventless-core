@@ -2,8 +2,6 @@
 // In typical test scenarios, TaskSpec.setup returns sideEffects: None,
 // so this make function is never called.
 
-open Reventless
-
 let make = (
   ~name,
   ~sideEffects as _,
@@ -16,9 +14,9 @@ let make = (
   ~memorySize as _=?,
   ~timeout as _=?,
   ~opts=?,
-): SideEffectHandler.component => {
+): Reventless.SideEffectHandler.component => {
   let noopEnqueueEvent: ReventlessSpec.EventCollector.enqueueEvent = async (_, _, _) => ()
-  let noopOps: SideEffectHandler.operations = {
+  let noopOps: Reventless.SideEffectHandler.operations = {
     enqueueEvent: noopEnqueueEvent,
     createSchedule: async _ => (),
     deleteSchedule: async _ => (),
@@ -28,11 +26,11 @@ let make = (
     resources: [],
   }
   Component.make(
-    ~componentType=SideEffectHandler.componentType->ComponentType.toString,
+    ~componentType=Reventless.SideEffectHandler.componentType->Reventless.ComponentType.toString,
     ~name,
     ~construct=(self, cname) => {
       self->Component.setOperations(Pulumi.Output.make(noopOps))
-      self->Component.setOutputs({SideEffectHandler.name: cname, eventCollector: eventCollectorOutputs})
+      self->Component.setOutputs({Reventless.SideEffectHandler.name: cname, eventCollector: eventCollectorOutputs})
     },
     ~opts=opts,
   )

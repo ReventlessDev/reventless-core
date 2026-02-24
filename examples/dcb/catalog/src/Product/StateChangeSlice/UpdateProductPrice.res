@@ -1,6 +1,7 @@
 // UpdateProductPrice StateChangeSlice.
 // Requires product to exist; idempotent when price is unchanged.
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "UpdateProductPrice"
@@ -9,7 +10,7 @@ module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | UpdateProductPrice({productId: @s.matches(Reventless.DcbTag.string) string, price: float})
+  | UpdateProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
 
 @schema
 type error = | ProductNotFound

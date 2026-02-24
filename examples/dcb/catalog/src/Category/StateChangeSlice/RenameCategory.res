@@ -1,6 +1,7 @@
 // RenameCategory StateChangeSlice.
 // Requires category to exist and not be archived.
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "RenameCategory"
@@ -9,7 +10,7 @@ module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | RenameCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | RenameCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
 
 @schema
 type error =

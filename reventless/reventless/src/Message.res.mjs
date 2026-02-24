@@ -8,10 +8,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
 
-let decode = S.parseJsonOrThrow;
-
-let encode = S.reverseConvertToJsonOrThrow;
-
 function toEventSchema$p(idSchema, eventSchema) {
   return S.object(s => ({
     id: s.f("id", idSchema),
@@ -154,8 +150,6 @@ function idMetaEventOfEvent$pJson(json) {
   ];
 }
 
-let InvalidEvent = /* @__PURE__ */Primitive_exceptions.create("Message-Reventless.InvalidEvent");
-
 let InvalidCommand = /* @__PURE__ */Primitive_exceptions.create("Message-Reventless.InvalidCommand");
 
 function hrtimeToString(hrtime, now) {
@@ -240,7 +234,7 @@ function commandJsonOfCommand$p(idToString, commandSchema, cmd) {
   return {
     id: idToString(cmd.id),
     meta: cmd.meta,
-    commandJson: S.reverseConvertToJsonOrThrow(cmd.command, commandSchema)
+    commandJson: Message$ReventlessSpec.encode(cmd.command, commandSchema)
   };
 }
 
@@ -286,6 +280,12 @@ let statusChangeSchema = Message$ReventlessSpec.statusChangeSchema;
 
 let commandJsonSchema = Message$ReventlessSpec.commandJsonSchema;
 
+let decode = Message$ReventlessSpec.decode;
+
+let encode = Message$ReventlessSpec.encode;
+
+let InvalidEvent = Message$ReventlessSpec.InvalidEvent;
+
 export {
   serviceSchema,
   metaSchema,
@@ -295,6 +295,7 @@ export {
   commandJsonSchema,
   decode,
   encode,
+  InvalidEvent,
   toEventSchema$p,
   toCommandSchema$p,
   decodeEvent$p,
@@ -311,7 +312,6 @@ export {
   eventNameOfEvent$pJson,
   idOfEvent$pJson,
   idMetaEventOfEvent$pJson,
-  InvalidEvent,
   InvalidCommand,
   hrtimeToString,
   generateMeta,

@@ -1,6 +1,7 @@
 // AddCategory StateChangeSlice.
 // Handles the AddCategory command; rejects duplicate creation via DCB optimistic concurrency.
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "AddCategory"
@@ -9,7 +10,7 @@ module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | AddCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | AddCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
 
 @schema
 type error = | CategoryAlreadyExists

@@ -1,7 +1,7 @@
 // Unit tests for Order projection mappings.
 // Uses the ProjectionTest DSL for async projection testing.
 
-include Reventless.ProjectionTest.Make(OrdersProjections.OrderMapping)
+include ReventlessInMemory.ProjectionTest.Make(OrdersProjections.OrderMapping)
 
 describe("OrderProjection:", () => {
   test("OrderPlaced sets initial read model state", () =>

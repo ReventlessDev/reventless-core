@@ -1,7 +1,8 @@
 // Order aggregate specification.
 // A confirmed purchase referencing Product IDs and a CustomerId.
 
-module Id = ReventlessSpec.Id.String
+open ReventlessSpec
+module Id = Id.String
 
 let name = "Order"
 

@@ -1,5 +1,6 @@
 // Pure unit tests for OrdersView StateViewSlice projection.
 
+open ReventlessSpec
 open Jest
 open Expect
 
@@ -14,7 +15,7 @@ let baseOrder: OrdersView.state = {
 let applyFirstUpdate = (actions, baseState) =>
   actions->Array.reduce(baseState, (s, action) =>
     switch action {
-    | ReventlessSpec.Projection.Update(_, fn) => fn(s)
+    | Projection.Update(_, fn) => fn(s)
     | _ => s
     })
 
@@ -30,7 +31,7 @@ describe("OrdersView.project:", () => {
         }),
       ),
     )->toEqual([
-      ReventlessSpec.Projection.Set(
+      Projection.Set(
         "ord-1",
         {
           OrdersView.orderId: "ord-1",

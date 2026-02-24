@@ -2,8 +2,9 @@
 // Verifies the full command → DCB event log → event topic pipeline for both
 // Customer and Order entities without any cloud infrastructure.
 
-open Reventless.AsyncTest
-open Reventless.AsyncTest.Expect
+open ReventlessSpec
+open ReventlessInMemory.AsyncTest
+open ReventlessInMemory.AsyncTest.Expect
 
 // ─────────────────────────────────────────────────────────────
 // Isolated bus for this test suite
@@ -44,7 +45,7 @@ module ShipOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ShipOrd
 module CancelOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(CancelOrder)
 
 // publishJsons routing — dispatches each command to its registered StateChangeSlice handler.
-let publishJsons: ReventlessSpec.CommandTopic.publishJsons = async cmdJsons => {
+let publishJsons: CommandTopic.publishJsons = async cmdJsons => {
   let _ = await cmdJsons
   ->Array.map(async cmdJson => {
     let typeName = switch cmdJson.commandJson {
@@ -63,15 +64,15 @@ let publishJsons: ReventlessSpec.CommandTopic.publishJsons = async cmdJsons => {
     let fullBody = JSON.Encode.object(
       Dict.fromArray([
         ("id", JSON.Encode.string(cmdJson.id)),
-        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(ReventlessSpec.Message.metaSchema)),
+        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Message.metaSchema)),
         ("command", cmdJson.commandJson),
       ]),
     )
-    let handlers = Reventless.CommandTopic.getHandlers(typeName)
+    let handlers = ReventlessInMemory.CommandTopic.getHandlers(typeName)
     let _ = await handlers
     ->Array.map(async entry => {
       let _ = await entry.handler([
-        {ReventlessSpec.CommandTopic.reference: cmdJson.id, command: fullBody},
+        {CommandTopic.reference: cmdJson.id, command: fullBody},
       ])
     })
     ->Promise.all
@@ -98,7 +99,7 @@ let _cancelOrderSlice =
 // Test helpers
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: ReventlessSpec.Message.meta = {
+let testMeta: Message.meta = {
   service: "example-dcb-ordering-test",
   time: "2024-01-01T00:00:00.000Z",
   ip: "127.0.0.1",
@@ -108,7 +109,7 @@ let testMeta: ReventlessSpec.Message.meta = {
 }
 
 let dispatch = async (commandJson, entityId) =>
-  await publishJsons([{ReventlessSpec.Message.id: entityId, meta: testMeta, commandJson}])
+  await publishJsons([{Message.id: entityId, meta: testMeta, commandJson}])
 
 // ─────────────────────────────────────────────────────────────
 // Tests
@@ -116,7 +117,7 @@ let dispatch = async (commandJson, entityId) =>
 
 describe("Ordering DCB E2E:", () => {
   let _ = beforeAllAsync(async () => {
-    let _ = await eventLog->Reventless.Component.operations->ReventlessInMemory.TestRunner.resolve
+    let _ = await eventLog->OrderingEventLogMaker.operations->ReventlessInMemory.TestRunner.resolve
   })
 
   let _ = beforeEach(() => {
@@ -131,7 +132,7 @@ describe("Ordering DCB E2E:", () => {
         customerId: "cust-1",
         email: "alice@example.com",
         address: "123 Main St",
-      })->Reventless.Message.encode(RegisterCustomer.commandSchema)
+      })->Message.encode(RegisterCustomer.commandSchema)
     await dispatch(cmd, "cust-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -142,7 +143,7 @@ describe("Ordering DCB E2E:", () => {
         customerId: "cust-1",
         email: "duplicate@example.com",
         address: "Dup",
-      })->Reventless.Message.encode(RegisterCustomer.commandSchema)
+      })->Message.encode(RegisterCustomer.commandSchema)
     await dispatch(cmd, "cust-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
@@ -150,7 +151,7 @@ describe("Ordering DCB E2E:", () => {
   testPromise("UpdateEmail on existing customer publishes 1 event", async () => {
     let cmd =
       UpdateEmail.UpdateEmail({customerId: "cust-1", email: "alice2@example.com"})
-      ->Reventless.Message.encode(UpdateEmail.commandSchema)
+      ->Message.encode(UpdateEmail.commandSchema)
     await dispatch(cmd, "cust-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -158,7 +159,7 @@ describe("Ordering DCB E2E:", () => {
   testPromise("DeactivateCustomer publishes 1 event", async () => {
     let cmd =
       DeactivateCustomer.DeactivateCustomer({customerId: "cust-1"})
-      ->Reventless.Message.encode(DeactivateCustomer.commandSchema)
+      ->Message.encode(DeactivateCustomer.commandSchema)
     await dispatch(cmd, "cust-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -166,7 +167,7 @@ describe("Ordering DCB E2E:", () => {
   testPromise("duplicate DeactivateCustomer is idempotent (0 events)", async () => {
     let cmd =
       DeactivateCustomer.DeactivateCustomer({customerId: "cust-1"})
-      ->Reventless.Message.encode(DeactivateCustomer.commandSchema)
+      ->Message.encode(DeactivateCustomer.commandSchema)
     await dispatch(cmd, "cust-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
@@ -179,7 +180,7 @@ describe("Ordering DCB E2E:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productIds: ["prod-1", "prod-2"],
-      })->Reventless.Message.encode(PlaceOrder.commandSchema)
+      })->Message.encode(PlaceOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -190,21 +191,21 @@ describe("Ordering DCB E2E:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productIds: ["prod-1"],
-      })->Reventless.Message.encode(PlaceOrder.commandSchema)
+      })->Message.encode(PlaceOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
 
   testPromise("ShipOrder on placed order publishes 1 event", async () => {
     let cmd =
-      ShipOrder.ShipOrder({orderId: "ord-1"})->Reventless.Message.encode(ShipOrder.commandSchema)
+      ShipOrder.ShipOrder({orderId: "ord-1"})->Message.encode(ShipOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
 
   testPromise("duplicate ShipOrder is idempotent (0 events)", async () => {
     let cmd =
-      ShipOrder.ShipOrder({orderId: "ord-1"})->Reventless.Message.encode(ShipOrder.commandSchema)
+      ShipOrder.ShipOrder({orderId: "ord-1"})->Message.encode(ShipOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
@@ -212,7 +213,7 @@ describe("Ordering DCB E2E:", () => {
   testPromise("CancelOrder on non-existent order produces 0 events (OrderNotFound)", async () => {
     let cmd =
       CancelOrder.CancelOrder({orderId: "no-such-order"})
-      ->Reventless.Message.encode(CancelOrder.commandSchema)
+      ->Message.encode(CancelOrder.commandSchema)
     await dispatch(cmd, "no-such-order")
     expect(capturedEventCount.contents)->toBe(0)
   })

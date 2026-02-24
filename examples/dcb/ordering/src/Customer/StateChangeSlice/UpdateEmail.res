@@ -1,6 +1,7 @@
 // UpdateEmail StateChangeSlice.
 // Requires customer to exist and not be deactivated; idempotent when email is unchanged.
 
+open ReventlessSpec
 open OrderingEventLog
 
 let name = "UpdateEmail"
@@ -9,7 +10,7 @@ module DcbEventLogSpec = OrderingEventLog
 
 @schema
 type command =
-  | UpdateEmail({customerId: @s.matches(Reventless.DcbTag.string) string, email: string})
+  | UpdateEmail({customerId: @s.matches(DcbTag.string) string, email: string})
 
 @schema
 type error =

@@ -1,6 +1,7 @@
 // Category aggregate behavior.
 // Implements the state machine for adding, renaming, and archiving categories.
 
+open ReventlessSpec
 open Category
 
 module Spec = Category
@@ -11,7 +12,7 @@ type state =
   | Archived
 
 let resolverConfig = {
-  ReventlessSpec.Behavior.commandSchema,
+  Behavior.commandSchema,
   fields: [],
 }
 
@@ -20,7 +21,7 @@ let init = event =>
   | CategoryAdded({name}) => Active({name: name})
   | CategoryRenamed(_)
   | CategoryArchived(_) =>
-    throw(Reventless.Message.InvalidEvent(event->Reventless.Message.encode(eventSchema)))
+    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
 let apply = (state, event) =>

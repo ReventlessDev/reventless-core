@@ -1,6 +1,7 @@
 // AddProduct StateChangeSlice.
 // Handles the AddProduct command; rejects duplicate creation via DCB optimistic concurrency.
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "AddProduct"
@@ -10,7 +11,7 @@ module DcbEventLogSpec = CatalogEventLog
 @schema
 type command =
   | AddProduct({
-      productId: @s.matches(Reventless.DcbTag.string) string,
+      productId: @s.matches(DcbTag.string) string,
       name: string,
       description: string,
       price: float,

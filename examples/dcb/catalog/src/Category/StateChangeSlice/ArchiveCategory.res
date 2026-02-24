@@ -1,6 +1,7 @@
 // ArchiveCategory StateChangeSlice.
 // Requires category to exist; idempotent if already archived.
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "ArchiveCategory"
@@ -9,7 +10,7 @@ module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | ArchiveCategory({categoryId: @s.matches(Reventless.DcbTag.string) string})
+  | ArchiveCategory({categoryId: @s.matches(DcbTag.string) string})
 
 @schema
 type error = | CategoryNotFound

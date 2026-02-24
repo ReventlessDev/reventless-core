@@ -12,17 +12,6 @@ import * as Message$Reventless from "./Message.res.mjs";
 import * as QueryDb$Reventless from "./components/QueryDb/QueryDb.res.mjs";
 import * as QueryDb$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/QueryDb.res.mjs";
 
-function Make(Source) {
-  return Target => (MappingImpl => ({
-    SourceId: Source.Id,
-    map: MappingImpl.map,
-    sourceEventSchema: Source.eventSchema,
-    sourceName: Source.name,
-    subIdConfig: Target.subIdConfig,
-    targetStateSchema: Target.stateSchema
-  }));
-}
-
 function MakeGenericSource(Mapping) {
   let decode$p = json => Message$Reventless.decodeEvent$p(json, S.string, Mapping.sourceEventSchema);
   return {
@@ -32,16 +21,7 @@ function MakeGenericSource(Mapping) {
 }
 
 let Mapping = {
-  Make: Make,
   MakeGenericSource: MakeGenericSource
-};
-
-function Make$1(Target) {
-  return {};
-}
-
-let Mappings = {
-  Make: Make$1
 };
 
 function logAction(str) {
@@ -576,7 +556,7 @@ async function handleActions(actions, operations, subIdConfig) {
     }), async (p, action) => {
       let err = await p;
       if (err.TAG !== "Ok") {
-        Logger$Reventless.error("File \"Projection.res\", line 381, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(Message$Reventless.encode(err._0, QueryDb$ReventlessSpec.storageErrorSchema)));
+        Logger$Reventless.error("File \"Projection.res\", line 353, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(Message$Reventless.encode(err._0, QueryDb$ReventlessSpec.storageErrorSchema)));
       }
       return await handleAction(action, operations, subIdConfig);
     });
@@ -601,7 +581,6 @@ let $$Set;
 export {
   $$Set,
   Mapping,
-  Mappings,
   logAction,
   applyChanges,
   stateToString,

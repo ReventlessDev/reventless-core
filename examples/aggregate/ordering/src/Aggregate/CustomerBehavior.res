@@ -1,7 +1,8 @@
 // Customer aggregate behavior.
 // Implements the state machine for registering and managing customers.
 
-open Reventless.Message
+open ReventlessSpec
+open ReventlessSpec.Message
 open Customer
 
 module Spec = Customer
@@ -12,7 +13,7 @@ type state =
   | Deactivated
 
 let resolverConfig = {
-  ReventlessSpec.Behavior.commandSchema,
+  Behavior.commandSchema,
   fields: [],
 }
 

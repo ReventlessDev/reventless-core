@@ -3,7 +3,6 @@
 
 open ReventlessSpec
 open ReventlessSpec.Projection
-open Reventless.Projection
 
 module ProductMapping = Mapping.Make(
   Product,

@@ -22,7 +22,6 @@
     }
   },
   "dependencies": {
-    "@reventlessdev/reventless": "*",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*"
   },

@@ -5,7 +5,7 @@ open Reventless
 
 let posToInt = (pos: string) => pos->Int.fromString->Option.getOr(0)
 
-let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: DcbTag.query) =>
+let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: ReventlessSpec.DcbTag.query) =>
   if query->Array.length == 0 {
     true
   } else {
@@ -49,7 +49,7 @@ let make: DcbEventLog_Adapter.storageMaker = (~name as _, ~indexes as _, ~opts a
 
   let append = async (newEvents, ~condition=?) => {
     let conflictDetected = switch condition {
-    | Some(cond: DcbTag.appendCondition) =>
+    | Some(cond: ReventlessSpec.DcbTag.appendCondition) =>
       events.contents->Array.some(event => {
         let afterMatch = switch cond.after {
         | Some(pos) => event.position->posToInt > pos->posToInt

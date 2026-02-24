@@ -1,5 +1,6 @@
 // Pure unit tests for CustomersView StateViewSlice projection.
 
+open ReventlessSpec
 open Jest
 open Expect
 
@@ -14,7 +15,7 @@ let baseCustomer: CustomersView.state = {
 let applyFirstUpdate = (actions, baseState) =>
   actions->Array.reduce(baseState, (s, action) =>
     switch action {
-    | ReventlessSpec.Projection.Update(_, fn) => fn(s)
+    | Projection.Update(_, fn) => fn(s)
     | _ => s
     })
 
@@ -30,7 +31,7 @@ describe("CustomersView.project:", () => {
         }),
       ),
     )->toEqual([
-      ReventlessSpec.Projection.Set(
+      Projection.Set(
         "cust-1",
         {
           CustomersView.customerId: "cust-1",

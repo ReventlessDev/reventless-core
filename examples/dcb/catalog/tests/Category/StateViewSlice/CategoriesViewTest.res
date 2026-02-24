@@ -1,5 +1,6 @@
 // Pure unit tests for CategoriesView StateViewSlice projection.
 
+open ReventlessSpec
 open Jest
 open Expect
 
@@ -9,7 +10,7 @@ let baseCategory: CategoriesView.state = {categoryId: "c1", name: "Electronics",
 let applyFirstUpdate = (actions, baseState) =>
   actions->Array.reduce(baseState, (s, action) =>
     switch action {
-    | ReventlessSpec.Projection.Update(_, fn) => fn(s)
+    | Projection.Update(_, fn) => fn(s)
     | _ => s
     })
 
@@ -21,7 +22,7 @@ describe("CategoriesView.project:", () => {
         CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Electronics"}),
       ),
     )->toEqual([
-      ReventlessSpec.Projection.Set(
+      Projection.Set(
         "c1",
         {CategoriesView.categoryId: "c1", name: "Electronics", archived: false},
       ),

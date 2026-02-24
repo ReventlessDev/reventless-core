@@ -2,7 +2,7 @@
 
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as PluginSpec$Reventless from "../../Aggregates/Plugin/PluginSpec.res.mjs";
-import * as Projection$Reventless from "../../../Projection.res.mjs";
+import * as Projection$ReventlessSpec from "@reventlessdev/reventless-spec/src/Projection.res.mjs";
 import * as PluginReadModelSpec$Reventless from "./PluginReadModelSpec.res.mjs";
 
 function extractExtensionPointNames(__x) {
@@ -152,7 +152,7 @@ function map(param) {
   };
 }
 
-let PluginMapping = Projection$Reventless.Mapping.Make({
+let PluginMapping = Projection$ReventlessSpec.Mapping.Make({
   Id: Id$ReventlessSpec.$$String,
   name: PluginSpec$Reventless.name,
   eventSchema: PluginSpec$Reventless.eventSchema
@@ -165,7 +165,7 @@ let PluginMapping = Projection$Reventless.Mapping.Make({
   map: map
 });
 
-let Mappings = Projection$Reventless.Mappings.Make({
+let Mappings = Projection$ReventlessSpec.Mappings.Make({
   Id: Id$ReventlessSpec.$$String,
   name: PluginReadModelSpec$Reventless.name,
   stateSchema: PluginReadModelSpec$Reventless.stateSchema,

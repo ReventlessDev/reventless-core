@@ -46,3 +46,8 @@ type commandJson = {
   commandJson: JSON.t,
   delay?: int,
 }
+
+let decode = (json, schema: S.t<'a>) => json->S.parseJsonOrThrow(schema)
+let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(schema)
+
+exception InvalidEvent(JSON.t)

@@ -1,7 +1,8 @@
 // Order aggregate behavior.
 // Implements the lifecycle for placing, shipping, and cancelling orders.
 
-open Reventless.Message
+open ReventlessSpec
+open ReventlessSpec.Message
 open Order
 
 module Spec = Order
@@ -13,7 +14,7 @@ type state =
   | Cancelled
 
 let resolverConfig = {
-  ReventlessSpec.Behavior.commandSchema,
+  Behavior.commandSchema,
   fields: [],
 }
 

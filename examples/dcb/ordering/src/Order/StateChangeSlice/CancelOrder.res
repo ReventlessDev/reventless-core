@@ -1,6 +1,7 @@
 // CancelOrder StateChangeSlice.
 // Requires order to exist and not be shipped; idempotent if already cancelled.
 
+open ReventlessSpec
 open OrderingEventLog
 
 let name = "CancelOrder"
@@ -8,7 +9,7 @@ let name = "CancelOrder"
 module DcbEventLogSpec = OrderingEventLog
 
 @schema
-type command = | CancelOrder({orderId: @s.matches(Reventless.DcbTag.string) string})
+type command = | CancelOrder({orderId: @s.matches(DcbTag.string) string})
 
 @schema
 type error =

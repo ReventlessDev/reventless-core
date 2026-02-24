@@ -1,7 +1,7 @@
 // End-to-end test for the Customer aggregate using the in-memory platform.
 
-open Reventless.AsyncTest
-open Reventless.AsyncTest.Expect
+open ReventlessInMemory.AsyncTest
+open ReventlessInMemory.AsyncTest.Expect
 open ReventlessSpec
 
 module Bus = ReventlessInMemory.InMemory_Bus.Make()
@@ -18,7 +18,7 @@ module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module CustomerAgg = AggregateMaker.Make(
   Customer,
   CustomerBehavior,
-  Reventless.NoEventMappings.Make(Customer),
+  ReventlessInMemory.NoEventMappings.Make(Customer),
 )
 
 let agg = CustomerAgg.make(~api=())
@@ -43,7 +43,7 @@ describe("Customer E2E:", () => {
       customerId: "cust-1",
       email: "alice@example.com",
       address: "123 Main St",
-    })->Reventless.Message.encode(Customer.commandSchema)
+    })->Message.encode(Customer.commandSchema)
     await ops.publishJsons([{Message.id: "cust-1", meta: testMeta, commandJson}])
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -54,7 +54,7 @@ describe("Customer E2E:", () => {
       Customer.UpdateEmail({
         customerId: "cust-1",
         email: "alice2@example.com",
-      })->Reventless.Message.encode(Customer.commandSchema)
+      })->Message.encode(Customer.commandSchema)
     await ops.publishJsons([{Message.id: "cust-1", meta: testMeta, commandJson}])
     expect(capturedEventCount.contents)->toBe(1)
   })
@@ -67,7 +67,7 @@ describe("Customer E2E:", () => {
         customerId: "cust-1",
         email: "duplicate@example.com",
         address: "Dup",
-      })->Reventless.Message.encode(Customer.commandSchema)
+      })->Message.encode(Customer.commandSchema)
       await ops.publishJsons([{Message.id: "cust-1", meta: testMeta, commandJson}])
       expect(capturedEventCount.contents)->toBe(0)
     },

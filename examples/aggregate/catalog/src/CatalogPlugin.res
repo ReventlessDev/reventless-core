@@ -3,19 +3,18 @@
 
 open ReventlessSpec
 open ReventlessSpec.Projection
-open Reventless.Projection
 
 module Make = (Platform: Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
     ProductBehavior,
-    Reventless.NoEventMappings.Make(Product),
+    ReventlessInMemory.NoEventMappings.Make(Product),
   )
 
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
     CategoryBehavior,
-    Reventless.NoEventMappings.Make(Category),
+    ReventlessInMemory.NoEventMappings.Make(Category),
   )
 
   module ProductMappings: Mappings with module Target := ProductsReadModel = {

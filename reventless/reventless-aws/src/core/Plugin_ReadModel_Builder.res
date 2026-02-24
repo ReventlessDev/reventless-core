@@ -1,4 +1,4 @@
-module MappingsType = Reventless.Projection.Mappings.Make(Reventless.PluginReadModelSpec)
+module MappingsType = ReventlessSpec.Projection.Mappings.Make(Reventless.PluginReadModelSpec)
 
 module Mappings = {
   module type Mapping = MappingsType.Mapping

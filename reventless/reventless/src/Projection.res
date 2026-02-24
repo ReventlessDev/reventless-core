@@ -5,40 +5,12 @@ open Belt.Result // FIXME: open locally
 module Set = Belt.Set.String
 
 module Mapping = {
-  module Make = (
-    Source: ReventlessSpec.Projection.Source,
-    Target: ReventlessSpec.Projection.Target,
-    MappingImpl: ReventlessSpec.Projection.MappingImpl
-      with type sourceEvent := Source.event
-      and type targetState := Target.state,
-  ): (
-    ReventlessSpec.Projection.Mapping
-      with type targetState = Target.state
-      and type sourceEvent = Source.event
-      and module SourceId = Source.Id
-  ) => {
-    module SourceId = Source.Id
-    @schema
-    type sourceEvent = Source.event
-    @schema
-    type targetState = Target.state
-    let map = MappingImpl.map
-    let sourceName = Source.name
-    let subIdConfig = Target.subIdConfig
-  }
-
   module MakeGenericSource = (Mapping: ReventlessSpec.Projection.Mapping): (
     Mapper.GenericSource with type t = Mapping.sourceEvent
   ) => {
     let name = Mapping.sourceName
     type t = Mapping.sourceEvent
     let decode' = json => json->Message.decodeEvent'(S.string, Mapping.sourceEventSchema)
-  }
-}
-
-module Mappings = {
-  module Make = (Target: ReventlessSpec.Projection.Target) => {
-    module type Mapping = ReventlessSpec.Projection.Mapping with type targetState = Target.state
   }
 }
 

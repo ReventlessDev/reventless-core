@@ -1,7 +1,8 @@
 // Category aggregate specification.
 // A named grouping of products (e.g. "Books", "Electronics").
 
-module Id = ReventlessSpec.Id.String
+open ReventlessSpec
+module Id = Id.String
 
 let name = "Category"
 

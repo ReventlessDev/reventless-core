@@ -7,7 +7,7 @@ type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<stri
 // For a variant type like `type command = CreateItem({...}) | UpdateItem({...})`,
 // this extracts ["CreateItem", "UpdateItem"]
 let extractTypeNamesFromSchema = (schema: S.t<unknown>): array<string> =>
-  DcbTag.extractEventTypes(schema)
+  ReventlessSpec.DcbTag.extractEventTypes(schema)
 
 // Global registry for schema-based filtering
 // Keyed by command type name (e.g., "CreateItem", "UpdateItem")

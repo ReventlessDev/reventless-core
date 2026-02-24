@@ -1,7 +1,7 @@
 // Unit tests for Customer projection mappings.
 // Uses the ProjectionTest DSL for async projection testing.
 
-include Reventless.ProjectionTest.Make(CustomersProjections.CustomerMapping)
+include ReventlessInMemory.ProjectionTest.Make(CustomersProjections.CustomerMapping)
 
 describe("CustomerProjection:", () => {
   test("CustomerRegistered sets initial read model state", () =>

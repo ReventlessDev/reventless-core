@@ -21,7 +21,7 @@ let generatePositionForBatch = (basePosition, index) => {
 
 let tagToAttributeName = (tagKey: string) => `tag_${tagKey}`
 
-let compositeTagKey = (tags: array<Reventless.DcbTag.tag>) =>
+let compositeTagKey = (tags: array<ReventlessSpec.DcbTag.tag>) =>
   tags
   ->Array.toSorted((a, b) => String.compare(a.key, b.key))
   ->Array.map(t => `${t.key}:${t.value}`)
@@ -91,7 +91,7 @@ let fromItem = (item: JSON.t): Reventless.DcbEventLog_Adapter.rawSequencedEvent 
             let key = tagObj->Dict.get("key")->Option.flatMap(JSON.Decode.string)
             let value = tagObj->Dict.get("value")->Option.flatMap(JSON.Decode.string)
             switch (key, value) {
-            | (Some(k), Some(v)) => Some({Reventless.DcbTag.key: k, value: v})
+            | (Some(k), Some(v)) => Some({ReventlessSpec.DcbTag.key: k, value: v})
             | _ => None
             }
           }
@@ -146,7 +146,7 @@ let queryBySingleTag = async (
 
 let queryByCompositeTags = async (
   table: runtimeTable,
-  tags: array<Reventless.DcbTag.tag>,
+  tags: array<ReventlessSpec.DcbTag.tag>,
   ~after: option<string>=?,
 ) => {
   let composite = compositeTagKey(tags)
@@ -235,7 +235,7 @@ let scanWithFilter = async (
 
 let executeQueryItem = async (
   table: runtimeTable,
-  queryItem: Reventless.DcbTag.queryItem,
+  queryItem: ReventlessSpec.DcbTag.queryItem,
   ~after: option<string>=?,
 ) => {
   switch queryItem.tags {
@@ -277,7 +277,7 @@ let deduplicateByPosition = (
 
 let read = (table: runtimeTable) =>
   async (
-    ~query: Reventless.DcbTag.query,
+    ~query: ReventlessSpec.DcbTag.query,
     ~after=?,
   ) => {
     // Execute queries for each queryItem
@@ -341,7 +341,7 @@ let append = (table: runtimeTable) =>
         }
       }
 
-    | Some(cond: Reventless.DcbTag.appendCondition) => {
+    | Some(cond: ReventlessSpec.DcbTag.appendCondition) => {
         // Conditional append: check for conflicts first
         let readResult = await read(table)(~query=cond.query, ~after=?cond.after)
 

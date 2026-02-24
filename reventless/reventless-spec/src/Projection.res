@@ -74,3 +74,26 @@ module type MappingImpl = {
   type targetState
   let map: Message.event'<string, sourceEvent> => action<string, targetState>
 }
+
+module Mapping = {
+  module Make = (
+    Source: Source,
+    Target: Target,
+    MappingImpl: MappingImpl with type sourceEvent := Source.event and type targetState := Target.state,
+  ): (Mapping with type targetState = Target.state and type sourceEvent = Source.event and module SourceId = Source.Id) => {
+    module SourceId = Source.Id
+    @schema
+    type sourceEvent = Source.event
+    @schema
+    type targetState = Target.state
+    let map = MappingImpl.map
+    let sourceName = Source.name
+    let subIdConfig = Target.subIdConfig
+  }
+}
+
+module Mappings = {
+  module Make = (Target: Target) => {
+    module type Mapping = Mapping with type targetState = Target.state
+  }
+}

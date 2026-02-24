@@ -21,7 +21,7 @@ module Make = (
 
   // Extract indexes from event schema
   let indexes: array<string> = {
-    let taggedFields = DcbTag.extractTaggedFields(Spec.eventSchema)
+    let taggedFields = ReventlessSpec.DcbTag.extractTaggedFields(Spec.eventSchema)
 
     // Create single-tag indexes
     let singleTagIndexes = taggedFields->Array.map(tagKey => `tag_${tagKey}`)
