@@ -5,10 +5,41 @@
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import { themes as prismThemes } from "prism-react-renderer";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// Remark plugin that prepends shared D2 class definitions to every d2 code
+// block before remark-d2 passes them to the d2 CLI.
+//
+// Why not use D2's native `...@file` import syntax in the markdown?
+// The VS Code D2 preview extension writes code blocks to a temp file and calls
+// d2 on it, so D2 resolves imports relative to the temp dir — unreachable from
+// the project. By prepending here (before d2 ever sees the code) we get styled
+// diagrams in Docusaurus without any import syntax in the markdown files.
+// VS Code renders the same diagrams without the class styles (D2 silently
+// ignores undefined classes), which means no errors and a functional preview.
+function d2PrependStyles(opts = {}) {
+  let styles = null;
+  try {
+    styles = readFileSync(opts.stylesPath, "utf8").trim();
+  } catch (_) { /* file not found — skip silently */ }
+
+  return (tree) => {
+    if (!styles) return;
+    const walk = (node) => {
+      if (node.type === "code" && node.lang === "d2") {
+        node.value = styles + "\n\n" + node.value;
+      }
+      if (node.children) node.children.forEach(walk);
+    };
+    walk(tree);
+  };
+}
 
 // remark-d2 is ESM-only, so we load it via dynamic import in an async config.
 async function createConfig() {
 const d2 = (await import("remark-d2")).default;
+const d2StylesPath = join(process.cwd(), "d2", "reventless.d2");
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -70,7 +101,7 @@ const config = {
         path: "docs-app",
         routeBasePath: "app",
         sidebarPath: "./sidebars-app.js",
-        remarkPlugins: [d2],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -82,7 +113,7 @@ const config = {
         path: "docs-framework",
         routeBasePath: "framework",
         sidebarPath: "./sidebars-framework.js",
-        remarkPlugins: [d2],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -94,7 +125,7 @@ const config = {
         path: "docs-cloud-provider",
         routeBasePath: "cloud-provider",
         sidebarPath: "./sidebars-cloud-provider.js",
-        remarkPlugins: [d2],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -106,7 +137,7 @@ const config = {
         path: "docs-aws",
         routeBasePath: "aws",
         sidebarPath: "./sidebars-aws.js",
-        remarkPlugins: [d2],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -118,7 +149,7 @@ const config = {
         path: "docs-online-shop",
         routeBasePath: "online-shop",
         sidebarPath: "./sidebars-online-shop.js",
-        remarkPlugins: [d2],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },

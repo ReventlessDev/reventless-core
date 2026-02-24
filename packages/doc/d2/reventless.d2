@@ -1,0 +1,150 @@
+classes: {
+  # ── Commands (blue) ──────────────────────────────────────
+  command: {
+    style: { fill: "#DBEAFE"; stroke: "#2563EB"; font-color: "#1E3A8A"; border-radius: 6 }
+  }
+  command-topic: {
+    shape: queue
+    style: { fill: "#BFDBFE"; stroke: "#1D4ED8"; font-color: "#1E3A8A" }
+  }
+  command-generator: {
+    style: { fill: "#BFDBFE"; stroke: "#2563EB"; font-color: "#1E3A8A"; border-radius: 6 }
+  }
+
+  # ── Aggregates (yellow) ───────────────────────────────────
+  aggregate: {
+    style: { fill: "#FEF9C3"; stroke: "#CA8A04"; font-color: "#713F12"; border-radius: 6 }
+  }
+  state-change-slice: {
+    style: { fill: "#FEF3C7"; stroke: "#D97706"; font-color: "#92400E"; border-radius: 4 }
+  }
+
+  # ── Events / Event Store (orange) ─────────────────────────
+  event-log: {
+    shape: cylinder
+    style: { fill: "#FFEDD5"; stroke: "#EA580C"; font-color: "#7C2D12" }
+  }
+  dcb-event-log: {
+    shape: cylinder
+    style: { fill: "#FED7AA"; stroke: "#C2410C"; font-color: "#7C2D12" }
+  }
+  event-topic: {
+    shape: queue
+    style: { fill: "#FED7AA"; stroke: "#EA580C"; font-color: "#7C2D12" }
+  }
+
+  # ── Read Models (green) ───────────────────────────────────
+  read-model: {
+    style: { fill: "#DCFCE7"; stroke: "#16A34A"; font-color: "#14532D"; border-radius: 6 }
+  }
+  state-view-slice: {
+    style: { fill: "#BBF7D0"; stroke: "#15803D"; font-color: "#14532D"; border-radius: 4 }
+  }
+  query-db: {
+    shape: cylinder
+    style: { fill: "#86EFAC"; stroke: "#15803D"; font-color: "#14532D" }
+  }
+
+  # ── Policies / Reactions (purple) ─────────────────────────
+  event-collector: {
+    style: { fill: "#FED7AA"; stroke: "#EA580C"; font-color: "#7C2D12"; border-radius: 6 }
+  }
+  event-mapper: {
+    style: { fill: "#DDD6FE"; stroke: "#7C3AED"; font-color: "#4C1D95"; border-radius: 6 }
+  }
+  counter: {
+    style: { fill: "#EDE9FE"; stroke: "#6D28D9"; font-color: "#4C1D95"; border-radius: 6 }
+  }
+
+  # ── External Systems / Side Effects (pink) ────────────────
+  side-effect: {
+    style: { fill: "#FFF1F2"; stroke: "#E11D48"; font-color: "#881337"; border-radius: 6 }
+  }
+  task: {
+    style: { fill: "#FECDD3"; stroke: "#E11D48"; font-color: "#881337"; border-radius: 6 }
+  }
+  external-system: {
+    style: { fill: "#FDA4AF"; stroke: "#E11D48"; font-color: "#881337"; border-radius: 6; stroke-dash: 4 }
+  }
+
+  # ── Cross-context Boundary (teal) ─────────────────────────
+  extension-point: {
+    shape: hexagon
+    style: { fill: "#BAE6FD"; stroke: "#0284C7"; font-color: "#0C4A6E" }
+  }
+  extension: {
+    style: { fill: "#E0F2FE"; stroke: "#0284C7"; font-color: "#0C4A6E"; border-radius: 6 }
+  }
+
+  # ── UI / API (purple) ─────────────────────────────────────
+  api: {
+    style: { fill: "#EDE9FE"; stroke: "#7C3AED"; font-color: "#4C1D95"; border-radius: 8 }
+  }
+  client: {
+    style: { fill: "#EDE9FE"; stroke: "#7C3AED"; font-color: "#4C1D95"; border-radius: 8 }
+  }
+
+  # ── Scheduling / Infrastructure (gray) ────────────────────
+  scheduler: {
+    style: { fill: "#E7E5E4"; stroke: "#57534E"; font-color: "#1C1917"; border-radius: 6 }
+  }
+  heartbeat: {
+    style: { fill: "#E7E5E4"; stroke: "#57534E"; font-color: "#1C1917"; border-radius: 6 }
+  }
+
+  # ── Containers ────────────────────────────────────────────
+  write-side: {
+    style: { fill: "#FFFBEB"; stroke: "#F59E0B"; border-radius: 12 }
+  }
+  read-side: {
+    style: { fill: "#F0FDF4"; stroke: "#16A34A"; border-radius: 12 }
+  }
+  side-effects-area: {
+    style: { fill: "#FFF1F2"; stroke: "#F43F5E"; border-radius: 12 }
+  }
+  event-processing-area: {
+    style: { fill: "#FDF4FF"; stroke: "#A855F7"; border-radius: 12 }
+  }
+  plugin-area: {
+    style: { fill: "#F0F9FF"; stroke: "#0284C7"; border-radius: 12 }
+  }
+  scheduling-area: {
+    style: { fill: "#FAFAF9"; stroke: "#78716C"; border-radius: 12 }
+  }
+  slices-area: {
+    style: { fill: "#FEF9C3"; stroke: "#CA8A04"; border-radius: 8 }
+  }
+  view-slices-area: {
+    style: { fill: "#DCFCE7"; stroke: "#16A34A"; border-radius: 8 }
+  }
+  query-dbs-area: {
+    style: { fill: "#BBF7D0"; stroke: "#15803D"; border-radius: 8 }
+  }
+  api-area: {
+    style: { fill: "#F5F3FF"; stroke: "#7C3AED"; border-radius: 12 }
+  }
+
+  # ── Layout helpers ────────────────────────────────────────
+  placeholder: {
+    style: { fill: "transparent"; stroke: "transparent"; opacity: 0 }
+  }
+
+  # ── Connections ───────────────────────────────────────────
+  # Applied to edges: a -> b: label { class: event-flow }
+  # Both the line and the label text take the class color.
+  event-flow: {
+    style: { stroke: "#EA580C"; font-color: "#EA580C" }
+  }
+  command-flow: {
+    style: { stroke: "#2563EB"; font-color: "#2563EB" }
+  }
+  projection-flow: {
+    style: { stroke: "#16A34A"; font-color: "#16A34A" }
+  }
+  replay: {
+    style: { stroke: "#EA580C"; font-color: "#EA580C"; stroke-dash: 3 }
+  }
+  cross-plugin: {
+    style: { stroke: "#0284C7"; font-color: "#0284C7"; stroke-dash: 4 }
+  }
+}

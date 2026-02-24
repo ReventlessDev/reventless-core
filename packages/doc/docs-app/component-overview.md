@@ -4,126 +4,243 @@ date: 2022-09-27
 draft: false
 ---
 
-## Component Relationship Diagram
+## Aggregate-Based Plugin
 
-The following diagram shows how all Reventless components work together in a complete system:
+The following diagram shows how all components of an **aggregate-based plugin** work together:
 
-```mermaid
-flowchart TB
-    %% External Clients
-    Client[GraphQL Client]:::client
-    
-    %% API Layer
-    API[GraphQL API]:::api
-    
-    %% Core Aggregate
-    subgraph AggregateSystem [Write Side]
-        CommandGenerator[Command Generator]:::commandgenerator
-        CommandTopic[Command Topic]:::commandtopic
-        Aggregate[Aggregate]:::aggregate
-        EventLog[(Event Log)]:::eventlog
-        EventTopic[Event Topic]:::eventtopic
-    end
-    
-    %% Event Processing
-    EventCollector1[Event Collector]:::eventcollector
-    EventCollector2[Event Collector]:::eventcollector
-    EventCollector3[Event Collector]:::eventcollector
-    
-    %% Read Side
-    subgraph ReadSide [Read Side]
-        ReadModel[Read Model]:::readmodel
-        QueryDb[(Query DB)]:::querydb
-    end
-    
-    %% Event Processing Components
-    EventMapper[Event Mapper]:::eventmapper
-    SideEffectHandler[Side Effect Handler]:::sideeffecthandler
-    Counter[Counter]:::counter
-    
-    %% Plugin System
-    subgraph PluginSystem [Plugin System]
-        Plugin[Plugin]:::plugin
-        ExtensionPoint[Extension Point]:::extensionpoint
-        Extension[Extension]:::extension
-    end
-    
-    %% Scheduling
-    subgraph Scheduling [Scheduling & Tasks]
-        Scheduler[Scheduler]:::scheduler
-        Heartbeat[Heartbeat]:::heartbeat
-        Task[Task]:::task
-    end
-    
-    %% External Systems
-    External[External System]:::external
-    
-    %% Main Flow
-    Client -->|GraphQL mutations| API
-    API -->|resolver invocation| CommandGenerator
-    CommandGenerator -->|commands| CommandTopic
-    CommandTopic -->|commands| Aggregate
-    Aggregate <-->|events| EventLog
-    EventLog -->|publish events| EventTopic
-    
-    %% Event Distribution
-    EventTopic -->|events| EventCollector1
-    EventTopic -->|events| EventCollector2
-    EventTopic -->|events| EventCollector3
-    
-    %% Read Model Processing
-    EventCollector1 -->|events| ReadModel
-    ReadModel -->|save/update| QueryDb
-    API -->|queries| QueryDb
-    
-    %% Event Mapping
-    EventCollector2 -->|events| EventMapper
-    EventMapper -->|check duplicates| Counter
-    EventMapper -->|commands| CommandTopic
-    
-    %% Side Effects
-    EventCollector3 -->|events| SideEffectHandler
-    SideEffectHandler -->|calls| External
-    SideEffectHandler -->|trigger| Task
-    
-    %% Plugin Communication
-    Plugin -.->|exposes| ExtensionPoint
-    Extension -->|commands| ExtensionPoint
-    ExtensionPoint -->|commands| CommandTopic
-    
-    %% Scheduling
-    Scheduler -->|scheduled commands| CommandTopic
-    Heartbeat -->|periodic signals| ExtensionPoint
-    
-    %% Styling
-    classDef client fill:#e1f5fe
-    %%classDef api fill:#f3e5f5
-    %%classDef commandgenerator fill:#e8f5e8
-    %%classDef commandtopic fill:#fff3e0
-    %%classDef aggregate fill:#ffebee
-    %%classDef eventlog fill:#f1f8e9
-    %%classDef eventtopic fill:#fff8e1
-    %%classDef eventcollector fill:#e0f2f1
-    %%classDef readmodel fill:#e8eaf6
-    %%classDef querydb fill:#f9fbe7
-    %%classDef eventmapper fill:#fce4ec
-    %%classDef sideeffecthandler fill:#e1f5fe
-    %%classDef counter fill:#f3e5f5
-    %%classDef plugin fill:#fff3e0
-    %%classDef extensionpoint fill:#e8f5e8
-    %%classDef extension fill:#ffebee
-    %%classDef scheduler fill:#f1f8e9
-    %%classDef heartbeat fill:#fff8e1
-    %%classDef task fill:#e0f2f1
-    %%classDef external fill:#fafafa
+```d2
+direction: down
+
+client: GraphQL Client { class: client }
+api: GraphQL API { class: api }
+
+write_side: Write Side {
+  direction: right
+  class: write-side
+
+  cmd_gen: Command Generator { class: command-generator }
+  cmd_topic: Command Topic { class: command-topic }
+  aggregate: Aggregate { class: aggregate }
+  event_log: Event Log { class: event-log }
+  event_topic: Event Topic { class: event-topic }
+
+  cmd_gen -> cmd_topic: commands { class: command-flow }
+  cmd_topic -> aggregate: commands { class: command-flow }
+  aggregate -> event_log: append { class: event-flow }
+  event_log -> aggregate: replay { class: replay }
+  event_log -> event_topic: publish { class: event-flow }
+}
+
+consumers: {
+  direction: right
+  style.fill: "transparent"
+  style.stroke: "transparent"
+
+  side_effects: Side Effects {
+    direction: right
+    class: side-effects-area
+
+    collector: Event Collector { class: event-collector }
+    handler: Side Effect Handler { class: side-effect }
+    task: Task { class: task }
+    external: External System { class: external-system }
+
+    collector -> handler: events { class: event-flow }
+    handler -> task: trigger
+    handler -> external: calls
+  }
+
+  event_processing: Event Processing {
+    direction: right
+    class: event-processing-area
+
+    collector: Event Collector { class: event-collector }
+    mapper: Event Mapper { class: event-mapper }
+    counter: Counter { class: counter }
+
+    collector -> mapper: events { class: event-flow }
+    mapper -> counter: dedup check
+  }
+
+  read_side: Read Side {
+    direction: right
+    class: read-side
+
+    collector: Event Collector { class: event-collector }
+    read_model: Read Model { class: read-model }
+    query_db: Query DB { class: query-db }
+
+    collector -> read_model: events { class: event-flow }
+    read_model -> query_db: save/update { class: projection-flow }
+  }
+}
+
+plugins: Plugin System {
+  direction: right
+  class: plugin-area
+
+  ext_point: Extension Point { class: extension-point }
+  extension: Extension { class: extension }
+
+  ext_point -> extension: events { class: event-flow }
+  extension -> ext_point: commands { class: cross-plugin }
+}
+
+scheduling: Scheduling {
+  direction: right
+  class: scheduling-area
+
+  heartbeat: Heartbeat { class: heartbeat }
+  scheduler: Scheduler { class: scheduler }
+}
+
+client -> api: GraphQL mutations { class: command-flow }
+api -> write_side.cmd_gen: resolver invocation { class: command-flow }
+
+api -> consumers.read_side.query_db: queries
+
+write_side.event_topic -> consumers.side_effects.collector: events { class: event-flow }
+write_side.event_topic -> consumers.event_processing.collector: events { class: event-flow }
+write_side.event_topic -> consumers.read_side.collector: events { class: event-flow }
+
+consumers.event_processing.mapper -> write_side.cmd_topic: commands { class: command-flow }
+
+plugins.ext_point -> write_side.cmd_topic: commands { class: cross-plugin }
+scheduling.scheduler -> write_side.cmd_topic: scheduled commands { class: command-flow }
+scheduling.heartbeat -> plugins.ext_point: periodic signals { class: event-flow }
 ```
-
-This diagram illustrates the complete Reventless architecture showing:
 
 - **Command Flow**: Client → API → CommandGenerator → CommandTopic → Aggregate
 - **Event Flow**: Aggregate → EventLog → EventTopic → EventCollectors → Processing Components
 - **Read Side**: EventCollector → ReadModel → QueryDb ← API ← Client
 - **Event Processing**: EventMapper and SideEffectHandler consuming events
+- **Plugin System**: Cross-plugin communication via ExtensionPoints and Extensions
+- **Scheduling**: Time-based command generation and health monitoring
+
+## DCB-Based Plugin
+
+The following diagram shows how the components of a **DCB-based plugin** (Dynamic Consistency Boundary) work together. The key differences from the aggregate-based approach are the shared **DcbEventLog** across all StateChangeSlices and the **StateViewSlice** that combines the EventCollector and ReadModel roles.
+
+```d2
+vars: {
+  d2-config: {
+    layout-engine: elk
+  }
+}
+
+dcb_layout: "" {
+  grid-rows: 3
+  grid-columns: 3
+  style.fill: "transparent"
+  style.stroke: "transparent"
+
+  # ── Row 1 ──────────────────────────────────────────────────────────────────
+
+  1,1: "" { class: placeholder }
+
+  scheduling: Scheduling {
+    grid-rows: 1
+    direction: right
+    class: scheduling-area
+
+    heartbeat: Heartbeat { class: heartbeat }
+    scheduler: Scheduler { class: scheduler }
+  }
+
+  1,3: "" { class: placeholder }
+
+  # ── Row 2 ──────────────────────────────────────────────────────────────────
+
+  plugins: Plugin System {
+    direction: down
+    class: plugin-area
+
+    ext_point: Extension Point { class: extension-point }
+    extension: Extension { class: extension }
+
+    ext_point -> extension: events { class: event-flow }
+    extension -> ext_point: commands { class: cross-plugin }
+  }
+
+  write_side: Write Side {
+    direction: down
+    class: write-side
+
+    cmd_topic: Command Topic { class: command-topic }
+
+    slices: State Change Slices {
+      direction: down
+      class: slices-area
+
+      slice1: Slice 1 { class: state-change-slice }
+      slice2: Slice 2 { class: state-change-slice }
+      slice3: Slice 3 { class: state-change-slice }
+    }
+
+    dcb_log: DCB Event Log { class: dcb-event-log }
+    event_topic: Event Topic { class: event-topic }
+
+    cmd_topic -> slices: commands (routed by type) { class: command-flow }
+    slices -> dcb_log: append { class: event-flow }
+    dcb_log -> slices: replay { class: replay }
+    dcb_log -> event_topic: publish { class: event-flow }
+  }
+
+  graphql: API {
+    grid-rows: 2
+    class: api-area
+
+    client: GraphQL Client { class: client }
+    api: GraphQL API { class: api }
+  }
+
+  # ── Row 3 ──────────────────────────────────────────────────────────────────
+
+  3,1: "" { class: placeholder }
+
+  read_side: Read Side {
+    direction: down
+    class: read-side
+
+    view_slices_row: State View Slices {
+      direction: right
+      class: view-slices-area
+
+      slice1: Slice 1 { class: state-view-slice }
+      slice2: Slice 2 { class: state-view-slice }
+      slice3: Slice 3 { class: state-view-slice }
+    }
+
+    query_dbs_row: Query DBs {
+      direction: right
+      class: query-dbs-area
+
+      db1: Query DB { class: query-db }
+      db2: Query DB { class: query-db }
+      db3: Query DB { class: query-db }
+    }
+
+    view_slices_row.slice1 -> query_dbs_row.db1: project state { class: projection-flow }
+    view_slices_row.slice2 -> query_dbs_row.db2: project state { class: projection-flow }
+    view_slices_row.slice3 -> query_dbs_row.db3: project state { class: projection-flow }
+  }
+
+  # ── Edges ──────────────────────────────────────────────────────────────────
+
+  graphql.client -> graphql.api: GraphQL mutations { class: command-flow }
+  graphql.api -> write_side.cmd_topic: commands { class: command-flow }
+  graphql.api -> read_side.query_dbs_row.db3: queries
+  write_side.event_topic -> read_side.view_slices_row: events { class: event-flow }
+  plugins.ext_point -> write_side.cmd_topic: commands { class: cross-plugin }
+  scheduling.heartbeat -> plugins.ext_point: periodic signals { class: event-flow }
+  scheduling.scheduler -> write_side.cmd_topic: scheduled commands { class: command-flow }
+}
+```
+
+- **Command Flow**: Client → API → CommandTopic → StateChangeSlices (routed by command type)
+- **Write Side**: Each StateChangeSlice reads from and appends to the shared DcbEventLog with optimistic concurrency
+- **Event Flow**: DcbEventLog → EventTopic → StateViewSlice → QueryDb
+- **Read Side**: StateViewSlice projects events directly into QueryDb, replacing the EventCollector + ReadModel pair
 - **Plugin System**: Cross-plugin communication via ExtensionPoints and Extensions
 - **Scheduling**: Time-based command generation and health monitoring
 
