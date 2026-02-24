@@ -30,5 +30,8 @@
     "test:unit": "npm run test --workspaces --if-present",
     "test:coverage": "echo 'No coverage script configured' || exit 0"
   },
+  "overrides": {
+    "@docusaurus/theme-common": "3.9.2"
+  },
   "version": ""
 }

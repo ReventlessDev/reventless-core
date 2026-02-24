@@ -6,6 +6,10 @@
 
 import { themes as prismThemes } from "prism-react-renderer";
 
+// remark-d2 is ESM-only, so we load it via dynamic import in an async config.
+async function createConfig() {
+const d2 = (await import("remark-d2")).default;
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "Reventless",
@@ -66,6 +70,7 @@ const config = {
         path: "docs-app",
         routeBasePath: "app",
         sidebarPath: "./sidebars-app.js",
+        remarkPlugins: [d2],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -77,6 +82,7 @@ const config = {
         path: "docs-framework",
         routeBasePath: "framework",
         sidebarPath: "./sidebars-framework.js",
+        remarkPlugins: [d2],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -88,6 +94,7 @@ const config = {
         path: "docs-cloud-provider",
         routeBasePath: "cloud-provider",
         sidebarPath: "./sidebars-cloud-provider.js",
+        remarkPlugins: [d2],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -99,6 +106,7 @@ const config = {
         path: "docs-aws",
         routeBasePath: "aws",
         sidebarPath: "./sidebars-aws.js",
+        remarkPlugins: [d2],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -110,6 +118,7 @@ const config = {
         path: "docs-online-shop",
         routeBasePath: "online-shop",
         sidebarPath: "./sidebars-online-shop.js",
+        remarkPlugins: [d2],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -414,4 +423,7 @@ const config = {
     }),
 };
 
-export default config;
+return config;
+}
+
+export default createConfig;
