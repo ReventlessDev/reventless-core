@@ -82,7 +82,8 @@ The spec module defines the vocabulary for the aggregate: its commands, the even
 ```rescript
 // Product.res
 
-module Id = ReventlessSpec.Id.String
+open ReventlessSpec
+module Id = Id.String
 
 let name = "Product"
 
@@ -122,6 +123,7 @@ The behavior module implements the aggregate's state machine. It defines the in-
 ```rescript
 // ProductBehavior.res
 
+open ReventlessSpec
 open Product
 
 module Spec = Product
@@ -130,7 +132,7 @@ module Spec = Product
 type state = {name: string, description: string, price: float}
 
 let resolverConfig = {
-  ReventlessSpec.Behavior.commandSchema,
+  Behavior.commandSchema,
   fields: [],
 }
 
@@ -140,9 +142,7 @@ let init = event =>
   | ProductNameUpdated(_)
   | ProductDescriptionUpdated(_)
   | ProductPriceUpdated(_) =>
-    throw(Reventless.Message.InvalidEvent(
-      event->Reventless.Message.encode(eventSchema)
-    ))
+    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
   }
 
 let apply = (state, event) =>
@@ -191,7 +191,8 @@ The read model defines the query-side view and how aggregate events are projecte
 ```rescript
 // ProductsReadModel.res
 
-module Id = ReventlessSpec.Id.String
+open ReventlessSpec
+module Id = Id.String
 
 @schema
 type state = {
@@ -211,7 +212,6 @@ Projection mappings subscribe to aggregate events and translate them to `Set` or
 
 open ReventlessSpec
 open ReventlessSpec.Projection
-open Reventless.Projection
 
 module ProductMapping = Mapping.Make(
   Product,
@@ -250,19 +250,18 @@ The plugin wires all aggregates and read models together using any `Platform` im
 
 open ReventlessSpec
 open ReventlessSpec.Projection
-open Reventless.Projection
 
 module Make = (Platform: Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
     ProductBehavior,
-    Reventless.NoEventMappings.Make(Product),
+    ReventlessInMemory.NoEventMappings.Make(Product),
   )
 
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
     CategoryBehavior,
-    Reventless.NoEventMappings.Make(Category),
+    ReventlessInMemory.NoEventMappings.Make(Category),
   )
 
   module ProductMappings: Mappings with module Target := ProductsReadModel = {

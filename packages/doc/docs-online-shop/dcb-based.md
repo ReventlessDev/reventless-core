@@ -93,28 +93,29 @@ The following walkthrough uses the **Catalog** Plugin from `examples/dcb/catalog
 
 ### 1. DCB Event Log Spec
 
-The event log spec defines **all events in the Plugin** — from every chapter — in a single shared type. Tag fields are annotated with `@s.matches(Reventless.DcbTag.string)` so the framework can index them and filter events by entity when processing a command.
+The event log spec defines **all events in the Plugin** — from every chapter — in a single shared type. Tag fields are annotated with `@s.matches(DcbTag.string)` so the framework can index them and filter events by entity when processing a command.
 
 ```rescript
 // CatalogEventLog.res
 
+open ReventlessSpec
 @schema
 type event =
   | ProductAdded({
-      productId: @s.matches(Reventless.DcbTag.string) string,
+      productId: @s.matches(DcbTag.string) string,
       name: string,
       description: string,
       price: float,
     })
-  | ProductNameUpdated({productId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | ProductNameUpdated({productId: @s.matches(DcbTag.string) string, name: string})
   | ProductDescriptionUpdated({
-      productId: @s.matches(Reventless.DcbTag.string) string,
+      productId: @s.matches(DcbTag.string) string,
       description: string,
     })
-  | ProductPriceUpdated({productId: @s.matches(Reventless.DcbTag.string) string, price: float})
-  | CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
-  | CategoryRenamed({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
-  | CategoryArchived({categoryId: @s.matches(Reventless.DcbTag.string) string})
+  | ProductPriceUpdated({productId: @s.matches(DcbTag.string) string, price: float})
+  | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
+  | CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
+  | CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
 ```
 
 All events from `Product` and `Category` live in the same type. Each entity uses a different tag field name (`productId` vs `categoryId`), so the framework can filter precisely per entity.
@@ -137,6 +138,7 @@ Each command is handled by a **StateChangeSlice** — a self-contained module th
 ```rescript
 // AddProduct.res
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "AddProduct"
@@ -145,7 +147,7 @@ module DcbEventLogSpec = CatalogEventLog
 @schema
 type command =
   | AddProduct({
-      productId: @s.matches(Reventless.DcbTag.string) string,
+      productId: @s.matches(DcbTag.string) string,
       name: string,
       description: string,
       price: float,
@@ -184,6 +186,7 @@ The `reduce` function only reacts to `ProductAdded` — any other event in the s
 ```rescript
 // UpdateProductPrice.res
 
+open ReventlessSpec
 open CatalogEventLog
 
 let name = "UpdateProductPrice"
@@ -191,7 +194,7 @@ module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | UpdateProductPrice({productId: @s.matches(Reventless.DcbTag.string) string, price: float})
+  | UpdateProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
 
 @schema
 type error = | ProductNotFound
@@ -271,7 +274,8 @@ The plugin composes the DCB event log, all StateChangeSlices, and all StateViewS
 ```rescript
 // CatalogPlugin.res
 
-module Make = (Platform: ReventlessSpec.Platform.T) => {
+open ReventlessSpec
+module Make = (Platform: Platform.T) => {
   module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
 
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
