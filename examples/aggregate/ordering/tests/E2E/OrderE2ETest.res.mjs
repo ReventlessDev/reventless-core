@@ -2,9 +2,9 @@
 
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
-import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/TestRunner.res.mjs";
+import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
+import * as NoEventMappings$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/NoEventMappings.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
-import * as NoEventMappings$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/NoEventMappings.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
 import * as Order$ReventlessdevExampleAggregateOrdering from "../../src/Aggregate/Order.res.mjs";
 import * as OrderBehavior$ReventlessdevExampleAggregateOrdering from "../../src/Aggregate/OrderBehavior.res.mjs";
@@ -35,7 +35,7 @@ let OrderAgg = AggregateMaker.Make({
   apply: OrderBehavior$ReventlessdevExampleAggregateOrdering.apply,
   create: OrderBehavior$ReventlessdevExampleAggregateOrdering.create,
   execute: OrderBehavior$ReventlessdevExampleAggregateOrdering.execute
-})(NoEventMappings$ReventlessInMemory.Make({
+})(NoEventMappings$ReventlessSpec.Make({
   name: Order$ReventlessdevExampleAggregateOrdering.name,
   Id: Id$ReventlessSpec.$$String,
   commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema

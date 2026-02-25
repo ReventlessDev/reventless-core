@@ -7,13 +7,13 @@ module Make = (Platform: Platform.T) => {
   module CustomerAggregate = Platform.Aggregate.Make(
     Customer,
     CustomerBehavior,
-    ReventlessInMemory.NoEventMappings.Make(Customer),
+    NoEventMappings.Make(Customer),
   )
 
   module OrderAggregate = Platform.Aggregate.Make(
     Order,
     OrderBehavior,
-    ReventlessInMemory.NoEventMappings.Make(Order),
+    NoEventMappings.Make(Order),
   )
 
   module CustomerMappings: Projection.Mappings with module Target := CustomersReadModel = {

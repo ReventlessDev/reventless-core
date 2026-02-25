@@ -4,7 +4,7 @@ import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
+import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
 import * as Component$Reventless from "../Component.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";

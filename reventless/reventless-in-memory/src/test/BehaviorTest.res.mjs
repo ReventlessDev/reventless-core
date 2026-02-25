@@ -8,7 +8,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
+import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as TestFixtures$Reventless from "@reventlessdev/reventless/test-helper/TestFixtures.res.mjs";
 
 function Make(Spec) {

@@ -6,7 +6,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Component$Reventless from "../Component.res.mjs";
 import * as Extension$Reventless from "./Extension.res.mjs";
 import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/ExtensionMapping.res.mjs";
+import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
 import * as Extension_Operations$Reventless from "./Extension_Operations.res.mjs";
 
 function Make(Spec) {

@@ -2,7 +2,7 @@
 
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Projection$ReventlessSpec from "@reventlessdev/reventless-spec/src/Projection.res.mjs";
-import * as NoEventMappings$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/NoEventMappings.res.mjs";
+import * as NoEventMappings$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/NoEventMappings.res.mjs";
 import * as Product$ReventlessdevExampleAggregateCatalog from "./Aggregate/Product.res.mjs";
 import * as Category$ReventlessdevExampleAggregateCatalog from "./Aggregate/Category.res.mjs";
 import * as ProductBehavior$ReventlessdevExampleAggregateCatalog from "./Aggregate/ProductBehavior.res.mjs";
@@ -25,7 +25,7 @@ function Make(Platform) {
     apply: ProductBehavior$ReventlessdevExampleAggregateCatalog.apply,
     create: ProductBehavior$ReventlessdevExampleAggregateCatalog.create,
     execute: ProductBehavior$ReventlessdevExampleAggregateCatalog.execute
-  })(NoEventMappings$ReventlessInMemory.Make({
+  })(NoEventMappings$ReventlessSpec.Make({
     name: Product$ReventlessdevExampleAggregateCatalog.name,
     Id: Id$ReventlessSpec.$$String,
     commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema
@@ -42,7 +42,7 @@ function Make(Platform) {
     apply: CategoryBehavior$ReventlessdevExampleAggregateCatalog.apply,
     create: CategoryBehavior$ReventlessdevExampleAggregateCatalog.create,
     execute: CategoryBehavior$ReventlessdevExampleAggregateCatalog.execute
-  })(NoEventMappings$ReventlessInMemory.Make({
+  })(NoEventMappings$ReventlessSpec.Make({
     name: Category$ReventlessdevExampleAggregateCatalog.name,
     Id: Id$ReventlessSpec.$$String,
     commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema

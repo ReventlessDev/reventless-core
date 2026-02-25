@@ -8,13 +8,13 @@ module Make = (Platform: Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
     ProductBehavior,
-    ReventlessInMemory.NoEventMappings.Make(Product),
+    NoEventMappings.Make(Product),
   )
 
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
     CategoryBehavior,
-    ReventlessInMemory.NoEventMappings.Make(Category),
+    NoEventMappings.Make(Category),
   )
 
   module ProductMappings: Mappings with module Target := ProductsReadModel = {

@@ -78,7 +78,7 @@ module ItemAggregateMaker = Aggregate_Builder.Make(Bus)
 module ItemAgg = ItemAggregateMaker.Make(
   ItemSpec,
   ItemBehavior,
-  Reventless.NoEventMappings.Make(ItemSpec),
+  ReventlessSpec.NoEventMappings.Make(ItemSpec),
 )
 
 let agg = ItemAgg.make(~api=())

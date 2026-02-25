@@ -2,9 +2,9 @@
 
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
-import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/TestRunner.res.mjs";
+import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
+import * as NoEventMappings$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/NoEventMappings.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
-import * as NoEventMappings$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/NoEventMappings.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
 import * as Category$ReventlessdevExampleAggregateCatalog from "../../src/Aggregate/Category.res.mjs";
 import * as CategoryBehavior$ReventlessdevExampleAggregateCatalog from "../../src/Aggregate/CategoryBehavior.res.mjs";
@@ -35,7 +35,7 @@ let CategoryAgg = AggregateMaker.Make({
   apply: CategoryBehavior$ReventlessdevExampleAggregateCatalog.apply,
   create: CategoryBehavior$ReventlessdevExampleAggregateCatalog.create,
   execute: CategoryBehavior$ReventlessdevExampleAggregateCatalog.execute
-})(NoEventMappings$ReventlessInMemory.Make({
+})(NoEventMappings$ReventlessSpec.Make({
   name: Category$ReventlessdevExampleAggregateCatalog.name,
   Id: Id$ReventlessSpec.$$String,
   commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema

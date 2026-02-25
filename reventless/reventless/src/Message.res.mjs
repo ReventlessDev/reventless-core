@@ -6,7 +6,7 @@ import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
+import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 
 function toEventSchema$p(idSchema, eventSchema) {
   return S.object(s => ({

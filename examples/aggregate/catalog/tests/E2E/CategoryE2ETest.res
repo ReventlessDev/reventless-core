@@ -18,7 +18,7 @@ module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module CategoryAgg = AggregateMaker.Make(
   Category,
   CategoryBehavior,
-  ReventlessInMemory.NoEventMappings.Make(Category),
+  NoEventMappings.Make(Category),
 )
 
 let agg = CategoryAgg.make(~api=())

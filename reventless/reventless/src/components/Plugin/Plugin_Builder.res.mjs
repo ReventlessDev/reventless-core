@@ -5,7 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
+import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Plugin$Reventless from "./Plugin.res.mjs";
 import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
 import * as Aggregate$Reventless from "../Aggregate/Aggregate.res.mjs";
@@ -19,7 +19,7 @@ import * as AdapterDeploytime$Reventless from "../../adapter/AdapterDeploytime.r
 import * as Heartbeat_Builder$Reventless from "../Heartbeat/Heartbeat_Builder.res.mjs";
 import * as DcbEventLog_Builder$Reventless from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$Reventless from "../CommandTopic/CommandTopic_Builder.res.mjs";
-import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/ExtensionMapping.res.mjs";
+import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 

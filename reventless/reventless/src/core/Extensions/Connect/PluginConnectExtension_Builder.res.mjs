@@ -6,7 +6,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Util_Promise$Reventless from "../../../util/Util_Promise.res.mjs";
 import * as ExtensionMapping$Reventless from "../../../ExtensionMapping.res.mjs";
 import * as Extension_Builder$Reventless from "../../../components/Extension/Extension_Builder.res.mjs";
-import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/ExtensionMapping.res.mjs";
+import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {

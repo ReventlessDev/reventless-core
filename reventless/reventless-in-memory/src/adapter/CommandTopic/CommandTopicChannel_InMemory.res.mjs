@@ -3,7 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
+import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 
 function Make(Bus) {
   let encodeMessage = cmdJson => Object.fromEntries([
