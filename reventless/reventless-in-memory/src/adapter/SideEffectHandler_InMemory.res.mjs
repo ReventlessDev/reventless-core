@@ -5,14 +5,14 @@ import * as ComponentType$Reventless from "@reventlessdev/reventless/src/Compone
 import * as Component$ReventlessInMemory from "../Component.res.mjs";
 import * as SideEffectHandler$Reventless from "@reventlessdev/reventless/src/components/SideEffectHandler/SideEffectHandler.res.mjs";
 
-function make(name, param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8, opts) {
+function make(name, param, param$1, param$2, param$3, param$4, scheduler, param$5, param$6, param$7, opts) {
   let noopEnqueueEvent = async (param, param$1, param$2) => {};
-  let noopOps_createSchedule = async param => {};
-  let noopOps_deleteSchedule = async param => {};
-  let noopOps = {
+  let ops_createSchedule = async schedule => await scheduler.createSchedule([], schedule);
+  let ops_deleteSchedule = async scheduleName => await scheduler.deleteSchedule([], scheduleName);
+  let ops = {
     enqueueEvent: noopEnqueueEvent,
-    createSchedule: noopOps_createSchedule,
-    deleteSchedule: noopOps_deleteSchedule
+    createSchedule: ops_createSchedule,
+    deleteSchedule: ops_deleteSchedule
   };
   let eventCollectorOutputs_resources = [];
   let eventCollectorOutputs = {
@@ -20,7 +20,7 @@ function make(name, param, param$1, param$2, param$3, param$4, param$5, param$6,
     resources: eventCollectorOutputs_resources
   };
   return Component$ReventlessInMemory.make(ComponentType$Reventless.toString(SideEffectHandler$Reventless.componentType), name, (self, cname) => {
-    Component$ReventlessInMemory.setOperations(self, Pulumi.output(noopOps));
+    Component$ReventlessInMemory.setOperations(self, Pulumi.output(ops));
     return Component$ReventlessInMemory.setOutputs(self, {
       name: cname,
       eventCollector: eventCollectorOutputs

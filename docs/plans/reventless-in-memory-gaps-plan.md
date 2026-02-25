@@ -1,8 +1,8 @@
 # reventless-in-memory: Gap Analysis & Implementation Plan
 
-**Status**: P0 Complete, P1+ pending
+**Status**: P0/P1/P2 Complete, P3+ pending
 **Date**: 2026-02-25
-**Updated**: 2026-02-25 — P0 GraphQL server implemented
+**Updated**: 2026-02-25 — P0 GraphQL server implemented; P1 QueryEngine Make(Bus) functor; P2 Counter + Scheduler
 
 ---
 
@@ -651,9 +651,9 @@ Wire into `SideEffectHandler_InMemory.res`.
 | P0 | `QueryDbResolvers_GraphQL.Make(Bus)` | ✅ Done | Queries (getById, listAll, byIndex) |
 | P0 | Bus: `registerQueryDb/Scan`, storage: `scanAll` | ✅ Done | Prerequisite for QueryDb resolver + QueryEngine |
 | P0 | `AggregateRuntime_Builder_InMemory.forCommandGenerator` | ✅ Done | Now calls connect() to register SDL |
-| P1 | `QueryEngine_InMemory.Make(Bus)` | Pending | Real scan/query via Bus registry |
-| P2 | `CounterHandler_InMemory` (real) | Pending | Replace no-op |
-| P2 | `Scheduler_InMemory` | Pending | Node.js timer-based |
+| P1 | `QueryEngine_InMemory.Make(Bus)` | ✅ Done | Real scan/query via Bus registry; `value` → `string` conversion for `id` |
+| P2 | `CounterHandler_InMemory` (real) | ✅ Done | Dict-based counter with (counterId,targetRef) deduplication |
+| P2 | `ScheduledPublisher_InMemory.Make(Bus)` | ✅ Done | `setInterval`/`setTimeout`; fires `Bus.publishEvent` with payload; `SideEffectHandler_InMemory` delegates to scheduler ops |
 | P3 | `HeartbeatRunner_InMemory` | Pending | `setInterval`-based |
 
 ### P0 Implementation Notes
@@ -669,6 +669,21 @@ Wire into `SideEffectHandler_InMemory.res`.
   generateCommand function: `handleResolversEvent` fills it, `make` consumes it.
   This is safe because Pulumi mock mode is synchronous and the two calls are always
   back-to-back for each aggregate.
+
+### P1/P2 Implementation Notes
+
+- `QueryEngine_InMemory` is now a `Make(Bus)` functor. Pass `QueryEngine_InMemory.Make(Bus)` as
+  `QueryEngineAdapter` to `Plugin_Builder.Make` or `Core_Builder.Make` for full in-memory plugins.
+  `QueryEngine.value` (`String|Int|Bool`) is converted to a string key for `ops.load`.
+- `CounterHandler_InMemory` uses two module-level dicts: `counterStore` (counterId → total) and
+  `targetRefStore` (counterId:targetRef → bool). `getCount(counterId)` and `reset()` are exposed.
+- `ScheduledPublisher_InMemory.Make(Bus)` satisfies `Scheduler_Adapter.ScheduledPublisher`.
+  Use it via `Scheduler_Builder.Make(ScheduledPublisher_InMemory.Make(Bus))` to create an
+  in-memory `Scheduler` component. When a schedule fires, the Bus topic from
+  `channelResources[0].name` receives the schedule payload. `reset()` clears all active timers.
+- `SideEffectHandler_InMemory` now delegates `createSchedule`/`deleteSchedule` to the passed
+  `~scheduler` (passes `[]` as resources since in-memory has no target queue). `enqueueEvent`
+  remains a no-op.
 
 ---
 
@@ -689,7 +704,7 @@ reventless/reventless-in-memory/src/adapter/
 ├── QueryDb/
 │   └── QueryDbResolvers_GraphQL.res                 ← new; Make(Bus) functor
 └── Scheduler/
-    └── Scheduler_InMemory.res                       ← new
+    └── ScheduledPublisher_InMemory.res              ← new (Make(Bus) functor; setInterval/setTimeout)
 ```
 
 ### Modified files
@@ -702,10 +717,10 @@ reventless/reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res
   → Register ops + scan fn in Bus; maintain allItems array for scan
 
 reventless/reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res
-  → Become Make(Bus) functor; real scan/query via Bus registry
+  → ✅ Converted to Make(Bus) functor; real scan/query via Bus registry
 
 reventless/reventless-in-memory/src/adapter/Counter/CounterHandler_InMemory.res
-  → Replace no-op with real counter dict
+  → ✅ Replaced no-op with real counter dict (with targetRef deduplication)
 
 reventless/reventless-in-memory/src/components/Aggregate_Builder.res
   → Use CommandGeneratorResolvers_GraphQL instead of _InMemory
