@@ -2,9 +2,9 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
-import * as TestRunner$ReventlessInMemory from "../src/test/TestRunner.res.mjs";
-import * as InMemory_Bus$ReventlessInMemory from "../src/adapter/InMemory_Bus.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessInMemory from "../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
+import * as TestRunner$ReventlessInMemory from "../../src/test/TestRunner.res.mjs";
+import * as InMemory_Bus$ReventlessInMemory from "../../src/adapter/InMemory_Bus.res.mjs";
+import * as QueryDbStorage_InMemory$ReventlessInMemory from "../../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 
 TestRunner$ReventlessInMemory.setup();
 
