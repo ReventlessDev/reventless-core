@@ -3,7 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/Message.res.mjs";
+import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
