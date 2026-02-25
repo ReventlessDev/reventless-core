@@ -29,12 +29,12 @@ let make = (
     name,
     resources: [],
   }
-  Component.make(
+  Reventless.Component.make(
     ~componentType=Reventless.SideEffectHandler.componentType->Reventless.ComponentType.toString,
     ~name,
     ~construct=(self, cname) => {
-      self->Component.setOperations(Pulumi.Output.make(ops))
-      self->Component.setOutputs({
+      self->Reventless.Component.setOperations(Pulumi.Output.make(ops))
+      self->Reventless.Component.setOutputs({
         Reventless.SideEffectHandler.name: cname,
         eventCollector: eventCollectorOutputs,
       })
