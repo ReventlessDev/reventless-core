@@ -1,0 +1,26 @@
+{
+  "name": "@reventlessdev/rescript-graphql-yoga",
+  "version": "1.0.0-alpha.0",
+  "description": "ReScript bindings for graphql-yoga",
+  "license": "MIT",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "test": "echo \"There are no tests for rescript-graphql-yoga.\""
+  },
+  "dependencies": {
+    "graphql": "^16.0.0",
+    "graphql-yoga": "^5.0.0"
+  },
+  "devDependencies": {
+    "rescript": "^12.1.0"
+  },
+  "peerDependencies": {
+    "rescript": "^12.1.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

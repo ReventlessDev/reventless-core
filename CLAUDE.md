@@ -10,9 +10,22 @@ This is **reventless-core** - one of two split monorepos:
 
 The UI repo depends on `rescript-moment` from this repo via file reference, requiring both repos to be co-located.
 
+## Monorepo Folder Structure
+
+This is a Lerna monorepo. Packages are organized by type — **always place new packages in the correct root folder**:
+
+| Folder | Purpose | Examples |
+|--------|---------|---------|
+| `rescript/` | ReScript bindings for JS/npm libraries | `rescript-uuid`, `rescript-graphql-yoga` |
+| `reventless/` | Reventless framework + extension packages | `reventless-spec`, `reventless-in-memory` |
+| `examples/` | Example applications | `examples/aggregate/`, `examples/dcb/` |
+| `packages/` | Build tooling and documentation only | `doc`, `aws-lambda-layer` |
+
+All four folders are Lerna workspaces (`lerna.json` packages) and npm workspaces (`package.json` workspaces).
+
 ## Build Commands
 
-This is a Lerna monorepo with packages in `packages/`. Use Node v22.17.1 (specified in `.node-version`).
+Use Node v22.17.1 (specified in `.node-version`).
 
 ### Monorepo-level commands
 ```bash
@@ -22,7 +35,7 @@ npm run test                   # Run tests in all packages
 npm run clean                  # Clean all packages
 ```
 
-### Per-package commands (run from `packages/<name>/`)
+### Per-package commands (run from the package directory, e.g. `reventless/reventless-in-memory/`)
 ```bash
 npm run build                  # rescript build
 npm run start                  # rescript build -w (watch mode)
@@ -33,7 +46,7 @@ npm run dev                    # jest --watchAll
 
 ### Running a single test file
 ```bash
-cd packages/reventless && npx jest tests/MessageTest.res.js
+cd reventless/reventless && npx jest tests/MessageTest.res.mjs
 ```
 
 ### Publishing
@@ -87,14 +100,14 @@ Reventless is an **event-sourced CQRS framework** for serverless infrastructure,
 3. **reventless-aws** - AWS-specific implementations (DynamoDB, Lambda, SQS, SNS, S3 adapters)
 4. **rescript-*** - ReScript bindings for various JS libraries (aws-sdk, pulumi, uuid, etc.)
 
-### Core Components (in `packages/reventless/src/components/`)
+### Core Components (in `reventless/reventless/src/components/`)
 
 - **Aggregate** - Event-sourced aggregate root with CommandTopic, EventLog, CommandGenerator
 - **ReadModel** - Query-side projection consuming events via EventCollector
 - **Plugin** - Deployable unit containing aggregates, read models, extension points
 - **Core** - The application core orchestrating all components
 
-Component structure pattern (documented in `packages/doc/docs/inner-workings/component-structure-pattern.md`):
+Component structure pattern (documented in `packages/doc/docs-framework/inner-workings/component-structure-pattern.md`):
 
 **Core Files (Required):**
 - `Component.res` - Type definitions and outputs
@@ -113,7 +126,7 @@ The framework separates **deploy-time** (Pulumi infrastructure) from **runtime**
 - `src/adapter/` - Deploy-time adapter interfaces
 - `src/adapter/Runtime/` - Runtime builders for different deployment strategies (Single, PerAggregate, Micro)
 
-AWS adapters in `packages/reventless-aws/src/adapter/` implement:
+AWS adapters in `reventless/reventless-aws/src/adapter/` implement:
 - EventLog storage → DynamoDB
 - CommandTopic/EventTopic channels → SQS (FIFO), SNS
 - QueryDb → DynamoDB
@@ -175,21 +188,32 @@ From the codebase documentation:
 - `...->Pulumi.Output.apply(_, ...)` - prefer piped version
 - `option(Pulumi.Output.t('a))` - this type combination doesn't work correctly
 
-## Packages in This Repo (16 total)
+## Packages in This Repo
 
-**Framework Core:**
-- reventless-spec, reventless, reventless-aws
+**`reventless/` — Framework packages:**
+- `reventless-spec` — type specifications and interfaces
+- `reventless` — core framework (provider-agnostic)
+- `reventless-aws` — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
+- `reventless-in-memory` — in-memory platform for local dev and testing
+- `reventless-interop` — JS interop helpers
+- `reventless-gen` — code generation utilities
 
-**ReScript Bindings (10):**
-- rescript-aws-sdk, rescript-pulumi-pulumi, rescript-pulumi-aws
-- rescript-uuid, rescript-fast-csv, rescript-hash-obj
-- rescript-node-streams, rescript-node-zlib, rescript-ssh2
-- rescript-moment (shared with UI repo)
+**`rescript/` — ReScript bindings:**
+- `rescript-aws-sdk`, `rescript-pulumi-pulumi`, `rescript-pulumi-aws`
+- `rescript-uuid`, `rescript-fast-csv`, `rescript-hash-object`
+- `rescript-node-streams`, `rescript-node-zlib`, `rescript-ssh2`
+- `rescript-graphql-yoga` — bindings for graphql-yoga v5
+- `rescript-moment` (shared with UI repo via file reference)
 
-**Build & Documentation:**
-- reventless-gen, aws-lambda-layer, doc
+**`examples/` — Example applications:**
+- `examples/aggregate/` — aggregate-based plugin examples
+- `examples/dcb/` — DCB-based plugin examples
+
+**`packages/` — Build tooling and documentation:**
+- `doc` — Docusaurus documentation site
+- `aws-lambda-layer` — Lambda layer builder
 
 **Packages in UI Repo (separate repository):**
-- reventless-ui, routes
+- `reventless-ui`, `routes`
 
-The UI repo references `rescript-moment` from this repo using: `"file:../../../reventless-core/packages/rescript-moment"`
+The UI repo references `rescript-moment` from this repo using: `"file:../../../reventless-core/rescript/rescript-moment"`
