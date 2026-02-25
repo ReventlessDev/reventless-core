@@ -16,7 +16,7 @@
     "examples/**"
   ],
   "devDependencies": {
-    "conventional-changelog-reventless": "file:./conventional-changelog-reventless",
+    "conventional-changelog-reventless": "file:./packages/conventional-changelog-reventless",
     "lerna": "^8.1.8",
     "rescript": "^12.1.0"
   },
