@@ -5,7 +5,7 @@ import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/Id.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless/src/util/NoEventMappings.res.mjs";
-import * as TestRunner$ReventlessInMemory from "../src/TestRunner.res.mjs";
+import * as TestRunner$ReventlessInMemory from "../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../src/adapter/InMemory_Bus.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "../src/components/Aggregate_Builder.res.mjs";
 import * as EventLogStorage_InMemory$ReventlessInMemory from "../src/adapter/EventLog/EventLogStorage_InMemory.res.mjs";
