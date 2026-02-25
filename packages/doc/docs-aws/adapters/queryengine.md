@@ -28,7 +28,7 @@ let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
   let allRuntimeQueryDbsOutputs = Js.Dict.map((queryDb: Reventless.QueryDb.outputs) =>
     queryDb.resources
     ->Util.DynamoDb.findResource
-    ->Reventless.Adapter.resourceToUnwrappedOutput
+    ->Reventless.Adapter.resourceToResolvedOutput
   , allQueryDbs)->Pulumi.Output.allDict
 
   let tableName = (allRuntimeQueryDbs, readModelName) =>

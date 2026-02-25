@@ -28,12 +28,12 @@ function toResource(param) {
   };
 }
 
-function findUnwrappedResource(resources) {
-  return Util_Adapter$Reventless.findUnwrappedResource(resources, AWS$ReventlessAws.SNS.service);
+function findResolvedResource(resources) {
+  return Util_Adapter$Reventless.findResolvedResource(resources, AWS$ReventlessAws.SNS.service);
 }
 
-function findTopicInUnwrappedResources(resources) {
-  let resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [AWS$ReventlessAws.SNS.service]);
+function findTopicInResolvedResources(resources) {
+  let resources$1 = Util_Adapter$Reventless.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
@@ -45,7 +45,7 @@ function findTopicInUnwrappedResources(resources) {
 export {
   toRuntimeTopicOutput,
   toResource,
-  findUnwrappedResource,
-  findTopicInUnwrappedResources,
+  findResolvedResource,
+  findTopicInResolvedResources,
 }
 /* @pulumi/pulumi Not a pure module */

@@ -34,7 +34,7 @@ function Make(Spec) {
       })(CommandTopicChannel);
       let commandTopic = SpecificCommandTopic.make(childName, opts);
       let aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => Stdlib_Option.map(Mapping.mapOutgoingEvent, param => Mapping.aggregateName));
-      let commandTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(commandTopic.channel.resources);
+      let commandTopicResources = Adapter$Reventless.resourcesToResolvedOutput(commandTopic.channel.resources);
       let match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(commandTopicResources, commandTopicResources => {
         let ExtensionPointCallback = ExtensionPoint_Callback$Reventless.Make({
           publishToAggregates: publishToAggregates,

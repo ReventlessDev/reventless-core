@@ -147,7 +147,7 @@ let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
   ) =>
     queryDb.resources
     ->Util.DynamoDb.findResource
-    ->Reventless.Adapter.resourceToUnwrappedOutput
+    ->Reventless.Adapter.resourceToResolvedOutput
   )->Pulumi.Output.allDict
 
   let tableName = (allRuntimeQueryDbs, readModelName) =>

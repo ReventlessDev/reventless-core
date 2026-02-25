@@ -23,7 +23,7 @@ function subscribeLambda2S3Bucket(lambda, name, bucket, opts) {
 function createLambdaPolicy(lambdaRole, name, bucket, bucketMode, resources, opts) {
   Pulumi.all([
     bucket.arn,
-    Adapter$Reventless.resourcesToUnwrappedOutput(resources)
+    Adapter$Reventless.resourcesToResolvedOutput(resources)
   ]).apply(param => {
     let resources = param[1];
     let bucketArn = param[0];

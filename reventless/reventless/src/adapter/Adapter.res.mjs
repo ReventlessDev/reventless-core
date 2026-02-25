@@ -28,7 +28,7 @@ function resourcesOutputToResource(resourcesOutput) {
   }
 }
 
-function unwrappedToResource(param) {
+function resolvedToResource(param) {
   return {
     name: Pulumi.output(param.name),
     id: Pulumi.output(param.id),
@@ -38,21 +38,21 @@ function unwrappedToResource(param) {
   };
 }
 
-function unwrappedToResources(unwrapped) {
-  return unwrapped.map(unwrappedToResource);
+function resolvedToResources(resolved) {
+  return resolved.map(resolvedToResource);
 }
 
-function unwrappedOutputToResource(unwrappedResource) {
+function resolvedOutputToResource(resolvedResource) {
   return {
-    name: unwrappedResource.apply(r => r.name),
-    id: unwrappedResource.apply(r => r.id),
-    urn: unwrappedResource.apply(r => r.urn),
-    info: unwrappedResource.apply(r => r.info),
-    service: unwrappedResource.apply(r => r.service)
+    name: resolvedResource.apply(r => r.name),
+    id: resolvedResource.apply(r => r.id),
+    urn: resolvedResource.apply(r => r.urn),
+    info: resolvedResource.apply(r => r.info),
+    service: resolvedResource.apply(r => r.service)
   };
 }
 
-function resourceToUnwrappedOutput(r) {
+function resourceToResolvedOutput(r) {
   return Pulumi.all([
     r.name,
     r.id,
@@ -68,17 +68,17 @@ function resourceToUnwrappedOutput(r) {
   }));
 }
 
-function resourcesToUnwrappedOutput(resources) {
-  return Pulumi.all(resources.map(resourceToUnwrappedOutput));
+function resourcesToResolvedOutput(resources) {
+  return Pulumi.all(resources.map(resourceToResolvedOutput));
 }
 
 function logResource(r) {
-  resourceToUnwrappedOutput(r).apply(r => {
+  resourceToResolvedOutput(r).apply(r => {
     console.log("resource:", r);
   });
 }
 
-function unwrappedToString(resources) {
+function resolvedToString(resources) {
   return Stdlib_Array.filterMap(resources, resource => JSON.stringify(resource)).join(", ");
 }
 
@@ -86,7 +86,7 @@ function urns(resources) {
   return resources.map(resource => resource.urn);
 }
 
-function fromInteropUnwrapped(param) {
+function fromInteropResolved(param) {
   return {
     name: param.name,
     id: param.id,
@@ -113,15 +113,15 @@ function fromInteropResources(rs) {
 export {
   outputToResource,
   resourcesOutputToResource,
-  unwrappedToResource,
-  unwrappedToResources,
-  unwrappedOutputToResource,
-  resourceToUnwrappedOutput,
-  resourcesToUnwrappedOutput,
+  resolvedToResource,
+  resolvedToResources,
+  resolvedOutputToResource,
+  resourceToResolvedOutput,
+  resourcesToResolvedOutput,
   logResource,
-  unwrappedToString,
+  resolvedToString,
   urns,
-  fromInteropUnwrapped,
+  fromInteropResolved,
   fromInteropResource,
   fromInteropResources,
 }

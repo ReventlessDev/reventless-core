@@ -109,7 +109,7 @@ let createLambdaPolicy = (
   resources: array<ReventlessSpec.Adapter.resource>,
   opts,
 ) => {
-  let _ = (bucket.arn, resources->Reventless.Adapter.resourcesToUnwrappedOutput)
+  let _ = (bucket.arn, resources->Reventless.Adapter.resourcesToResolvedOutput)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((bucketArn, resources)) => {
       let allowLambdaWriteS3 =

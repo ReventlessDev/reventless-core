@@ -53,8 +53,8 @@ let findResource = resources => resources->Reventless.Util.Adapter.findResource(
 let findResourceInOutput = resourcesOutput =>
   resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(AWS.SQS.service)
 
-let findUnwrappedResource = resources =>
-  resources->Reventless.Util.AdapterRuntime.findUnwrappedResource(AWS.SQS.service)
+let findResolvedResource = resources =>
+  resources->Reventless.Util.AdapterRuntime.findResolvedResource(AWS.SQS.service)
 
 module Subscription = {
   let toResource = ({eventSourceMapping: {id, arn}}: PulumiAws.SQS.Queue.eventSubscription): ReventlessSpec.Adapter.resource => {

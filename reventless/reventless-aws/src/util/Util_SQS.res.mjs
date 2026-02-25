@@ -60,8 +60,8 @@ function findResourceInOutput(resourcesOutput) {
   return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, AWS$ReventlessAws.SQS.service);
 }
 
-function findUnwrappedResource(resources) {
-  return Util_AdapterRuntime$Reventless.findUnwrappedResource(resources, AWS$ReventlessAws.SQS.service);
+function findResolvedResource(resources) {
+  return Util_AdapterRuntime$Reventless.findResolvedResource(resources, AWS$ReventlessAws.SQS.service);
 }
 
 function toResource$1(param) {
@@ -88,7 +88,7 @@ export {
   subscribeToSnsTopic,
   findResource,
   findResourceInOutput,
-  findUnwrappedResource,
+  findResolvedResource,
   Subscription,
 }
 /* @pulumi/aws Not a pure module */

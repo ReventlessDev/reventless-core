@@ -28,7 +28,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
       lambda->Pulumi.Output.flatMap(lambda => lambda.name),
       lambdaRole.id,
-      resources->Reventless.Adapter.resourcesToUnwrappedOutput,
+      resources->Reventless.Adapter.resourcesToResolvedOutput,
     )
     ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((lambdaArn, lambdaName, lambdaRoleId, resources)) => {
@@ -38,7 +38,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       // Console..log2(`CommandGeneratorResolvers_AppSync: Resources for ${name}:`, resources)
 
       let targetSqsResources =
-        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+        resources->Reventless.Util.Adapter.filterSupportedResolvedResources([
           AWS.SQS.service,
           AWS.SQS_FIFO.service,
         ])

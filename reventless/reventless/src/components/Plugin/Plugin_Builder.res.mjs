@@ -109,7 +109,7 @@ function Make(Spec) {
           let extensionPointsOutputs = match[0];
           let coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Stdlib_JsError.throwWithMessage("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           let corePluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
-          let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources.map(Adapter$Reventless.fromInteropUnwrapped));
+          let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources.map(Adapter$Reventless.fromInteropResolved));
           let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
           let match$1 = Plugin_Helpers$Reventless.createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
           let extensionsOutputs = match$1[0];

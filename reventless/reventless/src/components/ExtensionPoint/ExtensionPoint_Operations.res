@@ -6,7 +6,7 @@ module type Mappings = {
 
 module type Ops = {
   let publishToEventTopic: EventTopic.publishJson
-  let commandTopicResources: array<Adapter.unwrappedResource>
+  let commandTopicResources: array<Adapter.resolvedResource>
   let scheduler: Scheduler.operations
   let queryEngine: ReventlessSpec.QueryEngine.operations
   let resourceNaming: ReventlessSpec.ResourceNaming.operations

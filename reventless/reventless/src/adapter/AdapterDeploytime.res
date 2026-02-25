@@ -1,4 +1,4 @@
-let unwrappedToResource: Adapter.unwrappedResource => ReventlessSpec.Adapter.resource = ({
+let resolvedToResource: Adapter.resolvedResource => ReventlessSpec.Adapter.resource = ({
   name,
   id,
   urn,
@@ -12,15 +12,15 @@ let unwrappedToResource: Adapter.unwrappedResource => ReventlessSpec.Adapter.res
   service: service->Pulumi.Output.make,
 }
 
-external unsafeUnwrapResource: ReventlessSpec.Adapter.resource => Adapter.unwrappedResource =
+external unsafeUnwrapResource: ReventlessSpec.Adapter.resource => Adapter.resolvedResource =
   "%identity"
 
 let stackRefResourceToResource = stackRefResource =>
-  stackRefResource->unsafeUnwrapResource->unwrappedToResource // StackReference outputs are not wrapped in Pulumi.Outputs !
+  stackRefResource->unsafeUnwrapResource->resolvedToResource // StackReference outputs are not wrapped in Pulumi.Outputs !
 
 // Convert from interop Resource.t directly to a Pulumi-wrapped resource.
-// Identical to unwrappedToResource but accepts the interop type, avoiding the
-// intermediate Adapter.unwrappedResource step.
+// Identical to resolvedToResource but accepts the interop type, avoiding the
+// intermediate Adapter.resolvedResource step.
 let fromInteropResource: ReventlessInterop.Resource.t => ReventlessSpec.Adapter.resource = ({
   name,
   id,

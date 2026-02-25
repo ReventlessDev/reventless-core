@@ -1,4 +1,4 @@
-type unwrappedResource = ReventlessSpec.Adapter.unwrappedResource
+type resolvedResource = ReventlessSpec.Adapter.resolvedResource
 
 let outputToResource: Pulumi.Output.t<
   ReventlessSpec.Adapter.resource,
@@ -23,8 +23,8 @@ let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessSpec.Adapter.reso
   | _ => None
   }
 
-let unwrappedToResource = (
-  {id, name, urn, info, service}: unwrappedResource,
+let resolvedToResource = (
+  {id, name, urn, info, service}: resolvedResource,
 ): ReventlessSpec.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
@@ -33,52 +33,52 @@ let unwrappedToResource = (
   service: service->Pulumi.Output.make,
 }
 
-let unwrappedToResources = (unwrapped: array<unwrappedResource>) =>
-  unwrapped->Array.map(unwrapped => unwrapped->unwrappedToResource)
+let resolvedToResources = (resolved: array<resolvedResource>) =>
+  resolved->Array.map(resolved => resolved->resolvedToResource)
 
-let unwrappedOutputToResource: Pulumi.Output.t<
-  unwrappedResource,
-> => ReventlessSpec.Adapter.resource = unwrappedResource => {
-  service: unwrappedResource->Pulumi.Output.apply(r => r.service),
-  name: unwrappedResource->Pulumi.Output.apply(r => r.name),
-  id: unwrappedResource->Pulumi.Output.apply(r => r.id),
-  urn: unwrappedResource->Pulumi.Output.apply(r => r.urn),
-  info: unwrappedResource->Pulumi.Output.apply(r => r.info),
+let resolvedOutputToResource: Pulumi.Output.t<
+  resolvedResource,
+> => ReventlessSpec.Adapter.resource = resolvedResource => {
+  service: resolvedResource->Pulumi.Output.apply(r => r.service),
+  name: resolvedResource->Pulumi.Output.apply(r => r.name),
+  id: resolvedResource->Pulumi.Output.apply(r => r.id),
+  urn: resolvedResource->Pulumi.Output.apply(r => r.urn),
+  info: resolvedResource->Pulumi.Output.apply(r => r.info),
 }
 
-let resourceToUnwrappedOutput = (r: ReventlessSpec.Adapter.resource) =>
+let resourceToResolvedOutput = (r: ReventlessSpec.Adapter.resource) =>
   (r.name, r.id, r.urn, r.info, r.service)
   ->Pulumi.Output.all5
   ->Pulumi.Output.apply(((name, id, urn, info, service)) => {
-    let result: unwrappedResource = {name, id, urn, info, service}
+    let result: resolvedResource = {name, id, urn, info, service}
     result
   })
 
-let resourcesToUnwrappedOutput = (resources: array<ReventlessSpec.Adapter.resource>) =>
+let resourcesToResolvedOutput = (resources: array<ReventlessSpec.Adapter.resource>) =>
   resources
-  ->Array.map(resource => resource->resourceToUnwrappedOutput)
+  ->Array.map(resource => resource->resourceToResolvedOutput)
   ->Pulumi.Output.all
 
 let logResource = r => {
-  let _ = r->resourceToUnwrappedOutput->Pulumi.Output.apply(r => Console.log2("resource:", r))
+  let _ = r->resourceToResolvedOutput->Pulumi.Output.apply(r => Console.log2("resource:", r))
 }
 
-let unwrappedToString = (resources: array<unwrappedResource>) => {
+let resolvedToString = (resources: array<resolvedResource>) => {
   resources->Array.filterMap(resource => resource->JSON.stringifyAny)->Array.joinUnsafe(", ")
 }
 
-let urns = resources => resources->Array.map((resource: unwrappedResource) => resource.urn)
+let urns = resources => resources->Array.map((resource: resolvedResource) => resource.urn)
 
 // ---------------------------------------------------------------------------
 // Interop resource conversions
-// ReventlessInterop.Resource.t and unwrappedResource are structurally identical
+// ReventlessInterop.Resource.t and resolvedResource are structurally identical
 // (name, id, urn, info, service — all plain strings); these helpers bridge the
 // two type-system identities without runtime cost.
 // ---------------------------------------------------------------------------
 
-let fromInteropUnwrapped = (
+let fromInteropResolved = (
   {name, id, urn, info, service}: ReventlessInterop.Resource.t,
-): unwrappedResource => {name, id, urn, info, service}
+): resolvedResource => {name, id, urn, info, service}
 
 let fromInteropResource = (
   {name, id, urn, info, service}: ReventlessInterop.Resource.t,

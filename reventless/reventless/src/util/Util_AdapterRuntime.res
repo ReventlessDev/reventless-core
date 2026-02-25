@@ -7,10 +7,10 @@ let filterSupportedResources = (resources, supportedServices) =>
     )
   )
 
-let filterSupportedUnwrappedResources: (
-  array<unwrappedResource>,
+let filterSupportedResolvedResources: (
+  array<resolvedResource>,
   array<string>,
-) => array<unwrappedResource> = (resources, supportedServices) =>
+) => array<resolvedResource> = (resources, supportedServices) =>
   resources->Array.filter(resource =>
     supportedServices->Belt.Array.some(supportedService => resource.service == supportedService)
   )
@@ -26,10 +26,10 @@ let findResource = (resources, service) =>
   | matching => matching->Array.getUnsafe(0)
   }
 
-let findUnwrappedResource = (resources, service) =>
-  switch resources->filterSupportedUnwrappedResources([service]) {
+let findResolvedResource = (resources, service) =>
+  switch resources->filterSupportedResolvedResources([service]) {
   | [] =>
-    let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ${service} in resources: ${resources
+    let err = `Util.Adapter.findResolvedResource: Couldn't find service ${service} in resources: ${resources
       ->Array.map(res => res->JSON.stringifyAny->Option.getOrThrow)
       ->Array.joinUnsafe(", ")}`
     Console.log(err)

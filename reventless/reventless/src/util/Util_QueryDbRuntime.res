@@ -1,4 +1,4 @@
-let getRuntimeResource = (allQueryDbs: dict<Adapter.unwrappedResource>, queryDbName) =>
+let getRuntimeResource = (allQueryDbs: dict<Adapter.resolvedResource>, queryDbName) =>
   try allQueryDbs->Dict.get(queryDbName)->Option.getOrThrow catch {
   | exn =>
     Console.log2(

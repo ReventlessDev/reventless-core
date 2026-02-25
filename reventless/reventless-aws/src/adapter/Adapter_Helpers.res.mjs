@@ -4,25 +4,25 @@ import * as AWS$ReventlessAws from "./AWS.res.mjs";
 import * as Util_Adapter$Reventless from "@reventlessdev/reventless/src/util/Util_Adapter.res.mjs";
 
 function dynamoDbStreamResources(eventTopicResources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
+  return Util_Adapter$Reventless.filterSupportedResolvedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
 }
 
 function snsResources(resources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+  return Util_Adapter$Reventless.filterSupportedResolvedResources(resources, [
     AWS$ReventlessAws.SNS.service,
     AWS$ReventlessAws.SNS_FIFO.service
   ]);
 }
 
 function sqsResources(resources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+  return Util_Adapter$Reventless.filterSupportedResolvedResources(resources, [
     AWS$ReventlessAws.SQS.service,
     AWS$ReventlessAws.SQS_FIFO.service
   ]);
 }
 
 function dynamoDbResources(resources) {
-  return Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+  return Util_Adapter$Reventless.filterSupportedResolvedResources(resources, [
     AWS$ReventlessAws.DynamoDb.service,
     AWS$ReventlessAws.DynamoDbStream.service
   ]);

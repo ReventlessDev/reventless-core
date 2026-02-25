@@ -7,7 +7,7 @@ import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicCh
 function make(resources) {
   return {
     resources: resources,
-    remotePublish: CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(Util_SQS$ReventlessAws.findUnwrappedResource(resources)), "SQS")
+    remotePublish: CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(Util_SQS$ReventlessAws.findResolvedResource(resources)), "SQS")
   };
 }
 

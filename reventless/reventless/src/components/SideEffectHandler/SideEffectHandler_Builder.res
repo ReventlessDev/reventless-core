@@ -59,7 +59,7 @@ module Make = (
     self->Component.setOperations(
       (
         eventCollector->Component.operations,
-        (eventCollector->Component.outputs).resources->Adapter.resourcesToUnwrappedOutput,
+        (eventCollector->Component.outputs).resources->Adapter.resourcesToResolvedOutput,
       )
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply((({enqueueEvent}, eventCollectorResources)) => {

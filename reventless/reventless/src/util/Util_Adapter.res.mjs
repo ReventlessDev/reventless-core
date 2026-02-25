@@ -12,7 +12,7 @@ function filterSupportedResources(resources, supportedServices) {
   }).map(param => param[0]));
 }
 
-function filterSupportedUnwrappedResources(resources, supportedServices) {
+function filterSupportedResolvedResources(resources, supportedServices) {
   return resources.filter(resource => Belt_Array.some(supportedServices, supportedService => resource.service === supportedService));
 }
 
@@ -22,20 +22,20 @@ function findResource(resources, service) {
       return resources[0];
     }
     let err = `Util.Adapter.findResource: Couldn't find service ` + service + ` in resources`;
-    Pulumi.all(resources.map(Adapter$Reventless.resourceToUnwrappedOutput)).apply(resources => {
-      let resourcesStr = Adapter$Reventless.unwrappedToString(resources);
+    Pulumi.all(resources.map(Adapter$Reventless.resourceToResolvedOutput)).apply(resources => {
+      let resourcesStr = Adapter$Reventless.resolvedToString(resources);
       console.log(err, resourcesStr);
     });
     return Stdlib_JsError.throwWithMessage(err);
   }));
 }
 
-function findUnwrappedResource(resources, service) {
-  let matching = filterSupportedUnwrappedResources(resources, [service]);
+function findResolvedResource(resources, service) {
+  let matching = filterSupportedResolvedResources(resources, [service]);
   if (matching.length !== 0) {
     return matching[0];
   }
-  let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ` + service + ` in resources: ` + Adapter$Reventless.unwrappedToString(resources);
+  let err = `Util.Adapter.findResolvedResource: Couldn't find service ` + service + ` in resources: ` + Adapter$Reventless.resolvedToString(resources);
   console.log(err);
   return Stdlib_JsError.throwWithMessage(err);
 }
@@ -62,17 +62,17 @@ function partitionSupportedResources(allResources, supportedServices) {
   });
 }
 
-function partitionUnwrappedResourcesByService(resources, supportedService) {
+function partitionResolvedResourcesByService(resources, supportedService) {
   return Belt_Array.partition(resources, param => Belt_Array.some(param[1], resource => resource.service === supportedService));
 }
 
 export {
   filterSupportedResources,
-  filterSupportedUnwrappedResources,
+  filterSupportedResolvedResources,
   findResource,
-  findUnwrappedResource,
+  findResolvedResource,
   findResourceInOutput,
   partitionSupportedResources,
-  partitionUnwrappedResourcesByService,
+  partitionResolvedResourcesByService,
 }
 /* @pulumi/pulumi Not a pure module */

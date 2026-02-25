@@ -11,7 +11,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 let NotPublishedToPublisher = /* @__PURE__ */Primitive_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
 
 function toResolvedOutputs(outputs) {
-  return Adapter$Reventless.resourcesToUnwrappedOutput(outputs.resources).apply(resources => ({
+  return Adapter$Reventless.resourcesToResolvedOutput(outputs.resources).apply(resources => ({
     resources: resources.map(r => ({
       name: r.name,
       id: r.id,

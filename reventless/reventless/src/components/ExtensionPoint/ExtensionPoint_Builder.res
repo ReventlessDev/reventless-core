@@ -51,7 +51,7 @@ module Make = (
       )
 
     let commandTopicResources =
-      (commandTopic->CommandTopic_Adapter.channel).resources->Adapter.resourcesToUnwrappedOutput
+      (commandTopic->CommandTopic_Adapter.channel).resources->Adapter.resourcesToResolvedOutput
 
     let (commandTopic, eventTopic, outgoingEventHandler) =
       commandTopicResources

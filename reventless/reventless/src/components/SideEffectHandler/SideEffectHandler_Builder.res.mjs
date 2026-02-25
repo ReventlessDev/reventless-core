@@ -37,7 +37,7 @@ function Make(RuntimeEnvironment) {
         });
         Component$Reventless.setOperations(extra, Pulumi.all([
           Component$Reventless.operations(eventCollector),
-          Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources)
+          Adapter$Reventless.resourcesToResolvedOutput(Component$Reventless.outputs(eventCollector).resources)
         ]).apply(param => {
           let eventCollectorResources = param[1];
           return {

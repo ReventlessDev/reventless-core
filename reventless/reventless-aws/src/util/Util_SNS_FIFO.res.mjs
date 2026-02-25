@@ -15,8 +15,8 @@ function toResource(param) {
   };
 }
 
-function findTopicInUnwrappedResources(resources) {
-  let resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [AWS$ReventlessAws.SNS_FIFO.service]);
+function findTopicInResolvedResources(resources) {
+  let resources$1 = Util_Adapter$Reventless.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS_FIFO.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
@@ -27,6 +27,6 @@ function findTopicInUnwrappedResources(resources) {
 
 export {
   toResource,
-  findTopicInUnwrappedResources,
+  findTopicInResolvedResources,
 }
 /* Util_Adapter-Reventless Not a pure module */

@@ -26,7 +26,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
   }, opts$1);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
-  let coreSqsQueue = Util_SQS$ReventlessAws.findUnwrappedResource(remoteChannel.resources);
+  let coreSqsQueue = Util_SQS$ReventlessAws.findResolvedResource(remoteChannel.resources);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     Output$Pulumi.flatMap(lambda, lambda => lambda.name),

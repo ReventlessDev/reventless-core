@@ -136,5 +136,5 @@ let makeTable = (
 let findResource = resources =>
   resources->Reventless.Util.Adapter.findResource(AWS.DynamoDbStream.service)
 
-let findUnwrappedResource = resources =>
-  resources->Reventless.Util.Adapter.findUnwrappedResource(AWS.DynamoDbStream.service)
+let findResolvedResource = resources =>
+  resources->Reventless.Util.Adapter.findResolvedResource(AWS.DynamoDbStream.service)

@@ -154,13 +154,13 @@ The Heartbeat adapter is specifically designed to integrate with the Core Plugin
 **`remoteChannel` parameter:**
 
 ```rescript
-let coreSqsQueue = remoteChannel.resources->Util_SQS.findUnwrappedResource
+let coreSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
 ```
 
 The `remoteChannel` parameter provides access to the Core Plugin's CommandTopic SQS queue:
 - **Type**: `Reventless.CommandTopic.outputs` from Core Plugin
 - **Purpose**: Enables Heartbeat to send messages to Core's ExtensionPoint
-- **Resolution**: `findUnwrappedResource` extracts the SQS queue resource from the channel outputs
+- **Resolution**: `findResolvedResource` extracts the SQS queue resource from the channel outputs
 
 **Why SQS instead of direct invocation?**
 
@@ -189,7 +189,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   // 2. Deploy-time: Extract Lambda and SQS resources
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
-  let coreSqsQueue = remoteChannel.resources->Util_SQS.findUnwrappedResource
+  let coreSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
 
   // 3. Deploy-time: Configure Lambda permissions, IAM policies, and event target
   let _attachPoliciesAndSetEventTarget = /* ... */

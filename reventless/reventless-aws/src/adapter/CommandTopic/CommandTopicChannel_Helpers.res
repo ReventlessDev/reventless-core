@@ -60,7 +60,7 @@ let createLambdaPolicy = (
   opts: Pulumi.CustomResourceOptions.t,
 ) => {
   let _ =
-    (queue.arn, resources->Reventless.Adapter.resourcesToUnwrappedOutput)
+    (queue.arn, resources->Reventless.Adapter.resourcesToResolvedOutput)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((queueArn, resources)) => {
       let allowSQSSendLambda =

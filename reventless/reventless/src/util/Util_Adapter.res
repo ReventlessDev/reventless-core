@@ -16,10 +16,10 @@ let filterSupportedResources: (
     ->Array.map(((resource, _)) => resource)
   )
 
-let filterSupportedUnwrappedResources: (
-  array<Adapter.unwrappedResource>,
+let filterSupportedResolvedResources: (
+  array<Adapter.resolvedResource>,
   array<string>,
-) => array<Adapter.unwrappedResource> = (resources, supportedServices) =>
+) => array<Adapter.resolvedResource> = (resources, supportedServices) =>
   resources->Array.filter(resource =>
     supportedServices->Belt.Array.some(supportedService => resource.service == supportedService)
   )
@@ -33,10 +33,10 @@ let findResource = (resources, service) =>
       let err = `Util.Adapter.findResource: Couldn't find service ${service} in resources`
       let _ =
         resources
-        ->Array.map(Adapter.resourceToUnwrappedOutput)
+        ->Array.map(Adapter.resourceToResolvedOutput)
         ->Pulumi.Output.all
         ->Pulumi.Output.apply(resources => {
-          let resourcesStr = resources->Adapter.unwrappedToString
+          let resourcesStr = resources->Adapter.resolvedToString
           Console.log2(err, resourcesStr)
         })
       JsError.throwWithMessage(err)
@@ -45,10 +45,10 @@ let findResource = (resources, service) =>
   )
   ->Adapter.outputToResource
 
-let findUnwrappedResource = (resources, service) =>
-  switch resources->filterSupportedUnwrappedResources([service]) {
+let findResolvedResource = (resources, service) =>
+  switch resources->filterSupportedResolvedResources([service]) {
   | [] =>
-    let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ${service} in resources: ${resources->Adapter.unwrappedToString}`
+    let err = `Util.Adapter.findResolvedResource: Couldn't find service ${service} in resources: ${resources->Adapter.resolvedToString}`
     Console.log(err)
     JsError.throwWithMessage(err)
   | matching => matching->Array.getUnsafe(0)
@@ -84,12 +84,12 @@ let partitionSupportedResources = (allResources, supportedServices) => {
   })
 }
 
-type unwrappedResources = array<(string, array<Adapter.unwrappedResource>)>
+type resolvedResources = array<(string, array<Adapter.resolvedResource>)>
 
-let partitionUnwrappedResourcesByService: (
-  unwrappedResources,
+let partitionResolvedResourcesByService: (
+  resolvedResources,
   string,
-) => (unwrappedResources, unwrappedResources) = (resources, supportedService) =>
+) => (resolvedResources, resolvedResources) = (resources, supportedService) =>
   resources->Belt.Array.partition(((_, resources)) =>
     resources->Belt.Array.some(resource => resource.service == supportedService)
   )

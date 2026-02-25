@@ -8,7 +8,7 @@ function filterSupportedResources(resources, supportedServices) {
   return resources.filter(resource => Belt_Array.some(supportedServices, supportedService => resource.service.get() === supportedService));
 }
 
-function filterSupportedUnwrappedResources(resources, supportedServices) {
+function filterSupportedResolvedResources(resources, supportedServices) {
   return resources.filter(resource => Belt_Array.some(supportedServices, supportedService => resource.service === supportedService));
 }
 
@@ -22,20 +22,20 @@ function findResource(resources, service) {
   return Stdlib_JsError.throwWithMessage(err);
 }
 
-function findUnwrappedResource(resources, service) {
-  let resources$1 = filterSupportedUnwrappedResources(resources, [service]);
+function findResolvedResource(resources, service) {
+  let resources$1 = filterSupportedResolvedResources(resources, [service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
-  let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ` + service + ` in resources: ` + resources.map(res => Stdlib_Option.getOrThrow(JSON.stringify(res), undefined)).join(", ");
+  let err = `Util.Adapter.findResolvedResource: Couldn't find service ` + service + ` in resources: ` + resources.map(res => Stdlib_Option.getOrThrow(JSON.stringify(res), undefined)).join(", ");
   console.log(err);
   return Stdlib_JsError.throwWithMessage(err);
 }
 
 export {
   filterSupportedResources,
-  filterSupportedUnwrappedResources,
+  filterSupportedResolvedResources,
   findResource,
-  findUnwrappedResource,
+  findResolvedResource,
 }
 /* No side effect */

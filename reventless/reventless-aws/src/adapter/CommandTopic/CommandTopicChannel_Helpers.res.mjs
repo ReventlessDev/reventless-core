@@ -57,7 +57,7 @@ function createQueuePolicy(queue, name, lambda, opts) {
 function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
   Pulumi.all([
     queue.arn,
-    Adapter$Reventless.resourcesToUnwrappedOutput(resources)
+    Adapter$Reventless.resourcesToResolvedOutput(resources)
   ]).apply(param => {
     let resources = param[1];
     let allowSQSSendLambda = Adapter_Helpers$ReventlessAws.sqsResources(resources).length !== 0 ? PolicyDocument$PulumiAws.make(undefined, name + "RemoteSQSLambdaPolicy", [{

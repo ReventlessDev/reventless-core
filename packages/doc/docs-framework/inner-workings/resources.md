@@ -141,10 +141,10 @@ Each service module provides:
 
 The [`Adapter.res`](packages/reventless/src/adapter/Adapter.res) file provides utility functions for working with resources:
 
-### Unwrapped Resources
+### Resolved Resources
 
 ```rescript
-type unwrappedResource = {
+type resolvedResource = {
   name: string,
   id: string,
   urn: string,
@@ -156,17 +156,17 @@ type unwrappedResource = {
 **Purpose:**
 - Plain values without `Pulumi.Output.t` wrapping
 - Used for runtime operations where all values are resolved
-- Conversion functions: `resourceToUnwrappedOutput`, `unwrappedToResource`
+- Conversion functions: `resourceToResolvedOutput`, `resolvedToResource`
 
 ### Conversion Functions
 
 Key conversion functions include:
 - **`outputToResource`**: Convert a single output to resource
 - **`resourcesOutputToResource`**: Extract first resource from array
-- **`unwrappedToResource`**: Wrap plain values into resource
-- **`unwrappedToResources`**: Batch wrap plain values
-- **`resourcesToUnwrappedOutput`**: Convert resource array to unwrapped output
-- **`urns`**: Extract URNs from unwrapped resources
+- **`resolvedToResource`**: Wrap plain values into resource
+- **`resolvedToResources`**: Batch wrap plain values
+- **`resourcesToResolvedOutput`**: Convert resource array to resolved output
+- **`urns`**: Extract URNs from resolved resources
 
 ## Resource Filtering and Discovery
 
@@ -175,13 +175,13 @@ Components can filter resources by service type to discover specific resource ty
 From [`Adapter_Helpers.res`](packages/reventless-aws/src/adapter/Adapter_Helpers.res):
 ```rescript
 let dynamoDbResources = resources =>
-  resources->filterSupportedUnwrappedResources([
+  resources->filterSupportedResolvedResources([
     AWS.DynamoDb.service,
     AWS.DynamoDbStream.service,
   ])
 
 let sqsResources = resources =>
-  resources->filterSupportedUnwrappedResources([
+  resources->filterSupportedResolvedResources([
     AWS.SQS.service,
     AWS.SQS_FIFO.service,
   ])
@@ -383,5 +383,5 @@ Links to related pages:
 4. **How do resources enable component communication?**
    Resources provide the necessary identifiers (URLs, ARNs, names) for components to connect to each other's infrastructure.
 
-5. **What's the relationship between `resource` and `unwrappedResource`?**
-   `unwrappedResource` contains plain string values for runtime use, while `resource` wraps values in `Pulumi.Output.t` for deploy-time dependency management.
+5. **What's the relationship between `resource` and `resolvedResource`?**
+   `resolvedResource` contains plain string values for runtime use, while `resource` wraps values in `Pulumi.Output.t` for deploy-time dependency management.

@@ -9,8 +9,8 @@ let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
   r
 }
 
-let findTopicInUnwrappedResources = resources =>
-  switch resources->Reventless.Util_Adapter.filterSupportedUnwrappedResources([
+let findTopicInResolvedResources = resources =>
+  switch resources->Reventless.Util_Adapter.filterSupportedResolvedResources([
     AWS.SNS_FIFO.service,
   ]) {
   | [] =>

@@ -15,11 +15,11 @@ let toResource: PulumiAws.SNS.Topic.t => ReventlessSpec.Adapter.resource = ({id,
   info: name->Pulumi.Output.apply(_ => ""),
 }
 
-let findUnwrappedResource = resources =>
-  resources->Reventless.Util.Adapter.findUnwrappedResource(AWS.SNS.service)
+let findResolvedResource = resources =>
+  resources->Reventless.Util.Adapter.findResolvedResource(AWS.SNS.service)
 
-let findTopicInUnwrappedResources = resources =>
-  switch resources->Reventless.Util_Adapter.filterSupportedUnwrappedResources([AWS.SNS.service]) {
+let findTopicInResolvedResources = resources =>
+  switch resources->Reventless.Util_Adapter.filterSupportedResolvedResources([AWS.SNS.service]) {
   | [] =>
     let err = "Util.SQS.findTopicNameInUnwrappedResources: Couldn't find SNS Topic in resources"
     Console.log(err)

@@ -13,7 +13,7 @@ import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
 function toResources(eventTopics) {
-  return Adapter$Reventless.resourcesToUnwrappedOutput(Object.values(eventTopics).flatMap(outputs => outputs.resources));
+  return Adapter$Reventless.resourcesToResolvedOutput(Object.values(eventTopics).flatMap(outputs => outputs.resources));
 }
 
 function createQueuePolicy(queue, name, resources, opts) {
@@ -46,7 +46,7 @@ function createQueuePolicy(queue, name, resources, opts) {
 function subscribeQueue2SnsTopic(queue, name, resources, opts) {
   resources.map(resource => {
     console.log("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource);
-    let subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, resource.name, AdapterDeploytime$Reventless.unwrappedToResource(resource), opts);
+    let subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, resource.name, AdapterDeploytime$Reventless.resolvedToResource(resource), opts);
     return subscription.id.apply(id => {
       console.log("created SNS subscription:", id, name);
     });
@@ -70,7 +70,7 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
   Pulumi.all([
     toResources(eventTopics),
     Pulumi.all(queues.map(queue => queue.arn)),
-    Adapter$Reventless.resourcesToUnwrappedOutput(resources)
+    Adapter$Reventless.resourcesToResolvedOutput(resources)
   ]).apply(param => {
     let resources = param[2];
     let queueArns = param[1];
@@ -140,7 +140,7 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
       ])),
       role: lambdaRole.id
     }, opts);
-    dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts));
+    dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.resolvedToResource(dynamoDbStreamResource), opts));
   });
   return queues.map(queue => Adapter$Reventless.outputToResource(lambda.apply(lambda => Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts)))));
 }

@@ -29,9 +29,9 @@ function make(name, api, fields, runtime, resources, opts) {
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     Output$Pulumi.flatMap(lambda, lambda => lambda.name),
     lambdaRole.id,
-    Adapter$Reventless.resourcesToUnwrappedOutput(resources)
+    Adapter$Reventless.resourcesToResolvedOutput(resources)
   ]).apply(param => {
-    let targetSqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[3], [
+    let targetSqsResources = Util_Adapter$Reventless.filterSupportedResolvedResources(param[3], [
       AWS$ReventlessAws.SQS.service,
       AWS$ReventlessAws.SQS_FIFO.service
     ]);

@@ -189,7 +189,7 @@ module Make = (
           )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
         let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
           corePluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
-            Adapter.fromInteropUnwrapped,
+            Adapter.fromInteropResolved,
           ),
         )
         let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish

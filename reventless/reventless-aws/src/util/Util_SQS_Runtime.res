@@ -7,7 +7,7 @@ type runtimeQueue = {
   arn: string,
 }
 
-let toRuntimeQueue = ({id, name, urn}: Reventless.Adapter.unwrappedResource) => {
+let toRuntimeQueue = ({id, name, urn}: Reventless.Adapter.resolvedResource) => {
   id,
   name,
   arn: urn,

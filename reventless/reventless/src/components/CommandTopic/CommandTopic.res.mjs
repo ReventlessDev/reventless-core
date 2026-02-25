@@ -9,7 +9,7 @@ import * as CommandTopic_Helpers$Reventless from "./CommandTopic_Helpers.res.mjs
 let NotPublishedToChannel = /* @__PURE__ */Primitive_exceptions.create("CommandTopic-Reventless.NotPublishedToChannel");
 
 function toResolvedOutputs(outputs) {
-  return Adapter$Reventless.resourcesToUnwrappedOutput(outputs.resources).apply(resources => ({
+  return Adapter$Reventless.resourcesToResolvedOutput(outputs.resources).apply(resources => ({
     resources: resources.map(r => ({
       name: r.name,
       id: r.id,

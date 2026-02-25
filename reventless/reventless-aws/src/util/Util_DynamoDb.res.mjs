@@ -187,8 +187,8 @@ function findResource(resources) {
   return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDb.service);
 }
 
-function findUnwrappedResource(resources) {
-  return Util_Adapter$Reventless.findUnwrappedResource(resources, AWS$ReventlessAws.DynamoDb.service);
+function findResolvedResource(resources) {
+  return Util_Adapter$Reventless.findResolvedResource(resources, AWS$ReventlessAws.DynamoDb.service);
 }
 
 function findResourceInOutput(resourcesOutput) {
@@ -209,7 +209,7 @@ export {
   option2Str,
   makeTable,
   findResource,
-  findUnwrappedResource,
+  findResolvedResource,
   findResourceInOutput,
 }
 /* @pulumi/aws Not a pure module */

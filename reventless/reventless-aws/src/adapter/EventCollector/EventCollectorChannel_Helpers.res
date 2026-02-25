@@ -6,7 +6,7 @@ let toResources = (eventTopics: Reventless.EventTopic.allOutputs) =>
   eventTopics
   ->Dict.valuesToArray
   ->Array.flatMap(outputs => outputs.resources)
-  ->Reventless.Adapter.resourcesToUnwrappedOutput
+  ->Reventless.Adapter.resourcesToResolvedOutput
 
 let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) => {
   let _ =
@@ -46,14 +46,14 @@ let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) =>
     })
 }
 
-let subscribeQueue2SnsTopic = (queue, name, resources: array<ReventlessSpec.Adapter.unwrappedResource>, opts) => {
+let subscribeQueue2SnsTopic = (queue, name, resources: array<ReventlessSpec.Adapter.resolvedResource>, opts) => {
   let _snsTopicSubscriptions = resources->Array.map(resource => {
     Console.log3("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource)
     let subscription = Util_SQS.subscribeToSnsTopic(
       ~queue,
       ~targetName=name,
       ~sourceName=resource.name,
-      ~topic=resource->Reventless.AdapterDeploytime.unwrappedToResource,
+      ~topic=resource->Reventless.AdapterDeploytime.resolvedToResource,
       ~opts,
     )
     subscription.id->Pulumi.Output.apply(id => Console.log3("created SNS subscription:", id, name))
@@ -92,7 +92,7 @@ let connectLambda = (
     (
       eventTopics->toResources,
       queues->Array.map(queue => queue.arn)->Pulumi.Output.all,
-      resources->Reventless.Adapter.resourcesToUnwrappedOutput,
+      resources->Reventless.Adapter.resourcesToResolvedOutput,
     )
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((eventTopicResources, queueArns, resources)) => {
@@ -235,7 +235,7 @@ let connectLambda = (
             ~lambda,
             ~targetName=name,
             ~sourceName=dynamoDbStreamResource.name,
-            ~source=dynamoDbStreamResource->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~source=dynamoDbStreamResource->Reventless.AdapterDeploytime.resolvedToResource,
             ~opts,
           )
         )

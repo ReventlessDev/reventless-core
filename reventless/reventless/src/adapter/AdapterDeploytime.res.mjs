@@ -2,7 +2,7 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 
-function unwrappedToResource(param) {
+function resolvedToResource(param) {
   return {
     name: Pulumi.output(param.name),
     id: Pulumi.output(param.id),
@@ -12,7 +12,7 @@ function unwrappedToResource(param) {
   };
 }
 
-let stackRefResourceToResource = unwrappedToResource;
+let stackRefResourceToResource = resolvedToResource;
 
 function fromInteropResource(param) {
   return {
@@ -25,7 +25,7 @@ function fromInteropResource(param) {
 }
 
 export {
-  unwrappedToResource,
+  resolvedToResource,
   stackRefResourceToResource,
   fromInteropResource,
 }

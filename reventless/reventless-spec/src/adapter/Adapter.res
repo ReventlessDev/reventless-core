@@ -8,7 +8,7 @@ type resource = {
 
 type resources = dict<resource>
 
-type unwrappedResource = {
+type resolvedResource = {
   name: string,
   id: string,
   urn: string,
