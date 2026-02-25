@@ -2,6 +2,7 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 import * as GraphQL_Server$ReventlessInMemory from "./adapter/GraphQL_Server.res.mjs";
+import * as HeartbeatRunner_InMemory$ReventlessInMemory from "./adapter/Heartbeat/HeartbeatRunner_InMemory.res.mjs";
 
 function setup() {
   Pulumi.runtime.setMocks({
@@ -25,10 +26,15 @@ function resetGraphQLServer() {
   GraphQL_Server$ReventlessInMemory.reset();
 }
 
+function resetHeartbeatRunner() {
+  HeartbeatRunner_InMemory$ReventlessInMemory.reset();
+}
+
 export {
   setup,
   resolve,
   stopGraphQLServer,
   resetGraphQLServer,
+  resetHeartbeatRunner,
 }
 /* @pulumi/pulumi Not a pure module */

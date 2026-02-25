@@ -40,3 +40,7 @@ let stopGraphQLServer = () => GraphQL_Server.stop()
 // Reset GraphQL server registry state.
 // Call between test suites when creating multiple Platform.Make() instances.
 let resetGraphQLServer = () => GraphQL_Server.reset()
+
+// Clear all active heartbeat timers started by HeartbeatRunner_InMemory.
+// Call in afterAll when using Plugin_Builder with HeartbeatRunner_InMemory.
+let resetHeartbeatRunner = () => HeartbeatRunner_InMemory.reset()

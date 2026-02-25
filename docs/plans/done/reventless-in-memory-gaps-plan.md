@@ -1,8 +1,8 @@
 # reventless-in-memory: Gap Analysis & Implementation Plan
 
-**Status**: P0/P1/P2 Complete, P3+ pending
+**Status**: P0/P1/P2/P3 Complete ✅
 **Date**: 2026-02-25
-**Updated**: 2026-02-25 — P0 GraphQL server implemented; P1 QueryEngine Make(Bus) functor; P2 Counter + Scheduler
+**Updated**: 2026-02-25 — P0 GraphQL server implemented; P1 QueryEngine Make(Bus) functor; P2 Counter + Scheduler; P3 HeartbeatRunner_InMemory
 
 ---
 
@@ -654,7 +654,7 @@ Wire into `SideEffectHandler_InMemory.res`.
 | P1 | `QueryEngine_InMemory.Make(Bus)` | ✅ Done | Real scan/query via Bus registry; `value` → `string` conversion for `id` |
 | P2 | `CounterHandler_InMemory` (real) | ✅ Done | Dict-based counter with (counterId,targetRef) deduplication |
 | P2 | `ScheduledPublisher_InMemory.Make(Bus)` | ✅ Done | `setInterval`/`setTimeout`; fires `Bus.publishEvent` with payload; `SideEffectHandler_InMemory` delegates to scheduler ops |
-| P3 | `HeartbeatRunner_InMemory` | Pending | `setInterval`-based |
+| P3 | `HeartbeatRunner_InMemory` | ✅ Done | `setInterval`-based; fires handlerRef at timeout×60s; reset() clears timers |
 
 ### P0 Implementation Notes
 
