@@ -4,64 +4,81 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 
-function make(param, param$1, param$2, param$3, param$4, param$5, param$6) {
-  let store = {
-    contents: {}
-  };
-  let load = async id => ({
-    TAG: "Ok",
-    _0: Stdlib_Option.getOr(store.contents[id], [])
-  });
-  let save = async (id, state, _saveMode, _ttl) => {
-    store.contents[id] = [state];
-    return {
-      TAG: "Ok",
-      _0: undefined
+function Make(Bus) {
+  let make = (name, param, param$1, param$2, param$3, param$4, param$5) => {
+    let store = {
+      contents: {}
     };
-  };
-  let saveBatch = async batch => {
-    batch.forEach(param => {
-      store.contents[param[0]] = [param[1]];
+    let allItems = {
+      contents: []
+    };
+    let syncAll = () => {
+      allItems.contents = Object.values(store.contents).flatMap(v => v);
+    };
+    let load = async id => ({
+      TAG: "Ok",
+      _0: Stdlib_Option.getOr(store.contents[id], [])
     });
-    return {
-      TAG: "Ok",
-      _0: undefined
+    let save = async (id, state, _saveMode, _ttl) => {
+      store.contents[id] = [state];
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
     };
-  };
-  let count = async (_id, _fieldName, inc) => ({
-    TAG: "Ok",
-    _0: inc
-  });
-  let $$delete = async (id, _subId) => {
-    Stdlib_Dict.$$delete(store.contents, id);
-    return {
-      TAG: "Ok",
-      _0: undefined
+    let saveBatch = async batch => {
+      batch.forEach(param => {
+        store.contents[param[0]] = [param[1]];
+      });
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
     };
-  };
-  let deleteBatch = async ids => {
-    ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
-    return {
+    let count = async (_id, _fieldName, inc) => ({
       TAG: "Ok",
-      _0: undefined
+      _0: inc
+    });
+    let $$delete = async (id, _subId) => {
+      Stdlib_Dict.$$delete(store.contents, id);
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
     };
-  };
-  let ops = {
-    load: load,
-    save: save,
-    saveBatch: saveBatch,
-    count: count,
-    delete: $$delete,
-    deleteBatch: deleteBatch
+    let deleteBatch = async ids => {
+      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops = {
+      load: load,
+      save: save,
+      saveBatch: saveBatch,
+      count: count,
+      delete: $$delete,
+      deleteBatch: deleteBatch
+    };
+    Bus.registerQueryDb(name, ops);
+    Bus.registerQueryDbScan(name, () => allItems.contents);
+    return {
+      resources: [],
+      dataSourceName: Pulumi.output(""),
+      operations: Pulumi.output(ops)
+    };
   };
   return {
-    resources: [],
-    dataSourceName: Pulumi.output(""),
-    operations: Pulumi.output(ops)
+    make: make
   };
 }
 
 export {
-  make,
+  Make,
 }
 /* @pulumi/pulumi Not a pure module */

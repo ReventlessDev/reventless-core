@@ -11,6 +11,13 @@ module type T = {
   let dispatchCommand: (string, JSON.t) => promise<unit>
   let registerCommandHandler: (string, (JSON.t, unit) => promise<unit>) => unit
 
+  // QueryDb registry: read model name → storage ops and scan function
+  // Populated by QueryDbStorage_InMemory.Make(Bus) during component construction.
+  let registerQueryDb: (string, Reventless.QueryDb_Adapter.operations) => unit
+  let getQueryDb: string => option<Reventless.QueryDb_Adapter.operations>
+  let registerQueryDbScan: (string, unit => array<JSON.t>) => unit
+  let getQueryDbScan: string => option<unit => array<JSON.t>>
+
   let reset: unit => unit
 }
 
@@ -19,6 +26,8 @@ module Make = (): T => {
     dict<array<(string, Reventless.Message.meta, JSON.t) => promise<unit>>>,
   > = ref(Dict.make())
   let commandHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
+  let queryDbRegistry: ref<dict<Reventless.QueryDb_Adapter.operations>> = ref(Dict.make())
+  let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
 
   let publishEvent = async (topicName, service, meta, json) => {
     let subscribers = eventSubscribers.contents->Dict.get(topicName)->Option.getOr([])
@@ -41,8 +50,15 @@ module Make = (): T => {
     commandHandlers.contents->Dict.set(channelName, handler)
   }
 
+  let registerQueryDb = (name, ops) => queryDbRegistry.contents->Dict.set(name, ops)
+  let getQueryDb = name => queryDbRegistry.contents->Dict.get(name)
+  let registerQueryDbScan = (name, scan) => queryDbScanRegistry.contents->Dict.set(name, scan)
+  let getQueryDbScan = name => queryDbScanRegistry.contents->Dict.get(name)
+
   let reset = () => {
     eventSubscribers := Dict.make()
     commandHandlers := Dict.make()
+    queryDbRegistry := Dict.make()
+    queryDbScanRegistry := Dict.make()
   }
 }

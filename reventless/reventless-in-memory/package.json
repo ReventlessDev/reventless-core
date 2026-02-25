@@ -28,7 +28,10 @@
   "dependencies": {
     "@reventlessdev/reventless": "*",
     "@reventlessdev/reventless-spec": "*",
-    "@reventlessdev/rescript-pulumi-pulumi": "*"
+    "@reventlessdev/rescript-graphql-yoga": "*",
+    "@reventlessdev/rescript-pulumi-pulumi": "*",
+    "graphql": "^16.0.0",
+    "graphql-yoga": "^5.0.0"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",

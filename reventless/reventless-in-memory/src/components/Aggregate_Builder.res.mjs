@@ -7,7 +7,7 @@ import * as CommandTopicChannel_InMemory$ReventlessInMemory from "../adapter/Com
 import * as EventTopicPublisher_InMemory$ReventlessInMemory from "../adapter/EventTopic/EventTopicPublisher_InMemory.res.mjs";
 import * as EventCollectorChannel_InMemory$ReventlessInMemory from "../adapter/EventCollector/EventCollectorChannel_InMemory.res.mjs";
 import * as AggregateRuntime_Builder_InMemory$ReventlessInMemory from "../adapter/Runtime/AggregateRuntime_Builder_InMemory.res.mjs";
-import * as CommandGeneratorResolvers_InMemory$ReventlessInMemory from "../adapter/CommandGenerator/CommandGeneratorResolvers_InMemory.res.mjs";
+import * as CommandGeneratorResolvers_GraphQL$ReventlessInMemory from "../adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res.mjs";
 
 function Make(Bus) {
   let CommandTopicChannel = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
@@ -21,7 +21,10 @@ function Make(Bus) {
       make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
       groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
       asEventHandler: prim => prim
-    })(CommandGeneratorResolvers_InMemory$ReventlessInMemory)({
+    })({
+      handleResolversEvent: CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handleResolversEvent,
+      make: CommandGeneratorResolvers_GraphQL$ReventlessInMemory.make
+    })({
       make: CommandTopicChannel.make
     })(EventLogStorage_InMemory$ReventlessInMemory)(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder);
     return {

@@ -21,12 +21,24 @@ module Make = (
   module EventCollectorChannel = EventCollectorChannel
 
   let forCommandGenerator = (
-    ~handler as _,
-    ~connect as _,
+    ~handler,
+    ~connect,
     ~memorySize as _=?,
     ~timeout as _=?,
-    _commandGenerator,
-  ) => () // No-op: no AppSync in-memory
+    commandGenerator,
+  ) => {
+    // Call connect(~runtime) so CommandGeneratorResolvers_GraphQL.make registers SDL+resolvers.
+    // The runtime's handlerRef is unused by the GraphQL resolver path, but we create a proper
+    // runtime so the type is satisfied and future callers that need handlerRef will work.
+    let resource = commandGenerator->Reventless.Component.toPulumiResource
+    let runtime = RuntimeEnvironment_InMemory.make(
+      ~name=resource.name->Reventless.ComponentType.nameOpt(
+        Reventless.CommandGenerator.componentType,
+      ),
+      ~handler=handler->Pulumi.Output.apply(h => h->RuntimeEnvironment_InMemory.asEventHandler),
+    )
+    connect(~runtime)
+  }
 
   let forCommandTopic = (
     ~handler,

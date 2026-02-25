@@ -32,3 +32,11 @@ let setup = () =>
 // In mock mode, the promise resolves immediately with the output value.
 @send external promise: Pulumi.Output.t<'a> => promise<'a> = "promise"
 let resolve = (output: Pulumi.Output.t<'a>): promise<'a> => output->promise
+
+// Stop the shared GraphQL server started by Platform.Make().
+// Call this in afterAll() to release the HTTP port.
+let stopGraphQLServer = () => GraphQL_Server.stop()
+
+// Reset GraphQL server registry state.
+// Call between test suites when creating multiple Platform.Make() instances.
+let resetGraphQLServer = () => GraphQL_Server.reset()

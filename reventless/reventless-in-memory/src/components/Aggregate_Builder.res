@@ -22,7 +22,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       Behavior,
       EventMappings,
       RuntimeEnvironment,
-      CommandGeneratorResolvers_InMemory,
+      CommandGeneratorResolvers_GraphQL,
       CommandTopicChannel,
       EventLogStorage_InMemory,
       EventTopicPublisher,

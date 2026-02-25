@@ -2,6 +2,7 @@
 
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
+import * as GraphQL_Server$ReventlessInMemory from "./adapter/GraphQL_Server.res.mjs";
 import * as Counter_Builder$ReventlessInMemory from "./components/Counter_Builder.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
@@ -51,6 +52,7 @@ function Make($star) {
   let DcbEventLog = {
     Make: Make$6
   };
+  GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
   return {
     Aggregate: {
       Make: funarg => (funarg$1 => {
@@ -70,7 +72,9 @@ function Make($star) {
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,
     Task: Task,
-    Counter: Counter,
+    Counter: {
+      make: Counter.make
+    },
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
     DcbEventLog: DcbEventLog

@@ -5,6 +5,9 @@
 //   TestRunner.setup()
 //   module Platform = Platform.Make()
 //   module App = MyPlugin.Make(Platform)
+//
+// The platform starts a GraphQL server on port 4000 after all components are built.
+// Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
 module Make = (): ReventlessSpec.Platform.T => {
   module Bus = InMemory_Bus.Make()
@@ -67,4 +70,9 @@ module Make = (): ReventlessSpec.Platform.T => {
       Spec: ReventlessSpec.DcbEventLog.Spec,
     ): (ReventlessSpec.DcbEventLog.T with module Spec = Spec) => DcbEventLogMaker.Make(Spec)
   }
+
+  // Start the shared GraphQL server after all components are built.
+  // In Pulumi mock mode, all Output.apply chains have fired synchronously by this point,
+  // so all mutation and query resolvers are already registered in GraphQL_Server.
+  let () = GraphQL_Server.start()
 }

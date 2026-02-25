@@ -5,10 +5,15 @@ import * as CounterHandler_InMemory$ReventlessInMemory from "../adapter/Counter/
 import * as QueryDbStorage_InMemory$ReventlessInMemory from "../adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 
 function Make(Bus) {
-  return Counter_Builder$Reventless.Make(QueryDbStorage_InMemory$ReventlessInMemory)({
+  let QueryDbStorage = QueryDbStorage_InMemory$ReventlessInMemory.Make(Bus);
+  let include = Counter_Builder$Reventless.Make(QueryDbStorage)({
     api: undefined,
     apiRole: undefined
   })(CounterHandler_InMemory$ReventlessInMemory);
+  return {
+    QueryDbStorage: QueryDbStorage,
+    make: include.make
+  };
 }
 
 export {

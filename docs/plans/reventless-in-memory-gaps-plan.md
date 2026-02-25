@@ -1,7 +1,8 @@
 # reventless-in-memory: Gap Analysis & Implementation Plan
 
-**Status**: Draft
+**Status**: P0 Complete, P1+ pending
 **Date**: 2026-02-25
+**Updated**: 2026-02-25 — P0 GraphQL server implemented
 
 ---
 
@@ -642,17 +643,32 @@ Wire into `SideEffectHandler_InMemory.res`.
 
 ## 13. Summary: Implementation Order
 
-| Phase | Item | Notes |
-|-------|------|-------|
-| P0 | `rescript-graphql-yoga` package | New package; graphql + graphql-yoga bindings |
-| P0 | `GraphQL_Server.res` | Shared registry + single server startup |
-| P0 | `CommandGeneratorResolvers_GraphQL.res` | Mutations; replaces `_InMemory` no-op |
-| P0 | `QueryDbResolvers_GraphQL.Make(Bus)` | Queries (getById, listAll, byIndex) |
-| P0 | Bus: `registerQueryDb/Scan`, storage: `scanAll` | Prerequisite for QueryDb resolver + QueryEngine |
-| P1 | `QueryEngine_InMemory.Make(Bus)` | Real scan/query via Bus registry |
-| P2 | `CounterHandler_InMemory` (real) | Replace no-op |
-| P2 | `Scheduler_InMemory` | Node.js timer-based |
-| P3 | `HeartbeatRunner_InMemory` | `setInterval`-based |
+| Phase | Item | Status | Notes |
+|-------|------|--------|-------|
+| P0 | `rescript-graphql-yoga` package | ✅ Done | New package; graphql + graphql-yoga bindings |
+| P0 | `GraphQL_Server.res` | ✅ Done | Shared registry + single server startup |
+| P0 | `CommandGeneratorResolvers_GraphQL.res` | ✅ Done | Mutations; replaces `_InMemory` no-op |
+| P0 | `QueryDbResolvers_GraphQL.Make(Bus)` | ✅ Done | Queries (getById, listAll, byIndex) |
+| P0 | Bus: `registerQueryDb/Scan`, storage: `scanAll` | ✅ Done | Prerequisite for QueryDb resolver + QueryEngine |
+| P0 | `AggregateRuntime_Builder_InMemory.forCommandGenerator` | ✅ Done | Now calls connect() to register SDL |
+| P1 | `QueryEngine_InMemory.Make(Bus)` | Pending | Real scan/query via Bus registry |
+| P2 | `CounterHandler_InMemory` (real) | Pending | Replace no-op |
+| P2 | `Scheduler_InMemory` | Pending | Node.js timer-based |
+| P3 | `HeartbeatRunner_InMemory` | Pending | `setInterval`-based |
+
+### P0 Implementation Notes
+
+- `QueryDbStorage_InMemory` was converted from a plain module to a `Make(Bus)` functor
+  to enable Bus registration during component construction.
+- `Counter_Builder` and `ReadModel_Builder` both instantiate `QueryDbStorage_InMemory.Make(Bus)`
+  internally.
+- `Platform.Make` starts the GraphQL server on port 4000 (hardcoded — module functors
+  don't support labeled args). The port could be made configurable via a `Config` module arg
+  in the future.
+- `CommandGeneratorResolvers_GraphQL` uses a module-level `pending` slot for the
+  generateCommand function: `handleResolversEvent` fills it, `make` consumes it.
+  This is safe because Pulumi mock mode is synchronous and the two calls are always
+  back-to-back for each aggregate.
 
 ---
 

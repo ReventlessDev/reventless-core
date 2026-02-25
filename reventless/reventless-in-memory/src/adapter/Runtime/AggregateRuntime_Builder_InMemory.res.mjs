@@ -4,11 +4,15 @@ import * as Component$Reventless from "@reventlessdev/reventless/src/components/
 import * as CommandTopic$Reventless from "@reventlessdev/reventless/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$Reventless from "@reventlessdev/reventless/src/ComponentType.res.mjs";
 import * as EventCollector$Reventless from "@reventlessdev/reventless/src/components/EventCollector/EventCollector.res.mjs";
+import * as CommandGenerator$Reventless from "@reventlessdev/reventless/src/components/CommandGenerator/CommandGenerator.res.mjs";
 import * as RuntimeEnvironment_InMemory$ReventlessInMemory from "./RuntimeEnvironment_InMemory.res.mjs";
 
 function Make(Bus) {
   return CommandTopicChannel => (EventCollectorChannel => {
-    let forCommandGenerator = (param, param$1, param$2, param$3, _commandGenerator) => {};
+    let forCommandGenerator = (handler, connect, param, param$1, commandGenerator) => {
+      let resource = Component$Reventless.toPulumiResource(commandGenerator);
+      return connect(RuntimeEnvironment_InMemory$ReventlessInMemory.make(ComponentType$Reventless.nameOpt(resource.__name, CommandGenerator$Reventless.componentType), handler.apply(h => h), undefined, undefined, undefined));
+    };
     let forCommandTopic = (handler, connect, param, param$1, commandTopic) => {
       let resource = Component$Reventless.toPulumiResource(commandTopic);
       return connect(RuntimeEnvironment_InMemory$ReventlessInMemory.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(h => h), undefined, undefined, undefined));

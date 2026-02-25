@@ -7,6 +7,8 @@ module Make = (Bus: InMemory_Bus.T) => {
     Bus,
     EventCollectorChannel,
   )
+  module QueryDbStorage = QueryDbStorage_InMemory.Make(Bus)
+  module QueryDbResolvers = QueryDbResolvers_GraphQL.Make(Bus)
 
   module Make = (
     Spec: ReventlessSpec.ReadModel.Spec,
@@ -16,8 +18,8 @@ module Make = (Bus: InMemory_Bus.T) => {
       Spec,
       Mappings,
       RuntimeEnvironment,
-      QueryDbStorage_InMemory,
-      Reventless.QueryDb_Adapter.NoResolvers(QueryDbStorage_InMemory),
+      QueryDbStorage,
+      QueryDbResolvers,
       EventCollectorChannel,
       EventCollectorRuntimeBuilder,
     )

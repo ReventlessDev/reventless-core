@@ -9,6 +9,12 @@ function Make($star) {
   let commandHandlers = {
     contents: {}
   };
+  let queryDbRegistry = {
+    contents: {}
+  };
+  let queryDbScanRegistry = {
+    contents: {}
+  };
   let publishEvent = async (topicName, service, meta, json) => {
     let subscribers = Stdlib_Option.getOr(eventSubscribers.contents[topicName], []);
     await Promise.all(subscribers.map(sub => sub(service, meta, json)));
@@ -29,15 +35,29 @@ function Make($star) {
   let registerCommandHandler = (channelName, handler) => {
     commandHandlers.contents[channelName] = handler;
   };
+  let registerQueryDb = (name, ops) => {
+    queryDbRegistry.contents[name] = ops;
+  };
+  let getQueryDb = name => queryDbRegistry.contents[name];
+  let registerQueryDbScan = (name, scan) => {
+    queryDbScanRegistry.contents[name] = scan;
+  };
+  let getQueryDbScan = name => queryDbScanRegistry.contents[name];
   let reset = () => {
     eventSubscribers.contents = {};
     commandHandlers.contents = {};
+    queryDbRegistry.contents = {};
+    queryDbScanRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
     subscribeToEvents: subscribeToEvents,
     dispatchCommand: dispatchCommand,
     registerCommandHandler: registerCommandHandler,
+    registerQueryDb: registerQueryDb,
+    getQueryDb: getQueryDb,
+    registerQueryDbScan: registerQueryDbScan,
+    getQueryDbScan: getQueryDbScan,
     reset: reset
   };
 }
