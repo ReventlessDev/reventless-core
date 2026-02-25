@@ -53,7 +53,7 @@ let make: CommandGenerator_Adapter.resolversMaker<unit, runtimeParts> = (
   let sdlFields = fields->Array.map(field => `  ${field}(id: ID, args: String): String`)
 
   let capitalize = s =>
-    s->String.charAt(0)->String.toUpperCase ++ s->String.sliceToEnd(~start=1)
+    s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
   let makeResolver = (fieldName: string): GraphQL_Server.resolverFn =>
     async (_root, args) => {

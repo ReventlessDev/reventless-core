@@ -19,8 +19,8 @@ module Make = (Bus: InMemory_Bus.T) => {
     ~idsResolverConfigs as _,
     ~opts as _,
   ) => {
-    let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.sliceToEnd(~start=1)
-    let queryName = name->String.charAt(0)->String.toLowerCase ++ name->String.sliceToEnd(~start=1)
+    let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
+    let queryName = name->String.charAt(0)->String.toLowerCase ++ name->String.slice(~start=1)
 
     // -- Main query: getById ---------------------------------------------------
     let byIdSdl = switch subIdField {
