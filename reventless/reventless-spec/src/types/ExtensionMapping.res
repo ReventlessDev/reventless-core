@@ -29,7 +29,7 @@ type mapIncomingEvent<
   string,
   'extensionPointEvent,
   Message.meta,
-  PluginExtensionPointSpec.pluginDefinition,
+  Plugin.pluginDefinition,
   QueryEngine.operations,
 ) => array<
   incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'extensionPointDirective>,
@@ -39,7 +39,7 @@ type mapOutgoingEvent<'aggregateEvent, 'extensionPointCommand, 'extensionPointDi
   string,
   'aggregateEvent,
   Message.meta,
-  PluginExtensionPointSpec.pluginDefinition,
+  Plugin.pluginDefinition,
 ) => array<outgoingCommandAction<'extensionPointCommand, 'extensionPointDirective>>
 
 module type Spec = {

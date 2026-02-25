@@ -1,4 +1,4 @@
-let operations: ReventlessSpec.PluginRuntimeOperations.operations = {
+let operations: Reventless.PluginRuntimeOperations.operations = {
   topicSubscription: {
     subscribeChannelToTopic: Util_TopicSubscription_Runtime.subscribe,
     unsubscribeChannelFromTopic: Util_TopicSubscription_Runtime.unsubscribe,

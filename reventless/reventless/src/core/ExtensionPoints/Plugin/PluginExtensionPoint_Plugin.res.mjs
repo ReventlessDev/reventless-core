@@ -10,7 +10,7 @@ import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src
 import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-interop/src/protocol/CompatMatrix.res.mjs";
 import * as PluginReadModelSpec$Reventless from "../../ReadModels/Plugin/PluginReadModelSpec.res.mjs";
 import * as ExtensionPointMapping$Reventless from "../../../ExtensionPointMapping.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$Reventless from "../../plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
   let forwardCommand = async (_id, command, extensionPointName, queryEngine) => {
@@ -82,7 +82,7 @@ function Make(Spec) {
             id: id,
             meta: Message$Reventless.generateMeta("Core.Plugin", undefined, "Scheduler"),
             command: "DisconnectPlugin"
-          }, S.string, PluginExtensionPointSpec$ReventlessSpec.commandSchema))
+          }, S.string, PluginExtensionPointSpec$Reventless.commandSchema))
         });
       case "DeleteDisconnectSchedule" :
         return await deleteSchedule(directive._0);
@@ -231,10 +231,10 @@ function Make(Spec) {
     mapOutgoingEvent: mapOutgoingEvent
   };
   let Mapping = ExtensionPointMapping$Reventless.Make({
-    name: PluginExtensionPointSpec$ReventlessSpec.name,
-    commandSchema: PluginExtensionPointSpec$ReventlessSpec.commandSchema,
-    eventSchema: PluginExtensionPointSpec$ReventlessSpec.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$ReventlessSpec.directiveSchema
+    name: PluginExtensionPointSpec$Reventless.name,
+    commandSchema: PluginExtensionPointSpec$Reventless.commandSchema,
+    eventSchema: PluginExtensionPointSpec$Reventless.eventSchema,
+    directiveSchema: PluginExtensionPointSpec$Reventless.directiveSchema
   })({
     Aggregate: {
       Id: Id$ReventlessSpec.$$String,

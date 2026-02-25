@@ -1,7 +1,7 @@
 open Plugin_Helpers
 
 module type Spec = {
-  let runtimeOps: ReventlessSpec.PluginRuntimeOperations.operations
+  let runtimeOps: PluginRuntimeOperations.operations
   let resourceNaming: ReventlessSpec.ResourceNaming.operations
   let environment: string
 }
@@ -184,7 +184,7 @@ module Make = (
         let corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
           (
             coreExtensionPoints->Pulumi.StackReference.get(
-              ReventlessSpec.PluginExtensionPointSpec.name,
+              PluginExtensionPointSpec.name,
             )->Obj.magic: JSON.t
           )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
         let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
@@ -228,7 +228,7 @@ module Make = (
             extensionPointAggregateNames->Set.union(extensionAggregateNames),
           )
         eventTopics->Dict.set(
-          ReventlessSpec.PluginExtensionPointSpec.name,
+          PluginExtensionPointSpec.name,
           {
             resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
               AdapterDeploytime.fromInteropResource,

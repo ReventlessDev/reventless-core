@@ -3,7 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$Reventless from "./Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as PluginExtensionPointSpec$ReventlessSpec from "@reventlessdev/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$Reventless from "./core/plugin/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
   return MappingImpl => {
@@ -72,7 +72,7 @@ function Make(Spec) {
           case "PublishExtensionPointCommand" :
             let command = x._1;
             let id = x._0;
-            if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
+            if (Spec.name === PluginExtensionPointSpec$Reventless.name) {
               return {
                 TAG: "AbstractPublishPluginExtensionPointCommand",
                 _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
@@ -128,7 +128,7 @@ function Make(Spec) {
           case "PublishExtensionPointCommand" :
             let command = x._1;
             let id = x._0;
-            if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
+            if (Spec.name === PluginExtensionPointSpec$Reventless.name) {
               return {
                 TAG: "AbstractPublishPluginExtensionPointCommand",
                 _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")

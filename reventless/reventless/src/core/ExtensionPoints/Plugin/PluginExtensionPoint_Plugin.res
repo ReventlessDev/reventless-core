@@ -2,7 +2,7 @@ open ReventlessSpec.ExtensionPointMapping
 open ReventlessSpec.Plugin
 
 module type Spec = {
-  let runtimeOps: ReventlessSpec.PluginRuntimeOperations.operations
+  let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
 }
 
@@ -64,16 +64,16 @@ module Make = (Spec: Spec) => {
     directive,
   ) =>
     switch directive {
-    | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
+    | PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
       await createSchedule({
         name: Spec.environment ++ ("-" ++ id),
         rate: timeout->Schedule.minutesFromNow,
         payload: {
           Message.id,
           meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),
-          command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
+          command: PluginExtensionPointSpec.DisconnectPlugin,
         }
-        ->Message.encodeCommand'(S.string, ReventlessSpec.PluginExtensionPointSpec.commandSchema)
+        ->Message.encodeCommand'(S.string, PluginExtensionPointSpec.commandSchema)
         ->JSON.stringify,
       })
     | DeleteDisconnectSchedule(id) => await deleteSchedule(id)
@@ -87,7 +87,7 @@ module Make = (Spec: Spec) => {
 
     let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
       switch cmd {
-      | ReventlessSpec.PluginExtensionPointSpec.Heartbeat(interval) => [
+      | PluginExtensionPointSpec.Heartbeat(interval) => [
           PublishCommand(id, Aggregate.Heartbeat),
           // Re-create timeout (+2 minute to avoid toggling)
           // 1 minute because Schedules can only be created by minute
@@ -131,7 +131,7 @@ module Make = (Spec: Spec) => {
       (id, event, _meta, _queryEngine) =>
         switch event {
         | Aggregate.UnknownPluginDetected => [
-            PublishEvent(id, ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected),
+            PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
           ]
         | Connected(pluginDefinition) => [PublishEvent(id, PluginConnected(pluginDefinition))]
         | Reconnected(pluginDefinition) => [PublishEvent(id, PluginReconnected(pluginDefinition))]
@@ -145,5 +145,5 @@ module Make = (Spec: Spec) => {
     )
   }
 
-  module Mapping = ExtensionPointMapping.Make(ReventlessSpec.PluginExtensionPointSpec, Impl)
+  module Mapping = ExtensionPointMapping.Make(PluginExtensionPointSpec, Impl)
 }

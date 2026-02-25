@@ -2,7 +2,7 @@ module type Spec = {
   let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
   let extensionPointsOutputs: array<ReventlessInterop.ExtensionPoint.resolvedOutputs>
   let extensionsOutputs: array<Extension.outputs>
-  let runtimeOps: ReventlessSpec.PluginRuntimeOperations.operations
+  let runtimeOps: PluginRuntimeOperations.operations
   let resourceNaming: ReventlessSpec.ResourceNaming.operations
 }
 
@@ -60,7 +60,7 @@ module Make = (Spec: Spec) => {
     let id = pluginDefinition.id
 
     switch command {
-    | ReventlessSpec.PluginExtensionPointSpec.DoConnectPlugin({
+    | PluginExtensionPointSpec.DoConnectPlugin({
         id: otherPluginId,
         extensionPoints: otherPluginExtensionPoints,
         extensions: otherPluginExtensions,
@@ -171,24 +171,24 @@ module Make = (Spec: Spec) => {
   }
 
   module ConnectPluginMapping = ExtensionMapping.Make(
-    ReventlessSpec.PluginExtensionPointSpec,
+    PluginExtensionPointSpec,
     {
       module Aggregate = ReventlessSpec.ExtensionMapping.NoAggregate
 
       let mapIncomingEvent: ReventlessSpec.ExtensionMapping.mapIncomingEvent<
-        ReventlessSpec.PluginExtensionPointSpec.event,
+        PluginExtensionPointSpec.event,
         Aggregate.command,
-        ReventlessSpec.PluginExtensionPointSpec.command,
-        ReventlessSpec.PluginExtensionPointSpec.directive,
+        PluginExtensionPointSpec.command,
+        PluginExtensionPointSpec.directive,
       > = (pluginId, event, _meta, _pluginDef, _queryEngine) => {
         let pluginDefinition = Spec.pluginDefinition
         let id = pluginDefinition.id
 
         switch event {
-        | ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id => [
+        | PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id => [
             PublishExtensionPointCommand(
               id,
-              ReventlessSpec.PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
+              PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
             ),
           ]
         | PluginConnected(pluginDef)
@@ -210,11 +210,11 @@ module Make = (Spec: Spec) => {
   )
 
   module ConnectPluginMappings = {
-    module Spec = ReventlessSpec.PluginExtensionPointSpec
+    module Spec = PluginExtensionPointSpec
     module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
     let name = "Connect"
     let mappings: array<module(Mapping)> = [module(ConnectPluginMapping)]
   }
 
-  include Extension_Builder.Make(ReventlessSpec.PluginExtensionPointSpec, ConnectPluginMappings)
+  include Extension_Builder.Make(PluginExtensionPointSpec, ConnectPluginMappings)
 }

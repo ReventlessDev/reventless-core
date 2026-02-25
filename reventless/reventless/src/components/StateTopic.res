@@ -8,7 +8,12 @@ type t
 type component = Component.t<t, outputs, unit>
 
 module type T = {
-  module Spec: ReventlessSpec.StateTopic.T
+  module Spec: {
+    module Id: ReventlessSpec.Id.T
+    let name: string
+    @schema
+    type state
+  }
 
   let make: (
     ~name: string,
@@ -30,7 +35,15 @@ module Adapter = {
   }
 }
 
-module Make = (Spec: ReventlessSpec.StateTopic.T, Publisher: Adapter.Publisher): (
+module Make = (
+  Spec: {
+    module Id: ReventlessSpec.Id.T
+    let name: string
+    @schema
+    type state
+  },
+  Publisher: Adapter.Publisher,
+): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec

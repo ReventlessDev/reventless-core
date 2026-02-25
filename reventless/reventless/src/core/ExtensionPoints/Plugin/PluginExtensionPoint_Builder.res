@@ -1,5 +1,5 @@
 module type Spec = {
-  let runtimeOps: ReventlessSpec.PluginRuntimeOperations.operations
+  let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
 }
 
@@ -16,12 +16,12 @@ module Make = (
 
   module Mappings = {
     module type Mapping = ReventlessSpec.ExtensionPointMapping.T
-      with module ExtensionPoint := ReventlessSpec.PluginExtensionPointSpec
+      with module ExtensionPoint := PluginExtensionPointSpec
 
     let mappings: array<module(Mapping)> = [module(PluginMappingInstance.Mapping)]
   }
   include ExtensionPoint_Builder.Make(
-    ReventlessSpec.PluginExtensionPointSpec,
+    PluginExtensionPointSpec,
     Mappings,
     RuntimeEnvironment,
     CommandTopicChannel,

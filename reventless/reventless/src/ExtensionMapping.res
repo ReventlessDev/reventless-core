@@ -1,5 +1,5 @@
 open ReventlessSpec.ExtensionMapping
-open ReventlessSpec.PluginExtensionPointSpec
+open PluginExtensionPointSpec
 
 type extensionPointName = string
 
@@ -100,7 +100,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           ))
         AbstractPublishAggregateCommandsAsync(promise->toCommandJsons)
       | PublishExtensionPointCommand(id, command)
-        if Spec.name == ReventlessSpec.PluginExtensionPointSpec.name =>
+        if Spec.name == PluginExtensionPointSpec.name =>
         AbstractPublishPluginExtensionPointCommand(
           command->encodeExtensionPointCommand(
             ~id,
@@ -162,7 +162,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       mapOutgoingEventImpl(id->Aggregate.Id.toString, event, meta, pluginDef)->Array.map(x =>
         switch x {
         | PublishExtensionPointCommand(id, command)
-          if Spec.name == ReventlessSpec.PluginExtensionPointSpec.name =>
+          if Spec.name == PluginExtensionPointSpec.name =>
           AbstractPublishPluginExtensionPointCommand(
             command->encodeExtensionPointCommand(
               ~id,

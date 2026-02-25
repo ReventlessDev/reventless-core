@@ -11,16 +11,16 @@ module Make = (Spec: Spec) => {
       {
         Message.id: Spec.id,
         meta: {
-          service: ReventlessSpec.PluginExtensionPointSpec.name,
+          service: PluginExtensionPointSpec.name,
           time: Message.nowAsISOString(),
           ip: "",
           user: "Heartbeat",
           msgId,
           correlationId: msgId,
         },
-        commandJson: ReventlessSpec.PluginExtensionPointSpec.Heartbeat(
+        commandJson: PluginExtensionPointSpec.Heartbeat(
           Spec.timeout,
-        )->Message.encode(ReventlessSpec.PluginExtensionPointSpec.commandSchema),
+        )->Message.encode(PluginExtensionPointSpec.commandSchema),
       },
     ])
   }

@@ -73,7 +73,7 @@ module Make = (
     }
 
   let forwardCommand = (extensionPointName, commandJson: Message.commandJson) => {
-    let command: ReventlessSpec.PluginExtensionPointSpec.command = ForwardCommand({
+    let command: PluginExtensionPointSpec.command = ForwardCommand({
       extensionPointName,
       id: commandJson.id,
       command: commandJson->Message.toMessageBody,
@@ -84,7 +84,7 @@ module Make = (
         ...commandJson.meta,
         msgId: Message.uuid(),
       },
-      commandJson: command->Message.encode(ReventlessSpec.PluginExtensionPointSpec.commandSchema),
+      commandJson: command->Message.encode(PluginExtensionPointSpec.commandSchema),
     })
   }
 
