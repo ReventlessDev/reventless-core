@@ -68,29 +68,21 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
 
 ## Deployment Granularity Strategies
 
-```mermaid
-graph TB
-    subgraph "Single Strategy"
-        S[Single Lambda]
-        S --> A1[Aggregate A]
-        S --> A2[Aggregate B]
-        S --> A3[Aggregate C]
-    end
-    
-    subgraph "PerAggregate Strategy"
-        L1[Lambda A] --> PA1[Aggregate A]
-        L2[Lambda B] --> PA2[Aggregate B]
-        L3[Lambda C] --> PA3[Aggregate C]
-    end
-    
-    subgraph "Micro Strategy"
-        L4[Lambda CT] --> CT[CommandTopic]
-        L5[Lambda CG] --> CG[CommandGenerator]
-        L6[Lambda EC] --> EC[EventCollector]
-    end
-```
-
 ### Single Deployment Strategy
+
+```d2
+vars: { d2-config: { layout-engine: elk } }
+
+Single: Single Strategy {
+  S: Single Lambda
+  A1: Aggregate A { class: aggregate }
+  A2: Aggregate B { class: aggregate }
+  A3: Aggregate C { class: aggregate }
+  S -> A1
+  S -> A2
+  S -> A3
+}
+```
 
 **Concept**: All components of the same type (e.g., all aggregates) share a single Lambda function.
 
@@ -123,6 +115,20 @@ module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_Single.Make
 
 ### Per-Component Deployment Strategy
 
+```d2
+PerAggregate: PerAggregate Strategy {
+  L1: Lambda A
+  L2: Lambda B
+  L3: Lambda C
+  PA1: Aggregate A { class: aggregate }
+  PA2: Aggregate B { class: aggregate }
+  PA3: Aggregate C { class: aggregate }
+  L1 -> PA1
+  L2 -> PA2
+  L3 -> PA3
+}
+```
+
 **Concept**: Each high-level component (aggregate, read model, extension point) gets its own Lambda function.
 
 **Pros**:
@@ -153,6 +159,20 @@ module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_PerAggregat
 ```
 
 ### Micro Deployment Strategy
+
+```d2
+Micro: Micro Strategy {
+  L4: CommandTopic\nLambda
+  L5: CommandGenerator\nLambda
+  L6: EventCollector\nLambda
+  CT: CommandTopic { class: command-topic }
+  CG: CommandGenerator { class: command-generator }
+  EC: EventCollector { class: event-collector }
+  L4 -> CT
+  L5 -> CG
+  L6 -> EC
+}
+```
 
 **Concept**: Each internal component (CommandTopic, CommandGenerator, EventCollector) gets its own Lambda function.
 
@@ -187,17 +207,23 @@ module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_Micro.Make(
 
 Runtime Builders are the mechanism that connects your application components to the chosen runtime environment and deployment strategy.
 
-```mermaid
-graph LR
-    RE[Runtime Environment]
-    RE --> EH[Event Handler]
-    RE --> CTX[Context Management]
-    RE --> RES[Resource Provisioning]
-    
-    EH --> Lambda[AWS Lambda Function]
-    CTX --> LC[Lambda Context]
-    RES --> IAM[IAM Roles]
-    RES --> INFRA[Infrastructure]
+```d2
+RE: Runtime Environment
+EH: Event Handler
+CTX: Context Management
+RES: Resource Provisioning
+Lambda: AWS Lambda Function
+LC: Lambda Context
+IAM: IAM Roles
+INFRA: Infrastructure
+
+RE -> EH
+RE -> CTX
+RE -> RES
+EH -> Lambda
+CTX -> LC
+RES -> IAM
+RES -> INFRA
 ```
 
 ### Builder Module Types
@@ -224,14 +250,22 @@ Manages runtime for plugin components:
 
 ### Handler Registration Flow
 
-```mermaid
-sequenceDiagram
-    Component->>RuntimeBuilder: Register handler
-    RuntimeBuilder->>RuntimeEnvironment: Create Lambda
-    RuntimeEnvironment->>Lambda: Provision function
-    Lambda->>Channel: Connect to event source
-    Channel-->>Lambda: Events
-    Lambda-->>Handler: Process events
+```d2
+shape: sequence_diagram
+
+Component: Component
+RuntimeBuilder: RuntimeBuilder
+RuntimeEnvironment: RuntimeEnvironment
+Lambda: Lambda { class: aws-service }
+Channel: Channel { class: aws-service }
+Handler: Handler 
+
+Component -> RuntimeBuilder: Register handler
+RuntimeBuilder -> RuntimeEnvironment: Create Lambda
+RuntimeEnvironment -> Lambda: Provision function
+Lambda -> Channel: Connect to event source
+Channel --> Lambda: Events
+Lambda --> Handler: Process events
 ```
 
 ## Configuration Options

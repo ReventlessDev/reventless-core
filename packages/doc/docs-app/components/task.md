@@ -12,26 +12,19 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 The Task component provides file-based task processing capabilities, enabling event-driven workflows triggered by file uploads, downloads, and external system integrations. Unlike other Reventless components that follow strict Command/Event patterns, Tasks offer flexible implementation approaches for integrating with third-party systems.
 
-```mermaid
-flowchart LR
-    ExternalSystem[External System]:::external
-    S3Bucket[S3 Bucket]:::aws
-    Lambda[Lambda Function]:::aws
-    CommandTopic[Command Topic]:::commandtopic
-    Aggregate[Aggregate]:::aggregate
-    SideEffectHandler[Side Effect Handler]:::sideeffect
-    
-    ExternalSystem -->|uploads file| S3Bucket
-    S3Bucket -->|triggers| Lambda
-    Lambda -->|publishes commands| CommandTopic
-    CommandTopic -->|processes| Aggregate
-    Lambda -->|can include| SideEffectHandler
-    
-    classDef external fill:#ffebee
-    classDef aws fill:#fff3e0
-    classDef commandtopic fill:#e8f5e8
-    classDef aggregate fill:#e3f2fd
-    classDef sideeffect fill:#f3e5f5
+```d2
+ExternalSystem: External System { class: external-system }
+S3Bucket: S3 Bucket { class: aws-service }
+Lambda: Lambda Function { class: aws-service }
+CommandTopic: Command Topic { class: command-topic }
+Aggregate: Aggregate { class: aggregate }
+SideEffectHandler: Side Effect Handler { class: side-effect }
+
+ExternalSystem -> S3Bucket: uploads file
+S3Bucket -> Lambda: triggers
+Lambda -> CommandTopic: publishes commands { class: command-flow }
+CommandTopic -> Aggregate: processes { class: command-flow }
+Lambda -> SideEffectHandler: can include
 ```
 
 ## Purpose and Responsibilities
@@ -249,36 +242,37 @@ Tasks operate through an event-driven flow triggered by file operations:
 
 ### File Upload Flow
 
-```mermaid
-sequenceDiagram
-    participant Client as Client Application
-    participant S3 as S3 Bucket
-    participant Lambda as Task Lambda
-    participant CT as Command Topic
-    participant Agg as Aggregate
-    
-    Client->>S3: Upload file
-    S3->>Lambda: Trigger ObjectCreated event
-    Lambda->>Lambda: Execute callback function
-    Lambda->>CT: Publish commands
-    CT->>Agg: Process commands
-    Agg-->>Lambda: Command processed
+```d2
+shape: sequence_diagram
+
+Client: Client Application { class: client }
+S3: S3 Bucket { class: aws-service }
+Lambda: Task Lambda { class: aws-service }
+CT: Command Topic { class: command-topic }
+Agg: Aggregate { class: aggregate }
+
+Client -> S3: Upload file
+S3 -> Lambda: Trigger ObjectCreated event
+Lambda -> Lambda: Execute callback function
+Lambda -> CT: Publish commands
+CT -> Agg: Process commands
+Agg --> Lambda: Command processed
 ```
 
 ### Integration with Scheduler
 
-```mermaid
-sequenceDiagram
-    participant S3 as S3 Bucket
-    participant Lambda as Task Lambda
-    participant Scheduler as Scheduler
-    participant Target as Target Service
-    
-    S3->>Lambda: File event
-    Lambda->>Scheduler: CreateSchedule action
-    Scheduler->>Scheduler: Create CloudWatch rule
-    Note over Scheduler: Schedule executes later
-    Scheduler->>Target: Trigger scheduled action
+```d2
+shape: sequence_diagram
+
+S3: S3 Bucket { class: aws-service }
+Lambda: Task Lambda { class: aws-service }
+Scheduler: Scheduler { class: scheduler }
+Target: Target Service { class: external-system }
+
+S3 -> Lambda: File event
+Lambda -> Scheduler: CreateSchedule action
+Scheduler -> Scheduler: Create CloudWatch rule
+Scheduler -> Target: "Trigger scheduled action (executes later)"
 ```
 
 ## Integration Points
@@ -287,21 +281,15 @@ Tasks integrate with multiple Reventless components to enable comprehensive work
 
 ### Integration with Aggregates
 
-```mermaid
-flowchart LR
-    Task[Task]:::task
-    CommandTopic[Command Topic]:::commandtopic
-    Aggregate[Aggregate]:::aggregate
-    EventTopic[Event Topic]:::eventtopic
-    
-    Task -->|PublishCommands| CommandTopic
-    CommandTopic -->|commands| Aggregate
-    Aggregate -->|events| EventTopic
-    
-    classDef task fill:#f3e5f5
-    classDef commandtopic fill:#e8f5e8
-    classDef aggregate fill:#e3f2fd
-    classDef eventtopic fill:#fff8e1
+```d2
+Task: Task { class: task }
+CommandTopic: Command Topic { class: command-topic }
+Aggregate: Aggregate { class: aggregate }
+EventTopic: Event Topic { class: event-topic }
+
+Task -> CommandTopic: PublishCommands { class: command-flow }
+CommandTopic -> Aggregate: commands { class: command-flow }
+Aggregate -> EventTopic: events { class: event-flow }
 ```
 
 ### Integration with Scheduler

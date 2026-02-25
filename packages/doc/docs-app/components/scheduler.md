@@ -12,22 +12,16 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 The Scheduler component provides time-based command publishing capabilities, enabling scheduled workflows, periodic tasks, and cron-like event generation. It allows applications to create and manage schedules dynamically at runtime.
 
-```mermaid
-flowchart LR
-    Application[Application Code]:::source
-    Scheduler[Scheduler]:::scheduler
-    CloudWatch[CloudWatch Events]:::aws
-    CommandTopic[Command Topic]:::commandtopic
-    
-    Application -->|createSchedule| Scheduler
-    Application -->|deleteSchedule| Scheduler
-    Scheduler -->|manages| CloudWatch
-    CloudWatch -->|triggers| CommandTopic
-    
-    classDef source fill:#e1f5fe
-    classDef scheduler fill:#f3e5f5
-    classDef aws fill:#fff3e0
-    classDef commandtopic fill:#e8f5e8
+```d2
+Application: Application Code { class: client }
+Scheduler: Scheduler { class: scheduler }
+CloudWatch: CloudWatch Events { class: aws-service }
+CommandTopic: Command Topic { class: command-topic }
+
+Application -> Scheduler: createSchedule { class: command-flow }
+Application -> Scheduler: deleteSchedule { class: command-flow }
+Scheduler -> CloudWatch: manages
+CloudWatch -> CommandTopic: triggers
 ```
 
 ## Purpose and Responsibilities
@@ -124,38 +118,38 @@ The Scheduler component operates through two main runtime operations:
 
 ### Schedule Creation Flow
 
-```mermaid
-sequenceDiagram
-    participant App as Application
-    participant Sched as Scheduler
-    participant CW as CloudWatch Events
-    participant Target as Target Service
-    
-    App->>Sched: createSchedule(schedule)
-    Sched->>CW: Create Event Rule
-    Sched->>CW: Configure Schedule Expression
-    Sched->>CW: Add Target Configuration
-    CW-->>Sched: Rule Created
-    Sched-->>App: Schedule Active
-    
-    Note over CW: Schedule runs automatically
-    CW->>Target: Trigger on Schedule
-    Target->>Target: Process Payload
+```d2
+shape: sequence_diagram
+
+App: Application { class: external-system }
+Sched: Scheduler { class: scheduler }
+CW: CloudWatch Events { class: aws-service }
+Target: Target Service { class: external-system }
+
+App -> Sched: "createSchedule(schedule)"
+Sched -> CW: Create Event Rule
+Sched -> CW: Configure Schedule Expression
+Sched -> CW: Add Target Configuration
+CW --> Sched: Rule Created
+Sched --> App: Schedule Active
+CW -> Target: "Trigger on Schedule (schedule runs automatically)"
+Target -> Target: Process Payload
 ```
 
 ### Schedule Deletion Flow
 
-```mermaid
-sequenceDiagram
-    participant App as Application
-    participant Sched as Scheduler
-    participant CW as CloudWatch Events
-    
-    App->>Sched: deleteSchedule(name)
-    Sched->>CW: Remove Targets
-    Sched->>CW: Delete Event Rule
-    CW-->>Sched: Rule Deleted
-    Sched-->>App: Schedule Removed
+```d2
+shape: sequence_diagram
+
+App: Application { class: external-system }
+Sched: Scheduler { class: scheduler }
+CW: CloudWatch Events { class: aws-service }
+
+App -> Sched: "deleteSchedule(name)"
+Sched -> CW: Remove Targets
+Sched -> CW: Delete Event Rule
+CW --> Sched: Rule Deleted
+Sched --> App: Schedule Removed
 ```
 
 ## Integration Points
@@ -164,24 +158,17 @@ The Scheduler integrates with other Reventless components to enable time-based w
 
 ### Common Integration Patterns
 
-```mermaid
-flowchart TD
-    Scheduler[Scheduler]:::scheduler
-    CommandTopic[Command Topic]:::commandtopic
-    Aggregate[Aggregate]:::aggregate
-    EventTopic[Event Topic]:::eventtopic
-    ReadModel[Read Model]:::readmodel
-    
-    Scheduler -->|scheduled commands| CommandTopic
-    CommandTopic -->|commands| Aggregate
-    Aggregate -->|events| EventTopic
-    EventTopic -->|events| ReadModel
-    
-    classDef scheduler fill:#f3e5f5
-    classDef commandtopic fill:#e8f5e8
-    classDef aggregate fill:#e3f2fd
-    classDef eventtopic fill:#fff8e1
-    classDef readmodel fill:#f1f8e9
+```d2
+Scheduler: Scheduler { class: scheduler }
+CommandTopic: Command Topic { class: command-topic }
+Aggregate: Aggregate { class: aggregate }
+EventTopic: Event Topic { class: event-topic }
+ReadModel: Read Model { class: read-model }
+
+Scheduler -> CommandTopic: scheduled commands { class: command-flow }
+CommandTopic -> Aggregate: commands { class: command-flow }
+Aggregate -> EventTopic: events { class: event-flow }
+EventTopic -> ReadModel: events { class: projection-flow }
 ```
 
 ### Integration with Command Topics

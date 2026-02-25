@@ -251,44 +251,35 @@ switch await eventJson'->handleEvent(incomingConnectExtensionEventHandlers) {
 
 ## Architecture Diagram
 
-```mermaid
-flowchart TB
-    subgraph Plugin["Plugin"]
-        subgraph ExtensionLayer["Extension Layer"]
-            EP[Extension Point]
-            EXT[Extension]
-        end
+```d2
+Plugin: Plugin {
+  class: plugin-area
 
-        subgraph AggregateLayer["Aggregate Layer"]
-            AGG1[Aggregate 1<br/>CommandTopic<br/>EventTopic]
-            AGG2[Aggregate 2<br/>CommandTopic<br/>EventTopic]
-            AGG3[Aggregate 3<br/>CommandTopic<br/>EventTopic]
-        end
+  ExtensionLayer: Extension Layer {
+    EP: Extension Point { class: extension-point }
+    EXT: Extension { class: extension }
+  }
 
-        EC[EventCollector<br/>Central Event Router]
+  AggregateLayer: Aggregate Layer {
+    AGG1: "Aggregate 1\nCommandTopic\nEventTopic" { class: aggregate }
+    AGG2: "Aggregate 2\nCommandTopic\nEventTopic" { class: aggregate }
+    AGG3: "Aggregate 3\nCommandTopic\nEventTopic" { class: aggregate }
+  }
 
-        %% Command Flow (Extension → Aggregate)
-        EP -->|publishToAggregates<br/>send commands| AGG1
-        EP -->|publishToAggregates<br/>send commands| AGG2
-        EXT -->|publishToAggregates<br/>send commands| AGG1
-        EXT -->|publishToAggregates<br/>send commands| AGG3
+  EC: "EventCollector\nCentral Event Router" { class: event-collector }
 
-        %% Event Flow (Aggregate → EventCollector → Extension)
-        AGG1 -->|emit events| EC
-        AGG2 -->|emit events| EC
-        AGG3 -->|emit events| EC
+  ExtensionLayer.EP -> AggregateLayer.AGG1: "publishToAggregates\nsend commands" { class: command-flow }
+  ExtensionLayer.EP -> AggregateLayer.AGG2: "publishToAggregates\nsend commands" { class: command-flow }
+  ExtensionLayer.EXT -> AggregateLayer.AGG1: "publishToAggregates\nsend commands" { class: command-flow }
+  ExtensionLayer.EXT -> AggregateLayer.AGG3: "publishToAggregates\nsend commands" { class: command-flow }
 
-        EC -->|route by aggregateName| EP
-        EC -->|route by aggregateName| EXT
-    end
+  AggregateLayer.AGG1 -> EC: emit events { class: event-flow }
+  AggregateLayer.AGG2 -> EC: emit events { class: event-flow }
+  AggregateLayer.AGG3 -> EC: emit events { class: event-flow }
 
-    classDef extension fill:#e1f5ff,stroke:#01579b
-    classDef aggregate fill:#fff3e0,stroke:#e65100
-    classDef collector fill:#f3e5f5,stroke:#4a148c
-
-    class EP,EXT extension
-    class AGG1,AGG2,AGG3 aggregate
-    class EC collector
+  EC -> ExtensionLayer.EP: route by aggregateName { class: event-flow }
+  EC -> ExtensionLayer.EXT: route by aggregateName { class: event-flow }
+}
 ```
 
 ## Key Concepts

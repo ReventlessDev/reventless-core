@@ -3,6 +3,10 @@ classes: {
   command: {
     style: { fill: "#DBEAFE"; stroke: "#2563EB"; font-color: "#1E3A8A"; border-radius: 6 }
   }
+  msg-command: {
+    shape: oval
+    style: { fill: "#BFDBFE"; stroke: "#2563EB"; font-color: "#1E3A8A" }
+  }
   command-topic: {
     shape: queue
     style: { fill: "#BFDBFE"; stroke: "#1D4ED8"; font-color: "#1E3A8A" }
@@ -18,8 +22,15 @@ classes: {
   state-change-slice: {
     style: { fill: "#FEF3C7"; stroke: "#D97706"; font-color: "#92400E"; border-radius: 4 }
   }
+  spec: {
+    style: { fill: "#d75a29"; stroke: "#C2410C"; font-color: "white"; border-radius: 4 }
+  }
 
   # ── Events / Event Store (orange) ─────────────────────────
+  msg-event: {
+    shape: oval
+    style: { fill: "#FED7AA"; stroke: "#EA580C"; font-color: "#7C2D12" }
+  }
   event-log: {
     shape: cylinder
     style: { fill: "#FFEDD5"; stroke: "#EA580C"; font-color: "#7C2D12" }
@@ -56,6 +67,11 @@ classes: {
     style: { fill: "#EDE9FE"; stroke: "#6D28D9"; font-color: "#4C1D95"; border-radius: 6 }
   }
 
+  # ── AWS Cloud Services (amber) ────────────────────────────
+  aws-service: {
+    style: { fill: "#FFF8E1"; stroke: "#D97706"; font-color: "#92400E"; border-radius: 6 }
+  }
+
   # ── External Systems / Side Effects (pink) ────────────────
   side-effect: {
     style: { fill: "#FFF1F2"; stroke: "#E11D48"; font-color: "#881337"; border-radius: 6 }
@@ -65,6 +81,11 @@ classes: {
   }
   external-system: {
     style: { fill: "#FDA4AF"; stroke: "#E11D48"; font-color: "#881337"; border-radius: 6; stroke-dash: 4 }
+  }
+
+  # ── Plugin / Bounded Context (teal) ──────────────────────
+  plugin: {
+    style: { fill: "#CFFAFE"; stroke: "#0891B2"; font-color: "#164E63"; border-radius: 8 }
   }
 
   # ── Cross-context Boundary (teal) ─────────────────────────
@@ -90,6 +111,9 @@ classes: {
   }
   heartbeat: {
     style: { fill: "#E7E5E4"; stroke: "#57534E"; font-color: "#1C1917"; border-radius: 6 }
+  }
+  adapter: {
+    style: { fill: "#F5F5F4"; stroke: "#78716C"; font-color: "#1C1917"; border-radius: 6 }
   }
 
   # ── Containers ────────────────────────────────────────────
@@ -123,12 +147,27 @@ classes: {
   api-area: {
     style: { fill: "#F5F3FF"; stroke: "#7C3AED"; border-radius: 12 }
   }
+  extension-point-area: {
+    style: { fill: "#ECFEFF"; stroke: "#0891B2"; border-radius: 12 }
+  }
+  adapter-area: {
+    style: { fill: "#F3F4F6"; stroke: "#6B7280"; border-radius: 12 }
+  }
+  reventless-area: {
+    style: { fill: "#EFF6FF"; stroke: "#60A5FA"; border-radius: 12 }
+  }
+  reventless-aws-area: {
+    style: { fill: "#DBEAFE"; stroke: "#3B82F6"; border-radius: 12 }
+  }
 
   # ── Layout helpers ────────────────────────────────────────
+  invisible: {
+    style: { fill: "transparent"; stroke: "transparent"; opacity: 0 }
+  }
   placeholder: {
     style: { fill: "transparent"; stroke: "transparent"; opacity: 0 }
   }
-
+  
   # ── Connections ───────────────────────────────────────────
   # Applied to edges: a -> b: label { class: event-flow }
   # Both the line and the label text take the class color.

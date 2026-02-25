@@ -12,25 +12,22 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    EventMapper[Event Mapper]:::eventmapper
-    Counter[(Counter)]:::counter
-    TargetHandler[Target Handler]:::eventmapper
-    
-    EventMapper -->|1. Count| Counter
-    EventMapper -->|2. AddToCounterTarget| Counter
-    Counter -->|3. Triggered event| TargetHandler
-    
-    subgraph Counter Component
-        ReferencesDb[(References DB)]
-        CountsDb[(Counts DB)]
-        
-        ReferencesDb -.->|track references| CountsDb
-        CountsDb -.->|countdown| ReferencesDb
-    end
-    
-    linkStyle 2 color:#fa0,stroke:#fa0
+```d2
+EventMapper: Event Mapper { class: event-mapper }
+Counter: Counter { class: counter }
+TargetHandler: Target Handler { class: event-mapper }
+
+CounterComponent: Counter Component {
+  ReferencesDb: References DB { class: query-db }
+  CountsDb: Counts DB { class: query-db }
+
+  ReferencesDb -> CountsDb: track references
+  CountsDb -> ReferencesDb: countdown
+}
+
+EventMapper -> Counter: 1. Count
+EventMapper -> Counter: 2. AddToCounterTarget
+Counter -> TargetHandler: 3. Triggered event { class: event-flow }
 ```
 
 The **Counter** component enables coordination across multiple events by counting references and triggering actions when a target count is reached. It's primarily used in EventMappers to implement patterns like "wait for N events before proceeding" or collecting data from multiple sources before generating a command.
@@ -178,77 +175,56 @@ let counter = Some(module(Invoice_Counter: Counter.T))
 
 ### Counter Countdown Sequence
 
-```mermaid
-sequenceDiagram
-    participant EventMapper
-    participant Counter
-    participant ReferencesDb as References DB
-    participant CountsDb as Counts DB
-    participant Handler as Counter Handler
-    
-    Note over EventMapper,Handler: Phase 1: Set Expected Count
-    EventMapper->>Counter: count([{counterId, ref1, inc: -3}])
-    activate Counter
-    Counter->>ReferencesDb: save(counterId#ref1, inc: -3)
-    Counter->>CountsDb: count(counterId, -3)
-    Note over CountsDb: count = -3
-    deactivate Counter
-    
-    Note over EventMapper,Handler: Phase 2: Increment Counter
-    EventMapper->>Counter: count([{counterId, ref2, inc: 1}])
-    activate Counter
-    Counter->>ReferencesDb: save(counterId#ref2, inc: 1)
-    Counter->>CountsDb: count(counterId, 1)
-    Note over CountsDb: count = -2
-    deactivate Counter
-    
-    EventMapper->>Counter: count([{counterId, ref3, inc: 1}])
-    activate Counter
-    Counter->>ReferencesDb: save(counterId#ref3, inc: 1)
-    Counter->>CountsDb: count(counterId, 1)
-    Note over CountsDb: count = -1
-    deactivate Counter
-    
-    EventMapper->>Counter: count([{counterId, ref4, inc: 1}])
-    activate Counter
-    Counter->>ReferencesDb: save(counterId#ref4, inc: 1)
-    Counter->>CountsDb: count(counterId, 1)
-    Note over CountsDb: count = 0
-    
-    Counter->>Handler: trigger(counterId, count: 0)
-    activate Handler
-    Handler->>EventMapper: CountFinished event
-    deactivate Handler
-    deactivate Counter
+```d2
+shape: sequence_diagram
+
+EventMapper: EventMapper
+Counter: Counter
+ReferencesDb: References DB { class: query-db }
+CountsDb: Counts DB { class: query-db }
+Handler: Counter Handler { class: external-system }
+
+EventMapper -> Counter: "Phase 1 — count([{counterId, ref1, inc: -3}])"
+Counter -> ReferencesDb: "save(counterId#ref1, inc: -3)"
+Counter -> CountsDb: "count(counterId, -3)  → count = -3"
+
+EventMapper -> Counter: "Phase 2 — count([{counterId, ref2, inc: 1}])"
+Counter -> ReferencesDb: "save(counterId#ref2, inc: 1)"
+Counter -> CountsDb: "count(counterId, 1)  → count = -2"
+
+EventMapper -> Counter: "count([{counterId, ref3, inc: 1}])"
+Counter -> ReferencesDb: "save(counterId#ref3, inc: 1)"
+Counter -> CountsDb: "count(counterId, 1)  → count = -1"
+
+EventMapper -> Counter: "count([{counterId, ref4, inc: 1}])"
+Counter -> ReferencesDb: "save(counterId#ref4, inc: 1)"
+Counter -> CountsDb: "count(counterId, 1)  → count = 0"
+Counter -> Handler: "trigger(counterId, count: 0)"
+Handler -> EventMapper: CountFinished event
 ```
 
 ### With Target Collection
 
-```mermaid
-sequenceDiagram
-    participant EventMapper
-    participant Counter
-    participant CounterDb as Counter DBs
-    participant Handler
-    
-    Note over EventMapper,Handler: Collect targets and count
-    
-    EventMapper->>Counter: addToCounterTarget({id, target1, ref1})
-    EventMapper->>Counter: count([{id, ref1, inc: 1}])
-    
-    EventMapper->>Counter: addToCounterTarget({id, target2, ref2})
-    EventMapper->>Counter: count([{id, ref2, inc: 1}])
-    
-    EventMapper->>Counter: addToCounterTarget({id, target3, ref3})
-    EventMapper->>Counter: count([{id, ref3, inc: 1}])
-    
-    Note over CounterDb: count reaches 0
-    
-    Counter->>Handler: CountFinished(id, targets: [target1, target2, target3])
-    activate Handler
-    Handler->>EventMapper: handleCounterEvents([event])
-    Note over EventMapper: Process collected targets<br/>Generate commands
-    deactivate Handler
+```d2
+shape: sequence_diagram
+
+EventMapper: EventMapper
+Counter: Counter
+CounterDb: Counter DBs { class: query-db }
+Handler: Handler { class: external-system }
+
+EventMapper -> Counter: "addToCounterTarget({id, target1, ref1})"
+EventMapper -> Counter: "count([{id, ref1, inc: 1}])"
+
+EventMapper -> Counter: "addToCounterTarget({id, target2, ref2})"
+EventMapper -> Counter: "count([{id, ref2, inc: 1}])"
+
+EventMapper -> Counter: "addToCounterTarget({id, target3, ref3})"
+EventMapper -> Counter: "count([{id, ref3, inc: 1}])  → count reaches 0"
+
+Counter -> Handler: "CountFinished(id, targets: [target1, target2, target3])"
+Handler -> EventMapper: "handleCounterEvents([event])"
+EventMapper -> EventMapper: Process collected targets / Generate commands
 ```
 
 ## Integration Points

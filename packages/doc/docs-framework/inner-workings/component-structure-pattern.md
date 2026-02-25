@@ -207,29 +207,30 @@ In the call to `Component.setOperations`, we're using `Pulumi.Output.apply` to t
 
 ### Data Flow Diagram
 
-```mermaid
-graph TB
-    subgraph User Code
-        Spec[EventLog.Spec<br/>User-defined types]
-    end
-    
-    subgraph Component Files
-        Interface[EventLog.res<br/>Type definitions]
-        Builder[EventLog_Builder.res<br/>Factory]
-        Adapter[EventLog_Adapter.res<br/>Abstract interface]
-        Operations[EventLog_Operations.res<br/>Runtime operations]
-    end
-    
-    subgraph Provider Implementation
-        AWSAdapter[AWS EventLog Storage<br/>DynamoDB implementation]
-    end
-    
-    Spec --> Builder
-    Interface --> Builder
-    Adapter --> Builder
-    AWSAdapter --> Builder
-    Builder --> Operations
-    Operations --> TypeSafeOps[Type-safe operations<br/>append/replay]
+```d2
+UserCode: User Code {
+  Spec: "EventLog.Spec\nUser-defined types"
+}
+
+ComponentFiles: Component Files {
+  Interface: "EventLog.res\nType definitions"
+  Builder: "EventLog_Builder.res\nFactory"
+  Adapter: "EventLog_Adapter.res\nAbstract interface"
+  Operations: "EventLog_Operations.res\nRuntime operations"
+}
+
+ProviderImpl: Provider Implementation {
+  AWSAdapter: "AWS EventLog Storage\nDynamoDB implementation"
+}
+
+TypeSafeOps: "Type-safe operations\nappend/replay"
+
+UserCode.Spec -> ComponentFiles.Builder
+ComponentFiles.Interface -> ComponentFiles.Builder
+ComponentFiles.Adapter -> ComponentFiles.Builder
+ProviderImpl.AWSAdapter -> ComponentFiles.Builder
+ComponentFiles.Builder -> ComponentFiles.Operations
+ComponentFiles.Operations -> TypeSafeOps
 ```
 
 ## Component_Callback Example: Aggregate_Callback

@@ -12,22 +12,19 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    Aggregate[Aggregate]:::aggregate
-    EventLog[(EventLog)]:::eventlog
-    EventTopic[Event Topic]:::eventtopic
-    ReadModel[Read Model]:::readmodel
-    EventMapper[Event Mapper]:::eventmapper
-    
-    Aggregate -->|append events| EventLog
-    EventLog -->|publish events| EventTopic
-    EventTopic -->|events| ReadModel
-    EventTopic -->|events| EventMapper
-    
-    Aggregate -->|replay events| EventLog
+```d2
+Aggregate: Aggregate { class: aggregate }
+EventLog: EventLog { class: event-log }
+EventTopic: Event Topic { class: event-topic }
+ReadModel: Read Model { class: read-model }
+EventMapper: Event Mapper { class: event-mapper }
 
-    linkStyle default color:#fa0,stroke:#fa0
+Aggregate -> EventLog: append events { class: event-flow }
+EventLog -> EventTopic: publish events { class: event-flow }
+EventTopic -> ReadModel: events { class: event-flow }
+EventTopic -> EventMapper: events { class: event-flow }
+
+Aggregate -> EventLog: replay events { class: replay }
 ```
 
 The **EventLog** is the foundational storage component for event sourcing in Reventless. It provides append-only event storage with efficient replay capabilities, ensuring that all domain events are durably persisted and can be replayed to reconstruct aggregate state.
@@ -141,53 +138,39 @@ The EventLog integrates with the Aggregate's event sourcing lifecycle:
 
 ### Event Append Sequence
 
-```mermaid
-sequenceDiagram
-    participant Aggregate
-    participant EventLog as Event Log
-    participant Storage as Event Log Storage
-    participant EventTopic as Event Topic
-    
-    Aggregate->>EventLog: append(sequenceNr, id, events)
-    activate EventLog
-    
-    EventLog->>EventLog: Encode events to JSON
-    EventLog->>Storage: Write events (batch)
-    activate Storage
-    Storage-->>EventLog: Ok/Error
-    deactivate Storage
-    
-    EventLog->>EventTopic: publish(events)
-    activate EventTopic
-    EventTopic-->>EventLog: Ok/Error
-    deactivate EventTopic
-    EventLog-->>Aggregate: Ok/Error
-    
-    deactivate EventLog
+```d2
+shape: sequence_diagram
+
+Aggregate: Aggregate
+EventLog: Event Log
+Storage: Event Log Storage { class: aws-service }
+EventTopic: Event Topic
+
+Aggregate -> EventLog: "append(sequenceNr, id, events)"
+EventLog -> EventLog: Encode events to JSON
+EventLog -> Storage: "Write events (batch)"
+Storage --> EventLog: Ok/Error
+EventLog -> EventTopic: "publish(events)"
+EventTopic --> EventLog: Ok/Error
+EventLog --> Aggregate: Ok/Error
 ```
 
 Please note that typical EventLogStorages publish changes themself, so the corresponding EventTopic will typically ignore the published events. But for the case that the EventLogStorage does not publish events, the EventTopic will publish them. Take care, that this manual publishing is not recommended, because it is not atomic with the storage operation. 
 ### Event Replay Sequence
 
-```mermaid
-sequenceDiagram
-    participant Aggregate
-    participant EventLog
-    participant Storage
-    
-    Aggregate->>EventLog: replay(id)
-    activate EventLog
-    
-    EventLog->>Storage: Query events for ID
-    activate Storage
-    Storage-->>EventLog: JSON events (ordered)
-    deactivate Storage
-    
-    EventLog->>EventLog: Decode JSON to events
-    EventLog-->>Aggregate: array<event>
-    deactivate EventLog
-    
-    Aggregate->>Aggregate: Reconstruct state
+```d2
+shape: sequence_diagram
+
+Aggregate: Aggregate
+EventLog: EventLog
+Storage: Storage { class: aws-service }
+
+Aggregate -> EventLog: "replay(id)"
+EventLog -> Storage: Query events for ID
+Storage --> EventLog: "JSON events (ordered)"
+EventLog -> EventLog: Decode JSON to events
+EventLog --> Aggregate: array<event>
+Aggregate -> Aggregate: Reconstruct state
 ```
 
 ## Integration with Aggregate
@@ -198,20 +181,23 @@ The EventLog is an integral part of the Aggregate component. The Aggregate uses 
 2. **Reconstruct state** - Before processing a command, events are replayed to rebuild current state
 3. **Publish events** - Automatically publishes appended events to interested components
 
-```mermaid
-flowchart TB
-    subgraph Aggregate Component
-        CommandHandler[Command Handler]
-        EventLog[(EventLog)]
-        Behavior[Behavior]
-        
-        CommandHandler -->|1. replay| EventLog
-        EventLog -->|2. events| Behavior
-        Behavior -->|3. state| CommandHandler
-        CommandHandler -->|4. new events| EventLog
-    end
-    
-    EventLog -->|5. publish| EventTopic[Event Topic]
+```d2
+AggregateComponent: Aggregate Component {
+  class: write-side
+
+  CommandHandler: Command Handler{ class: aggregate }
+  EventLog: EventLog { class: event-log }
+  Behavior: Behavior{ class: spec }
+
+  CommandHandler -> EventLog: 1. replay
+  EventLog -> Behavior: 2. events
+  Behavior -> CommandHandler: 3. state
+  CommandHandler -> EventLog: 4. new events
+}
+
+EventTopic: Event Topic { class: event-topic }
+
+AggregateComponent.EventLog -> EventTopic: 5. publish { class: event-flow }
 ```
 
 **Sequence:**

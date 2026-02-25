@@ -12,20 +12,17 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    Client[GraphQL Client]:::client
-    API[GraphQL API]:::api
-    CommandGenerator[Command Generator]:::commandgenerator
-    CommandTopic[Command Topic]:::commandtopic
-    Aggregate[Aggregate]:::aggregate
-    
-    Client -->|GraphQL mutation| API
-    API -->|resolver invocation| CommandGenerator
-    CommandGenerator -->|command| CommandTopic
-    CommandTopic -->|command| Aggregate
-    
-    linkStyle 2,3 color:#66f,stroke:#66f
+```d2
+Client: GraphQL Client { class: client }
+API: GraphQL API { class: api }
+CommandGenerator: Command Generator { class: command-generator }
+CommandTopic: Command Topic { class: command-topic }
+Aggregate: Aggregate { class: aggregate }
+
+Client -> API: GraphQL mutation
+API -> CommandGenerator: resolver invocation
+CommandGenerator -> CommandTopic: command { class: command-flow }
+CommandTopic -> Aggregate: command { class: command-flow }
 ```
 
 The **CommandGenerator** bridges the gap between external clients and event-sourced aggregates by transforming GraphQL mutations into Reventless commands. It enables web and mobile applications to interact with aggregates through a type-safe GraphQL API.
@@ -198,47 +195,28 @@ include ReventlessAws.Aggregate.Make(
 
 ### Command Generation Flow
 
-```mermaid
-sequenceDiagram
-    participant Client as GraphQL Client
-    participant API as GraphQL API
-    participant Resolver as AppSync Resolver
-    participant Lambda as Command Generator Lambda
-    participant CommandTopic as Command Topic
-    participant Aggregate as Aggregate
-    
-    Client->>API: mutation Customer_Create(...)
-    activate API
-    
-    API->>Resolver: invoke resolver
-    activate Resolver
-    
-    Resolver->>Lambda: invoke with payload
-    activate Lambda
-    
-    Note over Lambda: Transform GraphQL args<br/>to Command
-    Lambda->>Lambda: generateCommand(payload)
-    Lambda->>Lambda: Validate command
-    Lambda->>Lambda: Add metadata (user, time, msgId)
-    
-    Lambda->>CommandTopic: publishJsons([command])
-    activate CommandTopic
-    CommandTopic-->>Lambda: Ok
-    deactivate CommandTopic
-    
-    Lambda-->>Resolver: msgId
-    deactivate Lambda
-    
-    Resolver-->>API: result
-    deactivate Resolver
-    
-    API-->>Client: msgId
-    deactivate API
-    
-    CommandTopic->>Aggregate: deliver command
-    activate Aggregate
-    Aggregate->>Aggregate: process command
-    deactivate Aggregate
+```d2
+shape: sequence_diagram
+
+Client: GraphQL Client { class: client }
+API: GraphQL API { class: api }
+Resolver: AppSync Resolver { class: external-system }
+Lambda: Command Generator Lambda { class: aws-service }
+CT: Command Topic
+Aggregate: Aggregate { class: aggregate }
+
+Client -> API: "mutation Customer_Create(...)"
+API -> Resolver: invoke resolver
+Resolver -> Lambda: invoke with payload
+Lambda -> Lambda: "generateCommand(payload)"
+Lambda -> Lambda: Validate command & add metadata
+Lambda -> CT: "publishJsons([command])"
+CT --> Lambda: Ok
+Lambda --> Resolver: msgId
+Resolver --> API: result
+API --> Client: msgId
+CT -> Aggregate: deliver command
+Aggregate -> Aggregate: process command
 ```
 
 ### Command Payload Structure
@@ -315,26 +293,26 @@ let generateCommand = async (payload: CommandGenerator.payload) => {
 
 The CommandGenerator integrates with your GraphQL schema:
 
-```mermaid
-flowchart TB
-    subgraph API Schema
-        Mutations[GraphQL Mutations]:::api
-    end
-    
-    subgraph CommandGenerator Component
-        Resolvers[AppSync Resolvers]
-        Lambda[Lambda Function]
-        CommandLogic[Command Generation Logic]
-    end
-    
-    subgraph Target Aggregate
-        CommandTopic[Command Topic]:::commandtopic
-    end
-    
-    Mutations --> Resolvers
-    Resolvers --> Lambda
-    Lambda --> CommandLogic
-    CommandLogic --> CommandTopic
+```d2
+APISchema: API Schema {
+  Mutations: GraphQL Mutations { class: api }
+}
+
+CGComponent: CommandGenerator Component {
+  Resolvers: AppSync Resolvers
+  Lambda: Lambda Function
+  CommandLogic: Command Generation Logic
+}
+
+TargetAggregate: Target Aggregate {
+  class: write-side
+  CommandTopic: Command Topic { class: command-topic }
+}
+
+APISchema.Mutations -> CGComponent.Resolvers
+CGComponent.Resolvers -> CGComponent.Lambda
+CGComponent.Lambda -> CGComponent.CommandLogic
+CGComponent.CommandLogic -> TargetAggregate.CommandTopic: { class: command-flow }
 ```
 
 ### With Aggregate CommandTopic

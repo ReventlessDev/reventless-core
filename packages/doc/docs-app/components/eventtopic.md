@@ -12,26 +12,23 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    EventLog[(EventLog)]:::eventlog
-    EventTopic[Event Topic]:::eventtopic
-    EventCollector1[Event Collector 1]:::eventcollector
-    EventCollector2[Event Collector 2]:::eventcollector
-    EventCollector3[Event Collector 3]:::eventcollector
-    ReadModel[Read Model]:::readmodel
-    EventMapper[Event Mapper]:::eventmapper
-    SideEffectHandler[Side Effect Handler]:::sideeffecthandler
-    
-    EventLog -->|publish events| EventTopic
-    EventTopic -->|fan-out| EventCollector1
-    EventTopic -->|fan-out| EventCollector2
-    EventTopic -->|fan-out| EventCollector3
-    EventCollector1 -->|events| ReadModel
-    EventCollector2 -->|events| EventMapper
-    EventCollector3 -->|events| SideEffectHandler
+```d2
+EventLog: EventLog { class: event-log }
+EventTopic: Event Topic { class: event-topic }
+EventCollector1: Event Collector 1 { class: event-collector }
+EventCollector2: Event Collector 2 { class: event-collector }
+EventCollector3: Event Collector 3 { class: event-collector }
+ReadModel: Read Model { class: read-model }
+EventMapper: Event Mapper { class: event-mapper }
+SideEffectHandler: Side Effect Handler { class: side-effect }
 
-    linkStyle default color:#fa0,stroke:#fa0
+EventLog -> EventTopic: publish events { class: event-flow }
+EventTopic -> EventCollector1: fan-out { class: event-flow }
+EventTopic -> EventCollector2: fan-out { class: event-flow }
+EventTopic -> EventCollector3: fan-out { class: event-flow }
+EventCollector1 -> ReadModel: events { class: event-flow }
+EventCollector2 -> EventMapper: events { class: event-flow }
+EventCollector3 -> SideEffectHandler: events { class: event-flow }
 ```
 
 The **EventTopic** is the event distribution component that enables fan-out delivery of events to multiple subscribers. It receives events from the EventLog and distributes them to EventCollectors, which then deliver events to ReadModels, EventMappers, and SideEffectHandlers.
@@ -135,48 +132,41 @@ This is used internally by the EventLog after storing events.
 
 ### Event Publishing Flow
 
-```mermaid
-sequenceDiagram
-    participant EventLog as Event Log
-    participant EventTopic as Event Topic
-    participant EventTopicPublisher as Event Topic Publisher
-    participant EventCollector1 as EventCollector 1
-    participant EventCollector2 as EventCollector 2
-    
-    EventLog->>EventTopic: publish(events')
-    activate EventTopic
-    
-    loop For each event
-        EventTopic->>EventTopic: Encode to JSON
-        EventTopic->>EventTopicPublisher: publishJson(event)
-        activate EventTopicPublisher
-        
-        EventTopicPublisher->>EventCollector1: Deliver (fan-out)
-        EventTopicPublisher->>EventCollector2: Deliver (fan-out)
-        EventTopicPublisher-->>EventTopic: Ok/Error
-        deactivate EventTopicPublisher
-    end
-    
-    EventTopic-->>EventLog: Ok/Error
-    deactivate EventTopic
+```d2
+shape: sequence_diagram
+
+EL: Event Log{ class: event-log }
+ET: Event Topic{ class: event-topic }
+Publisher: Event Topic Publisher { class: aws-service }
+EC1: EventCollector 1 { class: event-collector }
+EC2: EventCollector 2{ class: event-collector }
+
+EL -> ET: "publish(events')"
+ET -> ET: "Encode to JSON (for each event)"
+ET -> Publisher: "publishJson(event)"
+Publisher -> EC1: "Deliver (fan-out)"
+Publisher -> EC2: "Deliver (fan-out)"
+Publisher --> ET: Ok/Error
+ET --> EL: Ok/Error
 ```
 
 ## Integration with EventLog
 
 The EventTopic is automatically created and managed by the EventLog component:
 
-```mermaid
-flowchart TB
-    subgraph EventLog Component
-        Storage[(DynamoDB)]
-        EventTopic[Event Topic]:::eventtopic
-    end
-    
-    Aggregate[Aggregate]:::aggregate
-    
-    Aggregate -->|1. append events| Storage
-    Storage -->|2. success| EventTopic
-    EventTopic -->|3. publish| Subscribers[Subscribers]
+```d2
+ELComponent: EventLog Component {
+  class: write-side
+  Storage: DynamoDB { class: event-log }
+  EventTopic: Event Topic { class: event-topic }
+}
+
+Aggregate: Aggregate { class: aggregate }
+Subscribers: Subscribers
+
+Aggregate -> ELComponent.Storage: 1. append events { class: event-flow }
+ELComponent.Storage -> ELComponent.EventTopic: 2. success
+ELComponent.EventTopic -> Subscribers: 3. publish { class: event-flow }
 ```
 
 **Flow:**
@@ -215,19 +205,17 @@ This metadata enables:
 
 ### Event Fan-out to Multiple Consumers
 
-```mermaid
-flowchart LR
-    EventTopic[Event Topic]:::eventtopic
-    
-    ReadModel[Read Model<br/>Query Projection]:::readmodel
-    EventMapper[Event Mapper<br/>Command Generation]:::eventmapper
-    SideEffect[Side Effect Handler<br/>External Integration]:::sideeffecthandler
-    Analytics[Analytics<br/>Metrics Collection]:::task
-    
-    EventTopic --> ReadModel
-    EventTopic --> EventMapper
-    EventTopic --> SideEffect
-    EventTopic --> Analytics
+```d2
+EventTopic: Event Topic { class: event-topic }
+ReadModel: "Read Model\nQuery Projection" { class: read-model }
+EventMapper: "Event Mapper\nCommand Generation" { class: event-mapper }
+SideEffect: "Side Effect Handler\nExternal Integration" { class: side-effect }
+Analytics: "Analytics\nMetrics Collection" { class: task }
+
+EventTopic -> ReadModel: { class: event-flow }
+EventTopic -> EventMapper: { class: event-flow }
+EventTopic -> SideEffect: { class: event-flow }
+EventTopic -> Analytics: { class: event-flow }
 ```
 
 ### Event-Driven Saga Pattern

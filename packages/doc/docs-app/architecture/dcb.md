@@ -4,31 +4,34 @@ The Plugin component supports an optional DCB (Dynamic Consistency Boundary) eve
 
 ## Command Flow
 
-```mermaid
-flowchart TD
-    Client["Client"] --> SQS["SQS FIFO Queue
-(DCB Command Topic)"]
-    SQS --> Handler["filteringHandler
-(Lambda Function)"]
+```d2
+Client: Client { class: client }
+SQS: "SQS FIFO Queue\n(DCB Command Topic)" { class: command-topic }
+Handler: "filteringHandler\n(Lambda Function)"
+Slice1: CreateItem Slice { class: state-change-slice }
+Slice2: RenameItem Slice { class: state-change-slice }
+Handler3: NoOp Handler
+EventLog: "DcbEventLog\n(Shared Event Log)" { class: dcb-event-log }
+ViewSlice: "StateViewSlice\n(Projection)" { class: state-view-slice }
+QueryDb: "QueryDb\n(Read Model)" { class: query-db }
+Read: 1. read events
+Reduce: 2. reduce
+Decide: 3. decide
+Append: "4. append\n(optimistic concurrency)"
 
-    Handler --> Slice1["CreateItem Slice"]
-    Handler --> Slice2["RenameItem Slice"]
-    Handler --> Handler3["NoOp Handler"]
-
-    Slice1 --> EventLog["DcbEventLog
-(Shared Event Log)"]
-    Slice2 --> EventLog
-
-    EventLog --> ViewSlice["StateViewSlice
-(Projection)"]
-    ViewSlice --> QueryDb["QueryDb
-(Read Model)"]
-
-    EventLog --> Read["1. read events"]
-    Read --> Reduce["2. reduce"]
-    Reduce --> Decide["3. decide"]
-    Decide --> Append["4. append
-(optimistic concurrency)"]
+Client -> SQS: { class: command-flow }
+SQS -> Handler: { class: command-flow }
+Handler -> Slice1: { class: command-flow }
+Handler -> Slice2: { class: command-flow }
+Handler -> Handler3: { class: command-flow }
+Slice1 -> EventLog: { class: event-flow }
+Slice2 -> EventLog: { class: event-flow }
+EventLog -> ViewSlice: { class: projection-flow }
+ViewSlice -> QueryDb: { class: projection-flow }
+EventLog -> Read
+Read -> Reduce
+Reduce -> Decide
+Decide -> Append
 ```
 
 One SQS FIFO queue per plugin receives all commands. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type. Slices that don't handle a command type are never called.

@@ -10,22 +10,19 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    EventTopic1[Event Topic]:::eventtopic
-    EventTopic2[Event Topic]:::eventtopic
-    EventCollector[Event Collector]:::eventcollector
-    ReadModel[Read Model]:::readmodel
-    EventMapper[Event Mapper]:::eventmapper
-    SideEffectHandler[Side Effect Handler]:::sideeffecthandler
-    
-    EventTopic1 -->|events| EventCollector
-    EventTopic2 -->|events| EventCollector
-    EventCollector -->|events| ReadModel
-    EventCollector -->|events| EventMapper
-    EventCollector -->|events| SideEffectHandler
+```d2
+EventTopic1: Event Topic { class: event-topic }
+EventTopic2: Event Topic { class: event-topic }
+EventCollector: Event Collector { class: event-collector }
+ReadModel: Read Model { class: read-model }
+EventMapper: Event Mapper { class: event-mapper }
+SideEffectHandler: Side Effect Handler { class: side-effect }
 
-    linkStyle default color:#fa0,stroke:#fa0
+EventTopic1 -> EventCollector: events { class: event-flow }
+EventTopic2 -> EventCollector: events { class: event-flow }
+EventCollector -> ReadModel: events { class: event-flow }
+EventCollector -> EventMapper: events { class: event-flow }
+EventCollector -> SideEffectHandler: events { class: event-flow }
 ```
 
 The **EventCollector** is the event consumption component that receives events from EventTopics . It provides a unified interface for components like ReadModels, EventMappers, and SideEffectHandlers to consume events with ordering guarantees.
@@ -94,82 +91,79 @@ This handler receives batches of events and processes them.
 
 ### Event Collection Flow
 
-```mermaid
-sequenceDiagram
-    participant EventTopic as Event Topic
-    participant EventCollectorChannel as Event Collector Channel
-    participant EventCollector as Event Collector
-    participant EventHandler as Event Handler
-    
-    EventTopic->>EventCollectorChannel: publishJson(event)
-    activate EventCollectorChannel
+```d2
+shape: sequence_diagram
 
-    EventCollectorChannel->>EventCollector: handleChannelEvent(event)
-    activate EventCollector
-    
-    EventCollector->>EventHandler: handleEvents(events)
-    activate EventHandler
-    
-    EventHandler->>EventHandler: Process events
-    EventHandler-->>EventCollector: Ok / Error
-    deactivate EventHandler
-    EventCollector-->>EventCollectorChannel: Ok / Error
-    
-    deactivate EventCollector
-    deactivate EventCollectorChannel
+EventTopic: Event Topic
+EventCollectorChannel: Event Collector Channel { class: external-system }
+EventCollector: Event Collector
+EventHandler: Event Handler { class: external-system }
+
+EventTopic -> EventCollectorChannel: "publishJson(event)"
+EventCollectorChannel -> EventCollector: "handleChannelEvent(event)"
+EventCollector -> EventHandler: "handleEvents(events)"
+EventHandler -> EventHandler: Process events
+EventHandler --> EventCollector: Ok / Error
+EventCollector --> EventCollectorChannel: Ok / Error
 ```
 
 ## Integration with Components
 
 ### ReadModel Integration
 
-```mermaid
-flowchart TB
-    subgraph ReadModel Component
-        EventCollector[Event Collector]:::eventcollector
-        Projections[Projections]
-        QueryDb[(Query DB)]:::querydb
-    end
-    
-    EventTopic[Event Topic]:::eventtopic
-    
-    EventTopic -->|events| EventCollector
-    EventCollector -->|events| Projections
-    Projections -->|update| QueryDb
+```d2
+ReadModelComponent: ReadModel Component {
+  class: read-side
+
+  EventCollector: Event Collector { class: event-collector }
+  Projections: Projections
+  QueryDb: Query DB { class: query-db }
+
+  EventCollector -> Projections: events
+  Projections -> QueryDb: update
+}
+
+EventTopic: Event Topic { class: event-topic }
+
+EventTopic -> ReadModelComponent.EventCollector: events { class: event-flow }
 ```
 
 ### EventMapper Integration
 
-```mermaid
-flowchart TB
-    subgraph EventMapper Component
-        EventCollector[Event Collector]:::eventcollector
-        Mappings[Event Mappings]
-    end
-    
-    EventTopic[Event Topic]:::eventtopic
-    CommandTopic[Command Topic]:::commandtopic
-    
-    EventTopic -->|events| EventCollector
-    EventCollector -->|events| Mappings
-    Mappings -->|commands| CommandTopic
+```d2
+EventMapperComponent: EventMapper Component {
+  class: event-processing-area
+
+  EventCollector: Event Collector { class: event-collector }
+  Mappings: Event Mappings
+
+  EventCollector -> Mappings: events
+}
+
+EventTopic: Event Topic { class: event-topic }
+CommandTopic: Command Topic { class: command-topic }
+
+EventTopic -> EventMapperComponent.EventCollector: events { class: event-flow }
+EventMapperComponent.Mappings -> CommandTopic: commands { class: command-flow }
 ```
 
 ### SideEffectHandler Integration
 
-```mermaid
-flowchart TB
-    subgraph SideEffectHandler Component
-        EventCollector[Event Collector]:::eventcollector
-        Effects[Side Effects]
-    end
-    
-    EventTopic[Event Topic]:::eventtopic
-    External[External System]
-    
-    EventTopic -->|events| EventCollector
-    EventCollector -->|events| Effects
-    Effects -->|call| External
+```d2
+SideEffectHandlerComponent: SideEffectHandler Component {
+  class: side-effects-area
+
+  EventCollector: Event Collector { class: event-collector }
+  Effects: Side Effects { class: side-effect }
+
+  EventCollector -> Effects: events
+}
+
+EventTopic: Event Topic { class: event-topic }
+External: External System
+
+EventTopic -> SideEffectHandlerComponent.EventCollector: events { class: event-flow }
+SideEffectHandlerComponent.Effects -> External: call
 ```
 
 **Resource Naming:**

@@ -10,46 +10,32 @@ For a short summary of an Aggregate, see [Reventless Components Overview.](../co
 This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`Aggregate.res`](../../reventless/src/components/Aggregate/Aggregate.res)), builder logic ([`Aggregate_Builder.res`](../../reventless/src/components/Aggregate/Aggregate_Builder.res)), and runtime callbacks ([`Aggregate_Callback.res`](../../reventless/src/components/Aggregate/Aggregate_Callback.res)).
 :::
 
-```mermaid
-flowchart LR
-CommandSource[Command Source]:::source
-EventLog[(Event Log)]:::eventlog
-EventMapper[Event Mapper]:::eventmapper
-EventTarget[Event Target]:::target
-EventTopicIn[Event Topic]:::eventtopic
-EventTopicOut[Event Topic]:::eventtopic
+```d2
+CommandSource: Command Source { class: command-generator }
+EventTarget: Event Target { class: event-collector }
 
-EventTopicIn --->|event| EventMapper
-CommandSource --->|command| Params
+Aggregate: {
+  class: aggregate
 
-subgraph GenericAggregate [Aggregate]
-  direction LR
+  Domain: {
+    class: aggregate
+    Spec: Aggregate Spec { class: spec }
+    Behavior: Behavior { class: spec }
+    EventMappings: Event Mappings { class: spec }
+  }
 
-  subgraph Params [Parameters]
-      direction TB
-      Spec[Aggregate Spec]:::parameter
-      Behavior[Behavior]:::parameter
-      Config[Config]:::parameter
-      EventMappings[Event Mappings]:::parameter
+  CommandTopic: Command Topic { class: command-topic }
+  EventLog: Event Log { class: event-log }
+  EventTopic: Event Topic { class: event-topic }
 
-      Config ~~~ Spec
-      Spec ~~~ Behavior
-      Behavior ~~~ EventMappings
+  CommandTopic -> Domain: command { class: command-flow }
+  Domain -> EventLog: event { class: event-flow }
+  EventLog -> Domain: replay { class: replay }
+  EventLog -> EventTopic: event { class: event-flow }
+}
 
-  end
-  Params:::aggregate
-
-  subgraph EventMapper
-    direction TB
-  end
-  EventMapper:::eventmapper
-
-  EventMapper -->|command| Params
-  Params <-->|event| EventLog
-  EventLog -->|event| EventTopicOut
-end
-GenericAggregate:::aggregate
-EventTopicOut --> EventTarget
+CommandSource -> Aggregate.CommandTopic: command { class: command-flow }
+Aggregate.EventTopic -> EventTarget: { class: event-flow }
 ```
 
 An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behavior**](#behavior), [**Config**](../common-modules/config.md) and [**Event Mappings**](#eventmappings).
@@ -271,114 +257,43 @@ The [`errorHandler`](#errors) function is the same for the `create` and `execute
 
 ### Call Sequence
 
-```mermaid
-sequenceDiagram
-participant CommandSource as Command Source
-participant Aggregate
-participant Behavior
-participant EventLog
+```d2
+shape: sequence_diagram
 
-%% first Command
-Note over CommandSource,Aggregate: very first Command for this id
-CommandSource->>Aggregate: Command1
-activate Aggregate
-Aggregate->>EventLog: replay(id)
-activate EventLog
-Note over EventLog: no events persisted yet
-EventLog-->>Aggregate: [ ]
-deactivate EventLog
-Aggregate->>Behavior: create(Command1)
-activate Behavior
-Behavior-->>Aggregate: event1
-deactivate Behavior
-Aggregate-)EventLog: append(event1)
-deactivate Aggregate
+CommandSource: Command Source { class: command-generator }
+Aggregate: Aggregate { class: aggregate }
+Behavior: Behavior { class: spec }
+EventLog: Event Log { class: event-log }
 
-%% second CommandSource
-Note over CommandSource,Aggregate: second Command for this id
-CommandSource->>Aggregate: Command2
-activate Aggregate
-Aggregate->>EventLog: replay(id)
-activate EventLog
-Note over EventLog: one event persisted
-EventLog-->>Aggregate: [event1]
-deactivate EventLog
-Aggregate->>Behavior: init(event1)
-activate Behavior
-Behavior-->>Aggregate: state1
-deactivate Behavior
-Aggregate->>Behavior: execute(state1, Command2)
-activate Behavior
-Behavior-->>Aggregate: event2
-deactivate Behavior
-Aggregate-)EventLog: append(event2)
-deactivate Aggregate
+CommandSource -> Aggregate: "Command1 (very first Command for this id)"
+Aggregate -> EventLog: "replay(id)"
+EventLog --> Aggregate: "[] (no events yet)"
+Aggregate -> Behavior: "create(Command1)"
+Behavior --> Aggregate: event1
+Aggregate -> EventLog: "append(event1)"
 
-%% third Command
-Note over CommandSource,Aggregate: third Command for this id
-CommandSource->>Aggregate: Command3
-activate Aggregate
-Aggregate->>EventLog: replay(id)
-activate EventLog
-Note over EventLog: two event persisted
-EventLog-->>Aggregate: [event1, event2]
-deactivate EventLog
-Aggregate->>Behavior: init(event1)
-activate Behavior
-Behavior-->>Aggregate: state1
-deactivate Behavior
-Aggregate->>Behavior: apply(state1, event2)
-activate Behavior
-Behavior-->>Aggregate: state2
-deactivate Behavior
-Aggregate->>Behavior: execute(state2, Command3)
-activate Behavior
-Behavior-->>Aggregate: event3
-deactivate Behavior
-Aggregate-)EventLog: append(event3)
-deactivate Aggregate
+CommandSource -> Aggregate: "Command2 (second Command for this id)"
+Aggregate -> EventLog: "replay(id)"
+EventLog --> Aggregate: "[event1] (one event persisted)"
+Aggregate -> Behavior: "init(event1)"
+Behavior --> Aggregate: state1
+Aggregate -> Behavior: "execute(state1, Command2)"
+Behavior --> Aggregate: event2
+Aggregate -> EventLog: "append(event2)"
+
+CommandSource -> Aggregate: "Command3 (third Command for this id)"
+Aggregate -> EventLog: "replay(id)"
+EventLog --> Aggregate: "[event1, event2] (two events persisted)"
+Aggregate -> Behavior: "init(event1)"
+Behavior --> Aggregate: state1
+Aggregate -> Behavior: "apply(state1, event2)"
+Behavior --> Aggregate: state2
+Aggregate -> Behavior: "execute(state2, Command3)"
+Behavior --> Aggregate: event3
+Aggregate -> EventLog: "append(event3)"
 ```
 
 ## EventMappings
-
-```mermaid
-flowchart LR
-
-subgraph SourceAggregateSub [Source Aggregate Components]
-    direction LR
-    SourceCommandTopic[Command Topic]:::commandtopic
-    SourceEventTopic[Event Topic]:::eventtopic
-
-    subgraph SourceAggregate [Aggregate]
-        SourceSpec[Spec]:::parameter
-    end
-    SourceAggregate:::aggregate
-
-    SourceCommandTopic -->|command| SourceAggregate
-    SourceAggregate -->|event| SourceEventTopic
-end
-
-subgraph TargetAggregateSub [Target Aggregate Components]
-    direction LR
-    TargetCommandTopic[Command Topic]:::commandtopic
-    TargetEventTopic[Event Topic]:::eventtopic
-
-    subgraph TargetEventMapper [Event Mapper]
-        TargetMapping[Event Mappings]:::parameter
-    end
-    TargetEventMapper:::eventmapper
-
-    subgraph TargetAggregate [Aggregate]
-        TargetSpec[Spec]:::parameter
-    end
-    TargetAggregate:::aggregate
-
-    SourceEventTopic -->|event| TargetEventMapper
-    TargetEventMapper -->|command| TargetCommandTopic
-    TargetCommandTopic -->|command| TargetAggregate
-    TargetAggregate -->|event| TargetEventTopic
-end
-```
 
 Each `Aggregate` can specify `EventMapping`s from one ore more source Aggregates:
 

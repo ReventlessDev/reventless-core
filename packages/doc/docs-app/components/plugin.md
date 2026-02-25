@@ -14,42 +14,64 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 A **Plugin** is the top-level organizational unit in a Reventless application, corresponding to a [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html) in Domain-Driven Design (DDD). It serves as both a logical boundary for domain concepts and a deployment unit for infrastructure.
 
-```mermaid
-flowchart TB
-    subgraph Plugin["Plugin (Bounded Context)"]
-        direction TB
-        
-        subgraph Components["Internal Components"]
-            direction LR
-            Agg1[Aggregate 1]:::aggregate
-            Agg2[Aggregate 2]:::aggregate
-            RM1[ReadModel 1]:::readmodel
-            RM2[ReadModel 2]:::readmodel
-            Task1[Task]:::task
-        end
-        
-        subgraph Communication["Internal Communication"]
-            direction LR
-            EC[Event Collector]:::eventcollector
-            CT[Command Topics]:::commandtopic
-            ET[Event Topics]:::eventtopic
-        end
-        
-        subgraph External["External Interface"]
-            direction LR
-            EP[Extension Point]:::extensionpoint
-            Ext[Extension]:::extension
-        end
-        
-        HB[Heartbeat]:::heartbeat
-    end
-    
-    OtherPlugin[Other Plugin]:::plugin
-    CoreStack[Core Stack]:::core
-    
-    EP <-->|events/commands| OtherPlugin
-    Ext <-->|events/commands| OtherPlugin
-    HB -->|heartbeat| CoreStack
+```d2
+vars: { d2-config: { layout-engine: elk } }
+grid-columns: 1
+
+Upstream: {
+  class: invisible
+  grid-rows: 1
+
+  1,1: { class: placeholder; width: 800 }
+  # 1,2: X
+  Plugin: Upstream Plugin { class: plugin }
+}
+
+Plugin: "Plugin (Bounded Context)" {
+  class: plugin-area
+
+  Components: Internal Components {
+    class: write-side
+    grid-rows: 3
+    Agg1: Aggregate 1 { class: aggregate }
+    Agg2: Aggregate 2 { class: aggregate }
+    RM1: ReadModel 1 { class: read-model }
+    RM2: ReadModel 2 { class: read-model }
+    Task1: Task 1 { class: task }
+    Task2: Task 2 { class: task }
+  }
+
+  Communication: Internal Communication {
+    class: event-processing-area
+    grid-rows: 3
+    EC: Event Collector { class: event-collector }
+    CT: Command Topics { class: command-topic }
+    ET: Event Topics { class: event-topic }
+  }
+
+  External: External Interface {
+    class: plugin-area
+    grid-rows: 2
+    Ext: Extension { class: extension }
+    EP: Extension Point { class: extension-point }
+    HB: Heartbeat { class: heartbeat } 
+  }
+
+}
+
+Downstream: {
+  class: placeholder
+  grid-rows: 1
+  grid-columns: 3
+
+  1,1: { class: placeholder; width: 800 }
+  Plugin: Downstream Plugin { class: plugin }
+  CoreStack: Core Stack { class: plugin }
+}
+
+Plugin.External.EP -> Downstream.Plugin: events/commands { class: cross-plugin }
+Upstream.Plugin -> Plugin.External.Ext: events/commands { class: cross-plugin }
+Plugin.External.HB -> Downstream.CoreStack: heartbeat
 ```
 
 ## Purpose and Responsibilities
@@ -131,31 +153,31 @@ type outputs = {
 
 Within a Plugin, components communicate through internal messaging infrastructure:
 
-```mermaid
-flowchart LR
-    subgraph Plugin
-        direction TB
-        
-        API[API]:::api
-        CG[Command Generator]:::commandgenerator
-        CT1[Command Topic]:::commandtopic
-        Agg[Aggregate]:::aggregate
-        EL[(Event Log)]:::eventlog
-        ET[Event Topic]:::eventtopic
-        EC[Event Collector]:::eventcollector
-        EM[Event Mapper]:::eventmapper
-        RM[ReadModel]:::readmodel
-        
-        API -->|mutation| CG
-        CG -->|command| CT1
-        CT1 -->|command| Agg
-        Agg <-->|events| EL
-        EL -->|event| ET
-        ET -->|event| EC
-        EC -->|event| EM
-        EC -->|event| RM
-        EM -->|command| CT1
-    end
+```d2
+Plugin: Plugin {
+  class: plugin-area
+
+  API: API { class: api }
+  CG: Command Generator { class: command-generator }
+  CT1: Command Topic { class: command-topic }
+  Agg: Aggregate { class: aggregate }
+  EL: Event Log { class: event-log }
+  ET: Event Topic { class: event-topic }
+  EC: Event Collector { class: event-collector }
+  EM: Event Mapper { class: event-mapper }
+  RM: ReadModel { class: read-model }
+
+  API -> CG: mutation { class: command-flow }
+  CG -> CT1: command { class: command-flow }
+  CT1 -> Agg: command { class: command-flow }
+  Agg -> EL: events { class: event-flow }
+  EL -> Agg: events { class: event-flow }
+  EL -> ET: event { class: event-flow }
+  ET -> EC: event { class: event-flow }
+  EC -> EM: event { class: event-flow }
+  EC -> RM: event { class: projection-flow }
+  EM -> CT1: command { class: command-flow }
+}
 ```
 
 ### Communication Rules
@@ -169,35 +191,36 @@ flowchart LR
 
 Plugins communicate with each other through ExtensionPoints and Extensions:
 
-```mermaid
-flowchart LR
-    subgraph PluginA["Plugin A"]
-        direction TB
-        AggA[Aggregate]:::aggregate
-        EPA[Extension Point]:::extensionpoint
-        EPM[ExtensionPoint Mapping]:::mapping
-        
-        AggA -->|event| EPM
-        EPM -->|mapped event| EPA
-    end
-    
-    subgraph PluginB["Plugin B"]
-        direction TB
-        ExtB[Extension]:::extension
-        ExtM[Extension Mapping]:::mapping
-        AggB[Aggregate]:::aggregate
-        
-        ExtB -->|event| ExtM
-        ExtM -->|command| AggB
-    end
-    
-    subgraph CoreStack["Core Stack"]
-        direction TB
-        PEP[Plugin Extension Point]:::extensionpoint
-    end
-    
-    EPA <-->|events/commands| PEP
-    ExtB <-->|events/commands| PEP
+```d2
+PluginA: Plugin A {
+  class: plugin-area
+  AggA: Aggregate { class: aggregate }
+  EPA: Extension Point { class: extension-point }
+  EPM: ExtensionPoint Mapping { class: event-mapper }
+
+  AggA -> EPM: event { class: event-flow }
+  EPM -> EPA: mapped event { class: event-flow }
+}
+
+PluginB: Plugin B {
+  class: plugin-area
+  ExtB: Extension { class: extension }
+  ExtM: Extension Mapping { class: event-mapper }
+  AggB: Aggregate { class: aggregate }
+
+  ExtB -> ExtM: event { class: event-flow }
+  ExtM -> AggB: command { class: command-flow }
+}
+
+CoreStack: Core Stack {
+  class: plugin-area
+  PEP: Plugin Extension Point { class: extension-point }
+}
+
+PluginA.EPA -> CoreStack.PEP: events/commands { class: cross-plugin }
+CoreStack.PEP -> PluginA.EPA: events/commands { class: cross-plugin }
+PluginB.ExtB -> CoreStack.PEP: events/commands { class: cross-plugin }
+CoreStack.PEP -> PluginB.ExtB: events/commands { class: cross-plugin }
 ```
 
 ### Communication Flow
@@ -268,48 +291,42 @@ include ReventlessAws.Plugin.Make(
 
 ### Initialization Sequence
 
-```mermaid
-sequenceDiagram
-    participant Pulumi
-    participant Plugin
-    participant Aggregates
-    participant ReadModels
-    participant ExtensionPoints
-    participant Extensions
-    participant EventCollector
-    participant CoreStack
-    
-    Pulumi->>Plugin: deploy
-    activate Plugin
-    
-    Plugin->>Aggregates: create (without EventMappers)
-    Plugin->>ReadModels: create
-    Plugin->>ExtensionPoints: create
-    Plugin->>Extensions: create
-    
-    Note over Plugin: Add EventMappers to Aggregates
-    
-    Plugin->>EventCollector: create & connect
-    Plugin->>CoreStack: register plugin definition
-    
-    Plugin-->>Pulumi: outputs
-    deactivate Plugin
+```d2
+shape: sequence_diagram
+
+Pulumi: Pulumi { class: external-system }
+Plugin: Plugin { class: plugin }
+Aggregates: Aggregates { class: aggregate }
+ReadModels: ReadModels { class: read-model }
+ExtensionPoints: ExtensionPoints { class: extension-point }
+Extensions: Extensions { class: extension }
+EventCollector: EventCollector { class: event-collector }
+CoreStack: CoreStack { class: external-system }
+
+Pulumi -> Plugin: deploy
+Plugin -> Aggregates: "create (without EventMappers)"
+Plugin -> ReadModels: create
+Plugin -> ExtensionPoints: create
+Plugin -> Extensions: create
+Plugin -> Plugin: Add EventMappers to Aggregates
+Plugin -> EventCollector: create & connect
+Plugin -> CoreStack: register plugin definition
+Plugin --> Pulumi: outputs
 ```
 
 ### Heartbeat Monitoring
 
 The Plugin sends periodic heartbeat signals to the Core Stack:
 
-```mermaid
-sequenceDiagram
-    participant Plugin
-    participant Heartbeat
-    participant CoreStack
-    
-    loop Every heartbeatInterval
-        Heartbeat->>CoreStack: heartbeat signal
-        Note over CoreStack: Update plugin health status
-    end
+```d2
+shape: sequence_diagram
+
+Plugin: Plugin { class: plugin }
+Heartbeat: Heartbeat { class: heartbeat }
+CoreStack: CoreStack { class: external-system }
+
+Heartbeat -> CoreStack: "heartbeat signal (every heartbeatInterval)"
+CoreStack -> CoreStack: Update plugin health status
 ```
 
 ## Best Practices

@@ -10,30 +10,25 @@ For a short summary of a ReadModel, see [Reventless Components Overview.](../com
 This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions, builder logic, and runtime callbacks.
 :::
 
-```mermaid
-flowchart LR
-QueryDb[Query DB]
+```d2
+QueryDb: Query DB { class: query-db }
+EventTopic: Event Topic { class: event-topic }
+UiClient: UI Client { class: client }
 
-EventTopic[Event Topic]:::eventtopic
-UiClient[UI Client]:::client
+GenericReadModel: Generic Read Model {
+  class: read-side
+  SpecificReadModel: Specific Read Model {
+    class: read-model
+    Config: Config { class: spec }
+    Spec: Read Model Spec { class: spec }
+    Projections: Projections { class: spec }
+  }
+}
 
-EventTopic -->|event| SpecificReadModel
-subgraph GenericReadModel [Generic Read Model]
-    direction LR
-    subgraph SpecificReadModel [Specific Read Model]
-        direction TB
-        Config[Config]:::parameter
-        Spec[Read Model Spec]:::parameter
-        Projections[Projections]:::parameter
-
-        Config ~~~ Spec
-        Spec ~~~ Projections
-    end
-    SpecificReadModel:::readmodel
-    SpecificReadModel -->|state| QueryDb
-end
-GenericReadModel:::readmodel
-QueryDb <-->|query| UiClient
+EventTopic -> GenericReadModel.SpecificReadModel: event { class: event-flow }
+GenericReadModel.SpecificReadModel -> QueryDb: state { class: projection-flow }
+QueryDb -> UiClient: query
+UiClient -> QueryDb: query
 ```
 
 A Read Model's business logic is defined by it's [**Spec**](#read-model-spec), [**Projections**](#projections) and [**Config**](../common-modules/config.md).
@@ -176,16 +171,17 @@ In this example, there is a sub id field `subId` used, therefore the following f
 
 The following diagram depicts the relations between the Query DB tables for the given example:
 
-```mermaid
-flowchart LR
-  subgraph CustomerTable[Customer Table]
-    orderId
-  end
-  subgraph Order[Order Table]
-    idOrder[id]
-    items
-  end
-  orderId --> idOrder
+```d2
+CustomerTable: Customer Table {
+  orderId: orderId
+}
+
+Order: Order Table {
+  idOrder: id
+  items: items
+}
+
+CustomerTable.orderId -> Order.idOrder
 ```
 
 Example result of `customer("1234")` API query:

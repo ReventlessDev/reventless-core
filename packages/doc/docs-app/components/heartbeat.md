@@ -12,22 +12,17 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the Core Plugin's ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
 
-```mermaid
-flowchart LR
-    CloudWatch[CloudWatch Events]:::aws
-    Lambda[Lambda Function]:::aws
-    CoreSQS[Core Plugin SQS]:::core
-    ExtensionPoint[Extension Point]:::extension
-    Extensions[Extensions]:::extension
-    
-    CloudWatch -->|triggers| Lambda
-    Lambda -->|heartbeat message| CoreSQS
-    CoreSQS -->|processes| ExtensionPoint
-    ExtensionPoint -->|invokes| Extensions
-    
-    classDef aws fill:#fff3e0
-    classDef core fill:#e3f2fd
-    classDef extension fill:#f3e5f5
+```d2
+CloudWatch: CloudWatch Events { class: aws-service }
+Lambda: Lambda Function { class: aws-service }
+CoreSQS: Core Plugin SQS { class: plugin }
+ExtensionPoint: Extension Point { class: extension-point }
+Extensions: Extensions { class: extension }
+
+CloudWatch -> Lambda: triggers
+Lambda -> CoreSQS: heartbeat message
+CoreSQS -> ExtensionPoint: processes
+ExtensionPoint -> Extensions: invokes
 ```
 
 ## Purpose and Responsibilities
@@ -73,23 +68,21 @@ The Heartbeat component operates through a simple, automated flow:
 
 ### Heartbeat Generation Flow
 
-```mermaid
-sequenceDiagram
-    participant CW as CloudWatch Events
-    participant Lambda as Heartbeat Lambda
-    participant SQS as Core Plugin SQS
-    participant EP as Extension Point
-    participant Ext as Extensions
-    
-    Note over CW: Timer fires (every N minutes)
-    CW->>Lambda: Invoke heartbeat function
-    Lambda->>Lambda: Generate heartbeat message
-    Lambda->>SQS: Send heartbeat command
-    SQS->>EP: Deliver message
-    EP->>Ext: Invoke registered extensions
-    Ext-->>EP: Process heartbeat
-    
-    Note over CW: Cycle repeats automatically
+```d2
+shape: sequence_diagram
+
+CW: CloudWatch Events { class: aws-service }
+Lambda: Heartbeat Lambda { class: aws-service }
+SQS: Core Plugin SQS { class: aws-service }
+EP: Extension Point { class: extension-point }
+Ext: Extensions { class: extension }
+
+CW -> Lambda: "Invoke heartbeat function (timer fires every N minutes)"
+Lambda -> Lambda: Generate heartbeat message
+Lambda -> SQS: Send heartbeat command
+SQS -> EP: Deliver message
+EP -> Ext: Invoke registered extensions
+Ext --> EP: Process heartbeat
 ```
 
 ### Message Structure
@@ -118,24 +111,22 @@ The Heartbeat component is specifically designed to integrate with the Core Plug
 
 ### Core Plugin Integration
 
-```mermaid
-flowchart TD
-    Heartbeat[Heartbeat Component]:::heartbeat
-    CorePlugin[Core Plugin]:::core
-    ExtensionPoint[Extension Point]:::extension
-    HealthExt[Health Check Extension]:::extension
-    CleanupExt[Cleanup Extension]:::extension
-    MonitorExt[Monitor Extension]:::extension
-    
-    Heartbeat -->|periodic signals| CorePlugin
-    CorePlugin -->|triggers| ExtensionPoint
-    ExtensionPoint -->|invokes| HealthExt
-    ExtensionPoint -->|invokes| CleanupExt
-    ExtensionPoint -->|invokes| MonitorExt
-    
-    classDef heartbeat fill:#f3e5f5
-    classDef core fill:#e3f2fd
-    classDef extension fill:#fff8e1
+```d2
+Heartbeat: Heartbeat Component { class: heartbeat }
+
+CorePlugin: Core Plugin { 
+  class: plugin-area
+  ExtensionPoint: Plugin Extension Point { class: extension-point }
+  HealthExt: Health Check Extension { class: extension }
+  CleanupExt: Cleanup Extension { class: extension }
+  MonitorExt: Monitor Extension { class: extension }
+
+  ExtensionPoint -> HealthExt: invokes
+  ExtensionPoint -> CleanupExt: invokes
+  ExtensionPoint -> MonitorExt: invokes
+}
+
+Heartbeat -> CorePlugin.ExtensionPoint: periodic signals
 ```
 
 ### Extension Response Patterns

@@ -14,36 +14,37 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 An **Extension** enables a [Plugin](./plugin.md) to consume events from and send commands to another Plugin's [ExtensionPoint](./extensionpoint.md). It acts as the consumer side of cross-Plugin communication, translating external events into internal commands and optionally forwarding internal events back to the ExtensionPoint.
 
-```mermaid
-flowchart LR
-    subgraph PluginA["Plugin A (Provider)"]
-        direction TB
-        EP[ExtensionPoint]:::extensionpoint
-    end
-    
-    subgraph CoreStack["Core Stack"]
-        PEP[Plugin ExtensionPoint]:::extensionpoint
-    end
-    
-    subgraph PluginB["Plugin B (Consumer)"]
-        direction TB
-        
-        subgraph Ext["Extension"]
-            direction TB
-            ExtM[Extension Mapping]:::mapping
-        end
-        Ext:::extension
-        
-        Agg[Aggregate]:::aggregate
-        RM[ReadModel]:::readmodel
-        
-        ExtM -->|command| Agg
-        ExtM -->|event| RM
-        Agg -->|event| ExtM
-    end
-    
-    EP <-->|events/commands| PEP
-    PEP <-->|events/commands| Ext
+```d2
+PluginA: "Plugin A (Provider)" {
+  class: plugin-area
+  EP: ExtensionPoint { class: extension-point }
+}
+
+CoreStack: Core Stack {
+  class: external-system
+  PEP: Plugin ExtensionPoint { class: extension-point }
+}
+
+PluginB: "Plugin B (Consumer)" {
+  class: plugin-area
+
+  Ext: Extension {
+    class: extension
+    ExtM: Extension Mapping { class: event-mapper }
+  }
+
+  Agg: Aggregate { class: aggregate }
+  RM: ReadModel { class: read-model }
+
+  Ext.ExtM -> Agg: command { class: command-flow }
+  Ext.ExtM -> RM: event { class: projection-flow }
+  Agg -> Ext.ExtM: event { class: event-flow }
+}
+
+PluginA.EP -> CoreStack.PEP: events/commands { class: cross-plugin }
+CoreStack.PEP -> PluginA.EP: events/commands { class: cross-plugin }
+CoreStack.PEP -> PluginB.Ext: events/commands { class: cross-plugin }
+PluginB.Ext -> CoreStack.PEP: events/commands { class: cross-plugin }
 ```
 
 ## Purpose and Responsibilities
@@ -181,21 +182,24 @@ type forwardCommand = {
 
 Plugin B (Order Plugin) needs to react to customer events from Plugin A (Customer Plugin):
 
-```mermaid
-flowchart LR
-    subgraph CustomerPlugin["Customer Plugin"]
-        CustomerAgg[Customer Aggregate]:::aggregate
-        CustomerEP[Customer ExtensionPoint]:::extensionpoint
-    end
-    
-    subgraph OrderPlugin["Order Plugin"]
-        CustomerExt[Customer Extension]:::extension
-        OrderAgg[Order Aggregate]:::aggregate
-    end
-    
-    CustomerAgg -->|CustomerCreated| CustomerEP
-    CustomerEP -->|CustomerCreated| CustomerExt
-    CustomerExt -->|CreateCustomerProfile| OrderAgg
+```d2
+CustomerPlugin: Customer Plugin {
+  class: plugin-area
+  CustomerAgg: Customer Aggregate { class: aggregate }
+  CustomerEP: Customer ExtensionPoint { class: extension-point }
+
+  CustomerAgg -> CustomerEP: CustomerCreated { class: event-flow }
+}
+
+OrderPlugin: Order Plugin {
+  class: plugin-area
+  CustomerExt: Customer Extension { class: extension }
+  OrderAgg: Order Aggregate { class: aggregate }
+
+  CustomerExt -> OrderAgg: CreateCustomerProfile { class: command-flow }
+}
+
+CustomerPlugin.CustomerEP -> OrderPlugin.CustomerExt: CustomerCreated { class: cross-plugin }
 ```
 
 ### Extension Spec (reuse ExtensionPoint Spec)
@@ -340,55 +344,46 @@ let mapOutgoingEvent = None
 
 When an event arrives from an ExtensionPoint:
 
-```mermaid
-sequenceDiagram
-    participant EP as ExtensionPoint
-    participant CoreStack as Core Stack
-    participant EC as Plugin Event Collector
-    participant ExtOps as Extension Operations
-    participant AggCT as Aggregate Command Topic
-    participant Agg as Aggregate
-    participant RM as ReadModel
-    
-    EP->>CoreStack: event
-    CoreStack->>EC: event
-    EC->>ExtOps: incomingEventHandler(event, pluginDef)
-    
-    ExtOps->>ExtOps: mapIncomingEvent(event)
-    
-    alt PublishAggregateCommand
-        ExtOps->>AggCT: command
-        AggCT->>Agg: command
-    end
-    
-    alt Forward to ReadModel
-        ExtOps->>RM: event
-    end
+```d2
+shape: sequence_diagram
+
+EP: ExtensionPoint { class: extension-point }
+CoreStack: Core Stack { class: external-system }
+EC: Plugin Event Collector { class: event-collector }
+ExtOps: Extension Operations { class: extension }
+AggCT: Aggregate Command Topic { class: command-topic }
+Agg: Aggregate { class: aggregate }
+RM: ReadModel { class: read-model }
+
+EP -> CoreStack: event
+CoreStack -> EC: event
+EC -> ExtOps: "incomingEventHandler(event, pluginDef)"
+ExtOps -> ExtOps: "mapIncomingEvent(event)"
+ExtOps -> AggCT: "command (PublishAggregateCommand)"
+AggCT -> Agg: command
+ExtOps -> RM: "event (Forward to ReadModel)"
 ```
 
 ### Outgoing Event Flow
 
 When a local Aggregate emits an event that should be forwarded:
 
-```mermaid
-sequenceDiagram
-    participant Agg as Aggregate
-    participant ET as Event Topic
-    participant EC as Plugin Event Collector
-    participant ExtOps as Extension Operations
-    participant CoreStack as Core Stack
-    participant EP as ExtensionPoint
-    
-    Agg->>ET: event
-    ET->>EC: event
-    EC->>ExtOps: outgoingEventHandler(event, pluginDef)
-    
-    ExtOps->>ExtOps: mapOutgoingEvent(event)
-    
-    alt PublishExtensionPointCommand
-        ExtOps->>CoreStack: command
-        CoreStack->>EP: command
-    end
+```d2
+shape: sequence_diagram
+
+Agg: Aggregate { class: aggregate }
+ET: Event Topic { class: event-topic }
+EC: Plugin Event Collector { class: event-collector }
+ExtOps: Extension Operations { class: extension }
+CoreStack: Core Stack { class: external-system }
+EP: ExtensionPoint { class: extension-point }
+
+Agg -> ET: event
+ET -> EC: event
+EC -> ExtOps: "outgoingEventHandler(event, pluginDef)"
+ExtOps -> ExtOps: "mapOutgoingEvent(event)"
+ExtOps -> CoreStack: "command (PublishExtensionPointCommand)"
+CoreStack -> EP: command
 ```
 
 ## Component Outputs

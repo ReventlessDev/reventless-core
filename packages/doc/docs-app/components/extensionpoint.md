@@ -14,38 +14,39 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 An **ExtensionPoint** defines the external interface of a [Plugin](./plugin.md), enabling cross-Plugin communication in a Reventless application. It acts as a translation layer between internal Plugin events/commands and the external world, providing a stable API that other Plugins can consume via [Extensions](./extension.md).
 
-```mermaid
-flowchart LR
-    subgraph PluginA["Plugin A (Provider)"]
-        direction TB
-        Agg[Aggregate]:::aggregate
-        EPM[ExtensionPoint Mapping]:::mapping
-        
-        subgraph EP["ExtensionPoint"]
-            direction TB
-            CT[Command Topic]:::commandtopic
-            ET[Event Topic]:::eventtopic
-        end
-        EP:::extensionpoint
-        
-        Agg -->|internal event| EPM
-        EPM -->|mapped event| ET
-        CT -->|command| EPM
-        EPM -->|internal command| Agg
-    end
-    
-    subgraph CoreStack["Core Stack"]
-        PEP[Plugin ExtensionPoint]:::extensionpoint
-    end
-    
-    subgraph PluginB["Plugin B (Consumer)"]
-        Ext[Extension]:::extension
-    end
-    
-    ET -->|event| PEP
-    PEP -->|event| Ext
-    Ext -->|command| PEP
-    PEP -->|command| CT
+```d2
+PluginA: "Plugin A (Provider)" {
+  class: plugin-area
+
+  Agg: Aggregate { class: aggregate }
+  EPM: ExtensionPoint Mapping { class: event-mapper }
+
+  EP: ExtensionPoint {
+    class: extension-point-area
+    CT: Command Topic { class: command-topic }
+    ET: Event Topic { class: event-topic }
+  }
+
+  Agg -> EPM: internal event { class: event-flow }
+  EPM -> EP.ET: mapped event { class: event-flow }
+  EP.CT -> EPM: command { class: command-flow }
+  EPM -> Agg: internal command { class: command-flow }
+}
+
+CoreStack: Core Plugin {
+  class: plugin-area
+  PEP: Plugin ExtensionPoint { class: extension-point }
+}
+
+PluginB: "Plugin B (Consumer)" {
+  class: plugin-area
+  Ext: Extension { class: extension }
+}
+
+PluginA.EP.ET -> CoreStack.PEP: event { class: cross-plugin }
+CoreStack.PEP -> PluginB.Ext: event { class: cross-plugin }
+PluginB.Ext -> CoreStack.PEP: command { class: cross-plugin }
+CoreStack.PEP -> PluginA.EP.CT: command { class: cross-plugin }
 ```
 
 ## Purpose and Responsibilities
@@ -272,47 +273,46 @@ include ReventlessAws.ExtensionPoint.Make(Spec, Mappings)
 
 When an Aggregate emits an event that should be published externally:
 
-```mermaid
-sequenceDiagram
-    participant Aggregate
-    participant EventTopic as Aggregate Event Topic
-    participant EventCollector as Plugin Event Collector
-    participant EPMapping as ExtensionPoint Mapping
-    participant EPEventTopic as ExtensionPoint Event Topic
-    participant CoreStack as Core Stack
-    participant Extension
-    
-    Aggregate->>EventTopic: emit event
-    EventTopic->>EventCollector: event
-    EventCollector->>EPMapping: outgoingEventHandler(event)
-    
-    alt mapOutgoingEvent defined
-        EPMapping->>EPMapping: mapOutgoingEvent(event)
-        EPMapping->>EPEventTopic: publishEvent(mappedEvent)
-        EPEventTopic->>CoreStack: event
-        CoreStack->>Extension: event
-    end
+```d2
+shape: sequence_diagram
+
+Aggregate: Aggregate { class: aggregate }
+EventTopic: Aggregate Event Topic { class: event-topic }
+EventCollector: Plugin Event Collector { class: event-collector }
+EPMapping: ExtensionPoint Mapping { class: event-mapper }
+EPEventTopic: ExtensionPoint Event Topic { class: event-topic }
+CoreStack: Core Stack { class: external-system }
+Extension: Extension { class: extension }
+
+Aggregate -> EventTopic: emit event
+EventTopic -> EventCollector: event
+EventCollector -> EPMapping: "outgoingEventHandler(event)"
+EPMapping -> EPMapping: "mapOutgoingEvent(event)"
+EPMapping -> EPEventTopic: "publishEvent(mappedEvent) (if mapOutgoingEvent defined)"
+EPEventTopic -> CoreStack: event
+CoreStack -> Extension: event
 ```
 
 ### Incoming Command Flow
 
 When an Extension sends a command to this ExtensionPoint:
 
-```mermaid
-sequenceDiagram
-    participant Extension
-    participant CoreStack as Core Stack
-    participant EPCommandTopic as ExtensionPoint Command Topic
-    participant EPMapping as ExtensionPoint Mapping
-    participant AggCommandTopic as Aggregate Command Topic
-    participant Aggregate
-    
-    Extension->>CoreStack: command
-    CoreStack->>EPCommandTopic: forward command
-    EPCommandTopic->>EPMapping: handleIncomingCommand(command)
-    EPMapping->>EPMapping: mapIncomingCommand(command)
-    EPMapping->>AggCommandTopic: publishCommand(mappedCommand)
-    AggCommandTopic->>Aggregate: command
+```d2
+shape: sequence_diagram
+
+Extension: Extension { class: extension }
+CoreStack: Core Stack { class: external-system }
+EPCommandTopic: ExtensionPoint Command Topic { class: command-topic }
+EPMapping: ExtensionPoint Mapping { class: event-mapper }
+AggCommandTopic: Aggregate Command Topic { class: command-topic }
+Aggregate: Aggregate { class: aggregate }
+
+Extension -> CoreStack: command
+CoreStack -> EPCommandTopic: forward command
+EPCommandTopic -> EPMapping: "handleIncomingCommand(command)"
+EPMapping -> EPMapping: "mapIncomingCommand(command)"
+EPMapping -> AggCommandTopic: "publishCommand(mappedCommand)"
+AggCommandTopic -> Aggregate: command
 ```
 
 ## Side Effects (callCommand)

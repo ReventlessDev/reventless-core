@@ -12,23 +12,20 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    Plugin[Plugin]:::plugin
-    DcbEventLog[(DcbEventLog)]:::dcbeventlog
-    CommandTopic[Command Topic]:::commandtopic
-    StateChangeSlice[StateChangeSlice]:::statechangeslice
-    
-    CommandTopic -->|commands| StateChangeSlice
-    StateChangeSlice -->|read/reduce| DcbEventLog
-    DcbEventLog -->|events| StateChangeSlice
-    StateChangeSlice -->|decide/append| DcbEventLog
-    
-    Plugin -->|creates| DcbEventLog
-    Plugin -->|creates| CommandTopic
-    Plugin -->|creates| StateChangeSlice
+```d2
+Plugin: Plugin { class: plugin-area }
+DcbEventLog: DcbEventLog { class: dcb-event-log }
+CommandTopic: Command Topic { class: command-topic }
+StateChangeSlice: StateChangeSlice { class: state-change-slice }
 
-    linkStyle default color:#fa0,stroke:#fa0
+CommandTopic -> StateChangeSlice: commands { class: command-flow }
+StateChangeSlice -> DcbEventLog: read/reduce { class: event-flow }
+DcbEventLog -> StateChangeSlice: events { class: event-flow }
+StateChangeSlice -> DcbEventLog: decide/append { class: event-flow }
+
+Plugin -> DcbEventLog: creates
+Plugin -> CommandTopic: creates
+Plugin -> StateChangeSlice: creates
 ```
 
 The **StateChangeSlice** is a DCB (Dynamic Consistency Boundary) component that processes commands against a shared event-sourced state. It implements a decision model pattern where commands are evaluated against accumulated events to produce new events or errors.
@@ -44,35 +41,37 @@ The **StateChangeSlice** is a DCB (Dynamic Consistency Boundary) component that 
 
 StateChangeSlice is a core component of the DCB architecture:
 
-```mermaid
-flowchart TB
-    subgraph DCB Architecture
-        Client[Client]
-        SQS[SQS FIFO Queue]
-        Lambda[DCB Lambda]
-        FilteringHandler[Filtering Handler]
-        Registry[Global Registry]
-        
-        subgraph Slices[State Change Slices]
-            Slice1[CreateItem Slice]
-            Slice2[RenameItem Slice]
-            SliceN[...Slice N]
-        end
-        
-        DcbEventLog[(DcbEventLog<br/>Shared Event Log)]
-        
-        Client -->|commands| SQS
-        SQS -->|messages| Lambda
-        Lambda -->|routes to| FilteringHandler
-        FilteringHandler -->|looks up| Registry
-        Registry -->|dispatches to| Slice1
-        Registry -->|dispatches to| Slice2
-        Registry -->|dispatches to| SliceN
-        
-        Slice1 -->|read/reduce/append| DcbEventLog
-        Slice2 -->|read/reduce/append| DcbEventLog
-        SliceN -->|read/reduce/append| DcbEventLog
-    end
+```d2
+DCBArchitecture: DCB Architecture {
+  class: plugin-area
+
+  Client: Client { class: client }
+  SQS: SQS FIFO Queue { class: aws-service }
+  Lambda: DCB Lambda { class: aws-service }
+  FilteringHandler: Filtering Handler
+  Registry: Global Registry
+
+  Slices: State Change Slices {
+    class: slices-area
+    Slice1: CreateItem Slice { class: state-change-slice }
+    Slice2: RenameItem Slice { class: state-change-slice }
+    SliceN: ...Slice N { class: state-change-slice }
+  }
+
+  DcbEventLog: DcbEventLog\nShared Event Log { class: dcb-event-log }
+
+  Client -> SQS: commands { class: command-flow }
+  SQS -> Lambda: messages
+  Lambda -> FilteringHandler: routes to { class: command-flow }
+  FilteringHandler -> Registry: looks up
+  Registry -> Slices.Slice1: dispatches to { class: command-flow }
+  Registry -> Slices.Slice2: dispatches to { class: command-flow }
+  Registry -> Slices.SliceN: dispatches to { class: command-flow }
+
+  Slices.Slice1 -> DcbEventLog: read/reduce/append { class: event-flow }
+  Slices.Slice2 -> DcbEventLog: read/reduce/append { class: event-flow }
+  Slices.SliceN -> DcbEventLog: read/reduce/append { class: event-flow }
+}
 ```
 
 ## Component Spec
@@ -116,41 +115,25 @@ EventLogSpec:  module Dcb DcbEventLog.Spec
 
 ### Command Processing Flow
 
-```mermaid
-sequenceDiagram
-    participant CommandTopic
-    participant StateChangeSlice as StateChangeSlice
-    participant DcbEventLog as DcbEventLog
-    participant Storage as DynamoDB
-    
-    CommandTopic->>StateChangeSlice: handleCommands(commands)
-    activate StateChangeSlice
-    
-    loop For each command
-        StateChangeSlice->>StateChangeSlice: Extract DCB tags from command
-        StateChangeSlice->>DcbEventLog: read(~query)
-        activate DcbEventLog
-        DcbEventLog->>Storage: Query events by tags
-        Storage-->>DcbEventLog: events
-        deactivate DcbEventLog
-        
-        StateChangeSlice->>StateChangeLoop: reduce(events) → decisionModel
-        StateChangeSlice->>StateChangeSlice: decide(decisionModel, command)
-        
-        alt Success (new events)
-            StateChangeSlice->>DcbEventLog: append(events, ~condition)
-            activate DcbEventLog
-            DcbEventLog->>Storage: Write events (conditional)
-            Storage-->>DcbEventLog: position
-            deactivate DcbEventLog
-            Note over StateChangeSlice: Optimistic concurrency<br/>with retry on conflict
-        else Error
-            StateChangeSlice-->>CommandTopic: Error(result)
-        end
-    end
-    
-    StateChangeSlice-->>CommandTopic: results array
-    deactivate StateChangeSlice
+```d2
+shape: sequence_diagram
+
+CommandTopic: CommandTopic { class: command-topic }
+StateChangeSlice: StateChangeSlice
+DcbEventLog: DcbEventLog { class: dcb-event-log }
+Storage: DynamoDB { class: aws-service }
+
+CommandTopic -> StateChangeSlice: "handleCommands(commands)"
+StateChangeSlice -> StateChangeSlice: Extract DCB tags from command
+StateChangeSlice -> DcbEventLog: "read(~query)"
+DcbEventLog -> Storage: Query events by tags
+Storage --> DcbEventLog: events
+StateChangeSlice -> StateChangeSlice: "reduce(events) → decisionModel"
+StateChangeSlice -> StateChangeSlice: "decide(decisionModel, command)"
+StateChangeSlice -> DcbEventLog: "append(events, ~condition)"
+DcbEventLog -> Storage: "Write events (conditional)"
+Storage --> DcbEventLog: position
+StateChangeSlice --> CommandTopic: results array
 ```
 
 ### Optimistic Concurrency Control

@@ -12,22 +12,20 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    SourceAggregate[Source Aggregate]:::aggregate
-    SourceEventTopic[Source Event Topic]:::eventtopic
-    EventMapper[Event Mapper]:::eventmapper
-    TargetCommandTopic[Target Command Topic]:::commandtopic
-    TargetAggregate[Target Aggregate]:::aggregate
-    Counter[(Counter)]:::counter
-    
-    SourceAggregate -->|events| SourceEventTopic
-    SourceEventTopic -->|events| EventMapper
-    EventMapper -->|commands| TargetCommandTopic
-    TargetCommandTopic -->|commands| TargetAggregate
-    EventMapper <-->|count/dedupe| Counter
-    
-    linkStyle default color:#fa0,stroke:#fa0
+```d2
+SourceAggregate: Source Aggregate { class: aggregate }
+SourceEventTopic: Source Event Topic { class: event-topic }
+EventMapper: Event Mapper { class: event-mapper }
+TargetCommandTopic: Target Command Topic { class: command-topic }
+TargetAggregate: Target Aggregate { class: aggregate }
+Counter: Counter { class: counter }
+
+SourceAggregate -> SourceEventTopic: events { class: event-flow }
+SourceEventTopic -> EventMapper: events { class: event-flow }
+EventMapper -> TargetCommandTopic: commands { class: command-flow }
+TargetCommandTopic -> TargetAggregate: commands { class: command-flow }
+EventMapper -> Counter: count/dedupe
+Counter -> EventMapper: count/dedupe
 ```
 
 The **EventMapper** enables event-driven command generation by mapping events from one or more source aggregates to commands for a target aggregate. This is a key component for implementing saga patterns, process managers, and reactive business logic across aggregate boundaries.
@@ -227,45 +225,27 @@ let counter = Some(module(Invoice_Counter: Counter.T))
 
 ### Event Processing Sequence
 
-```mermaid
-sequenceDiagram
-    participant SourceAggregate as Source Aggregate
-    participant EventTopic as Event Topic
-    participant EventCollector as Event Collector
-    participant EventMapper as Event Mapper
-    participant Counter as Counter (Optional)
-    participant CommandTopic as Command Topic
-    participant TargetAggregate as Target Aggregate
-    
-    SourceAggregate->>EventTopic: publish event
-    activate EventTopic
-    EventTopic->>EventCollector: deliver event
-    deactivate EventTopic
-    
-    activate EventCollector
-    EventCollector->>EventMapper: handleEvents(events)
-    deactivate EventCollector
-    
-    activate EventMapper
-    EventMapper->>EventMapper: Find mapping for source
-    EventMapper->>EventMapper: Decode event
-    EventMapper->>EventMapper: map(id, event, queryEngine)
-    
-    alt Has Counter Actions
-        EventMapper->>Counter: count/addToCounterTarget
-        activate Counter
-        Counter-->>EventMapper: Ok
-        deactivate Counter
-    end
-    
-    alt Has Publish Actions
-        EventMapper->>CommandTopic: publishJsons(commands)
-        activate CommandTopic
-        CommandTopic->>TargetAggregate: deliver commands
-        deactivate CommandTopic
-    end
-    
-    deactivate EventMapper
+```d2
+shape: sequence_diagram
+
+SourceAggregate: Source Aggregate
+EventTopic: Event Topic { class: event-topic }
+EventCollector: Event Collector { class: event-collector }
+EventMapper: Event Mapper
+Counter: "Counter (Optional)"
+CommandTopic: Command Topic { class: command-topic }
+TargetAggregate: Target Aggregate { class: aggregate }
+
+SourceAggregate -> EventTopic: publish event
+EventTopic -> EventCollector: deliver event
+EventCollector -> EventMapper: "handleEvents(events)"
+EventMapper -> EventMapper: Find mapping for source
+EventMapper -> EventMapper: Decode event
+EventMapper -> EventMapper: "map(id, event, queryEngine)"
+EventMapper -> Counter: count/addToCounterTarget
+Counter --> EventMapper: Ok
+EventMapper -> CommandTopic: "publishJsons(commands)"
+CommandTopic -> TargetAggregate: deliver commands
 ```
 
 ## Integration Points
@@ -274,23 +254,26 @@ sequenceDiagram
 
 The EventMapper uses an EventCollector to subscribe to source EventTopics:
 
-```mermaid
-flowchart TB
-    subgraph EventMapper Component
-        EventCollector[Event Collector]:::eventcollector
-        MappingLogic[Mapping Logic]
-        Counter[Counter]:::counter
-    end
-    
-    EventTopic1[Customer Events]:::eventtopic
-    EventTopic2[Order Events]:::eventtopic
-    CommandTopic[Target Commands]:::commandtopic
-    
-    EventTopic1 --> EventCollector
-    EventTopic2 --> EventCollector
-    EventCollector --> MappingLogic
-    MappingLogic <--> Counter
-    MappingLogic --> CommandTopic
+```d2
+EventMapperComponent: EventMapper Component {
+  class: event-processing-area
+
+  EventCollector: Event Collector { class: event-collector }
+  MappingLogic: Mapping Logic{ class: spec }
+  Counter: Counter { class: counter }
+
+  EventCollector -> MappingLogic
+  MappingLogic -> Counter
+  Counter -> MappingLogic
+}
+
+EventTopic1: Customer Events { class: event-topic }
+EventTopic2: Order Events { class: event-topic }
+CommandTopic: Target Commands { class: command-topic }
+
+EventTopic1 -> EventMapperComponent.EventCollector: { class: event-flow }
+EventTopic2 -> EventMapperComponent.EventCollector: { class: event-flow }
+EventMapperComponent.MappingLogic -> CommandTopic: { class: command-flow }
 ```
 
 ### With Aggregate

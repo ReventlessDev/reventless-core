@@ -52,7 +52,7 @@ of a node — and its connections — immediately communicates its DDD role.
 | Purple  | Policy / Reaction / UI           | `event-mapper`, `counter`, `api`, `client`                    | —                  |
 | Pink    | External System / Side Effect    | `side-effect`, `task`, `external-system`                      | —                  |
 | Teal    | Cross-context boundary           | `extension-point`, `extension`                                | `cross-plugin`     |
-| Gray    | Scheduling / Infrastructure      | `scheduler`, `heartbeat`                                      | —                  |
+| Gray    | Scheduling / Infrastructure      | `scheduler`, `heartbeat`, `adapter`                           | —                  |
 
 ---
 
@@ -122,6 +122,7 @@ These are applied to individual nodes with `{ class: <name> }`.
 |---|---|---|
 | `scheduler` | rectangle | Scheduler for time-based command publishing |
 | `heartbeat` | rectangle | Heartbeat for periodic health signals |
+| `adapter` | rectangle | Adapter interface or adapter implementation node |
 
 ---
 
@@ -146,7 +147,11 @@ write_side: Write Side {
 | `side-effects-area` | pink | Side effects group (collector → handler → task) |
 | `event-processing-area` | purple | Event processing group (collector → mapper → counter) |
 | `plugin-area` | teal | Plugin System (ExtensionPoint + Extensions) |
+| `extension-point-area` | cyan | Group of ExtensionPoints exposed by a plugin |
 | `scheduling-area` | stone | Scheduling group (Heartbeat + Scheduler) |
+| `adapter-area` | gray | Adapter interfaces or adapter implementation group |
+| `reventless-area` | light blue | Reventless core framework package group |
+| `reventless-aws-area` | blue | Reventless AWS adapter package group |
 | `slices-area` | yellow | Group of StateChangeSlices inside a write side |
 | `view-slices-area` | green | Group of StateViewSlices inside a read side |
 | `query-dbs-area` | green | Group of QueryDbs inside a read side |
@@ -402,8 +407,9 @@ ext:  Extension       { class: extension }
 #### Scheduling and infrastructure — gray
 
 ```d2
-sched: Scheduler { class: scheduler }
-hb:    Heartbeat  { class: heartbeat }
+sched:   Scheduler        { class: scheduler }
+hb:      Heartbeat        { class: heartbeat }
+adapter: EventLog_Adapter { class: adapter }
 ```
 
 ---
@@ -441,9 +447,13 @@ ev_proc:    Event Processing { class: event-processing-area }
 #### Cross-cutting areas
 
 ```d2
-plugins:    Plugin System { class: plugin-area }
-api_area:   API           { class: api-area }
-scheduling: Scheduling    { class: scheduling-area }
+plugins:    Plugin System       { class: plugin-area }
+ep_area:    Extension Points    { class: extension-point-area }
+api_area:   API                 { class: api-area }
+scheduling: Scheduling          { class: scheduling-area }
+adapters:   Adapter Interfaces  { class: adapter-area }
+rv:         reventless          { class: reventless-area }
+rv_aws:     reventless-aws      { class: reventless-aws-area }
 ```
 
 #### Layout helper

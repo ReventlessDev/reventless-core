@@ -12,18 +12,17 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    EventCollector[Event Collector]:::eventcollector
-    ReadModel[Read Model]:::readmodel
-    QueryDb[(Query DB)]:::querydb
-    API[GraphQL API]:::api
-    Client[Client]:::client
-    
-    EventCollector -->|events| ReadModel
-    ReadModel -->|save/update| QueryDb
-    API -->|query| QueryDb
-    Client -->|request| API
+```d2
+EventCollector: Event Collector { class: event-collector }
+ReadModel: Read Model { class: read-model }
+QueryDb: Query DB { class: query-db }
+API: GraphQL API { class: api }
+Client: Client { class: client }
+
+EventCollector -> ReadModel: events { class: projection-flow }
+ReadModel -> QueryDb: save/update { class: projection-flow }
+API -> QueryDb: query
+Client -> API: request
 ```
 
 The **QueryDb** is the read model storage component that provides efficient querying of projected state. It stores denormalized views of aggregate data, enabling fast queries without replaying events. QueryDb integrates with AWS AppSync for GraphQL APIs and supports configurable indexes, TTL, and batch operations.
@@ -220,68 +219,56 @@ await queryDb.deleteBatch(items)
 
 ### State Update Flow
 
-```mermaid
-sequenceDiagram
-    participant ReadModel
-    participant QueryDb
-    participant DynamoDB
-    
-    ReadModel->>QueryDb: save(id, state, mode, ttl)
-    activate QueryDb
-    
-    QueryDb->>QueryDb: Encode state to JSON
-    QueryDb->>QueryDb: Add TTL if provided
-    
-    alt Init mode
-        QueryDb->>DynamoDB: PutItem (conditional)
-        DynamoDB-->>QueryDb: Success/ConditionalCheckFailed
-    else Overwrite/Any mode
-        QueryDb->>DynamoDB: PutItem (unconditional)
-        DynamoDB-->>QueryDb: Success
-    end
-    
-    QueryDb-->>ReadModel: Ok() / Error
-    deactivate QueryDb
+```d2
+shape: sequence_diagram
+
+ReadModel: ReadModel { class: read-model }
+QueryDb: QueryDb
+DynamoDB: DynamoDB { class: aws-service }
+
+ReadModel -> QueryDb: "save(id, state, mode, ttl)"
+QueryDb -> QueryDb: Encode state to JSON
+QueryDb -> QueryDb: Add TTL if provided
+QueryDb -> DynamoDB: PutItem
+DynamoDB --> QueryDb: Success / ConditionalCheckFailed
+QueryDb --> ReadModel: "Ok() / Error"
 ```
 
 ### Query Flow
 
-```mermaid
-sequenceDiagram
-    participant API
-    participant QueryDb
-    participant DynamoDB
-    
-    API->>QueryDb: load(id)
-    activate QueryDb
-    
-    QueryDb->>DynamoDB: Query by partition key
-    DynamoDB-->>QueryDb: Items (JSON)
-    
-    QueryDb->>QueryDb: Decode JSON to state
-    QueryDb-->>API: Ok(array<state>)
-    deactivate QueryDb
+```d2
+shape: sequence_diagram
+
+API: API { class: api }
+QueryDb: QueryDb
+DynamoDB: DynamoDB { class: aws-service }
+
+API -> QueryDb: "load(id)"
+QueryDb -> DynamoDB: Query by partition key
+DynamoDB --> QueryDb: "Items (JSON)"
+QueryDb -> QueryDb: Decode JSON to state
+QueryDb --> API: "Ok(array<state>)"
 ```
 
 ## Integration with ReadModel
 
 The QueryDb is the storage backend for ReadModel projections:
 
-```mermaid
-flowchart TB
-    subgraph ReadModel Component
-        EventCollector[Event Collector]:::eventcollector
-        Projections[Projections]
-        QueryDb[(Query DB)]:::querydb
-    end
-    
-    EventTopic[Event Topic]:::eventtopic
-    API[GraphQL API]:::api
-    
-    EventTopic -->|events| EventCollector
-    EventCollector -->|events| Projections
-    Projections -->|save/update| QueryDb
-    API -->|query| QueryDb
+```d2
+ReadModelComponent: ReadModel Component {
+  class: read-side
+  EventCollector: Event Collector { class: event-collector }
+  Projections: Projections
+  QueryDb: Query DB { class: query-db }
+}
+
+EventTopic: Event Topic { class: event-topic }
+API: GraphQL API { class: api }
+
+EventTopic -> ReadModelComponent.EventCollector: events { class: projection-flow }
+ReadModelComponent.EventCollector -> ReadModelComponent.Projections: events { class: projection-flow }
+ReadModelComponent.Projections -> ReadModelComponent.QueryDb: save/update { class: projection-flow }
+API -> ReadModelComponent.QueryDb: query
 ```
 
 **Projection Example:**

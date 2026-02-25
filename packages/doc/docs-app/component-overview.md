@@ -180,7 +180,7 @@ dcb_layout: "" {
     dcb_log: DCB Event Log { class: dcb-event-log }
     event_topic: Event Topic { class: event-topic }
 
-    cmd_topic -> slices: commands (routed by type) { class: command-flow }
+    cmd_topic -> slices: "commands (routed by type)" { class: command-flow }
     slices -> dcb_log: append { class: event-flow }
     dcb_log -> slices: replay { class: replay }
     dcb_log -> event_topic: publish { class: event-flow }
@@ -250,9 +250,15 @@ dcb_layout: "" {
 An Aggregate receives Commands and outputs Events based on the current State. A single Command can result in _any number_ of Events.  
 Only the Aggregate's Events will be stored. If a new Command gets handled the actual State will be calculated based on the previous Events ([Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). The current State will never be persisted to storage.
 
-```mermaid
-graph LR
-    Command((Command)):::command -->|1| Aggregate:::aggregate -->|*| Event((Event)):::event
+```d2
+direction: right
+
+command: Command { class: msg-command }
+aggregate: Aggregate { class: aggregate }
+event: Event { class: msg-event }
+
+command -> aggregate: 1 { class: command-flow }
+aggregate -> event: many { class: event-flow }
 ```
 
 - **responsibility**: ensure only valid Commands create Events having the necessary information attached; emit Events
@@ -265,11 +271,16 @@ graph LR
 
 The **EventLog** is the foundational storage component for event sourcing in Reventless. It provides append-only event storage with efficient replay capabilities, ensuring that all domain events are durably persisted and can be replayed to reconstruct aggregate state.
 
-```mermaid
-graph LR
-    Aggregate[Aggregate]:::aggregate -->|append events| EventLog[(EventLog)]:::eventlog
-    EventLog -->|publish events| EventTopic[Event Topic]:::eventtopic
-    EventLog -->|replay events| Aggregate
+```d2
+direction: right
+
+aggregate: Aggregate { class: aggregate }
+event_log: EventLog { class: event-log }
+event_topic: Event Topic { class: event-topic }
+
+aggregate -> event_log: append events { class: event-flow }
+event_log -> event_topic: publish events { class: event-flow }
+event_log -> aggregate: replay events { class: replay }
 ```
 
 - **responsibility**: durably store events in append-only fashion; provide event replay for aggregate state reconstruction; publish events to EventTopic for distribution
@@ -282,13 +293,19 @@ graph LR
 
 The **DcbEventLog** (Dynamic Consistency Boundary Event Log) is the shared event storage component used by DCB state change slices. It provides tag-based querying and optimistic concurrency control for handling commands across multiple slices that share the same event log.
 
-```mermaid
-graph LR
-    StateChangeSlice1[Slice 1]:::statechangeslice -->|read/query| DcbEventLog[(DcbEventLog)]:::dcbeventlog
-    StateChangeSlice2[Slice 2]:::statechangeslice -->|read/query| DcbEventLog
-    DcbEventLog -->|publish events| EventTopic[Event Topic]:::eventtopic
-    StateChangeSlice1 -->|append| DcbEventLog
-    StateChangeSlice2 -->|append| DcbEventLog
+```d2
+direction: right
+
+slice1: Slice 1 { class: state-change-slice }
+slice2: Slice 2 { class: state-change-slice }
+dcb_log: DcbEventLog { class: dcb-event-log }
+event_topic: Event Topic { class: event-topic }
+
+slice1 -> dcb_log: append { class: event-flow }
+slice2 -> dcb_log: append { class: event-flow }
+dcb_log -> slice1: read/query { class: replay }
+dcb_log -> slice2: read/query { class: replay }
+dcb_log -> event_topic: publish events { class: event-flow }
 ```
 
 - **responsibility**: tag-based event queries for decision model building; optimistic concurrency control; shared event storage for DCB slices
@@ -301,11 +318,17 @@ graph LR
 
 The **CommandTopic** is the message queue component that delivers commands to Aggregates with strict ordering guarantees and reliable delivery. It ensures commands are processed exactly once per aggregate instance, in the order they were sent.
 
-```mermaid
-graph LR
-    API[API / CommandGenerator]:::api -->|command| CommandTopic[Command Topic]:::commandtopic
-    EventMapper[Event Mapper]:::eventmapper -->|commands| CommandTopic
-    CommandTopic -->|commands| Aggregate[Aggregate]:::aggregate
+```d2
+direction: right
+
+api: API / CommandGenerator { class: command-generator }
+event_mapper: Event Mapper { class: event-mapper }
+cmd_topic: Command Topic { class: command-topic }
+aggregate: Aggregate { class: aggregate }
+
+api -> cmd_topic: command { class: command-flow }
+event_mapper -> cmd_topic: commands { class: command-flow }
+cmd_topic -> aggregate: commands { class: command-flow }
 ```
 
 - **responsibility**: queue commands for delivery to Aggregates; ensure FIFO ordering per aggregate; provide exactly-once delivery guarantees; handle retries and dead letter processing
@@ -318,12 +341,19 @@ graph LR
 
 The **EventTopic** is the event distribution component that enables fan-out delivery of events to multiple subscribers. It receives events from the EventLog and distributes them to EventCollectors, which then deliver events to ReadModels, EventMappers, and SideEffectHandlers.
 
-```mermaid
-graph LR
-    EventLog[(EventLog)]:::eventlog -->|publish events| EventTopic[Event Topic]:::eventtopic
-    EventTopic -->|fan-out| EventCollector1[Event Collector 1]:::eventcollector
-    EventTopic -->|fan-out| EventCollector2[Event Collector 2]:::eventcollector
-    EventTopic -->|fan-out| EventCollector3[Event Collector 3]:::eventcollector
+```d2
+direction: right
+
+event_log: EventLog { class: event-log }
+event_topic: Event Topic { class: event-topic }
+collector1: Event Collector 1 { class: event-collector }
+collector2: Event Collector 2 { class: event-collector }
+collector3: Event Collector 3 { class: event-collector }
+
+event_log -> event_topic: publish events { class: event-flow }
+event_topic -> collector1: fan-out { class: event-flow }
+event_topic -> collector2: fan-out { class: event-flow }
+event_topic -> collector3: fan-out { class: event-flow }
 ```
 
 - **responsibility**: distribute events from EventLog to multiple subscribers; enable fan-out pattern for event-driven architecture; provide ordering guarantees per aggregate
@@ -336,13 +366,21 @@ graph LR
 
 The **EventCollector** is the event consumption component that receives events from EventTopics. It provides a unified interface for components like ReadModels, EventMappers, and SideEffectHandlers to consume events with ordering guarantees.
 
-```mermaid
-graph LR
-    EventTopic1[Event Topic]:::eventtopic -->|events| EventCollector[Event Collector]:::eventcollector
-    EventTopic2[Event Topic]:::eventtopic -->|events| EventCollector
-    EventCollector -->|events| ReadModel[Read Model]:::readmodel
-    EventCollector -->|events| EventMapper[Event Mapper]:::eventmapper
-    EventCollector -->|events| SideEffectHandler[Side Effect Handler]:::sideeffecthandler
+```d2
+direction: right
+
+topic1: Event Topic 1 { class: event-topic }
+topic2: Event Topic 2 { class: event-topic }
+collector: Event Collector { class: event-collector }
+read_model: Read Model { class: read-model }
+event_mapper: Event Mapper { class: event-mapper }
+side_effect_handler: Side Effect Handler { class: side-effect }
+
+topic1 -> collector: events { class: event-flow }
+topic2 -> collector: events { class: event-flow }
+collector -> read_model: events { class: event-flow }
+collector -> event_mapper: events { class: event-flow }
+collector -> side_effect_handler: events { class: event-flow }
 ```
 
 - **responsibility**: subscribe to EventTopics; buffer events; deliver events to handlers with ordering guarantees; handle retries and dead letter processing
@@ -355,11 +393,17 @@ graph LR
 
 The **QueryDb** is the read model storage component that provides efficient querying of projected state. It stores denormalized views of aggregate data, enabling fast queries without replaying events. QueryDb integrates with AWS AppSync for GraphQL APIs and supports configurable indexes, TTL, and batch operations.
 
-```mermaid
-graph LR
-    ReadModel[Read Model]:::readmodel -->|save/update| QueryDb[(Query DB)]:::querydb
-    API[GraphQL API]:::api -->|query| QueryDb
-    Client[Client]:::client -->|request| API
+```d2
+direction: right
+
+client: Client { class: client }
+api: GraphQL API { class: api }
+read_model: Read Model { class: read-model }
+query_db: Query DB { class: query-db }
+
+client -> api: request { class: command-flow }
+api -> query_db: query
+read_model -> query_db: save/update { class: projection-flow }
 ```
 
 - **responsibility**: store projected read model state; provide efficient query operations; support multiple access patterns via indexes; integrate with GraphQL APIs; handle automatic data expiration via TTL
@@ -372,12 +416,19 @@ graph LR
 
 The **CommandGenerator** bridges the gap between external clients and event-sourced aggregates by transforming GraphQL mutations into Reventless commands. It enables web and mobile applications to interact with aggregates through a type-safe GraphQL API.
 
-```mermaid
-graph LR
-    Client[GraphQL Client]:::client -->|GraphQL mutation| API[GraphQL API]:::api
-    API -->|resolver invocation| CommandGenerator[Command Generator]:::commandgenerator
-    CommandGenerator -->|command| CommandTopic[Command Topic]:::commandtopic
-    CommandTopic -->|command| Aggregate[Aggregate]:::aggregate
+```d2
+direction: right
+
+client: GraphQL Client { class: client }
+api: GraphQL API { class: api }
+cmd_gen: Command Generator { class: command-generator }
+cmd_topic: Command Topic { class: command-topic }
+aggregate: Aggregate { class: aggregate }
+
+client -> api: GraphQL mutation { class: command-flow }
+api -> cmd_gen: resolver invocation { class: command-flow }
+cmd_gen -> cmd_topic: command { class: command-flow }
+cmd_topic -> aggregate: command { class: command-flow }
 ```
 
 - **responsibility**: transform GraphQL mutations into aggregate commands; validate and enrich command metadata; publish commands to CommandTopic; provide type-safe API for external clients
@@ -390,10 +441,14 @@ graph LR
 
 The **Counter** component provides atomic counting operations and deduplication capabilities for event processing. It's primarily used by EventMappers to prevent duplicate command generation and maintain accurate event processing metrics.
 
-```mermaid
-graph LR
-    EventMapper[Event Mapper]:::eventmapper -->|increment/check| Counter[Counter]:::counter
-    Counter -->|count result| EventMapper
+```d2
+direction: right
+
+event_mapper: Event Mapper { class: event-mapper }
+counter: Counter { class: counter }
+
+event_mapper -> counter: increment/check
+counter -> event_mapper: count result
 ```
 
 - **responsibility**: provide atomic increment/decrement operations; prevent duplicate event processing; maintain processing metrics; support conditional operations based on count values
@@ -406,9 +461,13 @@ graph LR
 
 A _ReadModel_ is a queryable persisted state: It takes Events from one or more Aggregates and persists a newly calculated state. The new state is based on the previous state and the incoming Event.
 
-```mermaid
-graph LR
-    Event((Event)):::event -->|*| ReadModel:::readmodel
+```d2
+direction: right
+
+event: Event { class: msg-event }
+read_model: Read Model { class: read-model }
+
+event -> read_model: many { class: event-flow }
 ```
 
 - **responsibility**: create and persist State to be queried
@@ -421,9 +480,15 @@ graph LR
 
 An EventMapper attached to an Aggregate maps Events of (potentially multiple Aggregates) to Commands for this Aggregate. This is always needed if some Event in one Aggregate needs to trigger a reaction in another.
 
-```mermaid
-graph LR
-    Events((Events)):::event -->|*| EventMapper[EventMapper]:::eventmapper -->|*| Commands((Commands)):::command
+```d2
+direction: right
+
+events: Events { class: msg-event }
+event_mapper: EventMapper { class: event-mapper }
+commands: Commands { class: msg-command }
+
+events -> event_mapper: many { class: event-flow }
+event_mapper -> commands: many { class: command-flow }
 ```
 
 - **responsibility**: generate Commands for a given Aggregate based on (multiple) other Aggregates' Events
@@ -446,10 +511,15 @@ Tasks may be implemented provider specific, since it's not possible to provide a
 
 The Scheduler component provides time-based command publishing capabilities, enabling scheduled workflows, periodic tasks, and cron-like event generation. It allows applications to create and manage schedules dynamically at runtime.
 
-```mermaid
-graph LR
-    Application[Application]:::application -->|createSchedule| Scheduler[Scheduler]:::scheduler
-    Scheduler -->|triggers| CommandTopic[Command Topic]:::commandtopic
+```d2
+direction: right
+
+application: Application { class: client }
+scheduler: Scheduler { class: scheduler }
+cmd_topic: Command Topic { class: command-topic }
+
+application -> scheduler: createSchedule { class: command-flow }
+scheduler -> cmd_topic: triggers { class: command-flow }
 ```
 
 - **responsibility**: manage time-based event scheduling and command publishing
@@ -462,10 +532,15 @@ graph LR
 
 The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the Core Plugin's ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
 
-```mermaid
-graph LR
-    CloudWatch[CloudWatch Events]:::aws -->|triggers| Lambda[Lambda]:::aws
-    Lambda -->|heartbeat| CorePlugin[Core Plugin]:::core
+```d2
+direction: right
+
+cloudwatch: CloudWatch Events { class: scheduler }
+lambda: Lambda { class: heartbeat }
+core_plugin: Core Plugin { class: extension-point }
+
+cloudwatch -> lambda: triggers
+lambda -> core_plugin: heartbeat { class: event-flow }
 ```
 
 - **responsibility**: generate periodic heartbeat signals for health monitoring and extension triggering
@@ -479,9 +554,15 @@ graph LR
 A `SideEffectHandler` is similar to an `EventMapper`, but targeting `Task`s (and functions) outside of the Command/Event paradigm. For example: calling a foreign API everytime a specific `Event` occurs.
 It takes `Event`s of (potentially multiple) `Aggregate`s as input and calls functions dependent on the `Event`.
 
-```mermaid
-graph LR
-    Events((Events)):::event -->|*| SideEffectHandler[SideEffectHandler]:::sideeffecthandler -->|calls| Task[Task]:::task
+```d2
+direction: right
+
+events: Events { class: msg-event }
+side_effect_handler: SideEffectHandler { class: side-effect }
+task: Task { class: task }
+
+events -> side_effect_handler: many { class: event-flow }
+side_effect_handler -> task: calls
 ```
 
 - **responsibility**: execute `functions` of a given `task` based on (multiple) `aggregate`s' `Events`
@@ -515,10 +596,17 @@ A `Command` sent to the `ExtensionPoint` will be mapped to a specific `Command` 
 
 An `Extension` enables a `Plugin` to consume events from and send commands to another `Plugin`'s `ExtensionPoint`. It acts as the consumer side of cross-Plugin communication, translating external events into internal commands and optionally forwarding internal events back to the `ExtensionPoint`.
 
-```mermaid
-graph LR
-    ExtensionPoint[ExtensionPoint]:::extensionpoint -->|events| Extension[Extension]:::extension -->|commands| Aggregate[Aggregate]:::aggregate
-    Aggregate -->|events| Extension -->|commands| ExtensionPoint
+```d2
+direction: right
+
+ext_point: ExtensionPoint { class: extension-point }
+extension: Extension { class: extension }
+aggregate: Aggregate { class: aggregate }
+
+ext_point -> extension: events { class: event-flow }
+extension -> aggregate: commands { class: command-flow }
+aggregate -> extension: events { class: event-flow }
+extension -> ext_point: commands { class: cross-plugin }
 ```
 
 - **responsibility**: consume events from remote `ExtensionPoint`s and generate commands for local `Aggregate`s; optionally forward local events back to `ExtensionPoint`s

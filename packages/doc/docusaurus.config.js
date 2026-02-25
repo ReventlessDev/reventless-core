@@ -8,6 +8,10 @@ import { themes as prismThemes } from "prism-react-renderer";
 import { readFileSync } from "fs";
 import { join } from "path";
 
+// Tracks which D2 diagram indices (per file) are sequence diagrams.
+// Populated by d2PrependStyles, consumed by rehypeSequenceDiagramClass.
+const sequenceDiagramTracker = new Map();
+
 // Remark plugin that prepends shared D2 class definitions to every d2 code
 // block before remark-d2 passes them to the d2 CLI.
 //
@@ -24,11 +28,44 @@ function d2PrependStyles(opts = {}) {
     styles = readFileSync(opts.stylesPath, "utf8").trim();
   } catch (_) { /* file not found — skip silently */ }
 
-  return (tree) => {
+  return (tree, file) => {
     if (!styles) return;
+    let count = 0;
+    const sequenceIndices = new Set();
     const walk = (node) => {
       if (node.type === "code" && node.lang === "d2") {
+        if (node.value.includes("shape: sequence_diagram")) {
+          sequenceIndices.add(count);
+        }
         node.value = styles + "\n\n" + node.value;
+        count++;
+      }
+      if (node.children) node.children.forEach(walk);
+    };
+    walk(tree);
+    if (file.path) sequenceDiagramTracker.set(file.path, sequenceIndices);
+  };
+}
+
+// Rehype plugin that adds class="sequence-diagram" to <img> elements that were
+// generated from D2 sequence diagram code blocks. Uses sequenceDiagramTracker
+// to know which diagram indices are sequence diagrams.
+function rehypeSequenceDiagramClass() {
+  return (tree, file) => {
+    const sequenceIndices = (file.path && sequenceDiagramTracker.get(file.path)) ?? new Set();
+    if (sequenceIndices.size === 0) return;
+    let d2Count = 0;
+    const walk = (node) => {
+      if (
+        node.type === "element" &&
+        node.tagName === "img" &&
+        typeof node.properties?.src === "string" &&
+        node.properties.src.includes("/d2/")
+      ) {
+        if (sequenceIndices.has(d2Count)) {
+          node.properties.className = [...(node.properties.className ?? []), "sequence-diagram"];
+        }
+        d2Count++;
       }
       if (node.children) node.children.forEach(walk);
     };
@@ -40,6 +77,10 @@ function d2PrependStyles(opts = {}) {
 async function createConfig() {
 const d2 = (await import("remark-d2")).default;
 const d2StylesPath = join(process.cwd(), "d2", "reventless.d2");
+const d2Opts = {
+  linkPath: "/reventless-core/d2",
+  defaultD2Opts: ["-t=100", "--dark-theme=200", "--pad=10", "--scale=0.8"],
+};
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -101,7 +142,8 @@ const config = {
         path: "docs-app",
         routeBasePath: "app",
         sidebarPath: "./sidebars-app.js",
-        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
+        rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -113,7 +155,8 @@ const config = {
         path: "docs-framework",
         routeBasePath: "framework",
         sidebarPath: "./sidebars-framework.js",
-        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
+        rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -125,7 +168,8 @@ const config = {
         path: "docs-cloud-provider",
         routeBasePath: "cloud-provider",
         sidebarPath: "./sidebars-cloud-provider.js",
-        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
+        rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -137,7 +181,8 @@ const config = {
         path: "docs-aws",
         routeBasePath: "aws",
         sidebarPath: "./sidebars-aws.js",
-        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
+        rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },
@@ -149,7 +194,8 @@ const config = {
         path: "docs-online-shop",
         routeBasePath: "online-shop",
         sidebarPath: "./sidebars-online-shop.js",
-        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, { linkPath: "/reventless-core/d2" }]],
+        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
+        rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
           "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
       },

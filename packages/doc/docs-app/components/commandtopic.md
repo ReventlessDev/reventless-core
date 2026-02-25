@@ -12,18 +12,15 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    API[API / CommandGenerator]:::api
-    EventMapper[Event Mapper]:::eventmapper
-    CommandTopic[Command Topic]:::commandtopic
-    Aggregate[Aggregate]:::aggregate
-    
-    API -->|command| CommandTopic
-    EventMapper -->|commands| CommandTopic
-    CommandTopic -->|commands| Aggregate
+```d2
+API: API / CommandGenerator { class: api }
+EventMapper: Event Mapper { class: event-mapper }
+CommandTopic: Command Topic { class: command-topic }
+Aggregate: Aggregate { class: aggregate }
 
-    linkStyle default color:#66f,stroke:#66f
+API -> CommandTopic: command { class: command-flow }
+EventMapper -> CommandTopic: commands { class: command-flow }
+CommandTopic -> Aggregate: commands { class: command-flow }
 ```
 
 The **CommandTopic** is the message queue component that delivers commands to Aggregates with strict ordering guarantees and reliable delivery. It ensures commands are processed exactly once per aggregate instance, in the order they were sent.
@@ -127,87 +124,68 @@ type commandJson = {
 
 ### Command Publishing Flow
 
-```mermaid
-sequenceDiagram
-    participant Source as Command Source
-    participant CommandTopic as Command Topic
-    participant CommandTopicChannel as Command Topic Channel
-    
-    Source->>CommandTopic: publish(command')
-    activate CommandTopic
-    
-    CommandTopic->>CommandTopic: Encode to JSON
-    CommandTopic->>CommandTopicChannel: publishJsons([json])
-    activate CommandTopicChannel
-    
-    CommandTopicChannel-->>CommandTopic: Completed
-    deactivate CommandTopicChannel
-    
-    CommandTopic-->>Source: Completed
-    deactivate CommandTopic
+```d2
+shape: sequence_diagram
+
+Source: Command Source { class: command-generator }
+CT: Command Topic { class: command-topic }
+Channel: Command Topic Channel { class: aws-service }
+
+Source -> CT: "publish(command')"
+CT -> CT: Encode to JSON
+CT -> Channel: "publishJsons([json])"
+Channel --> CT: Completed
+CT --> Source: Completed
 ```
 
 ### Command Handling Flow
 
-```mermaid
-sequenceDiagram
-    participant CommandTopicChannel as Command Topic Channel
-    participant CommandTopic as Command Topic
-    participant Aggregate
-    
-    activate CommandTopicChannel
-    
-    CommandTopicChannel->>CommandTopic: handleChannelEvent(records)
-    activate CommandTopic
-    
-    CommandTopic->>CommandTopic: Parse JSON commands
-    CommandTopic->>CommandTopic: Decode to typed commands
-    
-    CommandTopic->>Aggregate: handleCommands(commands)
-    activate Aggregate
-    
-    loop For each command
-        Aggregate->>Aggregate: Process command
-    end
-    
-    Aggregate-->>CommandTopic: Results (Ok/Error per command)
-    deactivate Aggregate
-    
-    CommandTopic-->>CommandTopicChannel: Completed
-    deactivate CommandTopic
-    
-    deactivate CommandTopicChannel
+```d2
+shape: sequence_diagram
+
+Channel: Command Topic Channel { class: aws-service }
+CT: Command Topic { class: command-topic }
+Aggregate: Aggregate { class: aggregate }
+
+Channel -> CT: "handleChannelEvent(records)"
+CT -> CT: Parse JSON commands
+CT -> CT: Decode to typed commands
+CT -> Aggregate: "handleCommands(commands)"
+Aggregate -> Aggregate: "Process command (for each)"
+Aggregate --> CT: "Results (Ok/Error per command)"
+CT --> Channel: Completed
 ```
 
 ## Integration with Aggregate
 
 The CommandTopic is the delivery mechanism between command sources and Aggregates:
 
-```mermaid
-flowchart TB
-    subgraph Sources
-        API[API]
-        EventMapper[Event Mapper]
-        Extension[Extension]
-    end
-    
-    subgraph CommandTopic Component
-        Queue[SQS FIFO Queue]
-        Handler[Command Handler]
-    end
-    
-    subgraph Aggregate Component
-        CommandProcessor[Command Processor]
-        EventLog[(Event Log)]
-    end
-    
-    API -->|1. publish| Queue
-    EventMapper -->|1. publish| Queue
-    Extension -->|1. publish| Queue
-    
-    Queue -->|2. trigger Lambda| Handler
-    Handler -->|3. decode & deliver| CommandProcessor
-    CommandProcessor -->|4. events| EventLog
+```d2
+Sources: Sources {
+  API: API { class: api }
+  EventMapper: Event Mapper { class: event-mapper }
+  Extension: Extension
+}
+
+CTComponent: CommandTopic Component {
+  class: write-side
+  Queue: SQS FIFO Queue { class: command-topic }
+  Handler: Command Handler
+}
+
+AggComponent: Aggregate Component {
+  class: write-side
+  CommandProcessor: Command Processor { class: aggregate }
+  EventLog: Event Log { class: event-log }
+}
+
+Sources.API -> CTComponent.Queue: 1. publish { class: command-flow }
+Sources.EventMapper -> CTComponent.Queue: 1. publish { class: command-flow }
+Sources.Extension -> CTComponent.Queue: 1. publish { class: command-flow }
+
+CTComponent.Queue -> CTComponent.Handler: 2. trigger Lambda
+CTComponent.Handler -> AggComponent.CommandProcessor: 3. decode & deliver { class: command-flow }
+AggComponent.CommandProcessor -> AggComponent.EventLog: 4. events { class: event-flow }
 ```
 
 **Flow:**

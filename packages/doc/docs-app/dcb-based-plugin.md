@@ -19,25 +19,25 @@ Choose the DCB-Based approach when:
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    Client["Client"] --> CommandTopic["DCB Command Topic
-(SQS FIFO)"]
+```d2
+Client: Client { class: client }
+CommandTopic: "DCB Command Topic\n(SQS FIFO)" { class: command-topic }
+FilteringHandler: "Filtering Handler\n(Lambda)"
+Slice1: CreateItem Slice { class: state-change-slice }
+Slice2: RenameItem Slice { class: state-change-slice }
+Slice3: DeleteItem Slice { class: state-change-slice }
+DcbEventLog: "DcbEventLog\n(Shared Event Log)" { class: dcb-event-log }
+ViewSlice1: "StateViewSlice\n(Lambda + DynamoDB)" { class: state-view-slice }
 
-    CommandTopic --> FilteringHandler["Filtering Handler
-(Lambda)"]
-
-    FilteringHandler --> Slice1["CreateItem Slice"]
-    FilteringHandler --> Slice2["RenameItem Slice"]
-    FilteringHandler --> Slice3["DeleteItem Slice"]
-
-    Slice1 --> DcbEventLog["DcbEventLog
-(Shared Event Log)"]
-    Slice2 --> DcbEventLog
-    Slice3 --> DcbEventLog
-
-    DcbEventLog --> ViewSlice1["StateViewSlice
-(Lambda + DynamoDB)"]
+Client -> CommandTopic: { class: command-flow }
+CommandTopic -> FilteringHandler: { class: command-flow }
+FilteringHandler -> Slice1: { class: command-flow }
+FilteringHandler -> Slice2: { class: command-flow }
+FilteringHandler -> Slice3: { class: command-flow }
+Slice1 -> DcbEventLog: { class: event-flow }
+Slice2 -> DcbEventLog: { class: event-flow }
+Slice3 -> DcbEventLog: { class: event-flow }
+DcbEventLog -> ViewSlice1: { class: projection-flow }
 ```
 
 ## Key Concepts

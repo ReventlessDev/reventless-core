@@ -69,3 +69,15 @@ a:hover {
 .pagination-nav__link {
   text-decoration: none;
 }
+
+/* D2 diagrams — respect each diagram's natural content size */
+.markdown img[src*="/d2/"] {
+  max-width: 100%;
+  width: auto;
+  display: block;
+}
+
+/* D2 sequence diagrams — compress vertical spacing */
+.markdown img.sequence-diagram {
+  zoom: 0.8;
+}

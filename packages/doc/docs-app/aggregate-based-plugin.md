@@ -19,29 +19,25 @@ Choose the Aggregate-Based approach when:
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    Client["Client"] --> CommandTopic["Command Topic
-(SQS FIFO)"]
+```d2
+Client: Client { class: client }
+CommandTopic: "Command Topic\n(SQS FIFO)" { class: command-topic }
+Handler: "Command Handler\n(Lambda)" { class: aggregate }
+Aggregate: "Aggregate\n(State Machine)" { class: aggregate }
+EventLog: "Event Log\n(DynamoDB)" { class: event-log }
+EventTopic: "Event Topic\n(DynamoDB Streams)" { class: event-topic }
+ReadModel: "Read Model\n(Lambda + DynamoDB)" { class: read-model }
+EventMapper: "Event Mapper\n(Lambda)" { class: event-mapper }
+OtherCommandTopic: Other Command Topic { class: command-topic }
 
-    CommandTopic --> Handler["Command Handler
-(Lambda)"]
-
-    Handler --> Aggregate["Aggregate
-(State Machine)"]
-
-    Aggregate --> EventLog["Event Log
-(DynamoDB)"]
-
-    EventLog --> EventTopic["Event Topic
-(DynamoDB Streams)"]
-
-    EventTopic --> ReadModel["Read Model
-(Lambda + DynamoDB)"]
-    EventTopic --> EventMapper["Event Mapper
-(Lambda)"]
-
-    EventMapper --> OtherCommandTopic["Other Command Topic"]
+Client -> CommandTopic: { class: command-flow }
+CommandTopic -> Handler: { class: command-flow }
+Handler -> Aggregate: { class: command-flow }
+Aggregate -> EventLog: { class: event-flow }
+EventLog -> EventTopic: { class: event-flow }
+EventTopic -> ReadModel: { class: projection-flow }
+EventTopic -> EventMapper: { class: event-flow }
+EventMapper -> OtherCommandTopic: { class: command-flow }
 ```
 
 ## Building an Aggregate-Based Plugin

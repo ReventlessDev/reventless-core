@@ -12,21 +12,18 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    Plugin[Plugin]:::plugin
-    DcbEventLog[(DcbEventLog)]:::dcbeventlog
-    StateViewSlice[StateViewSlice]:::stateviewslice
-    QueryDb[(QueryDb)]:::querydb
-    
-    DcbEventLog -->|events| StateViewSlice
-    StateViewSlice -->|project to| QueryDb
-    
-    Plugin -->|creates| DcbEventLog
-    Plugin -->|creates| StateViewSlice
-    Plugin -->|creates| QueryDb
+```d2
+Plugin: Plugin { class: plugin-area }
+DcbEventLog: DcbEventLog { class: dcb-event-log }
+StateViewSlice: StateViewSlice { class: state-view-slice }
+QueryDb: QueryDb { class: query-db }
 
-    linkStyle default color:#fa0,stroke:#fa0
+DcbEventLog -> StateViewSlice: events { class: event-flow }
+StateViewSlice -> QueryDb: project to { class: projection-flow }
+
+Plugin -> DcbEventLog: creates
+Plugin -> StateViewSlice: creates
+Plugin -> QueryDb: creates
 ```
 
 The **StateViewSlice** is a DCB (Dynamic Consistency Boundary) component that projects events from a shared DcbEventLog into a QueryDb-backed read model. It implements the projection pattern where events are transformed into state updates.
@@ -42,33 +39,41 @@ The **StateViewSlice** is a DCB (Dynamic Consistency Boundary) component that pr
 
 StateViewSlice works alongside StateChangeSlice in the DCB architecture:
 
-```mermaid
-flowchart TB
-    subgraph DCB Architecture
-        subgraph Slices[DCB Slices]
-            subgraph SCS[State Change Slices]
-                SCS1[CreateItem Slice]
-                SCS2[RenameItem Slice]
-            end
-            subgraph SVS[State View Slices]
-                SVS1[ItemView Slice]
-                SVS2[InventoryView Slice]
-            end
-        end
-        
-        DcbEventLog[(DcbEventLog<br/>Shared Event Log)]
-        
-        DcbEventLog -->|events| SCS1
-        DcbEventLog -->|events| SCS2
-        DcbEventLog -->|events| SVS1
-        DcbEventLog -->|events| SVS2
-        
-        SCS1 -->|append events| DcbEventLog
-        SCS2 -->|append events| DcbEventLog
-        
-        SVS1 -->|project to| QueryDb1[(QueryDb<br/>Item Views)]
-        SVS2 -->|project to| QueryDb2[(QueryDb<br/>Inventory)]
-    end
+```d2
+DCBArchitecture: DCB Architecture {
+  class: plugin-area
+
+  Slices: DCB Slices {
+    class: slices-area
+
+    SCS: State Change Slices {
+      class: slices-area
+      SCS1: CreateItem Slice { class: state-change-slice }
+      SCS2: RenameItem Slice { class: state-change-slice }
+    }
+
+    SVS: State View Slices {
+      class: view-slices-area
+      SVS1: ItemView Slice { class: state-view-slice }
+      SVS2: InventoryView Slice { class: state-view-slice }
+    }
+  }
+
+  DcbEventLog: DcbEventLog\nShared Event Log { class: dcb-event-log }
+  QueryDb1: QueryDb\nItem Views { class: query-db }
+  QueryDb2: QueryDb\nInventory { class: query-db }
+
+  DcbEventLog -> Slices.SCS.SCS1: events { class: event-flow }
+  DcbEventLog -> Slices.SCS.SCS2: events { class: event-flow }
+  DcbEventLog -> Slices.SVS.SVS1: events { class: event-flow }
+  DcbEventLog -> Slices.SVS.SVS2: events { class: event-flow }
+
+  Slices.SCS.SCS1 -> DcbEventLog: append events { class: event-flow }
+  Slices.SCS.SCS2 -> DcbEventLog: append events { class: event-flow }
+
+  Slices.SVS.SVS1 -> QueryDb1: project to { class: projection-flow }
+  Slices.SVS.SVS2 -> QueryDb2: project to { class: projection-flow }
+}
 ```
 
 ## Component Spec
@@ -119,34 +124,25 @@ module MySpec = MyStateViewSliceSpec  // defines module matching StateViewSlice.
 
 ### Event Processing Flow
 
-```mermaid
-sequenceDiagram
-    participant DcbEventLog
-    participant EventCollector
-    participant StateViewSlice as StateViewSlice
-    participant QueryDb as QueryDb
-    participant Storage as DynamoDB
-    
-    DcbEventLog->>EventCollector: new events published
-    EventCollector->>StateViewSlice: eventsHandler(events)
-    activate StateViewSlice
-    
-    loop For each event
-        StateViewSlice->>StateViewSlice: project(currentState, event)
-        activate StateViewSlice
-        StateViewSlice->>StateViewSlice: Generate Projection.actions
-        deactivate StateViewSlice
-        
-        StateViewSlice->>QueryDb: handleActions(actions)
-        activate QueryDb
-        QueryDb->>Storage: Load current state (if needed)
-        QueryDb->>Storage: Save/Update/Delete state
-        QueryDb-->>StateViewSlice: result
-        deactivate QueryDb
-    end
-    
-    StateViewSlice-->>EventCollector: completion
-    deactivate StateViewSlice
+```d2
+shape: sequence_diagram
+
+DcbEventLog: DcbEventLog { class: dcb-event-log }
+EventCollector: EventCollector { class: event-collector }
+StateViewSlice: StateViewSlice
+QueryDb: QueryDb { class: query-db }
+Storage: DynamoDB { class: aws-service }
+
+DcbEventLog -> EventCollector: new events published
+EventCollector -> StateViewSlice: "eventsHandler(events)"
+StateViewSlice -> StateViewSlice: "project(currentState, event)"
+StateViewSlice -> StateViewSlice: Generate Projection.actions
+StateViewSlice -> QueryDb: "handleActions(actions)"
+QueryDb -> Storage: "Load current state (if needed)"
+QueryDb -> Storage: Save/Update/Delete state
+Storage --> QueryDb: result
+QueryDb --> StateViewSlice: result
+StateViewSlice --> EventCollector: completion
 ```
 
 ### Projection Actions

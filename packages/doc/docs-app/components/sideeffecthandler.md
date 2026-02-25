@@ -12,22 +12,19 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    Aggregate[Aggregate]:::aggregate
-    EventTopic[Event Topic]:::eventtopic
-    SideEffectHandler[Side Effect Handler]:::sideeffecthandler
-    ExternalSystem[External System]:::external
-    Email[Email Service]:::external
-    Webhook[Webhook]:::external
-    
-    Aggregate -->|events| EventTopic
-    EventTopic -->|events| SideEffectHandler
-    SideEffectHandler -->|API calls| ExternalSystem
-    SideEffectHandler -->|notifications| Email
-    SideEffectHandler -->|webhooks| Webhook
-    
-    linkStyle default color:#fa0,stroke:#fa0
+```d2
+Aggregate: Aggregate { class: aggregate }
+EventTopic: Event Topic { class: event-topic }
+SideEffectHandler: Side Effect Handler { class: side-effect }
+ExternalSystem: External System { class: external-system }
+Email: Email Service { class: external-system }
+Webhook: Webhook { class: external-system }
+
+Aggregate -> EventTopic: events { class: event-flow }
+EventTopic -> SideEffectHandler: events { class: event-flow }
+SideEffectHandler -> ExternalSystem: API calls
+SideEffectHandler -> Email: notifications
+SideEffectHandler -> Webhook: webhooks
 ```
 
 The **SideEffectHandler** enables event-driven integration with external systems by executing side effects in response to domain events. Unlike EventMapper (which generates commands), SideEffectHandler performs actions that don't affect aggregate state—such as sending emails, calling external APIs, or triggering webhooks.
@@ -144,40 +141,25 @@ let sideEffectHandler = SideEffectHandler.make(
 
 ### Event Processing Sequence
 
-```mermaid
-sequenceDiagram
-    participant Aggregate
-    participant EventTopic as Event Topic
-    participant EventCollector as Event Collector
-    participant SideEffectHandler as Side Effect Handler
-    participant SideEffect as Side Effect
-    participant External as External System
-    
-    Aggregate->>EventTopic: publish event
-    activate EventTopic
-    EventTopic->>EventCollector: deliver event
-    deactivate EventTopic
-    
-    activate EventCollector
-    EventCollector->>SideEffectHandler: eventsHandler(events)
-    deactivate EventCollector
-    
-    activate SideEffectHandler
-    SideEffectHandler->>SideEffectHandler: Find matching SideEffect
-    SideEffectHandler->>SideEffectHandler: Decode event
-    
-    SideEffectHandler->>SideEffect: execute(id, meta, event, queryEngine)
-    activate SideEffect
-    
-    SideEffect->>External: API call / notification
-    activate External
-    External-->>SideEffect: response
-    deactivate External
-    
-    SideEffect-->>SideEffectHandler: Ok
-    deactivate SideEffect
-    
-    deactivate SideEffectHandler
+```d2
+shape: sequence_diagram
+
+Aggregate: Aggregate { class: aggregate }
+EventTopic: Event Topic { class: event-topic }
+EventCollector: Event Collector { class: event-collector }
+SideEffectHandler: Side Effect Handler
+SideEffect: Side Effect { class: side-effect }
+External: External System { class: external-system }
+
+Aggregate -> EventTopic: publish event
+EventTopic -> EventCollector: deliver event
+EventCollector -> SideEffectHandler: "eventsHandler(events)"
+SideEffectHandler -> SideEffectHandler: Find matching SideEffect
+SideEffectHandler -> SideEffectHandler: Decode event
+SideEffectHandler -> SideEffect: "execute(id, meta, event, queryEngine)"
+SideEffect -> External: API call / notification
+External --> SideEffect: response
+SideEffect --> SideEffectHandler: Ok
 ```
 
 ### Event Matching
@@ -208,26 +190,26 @@ switch sideEffect {
 
 The SideEffectHandler uses an EventCollector to subscribe to source EventTopics:
 
-```mermaid
-flowchart TB
-    subgraph SideEffectHandler Component
-        EventCollector[Event Collector]:::eventcollector
-        SideEffects[Side Effects]
-    end
-    
-    EventTopic1[Customer Events]:::eventtopic
-    EventTopic2[Order Events]:::eventtopic
-    
-    External1[Email Service]:::external
-    External2[Webhook]:::external
-    External3[PDF Generator]:::external
-    
-    EventTopic1 --> EventCollector
-    EventTopic2 --> EventCollector
-    EventCollector --> SideEffects
-    SideEffects --> External1
-    SideEffects --> External2
-    SideEffects --> External3
+```d2
+EventTopic1: Customer Events { class: event-topic }
+EventTopic2: Order Events { class: event-topic }
+
+SideEffectHandlerComponent: SideEffectHandler Component {
+  class: side-effects-area
+  EventCollector: Event Collector { class: event-collector }
+  SideEffects: Side Effects { class: side-effect }
+}
+
+External1: Email Service { class: external-system }
+External2: Webhook { class: external-system }
+External3: PDF Generator { class: external-system }
+
+EventTopic1 -> SideEffectHandlerComponent.EventCollector
+EventTopic2 -> SideEffectHandlerComponent.EventCollector
+SideEffectHandlerComponent.EventCollector -> SideEffectHandlerComponent.SideEffects
+SideEffectHandlerComponent.SideEffects -> External1
+SideEffectHandlerComponent.SideEffects -> External2
+SideEffectHandlerComponent.SideEffects -> External3
 ```
 
 ### With Scheduler

@@ -12,29 +12,22 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-```mermaid
-flowchart LR
-    Plugin[Plugin]:::plugin
-    DcbEventLog[(DcbEventLog)]:::dcbeventlog
-    Storage[DynamoDB]:::aws
-    EventTopic[Event Topic]:::eventtopic
-    StateChangeSlice1[Slice 1]:::statechangeslice
-    StateChangeSlice2[Slice 2]:::statechangeslice
-    
-    StateChangeSlice1 -->|read| DcbEventLog
-    StateChangeSlice2 -->|read| DcbEventLog
-    DcbEventLog -->|write| Storage
-    DcbEventLog -->|publish| EventTopic
-    StateChangeSlice1 -->|append| DcbEventLog
-    StateChangeSlice2 -->|append| DcbEventLog
-    
-    Plugin -->|creates| DcbEventLog
+```d2
+Plugin: Plugin { class: plugin-area }
+DcbEventLog: DcbEventLog { class: dcb-event-log }
+Storage: DynamoDB { class: aws-service }
+EventTopic: Event Topic { class: event-topic }
+StateChangeSlice1: Slice 1 { class: state-change-slice }
+StateChangeSlice2: Slice 2 { class: state-change-slice }
 
-    classDef plugin fill:#fff3e0
-    classDef dcbeventlog fill:#f1f8e9
-    classDef eventtopic fill:#fff8e1
-    classDef statechangeslice fill:#e0f2f1
-    classDef aws fill:#e3f2fd
+StateChangeSlice1 -> DcbEventLog: read { class: event-flow }
+StateChangeSlice2 -> DcbEventLog: read { class: event-flow }
+DcbEventLog -> Storage: write
+DcbEventLog -> EventTopic: publish { class: event-flow }
+StateChangeSlice1 -> DcbEventLog: append { class: event-flow }
+StateChangeSlice2 -> DcbEventLog: append { class: event-flow }
+
+Plugin -> DcbEventLog: creates
 ```
 
 The **DcbEventLog** (Dynamic Consistency Boundary Event Log) is the shared event storage component used by DCB state change slices. It provides append-only event storage with tag-based querying and optimistic concurrency control.
@@ -50,44 +43,46 @@ The **DcbEventLog** (Dynamic Consistency Boundary Event Log) is the shared event
 
 The DcbEventLog is a core component of the DCB architecture:
 
-```mermaid
-flowchart TB
-    subgraph DCB Architecture
-        Client[Client]
-        SQS[SQS FIFO Queue]
-        Lambda[DCB Lambda]
-        
-        subgraph Slices[State Change Slices]
-            Slice1[CreateItem Slice]
-            Slice2[RenameItem Slice]
-        end
-        
-        DcbEventLog[(DcbEventLog<br/>Shared Event Log)]
-        DynamoDB[(DynamoDB)]
-        EventTopic[(Event Topic)]
-        
-        subgraph Consumers[Event Consumers]
-            EventCollector[Event Collector]
-            ReadModel[Read Model]
-        end
-        
-        Client -->|commands| SQS
-        SQS -->|messages| Lambda
-        Lambda -->|routes| Slice1
-        Lambda -->|routes| Slice2
-        
-        Slice1 -->|"read(~query=itemId)"| DcbEventLog
-        Slice2 -->|"read(~query=itemId)"| DcbEventLog
-        DcbEventLog -->|query| DynamoDB
-        
-        Slice1 -->|"append(events)"| DcbEventLog
-        Slice2 -->|"append(events)"| DcbEventLog
-        DcbEventLog -->|write| DynamoDB
-        
-        DcbEventLog -->|publish| EventTopic
-        EventTopic -->|fan-out| EventCollector
-        EventCollector -->|events| ReadModel
-    end
+```d2
+DCBArchitecture: DCB Architecture {
+  class: plugin-area
+
+  Client: Client { class: client }
+  SQS: SQS FIFO Queue { class: aws-service }
+  Lambda: DCB Lambda { class: aws-service }
+
+  Slices: State Change Slices {
+    class: slices-area
+    Slice1: CreateItem Slice { class: state-change-slice }
+    Slice2: RenameItem Slice { class: state-change-slice }
+  }
+
+  DcbEventLog: DcbEventLog\nShared Event Log { class: dcb-event-log }
+  DynamoDB: DynamoDB { class: aws-service }
+  EventTopic: Event Topic { class: event-topic }
+
+  Consumers: Event Consumers {
+    class: read-side
+    EventCollector: Event Collector { class: event-collector }
+    ReadModel: Read Model { class: read-model }
+  }
+
+  Client -> SQS: commands { class: command-flow }
+  SQS -> Lambda: messages
+  Lambda -> Slices.Slice1: routes { class: command-flow }
+  Lambda -> Slices.Slice2: routes { class: command-flow }
+
+  Slices.Slice1 -> DcbEventLog: "read(~query=itemId)" { class: event-flow }
+  Slices.Slice2 -> DcbEventLog: "read(~query=itemId)" { class: event-flow }
+  DcbEventLog -> DynamoDB: query
+  Slices.Slice1 -> DcbEventLog: "append(events)" { class: event-flow }
+  Slices.Slice2 -> DcbEventLog: "append(events)" { class: event-flow }
+  DcbEventLog -> DynamoDB: write
+
+  DcbEventLog -> EventTopic: publish { class: event-flow }
+  EventTopic -> Consumers.EventCollector: fan-out { class: projection-flow }
+  Consumers.EventCollector -> Consumers.ReadModel: events { class: projection-flow }
+}
 ```
 
 ## Module Types
@@ -270,32 +265,20 @@ This enables efficient queries by individual tags or combinations of tags.
 
 The DcbEventLog supports optimistic concurrency through conditional appends:
 
-```mermaid
-sequenceDiagram
-    participant Slice as StateChangeSlice
-    participant DcbEventLog as DcbEventLog
-    participant DynamoDB as DynamoDB
-    
-    Slice->>DcbEventLog: "read(~query)"
-    activate DcbEventLog
-    DcbEventLog->>DynamoDB: Query events by tags
-    DynamoDB-->>DcbEventLog: events + headPosition
-    deactivate DcbEventLog
-    
-    Note over Slice: headPosition captured
-    
-    Slice->>DcbEventLog: append(events, ~condition={query, after: headPosition})
-    activate DcbEventLog
-    DcbEventLog->>DynamoDB: Conditional write (if no events after headPosition)
-    
-    alt Success (no conflict)
-        DynamoDB-->>DcbEventLog: Ok(position)
-        DcbEventLog-->>Slice: Ok(position)
-    else Conflict detected
-        DynamoDB-->>DcbEventLog: ConditionalCheckFailed
-        DcbEventLog-->>Slice: Error("conditional check failed")
-        Note over Slice: Will retry with fresh read
-    end
+```d2
+shape: sequence_diagram
+
+Slice: StateChangeSlice { class: state-change-slice }
+DcbEventLog: DcbEventLog
+DynamoDB: DynamoDB { class: aws-service }
+
+Slice -> DcbEventLog: "read(~query)"
+DcbEventLog -> DynamoDB: Query events by tags
+DynamoDB --> DcbEventLog: events + headPosition
+Slice -> DcbEventLog: "append(events, ~condition={query, after: headPosition})"
+DcbEventLog -> DynamoDB: "Conditional write (if no events after headPosition)"
+DynamoDB --> DcbEventLog: "Ok(position)"
+DcbEventLog --> Slice: "Ok(position)"
 ```
 
 The flow:

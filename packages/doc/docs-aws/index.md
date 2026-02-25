@@ -10,126 +10,139 @@ The `reventless-aws` package provides AWS-specific implementations of the adapte
 
 [Reventless](/app/component-overview) components are designed to be cloud-provider-agnostic. The `reventless` package defines abstract adapter interfaces, while `reventless-aws` implements these interfaces using AWS services like DynamoDB, SQS, SNS, S3, and Lambda.
 
-```mermaid
-flowchart TB
-    subgraph Components [Reventless Components - Provider Agnostic]
-        direction TB
-        Aggregate[Aggregate]:::component
-        ReadModel[ReadModel]:::component
-        Task[Task]:::component
-        API[API/CommandGenerator]:::component
-        Plugin[Plugin]:::component
-    end
-    Components:::layer
+```d2
+vars: { d2-config: { layout-engine: elk } }
 
-    subgraph AdapterInterfaces [Adapter Interfaces - Core Framework]
-        direction TB
-        EventLogAdapter[EventLog_Adapter]:::adapter
-        CommandTopicAdapter[CommandTopic_Adapter]:::adapter
-        EventTopicAdapter[EventTopic_Adapter]:::adapter
-        QueryDbAdapter[QueryDb_Adapter]:::adapter
-        EventCollectorAdapter[EventCollector_Adapter]:::adapter
-        TaskBucketAdapter[TaskBucket_Adapter]:::adapter
-        RuntimeAdapter[Runtime_Adapter]:::adapter
-    end
-    AdapterInterfaces:::layer
+Reventless: Generic Components - reventless {
+  class: reventless-area
 
-    subgraph AWSImplementations [AWS Adapter Implementations - reventless-aws]
-        direction TB
+  Aggregate: { class: aggregate }
+  EventTopic: { class: event-topic }
+  EventLog: { class: event-log }
+  CommandTopic: { class: command-topic }
+  CommandGenerator: { class: command-generator }
 
-        subgraph DeployTime [Deploy-time - Pulumi Resources]
-            direction TB
-            EventLogDeploy[EventLogStorage_DynamoDb]:::awsadapter
-            CommandTopicDeploy[CommandTopicChannel_SQS_FIFO]:::awsadapter
-            EventTopicDeploy[EventTopicChannel_SNS]:::awsadapter
-            QueryDbDeploy[QueryDbStorage_DynamoDb]:::awsadapter
-            EventCollectorDeploy[EventCollectorChannel_SQS]:::awsadapter
-            TaskBucketDeploy[TaskBucket_S3]:::awsadapter
-            RuntimeDeploy[Runtime_Lambda]:::awsadapter
-        end
-        DeployTime:::sublayer
+  Aggregate -> EventTopic
+  Aggregate -> EventLog
+  Aggregate -> CommandTopic
+  Aggregate -> CommandGenerator
 
-        subgraph Conversion [Metadata Conversion]
-            direction TB
-            ToRuntime[toRuntime*Output functions]:::conversion
-        end
-        Conversion:::sublayer
+  ReadModel: { class: read-model }
+  QueryDb: { class: query-db }
+  EventCollector: { class: event-collector }
 
-        subgraph RuntimeImpl [Runtime - Lambda Handlers]
-            direction TB
-            EventLogRuntime[EventLogStorage_DynamoDb_Runtime]:::awsadapter
-            CommandTopicRuntime[CommandTopicChannel_SQS_Runtime]:::awsadapter
-            EventTopicRuntime[EventTopicChannel_SNS_Runtime]:::awsadapter
-            QueryDbRuntime[QueryDbStorage_DynamoDb_Runtime]:::awsadapter
-            EventCollectorRuntime[EventCollectorChannel_SQS_Runtime]:::awsadapter
-            TaskBucketRuntime[TaskBucket_S3_Runtime]:::awsadapter
-        end
-        RuntimeImpl:::sublayer
-    end
-    AWSImplementations:::layer
+  ReadModel -> QueryDb
+  ReadModel -> EventCollector
 
-    subgraph AWSServices [AWS Services]
-        direction TB
-        DynamoDB[(DynamoDB)]:::awsservice
-        SQS[SQS FIFO Queues]:::awsservice
-        SNS[SNS Topics]:::awsservice
-        S3[S3 Buckets]:::awsservice
-        Lambda[Lambda Functions]:::awsservice
-        DynamoDBStreams[DynamoDB Streams]:::awsservice
-        CloudWatch[CloudWatch Events]:::awsservice
-    end
-    AWSServices:::layer
+  Task: { class: task }
+  Plugin: Plugin { class: plugin }
 
-    %% Component to Adapter Interface connections
-    Aggregate --> EventLogAdapter
-    Aggregate --> CommandTopicAdapter
-    Aggregate --> EventTopicAdapter
-    ReadModel --> QueryDbAdapter
-    ReadModel --> EventCollectorAdapter
-    Task --> TaskBucketAdapter
-    Plugin --> RuntimeAdapter
+  Adapter: Adapter Interfaces - Core Framework {
+    class: adapter-area
 
-    %% Adapter Interface to AWS Implementation connections
-    EventLogAdapter -.implements.-> EventLogDeploy
-    CommandTopicAdapter -.implements.-> CommandTopicDeploy
-    EventTopicAdapter -.implements.-> EventTopicDeploy
-    QueryDbAdapter -.implements.-> QueryDbDeploy
-    EventCollectorAdapter -.implements.-> EventCollectorDeploy
-    TaskBucketAdapter -.implements.-> TaskBucketDeploy
-    RuntimeAdapter -.implements.-> RuntimeDeploy
+    EventTopicPublisher: { class: adapter }
+    EventLogStorage: { class: adapter }
+    CommandTopicChannel: { class: adapter }
+    CommandGeneratorResolvers: { class: adapter }
 
-    %% Deploy-time to Runtime conversion
-    EventLogDeploy -->|Pulumi.Output.apply| ToRuntime
-    CommandTopicDeploy -->|Pulumi.Output.apply| ToRuntime
-    EventTopicDeploy -->|Pulumi.Output.apply| ToRuntime
-    QueryDbDeploy -->|Pulumi.Output.apply| ToRuntime
-    EventCollectorDeploy -->|Pulumi.Output.apply| ToRuntime
-    TaskBucketDeploy -->|Pulumi.Output.apply| ToRuntime
+    QueryDbResolvers: { class: adapter }
+    QueryDbStorage: { class: adapter }
+    EventCollectorChannel: { class: adapter }
 
-    ToRuntime --> EventLogRuntime
-    ToRuntime --> CommandTopicRuntime
-    ToRuntime --> EventTopicRuntime
-    ToRuntime --> QueryDbRuntime
-    ToRuntime --> EventCollectorRuntime
-    ToRuntime --> TaskBucketRuntime
+    TaskBucket: { class: adapter }
+    Runtime: { class: adapter }
 
-    %% Runtime to AWS Services connections
-    EventLogRuntime -->|read/write| DynamoDB
-    CommandTopicRuntime -->|send/receive| SQS
-    EventTopicRuntime -->|publish| SNS
-    QueryDbRuntime -->|read/write| DynamoDB
-    EventCollectorRuntime -->|receive| SQS
-    EventCollectorRuntime -->|consume| DynamoDBStreams
-    TaskBucketRuntime -->|read/write| S3
-    RuntimeDeploy -->|executes in| Lambda
+    # Component to Adapter Interface connections
+    _.EventTopic -> EventTopicPublisher
+    _.EventLog -> EventLogStorage
+    _.CommandTopic -> CommandTopicChannel
+    _.CommandGenerator -> CommandGeneratorResolvers
 
-    classDef component fill:#e1f5ff,stroke:#0066cc,stroke-width:2px
-    classDef adapter fill:#fff4e1,stroke:#cc6600,stroke-width:2px
-    classDef awsadapter fill:#ffe1e1,stroke:#cc0000,stroke-width:2px
-    classDef awsservice fill:#e1ffe1,stroke:#006600,stroke-width:2px
-    classDef conversion fill:#f0e1ff,stroke:#6600cc,stroke-width:2px
-    classDef layer fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
-    classDef sublayer fill:#ffffff,stroke:#999,stroke-width:1px
+    _.QueryDb -> QueryDbResolvers
+    _.QueryDb -> QueryDbStorage
+    _.EventCollector -> EventCollectorChannel
+
+    _.Task -> TaskBucket
+    _.Plugin -> Runtime
+  }
+
+ }
+
+ReventlessAws: AWS Adapter - reventless-aws {
+  class: reventless-aws-area
+
+  DeployTime: Deploy-time - Pulumi Resources {
+    class: adapter-area
+
+    EventTopicPublisher: EventTopicPublisher_SNS { class: adapter }
+    EventLogStorage: EventLogStorage_DynamoDb { class: adapter }
+    CommandTopicChannel: CommandTopicChannel_SQS_FIFO { class: adapter }
+    CommandGeneratorResolvers: CommandGeneratorResolvers_AppSync { class: adapter }
+    QueryDbResolvers: QueryDbResolvers_AppSync { class: adapter }
+    QueryDbStorage: QueryDbStorage_DynamoDb { class: adapter }
+    EventCollectorChannel: EventCollectorChannel_SQS { class: adapter }
+    TaskBucket: TaskBucket_S3 { class: adapter }
+    Runtime: Runtime_Lambda { class: adapter }
+  }
+
+  Runtime: Runtime - Lambda Handlers {
+    class: adapter-area
+    EventTopicPublisher: EventTopicPublisher_SNS_Runtime { class: adapter }
+    EventLogStorage: EventLogStorage_DynamoDb_Runtime { class: adapter }
+    CommandTopicChannel: CommandTopicChannel_SQS_Runtime { class: adapter }
+    CommandGeneratorResolvers: CommandGeneratorResolvers_AppSync_Runtime { class: adapter }
+    QueryDbResolvers: QueryDbResolvers_AppSync_Runtime { class: adapter }
+    QueryDbStorage: QueryDbStorage_DynamoDb_Runtime { class: adapter }
+    EventCollectorChannel: EventCollectorChannel_SQS_Runtime { class: adapter }
+    TaskBucket: TaskBucket_S3_Runtime { class: adapter }
+  }
+}
+
+AWSServices: AWS Services {
+  class: scheduling-area
+
+  SNS: { class: aws-service }
+  DynamoDB: { class: aws-service }
+  AppSync: { class: aws-service }
+  SQS: { class: aws-service }
+  DynamoDBStreams: { class: aws-service }
+  S3: { class: aws-service }
+  CloudWatchEvents: { class: aws-service }
+  Lambda: { class: aws-service }
+}
+
+# Adapter Interface to AWS Implementation connections (dashed = implements)
+Reventless.Adapter.CommandTopicChannel <-- ReventlessAws.DeployTime.CommandTopicChannel: implements
+Reventless.Adapter.EventLogStorage <-- ReventlessAws.DeployTime.EventLogStorage: implements
+Reventless.Adapter.EventTopicPublisher <-- ReventlessAws.DeployTime.EventTopicPublisher: implements
+Reventless.Adapter.CommandGeneratorResolvers <-- ReventlessAws.DeployTime.CommandGeneratorResolvers: implements
+Reventless.Adapter.QueryDbResolvers <-- ReventlessAws.DeployTime.QueryDbResolvers: implements
+Reventless.Adapter.QueryDbStorage <-- ReventlessAws.DeployTime.QueryDbStorage: implements
+Reventless.Adapter.EventCollectorChannel <-- ReventlessAws.DeployTime.EventCollectorChannel: implements
+Reventless.Adapter.TaskBucket <-- ReventlessAws.DeployTime.TaskBucket: implements
+Reventless.Adapter.Runtime <-- ReventlessAws.DeployTime.Runtime: implements
+
+# Deploy-time to Runtime conversion
+ReventlessAws.DeployTime.CommandTopicChannel -> ReventlessAws.Runtime.CommandTopicChannel
+ReventlessAws.DeployTime.EventLogStorage -> ReventlessAws.Runtime.EventLogStorage
+ReventlessAws.DeployTime.EventTopicPublisher -> ReventlessAws.Runtime.EventTopicPublisher
+ReventlessAws.DeployTime.CommandGeneratorResolvers -> ReventlessAws.Runtime.CommandGeneratorResolvers
+ReventlessAws.DeployTime.QueryDbResolvers -> ReventlessAws.Runtime.QueryDbResolvers
+ReventlessAws.DeployTime.QueryDbStorage -> ReventlessAws.Runtime.QueryDbStorage
+ReventlessAws.DeployTime.EventCollectorChannel -> ReventlessAws.Runtime.EventCollectorChannel
+ReventlessAws.DeployTime.TaskBucket -> ReventlessAws.Runtime.TaskBucket
+
+# Runtime to AWS Services connections
+ReventlessAws.Runtime.EventLogStorage -> AWSServices.DynamoDB: read/write
+ReventlessAws.Runtime.CommandTopicChannel -> AWSServices.SQS: send/receive
+ReventlessAws.Runtime.EventTopicPublisher -> AWSServices.SNS: publish
+ReventlessAws.Runtime.CommandGeneratorResolvers -> AWSServices.AppSync: resolve
+ReventlessAws.Runtime.QueryDbResolvers -> AWSServices.AppSync: resolve
+ReventlessAws.Runtime.QueryDbStorage -> AWSServices.DynamoDB: read/write
+ReventlessAws.Runtime.EventCollectorChannel -> AWSServices.SQS: receive
+ReventlessAws.Runtime.EventCollectorChannel -> AWSServices.DynamoDBStreams: consume
+ReventlessAws.Runtime.TaskBucket -> AWSServices.S3: read/write
+ReventlessAws.DeployTime.Runtime-> AWSServices.Lambda: executes in
 ```
 
 ## Architecture: Deploy-time vs Runtime

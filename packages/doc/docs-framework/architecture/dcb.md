@@ -4,31 +4,24 @@ The Plugin component supports an optional DCB (Dynamic Consistency Boundary) eve
 
 ## Command Flow
 
-```mermaid
-flowchart TD
-    Client["Client"] --> SQS["SQS FIFO Queue
-(DCB Command Topic)"]
-    SQS --> Handler["filteringHandler
-(Lambda Function)"]
-    
-    Handler --> Slice1["CreateItem Slice"]
-    Handler --> Slice2["RenameItem Slice"]
-    Handler --> Handler3["NoOp Handler"]
-    
-    Slice1 --> EventLog["DcbEventLog
-(Shared Event Log)"]
-    Slice2 --> EventLog
-    
-    EventLog --> ViewSlice["StateViewSlice
-(Projection)"]
-    ViewSlice --> QueryDb["QueryDb
-(Read Model)"]
-    
-    EventLog --> Read["1. read events"]
-    Read --> Reduce["2. reduce"]
-    Reduce --> Decide["3. decide"]
-    Decide --> Append["4. append
-(optimistic concurrency)"]
+```d2
+Client: Client { class: client }
+SQS: "DCB Command Topic" { class: command-topic }
+Handler: "filteringHandler" { class: command-generator }
+Slice1: AddProduct Slice { class: state-change-slice }
+Slice2: UpdateProductPrice Slice { class: state-change-slice }
+EventLog: "DcbEventLog\n(Shared Event Log)" { class: dcb-event-log }
+ViewSlice: "ProductsView Slice\n(Projection)" { class: state-view-slice }
+QueryDb: "ProductsView\nQueryDb" { class: query-db }
+
+Client -> SQS: { class: command-flow }
+SQS -> Handler: { class: command-flow }
+Handler -> Slice1: { class: command-flow }
+Handler -> Slice2: { class: command-flow }
+Slice1 -> EventLog: { class: event-flow }
+Slice2 -> EventLog: { class: event-flow }
+EventLog -> ViewSlice: { class: projection-flow }
+ViewSlice -> QueryDb: { class: projection-flow }
 ```
 
 One SQS FIFO queue per plugin receives all commands. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type. Slices that don't handle a command type are never called.
@@ -496,7 +489,7 @@ A future optimisation could narrow the query to only the event types referenced 
 
 ### No Multi-Command-Type Support in `extractTypeNamesFromSchema`
 
-`CommandTopic.extractTypeNamesFromSchema` handles `Union` (multiple variants) and `Object` (single variant). It does not handle payload-less variants (string schemata) — these variants are silently ignored and would never be routed to a handler. Slices whose command type includes a payload-less variant (e.g. `| NoOp`) should be aware that `NoOp` commands will not be dispatched by the filtering handler (they will fall through with no result). See the `MEMORY.md` note on payload-less variants.
+`CommandTopic.extractTypeNamesFromSchema` handles `Union` (multiple variants) and `Object` (single variant). It does not handle payload-less variants (string schemata) — these variants are silently ignored and would never be routed to a handler. Slices whose command type includes a payload-less variant (e.g. `| NoOp`) should be aware that `NoOp` commands will not be dispatched by the filtering handler (they will fall through with no result). 
 
 ### Aggregates Intentionally Use `makeHandler`
 

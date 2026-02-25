@@ -171,13 +171,19 @@ type commandJson = {
 
 The fundamental flow pattern in reventless shows how commands transform into events:
 
-```mermaid
-graph LR
-    Client[Client] -->|command'| CT[CommandTopic]
-    CT -->|"command'"| Agg[Aggregate]
-    Agg -->|"event'[]"| EL[EventLog]
-    EL -->|"event'[]"| ET[EventTopic]
-    ET -->|"event'"| RM[ReadModel]
+```d2
+Client: Client { class: client }
+CT: CommandTopic { class: command-topic }
+Agg: Aggregate { class: aggregate }
+EL: EventLog { class: event-log }
+ET: EventTopic { class: event-topic }
+RM: ReadModel { class: read-model }
+
+Client -> CT: command' { class: command-flow }
+CT -> Agg: command' { class: command-flow }
+Agg -> EL: "event'[]" { class: event-flow }
+EL -> ET: "event'[]" { class: event-flow }
+ET -> RM: event' { class: projection-flow }
 ```
 
 This flow demonstrates:
@@ -192,14 +198,21 @@ This flow demonstrates:
 
 Message correlation enables tracing related messages through the system:
 
-```mermaid
-graph TD
-    C1[Command msgId: cmd-001<br/>correlationId: cmd-001] --> A[Aggregate]
-    A --> E1[Event msgId: evt-001<br/>correlationId: cmd-001]
-    A --> E2[Event msgId: evt-002<br/>correlationId: cmd-001]
-    E1 --> EM[EventMapper]
-    E2 --> RM2[ReadModel]
-    EM --> C2[Command msgId: cmd-002<br/>correlationId: evt-001]
+```d2
+C1: "Command\nmsgId: cmd-001\ncorrelationId: cmd-001" { class: msg-command }
+A: Aggregate { class: aggregate }
+E1: "Event\nmsgId: evt-001\ncorrelationId: cmd-001" { class: msg-event }
+E2: "Event\nmsgId: evt-002\ncorrelationId: cmd-001" { class: msg-event }
+EM: EventMapper { class: event-mapper }
+RM2: ReadModel { class: read-model }
+C2: "Command\nmsgId: cmd-002\ncorrelationId: evt-001" { class: msg-command }
+
+C1 -> A { class: command-flow }
+A -> E1 { class: event-flow }
+A -> E2 { class: event-flow }
+E1 -> EM { class: event-flow }
+E2 -> RM2 { class: projection-flow }
+EM -> C2 { class: command-flow }
 ```
 
 **Key Principles**:
@@ -211,13 +224,19 @@ graph TD
 
 Messages undergo various transformations as they flow through the system:
 
-```mermaid
-graph LR
-    CMD[command'] -->|serialize| CJSON[commandJson]
-    CJSON -->|deserialize| CMD2[command']
-    CMD2 -->|process| EVT[event']
-    EVT -->|encode| EJSON[eventJson]
-    EJSON -->|decode| EVT2[event']
+```d2
+CMD: command' { class: msg-command }
+CJSON: commandJson
+CMD2: command' { class: msg-command }
+EVT: event' { class: msg-event }
+EJSON: eventJson
+EVT2: event' { class: msg-event }
+
+CMD -> CJSON: serialize
+CJSON -> CMD2: deserialize
+CMD2 -> EVT: process
+EVT -> EJSON: encode
+EJSON -> EVT2: decode
 ```
 
 **Transformation Types**:
