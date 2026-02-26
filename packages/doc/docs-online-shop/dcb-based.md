@@ -98,7 +98,7 @@ The event log spec defines **all events in the Plugin** — from every chapter �
 ```rescript
 // CatalogEventLog.res
 
-open ReventlessSpec
+open Reventless
 @schema
 type event =
   | ProductAdded({
@@ -138,7 +138,7 @@ Each command is handled by a **StateChangeSlice** — a self-contained module th
 ```rescript
 // AddProduct.res
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "AddProduct"
@@ -186,7 +186,7 @@ The `reduce` function only reacts to `ProductAdded` — any other event in the s
 ```rescript
 // UpdateProductPrice.res
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "UpdateProductPrice"
@@ -237,7 +237,7 @@ There are two projection actions:
 ```rescript
 // ProductsView.res
 
-open ReventlessSpec.Projection
+open Reventless.Projection
 open CatalogEventLog
 
 let name = "ProductsView"
@@ -274,7 +274,7 @@ The plugin composes the DCB event log, all StateChangeSlices, and all StateViewS
 ```rescript
 // CatalogPlugin.res
 
-open ReventlessSpec
+open Reventless
 module Make = (Platform: Platform.T) => {
   module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
 

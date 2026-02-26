@@ -137,7 +137,7 @@ AWS adapters in `reventless/reventless-aws/src/adapter/` implement:
 **Builder pattern with module types**: Components use first-class modules for type-safe configuration
 ```rescript
 module type T = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
 }
 ```

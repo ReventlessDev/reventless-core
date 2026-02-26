@@ -82,7 +82,7 @@ The spec module defines the vocabulary for the aggregate: its commands, the even
 ```rescript
 // Product.res
 
-open ReventlessSpec
+open Reventless
 module Id = Id.String
 
 let name = "Product"
@@ -123,7 +123,7 @@ The behavior module implements the aggregate's state machine. It defines the in-
 ```rescript
 // ProductBehavior.res
 
-open ReventlessSpec
+open Reventless
 open Product
 
 module Spec = Product
@@ -191,7 +191,7 @@ The read model defines the query-side view and how aggregate events are projecte
 ```rescript
 // ProductsReadModel.res
 
-open ReventlessSpec
+open Reventless
 module Id = Id.String
 
 @schema
@@ -210,8 +210,8 @@ Projection mappings subscribe to aggregate events and translate them to `Set` or
 ```rescript
 // ProductsProjections.res
 
-open ReventlessSpec
-open ReventlessSpec.Projection
+open Reventless
+open Reventless.Projection
 
 module ProductMapping = Mapping.Make(
   Product,
@@ -248,8 +248,8 @@ The plugin wires all aggregates and read models together using any `Platform` im
 ```rescript
 // CatalogPlugin.res
 
-open ReventlessSpec
-open ReventlessSpec.Projection
+open Reventless
+open Reventless.Projection
 
 module Make = (Platform: Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(

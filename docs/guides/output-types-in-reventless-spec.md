@@ -22,7 +22,7 @@ Every component builder in `packages/reventless/src/components/` re-exports the 
 
 ```rescript
 // packages/reventless/src/components/Aggregate/Aggregate.res
-type outputs = ReventlessSpec.Aggregate.outputs
+type outputs = Reventless.Aggregate.outputs
 ```
 
 The builders construct values of these types (e.g. [`Aggregate_Builder.res`](../packages/reventless/src/components/Aggregate/Aggregate_Builder.res)), pass them between components (e.g. [`Plugin_Helpers.res`](../packages/reventless/src/components/Plugin/Plugin_Helpers.res)), and use them in cross-component wiring (e.g. `Plugin_Helpers.extractExtensionPointDefinitions` takes `array<ExtensionPoint.outputs>`).

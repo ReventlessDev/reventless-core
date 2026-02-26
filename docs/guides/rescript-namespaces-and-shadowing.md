@@ -36,7 +36,7 @@ Because `@glennsl/rescript-jest` has no namespace, its modules (`AsyncTest`, `Je
 
 Similarly, `sury` (the schema library) likely has no namespace, which is why `S` is accessible unqualified.
 
-By contrast, `reventless-spec` (`"namespace": "ReventlessSpec"`) and `reventless` (`"namespace": "Reventless"`) namespace all their modules — so you must write `ReventlessSpec.CommandTopic` and `Reventless.CommandTopic`, not bare `CommandTopic`.
+By contrast, `reventless-spec` (`"namespace": "Reventless"`) and `reventless` (`"namespace": "Reventless"`) namespace all their modules — so you must write `Reventless.CommandTopic` and `ReventlessCoreCommandTopic`, not bare `CommandTopic`.
 
 ## Warning 44: open statement shadows an identifier
 
@@ -49,10 +49,10 @@ Warning 44: this open statement shadows the module identifier CommandTopic
 This warning appeared in `DcbE2EFixtures.res` because the file contained:
 
 ```rescript
-open ReventlessSpec  // ← warning 44: shadows CommandTopic
+open Reventless  // ← warning 44: shadows CommandTopic
 ```
 
-Before the `open`, `CommandTopic` referred to `Reventless.CommandTopic` (the implementation module, which has `getHandlers`). After the `open`, `CommandTopic` was re-bound to `ReventlessSpec.CommandTopic` (the type-only specification, which does NOT have `getHandlers`). Any code that called `CommandTopic.getHandlers` would then fail at the type-check stage.
+Before the `open`, `CommandTopic` referred to `ReventlessCoreCommandTopic` (the implementation module, which has `getHandlers`). After the `open`, `CommandTopic` was re-bound to `Reventless.CommandTopic` (the type-only specification, which does NOT have `getHandlers`). Any code that called `CommandTopic.getHandlers` would then fail at the type-check stage.
 
 ### Fix
 
@@ -60,19 +60,19 @@ Remove the broad `open` and qualify all uses explicitly:
 
 ```rescript
 // Before (problematic):
-open ReventlessSpec
+open Reventless
 ...
-let handlers = CommandTopic.getHandlers(typeName)  // resolves to ReventlessSpec.CommandTopic — no getHandlers!
+let handlers = CommandTopic.getHandlers(typeName)  // resolves to Reventless.CommandTopic — no getHandlers!
 
 // After (correct):
-let handlers = Reventless.CommandTopic.getHandlers(typeName)
+let handlers = ReventlessCoreCommandTopic.getHandlers(typeName)
 ...
-let testMeta: ReventlessSpec.Message.meta = { ... }
+let testMeta: Reventless.Message.meta = { ... }
 ```
 
 ## General advice
 
 - **Prefer `open` at a small scope** (inside a `let` block or function) rather than at module top level. This limits the shadowing risk.
-- **Avoid `open`ing two packages that share module names** (e.g., `open ReventlessSpec` and then relying on `Reventless.CommandTopic` unqualified).
+- **Avoid `open`ing two packages that share module names** (e.g., `open Reventless` and then relying on `ReventlessCoreCommandTopic` unqualified).
 - **Warning 44 is a signal, not noise** — it usually means a wrong module will be selected after the open. Treat it as an error (`+44` in `rescript.json` `"warnings": { "error": "+44" }`).
 - **Use `-44` only when the shadowing is intentional** and you have verified correctness. The `reventless-in-memory` package uses `"-44"` to suppress it as a non-error, relying on compiler warnings being visible in the build output.

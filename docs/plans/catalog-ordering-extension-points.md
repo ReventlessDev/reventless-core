@@ -412,7 +412,7 @@ module Mappings = {
 ### `CatalogPlugin.res`
 
 ```rescript
-module Make = (Platform: ReventlessSpec.Platform.T) => {
+module Make = (Platform: Reventless.Platform.T) => {
   // ... existing slices ...
 
   // New demand tracking
@@ -429,7 +429,7 @@ module Make = (Platform: ReventlessSpec.Platform.T) => {
 ### `OrderingPlugin.res`
 
 ```rescript
-module Make = (Platform: ReventlessSpec.Platform.T) => {
+module Make = (Platform: Reventless.Platform.T) => {
   // ... existing slices ...
 
   // New catalog product shadow

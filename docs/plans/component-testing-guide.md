@@ -557,8 +557,8 @@ id: Id.makeFromString("string-value")
 ```
 
 **Common in Reventless**:
-- `ReventlessSpec.Id.String.t` — use `Id.String.makeFromString()`
-- `ReventlessSpec.Id.Int.t` — use `Id.Int.makeFromInt()`
+- `Reventless.Id.String.t` — use `Id.String.makeFromString()`
+- `Reventless.Id.Int.t` — use `Id.Int.makeFromInt()`
 
 ### Pattern 3: Return Type Annotations for Abstract Types
 
