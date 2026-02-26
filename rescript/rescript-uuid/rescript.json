@@ -8,13 +8,6 @@
   "sources": [
     {
       "dir": "src",
-      "subdirs": true,
-      "public": [
-        "Uuid"
-      ]
-    },
-    {
-      "dir": "examples",
       "subdirs": true
     }
   ],

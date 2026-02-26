@@ -8,13 +8,6 @@
   "sources": [
     {
       "dir": "src",
-      "subdirs": true,
-      "public": [
-        "NodeZlib"
-      ]
-    },
-    {
-      "dir": "example",
       "subdirs": true
     }
   ],

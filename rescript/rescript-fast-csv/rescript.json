@@ -9,10 +9,6 @@
     {
       "dir": "src",
       "subdirs": true
-    },
-    {
-      "dir": "examples",
-      "subdirs": true
     }
   ],
   "dependencies": [
