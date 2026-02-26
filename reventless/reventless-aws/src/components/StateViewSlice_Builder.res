@@ -8,7 +8,7 @@ module EventCollectorRuntimeBuilder = ReventlessCore.EventCollectorRuntime_Build
   EventCollectorChannel,
 )
 
-module Make = (ApiValues: {
+module Make = (Api: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
 }) => ReventlessCore.StateViewSlice_Builder.Make(
@@ -17,5 +17,5 @@ module Make = (ApiValues: {
   QueryDbResolvers.AppSync,
   EventCollectorChannel,
   EventCollectorRuntimeBuilder,
-  ApiValues,
+  Api,
 )

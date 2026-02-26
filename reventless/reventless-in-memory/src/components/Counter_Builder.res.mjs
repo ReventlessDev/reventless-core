@@ -6,14 +6,16 @@ import * as QueryDbStorage_InMemory$ReventlessInMemory from "../adapter/QueryDb/
 
 function Make(Bus) {
   let QueryDbStorage = QueryDbStorage_InMemory$ReventlessInMemory.Make(Bus);
-  let include = Counter_Builder$ReventlessCore.Make(QueryDbStorage)({
+  let Api = {
     api: undefined,
     apiRole: undefined
-  })({
+  };
+  let include = Counter_Builder$ReventlessCore.Make(QueryDbStorage)(Api)({
     make: CounterHandler_InMemory$ReventlessInMemory.make
   });
   return {
     QueryDbStorage: QueryDbStorage,
+    Api: Api,
     make: include.make
   };
 }

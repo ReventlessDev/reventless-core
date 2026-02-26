@@ -16,7 +16,7 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_Single$Reventle
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
 });
 
-function Make(ApiValues) {
+function Make(Api) {
   return StateViewSlice_Builder$ReventlessCore.Make({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
@@ -26,7 +26,7 @@ function Make(ApiValues) {
   })(QueryDbResolvers_AppSync$ReventlessAws)({
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
     connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-  })(EventCollectorRuntimeBuilder)(ApiValues);
+  })(EventCollectorRuntimeBuilder)(Api);
 }
 
 let EventCollectorChannel;

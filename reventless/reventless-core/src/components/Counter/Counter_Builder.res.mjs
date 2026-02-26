@@ -12,7 +12,7 @@ import * as Counter_Callback$ReventlessCore from "./Counter_Callback.res.mjs";
 import * as Counter_Operations$ReventlessCore from "./Counter_Operations.res.mjs";
 
 function Make(QueryDbStorage) {
-  return ApiValues => (Handler => {
+  return Api => (Handler => {
     let make = (name, counterEventsHandler, ttlOpt, opts) => {
       let ttl = ttlOpt !== undefined ? ttlOpt : 604800;
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Counter$ReventlessCore.componentType), ComponentType$ReventlessCore.name(name, Counter$ReventlessCore.componentType), (extra, extra$1) => {
@@ -55,8 +55,8 @@ function Make(QueryDbStorage) {
           config: config$1,
           subIdConfig: undefined
         })(QueryDbStorage)(QueryDb_Adapter$ReventlessCore.NoResolvers(QueryDbStorage));
-        let referencesDb = ReferencesDb.make(ApiValues.api, ApiValues.apiRole, ttl$1, opts);
-        let countsDb = CountsDb.make(ApiValues.api, ApiValues.apiRole, ttl$1, opts);
+        let referencesDb = ReferencesDb.make(Api.api, Api.apiRole, ttl$1, opts);
+        let countsDb = CountsDb.make(Api.api, Api.apiRole, ttl$1, opts);
         let handler = Component$ReventlessCore.operations(countsDb).apply(param => {
           let Callback = Counter_Callback$ReventlessCore.Make({
             name: extra$1,

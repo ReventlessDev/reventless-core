@@ -9,7 +9,7 @@ import * as Aggregate_Builder_Micro$ReventlessAws from "./components/Aggregate_B
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 
-function Make(ApiValues) {
+function Make(Api) {
   let Make$1 = Spec => (Behavior => (EventMappings => {
     let $$let = Aggregate_Builder_Micro$ReventlessAws.Make(Spec)(Behavior)(EventMappings);
     return {
@@ -44,12 +44,12 @@ function Make(ApiValues) {
   let Task = {
     Make: Make$4
   };
-  let Counter = Counter_Builder$ReventlessAws.Make(ApiValues);
+  let Counter = Counter_Builder$ReventlessAws.Make(Api);
   let Make$5 = StateChangeSlice_Builder$ReventlessAws.Make;
   let StateChangeSlice = {
     Make: Make$5
   };
-  let StateViewSlice = StateViewSlice_Builder$ReventlessAws.Make(ApiValues);
+  let StateViewSlice = StateViewSlice_Builder$ReventlessAws.Make(Api);
   let Make$6 = DcbEventLog_Builder$ReventlessAws.Make;
   let DcbEventLog = {
     Make: Make$6

@@ -1,6 +1,6 @@
 module Make = (
   QueryDbStorage: QueryDb_Adapter.Storage,
-  ApiValues: {
+  Api: {
     let api: QueryDbStorage.api
     let apiRole: QueryDbStorage.role
   },
@@ -49,12 +49,12 @@ module Make = (
     )
 
     let referencesDb = ReferencesDb.make(
-      ~api=ApiValues.api,
-      ~apiRole=ApiValues.apiRole,
+      ~api=Api.api,
+      ~apiRole=Api.apiRole,
       ~ttl?,
       ~opts,
     )
-    let countsDb = CountsDb.make(~api=ApiValues.api, ~apiRole=ApiValues.apiRole, ~ttl?, ~opts)
+    let countsDb = CountsDb.make(~api=Api.api, ~apiRole=Api.apiRole, ~ttl?, ~opts)
 
     let handler =
       countsDb

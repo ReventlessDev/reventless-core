@@ -8,7 +8,7 @@
 //   module Platform = Platform.Make(Config)
 //   module App = MyPlugin.Make(Platform)
 
-module Make = (ApiValues: {
+module Make = (Api: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
 }): Reventless.Platform.T => {
@@ -41,7 +41,7 @@ module Make = (ApiValues: {
     ): (Reventless.Task.T with module Spec = Spec) => Task_Builder_PerBucket.Make(Spec)
   }
 
-  module Counter = Counter_Builder.Make(ApiValues)
+  module Counter = Counter_Builder.Make(Api)
 
   module StateChangeSlice = {
     module Make = (
@@ -51,7 +51,7 @@ module Make = (ApiValues: {
       and module Spec = Spec) => StateChangeSlice_Builder.Make(Spec)
   }
 
-  module StateViewSlice = StateViewSlice_Builder.Make(ApiValues)
+  module StateViewSlice = StateViewSlice_Builder.Make(Api)
 
   module DcbEventLog = {
     module Make = (

@@ -13,7 +13,7 @@ function Make(Bus) {
   let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_InMemory$ReventlessInMemory.Make(Bus)(EventCollectorChannel);
   let QueryDbStorage = QueryDbStorage_InMemory$ReventlessInMemory.Make(Bus);
   let QueryDbResolvers = QueryDbResolvers_GraphQL$ReventlessInMemory.Make(Bus);
-  let InMemoryApi = {
+  let Api = {
     api: undefined,
     apiRole: undefined
   };
@@ -21,7 +21,7 @@ function Make(Bus) {
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
     asEventHandler: prim => prim
-  })(QueryDbStorage)(QueryDbResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder)(InMemoryApi);
+  })(QueryDbStorage)(QueryDbResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => {
     let include = CoreMaker.Make(Spec);
     return {
@@ -36,7 +36,7 @@ function Make(Bus) {
     EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
     QueryDbStorage: QueryDbStorage,
     QueryDbResolvers: QueryDbResolvers,
-    InMemoryApi: InMemoryApi,
+    Api: Api,
     CoreMaker: CoreMaker,
     Make: Make$1
   };

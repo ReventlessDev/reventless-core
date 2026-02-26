@@ -12,7 +12,7 @@ module Make = (Bus: InMemory_Bus.T) => {
   module QueryDbResolvers = QueryDbResolvers_GraphQL.Make(Bus)
 
   // InMemory api/apiRole are both unit
-  module InMemoryApi = {
+  module Api = {
     let api = ()
     let apiRole = ()
   }
@@ -23,7 +23,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     QueryDbResolvers,
     EventCollectorChannel,
     EventCollectorRuntimeBuilder,
-    InMemoryApi,
+    Api,
   )
 
   module Make = (Spec: Reventless.StateViewSlice.Spec) => {
