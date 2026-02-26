@@ -18,6 +18,7 @@ function Make($star) {
   let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
   let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
   let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
+  let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
   let Make$1 = Spec => (Mappings => {
     let $$let = ReadModelMaker.Make(Spec)(Mappings);
     return {
@@ -44,7 +45,7 @@ function Make($star) {
   let StateChangeSlice = {
     Make: Make$4
   };
-  let Make$5 = StateViewSlice_Builder$ReventlessInMemory.Make;
+  let Make$5 = Spec => StateViewSliceMaker.Make(Spec);
   let StateViewSlice = {
     Make: Make$5
   };

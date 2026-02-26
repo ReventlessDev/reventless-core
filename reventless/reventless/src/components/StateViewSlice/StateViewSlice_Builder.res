@@ -1,34 +1,117 @@
-module Make = (Spec: ReventlessSpec.StateViewSlice.Spec): (
-  StateViewSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
+module Make = (
+  RuntimeEnvironment: Runtime.Environment,
+  QueryDbStorage: QueryDb_Adapter.Storage,
+  QueryDbResolvers: QueryDb_Adapter.Resolvers
+    with type api = QueryDbStorage.api
+    and type role = QueryDbStorage.role,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
+  EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
+    with module EventCollectorChannel = EventCollectorChannel,
+  Api: {
+    let api: QueryDbStorage.api
+    let apiRole: QueryDbStorage.role
+  },
 ) => {
-  type dcbEvent = Spec.DcbEventLogSpec.event
-  module Spec = Spec
-  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
-  type component = StateViewSlice.component
-
-  let construct = (
-    ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
-    self,
-    _name,
+  module Make = (Spec: ReventlessSpec.StateViewSlice.Spec): (
+    StateViewSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
   ) => {
-    // The actual QueryDb and EventCollector creation happens in Plugin_Builder
-    // This is just a placeholder that sets up basic outputs
+    type dcbEvent = Spec.DcbEventLogSpec.event
+    module Spec = Spec
+    type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
+    type component = StateViewSlice.component
 
-    let outputs: StateViewSlice.outputs = {
-      resources: (dcbEventLog->Component.outputs).resources,
-      queryDb: {
-        resources: [],
-        resolversMaker: _ => [],
-      },
+    module SvQueryDbSpec = {
+      module Id = ReventlessSpec.Id.String
+      let name = Spec.name
+      type state = Spec.state
+      let stateSchema = Spec.stateSchema
+      let config = ReventlessSpec.ReadModel.config()
+      let subIdConfig: option<ReventlessSpec.ReadModel.subIdConfig<state>> = None
     }
-    self->Component.setOutputs(outputs)
-  }
 
-  let make = (~dcbEventLog, ~opts=?): StateViewSlice.component =>
-    Component.make(
-      ~componentType=StateViewSlice.componentType->ComponentType.toString,
-      ~name=Spec.name,
-      ~construct=construct(~dcbEventLog, ...),
-      ~opts,
-    )
+    module SpecificQueryDb = QueryDb_Builder.Make(SvQueryDbSpec, QueryDbStorage, QueryDbResolvers)
+    module SpecificEventCollector = EventCollector_Builder.Make(RuntimeEnvironment, EventCollectorChannel)
+
+    let toProjectionOps = (ops: SpecificQueryDb.operations): QueryDb.operations<string, Spec.state> => {
+      load: id => ops.load(id->ReventlessSpec.Id.String.makeFromString),
+      save: (id, s, sm, ttl) => ops.save(id->ReventlessSpec.Id.String.makeFromString, s, sm, ttl),
+      saveBatch: batch =>
+        ops.saveBatch(
+          batch->Array.map(((id, s, ttl)) => (id->ReventlessSpec.Id.String.makeFromString, s, ttl)),
+        ),
+      count: (id, f, n) => ops.count(id->ReventlessSpec.Id.String.makeFromString, f, n),
+      delete: (id, sub) => ops.delete(id->ReventlessSpec.Id.String.makeFromString, sub),
+      deleteBatch: ids =>
+        ops.deleteBatch(
+          ids->Array.map(((id, sort)) => (id->ReventlessSpec.Id.String.makeFromString, sort)),
+        ),
+    }
+
+    let construct = (~dcbEventLog: dcbEventLogComponent, self, _name) => {
+      let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+
+      let queryDb = SpecificQueryDb.make(~api=Api.api, ~apiRole=Api.apiRole, ~opts)
+
+      let dcbEventTopicOutputs: EventTopic.outputs = (dcbEventLog->Component.outputs).eventTopic
+      let allEventTopics = Dict.fromArray([(Spec.name, dcbEventTopicOutputs)])
+
+      let eventCollector =
+        queryDb
+        ->Component.operations
+        ->Pulumi.Output.apply(queryDbOps => {
+          let projectionOps = toProjectionOps(queryDbOps)
+
+          let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics=allEventTopics, ~opts)
+
+          let jsonEventsHandler: EventCollector.jsonEventsHandler = async jsons => {
+            let events = jsons->Array.filterMap(json =>
+              try Some(json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema))
+              catch {
+              | exn =>
+                Console.log2("StateViewSlice: Failed to decode event:", exn)
+                None
+              }
+            )
+            let actions = events->Array.flatMap(event => Spec.project(None, event))
+            await Projection.handleActions(actions, projectionOps, None)
+          }
+
+          let handler = SpecificEventCollector.makeHandler(
+            ~eventCollector=ec,
+            ~eventsHandler=jsonEventsHandler,
+          )
+          let resources = (queryDb->Component.outputs).resources
+          ec->EventCollectorRuntimeBuilder.forEventCollector(
+            ~handler,
+            ~eventTopics=allEventTopics,
+            ~resources,
+          )
+          ec
+        })
+
+      self->Component.setOperations(
+        eventCollector
+        ->Pulumi.Output.flatMap(ec => ec->Component.operations)
+        ->Pulumi.Output.apply(({enqueueEvent}) => {
+          let ops: StateViewSlice.operations = {enqueueEvent: enqueueEvent}
+          ops
+        }),
+      )
+
+      let outputs: StateViewSlice.outputs = {
+        resources: dcbEventTopicOutputs.resources,
+        queryDb: queryDb->Component.outputs,
+      }
+      self->Component.setOutputs(outputs)
+    }
+
+    let make = (~dcbEventLog, ~opts=?): StateViewSlice.component =>
+      Component.make(
+        ~componentType=StateViewSlice.componentType->ComponentType.toString,
+        ~name=Spec.name,
+        ~construct=construct(~dcbEventLog, ...),
+        ~opts,
+      )
+  }
 }

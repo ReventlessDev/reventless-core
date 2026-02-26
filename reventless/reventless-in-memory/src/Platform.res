@@ -17,6 +17,7 @@ module Make = (): ReventlessSpec.Platform.T => {
   module ExtensionPointMaker = ExtensionPoint_Builder.Make(Bus)
   module TaskMaker = Task_Builder.Make(Bus)
   module DcbEventLogMaker = DcbEventLog_Builder.Make(Bus)
+  module StateViewSliceMaker = StateViewSlice_Builder.Make(Bus)
 
   module Aggregate = {
     module Make = (
@@ -62,7 +63,7 @@ module Make = (): ReventlessSpec.Platform.T => {
       Spec: ReventlessSpec.StateViewSlice.Spec,
     ): (ReventlessSpec.StateViewSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => StateViewSlice_Builder.Make(Spec)
+      and module Spec = Spec) => StateViewSliceMaker.Make(Spec)
   }
 
   module DcbEventLog = {
