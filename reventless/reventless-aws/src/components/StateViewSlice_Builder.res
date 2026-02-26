@@ -1,30 +1,21 @@
-// StateViewSlice_Builder (AWS) — placeholder pending AWS adapter implementation.
-// TODO: wire AWS adapters (DynamoDB Streams / Lambda / SNS) once designed.
-//
-// For now produces a no-op component that satisfies the type but does nothing at runtime.
+// StateViewSlice_Builder (AWS)
+// Wires AWS adapters and delegates to the core ReventlessCore.StateViewSlice_Builder.
 
-module Make = (Spec: Reventless.StateViewSlice.Spec): (
-  ReventlessCore.StateViewSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
-) => {
-  type dcbEvent = Spec.DcbEventLogSpec.event
-  module Spec = Spec
-  type dcbEventLogComponent = ReventlessCore.DcbEventLog.component<
-    ReventlessCore.DcbEventLog.operations<dcbEvent>,
-  >
-  type component = ReventlessCore.StateViewSlice.component
+module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
+module RuntimeEnvironment = RuntimeEnvironment.Lambda
+module EventCollectorRuntimeBuilder = ReventlessCore.EventCollectorRuntime_Builder_Single.Make(
+  RuntimeEnvironment,
+  EventCollectorChannel,
+)
 
-  let make = (~dcbEventLog, ~opts=?): component =>
-    ReventlessCore.Component.make(
-      ~componentType=ReventlessCore.StateViewSlice.componentType->ReventlessCore.ComponentType.toString,
-      ~name=Spec.name,
-      ~construct=(self, _name) => {
-        let dcbOutputs: ReventlessCore.DcbEventLog.outputs = dcbEventLog->ReventlessCore.Component.outputs
-        let outputs: ReventlessCore.StateViewSlice.outputs = {
-          resources: dcbOutputs.resources,
-          queryDb: {resources: [], resolversMaker: _ => []},
-        }
-        self->ReventlessCore.Component.setOutputs(outputs)
-      },
-      ~opts,
-    )
-}
+module Make = (ApiValues: {
+  let api: Types.AppSync.api
+  let apiRole: Types.AppSync.role
+}) => ReventlessCore.StateViewSlice_Builder.Make(
+  RuntimeEnvironment,
+  QueryDbStorage.DynamoDb,
+  QueryDbResolvers.AppSync,
+  EventCollectorChannel,
+  EventCollectorRuntimeBuilder,
+  ApiValues,
+)

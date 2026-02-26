@@ -51,13 +51,7 @@ module Make = (ApiValues: {
       and module Spec = Spec) => StateChangeSlice_Builder.Make(Spec)
   }
 
-  module StateViewSlice = {
-    module Make = (
-      Spec: Reventless.StateViewSlice.Spec,
-    ): (Reventless.StateViewSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => StateViewSlice_Builder.Make(Spec)
-  }
+  module StateViewSlice = StateViewSlice_Builder.Make(ApiValues)
 
   module DcbEventLog = {
     module Make = (

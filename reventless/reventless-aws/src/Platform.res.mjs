@@ -49,13 +49,10 @@ function Make(ApiValues) {
   let StateChangeSlice = {
     Make: Make$5
   };
-  let Make$6 = StateViewSlice_Builder$ReventlessAws.Make;
-  let StateViewSlice = {
-    Make: Make$6
-  };
-  let Make$7 = DcbEventLog_Builder$ReventlessAws.Make;
+  let StateViewSlice = StateViewSlice_Builder$ReventlessAws.Make(ApiValues);
+  let Make$6 = DcbEventLog_Builder$ReventlessAws.Make;
   let DcbEventLog = {
-    Make: Make$7
+    Make: Make$6
   };
   return {
     Aggregate: Aggregate,
