@@ -12,7 +12,6 @@
     },
     {
       "dir": "example",
-      "type": "dev",
       "subdirs": true
     }
   ],

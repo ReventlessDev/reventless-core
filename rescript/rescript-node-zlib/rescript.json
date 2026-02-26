@@ -15,8 +15,7 @@
     },
     {
       "dir": "example",
-      "subdirs": true,
-      "type": "dev"
+      "subdirs": true
     }
   ],
   "dependencies": [
