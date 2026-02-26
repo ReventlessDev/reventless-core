@@ -4,11 +4,11 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
-import * as Util_Error$Reventless from "@reventlessdev/reventless/src/util/Util_Error.res.mjs";
-import * as Util_Promise$Reventless from "@reventlessdev/reventless/src/util/Util_Promise.res.mjs";
+import * as Util_Error$Reventless from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as Util_Promise$Reventless from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 
 function put(table, item) {

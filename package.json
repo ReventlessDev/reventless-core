@@ -1,5 +1,5 @@
 {
-  "name": "@reventlessdev/reventless-core",
+  "name": "reventless-monorepo",
   "private": true,
   "description": "Reventless Core - Event-sourced CQRS framework for serverless infrastructure",
   "repository": {

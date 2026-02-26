@@ -5,10 +5,10 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
-import * as AdapterDeploytime$Reventless from "@reventlessdev/reventless/src/adapter/AdapterDeploytime.res.mjs";
+import * as AdapterDeploytime$Reventless from "@reventlessdev/reventless-core/src/adapter/AdapterDeploytime.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 

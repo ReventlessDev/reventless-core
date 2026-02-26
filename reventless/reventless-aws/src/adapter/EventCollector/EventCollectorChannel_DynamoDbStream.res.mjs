@@ -2,7 +2,7 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless/src/util/Util_Pulumi.res.mjs";
+import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as EventCollectorChannel_Helpers$ReventlessAws from "./EventCollectorChannel_Helpers.res.mjs";
 import * as EventCollectorChannel_SQS_Runtime$ReventlessAws from "./EventCollectorChannel_SQS_Runtime.res.mjs";
 

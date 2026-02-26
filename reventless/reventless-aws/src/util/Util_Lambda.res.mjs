@@ -3,7 +3,7 @@
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless/src/util/Util_Adapter.res.mjs";
+import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
 function findResource(resources) {
   return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.Lambda.service);

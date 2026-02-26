@@ -1,5 +1,5 @@
 {
-  "name": "@reventlessdev/reventless-core",
+  "name": "reventless-monorepo",
   "dependencies": [
     "@reventlessdev/rescript-aws-sdk",
     "@reventlessdev/rescript-fast-csv",
@@ -14,7 +14,7 @@
     "@reventlessdev/rescript-uuid",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-interop",
-    "@reventlessdev/reventless",
+    "@reventlessdev/reventless-core",
     "@reventlessdev/reventless-in-memory",
     "@reventlessdev/reventless-aws",
     "@reventlessdev/example-aggregate-catalog",

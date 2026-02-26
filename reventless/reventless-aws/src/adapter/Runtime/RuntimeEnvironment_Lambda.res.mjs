@@ -7,10 +7,10 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless/src/adapter/Adapter.res.mjs";
+import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless/src/util/Util_Pulumi.res.mjs";
-import * as CommandTopic$Reventless from "@reventlessdev/reventless/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as CommandTopic$Reventless from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
 

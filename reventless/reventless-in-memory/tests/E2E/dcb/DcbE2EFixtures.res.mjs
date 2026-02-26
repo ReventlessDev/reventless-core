@@ -5,7 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as DcbTag$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
-import * as CommandTopic$Reventless from "@reventlessdev/reventless/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as CommandTopic$Reventless from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "../../../src/components/DcbEventLog_Builder.res.mjs";

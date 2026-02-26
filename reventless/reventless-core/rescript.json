@@ -1,5 +1,5 @@
 {
-    "name": "@reventlessdev/reventless",
+    "name": "@reventlessdev/reventless-core",
     "namespace": "Reventless",
     "ppx-flags": [
         "sury-ppx/bin"

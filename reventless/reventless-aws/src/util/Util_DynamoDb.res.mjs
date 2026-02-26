@@ -6,7 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless/src/util/Util_Adapter.res.mjs";
+import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "./Util_DynamoDb_Runtime.res.mjs";

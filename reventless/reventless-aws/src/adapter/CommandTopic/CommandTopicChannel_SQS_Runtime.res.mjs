@@ -4,7 +4,7 @@ import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Logger$Reventless from "@reventlessdev/reventless/src/util/Logger.res.mjs";
+import * as Logger$Reventless from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_SQS_Runtime$ReventlessAws from "../../util/Util_SQS_Runtime.res.mjs";
 

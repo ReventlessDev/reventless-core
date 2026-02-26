@@ -2,7 +2,7 @@
 
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless/src/util/Util_Adapter.res.mjs";
+import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
 function toResource(param) {
   let name = param.name;

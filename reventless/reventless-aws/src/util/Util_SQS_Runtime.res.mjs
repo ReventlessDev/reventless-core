@@ -4,10 +4,10 @@ import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as SQS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS.res.mjs";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
-import * as Message$Reventless from "@reventlessdev/reventless/src/Message.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as ClientSqs from "@aws-sdk/client-sqs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Promise$Reventless from "@reventlessdev/reventless/src/util/Util_Promise.res.mjs";
+import * as Util_Promise$Reventless from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
 
 function toRuntimeQueue(param) {
   return {

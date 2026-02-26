@@ -6,7 +6,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
-import * as Util_Error$Reventless from "@reventlessdev/reventless/src/util/Util_Error.res.mjs";
+import * as Util_Error$Reventless from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 

@@ -3,7 +3,7 @@
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as QueryDb$Reventless from "@reventlessdev/reventless/src/components/QueryDb/QueryDb.res.mjs";
+import * as QueryDb$Reventless from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";

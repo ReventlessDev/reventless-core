@@ -26,7 +26,7 @@
     }
   },
   "dependencies": {
-    "@reventlessdev/reventless": "*",
+    "@reventlessdev/reventless-core": "*",
     "@reventlessdev/reventless-spec": "*",
     "@reventlessdev/rescript-graphql-yoga": "*",
     "@reventlessdev/rescript-pulumi-pulumi": "*",
