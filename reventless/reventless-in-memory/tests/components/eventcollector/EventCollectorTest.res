@@ -20,7 +20,7 @@ describe("EventCollector (in-memory)", () => {
   testPromise("EventCollector component exists", async () => {
     let ops = await eventCollector->ReventlessCore.Component.operations->TestRunner.resolve
     // Verify the operations object has the expected enqueueEvent function
-    expect(ops.enqueueEvent->Js.typeof)->toBe("function")
+    expect(ops.enqueueEvent->typeof)->toBe("function")
   })
 
   testPromise("bus publishes events to topic subscribers", async () => {

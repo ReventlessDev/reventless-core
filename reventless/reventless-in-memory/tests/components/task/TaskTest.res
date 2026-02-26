@@ -3,7 +3,6 @@
 
 open AsyncTest
 open AsyncTest.Expect
-open TaskFixtures
 
 describe("Task (in-memory)", () => {
   testPromise("bus is initialized", async () => {

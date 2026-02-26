@@ -2,12 +2,36 @@
 
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
-
-let Bus = InMemory_Bus$ReventlessInMemory.Make({});
+import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
+import * as ScheduledPublisher_InMemory$ReventlessInMemory from "../../../src/adapter/Scheduler/ScheduledPublisher_InMemory.res.mjs";
 
 TestRunner$ReventlessInMemory.setup();
 
+let Bus = InMemory_Bus$ReventlessInMemory.Make({});
+
+let SP = ScheduledPublisher_InMemory$ReventlessInMemory.Make(Bus);
+
+let SchedulerMaker = Scheduler_Builder$ReventlessCore.Make({
+  make: SP.make
+});
+
+let scheduler = SchedulerMaker.make(undefined);
+
+function makeTopicResource(name) {
+  return {
+    name: name,
+    id: name,
+    urn: name,
+    info: "",
+    service: "InMemory"
+  };
+}
+
 export {
   Bus,
+  SP,
+  SchedulerMaker,
+  scheduler,
+  makeTopicResource,
 }
-/* Bus Not a pure module */
+/*  Not a pure module */

@@ -2,8 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
+import * as EventMapper_Callback$ReventlessCore from "../../src/components/EventMapper/EventMapper_Callback.res.mjs";
 
 S.enableJson();
 
@@ -104,11 +107,316 @@ function makeSourceEvent$p(id, event) {
   };
 }
 
+let name$2 = "TestCmdSource";
+
+let eventSchema$1 = S.union([
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    orderId: s.m(S.string),
+    amount: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "OrderShipped",
+    orderId: s.m(S.string)
+  }))
+]);
+
+let CmdSourceSpec = {
+  Id: undefined,
+  name: name$2,
+  eventSchema: eventSchema$1
+};
+
+let name$3 = "TestCmdTarget";
+
+let commandSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProcessOrder",
+    orderId: s.m(S.string),
+    amount: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "ShipOrder",
+    orderId: s.m(S.string)
+  }))
+]);
+
+let CmdTargetSpec = {
+  Id: undefined,
+  name: name$3,
+  commandSchema: commandSchema
+};
+
+function map$1(id, event, _queryEngine) {
+  if (event.TAG === "OrderPlaced") {
+    return [{
+        TAG: "Publish",
+        _0: id,
+        _1: {
+          TAG: "ProcessOrder",
+          orderId: event.orderId,
+          amount: event.amount
+        }
+      }];
+  }
+  let cmd = {
+    TAG: "ShipOrder",
+    orderId: event.orderId
+  };
+  return [{
+      TAG: "Publish",
+      _0: id,
+      _1: cmd
+    }];
+}
+
+let OrderMapping = {
+  Source: undefined,
+  Target: undefined,
+  map: map$1
+};
+
+function map$2(_id, event, _queryEngine) {
+  if (event.TAG === "OrderPlaced") {
+    return [{
+        TAG: "Count",
+        _0: "order-counter"
+      }];
+  } else {
+    return [{
+        TAG: "AddToCounterTarget",
+        _0: {
+          counterId: "order-counter",
+          target: 5
+        }
+      }];
+  }
+}
+
+let CountOrderMapping = {
+  Source: undefined,
+  Target: undefined,
+  map: map$2
+};
+
+let mappings = [{
+    Source: {
+      name: name$2,
+      Id: {
+        schema: Id$Reventless.StringPure.schema,
+        make: prim => prim,
+        makeFromString: prim => prim,
+        toString: prim => prim,
+        cmp: Id$Reventless.StringPure.cmp
+      },
+      eventSchema: eventSchema$1
+    },
+    map: map$1
+  }];
+
+let OrderMappings_Target = {
+  Id: Id$Reventless.StringPure,
+  name: name$3,
+  commandSchema: commandSchema
+};
+
+let OrderMappings = {
+  Target: OrderMappings_Target,
+  mappings: mappings,
+  counter: undefined
+};
+
+let mappings$1 = [{
+    Source: {
+      name: name$2,
+      Id: {
+        schema: Id$Reventless.StringPure.schema,
+        make: prim => prim,
+        makeFromString: prim => prim,
+        toString: prim => prim,
+        cmp: Id$Reventless.StringPure.cmp
+      },
+      eventSchema: eventSchema$1
+    },
+    map: map$2
+  }];
+
+let CountOrderMappings_Target = {
+  Id: Id$Reventless.StringPure,
+  name: name$3,
+  commandSchema: commandSchema
+};
+
+let CountOrderMappings = {
+  Target: CountOrderMappings_Target,
+  mappings: mappings$1,
+  counter: undefined
+};
+
+let capturedCmds = {
+  contents: []
+};
+
+let capturedCountItems = {
+  contents: []
+};
+
+let capturedCounterTargets = {
+  contents: []
+};
+
+async function mockQueryEngine_scan(param, param$1, param$2) {
+  return [];
+}
+
+async function mockQueryEngine_query(param, param$1, param$2, param$3, param$4, param$5, param$6) {
+  return [];
+}
+
+let mockQueryEngine = {
+  scan: mockQueryEngine_scan,
+  query: mockQueryEngine_query
+};
+
+async function publishJsons(cmds) {
+  capturedCmds.contents = capturedCmds.contents.concat(cmds);
+}
+
+let MockCounterOps = {
+  publishJsons: publishJsons,
+  queryEngine: mockQueryEngine
+};
+
+let TestCounterHandler = EventMapper_Callback$ReventlessCore.MakeCounterHandler({
+  name: name$3,
+  Id: {
+    schema: Id$Reventless.StringPure.schema,
+    make: prim => prim,
+    makeFromString: prim => prim,
+    toString: prim => prim,
+    cmp: Id$Reventless.StringPure.cmp
+  },
+  commandSchema: commandSchema
+})({
+  mappings: mappings,
+  counter: undefined
+})(MockCounterOps);
+
+let mockCommonHandler = {
+  contents: async param => [
+    Promise.resolve([]),
+    []
+  ]
+};
+
+let mockCountFailUntil = {
+  contents: 0
+};
+
+let mockCountCallCount = {
+  contents: 0
+};
+
+async function publishJsons$1(cmds) {
+  capturedCmds.contents = capturedCmds.contents.concat(cmds);
+}
+
+async function count(items) {
+  mockCountCallCount.contents = mockCountCallCount.contents + 1 | 0;
+  capturedCountItems.contents = capturedCountItems.contents.concat(items);
+  if (mockCountCallCount.contents <= mockCountFailUntil.contents) {
+    return Stdlib_JsError.throwWithMessage("count failed");
+  }
+}
+
+async function addToCounterTarget(target) {
+  capturedCounterTargets.contents = capturedCounterTargets.contents.concat([target]);
+}
+
+async function commonEventsHandler(eventsJson$p) {
+  return await mockCommonHandler.contents(eventsJson$p);
+}
+
+let MockECOps = {
+  publishJsons: publishJsons$1,
+  count: count,
+  addToCounterTarget: addToCounterTarget,
+  commonEventsHandler: commonEventsHandler
+};
+
+let TestECHandler = EventMapper_Callback$ReventlessCore.MakeEventCollectorHandler(MockECOps);
+
+let evtMapTestMeta = {
+  service: name$2,
+  time: "2024-01-01T00:00:00Z",
+  ip: "127.0.0.1",
+  user: "test-user",
+  msgId: "test-msg-1",
+  correlationId: "test-corr-1"
+};
+
+function makeEventJson(serviceOpt, id, eventJson) {
+  let service = serviceOpt !== undefined ? serviceOpt : name$2;
+  return Object.fromEntries([
+    [
+      "id",
+      id
+    ],
+    [
+      "meta",
+      Message$Reventless.encode({
+        service: service,
+        time: "2024-01-01T00:00:00Z",
+        ip: "127.0.0.1",
+        user: "test-user",
+        msgId: "test-msg-1",
+        correlationId: "test-corr-1"
+      }, Message$Reventless.metaSchema)
+    ],
+    [
+      "event",
+      eventJson
+    ]
+  ]);
+}
+
+function resetMocks() {
+  capturedCmds.contents = [];
+  capturedCountItems.contents = [];
+  capturedCounterTargets.contents = [];
+  mockCountFailUntil.contents = 0;
+  mockCountCallCount.contents = 0;
+  mockCommonHandler.contents = async param => [
+    Promise.resolve([]),
+    []
+  ];
+}
+
 export {
   SourceSpec,
   TargetSpec,
   ItemMapping,
   testMeta,
   makeSourceEvent$p,
+  CmdSourceSpec,
+  CmdTargetSpec,
+  OrderMapping,
+  CountOrderMapping,
+  OrderMappings,
+  CountOrderMappings,
+  capturedCmds,
+  capturedCountItems,
+  capturedCounterTargets,
+  mockQueryEngine,
+  MockCounterOps,
+  TestCounterHandler,
+  mockCommonHandler,
+  mockCountFailUntil,
+  mockCountCallCount,
+  MockECOps,
+  TestECHandler,
+  evtMapTestMeta,
+  makeEventJson,
+  resetMocks,
 }
 /*  Not a pure module */

@@ -1,13 +1,52 @@
-// Integration tests for CommandGenerator (placeholder).
-// Full tests require GraphQL server setup — see adapter tests for low-level coverage.
+// Integration tests for CommandGenerator_Builder (in-memory).
+// Verifies that makeHandler returns a resolver that generates and publishes commands.
 
 open AsyncTest
 open AsyncTest.Expect
 open CommandGeneratorFixtures
 
-describe("CommandGenerator (in-memory)", () => {
-  testPromise("bus is initialized", async () => {
-    // Placeholder: CommandGenerator resolver tests are in adapter/QueryEngineTest.res
-    expect(true)->toBe(true)
+// ─────────────────────────────────────────────────────────────
+// Use native jest `test` binding to properly await async bodies.
+// testPromise from @glennsl/rescript-jest discards the returned Promise
+// (see MEMORY.md: "@glennsl/rescript-jest: testPromise is broken for async tests").
+// ─────────────────────────────────────────────────────────────
+
+@val external jestTest: (string, unit => promise<unit>) => unit = "test"
+@val external nativeExpect: 'a => {..} = "expect"
+
+describe("CommandGenerator_Builder.Make:", () => {
+  let _ = beforeEach(() => resetMocks())
+
+  describe("makeHandler:", () => {
+    jestTest("CreateCGItem payload publishes correct commandJson", async () => {
+      // Resolve the handler from the Output wrapper
+      let handler = await CGMaker.makeHandler(~publishJsons=mockPublish)->TestRunner.resolve
+
+      // Build payload: arguments must include id AND the command fields (name).
+      // generateCommand stringifies arguments, slices off id (index 0), uses the rest as params.
+      let payload: ReventlessCore.CommandGenerator.payload = {
+        command: "CreateCGItem",
+        arguments: {"id": "item-1", "name": "widget"}->Obj.magic,
+        meta: {ip: ["127.0.0.1"], user: "testuser", info: ""},
+      }
+
+      // Call handler — generateCommand is async (awaits publishJsons internally)
+      let _ = await handler(payload, ())
+
+      expect(capturedCmds.contents->Array.length)->toBe(1)
+
+      let cmd = capturedCmds.contents->Array.getUnsafe(0)
+      expect(cmd.id)->toBe("item-1")
+
+      // commandJson should decode to CreateCGItem({name: "widget"})
+      let decoded = cmd.commandJson->S.parseJsonOrThrow(CGSpec.commandSchema)
+      expect(decoded)->toEqual(CGSpec.CreateCGItem({name: "widget"}))
+    })
+
+    jestTest("make creates a CommandGenerator component without throwing", async () => {
+      let cg = CGMaker.make(~name="test-cg")
+      let _ = cg
+      nativeExpect(true)["toBe"](. true)
+    })
   })
 })
