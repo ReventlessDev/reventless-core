@@ -1,7 +1,7 @@
 let componentType = ComponentType.CommandTopic
 
-type outputs = ReventlessSpec.CommandTopic.outputs
-type allOutputs = ReventlessSpec.CommandTopic.allOutputs
+type outputs = Reventless.CommandTopic.outputs
+type allOutputs = Reventless.CommandTopic.allOutputs
 
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
@@ -11,14 +11,14 @@ exception NotPublishedToChannel(exn)
 include CommandTopic_Helpers
 
 type publish<'id, 'command> = Message.command'<'id, 'command> => promise<unit>
-type publishJsons = ReventlessSpec.CommandTopic.publishJsons
+type publishJsons = Reventless.CommandTopic.publishJsons
 
 type commandsHandler<'command> = array<topicItem<'command>> => promise<
   array<result<string, string>>,
 >
 
 module type T = {
-  module Spec: ReventlessSpec.CommandTopic.T
+  module Spec: Reventless.CommandTopic.T
   type callbackEvent
 
   type publish = publish<Spec.Id.t, Spec.command>
@@ -33,7 +33,7 @@ module type T = {
 
   let connect: (
     ~runtime: Runtime.environment<'runtimeParts>,
-    ~resources: array<ReventlessSpec.Adapter.resource>,
+    ~resources: array<Reventless.Adapter.resource>,
     component,
   ) => unit
 

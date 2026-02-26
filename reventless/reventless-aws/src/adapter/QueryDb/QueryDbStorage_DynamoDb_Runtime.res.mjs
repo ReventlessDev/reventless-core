@@ -6,7 +6,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
-import * as Util_Error$Reventless from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
@@ -18,7 +18,7 @@ function load(table) {
     } catch (raw_e) {
       let e = Primitive_exceptions.internalToException(raw_e);
       if (e.RE_EXN_ID === "JsExn") {
-        let errorMsg = Util_Error$Reventless.message(undefined, e._1);
+        let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
         let tableName = table.name;
         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.load: Error: Couldn't load state for ` + id + ` from ` + tableName + `: ` + errorMsg));
         return {
@@ -107,7 +107,7 @@ async function writeMultiple(writeRequests, op, ids, table) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      let errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
       console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: Error: Couldn't save states to ` + tableName + `, ` + count + ` ids:` + allIdsStr + `: ` + errorMsg));
       return {
         TAG: "Error",
@@ -198,7 +198,7 @@ function count(table) {
       let e = Primitive_exceptions.internalToException(raw_e);
       if (e.RE_EXN_ID === "JsExn") {
         let e$1 = e._1;
-        let message = Util_Error$Reventless.message(undefined, e$1);
+        let message = Util_Error$ReventlessCore.message(undefined, e$1);
         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.count: Error: Couldn't count on ` + tableName), e$1);
         return {
           TAG: "Error",

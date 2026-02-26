@@ -1,4 +1,4 @@
-open Reventless.Message
+open ReventlessCore.Message
 open AwsSdk
 
 type runtimeQueue = {
@@ -7,7 +7,7 @@ type runtimeQueue = {
   arn: string,
 }
 
-let toRuntimeQueue = ({id, name, urn}: Reventless.Adapter.resolvedResource) => {
+let toRuntimeQueue = ({id, name, urn}: ReventlessCore.Adapter.resolvedResource) => {
   id,
   name,
   arn: urn,
@@ -31,7 +31,7 @@ let rec send = async (queue, queueService, commandJson) => {
   | JsExn(e) =>
     Console.log3("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e->JsExn.message)
     let timeout = Math.Int.random(3000, 7000)
-    await Reventless.Util.Promise.finishTimeout(timeout)
+    await ReventlessCore.Util.Promise.finishTimeout(timeout)
     Console.log(`Retry send after ${timeout->Int.toString} ms ...`)
     await send(queue, queueService, commandJson)
   }
@@ -61,7 +61,7 @@ let rec sendMessages = async (queue, queueService, commandJsons) => {
         failedIds->Belt.Array.some(failedId => failedId == msgId)
       )
     let timeout = Math.Int.random(3000, 7000)
-    await Reventless.Util.Promise.finishTimeout(timeout)
+    await ReventlessCore.Util.Promise.finishTimeout(timeout)
     Console.log2(`Retry sendMessages after ${timeout->Int.toString} ms:`, commandJsonsToRetry)
     await sendMessages(queue, queueService, commandJsonsToRetry)
   }
@@ -92,7 +92,7 @@ let rec deleteMessages = async (entries, queue) =>
         receiptHandle: entry.receiptHandle,
       })
     let timeout = Math.Int.random(3000, 7000)
-    await Reventless.Util.Promise.finishTimeout(timeout)
+    await ReventlessCore.Util.Promise.finishTimeout(timeout)
     Console.log2(`Retry deleteMessages after ${timeout->Int.toString} ms:`, entriesToRetry)
     await deleteMessages(entriesToRetry, queue)
   }

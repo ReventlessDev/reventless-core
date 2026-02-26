@@ -3,29 +3,29 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
-import * as DcbTag$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as DcbFixtures$Reventless from "./DcbFixtures.res.mjs";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as DcbFixtures$ReventlessCore from "./DcbFixtures.res.mjs";
 
 Jest.describe("DcbTag:", () => {
   Jest.describe("jsonValueToString", () => {
-    Jest.test("converts string value", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.jsonValueToString("hello")), "hello"));
-    Jest.test("converts integer-like number", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.jsonValueToString(42)), "42"));
-    Jest.test("converts float number", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.jsonValueToString(3.14)), "3.14"));
-    Jest.test("converts boolean true", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.jsonValueToString(true)), "true"));
-    Jest.test("converts boolean false", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.jsonValueToString(false)), "false"));
-    Jest.test("converts null", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.jsonValueToString(null)), "null"));
-    Jest.test("converts array via JSON.stringify", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.jsonValueToString([
+    Jest.test("converts string value", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.jsonValueToString("hello")), "hello"));
+    Jest.test("converts integer-like number", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.jsonValueToString(42)), "42"));
+    Jest.test("converts float number", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.jsonValueToString(3.14)), "3.14"));
+    Jest.test("converts boolean true", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.jsonValueToString(true)), "true"));
+    Jest.test("converts boolean false", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.jsonValueToString(false)), "false"));
+    Jest.test("converts null", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.jsonValueToString(null)), "null"));
+    Jest.test("converts array via JSON.stringify", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.jsonValueToString([
       1,
       2
     ])), "[1,2]"));
   });
   Jest.describe("isTagged", () => {
-    Jest.test("returns true for ReventlessSpec.DcbTag.string schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.isTagged(DcbTag$ReventlessSpec.string)), true));
-    Jest.test("returns true for ReventlessSpec.DcbTag.int schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.isTagged(DcbTag$ReventlessSpec.int)), true));
-    Jest.test("returns false for plain S.string schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$ReventlessSpec.isTagged(S.string)), false));
+    Jest.test("returns true for Reventless.DcbTag.string schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTagged(DcbTag$Reventless.string)), true));
+    Jest.test("returns true for Reventless.DcbTag.int schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTagged(DcbTag$Reventless.int)), true));
+    Jest.test("returns false for plain S.string schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTagged(S.string)), false));
   });
   Jest.describe("extractTags from variant (Union) schema", () => {
-    Jest.test("extracts itemId tag from ItemCreated", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.TestEventLogSpec.eventSchema, {
+    Jest.test("extracts itemId tag from ItemCreated", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema, {
       TAG: "ItemCreated",
       itemId: "item-1",
       name: "Test"
@@ -33,7 +33,7 @@ Jest.describe("DcbTag:", () => {
         key: "itemId",
         value: "item-1"
       }]));
-    Jest.test("extracts itemId tag from ItemRenamed", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.TestEventLogSpec.eventSchema, {
+    Jest.test("extracts itemId tag from ItemRenamed", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema, {
       TAG: "ItemRenamed",
       itemId: "item-2",
       newName: "Updated"
@@ -41,7 +41,7 @@ Jest.describe("DcbTag:", () => {
         key: "itemId",
         value: "item-2"
       }]));
-    Jest.test("extracts multiple tags from CountUpdated", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.TestEventLogSpec.eventSchema, {
+    Jest.test("extracts multiple tags from CountUpdated", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema, {
       TAG: "CountUpdated",
       category: "electronics",
       amount: 42
@@ -55,15 +55,15 @@ Jest.describe("DcbTag:", () => {
         value: "42"
       }
     ]));
-    Jest.test("returns empty array for SimpleEvent (no payload)", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.TestEventLogSpec.eventSchema, "SimpleEvent")), []));
-    Jest.test("returns empty array for untagged PlainEvent", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.UntaggedEventSpec.eventSchema, {
+    Jest.test("returns empty array for SimpleEvent (no payload)", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema, "SimpleEvent")), []));
+    Jest.test("returns empty array for untagged PlainEvent", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.UntaggedEventSpec.eventSchema, {
       TAG: "PlainEvent",
       name: "test",
       value: 1
     })), []));
-    Jest.test("returns empty array for untagged EmptyEvent", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.UntaggedEventSpec.eventSchema, "EmptyEvent")), []));
+    Jest.test("returns empty array for untagged EmptyEvent", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.UntaggedEventSpec.eventSchema, "EmptyEvent")), []));
   });
-  Jest.describe("extractTags from Object schema", () => Jest.test("extracts tenantId tag from object record", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.objectEventSchema, {
+  Jest.describe("extractTags from Object schema", () => Jest.test("extracts tenantId tag from object record", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.objectEventSchema, {
     tenantId: "tenant-1",
     data: "test"
   })), [{
@@ -71,7 +71,7 @@ Jest.describe("DcbTag:", () => {
       value: "tenant-1"
     }])));
   Jest.describe("extractTags from command schema", () => {
-    Jest.test("extracts itemId tag from CreateItem command", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.TestCommandSpec.commandSchema, {
+    Jest.test("extracts itemId tag from CreateItem command", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema, {
       TAG: "CreateItem",
       itemId: "item-1",
       name: "Test"
@@ -79,7 +79,7 @@ Jest.describe("DcbTag:", () => {
         key: "itemId",
         value: "item-1"
       }]));
-    Jest.test("extracts itemId tag from RenameItem command", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTags(DcbFixtures$Reventless.TestCommandSpec.commandSchema, {
+    Jest.test("extracts itemId tag from RenameItem command", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema, {
       TAG: "RenameItem",
       itemId: "item-3",
       newName: "New"
@@ -90,15 +90,15 @@ Jest.describe("DcbTag:", () => {
   });
   Jest.describe("extractTaggedFields from schema", () => {
     Jest.describe("Union (variant) schemas", () => {
-      Jest.test("extracts all unique tagged field names from event schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema)), [
+      Jest.test("extracts all unique tagged field names from event schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema)), [
         "amount",
         "category",
         "itemId"
       ]));
-      Jest.test("extracts tagged field names from command schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.TestCommandSpec.commandSchema)), ["itemId"]));
-      Jest.test("returns empty array for untagged variant schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.UntaggedEventSpec.eventSchema)), []));
+      Jest.test("extracts tagged field names from command schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema)), ["itemId"]));
+      Jest.test("returns empty array for untagged variant schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.UntaggedEventSpec.eventSchema)), []));
       Jest.test("deduplicates field names across variants", () => {
-        let fields = DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema);
+        let fields = DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema);
         return Jest.Expect.toEqual(Jest.Expect.expect(fields), [
           "amount",
           "category",
@@ -106,36 +106,36 @@ Jest.describe("DcbTag:", () => {
         ]);
       });
       Jest.test("returns sorted field names", () => {
-        let fields = DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema);
+        let fields = DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema);
         let sorted = fields.toSorted(Primitive_string.compare);
         return Jest.Expect.toEqual(Jest.Expect.expect(fields), sorted);
       });
     });
     Jest.describe("Object (record) schemas", () => {
-      Jest.test("extracts tagged field names from object schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.objectEventSchema)), ["tenantId"]));
-      Jest.test("returns empty array for object with no tagged fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.plainRecordSchema)), []));
-      Jest.test("extracts multiple tagged fields from object schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.multiTagRecordSchema)), [
+      Jest.test("extracts tagged field names from object schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.objectEventSchema)), ["tenantId"]));
+      Jest.test("returns empty array for object with no tagged fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.plainRecordSchema)), []));
+      Jest.test("extracts multiple tagged fields from object schema", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.multiTagRecordSchema)), [
         "tenantId",
         "userId"
       ]));
     });
     Jest.describe("Edge cases", () => {
       Jest.test("handles variants with no payload (SimpleEvent)", () => {
-        let fields = DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.TestEventLogSpec.eventSchema);
+        let fields = DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema);
         return Jest.Expect.toBeGreaterThan(Jest.Expect.expect(fields.length), 0);
       });
-      Jest.test("handles schema with mix of tagged and untagged fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.mixedEventSchema)), ["id"]));
-      Jest.test("handles empty schema gracefully", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.emptyVariantSchema)), []));
-      Jest.test("handles schema with int tags", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.intTagEventSchema)), ["count"]));
+      Jest.test("handles schema with mix of tagged and untagged fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.mixedEventSchema)), ["id"]));
+      Jest.test("handles empty schema gracefully", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.emptyVariantSchema)), []));
+      Jest.test("handles schema with int tags", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.intTagEventSchema)), ["count"]));
     });
     Jest.describe("Complex schemas", () => {
-      Jest.test("extracts from schema with many variants and fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.complexEventSchema)), [
+      Jest.test("extracts from schema with many variants and fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.complexEventSchema)), [
         "orderId",
         "paymentId",
         "trackingId",
         "userId"
       ]));
-      Jest.test("handles variants with multiple tagged fields in same variant", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$ReventlessSpec.extractTaggedFields(DcbFixtures$Reventless.multiFieldEventSchema)), [
+      Jest.test("handles variants with multiple tagged fields in same variant", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.multiFieldEventSchema)), [
         "sessionId",
         "tenantId",
         "userId"

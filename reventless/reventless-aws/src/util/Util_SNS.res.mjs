@@ -3,7 +3,7 @@
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
+import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
 function toRuntimeTopicOutput(param) {
   return Pulumi.all([
@@ -29,11 +29,11 @@ function toResource(param) {
 }
 
 function findResolvedResource(resources) {
-  return Util_Adapter$Reventless.findResolvedResource(resources, AWS$ReventlessAws.SNS.service);
+  return Util_Adapter$ReventlessCore.findResolvedResource(resources, AWS$ReventlessAws.SNS.service);
 }
 
 function findTopicInResolvedResources(resources) {
-  let resources$1 = Util_Adapter$Reventless.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS.service]);
+  let resources$1 = Util_Adapter$ReventlessCore.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }

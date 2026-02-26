@@ -1,7 +1,7 @@
 // Ordering plugin — platform-agnostic composition root.
 // Wires the Customer and Order aggregates and their read models.
 
-open ReventlessSpec
+open Reventless
 
 module Make = (Platform: Platform.T) => {
   module CustomerAggregate = Platform.Aggregate.Make(

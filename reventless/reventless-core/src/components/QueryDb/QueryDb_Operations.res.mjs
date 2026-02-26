@@ -4,15 +4,15 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
-import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
 
 function Make(ReadModelSpec) {
   return Ops => {
     let decode = (id, stateJson) => {
       let state;
       try {
-        state = Message$Reventless.decode(stateJson, ReadModelSpec.stateSchema);
+        state = Message$ReventlessCore.decode(stateJson, ReadModelSpec.stateSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         console.log(`QueryDb: Error: Couldn't decode state for ` + ReadModelSpec.Id.toString(id) + `: ` + Stdlib_Option.getOrThrow(JSON.stringify(err), undefined));
@@ -25,9 +25,9 @@ function Make(ReadModelSpec) {
       return Stdlib_Result.map(result, states => states.map(state => decode(id, state)).flat());
     };
     let save = async (id, state, saveMode, ttl) => {
-      let dict = Stdlib_JSON.Decode.object(Message$Reventless.encode(state, ReadModelSpec.stateSchema));
+      let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
       if (dict !== undefined) {
-        dict["id"] = Message$Reventless.encode(id, ReadModelSpec.Id.schema);
+        dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
         return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
       } else {
         console.log("QueryDB.saveState: Error: Couldn't decodeObject:", JSON.stringify(state));
@@ -44,9 +44,9 @@ function Make(ReadModelSpec) {
       let batch = Stdlib_Array.filterMap(states, param => {
         let state = param[1];
         let id = param[0];
-        let dict = Stdlib_JSON.Decode.object(Message$Reventless.encode(state, ReadModelSpec.stateSchema));
+        let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
         if (dict !== undefined) {
-          dict["id"] = Message$Reventless.encode(id, ReadModelSpec.Id.schema);
+          dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
           return [
             ReadModelSpec.Id.toString(id),
             dict,
@@ -83,4 +83,4 @@ function Make(ReadModelSpec) {
 export {
   Make,
 }
-/* Message-Reventless Not a pure module */
+/* Message-ReventlessCore Not a pure module */

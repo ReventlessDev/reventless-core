@@ -4,25 +4,25 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
-import * as Counter$Reventless from "../Counter/Counter.res.mjs";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as EventTopic$Reventless from "../EventTopic/EventTopic.res.mjs";
-import * as EventMapper$Reventless from "./EventMapper.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as EventMapper_Callback$Reventless from "./EventMapper_Callback.res.mjs";
+import * as Counter$ReventlessCore from "../Counter/Counter.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
+import * as EventMapper$ReventlessCore from "./EventMapper.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as EventMapper_Callback$ReventlessCore from "./EventMapper_Callback.res.mjs";
 
 function Make(Target) {
   return SpecificEventCollector => (Mappings => (AggregateRuntimeBuilder => {
     let make = (name, allEventTopics, queryEngine, publishJsons, resources, memorySizeOpt, timeoutOpt, opts) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
-      return Component$Reventless.make(ComponentType$Reventless.toString(EventMapper$Reventless.componentType), name, (extra, extra$1) => {
-        let opts_parent = Component$Reventless.toPulumiResource(extra);
+      return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventMapper$ReventlessCore.componentType), name, (extra, extra$1) => {
+        let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
           parent: opts_parent
         };
-        let name = ComponentType$Reventless.name(extra$1, EventMapper$Reventless.componentType);
-        let CounterHandler = EventMapper_Callback$Reventless.MakeCounterHandler(Target)(Mappings)({
+        let name = ComponentType$ReventlessCore.name(extra$1, EventMapper$ReventlessCore.componentType);
+        let CounterHandler = EventMapper_Callback$ReventlessCore.MakeCounterHandler(Target)(Mappings)({
           publishJsons: publishJsons,
           queryEngine: queryEngine
         });
@@ -39,26 +39,26 @@ function Make(Target) {
         ], Counter => {
           let counter = Counter.make(name, CounterHandler.handleCounterEvents, undefined, opts);
           return [
-            Component$Reventless.operations(counter),
-            Component$Reventless.outputs(counter)
+            Component$ReventlessCore.operations(counter),
+            Component$ReventlessCore.outputs(counter)
           ];
         });
         let aggregateNames = Belt_SetString.fromArray(Stdlib_Array.filterMap(Mappings.mappings, Mapping => {
-          if (Mapping.Source.name !== Counter$Reventless.Source.name) {
+          if (Mapping.Source.name !== Counter$ReventlessCore.Source.name) {
             return Mapping.Source.name;
           }
         }));
         let eventCollector = match[0].apply(param => {
-          let eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
+          let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, aggregateNames);
           let eventCollector = SpecificEventCollector.make(name, eventTopics, opts);
-          let EventCollectorHandler = EventMapper_Callback$Reventless.MakeEventCollectorHandler({
+          let EventCollectorHandler = EventMapper_Callback$ReventlessCore.MakeEventCollectorHandler({
             publishJsons: publishJsons,
             count: param.count,
             addToCounterTarget: param.addToCounterTarget,
             commonEventsHandler: CounterHandler.commonEventsHandler
           });
           let handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
-          return Component$Reventless.outputs((AggregateRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, eventCollector), eventCollector));
+          return Component$ReventlessCore.outputs((AggregateRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, eventCollector), eventCollector));
         });
         let outputs_counter = match[1];
         let outputs = {
@@ -66,7 +66,7 @@ function Make(Target) {
           eventCollector: eventCollector,
           counter: outputs_counter
         };
-        return Component$Reventless.setOutputs(extra, outputs);
+        return Component$ReventlessCore.setOutputs(extra, outputs);
       }, opts);
     };
     return {

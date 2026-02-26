@@ -4,11 +4,11 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS.res.mjs";
 import * as EventTopicPublisher_SNS$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_SNS.res.mjs";
 import * as PluginRuntimeOperations$ReventlessAws from "../util/PluginRuntimeOperations.res.mjs";
-import * as PluginExtensionPoint_Builder$Reventless from "@reventlessdev/reventless-core/src/core/ExtensionPoints/Plugin/PluginExtensionPoint_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
-import * as ExtensionPointRuntime_Builder_PerExtensionPoint$Reventless from "@reventlessdev/reventless-core/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res.mjs";
+import * as PluginExtensionPoint_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/core/ExtensionPoints/Plugin/PluginExtensionPoint_Builder.res.mjs";
+import * as ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res.mjs";
 
-let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint$Reventless.Make({
+let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim
@@ -18,7 +18,7 @@ let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoi
 
 let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
 
-let Make = PluginExtensionPoint_Builder$Reventless.Make({
+let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
   runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
   environment: environment
 })({

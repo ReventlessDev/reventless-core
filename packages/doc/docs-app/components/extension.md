@@ -320,9 +320,9 @@ For Extensions that don't map to a specific Aggregate (e.g., only trigger side e
 
 ```rescript title="Notification_ExtensionMapping.res" showLineNumbers
 module ExtensionPoint = CustomerExtensionPointSpec
-module Aggregate = ReventlessSpec.ExtensionMapping.NoAggregate
+module Aggregate = Reventless.ExtensionMapping.NoAggregate
 
-let aggregateName = ReventlessSpec.ExtensionMapping.NoAggregate.name
+let aggregateName = Reventless.ExtensionMapping.NoAggregate.name
 
 let mapIncomingEvent = (. id, event, meta, pluginDef, queryEngine) =>
   switch event {

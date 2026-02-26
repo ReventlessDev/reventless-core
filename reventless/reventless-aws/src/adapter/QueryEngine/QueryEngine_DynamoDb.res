@@ -1,4 +1,4 @@
-open ReventlessSpec.QueryEngine
+open Reventless.QueryEngine
 
 let toJson = x =>
   switch x {
@@ -98,14 +98,14 @@ let queryByTableName = async (
       limit,
     }
   }
-  Reventless.Logger.debug(~loc=__LOC__, "queryByTableName params:", params)
+  ReventlessCore.Logger.debug(~loc=__LOC__, "queryByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params) {
   | result =>
     result.items
     ->Option.getOr([])
     ->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
   | exception err =>
-    Reventless.Logger.error(~loc=__LOC__, "Error:", err)
+    ReventlessCore.Logger.error(~loc=__LOC__, "Error:", err)
     []
   }
 }
@@ -129,29 +129,29 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     expressionAttributeValues: ?attributeValues,
     limit,
   }
-  Reventless.Logger.debug(~loc=__LOC__, "scanByTableName params:", params)
+  ReventlessCore.Logger.debug(~loc=__LOC__, "scanByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params) {
   | result =>
     result.items
     ->Option.getOr([])
     ->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
   | exception JsExn(e) =>
-    Reventless.Logger.error(~loc=__LOC__, "Error:", e)
+    ReventlessCore.Logger.error(~loc=__LOC__, "Error:", e)
     []
   }
 }
 
-let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
+let make: ReventlessCore.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
   let allRuntimeQueryDbsOutputs = Dict.mapValues(allQueryDbs, (
-    queryDb: Reventless.QueryDb.outputs,
+    queryDb: ReventlessCore.QueryDb.outputs,
   ) =>
     queryDb.resources
     ->Util.DynamoDb.findResource
-    ->Reventless.Adapter.resourceToResolvedOutput
+    ->ReventlessCore.Adapter.resourceToResolvedOutput
   )->Pulumi.Output.allDict
 
   let tableName = (allRuntimeQueryDbs, readModelName) =>
-    (allRuntimeQueryDbs->Reventless.Util_QueryDbRuntime.getRuntimeResource(readModelName)).name
+    (allRuntimeQueryDbs->ReventlessCore.Util_QueryDbRuntime.getRuntimeResource(readModelName)).name
 
   allRuntimeQueryDbsOutputs->Pulumi.Output.apply(allRuntimeQueryDbs => {
     scan: (~readModelName, ~filterConfigs, ~limit) =>

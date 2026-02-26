@@ -6,7 +6,7 @@ type referencesState = {
 
 let groupCountItemsByCounterId = countItems => {
   let dict = Dict.make()
-  countItems->Array.forEach(({ReventlessSpec.Counter.counterId: counterId, reference}) => {
+  countItems->Array.forEach(({Reventless.Counter.counterId: counterId, reference}) => {
     let currentReferences = dict->Dict.get(counterId)->Option.getOr([])
     dict->Dict.set(counterId, currentReferences->Array.concat([reference]))
   })
@@ -32,7 +32,7 @@ module type Ops = {
 module Make = (Ops: Ops) => {
   let count = async countItems => {
     let result = await Ops.saveBatch(
-      countItems->Array.map(({ReventlessSpec.Counter.counterId: counterId, reference, inc}) => {
+      countItems->Array.map(({Reventless.Counter.counterId: counterId, reference, inc}) => {
         let id = Counter.makeId((counterId, reference))
         let state: referencesState = {id, inc}
         (id, state, Ops.ttl)
@@ -43,7 +43,7 @@ module Make = (Ops: Ops) => {
       let batchSize = countItems->Array.length
       Console.log(__MODULE__ ++ `: saved batch of ${batchSize->Int.toString} reference(s):`)
       countItems->logCountItems
-    | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
+    | Error(Reventless.QueryDb.NotSavedToStorage(err)) =>
       let batchSize = countItems->Array.length
       Console.log(`Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`)
       countItems->logCountItems

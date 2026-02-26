@@ -5,13 +5,13 @@ import * as Uuid from "uuid";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 
 function toEventSchema$p(idSchema, eventSchema) {
   return S.object(s => ({
     id: s.f("id", idSchema),
-    meta: s.f("meta", Message$ReventlessSpec.metaSchema),
+    meta: s.f("meta", Message$Reventless.metaSchema),
     event: s.f("event", eventSchema)
   }));
 }
@@ -19,7 +19,7 @@ function toEventSchema$p(idSchema, eventSchema) {
 function toCommandSchema$p(idSchema, commandSchema) {
   return S.object(s => ({
     id: s.f("id", idSchema),
-    meta: s.f("meta", Message$ReventlessSpec.metaSchema),
+    meta: s.f("meta", Message$Reventless.metaSchema),
     command: s.f("command", commandSchema)
   }));
 }
@@ -80,7 +80,7 @@ function toMessageBody(param) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(commandMeta, Message$ReventlessSpec.metaSchema)
+      S.reverseConvertToJsonOrThrow(commandMeta, Message$Reventless.metaSchema)
     ],
     [
       "command",
@@ -95,7 +95,7 @@ function serviceNameOfMsg(msgJson) {
     return Stdlib_Option.flatMap(msgObj["meta"], meta => {
       let msgMeta;
       try {
-        msgMeta = S.parseJsonOrThrow(meta, Message$ReventlessSpec.metaSchema);
+        msgMeta = S.parseJsonOrThrow(meta, Message$Reventless.metaSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         console.log("Message.serviceNameOfMsg: Couldn't parse meta:", err);
@@ -150,7 +150,7 @@ function idMetaEventOfEvent$pJson(json) {
   ];
 }
 
-let InvalidCommand = /* @__PURE__ */Primitive_exceptions.create("Message-Reventless.InvalidCommand");
+let InvalidCommand = /* @__PURE__ */Primitive_exceptions.create("Message-ReventlessCore.InvalidCommand");
 
 function hrtimeToString(hrtime, now) {
   let milString = hrtime[1].toString();
@@ -173,7 +173,7 @@ function generateMeta(service, ipOpt, userOpt) {
 }
 
 function decomposeMeta(meta) {
-  return Object.entries(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(S.reverseConvertToJsonOrThrow(meta, Message$ReventlessSpec.metaSchema)), undefined));
+  return Object.entries(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)), undefined));
 }
 
 function composeEventJson$p(id, meta, eventJson) {
@@ -184,7 +184,7 @@ function composeEventJson$p(id, meta, eventJson) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(meta, Message$ReventlessSpec.metaSchema)
+      S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)
     ],
     [
       "event",
@@ -234,7 +234,7 @@ function commandJsonOfCommand$p(idToString, commandSchema, cmd) {
   return {
     id: idToString(cmd.id),
     meta: cmd.meta,
-    commandJson: Message$ReventlessSpec.encode(cmd.command, commandSchema)
+    commandJson: Message$Reventless.encode(cmd.command, commandSchema)
   };
 }
 
@@ -268,23 +268,23 @@ function combineMessage(typ, data) {
     ]].concat(Object.entries(data)));
 }
 
-let serviceSchema = Message$ReventlessSpec.serviceSchema;
+let serviceSchema = Message$Reventless.serviceSchema;
 
-let metaSchema = Message$ReventlessSpec.metaSchema;
+let metaSchema = Message$Reventless.metaSchema;
 
-let contextSchema = Message$ReventlessSpec.contextSchema;
+let contextSchema = Message$Reventless.contextSchema;
 
-let invalidEvent = Message$ReventlessSpec.invalidEvent;
+let invalidEvent = Message$Reventless.invalidEvent;
 
-let statusChangeSchema = Message$ReventlessSpec.statusChangeSchema;
+let statusChangeSchema = Message$Reventless.statusChangeSchema;
 
-let commandJsonSchema = Message$ReventlessSpec.commandJsonSchema;
+let commandJsonSchema = Message$Reventless.commandJsonSchema;
 
-let decode = Message$ReventlessSpec.decode;
+let decode = Message$Reventless.decode;
 
-let encode = Message$ReventlessSpec.encode;
+let encode = Message$Reventless.encode;
 
-let InvalidEvent = Message$ReventlessSpec.InvalidEvent;
+let InvalidEvent = Message$Reventless.InvalidEvent;
 
 export {
   serviceSchema,

@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.ReadModel.Spec,
+  Spec: Reventless.ReadModel.Spec,
   Storage: QueryDb_Adapter.Storage,
   Resolvers: QueryDb_Adapter.Resolvers with type api = Storage.api and type role = Storage.role,
 ): (QueryDb.T with module Spec = Spec and type api = Storage.api and type role = Storage.role) => {

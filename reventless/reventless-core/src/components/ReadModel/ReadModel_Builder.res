@@ -1,6 +1,6 @@
 module Make = (
-  Spec: ReventlessSpec.ReadModel.Spec,
-  Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
+  Spec: Reventless.ReadModel.Spec,
+  Mappings: Reventless.Projection.Mappings with module Target := Spec,
   RuntimeEnvironment: Runtime.Environment,
   QueryDbStorage: QueryDb_Adapter.Storage,
   QueryDbResolvers: QueryDb_Adapter.Resolvers

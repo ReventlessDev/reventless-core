@@ -130,7 +130,7 @@ let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) 
 
   {
     resource: {
-      ReventlessSpec.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
+      Reventless.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
       name: ""->Pulumi.Output.make,
       id: ""->Pulumi.Output.make,
       urn: ""->Pulumi.Output.make,

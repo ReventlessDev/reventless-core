@@ -3,7 +3,7 @@
 //
 // Call CounterHandler_InMemory.reset() in beforeEach to isolate tests.
 
-open Reventless
+open ReventlessCore
 
 let counterStore: ref<dict<int>> = ref(Dict.make())
 let targetRefStore: ref<dict<bool>> = ref(Dict.make())
@@ -17,7 +17,7 @@ let make: Counter_Adapter.handlerMaker = (
   ~counterHandler as _,
   ~opts as _,
 ) => {
-  addToCounterTarget: async ({ReventlessSpec.Counter.counterId, target, targetRef}) => {
+  addToCounterTarget: async ({Reventless.Counter.counterId, target, targetRef}) => {
     let refKey = counterId ++ ":" ++ targetRef
     switch targetRefStore.contents->Dict.get(refKey) {
     | Some(_) => () // Already counted this (counterId, targetRef) pair — skip

@@ -1,4 +1,4 @@
-let make: Reventless.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts) => {
+let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts) => {
   // Build attributes array from index names
   let tagAttributes = indexes->Array.map(indexName => {
     {
@@ -37,7 +37,7 @@ let make: Reventless.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts)
     ~attributes,
     ~rangeKey="position",
     ~globalSecondaryIndexes,
-    ~tags=AWS.Tags.make(~name, Reventless.DcbEventLog.componentType),
+    ~tags=AWS.Tags.make(~name, ReventlessCore.DcbEventLog.componentType),
     ~opts,
   )
 
@@ -46,7 +46,7 @@ let make: Reventless.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts)
     operations: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
-      Reventless.DcbEventLog_Adapter.read: DcbEventLogStorage_DynamoDb_Runtime.read(runtimeTable),
+      ReventlessCore.DcbEventLog_Adapter.read: DcbEventLogStorage_DynamoDb_Runtime.read(runtimeTable),
       append: DcbEventLogStorage_DynamoDb_Runtime.append(runtimeTable),
     }),
   }

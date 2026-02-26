@@ -1,4 +1,4 @@
-// Platform — concrete AWS implementation of Reventless.Platform.T.
+// Platform — concrete AWS implementation of ReventlessCore.Platform.T.
 //
 // Creates a platform instance with pre-wired AWS builders (DynamoDB, Lambda, SQS, SNS).
 // Config is applied once at platform creation; component Make functors then take only
@@ -11,57 +11,57 @@
 module Make = (ApiValues: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
-}): ReventlessSpec.Platform.T => {
+}): Reventless.Platform.T => {
   module Aggregate = {
     module Make = (
-      Spec: ReventlessSpec.Aggregate.Spec,
-      Behavior: ReventlessSpec.Behavior.T with module Spec := Spec,
-      EventMappings: ReventlessSpec.EventMapper.Mappings with module Target := Spec,
-    ): ReventlessSpec.Aggregate.T => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
+    ): Reventless.Aggregate.T => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
     module Make = (
-      Spec: ReventlessSpec.ReadModel.Spec,
-      Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-    ): (ReventlessSpec.ReadModel.T with module Spec = Spec) =>
+      Spec: Reventless.ReadModel.Spec,
+      Mappings: Reventless.Projection.Mappings with module Target := Spec,
+    ): (Reventless.ReadModel.T with module Spec = Spec) =>
       ReadModel_Builder_Single.Make(Spec, Mappings)
   }
 
   module ExtensionPoint = {
     module Make = (
-      Spec: ReventlessSpec.ExtensionPointMapping.Spec,
-      Mappings: ReventlessSpec.ExtensionPoint.Mappings with module Spec := Spec,
-    ): ReventlessSpec.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings)
+      Spec: Reventless.ExtensionPointMapping.Spec,
+      Mappings: Reventless.ExtensionPoint.Mappings with module Spec := Spec,
+    ): Reventless.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings)
   }
 
   module Task = {
     module Make = (
-      Spec: ReventlessSpec.Task.Spec,
-    ): (ReventlessSpec.Task.T with module Spec = Spec) => Task_Builder_PerBucket.Make(Spec)
+      Spec: Reventless.Task.Spec,
+    ): (Reventless.Task.T with module Spec = Spec) => Task_Builder_PerBucket.Make(Spec)
   }
 
   module Counter = Counter_Builder.Make(ApiValues)
 
   module StateChangeSlice = {
     module Make = (
-      Spec: ReventlessSpec.StateChangeSlice.Spec,
-    ): (ReventlessSpec.StateChangeSlice.T
+      Spec: Reventless.StateChangeSlice.Spec,
+    ): (Reventless.StateChangeSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec) => StateChangeSlice_Builder.Make(Spec)
   }
 
   module StateViewSlice = {
     module Make = (
-      Spec: ReventlessSpec.StateViewSlice.Spec,
-    ): (ReventlessSpec.StateViewSlice.T
+      Spec: Reventless.StateViewSlice.Spec,
+    ): (Reventless.StateViewSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec) => StateViewSlice_Builder.Make(Spec)
   }
 
   module DcbEventLog = {
     module Make = (
-      Spec: ReventlessSpec.DcbEventLog.Spec,
-    ): (ReventlessSpec.DcbEventLog.T with module Spec = Spec) => DcbEventLog_Builder.Make(Spec)
+      Spec: Reventless.DcbEventLog.Spec,
+    ): (Reventless.DcbEventLog.T with module Spec = Spec) => DcbEventLog_Builder.Make(Spec)
   }
 }

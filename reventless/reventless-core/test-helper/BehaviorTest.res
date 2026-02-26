@@ -62,7 +62,7 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
         TestFixtures.context,
         errorHandler,
       ) catch {
-      | Reventless.Message.InvalidEvent(_) => []
+      | ReventlessCore.Message.InvalidEvent(_) => []
       }
     }
   }

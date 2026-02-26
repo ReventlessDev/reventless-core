@@ -1,10 +1,10 @@
 open PulumiAws.AppSync
-open ReventlessSpec.ReadModel
+open Reventless.ReadModel
 
 type api = Types.AppSync.api
 type role = Types.AppSync.role
 
-let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
+let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   ~name: string,
   ~api: api,
   ~apiRole: role,
@@ -59,7 +59,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
     ~opts,
   )
 
-  let resourcesMaker: Reventless.QueryDb.resolversResourcesMaker = allQueryDbs => {
+  let resourcesMaker: ReventlessCore.QueryDb.resolversResourcesMaker = allQueryDbs => {
     let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
       let name = name ++ ("By" ++ index->String.capitalize)
       let idField = indexConfig.idField->Option.getOr(index)
@@ -85,7 +85,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
           ~api,
           ~tableName=(
             allQueryDbs
-            ->Reventless.Util.QueryDb.getLocalStorageResources(tableName)
+            ->ReventlessCore.Util.QueryDb.getLocalStorageResources(tableName)
             ->Util.DynamoDb.findResource
           ).name,
           ~serviceRole=apiRole,
@@ -122,11 +122,11 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
 
     let storageResource = (~pluginName: option<string>, ~tableName: string) =>
       allQueryDbs
-      ->Reventless.Plugin_Helpers.getStorageResources(pluginName, tableName)
+      ->ReventlessCore.Plugin_Helpers.getStorageResources(pluginName, tableName)
       ->Util.DynamoDb.findResourceInOutput
-      ->Reventless.Adapter.outputToResource
+      ->ReventlessCore.Adapter.outputToResource
 
-    let generateTemplate = (~storageResource: ReventlessSpec.Adapter.resource, ~template) =>
+    let generateTemplate = (~storageResource: Reventless.Adapter.resource, ~template) =>
       storageResource.name
       ->Pulumi.Output.apply(realTableName => template(realTableName))
       ->Pulumi.Output.asInput

@@ -13,7 +13,7 @@ module Make = (
     let apiRole: QueryDbStorage.role
   },
 ) => {
-  module Make = (Spec: ReventlessSpec.StateViewSlice.Spec): (
+  module Make = (Spec: Reventless.StateViewSlice.Spec): (
     StateViewSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
   ) => {
     type dcbEvent = Spec.DcbEventLogSpec.event
@@ -22,29 +22,29 @@ module Make = (
     type component = StateViewSlice.component
 
     module SvQueryDbSpec = {
-      module Id = ReventlessSpec.Id.String
+      module Id = Reventless.Id.String
       let name = Spec.name
       type state = Spec.state
       let stateSchema = Spec.stateSchema
-      let config = ReventlessSpec.ReadModel.config()
-      let subIdConfig: option<ReventlessSpec.ReadModel.subIdConfig<state>> = None
+      let config = Reventless.ReadModel.config()
+      let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(SvQueryDbSpec, QueryDbStorage, QueryDbResolvers)
     module SpecificEventCollector = EventCollector_Builder.Make(RuntimeEnvironment, EventCollectorChannel)
 
     let toProjectionOps = (ops: SpecificQueryDb.operations): QueryDb.operations<string, Spec.state> => {
-      load: id => ops.load(id->ReventlessSpec.Id.String.makeFromString),
-      save: (id, s, sm, ttl) => ops.save(id->ReventlessSpec.Id.String.makeFromString, s, sm, ttl),
+      load: id => ops.load(id->Reventless.Id.String.makeFromString),
+      save: (id, s, sm, ttl) => ops.save(id->Reventless.Id.String.makeFromString, s, sm, ttl),
       saveBatch: batch =>
         ops.saveBatch(
-          batch->Array.map(((id, s, ttl)) => (id->ReventlessSpec.Id.String.makeFromString, s, ttl)),
+          batch->Array.map(((id, s, ttl)) => (id->Reventless.Id.String.makeFromString, s, ttl)),
         ),
-      count: (id, f, n) => ops.count(id->ReventlessSpec.Id.String.makeFromString, f, n),
-      delete: (id, sub) => ops.delete(id->ReventlessSpec.Id.String.makeFromString, sub),
+      count: (id, f, n) => ops.count(id->Reventless.Id.String.makeFromString, f, n),
+      delete: (id, sub) => ops.delete(id->Reventless.Id.String.makeFromString, sub),
       deleteBatch: ids =>
         ops.deleteBatch(
-          ids->Array.map(((id, sort)) => (id->ReventlessSpec.Id.String.makeFromString, sort)),
+          ids->Array.map(((id, sort)) => (id->Reventless.Id.String.makeFromString, sort)),
         ),
     }
 

@@ -38,8 +38,8 @@ module Make = (Spec: Spec, Config: Config) => {
     commandsToSend->Array.map(((id, command)) => {
       let commandJson = command->Message.encode(Spec.commandSchema)
       {
-        ReventlessSpec.Message.id,
-        meta: Reventless.Message.generateMeta(~service=Spec.name, ~user=Config.user),
+        Reventless.Message.id,
+        meta: ReventlessCore.Message.generateMeta(~service=Spec.name, ~user=Config.user),
         commandJson,
       }
     })

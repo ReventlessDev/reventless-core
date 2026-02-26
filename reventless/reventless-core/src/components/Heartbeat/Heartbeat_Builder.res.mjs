@@ -2,17 +2,17 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as Heartbeat$Reventless from "./Heartbeat.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as Heartbeat_Callback$Reventless from "./Heartbeat_Callback.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as Heartbeat$ReventlessCore from "./Heartbeat.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as Heartbeat_Callback$ReventlessCore from "./Heartbeat_Callback.res.mjs";
 
 function Make(Runner) {
   let construct = (_self, _name) => {};
   let connect = (runtime, remoteChannel, timeoutOpt, heartbeat) => {
     let timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
-    let heartbeatResource = Component$Reventless.toPulumiResource(heartbeat);
-    let name = ComponentType$Reventless.name(Stdlib_Option.getOr(heartbeatResource.__name, "Unnamed"), Heartbeat$Reventless.componentType);
+    let heartbeatResource = Component$ReventlessCore.toPulumiResource(heartbeat);
+    let name = ComponentType$ReventlessCore.name(Stdlib_Option.getOr(heartbeatResource.__name, "Unnamed"), Heartbeat$ReventlessCore.componentType);
     let opts_parent = heartbeatResource;
     let opts = {
       parent: opts_parent
@@ -22,18 +22,18 @@ function Make(Runner) {
       name: name,
       resources: runnerResources
     };
-    Component$Reventless.setOutputs(heartbeat, outputs);
+    Component$ReventlessCore.setOutputs(heartbeat, outputs);
   };
   let makeHandler = (id, timeoutOpt, publishToCorePluginExtensionPoint) => {
     let timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
-    let Callback = Heartbeat_Callback$Reventless.Make({
+    let Callback = Heartbeat_Callback$ReventlessCore.Make({
       publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
       id: id,
       timeout: timeout
     });
     return Pulumi.output(Callback.heartbeat);
   };
-  let make = (name, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Heartbeat$Reventless.componentType), name, construct, opts);
+  let make = (name, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Heartbeat$ReventlessCore.componentType), name, construct, opts);
   return {
     connect: connect,
     makeHandler: makeHandler,

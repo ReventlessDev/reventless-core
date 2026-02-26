@@ -1,34 +1,34 @@
 type rawStoredEvent = {
   eventType: string,
   data: JSON.t,
-  tags: array<ReventlessSpec.DcbTag.tag>,
+  tags: array<Reventless.DcbTag.tag>,
 }
 
 type rawSequencedEvent = {
-  position: ReventlessSpec.DcbTag.sequencePosition,
+  position: Reventless.DcbTag.sequencePosition,
   eventType: string,
   data: JSON.t,
-  tags: array<ReventlessSpec.DcbTag.tag>,
+  tags: array<Reventless.DcbTag.tag>,
 }
 
 type rawReadResult = {
   events: array<rawSequencedEvent>,
-  headPosition?: ReventlessSpec.DcbTag.sequencePosition,
+  headPosition?: Reventless.DcbTag.sequencePosition,
 }
 
 type operations = {
   read: (
-    ~query: ReventlessSpec.DcbTag.query,
-    ~after: ReventlessSpec.DcbTag.sequencePosition=?,
+    ~query: Reventless.DcbTag.query,
+    ~after: Reventless.DcbTag.sequencePosition=?,
   ) => promise<rawReadResult>,
   append: (
     array<rawStoredEvent>,
-    ~condition: ReventlessSpec.DcbTag.appendCondition=?,
-  ) => promise<result<ReventlessSpec.DcbTag.sequencePosition, string>>,
+    ~condition: Reventless.DcbTag.appendCondition=?,
+  ) => promise<result<Reventless.DcbTag.sequencePosition, string>>,
 }
 
 type storage = {
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   operations: Pulumi.Output.t<operations>,
 }
 

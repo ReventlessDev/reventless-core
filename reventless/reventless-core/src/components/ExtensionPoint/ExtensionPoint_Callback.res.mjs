@@ -2,12 +2,12 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Schedule$Reventless from "../../util/Schedule.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Schedule$ReventlessCore from "../../util/Schedule.res.mjs";
 
 function Make(Spec) {
   return MappingSpec => (Mappings => {
-    let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, resourceNaming, queue) => mappings.map(Mapping => Mapping.mapIncomingCommands(topicItems, Schedule$Reventless.create(scheduler, queue, resourceNaming), Schedule$Reventless.$$delete(scheduler, queue, resourceNaming), queryEngine)).flat();
+    let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, resourceNaming, queue) => mappings.map(Mapping => Mapping.mapIncomingCommands(topicItems, Schedule$ReventlessCore.create(scheduler, queue, resourceNaming), Schedule$ReventlessCore.$$delete(scheduler, queue, resourceNaming), queryEngine)).flat();
     let applyCommandAction = async action => {
       if (action.TAG === "AbstractPublishCommand") {
         let cmdJson = action._2;

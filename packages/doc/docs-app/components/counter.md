@@ -104,7 +104,7 @@ await addToCounterTarget({
 The Counter is typically used within EventMapper configurations:
 
 ```rescript title="Invoice_EventMappings.res"
-open ReventlessSpec
+open Reventless
 
 module Target = Invoice
 
@@ -246,7 +246,7 @@ The Counter emits events as `Counter.Source`:
 
 ```rescript
 module Counter.Source = {
-  module Id = ReventlessSpec.Id.String
+  module Id = Reventless.Id.String
   let name = "Counter"
   
   type event = 

@@ -1,7 +1,7 @@
-open ReventlessSpec.ExtensionPointMapping
+open Reventless.ExtensionPointMapping
 
 // abstractCommandAction, abstractEventAction, and module type T are defined in
-// ReventlessSpec.ExtensionPointMapping and brought into scope via `open` above.
+// Reventless.ExtensionPointMapping and brought into scope via `open` above.
 
 module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec): (
   T with module ExtensionPoint := Spec
@@ -18,8 +18,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     queryEngine,
   ) =>
     topicItems
-    ->Array.map(({ReventlessSpec.CommandTopic.reference: reference, command: {Message.id: id, command, meta}}) =>
-      mapIncomingEventImpl(id->ReventlessSpec.Id.String.toString, command, meta)->Array.map(x =>
+    ->Array.map(({Reventless.CommandTopic.reference: reference, command: {Message.id: id, command, meta}}) =>
+      mapIncomingEventImpl(id->Reventless.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
         | PublishCommand(aggregateId, aggregateCmd) =>
           let commandStr = aggregateCmd->Message.encode(Aggregate.commandSchema)->JSON.stringify

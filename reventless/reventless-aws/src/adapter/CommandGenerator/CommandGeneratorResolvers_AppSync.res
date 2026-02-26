@@ -1,18 +1,18 @@
 type api = Types.AppSync.api
 type runtimeParts = Util.Lambda.runtimeParts
 
-let handleResolversEvent = (generateCommand: Reventless.CommandGenerator.commandGenerator) =>
+let handleResolversEvent = (generateCommand: ReventlessCore.CommandGenerator.commandGenerator) =>
   Pulumi.Output.make((event, _context) => event->generateCommand)
 
-let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.runtimeParts> = (
+let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.runtimeParts> = (
   ~name: string,
   ~api: api,
   ~fields,
   ~runtime,
-  ~resources: array<ReventlessSpec.Adapter.resource>,
+  ~resources: array<Reventless.Adapter.resource>,
   ~opts,
 ) => {
-  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
@@ -28,17 +28,17 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
       lambda->Pulumi.Output.flatMap(lambda => lambda.name),
       lambdaRole.id,
-      resources->Reventless.Adapter.resourcesToResolvedOutput,
+      resources->ReventlessCore.Adapter.resourcesToResolvedOutput,
     )
     ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((lambdaArn, lambdaName, lambdaRoleId, resources)) => {
       open PulumiAws.PolicyDocument
-      open Reventless.Adapter
+      open ReventlessCore.Adapter
 
       // Console..log2(`CommandGeneratorResolvers_AppSync: Resources for ${name}:`, resources)
 
       let targetSqsResources =
-        resources->Reventless.Util.Adapter.filterSupportedResolvedResources([
+        resources->ReventlessCore.Util.Adapter.filterSupportedResolvedResources([
           AWS.SQS.service,
           AWS.SQS_FIFO.service,
         ])

@@ -1,4 +1,4 @@
-open ReventlessSpec.Adapter
+open Reventless.Adapter
 
 let componentType = ComponentType.EventTopic
 
@@ -9,7 +9,7 @@ type component = Component.t<t, outputs, unit>
 
 module type T = {
   module Spec: {
-    module Id: ReventlessSpec.Id.T
+    module Id: Reventless.Id.T
     let name: string
     @schema
     type state
@@ -37,7 +37,7 @@ module Adapter = {
 
 module Make = (
   Spec: {
-    module Id: ReventlessSpec.Id.T
+    module Id: Reventless.Id.T
     let name: string
     @schema
     type state

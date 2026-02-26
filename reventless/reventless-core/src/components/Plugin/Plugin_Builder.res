@@ -2,7 +2,7 @@ open Plugin_Helpers
 
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
-  let resourceNaming: ReventlessSpec.ResourceNaming.operations
+  let resourceNaming: Reventless.ResourceNaming.operations
   let environment: string
 }
 
@@ -31,11 +31,11 @@ module Make = (
   let construct = (
     ~version: string,
     ~heartbeatInterval: int,
-    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
-    ~extensions: array<module(ReventlessSpec.Extension.T)>,
-    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = role)>,
-    ~tasks: array<module(ReventlessSpec.Task.T)>,
+    ~extensionPoints: array<module(Reventless.ExtensionPoint.T)>,
+    ~extensions: array<module(Reventless.Extension.T)>,
+    ~aggregates: array<module(Reventless.Aggregate.T with type api = api)>,
+    ~readModels: array<module(Reventless.ReadModel.T with type api = api and type role = role)>,
+    ~tasks: array<module(Reventless.Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~dcbSpec: option<module(Plugin.DcbSpec)>,
     ~api: api,
@@ -70,7 +70,7 @@ module Make = (
 
         // Create shared CommandTopic for all StateChangeSlices
         module DcbCommandTopicSpec = {
-          module Id = ReventlessSpec.Id.String
+          module Id = Reventless.Id.String
           // Accept any command - filtering happens via schema-based registration
           @schema
           type command = JSON.t
@@ -211,7 +211,7 @@ module Make = (
         let collectAggregateNames = ex =>
           ex
           ->Set.fromArray
-          ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
+          ->Set.remove(Reventless.ExtensionMapping.NoAggregate.name)
 
         let extensionPointAggregateNames =
           extensionPointsOutputs
@@ -253,7 +253,7 @@ module Make = (
           (extensionPointsDefinitions, eventCollectorUrn)
           ->Pulumi.Output.all2
           ->Pulumi.Output.apply(((extensionPointsDefinitions, eventCollectorUrn)) => {
-            ReventlessSpec.Plugin.id,
+            Reventless.Plugin.id,
             name,
             version,
             extensionPoints: extensionPointsDefinitions,
@@ -372,8 +372,8 @@ module Make = (
     ~heartbeatInterval,
     ~extensionPoints=[],
     ~extensions=[],
-    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>=[],
-    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = role)>=[],
+    ~aggregates: array<module(Reventless.Aggregate.T with type api = api)>=[],
+    ~readModels: array<module(Reventless.ReadModel.T with type api = api and type role = role)>=[],
     ~tasks=[],
     ~api: api,
     ~apiRole: role,

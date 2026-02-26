@@ -56,11 +56,11 @@ let createLambdaPolicy = (
   lambdaRole: PulumiAws.IAM.Role.t,
   name: string,
   queue: PulumiAws.SQS.Queue.t,
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   opts: Pulumi.CustomResourceOptions.t,
 ) => {
   let _ =
-    (queue.arn, resources->Reventless.Adapter.resourcesToResolvedOutput)
+    (queue.arn, resources->ReventlessCore.Adapter.resourcesToResolvedOutput)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((queueArn, resources)) => {
       let allowSQSSendLambda =
@@ -191,4 +191,4 @@ let subscribeLambda2SqsTopic = (lambda, name, queue, opts) =>
     ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
     ->Util.SQS.Subscription.toResource
   })
-  ->Reventless.Adapter.outputToResource
+  ->ReventlessCore.Adapter.outputToResource

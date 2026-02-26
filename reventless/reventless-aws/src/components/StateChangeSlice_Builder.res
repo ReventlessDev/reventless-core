@@ -1,5 +1,5 @@
-module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (
-  Reventless.StateChangeSlice.T
+module Make = (Spec: Reventless.StateChangeSlice.Spec): (
+  ReventlessCore.StateChangeSlice.T
     with type dcbEvent = Spec.DcbEventLogSpec.event
     and module Spec = Spec
-) => Reventless.StateChangeSlice_Builder.Make(Spec)
+) => ReventlessCore.StateChangeSlice_Builder.Make(Spec)

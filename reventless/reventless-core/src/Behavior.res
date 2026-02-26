@@ -1,4 +1,4 @@
-include ReventlessSpec.Behavior
+include Reventless.Behavior
 
 module type Spec = {
   @schema

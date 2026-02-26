@@ -4,7 +4,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
-import * as Component$Reventless from "../../components/Component.res.mjs";
+import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => {
@@ -77,7 +77,7 @@ function Make(RuntimeEnvironment) {
     let forEventCollector = (handler, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
-      let eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
+      let eventCollectorResource = Component$ReventlessCore.toPulumiResource(eventCollector);
       let eventCollectorName = Stdlib_Option.getOr(eventCollectorResource.__name, "Unnamed");
       let channel = eventCollector.channel;
       let parentResource = eventCollectorResource.__parentResource;
@@ -85,7 +85,7 @@ function Make(RuntimeEnvironment) {
         return Stdlib_JsError.throwWithMessage(`forEventCollector: eventCollector ` + eventCollectorName + ` has no parent`);
       }
       let registered = registerRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, parentResource);
-      let urns = Pulumi.all(Component$Reventless.outputs(eventCollector).resources.map(param => param.urn));
+      let urns = Pulumi.all(Component$ReventlessCore.outputs(eventCollector).resources.map(param => param.urn));
       Pulumi.all([
         registered,
         urns,

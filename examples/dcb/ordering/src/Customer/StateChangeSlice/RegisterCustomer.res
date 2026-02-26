@@ -1,7 +1,7 @@
 // RegisterCustomer StateChangeSlice.
 // Handles the RegisterCustomer command; rejects duplicate registration.
 
-open ReventlessSpec
+open Reventless
 open OrderingEventLog
 
 let name = "RegisterCustomer"

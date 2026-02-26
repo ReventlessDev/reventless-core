@@ -1,5 +1,5 @@
 // Cross-stack resolved output type for the Task component.
-// This is the Output.t-free, JSON-serializable counterpart of ReventlessSpec.Task.outputs.
+// This is the Output.t-free, JSON-serializable counterpart of Reventless.Task.outputs.
 // Pulumi resolves all pending Output.t values before serializing stack exports, so
 // bucketNames is dict<string> here instead of dict<Pulumi.Output.t<string>>.
 

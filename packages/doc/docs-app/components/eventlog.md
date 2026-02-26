@@ -43,7 +43,7 @@ The EventLog component requires a spec that defines the EventLog's name, id type
 module type Spec = {
   let name: string
 
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
 
   @schema
   type event
@@ -55,7 +55,7 @@ For example, a Customer aggregate might define its spec as follows:
 ```rescript title="Customer.res"
 let name = "Customer"
 
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type event =

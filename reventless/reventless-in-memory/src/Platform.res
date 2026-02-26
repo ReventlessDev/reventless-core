@@ -1,4 +1,4 @@
-// In-memory Platform — implements ReventlessSpec.Platform.T using only in-memory data structures.
+// In-memory Platform — implements Reventless.Platform.T using only in-memory data structures.
 // Use in Jest tests together with TestRunner.setup() to activate Pulumi mock mode.
 //
 // Example:
@@ -9,7 +9,7 @@
 // The platform starts a GraphQL server on port 4000 after all components are built.
 // Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
-module Make = (): ReventlessSpec.Platform.T => {
+module Make = (): Reventless.Platform.T => {
   module Bus = InMemory_Bus.Make()
 
   module AggregateMaker = Aggregate_Builder.Make(Bus)
@@ -21,55 +21,55 @@ module Make = (): ReventlessSpec.Platform.T => {
 
   module Aggregate = {
     module Make = (
-      Spec: ReventlessSpec.Aggregate.Spec,
-      Behavior: ReventlessSpec.Behavior.T with module Spec := Spec,
-      EventMappings: ReventlessSpec.EventMapper.Mappings with module Target := Spec,
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
     ) => AggregateMaker.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
     module Make = (
-      Spec: ReventlessSpec.ReadModel.Spec,
-      Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-    ): (ReventlessSpec.ReadModel.T with module Spec = Spec) =>
+      Spec: Reventless.ReadModel.Spec,
+      Mappings: Reventless.Projection.Mappings with module Target := Spec,
+    ): (Reventless.ReadModel.T with module Spec = Spec) =>
       ReadModelMaker.Make(Spec, Mappings)
   }
 
   module ExtensionPoint = {
     module Make = (
-      Spec: ReventlessSpec.ExtensionPointMapping.Spec,
-      Mappings: ReventlessSpec.ExtensionPoint.Mappings with module Spec := Spec,
-    ): ReventlessSpec.ExtensionPoint.T => ExtensionPointMaker.Make(Spec, Mappings)
+      Spec: Reventless.ExtensionPointMapping.Spec,
+      Mappings: Reventless.ExtensionPoint.Mappings with module Spec := Spec,
+    ): Reventless.ExtensionPoint.T => ExtensionPointMaker.Make(Spec, Mappings)
   }
 
   module Task = {
     module Make = (
-      Spec: ReventlessSpec.Task.Spec,
-    ): (ReventlessSpec.Task.T with module Spec = Spec) => TaskMaker.Make(Spec)
+      Spec: Reventless.Task.Spec,
+    ): (Reventless.Task.T with module Spec = Spec) => TaskMaker.Make(Spec)
   }
 
   module Counter = Counter_Builder.Make(Bus)
 
   module StateChangeSlice = {
     module Make = (
-      Spec: ReventlessSpec.StateChangeSlice.Spec,
-    ): (ReventlessSpec.StateChangeSlice.T
+      Spec: Reventless.StateChangeSlice.Spec,
+    ): (Reventless.StateChangeSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec) => StateChangeSlice_Builder.Make(Spec)
   }
 
   module StateViewSlice = {
     module Make = (
-      Spec: ReventlessSpec.StateViewSlice.Spec,
-    ): (ReventlessSpec.StateViewSlice.T
+      Spec: Reventless.StateViewSlice.Spec,
+    ): (Reventless.StateViewSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec) => StateViewSliceMaker.Make(Spec)
   }
 
   module DcbEventLog = {
     module Make = (
-      Spec: ReventlessSpec.DcbEventLog.Spec,
-    ): (ReventlessSpec.DcbEventLog.T with module Spec = Spec) => DcbEventLogMaker.Make(Spec)
+      Spec: Reventless.DcbEventLog.Spec,
+    ): (Reventless.DcbEventLog.T with module Spec = Spec) => DcbEventLogMaker.Make(Spec)
   }
 
   // Start the shared GraphQL server after all components are built.

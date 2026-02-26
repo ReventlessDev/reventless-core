@@ -1,4 +1,4 @@
-// Output.t-free counterpart of ReventlessSpec.ReadModel.outputs.
+// Output.t-free counterpart of Reventless.ReadModel.outputs.
 // Sub-type of Plugin.resolvedOutputs; consumers access queryDb.resources to
 // connect their QueryEngine to a remote read model's DynamoDB table.
 

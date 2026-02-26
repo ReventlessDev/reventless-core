@@ -1,5 +1,5 @@
 open PluginSpec
-open ReventlessSpec.Plugin
+open Reventless.Plugin
 
 module Spec = PluginSpec
 
@@ -12,7 +12,7 @@ type state =
 
 let resolverConfig = {
   {
-    ReventlessSpec.Behavior.commandSchema,
+    Reventless.Behavior.commandSchema,
     fields: ["Plugin_Activate", "Plugin_Deactivate"],
   }
 }

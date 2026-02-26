@@ -5,11 +5,11 @@ import * as Aws from "@pulumi/aws";
 import * as EC2_Eip$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Eip.res.mjs";
 import * as EC2_Vpc$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Vpc.res.mjs";
 import * as EC2_Subnet$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Subnet.res.mjs";
-import * as ComponentType$Reventless from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EC2_NatGateway$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_NatGateway.res.mjs";
 import * as EC2_RouteTable$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_RouteTable.res.mjs";
 import * as EC2_VpcEndpoint$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_VpcEndpoint.res.mjs";
 import * as EC2_SecurityGroup$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_SecurityGroup.res.mjs";
+import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EC2_InternetGateway$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_InternetGateway.res.mjs";
 import * as EC2_RouteTableAssociation$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_RouteTableAssociation.res.mjs";
 
@@ -106,8 +106,8 @@ function construct(self, name, availabilityZone) {
 }
 
 function make(name, availabilityZone, opts) {
-  let prim0 = ComponentType$Reventless.toString("Vpc");
-  let prim1 = ComponentType$Reventless.name(name, "Vpc");
+  let prim0 = ComponentType$ReventlessCore.toString("Vpc");
+  let prim1 = ComponentType$ReventlessCore.name(name, "Vpc");
   return new Component(prim0, prim1, construct, opts, availabilityZone);
 }
 

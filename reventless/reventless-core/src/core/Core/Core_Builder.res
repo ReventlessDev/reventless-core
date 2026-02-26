@@ -14,11 +14,11 @@ module Make = (
 
   let construct = (
     ~version,
-    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
-    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = 'role)>,
+    ~extensionPoints: array<module(Reventless.ExtensionPoint.T)>,
+    ~aggregates: array<module(Reventless.Aggregate.T with type api = api)>,
+    ~readModels: array<module(Reventless.ReadModel.T with type api = api and type role = 'role)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
-    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+    ~resourceNaming: Reventless.ResourceNaming.operations,
     ~api: ClonerRunner.api,
     ~apiRole: 'role,
     self,
@@ -108,8 +108,8 @@ module Make = (
   let make = (
     ~version,
     ~extensionPoints,
-    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = 'role)>,
+    ~aggregates: array<module(Reventless.Aggregate.T with type api = api)>,
+    ~readModels: array<module(Reventless.ReadModel.T with type api = api and type role = 'role)>,
     ~scheduler,
     ~api: ClonerRunner.api,
     ~apiRole: 'role,

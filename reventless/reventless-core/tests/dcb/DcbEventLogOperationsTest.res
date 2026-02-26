@@ -88,8 +88,8 @@ describe("DcbEventLog_Operations:", () => {
       let _ = await Ops.append([
         DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"}),
       ])
-      let condition: ReventlessSpec.DcbTag.appendCondition = {
-        query: [{eventTypes: ["ItemCreated"], tags: [{ReventlessSpec.DcbTag.key: "itemId", value: "item-1"}]}],
+      let condition: Reventless.DcbTag.appendCondition = {
+        query: [{eventTypes: ["ItemCreated"], tags: [{Reventless.DcbTag.key: "itemId", value: "item-1"}]}],
         after: "1",
       }
       let result = await Ops.append(

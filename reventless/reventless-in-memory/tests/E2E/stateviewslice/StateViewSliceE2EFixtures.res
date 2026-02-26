@@ -1,7 +1,7 @@
 // E2E test fixtures for StateViewSlice builder.
 // Builds a StateViewSlice on top of a DcbEventLog and verifies projection into QueryDb.
 
-open ReventlessSpec.Projection
+open Reventless.Projection
 
 // ─────────────────────────────────────────────────────────────
 // DcbEventLog spec with Add/Rename/Remove events
@@ -10,9 +10,9 @@ open ReventlessSpec.Projection
 module ItemEventLog = {
   @schema
   type event =
-    | ItemAdded({id: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
-    | ItemRenamed({id: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
-    | ItemRemoved({id: @s.matches(ReventlessSpec.DcbTag.string) string})
+    | ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
+    | ItemRenamed({id: @s.matches(Reventless.DcbTag.string) string, name: string})
+    | ItemRemoved({id: @s.matches(Reventless.DcbTag.string) string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ let sv = ItemsViewMaker.make(~dcbEventLog=eventLog)
 // DcbEventLog eventTopic resource — needed for 2nd beforeAllAsync resolve to
 // trigger EventCollectorChannel.connect registration.
 let dcbEventTopicResource =
-  (eventLog->Reventless.Component.outputs).eventTopic.resources->Array.getUnsafe(0)
+  (eventLog->ReventlessCore.Component.outputs).eventTopic.resources->Array.getUnsafe(0)
 
 // ─────────────────────────────────────────────────────────────
 // Test helpers

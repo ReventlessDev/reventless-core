@@ -3,10 +3,10 @@
 
 module Make = (
   Bus: InMemory_Bus.T,
-  EventCollectorChannel: Reventless.EventCollector_Adapter.Channel
+  EventCollectorChannel: ReventlessCore.EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment_InMemory.parts,
 ): (
-  Reventless.EventCollectorRuntime_Builder.T
+  ReventlessCore.EventCollectorRuntime_Builder.T
     with type context = RuntimeEnvironment_InMemory.context
     and type runtimeParts = RuntimeEnvironment_InMemory.parts
     and module EventCollectorChannel = EventCollectorChannel
@@ -23,9 +23,9 @@ module Make = (
     ~timeout as _=?,
     eventCollector,
   ) => {
-    let resource = eventCollector->Reventless.Component.toPulumiResource
+    let resource = eventCollector->ReventlessCore.Component.toPulumiResource
     let name =
-      resource.name->Reventless.ComponentType.nameOpt(Reventless.EventCollector.componentType)
+      resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.EventCollector.componentType)
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment_InMemory.make(
       ~name,
@@ -34,7 +34,7 @@ module Make = (
     let _connectResources = EventCollectorChannel.connect(
       ~name,
       ~channelSpecs=[
-        {channel: eventCollector->Reventless.EventCollector_Adapter.channel, eventTopics, resources},
+        {channel: eventCollector->ReventlessCore.EventCollector_Adapter.channel, eventTopics, resources},
       ],
       ~runtime,
       ~opts,

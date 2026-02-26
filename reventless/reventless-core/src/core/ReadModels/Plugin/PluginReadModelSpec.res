@@ -1,4 +1,4 @@
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type status =
@@ -8,31 +8,31 @@ type status =
 
 @schema
 type state = {
-  name: ReventlessSpec.Plugin.name,
-  version: ReventlessSpec.Plugin.version,
+  name: Reventless.Plugin.name,
+  version: Reventless.Plugin.version,
   eventCollector: string,
-  extensionPoints: array<ReventlessSpec.Plugin.extensionPointDefinition>,
+  extensionPoints: array<Reventless.Plugin.extensionPointDefinition>,
   extensionPointNames: array<string>,
   extensionNames: array<string>,
-  extensions: array<ReventlessSpec.Plugin.extensionDefinition>,
+  extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
   statusChange: Message.statusChange,
 }
 
 type queryResult = {
   id: string,
-  name: ReventlessSpec.Plugin.name,
-  version: ReventlessSpec.Plugin.version,
+  name: Reventless.Plugin.name,
+  version: Reventless.Plugin.version,
   eventCollector: string,
-  extensionPoints: array<ReventlessSpec.Plugin.extensionPointDefinition>,
+  extensionPoints: array<Reventless.Plugin.extensionPointDefinition>,
   extensionPointNames: array<string>,
   extensionNames: array<string>,
-  extensions: array<ReventlessSpec.Plugin.extensionDefinition>,
+  extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
 }
 
 let name = "Plugin"
 
-open ReventlessSpec.ReadModel
+open Reventless.ReadModel
 let config = config()
 let subIdConfig = None

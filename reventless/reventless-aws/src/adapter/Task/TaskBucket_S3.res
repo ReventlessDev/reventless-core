@@ -13,19 +13,19 @@ let subscribeLambda2S3Bucket = (lambda, name, bucket, opts) => {
 }
 
 open PulumiAws.PolicyDocument
-open Reventless.Adapter
+open ReventlessCore.Adapter
 open Adapter_Helpers
 
 let createLambdaPolicy = (
   lambdaRole: PulumiAws.IAM.Role.t,
   name,
   bucket: PulumiAws.S3.Bucket.t,
-  bucketMode: Reventless.Task.bucketMode,
-  resources: array<ReventlessSpec.Adapter.resource>,
+  bucketMode: ReventlessCore.Task.bucketMode,
+  resources: array<Reventless.Adapter.resource>,
   opts,
 ) => {
   let _ =
-    (bucket.arn, resources->Reventless.Adapter.resourcesToResolvedOutput)
+    (bucket.arn, resources->ReventlessCore.Adapter.resourcesToResolvedOutput)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((bucketArn, resources)) => {
       let allowLambdaWriteS3 =
@@ -100,13 +100,13 @@ let createLambdaPolicy = (
 
 let connect = (
   ~name,
-  ~bucket: Reventless.Task_Adapter.bucket<bucketParts>,
-  ~bucketMode: Reventless.Task.bucketMode,
-  ~commandTopics: Pulumi.Output.t<Reventless.CommandTopic.allOutputs>,
-  ~runtime: Reventless.Runtime.environment<runtimeParts>,
+  ~bucket: ReventlessCore.Task_Adapter.bucket<bucketParts>,
+  ~bucketMode: ReventlessCore.Task.bucketMode,
+  ~commandTopics: Pulumi.Output.t<ReventlessCore.CommandTopic.allOutputs>,
+  ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
   ~opts,
 ) => {
-  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
@@ -119,8 +119,8 @@ let connect = (
   })
 }
 
-let make: Reventless.Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts) => {
-  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+let make: ReventlessCore.Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts) => {
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let bucket = {
     PulumiAws.S3.Bucket.make(

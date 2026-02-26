@@ -3,13 +3,13 @@
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
 function make(param, storageResources, param$1) {
   let storageResource = Util_DynamoDbStream$ReventlessAws.findResource(storageResources);
   return {
-    resources: [Adapter$Reventless.outputToResource(storageResource.service.apply(service => {
+    resources: [Adapter$ReventlessCore.outputToResource(storageResource.service.apply(service => {
         if (service === AWS$ReventlessAws.DynamoDbStream.service) {
           return Util_DynamoDbStream$ReventlessAws.toStreamResource(storageResource);
         } else {

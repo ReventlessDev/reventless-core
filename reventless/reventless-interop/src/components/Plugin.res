@@ -1,4 +1,4 @@
-// Output.t-free counterpart of ReventlessSpec.Plugin.outputs (primary cross-stack export).
+// Output.t-free counterpart of Reventless.Plugin.outputs (primary cross-stack export).
 // Only the fields that are actually accessed cross-stack are declared here;
 // optional markers allow old publishers (that may lack new fields) to still validate.
 

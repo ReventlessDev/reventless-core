@@ -206,7 +206,7 @@ let load = table => async id =>
   | exception Js.Exn.Error(e) =>
     let errorMsg = e->Reventless.Util.Error.message
     Js.log(`load: Error: Couldn't load state for ${id} from ${table.name}: ${errorMsg}`)
-    Error(ReventlessSpec.QueryDb.NotLoadedFromStorage(errorMsg))
+    Error(Reventless.QueryDb.NotLoadedFromStorage(errorMsg))
   }
 ```
 
@@ -378,7 +378,7 @@ let delete = table => async (id, sort) => {
     Js.log2(`delete: deleted state from ${table.name}: id=${id}, sort=`, sort)
     Ok()
   | Error(errorMsg) =>
-    Error(ReventlessSpec.QueryDb.NotDeletedFromStorage(errorMsg))
+    Error(Reventless.QueryDb.NotDeletedFromStorage(errorMsg))
   }
 }
 ```

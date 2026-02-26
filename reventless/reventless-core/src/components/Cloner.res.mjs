@@ -3,8 +3,8 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Component$Reventless from "./Component.res.mjs";
-import * as ComponentType$Reventless from "../ComponentType.res.mjs";
+import * as Component$ReventlessCore from "./Component.res.mjs";
+import * as ComponentType$ReventlessCore from "../ComponentType.res.mjs";
 
 let noRunner = {
   resources: Pulumi.output([])
@@ -15,8 +15,8 @@ let Adapter = {
 };
 
 function Make(Runner) {
-  let make = (api, opts) => Component$Reventless.make(ComponentType$Reventless.toString("Cloner"), ComponentType$Reventless.toString("Cloner"), (extra, extra$1) => {
-    let opts_parent = Component$Reventless.toPulumiResource(extra);
+  let make = (api, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString("Cloner"), ComponentType$ReventlessCore.toString("Cloner"), (extra, extra$1) => {
+    let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
     let opts = {
       parent: opts_parent
     };
@@ -64,7 +64,7 @@ function Make(Runner) {
         runner = noRunner;
       }
     }
-    return Component$Reventless.setOutputs(extra, {
+    return Component$ReventlessCore.setOutputs(extra, {
       resources: runner.resources
     });
   }, opts);

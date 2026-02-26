@@ -7,9 +7,9 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Message$Reventless from "../src/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as TestFixtures$Reventless from "./TestFixtures.res.mjs";
+import * as Message$ReventlessCore from "../src/Message.res.mjs";
+import * as TestFixtures$ReventlessCore from "./TestFixtures.res.mjs";
 
 function Make(Spec) {
   return Behavior => {
@@ -29,20 +29,20 @@ function Make(Spec) {
         return Behavior.create(command, context, errorHandler);
       }
       try {
-        return Behavior.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+        return Behavior.execute(currentState(history), command, TestFixtures$ReventlessCore.context, errorHandler);
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$Reventless.InvalidEvent) {
+        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
           return [];
         }
         throw exn;
       }
     };
     let givenEvents = events => events;
-    let whenCmd = (history, cmd) => exec(history, TestFixtures$Reventless.context, cmd);
+    let whenCmd = (history, cmd) => exec(history, TestFixtures$ReventlessCore.context, cmd);
     let whenCmdWithId = (history, id, cmd) => exec(history, {
       id: id,
-      meta: TestFixtures$Reventless.context.meta
+      meta: TestFixtures$ReventlessCore.context.meta
     }, cmd);
     let thenEvents = (events, expectedEvents) => Jest.Expect.toEqual(Jest.Expect.expect([
       errors.contents.length,
@@ -67,7 +67,7 @@ function Make(Spec) {
       expectedEvents.length,
       true
     ]);
-    let listErrors = () => "Errors occured: " + Stdlib_Array.reduce(errors.contents.map(err => Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.array(Message$Reventless.encode(err, Spec.errorSchema)), undefined)[0]), undefined)), "", (a, b) => a + (b + " "));
+    let listErrors = () => "Errors occured: " + Stdlib_Array.reduce(errors.contents.map(err => Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.array(Message$ReventlessCore.encode(err, Spec.errorSchema)), undefined)[0]), undefined)), "", (a, b) => a + (b + " "));
     let thenEvent = (events, expectedEvent) => {
       if (events.length !== 0) {
         return Jest.Expect.toEqual(Jest.Expect.expect([

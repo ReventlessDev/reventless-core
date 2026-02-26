@@ -1,14 +1,14 @@
 module EventCollectorChannel = EventCollectorChannel.SQS
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
-module EventCollectorRuntimeBuilder = Reventless.EventCollectorRuntime_Builder_PerEventCollector.Make(
+module EventCollectorRuntimeBuilder = ReventlessCore.EventCollectorRuntime_Builder_PerEventCollector.Make(
   RuntimeEnvironment,
   EventCollectorChannel,
 )
 
 module Make = (
-  Spec: ReventlessSpec.ReadModel.Spec,
-  Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-) => Reventless.ReadModel_Builder.Make(
+  Spec: Reventless.ReadModel.Spec,
+  Mappings: Reventless.Projection.Mappings with module Target := Spec,
+) => ReventlessCore.ReadModel_Builder.Make(
   Spec,
   Mappings,
   RuntimeEnvironment,

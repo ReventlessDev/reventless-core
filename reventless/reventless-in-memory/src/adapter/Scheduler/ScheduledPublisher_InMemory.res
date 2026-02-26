@@ -21,7 +21,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
   let activeTimers: ref<dict<timerHandle>> = ref(Dict.make())
 
-  let rateToMs = (rate: ReventlessSpec.Schedule.rate) =>
+  let rateToMs = (rate: Reventless.Schedule.rate) =>
     switch rate {
     | Minutes(n) => n * 60 * 1000
     | Hours(n) => n * 60 * 60 * 1000
@@ -34,11 +34,11 @@ module Make = (Bus: InMemory_Bus.T) => {
 
   let isSingleShot = rate =>
     switch rate {
-    | ReventlessSpec.Schedule.Single(_, _, _, _, _) => true
+    | Reventless.Schedule.Single(_, _, _, _, _) => true
     | _ => false
     }
 
-  let scheduleMeta: Reventless.Message.meta = {
+  let scheduleMeta: ReventlessCore.Message.meta = {
     service: "Scheduler",
     time: "",
     ip: "",
@@ -47,8 +47,8 @@ module Make = (Bus: InMemory_Bus.T) => {
     correlationId: "",
   }
 
-  let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name as _, ~opts as _) => {
-    let createSchedule: ReventlessSpec.Scheduler.createSchedule = async (
+  let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name as _, ~opts as _) => {
+    let createSchedule: Reventless.Scheduler.createSchedule = async (
       channelResources,
       schedule,
     ) => {
@@ -71,7 +71,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       activeTimers.contents->Dict.set(schedule.name, handle)
     }
 
-    let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = async (_, name) => {
+    let deleteSchedule: Reventless.Scheduler.deleteSchedule = async (_, name) => {
       switch activeTimers.contents->Dict.get(name) {
       | Some(handle) =>
         clearTimerJs(handle)
@@ -82,7 +82,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     {
       resource: {
-        ReventlessSpec.Adapter.service: "InMemory"->Pulumi.Output.make,
+        Reventless.Adapter.service: "InMemory"->Pulumi.Output.make,
         name: ""->Pulumi.Output.make,
         id: ""->Pulumi.Output.make,
         urn: ""->Pulumi.Output.make,
@@ -91,7 +91,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       operations: ({
         createSchedule,
         deleteSchedule,
-      }: ReventlessSpec.Scheduler.operations)->Pulumi.Output.make,
+      }: Reventless.Scheduler.operations)->Pulumi.Output.make,
     }
   }
 

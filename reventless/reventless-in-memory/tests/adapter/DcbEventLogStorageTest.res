@@ -11,7 +11,7 @@ let opts: Pulumi.CustomResourceOptions.t = {}
 let makeStorage = () =>
   DcbEventLogStorage_InMemory.make(~name="test-dcb", ~indexes=[], ~opts)
 
-let makeEvent = (~eventType, ~data, ~tags=[]): Reventless.DcbEventLog_Adapter.rawStoredEvent => {
+let makeEvent = (~eventType, ~data, ~tags=[]): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
   eventType,
   data,
   tags,
@@ -61,7 +61,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       ])
       // Optional record fields use direct value syntax (not Some(...))
       let result = await ops.read(
-        ~query=[{ReventlessSpec.DcbTag.eventTypes: ["Created"]}],
+        ~query=[{Reventless.DcbTag.eventTypes: ["Created"]}],
       )
       expect(result.events->Array.length)->toBe(2)
       let firstEvent = result.events->Array.getUnsafe(0)
@@ -75,14 +75,14 @@ describe("DcbEventLogStorage_InMemory", () => {
         makeEvent(
           ~eventType="Evt",
           ~data=JSON.Null,
-          ~tags=[{ReventlessSpec.DcbTag.key: "tenant", value: "acme"}],
+          ~tags=[{Reventless.DcbTag.key: "tenant", value: "acme"}],
         ),
         makeEvent(~eventType="Evt", ~data=JSON.Null, ~tags=[]),
       ])
       let result = await ops.read(
         ~query=[
           {
-            ReventlessSpec.DcbTag.tags: [{ReventlessSpec.DcbTag.key: "tenant", value: "acme"}],
+            Reventless.DcbTag.tags: [{Reventless.DcbTag.key: "tenant", value: "acme"}],
           },
         ],
       )
@@ -132,8 +132,8 @@ describe("DcbEventLogStorage_InMemory", () => {
       let storage = makeStorage()
       let ops = await storage.operations->TestRunner.resolve
       let _ = await ops.append([makeEvent(~eventType="ItemCreated", ~data=JSON.Null)])
-      let condition: ReventlessSpec.DcbTag.appendCondition = {
-        query: [{ReventlessSpec.DcbTag.eventTypes: ["ItemCreated"]}],
+      let condition: Reventless.DcbTag.appendCondition = {
+        query: [{Reventless.DcbTag.eventTypes: ["ItemCreated"]}],
       }
       let result = await ops.append(
         [makeEvent(~eventType="ItemUpdated", ~data=JSON.Null)],
@@ -151,8 +151,8 @@ describe("DcbEventLogStorage_InMemory", () => {
       let storage = makeStorage()
       let ops = await storage.operations->TestRunner.resolve
       let _ = await ops.append([makeEvent(~eventType="OtherEvent", ~data=JSON.Null)])
-      let condition: ReventlessSpec.DcbTag.appendCondition = {
-        query: [{ReventlessSpec.DcbTag.eventTypes: ["ItemCreated"]}],
+      let condition: Reventless.DcbTag.appendCondition = {
+        query: [{Reventless.DcbTag.eventTypes: ["ItemCreated"]}],
       }
       let result = await ops.append(
         [makeEvent(~eventType="ItemCreated", ~data=JSON.Null)],
@@ -167,8 +167,8 @@ describe("DcbEventLogStorage_InMemory", () => {
       // Position 1: ItemCreated
       let _ = await ops.append([makeEvent(~eventType="ItemCreated", ~data=JSON.Null)])
       // Condition checks for ItemCreated only AFTER position "1" — no such events
-      let condition: ReventlessSpec.DcbTag.appendCondition = {
-        query: [{ReventlessSpec.DcbTag.eventTypes: ["ItemCreated"]}],
+      let condition: Reventless.DcbTag.appendCondition = {
+        query: [{Reventless.DcbTag.eventTypes: ["ItemCreated"]}],
         after: "1",
       }
       let result = await ops.append(

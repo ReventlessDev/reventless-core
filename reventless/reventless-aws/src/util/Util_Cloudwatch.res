@@ -1,10 +1,10 @@
 module EventRule = {
-  let toResource: PulumiAws.Cloudwatch.EventRule.t => ReventlessSpec.Adapter.resource = ({
+  let toResource: PulumiAws.Cloudwatch.EventRule.t => Reventless.Adapter.resource = ({
     id,
     name,
     arn,
   }) => {
-    ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.CloudwatchEventRule.service),
+    Reventless.Adapter.service: name->Pulumi.Output.apply(_ => AWS.CloudwatchEventRule.service),
     name,
     id,
     urn: arn,

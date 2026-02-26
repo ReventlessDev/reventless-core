@@ -1,6 +1,6 @@
 let componentType = ComponentType.Plugin
 
-type outputs = ReventlessSpec.Plugin.outputs
+type outputs = Reventless.Plugin.outputs
 
 type t
 type component = Component.t<t, outputs, unit>
@@ -22,11 +22,11 @@ module type T = {
     ~name: string,
     ~version: string,
     ~heartbeatInterval: int,
-    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>=?,
-    ~extensions: array<module(ReventlessSpec.Extension.T)>=?,
-    ~aggregates: array<module(ReventlessSpec.Aggregate.T with type api = api)>=?,
-    ~readModels: array<module(ReventlessSpec.ReadModel.T with type api = api and type role = role)>=?,
-    ~tasks: array<module(ReventlessSpec.Task.T)>=?,
+    ~extensionPoints: array<module(Reventless.ExtensionPoint.T)>=?,
+    ~extensions: array<module(Reventless.Extension.T)>=?,
+    ~aggregates: array<module(Reventless.Aggregate.T with type api = api)>=?,
+    ~readModels: array<module(Reventless.ReadModel.T with type api = api and type role = role)>=?,
+    ~tasks: array<module(Reventless.Task.T)>=?,
     ~api: api,
     ~apiRole: role,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,

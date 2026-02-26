@@ -8,7 +8,7 @@ module type T = {
 
 module Make = (
   Spec: Spec,
-  AggregateSpec: ReventlessSpec.Aggregate.Spec,
+  AggregateSpec: Reventless.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := AggregateSpec,
 ): T => {
   let generateCommand = async (payload: CommandGenerator.payload) => {

@@ -6,11 +6,11 @@ let subscribe = (
   ~lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
   ~targetName,
   ~sourceName,
-  ~source: ReventlessSpec.Adapter.resource,
+  ~source: Reventless.Adapter.resource,
   ~opts,
 ) =>
   EventSourceMapping.make(
-    ~name=sourceName->Reventless.Util.baseName ++ ("2" ++ targetName),
+    ~name=sourceName->ReventlessCore.Util.baseName ++ ("2" ++ targetName),
     ~args={
       EventSourceMapping.functionName: lambda
       ->Pulumi.Output.flatMap(lambda => lambda.arn)

@@ -4,23 +4,23 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Error$Reventless from "../../util/Util_Error.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 
 function Make(Spec) {
   return Ops => {
     let encodeEvents$p = (events$p, id) => events$p.map(event => {
-      let json = Message$Reventless.encode(event.event, Spec.eventSchema);
-      let match = Message$Reventless.splitMessage(json);
+      let json = Message$ReventlessCore.encode(event.event, Spec.eventSchema);
+      let match = Message$ReventlessCore.splitMessage(json);
       return Object.fromEntries([
         [
           "id",
-          Message$Reventless.encode(id, Spec.Id.schema)
+          Message$ReventlessCore.encode(id, Spec.Id.schema)
         ],
         [
           "sequenceNr",
-          Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now())
+          Message$ReventlessCore.hrtimeToString(process.hrtime(), Message$ReventlessCore.now())
         ],
         [
           "type",
@@ -30,7 +30,7 @@ function Make(Spec) {
           "data",
           match[1]
         ]
-      ].concat(Message$Reventless.decomposeMeta(event.meta)));
+      ].concat(Message$ReventlessCore.decomposeMeta(event.meta)));
     });
     let publishToEventTopic = async (id, events$p) => {
       try {
@@ -58,7 +58,7 @@ function Make(Spec) {
           let e = Primitive_exceptions.internalToException(raw_e);
           if (e.RE_EXN_ID === "JsExn") {
             let err = e._1;
-            let errMsg = `EventLog: Error: Couldn't append for ` + Spec.name + `(` + Spec.Id.toString(id) + `):` + Util_Error$Reventless.message(undefined, err);
+            let errMsg = `EventLog: Error: Couldn't append for ` + Spec.name + `(` + Spec.Id.toString(id) + `):` + Util_Error$ReventlessCore.message(undefined, err);
             console.log(errMsg);
             return {
               TAG: "Error",
@@ -82,18 +82,18 @@ function Make(Spec) {
       let id$1 = Spec.Id.toString(id);
       return eventsJson.map(json => {
         try {
-          return Message$Reventless.decode(Stdlib_Option.getOrThrow(Stdlib_Option.map(Stdlib_JSON.Decode.object(json), dict => {
+          return Message$ReventlessCore.decode(Stdlib_Option.getOrThrow(Stdlib_Option.map(Stdlib_JSON.Decode.object(json), dict => {
             let match = dict["type"];
             let match$1 = dict["data"];
             if (typeof match === "string") {
               if (match$1 !== undefined) {
                 if (typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1)) {
-                  return Message$Reventless.combineMessage(match, match$1);
+                  return Message$ReventlessCore.combineMessage(match, match$1);
                 } else {
                   return Stdlib_JsError.throwWithMessage("event type or data incorrect");
                 }
               } else {
-                return Message$Reventless.combineMessage(match, {});
+                return Message$ReventlessCore.combineMessage(match, {});
               }
             } else {
               return Stdlib_JsError.throwWithMessage("event type or data incorrect");
@@ -103,7 +103,7 @@ function Make(Spec) {
           let e = Primitive_exceptions.internalToException(raw_e);
           if (e.RE_EXN_ID === "JsExn") {
             let eventStr = JSON.stringify(json);
-            let message = Util_Error$Reventless.message(undefined, e._1);
+            let message = Util_Error$ReventlessCore.message(undefined, e._1);
             return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id$1 + `: Couldn't decode ` + eventStr + `: ` + message);
           }
           throw e;

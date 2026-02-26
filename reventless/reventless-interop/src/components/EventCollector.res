@@ -1,4 +1,4 @@
-// Output.t-free counterpart of ReventlessSpec.EventCollector.outputs.
+// Output.t-free counterpart of Reventless.EventCollector.outputs.
 // Sub-type of EventMapper.resolvedOutputs; not a separate primary stack export.
 
 @schema

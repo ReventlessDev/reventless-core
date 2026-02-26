@@ -1,5 +1,5 @@
 // functor to create specific Mapper for projections
-module Spec = ReventlessSpec.Projection
+module Spec = Reventless.Projection
 
 module type StateTarget = {
   let name: string
@@ -17,8 +17,8 @@ module MakeGenericTargetFromStateTarget = (StateTarget: StateTarget): (
 }
 
 module Make = (
-  Target: ReventlessSpec.Projection.Target,
-  Mappings: ReventlessSpec.Projection.Mappings with module Target := Target,
+  Target: Reventless.Projection.Target,
+  Mappings: Reventless.Projection.Mappings with module Target := Target,
 ): (
   MapperNto1.Mapper
     with type targetState := Target.state

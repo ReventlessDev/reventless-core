@@ -17,7 +17,7 @@ Creates cloud resources and captures their identifiers (ARNs, URLs, table names)
 
 ```rescript
 // Example: EventLog storage adapter (deploy time)
-module Make = (Spec: ReventlessSpec.EventLog.Spec) => {
+module Make = (Spec: Reventless.EventLog.Spec) => {
   // Creates the DynamoDB table during `pulumi up`
   let table = aws.dynamodb.Table.make(~name=Spec.name, ...)
 
@@ -94,12 +94,12 @@ After implementing all adapter interfaces, export pre-configured builder modules
 ```rescript
 // ReventlessMyprovider.res — the package entry point
 module Aggregate = {
-  module Make = (Spec: ReventlessSpec.Aggregate.Spec) =>
+  module Make = (Spec: Reventless.Aggregate.Spec) =>
     Aggregate_Builder.Make(Spec, MyRuntimeEnvironment, MyEventLogStorage, MyEventTopicPublisher, MyCommandTopicChannel)
 }
 
 module ReadModel = {
-  module Make = (Spec: ReventlessSpec.ReadModel.Spec) =>
+  module Make = (Spec: Reventless.ReadModel.Spec) =>
     ReadModel_Builder.Make(Spec, MyRuntimeEnvironment, MyEventCollectorChannel, MyQueryDbStorage, MyQueryEngineAdapter)
 }
 

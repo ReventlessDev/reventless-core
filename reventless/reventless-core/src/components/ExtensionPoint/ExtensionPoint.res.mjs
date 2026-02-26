@@ -2,13 +2,13 @@
 
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
-import * as EventTopic$Reventless from "../EventTopic/EventTopic.res.mjs";
-import * as CommandTopic$Reventless from "../CommandTopic/CommandTopic.res.mjs";
+import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
+import * as CommandTopic$ReventlessCore from "../CommandTopic/CommandTopic.res.mjs";
 
 function toResolvedOutputs(outputs) {
   return Pulumi.all([
-    Output$Pulumi.flatMap(outputs.commandTopic, CommandTopic$Reventless.toResolvedOutputs),
-    Output$Pulumi.flatMap(outputs.eventTopic, EventTopic$Reventless.toResolvedOutputs)
+    Output$Pulumi.flatMap(outputs.commandTopic, CommandTopic$ReventlessCore.toResolvedOutputs),
+    Output$Pulumi.flatMap(outputs.eventTopic, EventTopic$ReventlessCore.toResolvedOutputs)
   ]).apply(param => ({
     name: outputs.name,
     commandTopic: param[0],

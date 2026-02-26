@@ -52,7 +52,7 @@ An Aggregate Spec defines the id, name, command and event types of an Aggregate 
 ```rescript title="Customer.res" showLineNumbers
 //open Reventless
 
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @decco
 type id = Id.t
@@ -298,7 +298,7 @@ Aggregate -> EventLog: "append(event3)"
 Each `Aggregate` can specify `EventMapping`s from one ore more source Aggregates:
 
 ```rescript title="Customer_EventMappings.res" showLineNumbers
-open ReventlessSpec
+open Reventless
 
 module Target = Customer
 

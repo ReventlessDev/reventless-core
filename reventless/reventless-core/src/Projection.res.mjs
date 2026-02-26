@@ -7,13 +7,13 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
-import * as Logger$Reventless from "./util/Logger.res.mjs";
-import * as Message$Reventless from "./Message.res.mjs";
-import * as QueryDb$Reventless from "./components/QueryDb/QueryDb.res.mjs";
-import * as QueryDb$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/QueryDb.res.mjs";
+import * as QueryDb$Reventless from "@reventlessdev/reventless-spec/src/components/QueryDb.res.mjs";
+import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
+import * as Message$ReventlessCore from "./Message.res.mjs";
+import * as QueryDb$ReventlessCore from "./components/QueryDb/QueryDb.res.mjs";
 
 function MakeGenericSource(Mapping) {
-  let decode$p = json => Message$Reventless.decodeEvent$p(json, S.string, Mapping.sourceEventSchema);
+  let decode$p = json => Message$ReventlessCore.decodeEvent$p(json, S.string, Mapping.sourceEventSchema);
   return {
     name: Mapping.sourceName,
     decode$p: decode$p
@@ -168,7 +168,7 @@ async function handleAction(action, operations, subIdConfig) {
         return await save(id$2, newState$1, "Overwrite", undefined);
       }
       let err = states$2._0;
-      let str$4 = `UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$Reventless.storageErrorToString(err) + `)`;
+      let str$4 = `UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`;
       console.log("Projection.handleAction:", str$4);
       return {
         TAG: "Error",
@@ -241,7 +241,7 @@ async function handleAction(action, operations, subIdConfig) {
       }
       if (subIdConfig !== undefined) {
         let err$1 = match._0;
-        let str$8 = `UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$Reventless.storageErrorToString(err$1) + `)`;
+        let str$8 = `UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err$1) + `)`;
         console.log("Projection.handleAction:", str$8);
         return {
           TAG: "Error",
@@ -556,7 +556,7 @@ async function handleActions(actions, operations, subIdConfig) {
     }), async (p, action) => {
       let err = await p;
       if (err.TAG !== "Ok") {
-        Logger$Reventless.error("File \"Projection.res\", line 353, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(Message$Reventless.encode(err._0, QueryDb$ReventlessSpec.storageErrorSchema)));
+        Logger$ReventlessCore.error("File \"Projection.res\", line 353, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$Reventless.storageErrorSchema)));
       }
       return await handleAction(action, operations, subIdConfig);
     });
@@ -573,7 +573,7 @@ async function handleActions(actions, operations, subIdConfig) {
     return;
   }
   let count = errors.length;
-  return Stdlib_JsError.throwWithMessage(`Projection.handleActions failed with ` + count.toString() + ` errors: ` + errors.map(QueryDb$Reventless.storageErrorToString).join(","));
+  return Stdlib_JsError.throwWithMessage(`Projection.handleActions failed with ` + count.toString() + ` errors: ` + errors.map(QueryDb$ReventlessCore.storageErrorToString).join(","));
 }
 
 let $$Set;

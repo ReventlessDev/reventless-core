@@ -1,5 +1,5 @@
 open PulumiAws.DynamoDb.Table
-open ReventlessSpec.Adapter
+open Reventless.Adapter
 
 let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
@@ -18,7 +18,7 @@ let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   })
 
 let toResource: table => resource = ({id, name, arn} as table) => {
-  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
+  Reventless.Adapter.service: name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
   name,
   id,
   urn: arn,
@@ -119,7 +119,7 @@ let makeTableArgs = (
     }->Pulumi.Input.make
   )
 
-  let restoreDateTime = Reventless.Env.restoreDateTime
+  let restoreDateTime = ReventlessCore.Env.restoreDateTime
 
   {
     PulumiAws.DynamoDb.Table.attributes: attributes->Pulumi.Input.make,
@@ -191,10 +191,10 @@ let makeTable = (
 }
 
 let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(AWS.DynamoDb.service)
+  resources->ReventlessCore.Util.Adapter.findResource(AWS.DynamoDb.service)
 
 let findResolvedResource = resources =>
-  resources->Reventless.Util.Adapter.findResolvedResource(AWS.DynamoDb.service)
+  resources->ReventlessCore.Util.Adapter.findResolvedResource(AWS.DynamoDb.service)
 
 let findResourceInOutput = resourcesOutput =>
-  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(AWS.DynamoDb.service)
+  resourcesOutput->ReventlessCore.Util.Adapter.findResourceInOutput(AWS.DynamoDb.service)

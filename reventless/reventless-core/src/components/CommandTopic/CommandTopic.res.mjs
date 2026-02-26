@@ -2,14 +2,14 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as CommandTopic_Helpers$Reventless from "./CommandTopic_Helpers.res.mjs";
+import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "./CommandTopic_Helpers.res.mjs";
 
-let NotPublishedToChannel = /* @__PURE__ */Primitive_exceptions.create("CommandTopic-Reventless.NotPublishedToChannel");
+let NotPublishedToChannel = /* @__PURE__ */Primitive_exceptions.create("CommandTopic-ReventlessCore.NotPublishedToChannel");
 
 function toResolvedOutputs(outputs) {
-  return Adapter$Reventless.resourcesToResolvedOutput(outputs.resources).apply(resources => ({
+  return Adapter$ReventlessCore.resourcesToResolvedOutput(outputs.resources).apply(resources => ({
     resources: resources.map(r => ({
       name: r.name,
       id: r.id,
@@ -29,13 +29,13 @@ function filter(allCommandTopics, names) {
 
 let componentType = "CommandTopic";
 
-let extractTypeNamesFromSchema = CommandTopic_Helpers$Reventless.extractTypeNamesFromSchema;
+let extractTypeNamesFromSchema = CommandTopic_Helpers$ReventlessCore.extractTypeNamesFromSchema;
 
-let globalRegistry = CommandTopic_Helpers$Reventless.globalRegistry;
+let globalRegistry = CommandTopic_Helpers$ReventlessCore.globalRegistry;
 
-let registerHandler = CommandTopic_Helpers$Reventless.registerHandler;
+let registerHandler = CommandTopic_Helpers$ReventlessCore.registerHandler;
 
-let getHandlers = CommandTopic_Helpers$Reventless.getHandlers;
+let getHandlers = CommandTopic_Helpers$ReventlessCore.getHandlers;
 
 export {
   componentType,
@@ -47,4 +47,4 @@ export {
   toResolvedOutputs,
   filter,
 }
-/* Adapter-Reventless Not a pure module */
+/* Adapter-ReventlessCore Not a pure module */

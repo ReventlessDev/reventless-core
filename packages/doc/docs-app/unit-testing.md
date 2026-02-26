@@ -403,7 +403,7 @@ Create a fixtures file to share test data across tests:
 ```rescript
 // In PluginFixtures.res
 let pluginDefinition = {
-  ReventlessSpec.Plugin.id: "id@1",
+  Reventless.Plugin.id: "id@1",
   name: "name",
   version: "1",
   extensionPoints: [],

@@ -6,7 +6,7 @@ open AsyncTest.Expect
 
 let _ = TestRunner.setup()
 
-let testMeta: ReventlessSpec.Message.meta = {
+let testMeta: Reventless.Message.meta = {
   service: "test",
   time: "2024-01-01T00:00:00.000Z",
   ip: "127.0.0.1",
@@ -20,7 +20,7 @@ describe("CommandTopicChannel_InMemory", () => {
     testPromise("produces {id, meta, command} JSON shape", async () => {
       module TestBus = InMemory_Bus.Make()
       module TestChannel = CommandTopicChannel_InMemory.Make(TestBus)
-      let cmdJson: ReventlessSpec.Message.commandJson = {
+      let cmdJson: Reventless.Message.commandJson = {
         id: "agg-1",
         meta: testMeta,
         commandJson: JSON.Encode.string("DoSomething"),
@@ -79,7 +79,7 @@ describe("CommandTopicChannel_InMemory", () => {
       let publishFn = await ch.publishJsons->TestRunner.resolve
       await publishFn([
         {
-          ReventlessSpec.Message.id: "item-1",
+          Reventless.Message.id: "item-1",
           meta: testMeta,
           commandJson: JSON.Encode.string("CreateItem"),
         },
@@ -103,12 +103,12 @@ describe("CommandTopicChannel_InMemory", () => {
       let publishFn = await ch.publishJsons->TestRunner.resolve
       await publishFn([
         {
-          ReventlessSpec.Message.id: "id-1",
+          Reventless.Message.id: "id-1",
           meta: testMeta,
           commandJson: JSON.Null,
         },
         {
-          ReventlessSpec.Message.id: "id-2",
+          Reventless.Message.id: "id-2",
           meta: testMeta,
           commandJson: JSON.Null,
         },
@@ -129,7 +129,7 @@ describe("CommandTopicChannel_InMemory", () => {
             received := Some(json)
           },
         )
-      let runtime: Reventless.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
+      let runtime: ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
         parts: {handlerRef: handlerRef},
         resources: [],
       }
@@ -149,7 +149,7 @@ describe("CommandTopicChannel_InMemory", () => {
       module TestBus = InMemory_Bus.Make()
       module TestChannel = CommandTopicChannel_InMemory.Make(TestBus)
       let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      let runtime: Reventless.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
+      let runtime: ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
         parts: {handlerRef: handlerRef},
         resources: [],
       }

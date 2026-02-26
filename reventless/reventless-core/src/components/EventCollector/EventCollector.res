@@ -1,9 +1,9 @@
 let componentType = ComponentType.EventCollector
 
-type enqueueEvent = ReventlessSpec.EventCollector.enqueueEvent
+type enqueueEvent = Reventless.EventCollector.enqueueEvent
 
 type t
-type outputs = ReventlessSpec.EventCollector.outputs
+type outputs = Reventless.EventCollector.outputs
 type operations = {enqueueEvent: enqueueEvent}
 type component = Component.t<t, outputs, operations>
 
@@ -15,7 +15,7 @@ module type T = {
 
   let connect: (
     ~eventTopics: EventTopic.allOutputs,
-    ~resources: array<ReventlessSpec.Adapter.resource>,
+    ~resources: array<Reventless.Adapter.resource>,
     ~runtime: Runtime.environment<runtimeParts>,
     component,
   ) => unit

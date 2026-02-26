@@ -39,7 +39,7 @@ let decode = S.parseJsonOrThrow;
 
 let encode = S.reverseConvertToJsonOrThrow;
 
-let InvalidEvent = /* @__PURE__ */Primitive_exceptions.create("Message-ReventlessSpec.InvalidEvent");
+let InvalidEvent = /* @__PURE__ */Primitive_exceptions.create("Message-Reventless.InvalidEvent");
 
 let serviceSchema = S.string;
 

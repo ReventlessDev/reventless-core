@@ -1,9 +1,9 @@
-let make: Reventless.EventLog_Adapter.storageMaker = (~name, ~opts) => {
+let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
   let table = Util.DynamoDb.makeTable(
     name,
     ~attributes=[{name: "id", type_: "S"}, {name: "sequenceNr", type_: "S"}],
     ~rangeKey="sequenceNr",
-    ~tags=AWS.Tags.make(~name, Reventless.EventLog.componentType),
+    ~tags=AWS.Tags.make(~name, ReventlessCore.EventLog.componentType),
     ~opts,
   )
 
@@ -12,7 +12,7 @@ let make: Reventless.EventLog_Adapter.storageMaker = (~name, ~opts) => {
     operations: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
-      Reventless.EventLog_Adapter.append: EventLogStorage_DynamoDb_Runtime.append(
+      ReventlessCore.EventLog_Adapter.append: EventLogStorage_DynamoDb_Runtime.append(
         runtimeTable,
         ...
       ),

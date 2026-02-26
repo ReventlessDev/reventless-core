@@ -66,7 +66,7 @@ The following shows all the pieces in context for a `CatalogItem` aggregate.
 ```rescript
 // CatalogItemSpec.res
 let name = "CatalogItem"
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type command =
@@ -144,7 +144,7 @@ let execute: Behavior.execute<state, Spec.command, Spec.event, Spec.error> = (
 
 ```rescript
 // CatalogItemReadModelSpec.res
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type state = {
@@ -156,14 +156,14 @@ type state = {
 
 let name = "CatalogItem"
 
-open ReventlessSpec.ReadModel
+open Reventless.ReadModel
 let config = config()
 let subIdConfig = None
 ```
 
 ```rescript
 // CatalogItemProjection.res
-open ReventlessSpec.Projection
+open Reventless.Projection
 
 module ItemMapping = Reventless.Projection.Mapping.Make(
   CatalogItemSpec,
@@ -189,7 +189,7 @@ let mappings: array<module(MappingsHelper.Mapping)> = [module(ItemMapping)]
 
 ```rescript
 // CatalogItemPlugin.res
-module Make = (Platform: ReventlessSpec.Platform.T) => {
+module Make = (Platform: Reventless.Platform.T) => {
   module ItemAggregate = Platform.Aggregate.Make(
     CatalogItemSpec,
     CatalogItemBehavior,
@@ -197,7 +197,7 @@ module Make = (Platform: ReventlessSpec.Platform.T) => {
   )
 
   module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemReadModelSpec)
-  module Mappings: ReventlessSpec.Projection.Mappings with module Target := CatalogItemReadModelSpec = {
+  module Mappings: Reventless.Projection.Mappings with module Target := CatalogItemReadModelSpec = {
     module Target = CatalogItemReadModelSpec
     module type Mapping = MappingsHelper.Mapping
     let mappings = CatalogItemProjection.mappings
@@ -237,23 +237,23 @@ type event =
 
 ```rescript
 // ItemCatalogPlugin.res
-module Make = (Platform: ReventlessSpec.Platform.T) => {
+module Make = (Platform: Reventless.Platform.T) => {
   module CreateItem = Platform.StateChangeSlice.Make(CreateItemSpec)
   module RenameItem = Platform.StateChangeSlice.Make(RenameItemSpec)
   module DeleteItem = Platform.StateChangeSlice.Make(DeleteItemSpec)
   module ItemView   = Platform.StateViewSlice.Make(ItemViewSpec)
 
-  module DcbSpec: ReventlessSpec.Plugin.DcbSpec = {
+  module DcbSpec: Reventless.Plugin.DcbSpec = {
     @schema
     type event = ItemEventLogSpec.event
 
-    let stateChangeSlices: array<module(ReventlessSpec.StateChangeSlice.T with type dcbEvent = event)> = [
+    let stateChangeSlices: array<module(Reventless.StateChangeSlice.T with type dcbEvent = event)> = [
       module(CreateItem),
       module(RenameItem),
       module(DeleteItem),
     ]
 
-    let stateViewSlices: array<module(ReventlessSpec.StateViewSlice.T with type dcbEvent = event)> = [
+    let stateViewSlices: array<module(Reventless.StateViewSlice.T with type dcbEvent = event)> = [
       module(ItemView),
     ]
   }

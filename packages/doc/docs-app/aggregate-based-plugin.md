@@ -52,7 +52,7 @@ The Spec defines the aggregate's **identity**, **commands**, **events**, and **e
 // CatalogItemSpec.res
 let name = "CatalogItem"
 
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type command =
@@ -159,7 +159,7 @@ The ReadModel Spec defines the **shape of the read-side state** stored in the qu
 
 ```rescript
 // CatalogItemReadModelSpec.res
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type state = {
@@ -171,7 +171,7 @@ type state = {
 
 let name = "CatalogItem"
 
-open ReventlessSpec.ReadModel
+open Reventless.ReadModel
 let config = config()
 let subIdConfig = None
 ```
@@ -182,7 +182,7 @@ The Projection maps aggregate events to actions on the read model. Use `Projecti
 
 ```rescript
 // CatalogItemProjection.res
-open ReventlessSpec.Projection
+open Reventless.Projection
 
 module ItemMapping = Reventless.Projection.Mapping.Make(
   CatalogItemSpec,         // Source: name, Id, @schema type event
@@ -208,27 +208,27 @@ module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemReadModel
 let mappings: array<module(MappingsHelper.Mapping)> = [module(ItemMapping)]
 ```
 
-The available `action` variants are: `Create`, `Set`, `Update`, `UpdateWithDefault`, `Delete`, `DeleteIf`, `Ignore`, and others. See `ReventlessSpec.Projection` for the full list.
+The available `action` variants are: `Create`, `Set`, `Update`, `UpdateWithDefault`, `Delete`, `DeleteIf`, `Ignore`, and others. See `Reventless.Projection` for the full list.
 
 ### Step 5: Define Event Mappings (Optional)
 
-Event Mappings let one aggregate's events trigger commands in another aggregate. Implement `ReventlessSpec.EventMapping.T`:
+Event Mappings let one aggregate's events trigger commands in another aggregate. Implement `Reventless.EventMapping.T`:
 
 ```rescript
 // CatalogItemEventMapping.res
 
 // When an item is created, notify another aggregate
-module ItemCreatedMapping: ReventlessSpec.EventMapping.T = {
+module ItemCreatedMapping: Reventless.EventMapping.T = {
   module Source = CatalogItemSpec    // source aggregate: name, Id, @schema type event
   module Target = NotificationSpec   // target aggregate: name, Id, @schema type command
 
   let map = (id, event, _queryEngine) =>
     switch event {
     | CatalogItemSpec.ItemCreated({name}) =>
-      let notificationId = id->ReventlessSpec.Id.String.toString
+      let notificationId = id->Reventless.Id.String.toString
       [
-        ReventlessSpec.EventMapping.Publish(
-          ReventlessSpec.Id.String.makeFromString(notificationId),
+        Reventless.EventMapping.Publish(
+          Reventless.Id.String.makeFromString(notificationId),
           NotificationSpec.SendCreationAlert({message: `New item "${name}" is available`}),
         ),
       ]
@@ -237,9 +237,9 @@ module ItemCreatedMapping: ReventlessSpec.EventMapping.T = {
 }
 
 // Package mappings into the EventMapper.Mappings module type
-module EventMappings: ReventlessSpec.EventMapper.Mappings with module Target := NotificationSpec = {
+module EventMappings: Reventless.EventMapper.Mappings with module Target := NotificationSpec = {
   module Target = NotificationSpec
-  module type Mapping = ReventlessSpec.EventMapping.T with module Target := NotificationSpec
+  module type Mapping = Reventless.EventMapping.T with module Target := NotificationSpec
   let mappings = [module(ItemCreatedMapping: Mapping)]
   let counter = None
 }
@@ -255,7 +255,7 @@ The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) 
 // CatalogItemPlugin.res
 // Imports only `reventless-spec`, not `reventless` or `reventless-aws`
 
-module Make = (Platform: ReventlessSpec.Platform.T) => {
+module Make = (Platform: Reventless.Platform.T) => {
   // Build the aggregate component from spec + behavior + event mappings
   module ItemAggregate = Platform.Aggregate.Make(
     CatalogItemSpec,
@@ -265,7 +265,7 @@ module Make = (Platform: ReventlessSpec.Platform.T) => {
 
   // Wire the read model projection into a concrete Mappings module
   module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemReadModelSpec)
-  module Mappings: ReventlessSpec.Projection.Mappings with module Target := CatalogItemReadModelSpec = {
+  module Mappings: Reventless.Projection.Mappings with module Target := CatalogItemReadModelSpec = {
     module Target = CatalogItemReadModelSpec
     module type Mapping = MappingsHelper.Mapping
     let mappings = CatalogItemProjection.mappings

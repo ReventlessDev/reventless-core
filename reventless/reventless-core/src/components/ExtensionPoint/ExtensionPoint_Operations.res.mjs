@@ -2,25 +2,25 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Logger$Reventless from "../../util/Logger.res.mjs";
-import * as Message$Reventless from "../../Message.res.mjs";
-import * as Schedule$Reventless from "../../util/Schedule.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Promise$Reventless from "../../util/Util_Promise.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as Schedule$ReventlessCore from "../../util/Schedule.res.mjs";
+import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {
     let findOutgoingMapping = (aggregateNameOpt, mappings) => Stdlib_Option.flatMap(aggregateNameOpt, aggregateName => mappings.find(Mapping => Mapping.aggregateName === aggregateName));
     let mapOutgoingEvent = (eventJson$p, mappings, scheduler, queue, queryEngine, resourceNaming) => {
-      let Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(eventJson$p), mappings);
+      let Mapping = findOutgoingMapping(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), mappings);
       if (Mapping === undefined) {
         return Stdlib_JsError.throwWithMessage("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(eventJson$p));
       }
       let mapOutgoingEvent$1 = Mapping.mapOutgoingEvent;
       if (mapOutgoingEvent$1 !== undefined) {
-        return mapOutgoingEvent$1(eventJson$p, Schedule$Reventless.create(scheduler, queue, resourceNaming), Schedule$Reventless.$$delete(scheduler, queue, resourceNaming), queryEngine);
+        return mapOutgoingEvent$1(eventJson$p, Schedule$ReventlessCore.create(scheduler, queue, resourceNaming), Schedule$ReventlessCore.$$delete(scheduler, queue, resourceNaming), queryEngine);
       } else {
-        Logger$Reventless.error("File \"ExtensionPoint_Operations.res\", line 40, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+        Logger$ReventlessCore.error("File \"ExtensionPoint_Operations.res\", line 40, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
         return [];
       }
     };
@@ -61,7 +61,7 @@ function Make(MappingSpec) {
     let outgoingEventHandler = async (eventJson$p, _pluginDef) => {
       console.log("ExtensionPoint_Operations.outgoingEventHandler:", JSON.stringify(eventJson$p));
       let eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Ops.scheduler, Ops.commandTopicResources, Ops.queryEngine, Ops.resourceNaming);
-      return await Util_Promise$Reventless.toUnit(Promise.all(eventActions.map(applyEventAction)));
+      return await Util_Promise$ReventlessCore.toUnit(Promise.all(eventActions.map(applyEventAction)));
     };
     return {
       findOutgoingMapping: findOutgoingMapping,
@@ -75,4 +75,4 @@ function Make(MappingSpec) {
 export {
   Make,
 }
-/* Logger-Reventless Not a pure module */
+/* Logger-ReventlessCore Not a pure module */

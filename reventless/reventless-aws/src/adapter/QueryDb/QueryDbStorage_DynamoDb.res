@@ -4,17 +4,17 @@ open DynamoDb.Table
 type api = Types.AppSync.api
 type role = Types.AppSync.role
 
-let globalSecondaryIndexes = (indexes: array<ReventlessSpec.ReadModel.indexConfig>) =>
+let globalSecondaryIndexes = (indexes: array<Reventless.ReadModel.indexConfig>) =>
   indexes
-  ->Array.map((indexConfig: ReventlessSpec.ReadModel.indexConfig) => {
+  ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {
     let {index, projectionType} = indexConfig
     let (projectionType, includes) = switch projectionType {
-    | ReventlessSpec.ReadModel.ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
-    | ReventlessSpec.ReadModel.KEYS_ONLY as _projection => (
+    | Reventless.ReadModel.ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
+    | Reventless.ReadModel.KEYS_ONLY as _projection => (
         PulumiAws.DynamoDb.Table.KEYS_ONLY,
         None,
       )
-    | ReventlessSpec.ReadModel.INCLUDE(includes) => (
+    | Reventless.ReadModel.INCLUDE(includes) => (
         PulumiAws.DynamoDb.Table.INCLUDE,
         Some(includes),
       )
@@ -29,12 +29,12 @@ let globalSecondaryIndexes = (indexes: array<ReventlessSpec.ReadModel.indexConfi
   })
   ->Pulumi.Input.make
 
-let attributes = (sortField, indexes: array<ReventlessSpec.ReadModel.indexConfig>) =>
+let attributes = (sortField, indexes: array<Reventless.ReadModel.indexConfig>) =>
   [
     [{name: "id", type_: "S"}],
     sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
     indexes
-    ->Array.map((indexConfig: ReventlessSpec.ReadModel.indexConfig) => {
+    ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {
       let {index, type_} = indexConfig
       [
         [{name: index, type_}],
@@ -76,7 +76,7 @@ let dataSource = (name, table, api, apiRole, opts) => {
   AppSync.DataSource.makeDynamoDBDataSource(~name, ~api, ~table, ~serviceRole=apiRole, ~opts)
 }
 
-let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
+let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
   ~indexes,
   ~subIdField=?,
@@ -91,7 +91,7 @@ let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
     ~rangeKey=?subIdField,
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
-    ~tags=AWS.Tags.make(~name, Reventless.QueryDb.componentType),
+    ~tags=AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType),
     ~opts,
   )
 
@@ -102,7 +102,7 @@ let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
     operations: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
-      Reventless.QueryDb.load: runtimeTable->load,
+      ReventlessCore.QueryDb.load: runtimeTable->load,
       save: runtimeTable->save,
       saveBatch: runtimeTable->saveBatch,
       count: runtimeTable->count,

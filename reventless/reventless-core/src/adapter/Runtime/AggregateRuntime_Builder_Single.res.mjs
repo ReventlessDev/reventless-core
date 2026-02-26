@@ -2,11 +2,11 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as AggregateRuntime_Builder_Common$Reventless from "./AggregateRuntime_Builder_Common.res.mjs";
+import * as AggregateRuntime_Builder_Common$ReventlessCore from "./AggregateRuntime_Builder_Common.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return CommandTopicChannel => (EventCollectorChannel => {
-    let include = AggregateRuntime_Builder_Common$Reventless.Make(RuntimeEnvironment)(CommandTopicChannel)(EventCollectorChannel);
+    let include = AggregateRuntime_Builder_Common$ReventlessCore.Make(RuntimeEnvironment)(CommandTopicChannel)(EventCollectorChannel);
     let EventCollectorChannel$1 = include.EventCollectorChannel;
     let runtimeSpecs = include.runtimeSpecs;
     let aggregateHandler = include.aggregateHandler;

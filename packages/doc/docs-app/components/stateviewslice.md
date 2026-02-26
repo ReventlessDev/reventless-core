@@ -176,7 +176,7 @@ let project = (currentState, event) =>
 |--------|-----------|----------------|
 | **Event Source** | Multiple EventTopics | Single DcbEventLog |
 | **Mappings** | Complex mapping system | Single projection function |
-| **Spec** | ReventlessSpec.ReadModel.Spec | Custom Spec with project function |
+| **Spec** | Reventless.ReadModel.Spec | Custom Spec with project function |
 | **Use Case** | General-purpose read models | DCB-specific view projections |
 
 ## Comparison with StateChangeSlice
@@ -192,7 +192,7 @@ let project = (currentState, event) =>
 
 ```rescript
 type outputs = {
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   queryDb: QueryDb.outputs,
 }
 ```

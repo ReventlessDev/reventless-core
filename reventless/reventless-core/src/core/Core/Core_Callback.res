@@ -1,5 +1,5 @@
 module type Spec = {
-  let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
+  let pluginDefinition: Reventless.Plugin.pluginDefinition
   let outgoingExtensionPointEventHandlers: array<ExtensionPoint.eventHandler>
 }
 

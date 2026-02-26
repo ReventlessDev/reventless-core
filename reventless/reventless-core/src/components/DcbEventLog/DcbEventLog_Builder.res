@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.DcbEventLog.Spec,
+  Spec: Reventless.DcbEventLog.Spec,
   Storage: DcbEventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
 ): (DcbEventLog.T with module Spec = Spec) => {
@@ -8,7 +8,7 @@ module Make = (
   // DcbEventLog.Spec has the same shape as EventTopic.Spec minus Id
   // We need an EventTopic.Spec to build the EventTopic
   module EventTopicSpec = {
-    module Id = ReventlessSpec.Id.String
+    module Id = Reventless.Id.String
     @schema
     type event = Spec.event
   }
@@ -21,7 +21,7 @@ module Make = (
 
   // Extract indexes from event schema
   let indexes: array<string> = {
-    let taggedFields = ReventlessSpec.DcbTag.extractTaggedFields(Spec.eventSchema)
+    let taggedFields = Reventless.DcbTag.extractTaggedFields(Spec.eventSchema)
 
     // Create single-tag indexes
     let singleTagIndexes = taggedFields->Array.map(tagKey => `tag_${tagKey}`)

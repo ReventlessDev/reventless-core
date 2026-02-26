@@ -6,12 +6,12 @@ type t
 type outputs = {name: string, eventCollector: EventCollector.outputs}
 type operations = {
   enqueueEvent: EventCollector.enqueueEvent,
-  createSchedule: ReventlessSpec.Schedule.create,
-  deleteSchedule: ReventlessSpec.Schedule.delete,
+  createSchedule: Reventless.Schedule.create,
+  deleteSchedule: Reventless.Schedule.delete,
 }
 type component = Component.t<t, outputs, operations>
 
-type sideEffects = array<module(ReventlessSpec.SideEffect.T)>
+type sideEffects = array<module(Reventless.SideEffect.T)>
 
 module type T = {
   let make: (
@@ -20,9 +20,9 @@ module type T = {
     ~allEventTopics: EventTopic.allOutputs,
     ~allCommandTopics: Pulumi.Output.t<CommandTopic.allOutputs>,
     ~targets: array<string>=?,
-    ~queryEngine: ReventlessSpec.QueryEngine.operations,
+    ~queryEngine: Reventless.QueryEngine.operations,
     ~scheduler: Scheduler.operations,
-    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+    ~resourceNaming: Reventless.ResourceNaming.operations,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.options=?,

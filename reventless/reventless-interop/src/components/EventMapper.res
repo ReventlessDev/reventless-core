@@ -1,4 +1,4 @@
-// Output.t-free counterpart of ReventlessSpec.EventMapper.outputs.
+// Output.t-free counterpart of Reventless.EventMapper.outputs.
 // Primary cross-stack export: every plugin stack exports an "eventMappers" array
 // of these records.
 

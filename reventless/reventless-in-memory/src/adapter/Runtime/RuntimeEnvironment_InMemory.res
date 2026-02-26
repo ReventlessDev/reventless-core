@@ -13,11 +13,11 @@ external asUnitHandler: ((JSON.t, unit) => promise<'r>) => (JSON.t, unit) => pro
 
 let make = (
   ~name as _: string,
-  ~handler: Pulumi.Output.t<Reventless.Runtime.eventHandler<event, context, 'result>>,
+  ~handler: Pulumi.Output.t<ReventlessCore.Runtime.eventHandler<event, context, 'result>>,
   ~memorySize as _=1024,
   ~timeout as _=30,
   ~opts as _=?,
-): Reventless.Runtime.environment<parts> => {
+): ReventlessCore.Runtime.environment<parts> => {
   let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
   // In Pulumi mock mode, Output.apply is synchronous — handlerRef is set immediately.
   let _ = handler->Pulumi.Output.apply(h => {
@@ -32,4 +32,4 @@ let groupBySource = (event: JSON.t) => {
   dict
 }
 
-external asEventHandler: 'a => Reventless.Runtime.eventHandler<event, context, 'r> = "%identity"
+external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'r> = "%identity"

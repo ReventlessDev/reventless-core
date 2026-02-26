@@ -1,7 +1,7 @@
 // UpdateProductPrice StateChangeSlice.
 // Requires product to exist; idempotent when price is unchanged.
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "UpdateProductPrice"

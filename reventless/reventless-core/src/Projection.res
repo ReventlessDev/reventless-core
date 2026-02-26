@@ -1,11 +1,11 @@
-open ReventlessSpec.Projection // FIXME: open locally
-open ReventlessSpec.ReadModel // FIXME: open locally
+open Reventless.Projection // FIXME: open locally
+open Reventless.ReadModel // FIXME: open locally
 open Belt.Result // FIXME: open locally
 
 module Set = Belt.Set.String
 
 module Mapping = {
-  module MakeGenericSource = (Mapping: ReventlessSpec.Projection.Mapping): (
+  module MakeGenericSource = (Mapping: Reventless.Projection.Mapping): (
     Mapper.GenericSource with type t = Mapping.sourceEvent
   ) => {
     let name = Mapping.sourceName
@@ -113,14 +113,14 @@ let handleAction = async (
       switch states {
       | [] =>
         logAction(`Update Error: No oldState for ${id})`)
-        Error(ReventlessSpec.QueryDb.StaleState)
+        Error(Reventless.QueryDb.StaleState)
       | [oldState] =>
         let newState = oldState->update
         logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
         await save(id, newState, Overwrite, None)
       | _ =>
         logAction(`Update Error: Multiple oldStates for ${id})`)
-        Error(ReventlessSpec.QueryDb.StaleState)
+        Error(Reventless.QueryDb.StaleState)
       }
     | Error(err) => Error(err)
     }
@@ -140,7 +140,7 @@ let handleAction = async (
         await save(id, newState, Overwrite, None)
       | _ =>
         logAction(`UpdateWithDefault Error: Multiple oldStates for ${id})`)
-        Error(ReventlessSpec.QueryDb.StaleState)
+        Error(Reventless.QueryDb.StaleState)
       }
     | Error(err) =>
       logAction(
@@ -162,7 +162,7 @@ let handleAction = async (
       Error(err)
     | (_, None) =>
       logAction("UpdateMultiState Error: Missing SubIdConfig !")
-      Error(ReventlessSpec.QueryDb.MissingSubIdConfig)
+      Error(Reventless.QueryDb.MissingSubIdConfig)
     }
   | Delete(id) =>
     logAction(`Delete(${id})`)
@@ -352,7 +352,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
         Logger.error(
           ~loc=__LOC__,
           "storage error:",
-          err->Message.encode(ReventlessSpec.QueryDb.storageErrorSchema)->JSON.stringify,
+          err->Message.encode(Reventless.QueryDb.storageErrorSchema)->JSON.stringify,
         )
       }
       await action->handleAction(operations, subIdConfig)

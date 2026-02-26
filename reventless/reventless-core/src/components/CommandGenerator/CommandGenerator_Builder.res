@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.Aggregate.Spec,
+  Spec: Reventless.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
   Resolvers: CommandGenerator_Adapter.Resolvers,
 ): (
@@ -7,7 +7,7 @@ module Make = (
 ) => {
   let construct = (self, _name) => {
     let resources = Behavior.resolverConfig.fields->Array.map(field => {
-      let r: ReventlessSpec.Adapter.resource = {
+      let r: Reventless.Adapter.resource = {
         id: ""->Pulumi.Output.make,
         info: `Mutation.${field}`->Pulumi.Output.make,
         name: ""->Pulumi.Output.make,

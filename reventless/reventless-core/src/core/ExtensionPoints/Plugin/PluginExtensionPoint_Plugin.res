@@ -1,5 +1,5 @@
-open ReventlessSpec.ExtensionPointMapping
-open ReventlessSpec.Plugin
+open Reventless.ExtensionPointMapping
+open Reventless.Plugin
 
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
@@ -11,7 +11,7 @@ module Make = (Spec: Spec) => {
     _id,
     command,
     extensionPointName,
-    queryEngine: ReventlessSpec.QueryEngine.operations,
+    queryEngine: Reventless.QueryEngine.operations,
   ) =>
     switch await queryEngine.scan(
       ~readModelName=PluginSpec.name,
@@ -58,9 +58,9 @@ module Make = (Spec: Spec) => {
     }
 
   let callHandler = async (
-    createSchedule: ReventlessSpec.Schedule.create,
-    deleteSchedule: ReventlessSpec.Schedule.delete,
-    queryEngine: ReventlessSpec.QueryEngine.operations,
+    createSchedule: Reventless.Schedule.create,
+    deleteSchedule: Reventless.Schedule.delete,
+    queryEngine: Reventless.QueryEngine.operations,
     directive,
   ) =>
     switch directive {

@@ -14,7 +14,7 @@ type builderOutputs = {
   stateViewSlices: dict<StateViewSlice.outputs>,
   readModels: dict<ReadModel.outputs>,
   tasks: dict<Task.outputs>,
-  resolvers: array<ReventlessSpec.Adapter.resource>,
+  resolvers: array<Reventless.Adapter.resource>,
   heartbeat: Heartbeat.outputs,
   dcbEventLog: option<DcbEventLog.outputs>,
 }
@@ -140,12 +140,12 @@ let aggregateFinishFns = Dict.make()
 
 let createAggregatesWithoutEventMappers = (
   type a,
-  aggregates: array<module(ReventlessSpec.Aggregate.T with type api = a)>,
+  aggregates: array<module(Reventless.Aggregate.T with type api = a)>,
   ~api: a,
   opts,
 ) =>
   aggregates
-  ->Array.map((module(SpecificAggregate: ReventlessSpec.Aggregate.T with type api = a)) => {
+  ->Array.map((module(SpecificAggregate: Reventless.Aggregate.T with type api = a)) => {
     let aggregate = SpecificAggregate.make(~api, ~opts)
     let aggOutputs = SpecificAggregate.outputs(aggregate)
     addEventMapperFns->Dict.set(
@@ -234,13 +234,13 @@ let extractReadModelsOutputs = readModels =>
 let createReadModels = (
   type a,
   type r,
-  readModels: array<module(ReventlessSpec.ReadModel.T with type api = a and type role = r)>,
+  readModels: array<module(Reventless.ReadModel.T with type api = a and type role = r)>,
   ~api: a,
   ~apiRole: r,
   allEventTopics,
   opts,
 ) => {
-  let readModels = readModels->Array.map((module(SpecificReadModel: ReventlessSpec.ReadModel.T with type api = a and type role = r)) => {
+  let readModels = readModels->Array.map((module(SpecificReadModel: Reventless.ReadModel.T with type api = a and type role = r)) => {
     let readModel = SpecificReadModel.make(~api, ~apiRole, ~allEventTopics, ~opts)
     let rmOutputs = SpecificReadModel.outputs(readModel)
     let rmOperations = SpecificReadModel.operations(readModel)
@@ -275,7 +275,7 @@ let createExtensionPoints = (
   ~opts,
 ) =>
   extensionPoints
-  ->Array.map((module(SpecificExtensionPoint: ReventlessSpec.ExtensionPoint.T)) => {
+  ->Array.map((module(SpecificExtensionPoint: Reventless.ExtensionPoint.T)) => {
     let extensionPoint = SpecificExtensionPoint.make(
       ~aggregateResources,
       ~publishToAggregates,
@@ -284,7 +284,7 @@ let createExtensionPoints = (
       ~resourceNaming,
       ~opts=Some(opts),
     )
-    // Obj.magic is safe here: all ReventlessSpec.ExtensionPoint.T implementations in reventless
+    // Obj.magic is safe here: all Reventless.ExtensionPoint.T implementations in reventless
     // return ExtensionPoint.component<ExtensionPoint.operations> at runtime.
     let concreteEP: ExtensionPoint.component<ExtensionPoint.operations> = Obj.magic(extensionPoint)
     (
@@ -305,7 +305,7 @@ let createExtensions = (
   ~opts,
 ) =>
   extensions
-  ->Array.map((module(SpecificExtension: ReventlessSpec.Extension.T)) => {
+  ->Array.map((module(SpecificExtension: Reventless.Extension.T)) => {
     let extension = SpecificExtension.make(
       ~publishToCorePluginExtensionPoint,
       ~publishToAggregates,
@@ -314,7 +314,7 @@ let createExtensions = (
       ~queryEngine,
       ~opts=Some(opts),
     )
-    // Obj.magic is safe here: all ReventlessSpec.Extension.T implementations in reventless
+    // Obj.magic is safe here: all Reventless.Extension.T implementations in reventless
     // return Extension.component at runtime.
     let concreteExt: Extension.component = Obj.magic(extension)
     (
@@ -342,7 +342,7 @@ let extractExtensionPointDefinitions = (extensionPointsOutputs: array<ExtensionP
     )
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((commandTopicChannelId, eventTopicPublisherId)) => {
-      ReventlessSpec.Plugin.name: extensionPointOutputs.name,
+      Reventless.Plugin.name: extensionPointOutputs.name,
       commandTopic: commandTopicChannelId,
       eventTopic: eventTopicPublisherId,
     })
@@ -351,7 +351,7 @@ let extractExtensionPointDefinitions = (extensionPointsOutputs: array<ExtensionP
 
 let extractExtensionDefinitions = (extensionsOutputs: array<Extension.outputs>) =>
   extensionsOutputs->Array.map(extensionOutputs => {
-    ReventlessSpec.Plugin.name: extensionOutputs.name,
+    Reventless.Plugin.name: extensionOutputs.name,
     extensionPointName: extensionOutputs.extensionPointName,
   })
 
@@ -413,7 +413,7 @@ let createTasks = (
   ~opts,
 ) => {
   tasksOutputs :=
-    tasks->Array.map((module(SpecificTask: ReventlessSpec.Task.T)) =>
+    tasks->Array.map((module(SpecificTask: Reventless.Task.T)) =>
       SpecificTask.outputs(SpecificTask.make(
         ~queryBucketName=(~taskName, ~bucketName="Bucket") =>
           ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, ~taskName, ~bucketName),

@@ -1,23 +1,23 @@
 module type Ops = {
-  module Spec: ReventlessSpec.EventLog.T
+  module Spec: Reventless.EventLog.T
   module EventTopic: EventTopic.T with module Spec.Id = Spec.Id and type Spec.event = Spec.event
   let eventTopic: EventTopic.operations
   let storage: EventLog_Adapter.operations
 }
 
 module type T = {
-  module Spec: ReventlessSpec.EventLog.T
+  module Spec: Reventless.EventLog.T
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
 }
 
-module Make = (Spec: ReventlessSpec.EventLog.T, Ops: Ops with module Spec = Spec): (
+module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec
 
   let encodeEvent' = (id, event') => {
-    let json = event'.ReventlessSpec.Message.event->Message.encode(Spec.eventSchema)
+    let json = event'.Reventless.Message.event->Message.encode(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
     [
       ("id", id->Message.encode(Spec.Id.schema)),
@@ -62,7 +62,7 @@ module Make = (Spec: ReventlessSpec.EventLog.T, Ops: Ops with module Spec = Spec
   let append = async (
     sequenceNr: int,
     id: 'specId,
-    events': array<Reventless.Message.event'<'specId, 'specEvent>>,
+    events': array<ReventlessCore.Message.event'<'specId, 'specEvent>>,
   ) => {
     try {
       let eventsJson = events'->encodeEvents'(id)

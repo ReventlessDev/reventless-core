@@ -3,16 +3,16 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
 
 function Make(Spec) {
   return AggregateSpec => (Behavior => {
     let generateCommand = async payload => {
-      let msgId = Message$Reventless.uuid();
+      let msgId = Message$ReventlessCore.uuid();
       let id = payload.arguments.id;
       let meta_service = AggregateSpec.name;
-      let meta_time = Message$Reventless.nowAsISOString();
+      let meta_time = Message$ReventlessCore.nowAsISOString();
       let meta_ip = Stdlib_Option.getOr(payload.meta.ip.shift(), "");
       let meta_user = payload.meta.user;
       let meta = {
@@ -34,7 +34,7 @@ function Make(Spec) {
       console.log("CommandGenerator: generated command:", commandJson);
       let val;
       try {
-        val = Message$Reventless.decode(commandJson, Behavior.resolverConfig.commandSchema);
+        val = Message$ReventlessCore.decode(commandJson, Behavior.resolverConfig.commandSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         return Stdlib_JsError.throwWithMessage(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + Stdlib_Option.getOrThrow(JSON.stringify(err), undefined));
@@ -55,4 +55,4 @@ function Make(Spec) {
 export {
   Make,
 }
-/* Message-Reventless Not a pure module */
+/* Message-ReventlessCore Not a pure module */

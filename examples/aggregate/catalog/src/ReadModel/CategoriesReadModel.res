@@ -1,7 +1,7 @@
 // Categories read model specification.
 // Query-side state for product categories.
 
-open ReventlessSpec
+open Reventless
 module Id = Id.String
 
 @schema
@@ -13,6 +13,6 @@ type state = {
 
 let name = "Categories"
 
-open ReventlessSpec.ReadModel
+open Reventless.ReadModel
 let config = config()
 let subIdConfig = None

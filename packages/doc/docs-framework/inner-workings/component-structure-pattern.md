@@ -78,7 +78,7 @@ type replay<'id, 'event> = 'id => promise<array<'event>>
 
 // Spec module type - what users provide
 module type Spec = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
   let name: string
   @schema type event
 }
@@ -105,7 +105,7 @@ type operations = {
 
 // Storage type returned by adapter implementations
 type storage = {
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   operations: Pulumi.Output.t<operations>,
 }
 
@@ -242,20 +242,20 @@ The [`Aggregate_Callback.res`](../../reventless/src/components/Aggregate/Aggrega
 ```rescript
 // Dependencies module type
 module type Ops = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   module EventLog: EventLog.T with module Spec.Id = Spec.Id and type Spec.event = Spec.event
   let eventLog: EventLog.operations
 }
 
 // Output module type
 module type T = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   let handleCommands: CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 }
 
 // Make functor - creates command handler
 module Make = (
-  Spec: ReventlessSpec.Aggregate.Spec,
+  Spec: Reventless.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
   Ops: Ops with module Spec = Spec,
 ): T => {

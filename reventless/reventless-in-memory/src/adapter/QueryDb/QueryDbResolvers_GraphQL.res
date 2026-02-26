@@ -3,7 +3,7 @@
 // Supports: getById, every{Name}, {name}ById (when subId), and {name}By{Index} per index.
 
 module Make = (Bus: InMemory_Bus.T) => {
-  open Reventless
+  open ReventlessCore
 
   type api = unit
   type role = unit
@@ -68,11 +68,11 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
 
     // -- Index queries: {name}By{Index} ---------------------------------------
-    let indexSdlFields = indexes->Array.map((ic: ReventlessSpec.ReadModel.indexConfig) =>
+    let indexSdlFields = indexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
       `  ${queryName}By${cap(ic.index)}(${ic.index}: String!): [String]`
     )
     let indexResolvers: array<(string, GraphQL_Server.resolverFn)> = indexes->Array.map(
-      (ic: ReventlessSpec.ReadModel.indexConfig) => {
+      (ic: Reventless.ReadModel.indexConfig) => {
         let index = ic.index
         let resolverName = queryName ++ "By" ++ cap(index)
         let filterField = ic.idField->Option.getOr(index)

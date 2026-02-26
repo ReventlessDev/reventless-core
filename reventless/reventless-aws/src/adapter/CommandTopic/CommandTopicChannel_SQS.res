@@ -4,17 +4,17 @@ type channelParts = Util.SQS.channelParts
 
 let connect = (
   ~name,
-  ~channel: Reventless.CommandTopic_Adapter.channel<
+  ~channel: ReventlessCore.CommandTopic_Adapter.channel<
     callbackEvent,
     'context,
     Util.SQS.channelParts,
     runtimeParts,
   >,
-  ~runtime: Reventless.Runtime.environment<runtimeParts>,
-  ~resources: array<ReventlessSpec.Adapter.resource>,
+  ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
+  ~resources: array<Reventless.Adapter.resource>,
   ~opts,
 ) => {
-  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let queue = channel.parts.queue
   let lambda = runtime.parts.lambda
@@ -29,14 +29,14 @@ let connect = (
   [subscribeResource]
 }
 
-let make: Reventless.CommandTopic_Adapter.channelMaker<
+let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   callbackEvent,
   'context,
   Util.SQS.channelParts,
   Util.Lambda.runtimeParts,
 > = (~name, ~opts=?) => {
   let opts =
-    opts->Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+    opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
@@ -48,13 +48,13 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,
-      tags: AWS.Tags.make(~name, Reventless.CommandTopic.componentType),
+      tags: AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
     },
     ~opts?,
   )
 
   {
-    Reventless.CommandTopic_Adapter.parts: {queue: queue},
+    ReventlessCore.CommandTopic_Adapter.parts: {queue: queue},
     resources: [queue->Util_SQS.toResource],
     publishJsons: queue
     ->Util_SQS.toRuntimeQueueOutput

@@ -2,7 +2,7 @@
 // Verifies the full command → DCB event log → event topic pipeline for both
 // Customer and Order entities without any cloud infrastructure.
 
-open ReventlessSpec
+open Reventless
 open ReventlessInMemory.AsyncTest
 open ReventlessInMemory.AsyncTest.Expect
 

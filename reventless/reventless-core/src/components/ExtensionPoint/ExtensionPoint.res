@@ -1,10 +1,10 @@
 let componentType = ComponentType.ExtensionPoint
 
-type outputs = ReventlessSpec.ExtensionPoint.outputs
+type outputs = Reventless.ExtensionPoint.outputs
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
 
-type eventHandler = (JSON.t, ReventlessSpec.Plugin.pluginDefinition) => promise<unit>
+type eventHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
 type operations = {outgoingEventHandler: eventHandler}
 
 module type T = {
@@ -12,19 +12,19 @@ module type T = {
   type component = component<operations>
 
   let make: (
-    ~aggregateResources: dict<array<ReventlessSpec.Adapter.resource>>,
+    ~aggregateResources: dict<array<Reventless.Adapter.resource>>,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
-    ~queryEngine: ReventlessSpec.QueryEngine.operations,
-    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+    ~queryEngine: Reventless.QueryEngine.operations,
+    ~resourceNaming: Reventless.ResourceNaming.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
   let outputs: component => outputs
 }
 
 module type Mappings = {
-  module Spec: ReventlessSpec.ExtensionPointMapping.Spec
-  module type Mapping = ReventlessSpec.ExtensionPointMapping.T with module ExtensionPoint := Spec
+  module Spec: Reventless.ExtensionPointMapping.Spec
+  module type Mapping = Reventless.ExtensionPointMapping.T with module ExtensionPoint := Spec
   let mappings: array<module(Mapping)>
 }
 

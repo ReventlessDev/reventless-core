@@ -5,15 +5,15 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
-import * as AdapterDeploytime$Reventless from "@reventlessdev/reventless-core/src/adapter/AdapterDeploytime.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
+import * as AdapterDeploytime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/AdapterDeploytime.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
 function toResources(eventTopics) {
-  return Adapter$Reventless.resourcesToResolvedOutput(Object.values(eventTopics).flatMap(outputs => outputs.resources));
+  return Adapter$ReventlessCore.resourcesToResolvedOutput(Object.values(eventTopics).flatMap(outputs => outputs.resources));
 }
 
 function createQueuePolicy(queue, name, resources, opts) {
@@ -32,7 +32,7 @@ function createQueuePolicy(queue, name, resources, opts) {
         Condition: {
           ArnEquals: Object.fromEntries([[
               "aws:SourceArn",
-              Adapter$Reventless.urns(resources)
+              Adapter$ReventlessCore.urns(resources)
             ]])
         }
       }]));
@@ -46,7 +46,7 @@ function createQueuePolicy(queue, name, resources, opts) {
 function subscribeQueue2SnsTopic(queue, name, resources, opts) {
   resources.map(resource => {
     console.log("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource);
-    let subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, resource.name, AdapterDeploytime$Reventless.resolvedToResource(resource), opts);
+    let subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, resource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(resource), opts);
     return subscription.id.apply(id => {
       console.log("created SNS subscription:", id, name);
     });
@@ -70,7 +70,7 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
   Pulumi.all([
     toResources(eventTopics),
     Pulumi.all(queues.map(queue => queue.arn)),
-    Adapter$Reventless.resourcesToResolvedOutput(resources)
+    Adapter$ReventlessCore.resourcesToResolvedOutput(resources)
   ]).apply(param => {
     let resources = param[2];
     let queueArns = param[1];
@@ -90,7 +90,7 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
             "dynamodb:GetShardIterator",
             "dynamodb:ListStreams"
           ],
-          Resource: Adapter$Reventless.urns(dynamoDbStreamResources)
+          Resource: Adapter$ReventlessCore.urns(dynamoDbStreamResources)
         }]) : undefined;
     let allowLambdaReadWriteDynamoDb = targetDynamoDbResources.length !== 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
           Sid: "AllowLambdaReadWriteDynamoDb",
@@ -105,19 +105,19 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
             "dynamodb:DeleteItem",
             "dynamodb:BatchWriteItem"
           ],
-          Resource: Adapter$Reventless.urns(targetDynamoDbResources)
+          Resource: Adapter$ReventlessCore.urns(targetDynamoDbResources)
         }]) : undefined;
     let allowLambdaPublishSNS = targetSnsResources.length !== 0 ? PolicyDocument$PulumiAws.make(undefined, name + "PublishSNS", [{
           Sid: "AllowLambdaPublishSNS",
           Effect: "Allow",
           Action: "sns:Publish",
-          Resource: Adapter$Reventless.urns(targetSnsResources)
+          Resource: Adapter$ReventlessCore.urns(targetSnsResources)
         }]) : undefined;
     let allowLambdaSendSQS = targetSqsResources.length !== 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
           Sid: "AllowLambdaSendSQS",
           Effect: "Allow",
           Action: "sqs:SendMessage",
-          Resource: Adapter$Reventless.urns(targetSqsResources)
+          Resource: Adapter$ReventlessCore.urns(targetSqsResources)
         }]) : undefined;
     let allowLambdaReceiveSQS = queueArns.length !== 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaSQSPolicy", [{
           Sid: "AllowLambdaReceiveSQS",
@@ -140,9 +140,9 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
       ])),
       role: lambdaRole.id
     }, opts);
-    dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.resolvedToResource(dynamoDbStreamResource), opts));
+    dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(dynamoDbStreamResource), opts));
   });
-  return queues.map(queue => Adapter$Reventless.outputToResource(lambda.apply(lambda => Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts)))));
+  return queues.map(queue => Adapter$ReventlessCore.outputToResource(lambda.apply(lambda => Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts)))));
 }
 
 export {

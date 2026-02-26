@@ -1,4 +1,4 @@
-let handleBucketEvent = (handleEvent: Reventless.Task.bucketCallback) =>
+let handleBucketEvent = (handleEvent: ReventlessCore.Task.bucketCallback) =>
   (event: PulumiAws.S3.Bucket.event, _) => {
     event.records
     ->Array.map(record => {

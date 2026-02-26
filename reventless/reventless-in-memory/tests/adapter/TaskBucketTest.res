@@ -11,7 +11,7 @@ describe("TaskBucket_InMemory", () => {
     testPromise("calls callback with eventName and key extracted from JSON object", async () => {
       let receivedEventName: ref<string> = ref("")
       let receivedKey: ref<string> = ref("")
-      let callback: Reventless.Task.bucketCallback = async (~eventName, ~key) => {
+      let callback: ReventlessCore.Task.bucketCallback = async (~eventName, ~key) => {
         receivedEventName := eventName
         receivedKey := key
         []
@@ -30,7 +30,7 @@ describe("TaskBucket_InMemory", () => {
 
     testPromise("uses 'ObjectCreated' when JSON has no eventName field", async () => {
       let receivedEventName: ref<string> = ref("")
-      let callback: Reventless.Task.bucketCallback = async (~eventName, ~key as _) => {
+      let callback: ReventlessCore.Task.bucketCallback = async (~eventName, ~key as _) => {
         receivedEventName := eventName
         []
       }
@@ -44,7 +44,7 @@ describe("TaskBucket_InMemory", () => {
 
     testPromise("uses empty string when JSON has no key field", async () => {
       let receivedKey: ref<string> = ref("initial")
-      let callback: Reventless.Task.bucketCallback = async (~eventName as _, ~key) => {
+      let callback: ReventlessCore.Task.bucketCallback = async (~eventName as _, ~key) => {
         receivedKey := key
         []
       }
@@ -59,7 +59,7 @@ describe("TaskBucket_InMemory", () => {
     testPromise("non-object JSON uses 'ObjectCreated' and empty string for key", async () => {
       let receivedEventName: ref<string> = ref("")
       let receivedKey: ref<string> = ref("initial")
-      let callback: Reventless.Task.bucketCallback = async (~eventName, ~key) => {
+      let callback: ReventlessCore.Task.bucketCallback = async (~eventName, ~key) => {
         receivedEventName := eventName
         receivedKey := key
         []
@@ -72,7 +72,7 @@ describe("TaskBucket_InMemory", () => {
 
     testPromise("non-string eventName field falls back to ObjectCreated", async () => {
       let receivedEventName: ref<string> = ref("")
-      let callback: Reventless.Task.bucketCallback = async (~eventName, ~key as _) => {
+      let callback: ReventlessCore.Task.bucketCallback = async (~eventName, ~key as _) => {
         receivedEventName := eventName
         []
       }
@@ -85,8 +85,8 @@ describe("TaskBucket_InMemory", () => {
     })
 
     testPromise("returns task actions from callback", async () => {
-      let callback: Reventless.Task.bucketCallback = async (~eventName as _, ~key as _) => {
-        [Reventless.Task.DeleteSchedule("my-schedule")]
+      let callback: ReventlessCore.Task.bucketCallback = async (~eventName as _, ~key as _) => {
+        [ReventlessCore.Task.DeleteSchedule("my-schedule")]
       }
       let handler = TaskBucket_InMemory.makeHandler(callback)
       let json = JSON.Encode.object(Dict.fromArray([]))

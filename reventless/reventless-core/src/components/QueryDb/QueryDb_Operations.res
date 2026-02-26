@@ -2,7 +2,7 @@ module type Ops = {
   let jsonOps: QueryDb.operations<string, JSON.t>
 }
 
-module Make = (ReadModelSpec: ReventlessSpec.ReadModel.Spec, Ops: Ops) => {
+module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
   let decode = (id, stateJson) =>
     switch stateJson->Message.decode(ReadModelSpec.stateSchema) {
     | state => [state]
@@ -29,7 +29,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel.Spec, Ops: Ops) => {
       await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
       Console.log2("QueryDB.saveState: Error: Couldn't decodeObject:", state->JSON.stringifyAny)
-      Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
+      Error(Reventless.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
     }
 
   let saveBatch = async states => {

@@ -1,7 +1,7 @@
 // DeactivateCustomer StateChangeSlice.
 // Requires customer to exist; idempotent if already deactivated.
 
-open ReventlessSpec
+open Reventless
 open OrderingEventLog
 
 let name = "DeactivateCustomer"

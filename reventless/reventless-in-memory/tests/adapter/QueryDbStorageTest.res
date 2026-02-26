@@ -15,7 +15,7 @@ describe("QueryDbStorage_InMemory", () => {
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="rm1", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("id1", JSON.Encode.string("value1"), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("id1", JSON.Encode.string("value1"), ReventlessCore.QueryDb.Any, None)
       let items = (await ops.load("id1"))->Result.getOr([])
       expect(items->Array.length)->toBe(1)
       expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("value1"))
@@ -35,8 +35,8 @@ describe("QueryDbStorage_InMemory", () => {
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="rm3", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("id1", JSON.Encode.string("old"), Reventless.QueryDb.Any, None)
-      let _ = await ops.save("id1", JSON.Encode.string("new"), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("id1", JSON.Encode.string("old"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("id1", JSON.Encode.string("new"), ReventlessCore.QueryDb.Any, None)
       let items = (await ops.load("id1"))->Result.getOr([])
       expect(items->Array.length)->toBe(1)
       expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("new"))
@@ -77,7 +77,7 @@ describe("QueryDbStorage_InMemory", () => {
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="rm6", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("del-id", JSON.Encode.string("v"), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("del-id", JSON.Encode.string("v"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.delete("del-id", None)
       let items = (await ops.load("del-id"))->Result.getOr([])
       expect(items->Array.length)->toBe(0)
@@ -106,8 +106,8 @@ describe("QueryDbStorage_InMemory", () => {
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="scan-rm", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("s1", JSON.Encode.string("item1"), Reventless.QueryDb.Any, None)
-      let _ = await ops.save("s2", JSON.Encode.string("item2"), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("s1", JSON.Encode.string("item1"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("s2", JSON.Encode.string("item2"), ReventlessCore.QueryDb.Any, None)
       let scanFn = TestBus.getQueryDbScan("scan-rm")->Option.getOr(() => [])
       let all = scanFn()
       expect(all->Array.length)->toBe(2)
@@ -118,8 +118,8 @@ describe("QueryDbStorage_InMemory", () => {
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="scan-rm2", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("keep", JSON.Encode.string("keep"), Reventless.QueryDb.Any, None)
-      let _ = await ops.save("gone", JSON.Encode.string("gone"), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("keep", JSON.Encode.string("keep"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("gone", JSON.Encode.string("gone"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.delete("gone", None)
       let scanFn = TestBus.getQueryDbScan("scan-rm2")->Option.getOr(() => [])
       let all = scanFn()

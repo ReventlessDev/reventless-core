@@ -1,7 +1,7 @@
 // OrdersView StateViewSlice.
 // Projects order events from the shared ordering event log into an Orders read model.
 
-open ReventlessSpec.Projection
+open Reventless.Projection
 open OrderingEventLog
 
 let name = "OrdersView"

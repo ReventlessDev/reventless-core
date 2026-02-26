@@ -1,4 +1,4 @@
-// Output.t-free counterpart of ReventlessSpec.ExtensionPoint.outputs.
+// Output.t-free counterpart of Reventless.ExtensionPoint.outputs.
 // Sub-type of Plugin.resolvedOutputs; not a separate primary stack export.
 // Consumers read commandTopic.resources and eventTopic.resources to locate
 // the queue/topic URNs needed to connect an extension.

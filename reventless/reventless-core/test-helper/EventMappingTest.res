@@ -1,6 +1,6 @@
 module type T = {
-  module Source: ReventlessSpec.Aggregate.Spec
-  module Target: ReventlessSpec.Aggregate.Spec
+  module Source: Reventless.Aggregate.Spec
+  module Target: Reventless.Aggregate.Spec
 
   let describe: (string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => promise<Jest.assertion>) => unit
@@ -50,18 +50,18 @@ module type T = {
 }
 
 module type Aggregate = {
-  module Spec: ReventlessSpec.Aggregate.Spec
-  module Behavior: Reventless.Behavior.T
+  module Spec: Reventless.Aggregate.Spec
+  module Behavior: ReventlessCore.Behavior.T
 
   let apply': (Behavior.state, Spec.event) => Behavior.state
   let currentState: array<Spec.event> => Behavior.state
   let errors: array<Spec.error>
-  let errorHandler: Reventless.Message.errorHandler<Spec.error, Spec.command, Spec.event>
-  let exec: (Reventless.Message.context, Spec.command, array<Spec.event>) => array<Spec.event>
+  let errorHandler: ReventlessCore.Message.errorHandler<Spec.error, Spec.command, Spec.event>
+  let exec: (ReventlessCore.Message.context, Spec.command, array<Spec.event>) => array<Spec.event>
 }
 
 module MakeAggregate = (
-  Spec: ReventlessSpec.Aggregate.Spec,
+  Spec: Reventless.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
 ) => {
   module Spec = Spec
@@ -92,18 +92,18 @@ module MakeAggregate = (
         TestFixtures.context,
         errorHandler,
       ) catch {
-      | Reventless.Message.InvalidEvent(_) => []
+      | ReventlessCore.Message.InvalidEvent(_) => []
       }
     }
   }
 }
 
 module Make = (
-  Source: ReventlessSpec.Aggregate.Spec,
+  Source: Reventless.Aggregate.Spec,
   SourceBehavior: Behavior.T with module Spec = Source,
-  Target: ReventlessSpec.Aggregate.Spec,
+  Target: Reventless.Aggregate.Spec,
   TargetBehavior: Behavior.T with module Spec = Target,
-  EventMapping: ReventlessSpec.EventMapping.T
+  EventMapping: Reventless.EventMapping.T
     with module Source = Source
     and module Target := Target,
 ): (T with module Source = Source and module Target = Target) => {
@@ -116,14 +116,14 @@ module Make = (
   let describe = Jest.describe
   let test = Jest.testPromise
 
-  let queryEngine: ReventlessSpec.QueryEngine.operations = {
+  let queryEngine: Reventless.QueryEngine.operations = {
     scan: (~readModelName as _, ~filterConfigs as _, ~limit as _) => []->Promise.resolve,
     query: (
       ~readModelName as _: string,
       ~key as _: option<string>=?,
-      ~id as _: ReventlessSpec.QueryEngine.value,
-      ~subIdConfig as _: option<ReventlessSpec.QueryEngine.SubId.config>=?,
-      ~filterConfigs as _: option<array<ReventlessSpec.QueryEngine.Filter.config>>=?,
+      ~id as _: Reventless.QueryEngine.value,
+      ~subIdConfig as _: option<Reventless.QueryEngine.SubId.config>=?,
+      ~filterConfigs as _: option<array<Reventless.QueryEngine.Filter.config>>=?,
       ~ascending as _: option<bool>=?,
       ~limit as _: option<int>=?,
     ) => []->Promise.resolve,

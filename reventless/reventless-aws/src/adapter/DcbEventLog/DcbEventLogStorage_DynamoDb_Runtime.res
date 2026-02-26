@@ -21,7 +21,7 @@ let generatePositionForBatch = (basePosition, index) => {
 
 let tagToAttributeName = (tagKey: string) => `tag_${tagKey}`
 
-let compositeTagKey = (tags: array<ReventlessSpec.DcbTag.tag>) =>
+let compositeTagKey = (tags: array<Reventless.DcbTag.tag>) =>
   tags
   ->Array.toSorted((a, b) => String.compare(a.key, b.key))
   ->Array.map(t => `${t.key}:${t.value}`)
@@ -29,7 +29,7 @@ let compositeTagKey = (tags: array<ReventlessSpec.DcbTag.tag>) =>
 
 // --- Item Conversion ---
 
-let toItem = (position: string, event: Reventless.DcbEventLog_Adapter.rawStoredEvent): JSON.t => {
+let toItem = (position: string, event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent): JSON.t => {
   // Create base item
   let item = Dict.make()
   // Use "id" with value "dcb" for single partition (required by Util_DynamoDb table structure)
@@ -64,7 +64,7 @@ let toItem = (position: string, event: Reventless.DcbEventLog_Adapter.rawStoredE
   item->JSON.Encode.object
 }
 
-let fromItem = (item: JSON.t): Reventless.DcbEventLog_Adapter.rawSequencedEvent => {
+let fromItem = (item: JSON.t): ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent => {
   switch item->JSON.Decode.object {
   | None => JsError.throwWithMessage("Invalid DcbEventLog item: not an object")
   | Some(obj) =>
@@ -91,7 +91,7 @@ let fromItem = (item: JSON.t): Reventless.DcbEventLog_Adapter.rawSequencedEvent 
             let key = tagObj->Dict.get("key")->Option.flatMap(JSON.Decode.string)
             let value = tagObj->Dict.get("value")->Option.flatMap(JSON.Decode.string)
             switch (key, value) {
-            | (Some(k), Some(v)) => Some({ReventlessSpec.DcbTag.key: k, value: v})
+            | (Some(k), Some(v)) => Some({Reventless.DcbTag.key: k, value: v})
             | _ => None
             }
           }
@@ -146,7 +146,7 @@ let queryBySingleTag = async (
 
 let queryByCompositeTags = async (
   table: runtimeTable,
-  tags: array<ReventlessSpec.DcbTag.tag>,
+  tags: array<Reventless.DcbTag.tag>,
   ~after: option<string>=?,
 ) => {
   let composite = compositeTagKey(tags)
@@ -235,7 +235,7 @@ let scanWithFilter = async (
 
 let executeQueryItem = async (
   table: runtimeTable,
-  queryItem: ReventlessSpec.DcbTag.queryItem,
+  queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
 ) => {
   switch queryItem.tags {
@@ -260,8 +260,8 @@ let executeQueryItem = async (
 // --- Deduplication ---
 
 let deduplicateByPosition = (
-  events: array<Reventless.DcbEventLog_Adapter.rawSequencedEvent>,
-): array<Reventless.DcbEventLog_Adapter.rawSequencedEvent> => {
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent>,
+): array<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent> => {
   let seen = Set.make()
   events->Array.filter(event => {
     if seen->Set.has(event.position) {
@@ -277,7 +277,7 @@ let deduplicateByPosition = (
 
 let read = (table: runtimeTable) =>
   async (
-    ~query: ReventlessSpec.DcbTag.query,
+    ~query: Reventless.DcbTag.query,
     ~after=?,
   ) => {
     // Execute queries for each queryItem
@@ -302,14 +302,14 @@ let read = (table: runtimeTable) =>
     ->Option.map(event => event.position)
 
     {
-      Reventless.DcbEventLog_Adapter.events: sortedEvents,
+      ReventlessCore.DcbEventLog_Adapter.events: sortedEvents,
       ?headPosition,
     }
   }
 
 let writeEventsWithPosition = async (
   table: runtimeTable,
-  events: array<Reventless.DcbEventLog_Adapter.rawStoredEvent>,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   basePosition: string,
 ) => {
   let items = events->Array.mapWithIndex((event, idx) => {
@@ -328,7 +328,7 @@ let writeEventsWithPosition = async (
 
 let append = (table: runtimeTable) =>
   async (
-    events: array<Reventless.DcbEventLog_Adapter.rawStoredEvent>,
+    events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
     ~condition=?,
   ) => {
     switch condition {
@@ -341,7 +341,7 @@ let append = (table: runtimeTable) =>
         }
       }
 
-    | Some(cond: ReventlessSpec.DcbTag.appendCondition) => {
+    | Some(cond: Reventless.DcbTag.appendCondition) => {
         // Conditional append: check for conflicts first
         let readResult = await read(table)(~query=cond.query, ~after=?cond.after)
 

@@ -1,5 +1,5 @@
 module Make = (
-  Target: ReventlessSpec.EventMapping.Target,
+  Target: Reventless.EventMapping.Target,
   SpecificEventCollector: EventCollector.T,
   Mappings: EventMapper.Mappings with module Target := Target,
   AggregateRuntimeBuilder: AggregateRuntime_Builder.T
@@ -49,8 +49,8 @@ module Make = (
         )
         let counterComp: Component.t<
           _,
-          ReventlessSpec.Counter.outputs,
-          ReventlessSpec.Counter.operations,
+          Reventless.Counter.outputs,
+          Reventless.Counter.operations,
         > = counter->Obj.magic
         (counterComp->Component.operations, counterComp->Component.outputs->Some)
       },

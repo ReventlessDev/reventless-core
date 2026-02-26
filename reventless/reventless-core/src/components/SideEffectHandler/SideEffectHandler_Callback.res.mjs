@@ -4,17 +4,17 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Logger$Reventless from "../../util/Logger.res.mjs";
-import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Promise$Reventless from "../../util/Util_Promise.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function Make(Spec) {
   let findSideEffect = (sideEffects, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
     let metaJson = eventObj$p["meta"];
     let eventMeta;
     try {
-      eventMeta = Stdlib_Option.map(metaJson, meta => S.parseJsonOrThrow(meta, Message$Reventless.metaSchema));
+      eventMeta = Stdlib_Option.map(metaJson, meta => S.parseJsonOrThrow(meta, Message$ReventlessCore.metaSchema));
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
       console.log("SideEffects.map: Couldn't decode meta:", err);
@@ -34,7 +34,7 @@ function Make(Spec) {
     }
     console.log("SideEffects.map: Invalid JSON object");
   });
-  let eventsHandler = eventsJson$p => Util_Promise$Reventless.toUnit(Promise.all(eventsJson$p.map(async eventJson$p => {
+  let eventsHandler = eventsJson$p => Util_Promise$ReventlessCore.toUnit(Promise.all(eventsJson$p.map(async eventJson$p => {
     let match = findSideEffect(Spec.sideEffects, eventJson$p);
     if (match === undefined) {
       return;
@@ -42,10 +42,10 @@ function Make(Spec) {
     let sideEffect = match[2];
     let eventObj = match[0];
     let sourceName = sideEffect.Source.name;
-    Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, `SideEffectHandler.eventsHandler: handling event from source ` + sourceName + `:`);
+    Logger$ReventlessCore.logJsonEvent(undefined, undefined, eventJson$p, `SideEffectHandler.eventsHandler: handling event from source ` + sourceName + `:`);
     try {
-      let idDecoded = Stdlib_Option.map(eventObj["id"], id => Message$Reventless.decode(id, sideEffect.Source.Id.schema));
-      let eventDecoded = Stdlib_Option.map(eventObj["event"], json => Message$Reventless.decode(json, sideEffect.Source.eventSchema));
+      let idDecoded = Stdlib_Option.map(eventObj["id"], id => Message$ReventlessCore.decode(id, sideEffect.Source.Id.schema));
+      let eventDecoded = Stdlib_Option.map(eventObj["event"], json => Message$ReventlessCore.decode(json, sideEffect.Source.eventSchema));
       if (idDecoded !== undefined && eventDecoded !== undefined) {
         try {
           return await sideEffect.execute(Primitive_option.valFromOption(idDecoded), match[1], Primitive_option.valFromOption(eventDecoded), Spec.queryEngine);

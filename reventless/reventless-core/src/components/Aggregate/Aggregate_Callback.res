@@ -1,16 +1,16 @@
 module type Ops = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   module EventLog: EventLog.T with module Spec.Id = Spec.Id and type Spec.event = Spec.event
   let eventLog: EventLog.operations
 }
 
 module type T = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   let handleCommands: CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 }
 
 module Make = (
-  Spec: ReventlessSpec.Aggregate.Spec,
+  Spec: Reventless.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
   Ops: Ops with module Spec = Spec,
 ): (T with module Spec = Spec) => {

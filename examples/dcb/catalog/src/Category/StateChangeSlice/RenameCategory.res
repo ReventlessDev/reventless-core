@@ -1,7 +1,7 @@
 // RenameCategory StateChangeSlice.
 // Requires category to exist and not be archived.
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "RenameCategory"

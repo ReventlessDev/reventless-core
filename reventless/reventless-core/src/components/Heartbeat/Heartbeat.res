@@ -1,6 +1,6 @@
 let componentType = ComponentType.Heartbeat
 
-type outputs = ReventlessSpec.Heartbeat.outputs
+type outputs = Reventless.Heartbeat.outputs
 
 type t
 type component = Component.t<t, outputs, unit>

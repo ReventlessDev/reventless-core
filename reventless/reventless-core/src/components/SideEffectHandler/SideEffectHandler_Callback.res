@@ -1,6 +1,6 @@
 module type Spec = {
-  let sideEffects: array<module(ReventlessSpec.SideEffect.T)>
-  let queryEngine: ReventlessSpec.QueryEngine.operations
+  let sideEffects: array<module(Reventless.SideEffect.T)>
+  let queryEngine: Reventless.QueryEngine.operations
 }
 
 module type T = {
@@ -16,7 +16,7 @@ module Make = (Spec: Spec): T => {
       switch metaJson->Option.map(meta => meta->S.parseJsonOrThrow(Message.metaSchema)) {
       | Some(eventMeta) =>
         let sideEffect =
-          sideEffects->Array.find((module(SideEffect: ReventlessSpec.SideEffect.T)) =>
+          sideEffects->Array.find((module(SideEffect: Reventless.SideEffect.T)) =>
             SideEffect.Source.name == eventMeta.service
           )
         switch sideEffect {

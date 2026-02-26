@@ -30,7 +30,7 @@ type schemaVersions = {
 //   // MyExtensionPoint.res
 //   let name = "MyPlugin.MyExtensionPoint"
 //
-//   module Spec: ReventlessSpec.ExtensionPointMapping.Spec = {
+//   module Spec: Reventless.ExtensionPointMapping.Spec = {
 //     @schema type command = | DoThing(string) | DoOtherThing
 //     @schema type event   = | ThingDone(string)
 //     @schema type directive = | NoOp

@@ -16,7 +16,7 @@ function getVpcConfig(stackName, outputName) {
         subnetIds: [match$1]
       };
     } else {
-      return Stdlib_JsError.throwWithMessage("Output is not a Reventless Vpc Component");
+      return Stdlib_JsError.throwWithMessage("Output is not a ReventlessCore Vpc Component");
     }
   });
 }

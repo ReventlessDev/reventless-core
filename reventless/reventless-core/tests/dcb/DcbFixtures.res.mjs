@@ -3,25 +3,25 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as DcbTag$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
 S.enableJson();
 
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemCreated",
-    itemId: s.m(DcbTag$ReventlessSpec.string),
+    itemId: s.m(DcbTag$Reventless.string),
     name: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "ItemRenamed",
-    itemId: s.m(DcbTag$ReventlessSpec.string),
+    itemId: s.m(DcbTag$Reventless.string),
     newName: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "CountUpdated",
-    category: s.m(DcbTag$ReventlessSpec.string),
-    amount: s.m(DcbTag$ReventlessSpec.int)
+    category: s.m(DcbTag$Reventless.string),
+    amount: s.m(DcbTag$Reventless.int)
   })),
   S.literal("SimpleEvent")
 ]);
@@ -44,19 +44,19 @@ let UntaggedEventSpec = {
 };
 
 let objectEventSchema = S.schema(s => ({
-  tenantId: s.m(DcbTag$ReventlessSpec.string),
+  tenantId: s.m(DcbTag$Reventless.string),
   data: s.m(S.string)
 }));
 
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "CreateItem",
-    itemId: s.m(DcbTag$ReventlessSpec.string),
+    itemId: s.m(DcbTag$Reventless.string),
     name: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "RenameItem",
-    itemId: s.m(DcbTag$ReventlessSpec.string),
+    itemId: s.m(DcbTag$Reventless.string),
     newName: s.m(S.string)
   })),
   S.literal("NoOp")
@@ -267,8 +267,8 @@ let plainRecordSchema = S.schema(s => ({
 }));
 
 let multiTagRecordSchema = S.schema(s => ({
-  userId: s.m(DcbTag$ReventlessSpec.string),
-  tenantId: s.m(DcbTag$ReventlessSpec.string),
+  userId: s.m(DcbTag$Reventless.string),
+  tenantId: s.m(DcbTag$Reventless.string),
   data: s.m(S.string)
 }));
 
@@ -276,18 +276,18 @@ let emptyVariantSchema = S.literal("Empty");
 
 let intTagEventSchema = S.schema(s => ({
   TAG: "CountEvent",
-  count: s.m(DcbTag$ReventlessSpec.int)
+  count: s.m(DcbTag$Reventless.int)
 }));
 
 let mixedEventSchema = S.union([
   S.schema(s => ({
     TAG: "EventA",
-    id: s.m(DcbTag$ReventlessSpec.string),
+    id: s.m(DcbTag$Reventless.string),
     name: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "EventB",
-    id: s.m(DcbTag$ReventlessSpec.string),
+    id: s.m(DcbTag$Reventless.string),
     count: s.m(S.int)
   })),
   S.schema(s => ({
@@ -299,37 +299,37 @@ let mixedEventSchema = S.union([
 let complexEventSchema = S.union([
   S.schema(s => ({
     TAG: "UserCreated",
-    userId: s.m(DcbTag$ReventlessSpec.string),
+    userId: s.m(DcbTag$Reventless.string),
     name: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "UserUpdated",
-    userId: s.m(DcbTag$ReventlessSpec.string),
+    userId: s.m(DcbTag$Reventless.string),
     email: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$ReventlessSpec.string),
-    userId: s.m(DcbTag$ReventlessSpec.string),
+    orderId: s.m(DcbTag$Reventless.string),
+    userId: s.m(DcbTag$Reventless.string),
     amount: s.m(S.float)
   })),
   S.schema(s => ({
     TAG: "OrderShipped",
-    orderId: s.m(DcbTag$ReventlessSpec.string),
-    trackingId: s.m(DcbTag$ReventlessSpec.string)
+    orderId: s.m(DcbTag$Reventless.string),
+    trackingId: s.m(DcbTag$Reventless.string)
   })),
   S.schema(s => ({
     TAG: "PaymentProcessed",
-    paymentId: s.m(DcbTag$ReventlessSpec.string),
+    paymentId: s.m(DcbTag$Reventless.string),
     amount: s.m(S.float)
   }))
 ]);
 
 let multiFieldEventSchema = S.schema(s => ({
   TAG: "EventWithMultipleTags",
-  userId: s.m(DcbTag$ReventlessSpec.string),
-  tenantId: s.m(DcbTag$ReventlessSpec.string),
-  sessionId: s.m(DcbTag$ReventlessSpec.string)
+  userId: s.m(DcbTag$Reventless.string),
+  tenantId: s.m(DcbTag$Reventless.string),
+  sessionId: s.m(DcbTag$Reventless.string)
 }));
 
 let testMeta = {

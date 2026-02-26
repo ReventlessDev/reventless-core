@@ -2,8 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Counter$Reventless from "./Counter.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Counter$ReventlessCore from "./Counter.res.mjs";
 
 let referencesStateSchema = S.schema(s => ({
   id: s.m(S.string),
@@ -29,12 +29,12 @@ function logCountItems(countItems) {
   });
 }
 
-let NotCounted = /* @__PURE__ */Primitive_exceptions.create("Counter_Operations-Reventless.NotCounted");
+let NotCounted = /* @__PURE__ */Primitive_exceptions.create("Counter_Operations-ReventlessCore.NotCounted");
 
 function Make(Ops) {
   let count = async countItems => {
     let result = await Ops.saveBatch(countItems.map(param => {
-      let id = Counter$Reventless.makeId([
+      let id = Counter$ReventlessCore.makeId([
         param.counterId,
         param.reference
       ]);
@@ -51,7 +51,7 @@ function Make(Ops) {
     }));
     if (result.TAG === "Ok") {
       let batchSize = countItems.length;
-      console.log("Counter_Operations-Reventless" + (`: saved batch of ` + batchSize.toString() + ` reference(s):`));
+      console.log("Counter_Operations-ReventlessCore" + (`: saved batch of ` + batchSize.toString() + ` reference(s):`));
       return logCountItems(countItems);
     }
     let err = result._0;

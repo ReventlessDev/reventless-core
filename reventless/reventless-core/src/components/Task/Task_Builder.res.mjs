@@ -2,25 +2,25 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Task$Reventless from "./Task.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Aggregate$Reventless from "../Aggregate/Aggregate.res.mjs";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as Util_Promise$Reventless from "../../util/Util_Promise.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
+import * as Task$ReventlessCore from "./Task.res.mjs";
+import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 
 function Make(Spec) {
   return RuntimeEnvironment => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (TaskRuntimeBuilder => (TaskBucket => (SpecificSideEffectHandler => {
-    let make = (queryBucketName, scheduler, publishToAggregates, queryEngine, resourceNaming, allAggregates, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Task$Reventless.componentType), Spec.name, (extra, extra$1) => {
-      let opts_parent = Component$Reventless.toPulumiResource(extra);
+    let make = (queryBucketName, scheduler, publishToAggregates, queryEngine, resourceNaming, allAggregates, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Task$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+      let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let allCommandTopics = Aggregate$Reventless.allCommandTopics(allAggregates);
+      let allCommandTopics = Aggregate$ReventlessCore.allCommandTopics(allAggregates);
       let publishCommands = (aggregateName, cmdJsons) => Stdlib_Option.getOrThrow(publishToAggregates[aggregateName], undefined)(cmdJsons);
       let config = Spec.setup(queryEngine, queryBucketName, opts);
-      let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$Reventless.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, resourceNaming, undefined, undefined, opts));
-      let taskActionsHandler = (taskActions, operations) => Util_Promise$Reventless.toUnit(Promise.all(taskActions.map(async taskAction => {
+      let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$ReventlessCore.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, resourceNaming, undefined, undefined, opts));
+      let taskActionsHandler = (taskActions, operations) => Util_Promise$ReventlessCore.toUnit(Promise.all(taskActions.map(async taskAction => {
         switch (taskAction.TAG) {
           case "PublishCommands" :
             return await publishCommands(taskAction._0, taskAction._1);
@@ -43,7 +43,7 @@ function Make(Spec) {
       let createHandler = (sideEffectHandler, callback) => {
         let handler = TaskBucket.makeHandler(callback);
         if (sideEffectHandler !== undefined) {
-          return Component$Reventless.operations(Primitive_option.valFromOption(sideEffectHandler)).apply(operations => (async (event, context) => {
+          return Component$ReventlessCore.operations(Primitive_option.valFromOption(sideEffectHandler)).apply(operations => (async (event, context) => {
             let taskActions = await handler(event, context);
             return await taskActionsHandler(taskActions, operations);
           }));
@@ -69,7 +69,7 @@ function Make(Spec) {
         ];
       })));
       let sideEffectSources = Stdlib_Option.map(config.sideEffects, sideEffect => sideEffect.map(SideEffect => SideEffect.Source.name));
-      return Component$Reventless.setOutputs(extra, {
+      return Component$ReventlessCore.setOutputs(extra, {
         name: extra$1,
         bucketNames: bucketNames,
         sideEffectSources: sideEffectSources
@@ -78,7 +78,7 @@ function Make(Spec) {
     return {
       Spec: Spec,
       make: make,
-      outputs: Component$Reventless.outputs
+      outputs: Component$ReventlessCore.outputs
     };
   })))));
 }

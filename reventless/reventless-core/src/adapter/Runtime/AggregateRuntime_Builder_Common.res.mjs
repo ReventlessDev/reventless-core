@@ -3,8 +3,8 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Component$Reventless from "../../components/Component.res.mjs";
-import * as CommandGenerator$Reventless from "../../components/CommandGenerator/CommandGenerator.res.mjs";
+import * as Component$ReventlessCore from "../../components/Component.res.mjs";
+import * as CommandGenerator$ReventlessCore from "../../components/CommandGenerator/CommandGenerator.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return CommandTopicChannel => (EventCollectorChannel => {
@@ -14,7 +14,7 @@ function Make(RuntimeEnvironment) {
     let eventCollectorHandlers = {};
     let aggregateHandler = aggregateName => (async (event, context) => {
       let desc = `aggregateHandler for ` + aggregateName + `:`;
-      let info = CommandGenerator$Reventless.metaInfo(event);
+      let info = CommandGenerator$ReventlessCore.metaInfo(event);
       if (info !== undefined) {
         let handler = commandGeneratorHandlers[info];
         if (handler !== undefined) {
@@ -81,14 +81,14 @@ function Make(RuntimeEnvironment) {
     let forCommandGenerator = (handler, connect, memorySizeOpt, timeoutOpt, commandGenerator) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
-      let commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
+      let commandGeneratorResource = Component$ReventlessCore.toPulumiResource(commandGenerator);
       let commandGeneratorName = Stdlib_Option.getOr(commandGeneratorResource.__name, "Unnamed");
       let aggregateResource = commandGeneratorResource.__parentResource;
       if (aggregateResource === undefined) {
         return Stdlib_JsError.throwWithMessage(`forCommandGenerator: commandGenerator ` + commandGeneratorName + ` has no Aggregate parent`);
       }
       registerRuntimeSpec(connect, memorySize, timeout, aggregateResource);
-      let infos = Pulumi.all(Component$Reventless.outputs(commandGenerator).resources.map(resource => resource.info));
+      let infos = Pulumi.all(Component$ReventlessCore.outputs(commandGenerator).resources.map(resource => resource.info));
       Pulumi.all([
         infos,
         handler
@@ -104,14 +104,14 @@ function Make(RuntimeEnvironment) {
     let forCommandTopic = (handler, connect, memorySizeOpt, timeoutOpt, commandTopic) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
-      let commandTopicResource = Component$Reventless.toPulumiResource(commandTopic);
+      let commandTopicResource = Component$ReventlessCore.toPulumiResource(commandTopic);
       let commandTopicName = Stdlib_Option.getOr(commandTopicResource.__name, "Unnamed");
       let aggregateResource = commandTopicResource.__parentResource;
       if (aggregateResource === undefined) {
         return Stdlib_JsError.throwWithMessage(`forCommandTopic: commandTopic ` + commandTopicName + ` has no Aggregate parent`);
       }
       registerRuntimeSpec(connect, memorySize, timeout, aggregateResource);
-      let urn = Component$Reventless.outputs(commandTopic).resources[0].urn;
+      let urn = Component$ReventlessCore.outputs(commandTopic).resources[0].urn;
       Pulumi.all([
         urn,
         handler
@@ -124,7 +124,7 @@ function Make(RuntimeEnvironment) {
     let forEventCollector = (handler, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
-      let eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
+      let eventCollectorResource = Component$ReventlessCore.toPulumiResource(eventCollector);
       let eventCollectorName = Stdlib_Option.getOr(eventCollectorResource.__name, "Unnamed");
       let channel = eventCollector.channel;
       let aggregateResource = Stdlib_Option.flatMap(eventCollectorResource.__parentResource, parent => parent.__parentResource);
@@ -132,7 +132,7 @@ function Make(RuntimeEnvironment) {
         return Stdlib_JsError.throwWithMessage(`forEventCollector: eventCollector ` + eventCollectorName + ` has no Aggregate parent`);
       }
       registerEventCollectorRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, aggregateResource);
-      let urns = Pulumi.all(Component$Reventless.outputs(eventCollector).resources.map(param => param.urn));
+      let urns = Pulumi.all(Component$ReventlessCore.outputs(eventCollector).resources.map(param => param.urn));
       Pulumi.all([
         urns,
         handler

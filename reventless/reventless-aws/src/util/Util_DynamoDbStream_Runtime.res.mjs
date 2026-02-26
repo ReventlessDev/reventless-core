@@ -3,9 +3,9 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Message$Reventless from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as DynamoDb_Util$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_Util.res.mjs";
-import * as Util_AdapterRuntime$Reventless from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as Util_AdapterRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
 
 function buildJsonEvent$p(dict) {
   let match = dict["type"];
@@ -14,10 +14,10 @@ function buildJsonEvent$p(dict) {
   tmp = match !== undefined ? (
       typeof match === "string" ? (
           match$1 !== undefined ? (
-              typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1) ? Message$Reventless.combineMessage(match, match$1) : Message$Reventless.combineMessage("Unknown", {})
-            ) : Message$Reventless.combineMessage(match, {})
-        ) : Message$Reventless.combineMessage("Unknown", {})
-    ) : Message$Reventless.combineMessage("Unknown", {});
+              typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1) ? Message$ReventlessCore.combineMessage(match, match$1) : Message$ReventlessCore.combineMessage("Unknown", {})
+            ) : Message$ReventlessCore.combineMessage(match, {})
+        ) : Message$ReventlessCore.combineMessage("Unknown", {})
+    ) : Message$ReventlessCore.combineMessage("Unknown", {});
   return Object.fromEntries([
     [
       "id",
@@ -25,7 +25,7 @@ function buildJsonEvent$p(dict) {
     ],
     [
       "meta",
-      Message$Reventless.composeMeta(dict)
+      Message$ReventlessCore.composeMeta(dict)
     ],
     [
       "event",
@@ -82,7 +82,7 @@ function parseDynamoDbStreamRecordState(record) {
 }
 
 function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDbStream.service);
+  return Util_AdapterRuntime$ReventlessCore.findResource(resources, AWS$ReventlessAws.DynamoDbStream.service);
 }
 
 export {
@@ -93,4 +93,4 @@ export {
   parseDynamoDbStreamRecordState,
   findResource,
 }
-/* Message-Reventless Not a pure module */
+/* DynamoDb_Util-AwsSdk Not a pure module */

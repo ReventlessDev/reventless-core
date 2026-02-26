@@ -3,7 +3,7 @@
 //   module QueryEngine = QueryEngine_InMemory.Make(Bus)
 // and then pass QueryEngine as QueryEngineAdapter to Plugin_Builder.Make or Core_Builder.Make.
 
-open ReventlessSpec
+open Reventless
 
 module Make = (Bus: InMemory_Bus.T) => {
   let valueToString = value =>
@@ -13,7 +13,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     | QueryEngine.Bool(b) => b ? "true" : "false"
     }
 
-  let make: Reventless.QueryDb_Adapter.queryEngineMaker = _allQueryDbs =>
+  let make: ReventlessCore.QueryDb_Adapter.queryEngineMaker = _allQueryDbs =>
     Pulumi.Output.make({
       QueryEngine.scan: async (~readModelName, ~filterConfigs as _, ~limit as _) =>
         switch Bus.getQueryDbScan(readModelName) {

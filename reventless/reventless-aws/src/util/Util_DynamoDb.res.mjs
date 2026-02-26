@@ -6,9 +6,9 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
+import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "./Util_DynamoDb_Runtime.res.mjs";
 import * as Util_DynamoDb_TableManager$ReventlessAws from "./Util_DynamoDb_TableManager.res.mjs";
 
@@ -184,15 +184,15 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, tags, opts
 }
 
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDb.service);
+  return Util_Adapter$ReventlessCore.findResource(resources, AWS$ReventlessAws.DynamoDb.service);
 }
 
 function findResolvedResource(resources) {
-  return Util_Adapter$Reventless.findResolvedResource(resources, AWS$ReventlessAws.DynamoDb.service);
+  return Util_Adapter$ReventlessCore.findResolvedResource(resources, AWS$ReventlessAws.DynamoDb.service);
 }
 
 function findResourceInOutput(resourcesOutput) {
-  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, AWS$ReventlessAws.DynamoDb.service);
+  return Util_Adapter$ReventlessCore.findResourceInOutput(resourcesOutput, AWS$ReventlessAws.DynamoDb.service);
 }
 
 export {

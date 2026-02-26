@@ -3,17 +3,17 @@ module CommandTopicChannel = CommandTopicChannel.SQS_FIFO
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
-module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_Single.Make(
+module AggregateRuntimeBuilder = ReventlessCore.AggregateRuntime_Builder_Single.Make(
   RuntimeEnvironment,
   CommandTopicChannel,
   EventCollectorChannel,
 )
 
 module Make = (
-  Spec: ReventlessSpec.Aggregate.Spec,
-  Behavior: Reventless.Behavior.T with module Spec := Spec,
-  EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
-) => Reventless.Aggregate_Builder.Make(
+  Spec: Reventless.Aggregate.Spec,
+  Behavior: ReventlessCore.Behavior.T with module Spec := Spec,
+  EventMappings: ReventlessCore.EventMapper.Mappings with module Target := Spec,
+) => ReventlessCore.Aggregate_Builder.Make(
   Spec,
   Behavior,
   EventMappings,

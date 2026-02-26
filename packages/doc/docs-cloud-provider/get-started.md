@@ -81,7 +81,7 @@ Expose builder modules that pre-wire the framework functors with your adapters:
 
 ```rescript
 // MyProviderEventLog.res
-module Make = (Spec: ReventlessSpec.EventLog.Spec) =>
+module Make = (Spec: Reventless.EventLog.Spec) =>
   EventLog_Builder.Make(Spec, MyEventLogStorage, MyEventTopicPublisher)
 ```
 

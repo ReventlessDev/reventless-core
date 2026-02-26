@@ -1,6 +1,6 @@
 /* let mode = #production // opposed to `debug
 open PulumiAws.Lambda
-open ReventlessSpec.Adapter
+open Reventless.Adapter
 
 type tableConfig = {name: string, id: string, sort: option<string>}
 type event = {tables: nullable<array<tableConfig>>}

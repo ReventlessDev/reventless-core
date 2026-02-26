@@ -2,57 +2,57 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
-import * as Component$Reventless from "../Component.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Projection$Reventless from "../../Projection.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as ReadModel$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as StateViewSlice$Reventless from "./StateViewSlice.res.mjs";
-import * as QueryDb_Builder$Reventless from "../QueryDb/QueryDb_Builder.res.mjs";
-import * as EventCollector_Builder$Reventless from "../EventCollector/EventCollector_Builder.res.mjs";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as Projection$ReventlessCore from "../../Projection.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as StateViewSlice$ReventlessCore from "./StateViewSlice.res.mjs";
+import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
+import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
     let Make = Spec => {
-      let config = ReadModel$ReventlessSpec.config(undefined, undefined, undefined);
-      let SpecificQueryDb = QueryDb_Builder$Reventless.Make({
-        Id: Id$ReventlessSpec.$$String,
+      let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+      let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
+        Id: Id$Reventless.$$String,
         name: Spec.name,
         stateSchema: Spec.stateSchema,
         config: config,
         subIdConfig: undefined
       })(QueryDbStorage)(QueryDbResolvers);
-      let SpecificEventCollector = EventCollector_Builder$Reventless.Make(RuntimeEnvironment)(EventCollectorChannel);
+      let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let toProjectionOps = ops => ({
-        load: id => ops.load(Id$ReventlessSpec.$$String.makeFromString(id)),
-        save: (id, s, sm, ttl) => ops.save(Id$ReventlessSpec.$$String.makeFromString(id), s, sm, ttl),
+        load: id => ops.load(Id$Reventless.$$String.makeFromString(id)),
+        save: (id, s, sm, ttl) => ops.save(Id$Reventless.$$String.makeFromString(id), s, sm, ttl),
         saveBatch: batch => ops.saveBatch(batch.map(param => [
-          Id$ReventlessSpec.$$String.makeFromString(param[0]),
+          Id$Reventless.$$String.makeFromString(param[0]),
           param[1],
           param[2]
         ])),
-        count: (id, f, n) => ops.count(Id$ReventlessSpec.$$String.makeFromString(id), f, n),
-        delete: (id, sub) => ops.delete(Id$ReventlessSpec.$$String.makeFromString(id), sub),
+        count: (id, f, n) => ops.count(Id$Reventless.$$String.makeFromString(id), f, n),
+        delete: (id, sub) => ops.delete(Id$Reventless.$$String.makeFromString(id), sub),
         deleteBatch: ids => ops.deleteBatch(ids.map(param => [
-          Id$ReventlessSpec.$$String.makeFromString(param[0]),
+          Id$Reventless.$$String.makeFromString(param[0]),
           param[1]
         ]))
       });
-      let make = (dcbEventLog, opts) => Component$Reventless.make(ComponentType$Reventless.toString(StateViewSlice$Reventless.componentType), Spec.name, (extra, extra$1) => {
-        let opts_parent = Component$Reventless.toPulumiResource(extra);
+      let make = (dcbEventLog, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateViewSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+        let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
           parent: opts_parent
         };
         let queryDb = SpecificQueryDb.make(Api.api, Api.apiRole, undefined, opts);
-        let dcbEventTopicOutputs = Component$Reventless.outputs(dcbEventLog).eventTopic;
+        let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
         let allEventTopics = Object.fromEntries([[
             Spec.name,
             dcbEventTopicOutputs
           ]]);
-        let eventCollector = Component$Reventless.operations(queryDb).apply(queryDbOps => {
+        let eventCollector = Component$ReventlessCore.operations(queryDb).apply(queryDbOps => {
           let projectionOps = toProjectionOps(queryDbOps);
           let ec = SpecificEventCollector.make(Spec.name, allEventTopics, opts);
           let jsonEventsHandler = async jsons => {
@@ -66,23 +66,23 @@ function Make(RuntimeEnvironment) {
               }
             });
             let actions = events.flatMap(event => Spec.project(undefined, event));
-            return await Projection$Reventless.handleActions(actions, projectionOps, undefined);
+            return await Projection$ReventlessCore.handleActions(actions, projectionOps, undefined);
           };
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
-          let resources = Component$Reventless.outputs(queryDb).resources;
+          let resources = Component$ReventlessCore.outputs(queryDb).resources;
           EventCollectorRuntimeBuilder.forEventCollector(handler, allEventTopics, resources, undefined, undefined, ec);
           return ec;
         });
-        Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, Component$Reventless.operations).apply(param => ({
+        Component$ReventlessCore.setOperations(extra, Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations).apply(param => ({
           enqueueEvent: param.enqueueEvent
         })));
         let outputs_resources = dcbEventTopicOutputs.resources;
-        let outputs_queryDb = Component$Reventless.outputs(queryDb);
+        let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
         let outputs = {
           resources: outputs_resources,
           queryDb: outputs_queryDb
         };
-        return Component$Reventless.setOutputs(extra, outputs);
+        return Component$ReventlessCore.setOutputs(extra, outputs);
       }, opts);
       return {
         Spec: Spec,

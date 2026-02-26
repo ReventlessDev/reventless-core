@@ -1,15 +1,15 @@
-open ReventlessSpec.Message
+open Reventless.Message
 
 module Util = {
   let extractExtensionPointNames = Array.map(_, (
-    extensionPoint: ReventlessSpec.Plugin.extensionPointDefinition,
+    extensionPoint: Reventless.Plugin.extensionPointDefinition,
   ) => extensionPoint.name)
-  let extractExtensionNames = Array.map(_, (extension: ReventlessSpec.Plugin.extensionDefinition) =>
+  let extractExtensionNames = Array.map(_, (extension: Reventless.Plugin.extensionDefinition) =>
     extension.extensionPointName
   )
 }
 
-module PluginMapping = ReventlessSpec.Projection.Mapping.Make(
+module PluginMapping = Reventless.Projection.Mapping.Make(
   PluginSpec,
   PluginReadModelSpec,
   {
@@ -20,7 +20,7 @@ module PluginMapping = ReventlessSpec.Projection.Mapping.Make(
       }
       switch event {
       | PluginSpec.UnknownPluginDetected
-      | IncompatiblePluginDetected(_) => ReventlessSpec.Projection.Ignore
+      | IncompatiblePluginDetected(_) => Reventless.Projection.Ignore
       | Connected({name, version, eventCollector, extensionPoints, extensions}) =>
         Set(
           id,
@@ -102,8 +102,8 @@ module PluginMapping = ReventlessSpec.Projection.Mapping.Make(
   },
 )
 
-module Mappings = ReventlessSpec.Projection.Mappings.Make(PluginReadModelSpec)
-//module type Mapping = ReventlessSpec.Projection.Mapping
+module Mappings = Reventless.Projection.Mappings.Make(PluginReadModelSpec)
+//module type Mapping = Reventless.Projection.Mapping
 //with type targetState := PluginReadModelSpec.state
 
 let mappings: array<module(Mappings.Mapping)> = [module(PluginMapping)]

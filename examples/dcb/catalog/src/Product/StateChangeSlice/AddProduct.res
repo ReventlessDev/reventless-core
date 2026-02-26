@@ -1,7 +1,7 @@
 // AddProduct StateChangeSlice.
 // Handles the AddProduct command; rejects duplicate creation via DCB optimistic concurrency.
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "AddProduct"

@@ -6,17 +6,17 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_Cloudwatch$ReventlessAws from "../../util/Util_Cloudwatch.res.mjs";
 import * as Cloudwatch_EventRule$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.mjs";
 import * as Cloudwatch_EventTarget$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.mjs";
 
 function make(name, remoteChannel, timeout, runtime, opts) {
-  let opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + name), {
     description: "Send a heartbeat to the Core Plugin ExtensionPoint",
     scheduleExpression: Primitive_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
@@ -57,7 +57,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
   });
   return {
     resources: [
-      Adapter$Reventless.outputToResource(lambda.apply(Util_Lambda$ReventlessAws.toResource)),
+      Adapter$ReventlessCore.outputToResource(lambda.apply(Util_Lambda$ReventlessAws.toResource)),
       Util_Cloudwatch$ReventlessAws.EventRule.toResource(cloudwatchEventRule)
     ]
   };

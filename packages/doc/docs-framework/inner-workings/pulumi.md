@@ -149,7 +149,7 @@ From [`QueryDb_Adapter.res`](packages/reventless/src/components/QueryDb/QueryDb_
 
 ```rescript
 type storage = {
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   dataSourceName: Pulumi.Output.t<string>,
   operations: Pulumi.Output.t<operations>,
 }

@@ -2,10 +2,10 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as CommandGenerator$Reventless from "./CommandGenerator.res.mjs";
-import * as CommandGenerator_Callback$Reventless from "./CommandGenerator_Callback.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as CommandGenerator$ReventlessCore from "./CommandGenerator.res.mjs";
+import * as CommandGenerator_Callback$ReventlessCore from "./CommandGenerator_Callback.res.mjs";
 
 function Make(Spec) {
   return Behavior => (Resolvers => {
@@ -20,11 +20,11 @@ function Make(Spec) {
       let outputs = {
         resources: resources
       };
-      Component$Reventless.setOutputs(self, outputs);
+      Component$ReventlessCore.setOutputs(self, outputs);
     };
     let connect = (api, resources, runtime, commandGenerator) => {
-      let commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
-      let name = ComponentType$Reventless.name(Stdlib_Option.getOr(commandGeneratorResource.__name, "Unnamed"), CommandGenerator$Reventless.componentType);
+      let commandGeneratorResource = Component$ReventlessCore.toPulumiResource(commandGenerator);
+      let name = ComponentType$ReventlessCore.name(Stdlib_Option.getOr(commandGeneratorResource.__name, "Unnamed"), CommandGenerator$ReventlessCore.componentType);
       let opts_parent = commandGeneratorResource;
       let opts = {
         parent: opts_parent
@@ -33,15 +33,15 @@ function Make(Spec) {
       let cgOutputs = {
         resources: resolvers.resources
       };
-      Component$Reventless.setOutputs(commandGenerator, cgOutputs);
+      Component$ReventlessCore.setOutputs(commandGenerator, cgOutputs);
     };
     let makeHandler = publishJsons => {
-      let Callback = CommandGenerator_Callback$Reventless.Make({
+      let Callback = CommandGenerator_Callback$ReventlessCore.Make({
         publishJsons: publishJsons
       })(Spec)(Behavior);
       return Resolvers.handleResolversEvent(Callback.generateCommand);
     };
-    let make = (name, opts) => Component$Reventless.make(ComponentType$Reventless.toString(CommandGenerator$Reventless.componentType), name, construct, opts);
+    let make = (name, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(CommandGenerator$ReventlessCore.componentType), name, construct, opts);
     return {
       connect: connect,
       makeHandler: makeHandler,

@@ -23,7 +23,7 @@
 //   type source;
 //   [@schema]
 //   type target;
-//   let map: (source, ReventlessSpec.Message.context) => Spec.action(target);
+//   let map: (source, Reventless.Message.context) => Spec.action(target);
 // };
 //   module type Mapping = {
 //     module Spec: Spec; // to be removed via destructive replace in functor call
@@ -50,7 +50,7 @@
 //     let targetName = Target.name;
 //     let map = json => {
 //       switch (
-//         json->ReventlessSpec.Message.context_decode,
+//         json->Reventless.Message.context_decode,
 //         json->Source.decode,
 //       ) {
 //       | (Ok(context), Ok(source)) =>

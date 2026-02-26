@@ -3,7 +3,7 @@
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Adapter$Reventless from "../adapter/Adapter.res.mjs";
+import * as Adapter$ReventlessCore from "../adapter/Adapter.res.mjs";
 
 function filterSupportedResources(resources, supportedServices) {
   return Pulumi.all(resources.map(resource => resource.service)).apply(services => Belt_Array.zip(resources, services).filter(param => {
@@ -17,13 +17,13 @@ function filterSupportedResolvedResources(resources, supportedServices) {
 }
 
 function findResource(resources, service) {
-  return Adapter$Reventless.outputToResource(filterSupportedResources(resources, [service]).apply(resources => {
+  return Adapter$ReventlessCore.outputToResource(filterSupportedResources(resources, [service]).apply(resources => {
     if (resources.length !== 0) {
       return resources[0];
     }
     let err = `Util.Adapter.findResource: Couldn't find service ` + service + ` in resources`;
-    Pulumi.all(resources.map(Adapter$Reventless.resourceToResolvedOutput)).apply(resources => {
-      let resourcesStr = Adapter$Reventless.resolvedToString(resources);
+    Pulumi.all(resources.map(Adapter$ReventlessCore.resourceToResolvedOutput)).apply(resources => {
+      let resourcesStr = Adapter$ReventlessCore.resolvedToString(resources);
       console.log(err, resourcesStr);
     });
     return Stdlib_JsError.throwWithMessage(err);
@@ -35,7 +35,7 @@ function findResolvedResource(resources, service) {
   if (matching.length !== 0) {
     return matching[0];
   }
-  let err = `Util.Adapter.findResolvedResource: Couldn't find service ` + service + ` in resources: ` + Adapter$Reventless.resolvedToString(resources);
+  let err = `Util.Adapter.findResolvedResource: Couldn't find service ` + service + ` in resources: ` + Adapter$ReventlessCore.resolvedToString(resources);
   console.log(err);
   return Stdlib_JsError.throwWithMessage(err);
 }

@@ -10,13 +10,13 @@ module Make = (Bus: InMemory_Bus.T) => {
 
   // Encode the full message body that CommandTopic_Callback expects:
   // {id: string, meta: ..., command: commandPayload}
-  let encodeMessage = (cmdJson: ReventlessSpec.Message.commandJson): JSON.t =>
+  let encodeMessage = (cmdJson: Reventless.Message.commandJson): JSON.t =>
     JSON.Encode.object(
       Dict.fromArray([
         ("id", JSON.Encode.string(cmdJson.id)),
         (
           "meta",
-          cmdJson.meta->S.reverseConvertToJsonOrThrow(ReventlessSpec.Message.metaSchema),
+          cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema),
         ),
         ("command", cmdJson.commandJson),
       ]),
@@ -38,24 +38,24 @@ module Make = (Bus: InMemory_Bus.T) => {
     | _ => ""
     }
 
-  let make: Reventless.CommandTopic_Adapter.channelMaker<
+  let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
     callbackEvent,
     'context,
     channelParts,
     runtimeParts,
   > = (~name, ~opts as _=?) => {
-    let publishJsons: ReventlessSpec.CommandTopic.publishJsons = async jsons => {
+    let publishJsons: Reventless.CommandTopic.publishJsons = async jsons => {
       let _ =
         await jsons
-        ->Array.map(async (cmdJson: ReventlessSpec.Message.commandJson) => {
+        ->Array.map(async (cmdJson: Reventless.Message.commandJson) => {
           await Bus.dispatchCommand(name, encodeMessage(cmdJson))
         })
         ->Promise.all
     }
 
     let handleChannelEvent = (
-      handleCmds: Reventless.CommandTopic.jsonCommandsHandler,
-    ): Pulumi.Output.t<Reventless.Runtime.eventHandler<callbackEvent, 'context, unit>> =>
+      handleCmds: ReventlessCore.CommandTopic.jsonCommandsHandler,
+    ): Pulumi.Output.t<ReventlessCore.Runtime.eventHandler<callbackEvent, 'context, unit>> =>
       (
         (fullBody: JSON.t, _ctx) => {
           // Pass the full body as `command` — that's what handleJsonCommands decodes
@@ -64,7 +64,7 @@ module Make = (Bus: InMemory_Bus.T) => {
         }
       )->Pulumi.Output.make
 
-    let connect: Reventless.CommandTopic_Adapter.connect<
+    let connect: ReventlessCore.CommandTopic_Adapter.connect<
       callbackEvent,
       'context,
       channelParts,

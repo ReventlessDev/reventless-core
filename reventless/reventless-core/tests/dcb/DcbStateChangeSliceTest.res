@@ -20,10 +20,10 @@ let testDcbEventLog: DcbEventLog.operations<DcbFixtures.TestEventLogSpec.event> 
 module TestHandler = StateChangeSlice_Callback.Make(DcbFixtures.TestCommandSpec)
 
 let makeTopicItem = (reference, command): CommandTopic.topicItem<
-  Message.command'<ReventlessSpec.Id.String.t, DcbFixtures.TestCommandSpec.command>,
+  Message.command'<Reventless.Id.String.t, DcbFixtures.TestCommandSpec.command>,
 > => {
   command: {
-    id: ReventlessSpec.Id.String.makeFromString("cmd-" ++ reference),
+    id: Reventless.Id.String.makeFromString("cmd-" ++ reference),
     meta: DcbFixtures.testMeta,
     command,
   },
@@ -52,7 +52,7 @@ describe("StateChangeSlice_Callback:", () => {
       ])
       let storedEvent = mock.getEvents()->Array.getUnsafe(0)
 
-      expect(storedEvent.tags)->toEqual([{ReventlessSpec.DcbTag.key: "itemId", value: "item-1"}])
+      expect(storedEvent.tags)->toEqual([{Reventless.DcbTag.key: "itemId", value: "item-1"}])
     })
   })
 

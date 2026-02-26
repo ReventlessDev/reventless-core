@@ -2,17 +2,17 @@
 
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Id$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
-import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as ExtensionPoint$Reventless from "./ExtensionPoint.res.mjs";
-import * as EventTopic_Builder$Reventless from "../EventTopic/EventTopic_Builder.res.mjs";
-import * as CommandTopic_Builder$Reventless from "../CommandTopic/CommandTopic_Builder.res.mjs";
-import * as ExtensionPoint_Callback$Reventless from "./ExtensionPoint_Callback.res.mjs";
-import * as ExtensionPoint_Operations$Reventless from "./ExtensionPoint_Operations.res.mjs";
+import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as ExtensionPoint$ReventlessCore from "./ExtensionPoint.res.mjs";
+import * as EventTopic_Builder$ReventlessCore from "../EventTopic/EventTopic_Builder.res.mjs";
+import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
+import * as ExtensionPoint_Callback$ReventlessCore from "./ExtensionPoint_Callback.res.mjs";
+import * as ExtensionPoint_Operations$ReventlessCore from "./ExtensionPoint_Operations.res.mjs";
 
 function Make(Spec) {
   return Mappings => (RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => {
@@ -22,21 +22,21 @@ function Make(Spec) {
       let name = param[0];
       return Belt_Array.some(aggregateNames, aggregateName => aggregateName === name);
     }).map(param => param[1]).flat();
-    let make = (aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts) => Component$Reventless.make(ComponentType$Reventless.toString(ExtensionPoint$Reventless.componentType), Spec.name, (extra, extra$1) => {
-      let opts_parent = Component$Reventless.toPulumiResource(extra);
+    let make = (aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ExtensionPoint$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+      let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let childName = ComponentType$Reventless.name(extra$1.replace(".", ""), ExtensionPoint$Reventless.componentType);
-      let SpecificCommandTopic = CommandTopic_Builder$Reventless.Make({
-        Id: Id$ReventlessSpec.$$String,
+      let childName = ComponentType$ReventlessCore.name(extra$1.replace(".", ""), ExtensionPoint$ReventlessCore.componentType);
+      let SpecificCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
+        Id: Id$Reventless.$$String,
         commandSchema: commandSchema
       })(CommandTopicChannel);
       let commandTopic = SpecificCommandTopic.make(childName, opts);
       let aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => Stdlib_Option.map(Mapping.mapOutgoingEvent, param => Mapping.aggregateName));
-      let commandTopicResources = Adapter$Reventless.resourcesToResolvedOutput(commandTopic.channel.resources);
+      let commandTopicResources = Adapter$ReventlessCore.resourcesToResolvedOutput(commandTopic.channel.resources);
       let match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(commandTopicResources, commandTopicResources => {
-        let ExtensionPointCallback = ExtensionPoint_Callback$Reventless.Make({
+        let ExtensionPointCallback = ExtensionPoint_Callback$ReventlessCore.Make({
           publishToAggregates: publishToAggregates,
           commandTopicResources: commandTopicResources,
           scheduler: scheduler,
@@ -46,13 +46,13 @@ function Make(Spec) {
         let handler = SpecificCommandTopic.makeHandler(commandTopic, ExtensionPointCallback.handleIncomingCommands);
         let resources = filterAggregateResources(aggregateResources, aggregateNames);
         ExtensionPointRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), undefined, undefined, commandTopic);
-        let SpecificEventTopic = EventTopic_Builder$Reventless.Make({
-          Id: Id$ReventlessSpec.$$String,
+        let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
+          Id: Id$Reventless.$$String,
           eventSchema: eventSchema
         })(EventTopicAdapter);
         let eventTopic = SpecificEventTopic.make(childName, [], opts);
-        return Component$Reventless.operations(eventTopic).apply(param => {
-          let Ops = ExtensionPoint_Operations$Reventless.Make(Spec)(Mappings)({
+        return Component$ReventlessCore.operations(eventTopic).apply(param => {
+          let Ops = ExtensionPoint_Operations$ReventlessCore.Make(Spec)(Mappings)({
             publishToEventTopic: param.publishJson,
             commandTopicResources: commandTopicResources,
             scheduler: scheduler,
@@ -66,22 +66,22 @@ function Make(Spec) {
           ];
         });
       }));
-      Component$Reventless.setOperations(extra, match[2].apply(outgoingEventHandler => ({
+      Component$ReventlessCore.setOperations(extra, match[2].apply(outgoingEventHandler => ({
         outgoingEventHandler: outgoingEventHandler
       })));
-      let epOutputs_commandTopic = match[0].apply(Component$Reventless.outputs);
-      let epOutputs_eventTopic = match[1].apply(Component$Reventless.outputs);
+      let epOutputs_commandTopic = match[0].apply(Component$ReventlessCore.outputs);
+      let epOutputs_eventTopic = match[1].apply(Component$ReventlessCore.outputs);
       let epOutputs = {
         name: extra$1,
         aggregateNames: aggregateNames,
         commandTopic: epOutputs_commandTopic,
         eventTopic: epOutputs_eventTopic
       };
-      return Component$Reventless.setOutputs(extra, epOutputs);
+      return Component$ReventlessCore.setOutputs(extra, epOutputs);
     }, opts);
     return {
       make: make,
-      outputs: Component$Reventless.outputs
+      outputs: Component$ReventlessCore.outputs
     };
   }))));
 }
@@ -89,4 +89,4 @@ function Make(Spec) {
 export {
   Make,
 }
-/* Output-Pulumi Not a pure module */
+/* Id-Reventless Not a pure module */

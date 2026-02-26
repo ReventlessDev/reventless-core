@@ -44,7 +44,7 @@ module MakeEventCollectorHelper = (
       )
 
     resources->Pulumi.Output.apply(resources => {
-      let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {
+      let fakePluginDefinition: Reventless.Plugin.pluginDefinition = {
         id: "Core@FAKE",
         name: "Core",
         version: "FAKE",

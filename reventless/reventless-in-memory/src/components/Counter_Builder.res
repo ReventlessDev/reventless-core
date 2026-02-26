@@ -2,7 +2,7 @@
 
 module Make = (Bus: InMemory_Bus.T) => {
   module QueryDbStorage = QueryDbStorage_InMemory.Make(Bus)
-  include Reventless.Counter_Builder.Make(
+  include ReventlessCore.Counter_Builder.Make(
     QueryDbStorage,
     {
       let api = ()

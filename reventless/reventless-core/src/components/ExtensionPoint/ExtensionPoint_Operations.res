@@ -1,6 +1,6 @@
 module type Mappings = {
-  module Spec: ReventlessSpec.ExtensionPointMapping.Spec
-  module type Mapping = ReventlessSpec.ExtensionPointMapping.T with module ExtensionPoint := Spec
+  module Spec: Reventless.ExtensionPointMapping.Spec
+  module type Mapping = Reventless.ExtensionPointMapping.T with module ExtensionPoint := Spec
   let mappings: array<module(Mapping)>
 }
 
@@ -8,12 +8,12 @@ module type Ops = {
   let publishToEventTopic: EventTopic.publishJson
   let commandTopicResources: array<Adapter.resolvedResource>
   let scheduler: Scheduler.operations
-  let queryEngine: ReventlessSpec.QueryEngine.operations
-  let resourceNaming: ReventlessSpec.ResourceNaming.operations
+  let queryEngine: Reventless.QueryEngine.operations
+  let resourceNaming: Reventless.ResourceNaming.operations
 }
 
 module Make = (
-  MappingSpec: ReventlessSpec.ExtensionPointMapping.Spec,
+  MappingSpec: Reventless.ExtensionPointMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
   Ops: Ops,
 ) => {
@@ -51,12 +51,12 @@ module Make = (
 
   let applyEventAction = async action =>
     switch action {
-    | ReventlessSpec.ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
+    | Reventless.ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
       Console.log2("ExtensionPoint_Operations.applyEventAction:", eventJson->JSON.stringify)
       try await Ops.publishToEventTopic(id, meta, eventJson) catch {
       | err => err->Console.log2("ExtensionPoint: Error on publishToEventTopic command:")
       }
-    | ReventlessSpec.ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
+    | Reventless.ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
       let publishToEventTopic = async promise => {
         let (id, meta, eventJson) = await promise
         try await Ops.publishToEventTopic(id, meta, eventJson) catch {

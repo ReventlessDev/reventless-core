@@ -1,4 +1,4 @@
-let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) => {
+let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) => {
   let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name="CloudWatchEventsRole",
     ~servicePrincipal=AWS.CloudwatchEventRule.principal->Pulumi.Output.make,
@@ -36,7 +36,7 @@ let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) 
 
   {
     resource: {
-      ReventlessSpec.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
+      Reventless.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
       name: ""->Pulumi.Output.make,
       id: ""->Pulumi.Output.make,
       urn: ""->Pulumi.Output.make,
@@ -47,6 +47,6 @@ let make: Reventless.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~opts) 
         role,
       ),
       deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
-    }: ReventlessSpec.Scheduler.operations)->Pulumi.Output.make,
+    }: Reventless.Scheduler.operations)->Pulumi.Output.make,
   }
 }

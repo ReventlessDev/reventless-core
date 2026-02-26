@@ -42,8 +42,8 @@ The EventMapper requires a mappings specification that defines how events are tr
 
 ```rescript
 module type Mappings = {
-  module Target: ReventlessSpec.Aggregate.Spec  // Target aggregate
-  module type Mapping = ReventlessSpec.EventMapping.T with module Target := Target
+  module Target: Reventless.Aggregate.Spec  // Target aggregate
+  module type Mapping = Reventless.EventMapping.T with module Target := Target
   let mappings: array<module(Mapping)>          // Array of event mappings
   let counter: option<module(Counter.T)>        // Optional counter for coordination
 }
@@ -87,7 +87,7 @@ type action<'id, 'command> =
 Here's a complete example of mapping Customer events to Order commands:
 
 ```rescript title="Order_EventMappings.res"
-open ReventlessSpec
+open Reventless
 
 // Define the target aggregate
 module Target = Order
@@ -156,7 +156,7 @@ let counter = None
 For more complex scenarios requiring deduplication or coordination across multiple events:
 
 ```rescript title="Invoice_EventMappings.res"
-open ReventlessSpec
+open Reventless
 
 module Target = Invoice
 

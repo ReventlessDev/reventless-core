@@ -4,10 +4,10 @@ import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_S3$ReventlessAws from "../../util/Util_S3.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as TaskBucket_S3_Runtime$ReventlessAws from "./TaskBucket_S3_Runtime.res.mjs";
 
@@ -23,7 +23,7 @@ function subscribeLambda2S3Bucket(lambda, name, bucket, opts) {
 function createLambdaPolicy(lambdaRole, name, bucket, bucketMode, resources, opts) {
   Pulumi.all([
     bucket.arn,
-    Adapter$Reventless.resourcesToResolvedOutput(resources)
+    Adapter$ReventlessCore.resourcesToResolvedOutput(resources)
   ]).apply(param => {
     let resources = param[1];
     let bucketArn = param[0];
@@ -46,7 +46,7 @@ function createLambdaPolicy(lambdaRole, name, bucket, bucketMode, resources, opt
           Sid: "AllowLambdaSendSQS",
           Effect: "Allow",
           Action: "sqs:SendMessage",
-          Resource: Adapter$Reventless.urns(Adapter_Helpers$ReventlessAws.sqsResources(resources))
+          Resource: Adapter$ReventlessCore.urns(Adapter_Helpers$ReventlessAws.sqsResources(resources))
         }]) : undefined;
     new (Aws.iam.RolePolicy)(name, {
       policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Stdlib_Array.keepSome([
@@ -61,7 +61,7 @@ function createLambdaPolicy(lambdaRole, name, bucket, bucketMode, resources, opt
 }
 
 function connect(name, bucket, bucketMode, commandTopics, runtime, opts) {
-  let opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
   commandTopics.apply(allCommandTopics => {
@@ -72,7 +72,7 @@ function connect(name, bucket, bucketMode, commandTopics, runtime, opts) {
 }
 
 function make(name, opts) {
-  let opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let bucket = new (Aws.s3.Bucket)(name, {
     corsRules: [{
         allowedHeaders: ["*"],

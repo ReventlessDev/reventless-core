@@ -1,6 +1,6 @@
 // Pure unit tests for ProductsView StateViewSlice projection.
 
-open ReventlessSpec
+open Reventless
 open Jest
 open Expect
 

@@ -2,7 +2,7 @@
 
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
-let ReplayError = /* @__PURE__ */Primitive_exceptions.create("EventLog-Reventless.ReplayError");
+let ReplayError = /* @__PURE__ */Primitive_exceptions.create("EventLog-ReventlessCore.ReplayError");
 
 let componentType = "EventLog";
 

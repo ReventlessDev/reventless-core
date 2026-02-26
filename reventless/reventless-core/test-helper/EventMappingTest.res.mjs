@@ -3,9 +3,9 @@
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Message$Reventless from "../src/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as TestFixtures$Reventless from "./TestFixtures.res.mjs";
+import * as Message$ReventlessCore from "../src/Message.res.mjs";
+import * as TestFixtures$ReventlessCore from "./TestFixtures.res.mjs";
 
 function MakeAggregate(Spec) {
   return Behavior => {
@@ -24,10 +24,10 @@ function MakeAggregate(Spec) {
         return Behavior.create(command, context, errorHandler);
       }
       try {
-        return Behavior.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+        return Behavior.execute(currentState(history), command, TestFixtures$ReventlessCore.context, errorHandler);
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$Reventless.InvalidEvent) {
+        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
           return [];
         }
         throw exn;
@@ -62,10 +62,10 @@ function Make(Source) {
         return SourceBehavior.create(command, context, errorHandler);
       }
       try {
-        return SourceBehavior.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+        return SourceBehavior.execute(currentState(history), command, TestFixtures$ReventlessCore.context, errorHandler);
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$Reventless.InvalidEvent) {
+        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
           return [];
         }
         throw exn;
@@ -86,10 +86,10 @@ function Make(Source) {
         return TargetBehavior.create(command, context, errorHandler$1);
       }
       try {
-        return TargetBehavior.execute(currentState$1(history), command, TestFixtures$Reventless.context, errorHandler$1);
+        return TargetBehavior.execute(currentState$1(history), command, TestFixtures$ReventlessCore.context, errorHandler$1);
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$Reventless.InvalidEvent) {
+        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
           return [];
         }
         throw exn;
@@ -109,7 +109,7 @@ function Make(Source) {
     let whenSourceCmd = async (sourceId, cmd, param) => {
       let sourceEvents = exec({
         id: sourceId,
-        meta: TestFixtures$Reventless.context.meta
+        meta: TestFixtures$ReventlessCore.context.meta
       }, cmd, param[1]);
       let targetActions = sourceEvents.map(sourceEvent => EventMapping.map(Source.Id.makeFromString(sourceId), sourceEvent, queryEngine)).flat();
       let targetHistories = Object.fromEntries(param[0]);
@@ -132,7 +132,7 @@ function Make(Source) {
         let targetHistory = Stdlib_Option.getOr(targetHistories[id], []).concat(Stdlib_Option.getOr(targetEvents[id], []));
         let newEvents = exec$1({
           id: id,
-          meta: TestFixtures$Reventless.context.meta
+          meta: TestFixtures$ReventlessCore.context.meta
         }, param[1], targetHistory);
         targetEvents[id] = Stdlib_Option.getOr(targetEvents[id], []).concat(newEvents);
         return targetEvents;

@@ -3,10 +3,10 @@
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Logger$Reventless from "./Logger.res.mjs";
-import * as Message$Reventless from "../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Promise$Reventless from "./Util_Promise.res.mjs";
+import * as Logger$ReventlessCore from "./Logger.res.mjs";
+import * as Message$ReventlessCore from "../Message.res.mjs";
+import * as Util_Promise$ReventlessCore from "./Util_Promise.res.mjs";
 
 function Make(Spec) {
   return Config => {
@@ -30,7 +30,7 @@ function Make(Spec) {
       } catch (raw_e) {
         let e = Primitive_exceptions.internalToException(raw_e);
         if (e.RE_EXN_ID === "JsExn") {
-          return Logger$Reventless.error("File \"CommandPublisher.res\", line 27, characters 38-45", undefined, undefined, "Couldn't publish commands", e._1);
+          return Logger$ReventlessCore.error("File \"CommandPublisher.res\", line 27, characters 38-45", undefined, undefined, "Couldn't publish commands", e._1);
         }
         throw e;
       }
@@ -38,10 +38,10 @@ function Make(Spec) {
     let toJsons = commandsToSend => {
       console.log("toJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
       return commandsToSend.map(param => {
-        let commandJson = Message$Reventless.encode(param[1], Spec.commandSchema);
+        let commandJson = Message$ReventlessCore.encode(param[1], Spec.commandSchema);
         return {
           id: param[0],
-          meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user),
+          meta: Message$ReventlessCore.generateMeta(Spec.name, undefined, Config.user),
           commandJson: commandJson
         };
       });
@@ -86,7 +86,7 @@ function Make(Spec) {
       let sizeStr = size$1.toString();
       let bufferSizeStr = buffer.length.toString();
       let chunkCountStr = chunkCount.contents.toString();
-      Logger$Reventless.debug("File \"CommandPublisher.res\", line 59, characters 15-22", undefined, undefined, "send", `bufferSize: ` + bufferSizeStr + `, chunk: ` + chunkCountStr + `, size: ` + sizeStr);
+      Logger$ReventlessCore.debug("File \"CommandPublisher.res\", line 59, characters 15-22", undefined, undefined, "send", `bufferSize: ` + bufferSizeStr + `, chunk: ` + chunkCountStr + `, size: ` + sizeStr);
       let commandsToSend$1 = buffer.toSpliced(0, size$1);
       let promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
       running.contents = promise$1;
@@ -101,7 +101,7 @@ function Make(Spec) {
           let errorMessage = Stdlib_Option.getOr(Stdlib_JsExn.message(e$1._1), "unknown Error");
           console.log(`CommandPublisher.send: Error: Couldn't publish chunk ` + chunkCountStr + `: ` + errorMessage);
           let timeout = Stdlib_Math.Int.random(3000, 7000);
-          await Util_Promise$Reventless.finishTimeout(timeout);
+          await Util_Promise$ReventlessCore.finishTimeout(timeout);
           console.log(`Retry sending after ` + timeout.toString() + ` ms ...`);
           chunkCount.contents = chunkCount.contents - 1 | 0;
           buffer.unshift(...commandsToSend$1);
@@ -110,7 +110,7 @@ function Make(Spec) {
         }
       }
       if (exit$1 === 1) {
-        Logger$Reventless.debug("File \"CommandPublisher.res\", line 67, characters 34-41", undefined, undefined, "send", `finished chunk ` + chunkCountStr + `: ` + sizeStr);
+        Logger$ReventlessCore.debug("File \"CommandPublisher.res\", line 67, characters 34-41", undefined, undefined, "send", `finished chunk ` + chunkCountStr + `: ` + sizeStr);
       }
       return await send();
     };

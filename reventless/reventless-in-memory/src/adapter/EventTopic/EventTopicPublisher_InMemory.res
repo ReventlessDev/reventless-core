@@ -2,7 +2,7 @@
 // The resource name doubles as the bus topic key that EventCollectorChannel subscribes to.
 
 module Make = (Bus: InMemory_Bus.T) => {
-  let make: Reventless.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~opts as _) => {
+  let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~opts as _) => {
     {
       resources: [
         {

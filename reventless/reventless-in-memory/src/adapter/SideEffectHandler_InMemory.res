@@ -12,30 +12,30 @@ let make = (
   ~allCommandTopics as _,
   ~targets as _=?,
   ~queryEngine as _,
-  ~scheduler: ReventlessSpec.Scheduler.operations,
+  ~scheduler: Reventless.Scheduler.operations,
   ~resourceNaming as _,
   ~memorySize as _=?,
   ~timeout as _=?,
   ~opts=?,
-): Reventless.SideEffectHandler.component => {
-  let noopEnqueueEvent: ReventlessSpec.EventCollector.enqueueEvent = async (_, _, _) => ()
-  let ops: Reventless.SideEffectHandler.operations = {
+): ReventlessCore.SideEffectHandler.component => {
+  let noopEnqueueEvent: Reventless.EventCollector.enqueueEvent = async (_, _, _) => ()
+  let ops: ReventlessCore.SideEffectHandler.operations = {
     enqueueEvent: noopEnqueueEvent,
     // Delegate to the Scheduler adapter, passing empty resources (in-memory has no target queue).
     createSchedule: async schedule => await scheduler.createSchedule([], schedule),
     deleteSchedule: async scheduleName => await scheduler.deleteSchedule([], scheduleName),
   }
-  let eventCollectorOutputs: ReventlessSpec.EventCollector.outputs = {
+  let eventCollectorOutputs: Reventless.EventCollector.outputs = {
     name,
     resources: [],
   }
-  Reventless.Component.make(
-    ~componentType=Reventless.SideEffectHandler.componentType->Reventless.ComponentType.toString,
+  ReventlessCore.Component.make(
+    ~componentType=ReventlessCore.SideEffectHandler.componentType->ReventlessCore.ComponentType.toString,
     ~name,
     ~construct=(self, cname) => {
-      self->Reventless.Component.setOperations(Pulumi.Output.make(ops))
-      self->Reventless.Component.setOutputs({
-        Reventless.SideEffectHandler.name: cname,
+      self->ReventlessCore.Component.setOperations(Pulumi.Output.make(ops))
+      self->ReventlessCore.Component.setOutputs({
+        ReventlessCore.SideEffectHandler.name: cname,
         eventCollector: eventCollectorOutputs,
       })
     },

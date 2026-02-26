@@ -2,15 +2,15 @@
 
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
-import * as ComponentType$Reventless from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
-import * as Util_ReadModel$Reventless from "@reventlessdev/reventless-core/src/util/Util_ReadModel.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
+import * as Util_ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_ReadModel.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
 function make(name, param, allQueryDbs) {
-  let queryDbResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$Reventless.queryDbStorageResources(allQueryDbs, name.substring(0, name.indexOf(ComponentType$Reventless.toName("ReadModel")))));
+  let queryDbResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, name.substring(0, name.indexOf(ComponentType$ReventlessCore.toName("ReadModel")))));
   return {
-    resource: Adapter$Reventless.outputToResource(queryDbResource.service.apply(service => {
+    resource: Adapter$ReventlessCore.outputToResource(queryDbResource.service.apply(service => {
       if (service === AWS$ReventlessAws.DynamoDbStream.service) {
         return Util_DynamoDbStream$ReventlessAws.toStreamResource(queryDbResource);
       } else {
@@ -23,4 +23,4 @@ function make(name, param, allQueryDbs) {
 export {
   make,
 }
-/* Adapter-Reventless Not a pure module */
+/* Adapter-ReventlessCore Not a pure module */

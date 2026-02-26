@@ -3,52 +3,52 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
-import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
-import * as Schedule$Reventless from "../../util/Schedule.res.mjs";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as EventTopic$Reventless from "../EventTopic/EventTopic.res.mjs";
-import * as CommandTopic$Reventless from "../CommandTopic/CommandTopic.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as SideEffectHandler$Reventless from "./SideEffectHandler.res.mjs";
-import * as SideEffectHandler_Callback$Reventless from "./SideEffectHandler_Callback.res.mjs";
+import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
+import * as Schedule$ReventlessCore from "../../util/Schedule.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
+import * as CommandTopic$ReventlessCore from "../CommandTopic/CommandTopic.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as SideEffectHandler$ReventlessCore from "./SideEffectHandler.res.mjs";
+import * as SideEffectHandler_Callback$ReventlessCore from "./SideEffectHandler_Callback.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => (SpecificEventCollector => (EventCollectorRuntimeBuilder => {
     let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySizeOpt, timeoutOpt, opts) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
-      return Component$Reventless.make(ComponentType$Reventless.toString(SideEffectHandler$Reventless.componentType), name, (extra, extra$1) => {
-        let opts_parent = Component$Reventless.toPulumiResource(extra);
+      return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(SideEffectHandler$ReventlessCore.componentType), name, (extra, extra$1) => {
+        let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
           parent: opts_parent
         };
         let aggregateNames = Belt_SetString.fromArray(sideEffects.map(SideEffect => SideEffect.Source.name));
-        let eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
+        let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, aggregateNames);
         let eventCollector = SpecificEventCollector.make(extra$1, eventTopics, opts);
-        let Callback = SideEffectHandler_Callback$Reventless.Make({
+        let Callback = SideEffectHandler_Callback$ReventlessCore.Make({
           sideEffects: sideEffects,
           queryEngine: queryEngine
         });
         let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
         allCommandTopics.apply(allCommandTopics => {
-          let commandTopics = Stdlib_Option.getOr(Stdlib_Option.map(targets, targets => Object.values(CommandTopic$Reventless.filter(allCommandTopics, new Set(targets)))), []);
+          let commandTopics = Stdlib_Option.getOr(Stdlib_Option.map(targets, targets => Object.values(CommandTopic$ReventlessCore.filter(allCommandTopics, new Set(targets)))), []);
           let resources = commandTopics.flatMap(commandTopic => commandTopic.resources);
           EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, eventCollector);
         });
-        Component$Reventless.setOperations(extra, Pulumi.all([
-          Component$Reventless.operations(eventCollector),
-          Adapter$Reventless.resourcesToResolvedOutput(Component$Reventless.outputs(eventCollector).resources)
+        Component$ReventlessCore.setOperations(extra, Pulumi.all([
+          Component$ReventlessCore.operations(eventCollector),
+          Adapter$ReventlessCore.resourcesToResolvedOutput(Component$ReventlessCore.outputs(eventCollector).resources)
         ]).apply(param => {
           let eventCollectorResources = param[1];
           return {
             enqueueEvent: param[0].enqueueEvent,
-            createSchedule: Schedule$Reventless.create(scheduler, eventCollectorResources, resourceNaming),
-            deleteSchedule: Schedule$Reventless.$$delete(scheduler, eventCollectorResources, resourceNaming)
+            createSchedule: Schedule$ReventlessCore.create(scheduler, eventCollectorResources, resourceNaming),
+            deleteSchedule: Schedule$ReventlessCore.$$delete(scheduler, eventCollectorResources, resourceNaming)
           };
         }));
-        return Component$Reventless.setOutputs(extra, {
+        return Component$ReventlessCore.setOutputs(extra, {
           name: extra$1,
-          eventCollector: Component$Reventless.outputs(eventCollector)
+          eventCollector: Component$ReventlessCore.outputs(eventCollector)
         });
       }, opts);
     };

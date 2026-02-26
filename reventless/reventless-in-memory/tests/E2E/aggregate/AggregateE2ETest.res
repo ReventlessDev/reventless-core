@@ -86,10 +86,10 @@ describe("Aggregate E2E", () => {
   testPromise("CreateItem command produces ItemCreated event on event topic", async () => {
     let ops = await agg->ItemAgg.operations->TestRunner.resolve
     let commandJson =
-      ItemSpec.CreateItem({name: "Widget"})->Reventless.Message.encode(ItemSpec.commandSchema)
+      ItemSpec.CreateItem({name: "Widget"})->ReventlessCore.Message.encode(ItemSpec.commandSchema)
     await ops.publishJsons([
       {
-        ReventlessSpec.Message.id: "item-1",
+        Reventless.Message.id: "item-1",
         meta: testMeta,
         commandJson: commandJson,
       },
@@ -101,10 +101,10 @@ describe("Aggregate E2E", () => {
     // item-1 was already created in the previous test (same aggregate instance)
     let ops = await agg->ItemAgg.operations->TestRunner.resolve
     let commandJson =
-      ItemSpec.CreateItem({name: "Widget2"})->Reventless.Message.encode(ItemSpec.commandSchema)
+      ItemSpec.CreateItem({name: "Widget2"})->ReventlessCore.Message.encode(ItemSpec.commandSchema)
     await ops.publishJsons([
       {
-        ReventlessSpec.Message.id: "item-1",
+        Reventless.Message.id: "item-1",
         meta: testMeta,
         commandJson: commandJson,
       },
@@ -116,10 +116,10 @@ describe("Aggregate E2E", () => {
   testPromise("CreateItem for new id produces event", async () => {
     let ops = await agg->ItemAgg.operations->TestRunner.resolve
     let commandJson =
-      ItemSpec.CreateItem({name: "NewItem"})->Reventless.Message.encode(ItemSpec.commandSchema)
+      ItemSpec.CreateItem({name: "NewItem"})->ReventlessCore.Message.encode(ItemSpec.commandSchema)
     await ops.publishJsons([
       {
-        ReventlessSpec.Message.id: "item-2",
+        Reventless.Message.id: "item-2",
         meta: testMeta,
         commandJson: commandJson,
       },

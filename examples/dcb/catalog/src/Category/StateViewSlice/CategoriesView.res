@@ -1,7 +1,7 @@
 // CategoriesView StateViewSlice.
 // Projects category events from the shared catalog event log into a Categories read model.
 
-open ReventlessSpec.Projection
+open Reventless.Projection
 open CatalogEventLog
 
 let name = "CategoriesView"

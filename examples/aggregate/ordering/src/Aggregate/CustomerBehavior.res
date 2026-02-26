@@ -1,8 +1,8 @@
 // Customer aggregate behavior.
 // Implements the state machine for registering and managing customers.
 
-open ReventlessSpec
-open ReventlessSpec.Message
+open Reventless
+open Reventless.Message
 open Customer
 
 module Spec = Customer

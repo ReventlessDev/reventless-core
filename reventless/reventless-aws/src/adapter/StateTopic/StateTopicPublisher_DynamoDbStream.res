@@ -1,10 +1,10 @@
-let make: Reventless.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~allQueryDbs) => {
+let make: ReventlessCore.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~allQueryDbs) => {
   let queryDbResource =
     allQueryDbs
-    ->Reventless.Util.ReadModel.queryDbStorageResources(
+    ->ReventlessCore.Util.ReadModel.queryDbStorageResources(
       name->String.substring(
         ~start=0,
-        ~end=name->String.indexOf(ReadModel->Reventless.ComponentType.toName),
+        ~end=name->String.indexOf(ReadModel->ReventlessCore.ComponentType.toName),
       ),
     )
     ->Util.DynamoDbStream.findResource
@@ -20,6 +20,6 @@ let make: Reventless.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~al
         )
       }
     )
-    ->Reventless.Adapter.outputToResource,
+    ->ReventlessCore.Adapter.outputToResource,
   }
 }

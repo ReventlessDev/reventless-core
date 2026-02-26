@@ -1,17 +1,17 @@
 let componentType = ComponentType.EventTopic
 
-type outputs = ReventlessSpec.EventTopic.outputs
-type allOutputs = ReventlessSpec.EventTopic.allOutputs
+type outputs = Reventless.EventTopic.outputs
+type allOutputs = Reventless.EventTopic.allOutputs
 
 type t
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => promise<unit>
-type publishJson = ReventlessSpec.EventTopic.publishJson
+type publishJson = Reventless.EventTopic.publishJson
 
 exception NotPublishedToPublisher(exn)
 
 module type T = {
-  module Spec: ReventlessSpec.EventTopic.T
+  module Spec: Reventless.EventTopic.T
 
   type publish = publish<Spec.Id.t, Spec.event>
   type operations = {publish: publish, publishJson: publishJson}
@@ -19,7 +19,7 @@ module type T = {
 
   let make: (
     ~name: string,
-    ~storageResources: array<ReventlessSpec.Adapter.resource>,
+    ~storageResources: array<Reventless.Adapter.resource>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

@@ -3,7 +3,7 @@ type operations = {
   replay: EventLog.replay<string, JSON.t>,
 }
 type storage = {
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   operations: Pulumi.Output.t<operations>,
 }
 type storageMaker = (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage

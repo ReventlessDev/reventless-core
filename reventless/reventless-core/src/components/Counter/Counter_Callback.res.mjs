@@ -3,10 +3,10 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Counter$Reventless from "./Counter.res.mjs";
-import * as Message$Reventless from "../../Message.res.mjs";
-import * as Util_Promise$Reventless from "../../util/Util_Promise.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
+import * as Counter$ReventlessCore from "./Counter.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 
 let countsStateSchema = S.schema(s => ({
   id: s.m(S.string),
@@ -16,7 +16,7 @@ let countsStateSchema = S.schema(s => ({
 function groupByCounterId(references) {
   let dict = {};
   references.forEach(param => {
-    let counterId = Counter$Reventless.unmakeId(param[0])[0];
+    let counterId = Counter$ReventlessCore.unmakeId(param[0])[0];
     let current = Stdlib_Option.getOr(dict[counterId], 0);
     dict[counterId] = current + param[1] | 0;
   });
@@ -27,15 +27,15 @@ function Make(Spec) {
   let counterHandler = async (references, counts) => {
     console.log("counterHandler: references:", references.length);
     console.log("counterHandler: counts:", counts);
-    await Util_Promise$Reventless.toUnit(Promise.all(groupByCounterId(references).map(param => Spec.countsDbCount(param[0], "count", -param[1] | 0))));
+    await Util_Promise$ReventlessCore.toUnit(Promise.all(groupByCounterId(references).map(param => Spec.countsDbCount(param[0], "count", -param[1] | 0))));
     return await Spec.counterEventsHandler(Stdlib_Array.filterMap(counts, state => {
-      let match = Message$Reventless.decode(state, countsStateSchema);
+      let match = Message$ReventlessCore.decode(state, countsStateSchema);
       let count = match.count;
       let id = match.id;
       if (count === 0) {
-        let match$1 = Counter$Reventless.unmakeId(id);
-        console.log("Counter_Callback-Reventless" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
-        let meta = Message$Reventless.generateMeta(ComponentType$Reventless.toName("Counter"), undefined, "Counter");
+        let match$1 = Counter$ReventlessCore.unmakeId(id);
+        console.log("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
+        let meta = Message$ReventlessCore.generateMeta(ComponentType$ReventlessCore.toName("Counter"), undefined, "Counter");
         return Object.fromEntries([
           [
             "id",
@@ -43,15 +43,15 @@ function Make(Spec) {
           ],
           [
             "meta",
-            Message$Reventless.encode(meta, Message$Reventless.metaSchema)
+            Message$ReventlessCore.encode(meta, Message$ReventlessCore.metaSchema)
           ],
           [
             "event",
-            Message$Reventless.encode("CountFinished", Counter$Reventless.counterEventSchema)
+            Message$ReventlessCore.encode("CountFinished", Counter$ReventlessCore.counterEventSchema)
           ]
         ]);
       }
-      console.log("Counter_Callback-Reventless" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
+      console.log("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
     }));
   };
   return {

@@ -3,8 +3,8 @@
 
 module type T = {
   // Event fan-out: aggregate EventTopic → read model EventCollector
-  let publishEvent: (string, string, Reventless.Message.meta, JSON.t) => promise<unit>
-  let subscribeToEvents: (string, (string, Reventless.Message.meta, JSON.t) => promise<unit>) => unit
+  let publishEvent: (string, string, ReventlessCore.Message.meta, JSON.t) => promise<unit>
+  let subscribeToEvents: (string, (string, ReventlessCore.Message.meta, JSON.t) => promise<unit>) => unit
 
   // Command dispatch: CommandTopic → aggregate command handler
   // Dispatches a single encoded command JSON {reference, commandJson}
@@ -13,8 +13,8 @@ module type T = {
 
   // QueryDb registry: read model name → storage ops and scan function
   // Populated by QueryDbStorage_InMemory.Make(Bus) during component construction.
-  let registerQueryDb: (string, Reventless.QueryDb_Adapter.operations) => unit
-  let getQueryDb: string => option<Reventless.QueryDb_Adapter.operations>
+  let registerQueryDb: (string, ReventlessCore.QueryDb_Adapter.operations) => unit
+  let getQueryDb: string => option<ReventlessCore.QueryDb_Adapter.operations>
   let registerQueryDbScan: (string, unit => array<JSON.t>) => unit
   let getQueryDbScan: string => option<unit => array<JSON.t>>
 
@@ -23,10 +23,10 @@ module type T = {
 
 module Make = (): T => {
   let eventSubscribers: ref<
-    dict<array<(string, Reventless.Message.meta, JSON.t) => promise<unit>>>,
+    dict<array<(string, ReventlessCore.Message.meta, JSON.t) => promise<unit>>>,
   > = ref(Dict.make())
   let commandHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
-  let queryDbRegistry: ref<dict<Reventless.QueryDb_Adapter.operations>> = ref(Dict.make())
+  let queryDbRegistry: ref<dict<ReventlessCore.QueryDb_Adapter.operations>> = ref(Dict.make())
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
 
   let publishEvent = async (topicName, service, meta, json) => {

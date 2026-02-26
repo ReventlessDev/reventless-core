@@ -1,7 +1,7 @@
 // UpdateProductDescription StateChangeSlice.
 // Requires product to exist; idempotent when description is unchanged.
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "UpdateProductDescription"

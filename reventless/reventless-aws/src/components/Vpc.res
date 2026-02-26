@@ -1,4 +1,4 @@
-let componentType = Reventless.ComponentType.Vpc
+let componentType = ReventlessCore.ComponentType.Vpc
 open PulumiAws.EC2
 
 type outputs = {
@@ -206,8 +206,8 @@ let make: (
   ~opts: Pulumi.ComponentResource.options=?,
 ) => t = (~name, ~availabilityZone=?, ~opts=?) =>
   make(
-    ~componentType=componentType->Reventless.ComponentType.toString,
-    ~name=name->Reventless.ComponentType.name(componentType),
+    ~componentType=componentType->ReventlessCore.ComponentType.toString,
+    ~name=name->ReventlessCore.ComponentType.name(componentType),
     ~construct,
     ~opts,
     ~availabilityZone,

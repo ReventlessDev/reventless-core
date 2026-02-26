@@ -2,12 +2,12 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as EventCollectorChannel_Helpers$ReventlessAws from "./EventCollectorChannel_Helpers.res.mjs";
 import * as EventCollectorChannel_SQS_Runtime$ReventlessAws from "./EventCollectorChannel_SQS_Runtime.res.mjs";
 
 function connect(name, channelSpecs, runtime, opts) {
-  let opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
   let queues = [];

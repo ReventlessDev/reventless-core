@@ -1,33 +1,33 @@
 let componentType = ComponentType.Task
 
 type t
-type outputs = ReventlessSpec.Task.outputs
+type outputs = Reventless.Task.outputs
 
 type publishCommands = (/* ~aggregateName: */ string, array<Message.commandJson>) => promise<unit>
-type queryBucketName = ReventlessSpec.Task.queryBucketName
+type queryBucketName = Reventless.Task.queryBucketName
 
-type operations = ReventlessSpec.Task.operations
+type operations = Reventless.Task.operations
 type component = Component.t<t, outputs, operations>
 
-type taskAction = ReventlessSpec.Task.taskAction =
+type taskAction = Reventless.Task.taskAction =
   | PublishCommands(string, array<Message.commandJson>)
-  | CreateSchedule(ReventlessSpec.Schedule.schedule)
+  | CreateSchedule(Reventless.Schedule.schedule)
   | DeleteSchedule(string)
-type bucketCallback = ReventlessSpec.Task.bucketCallback
-type bucketMode = ReventlessSpec.Task.bucketMode = Read | Write | ReadWrite
-type bucketSpec = ReventlessSpec.Task.bucketSpec
-type sideEffects = ReventlessSpec.Task.sideEffects
-type config = ReventlessSpec.Task.config
-type setup = ReventlessSpec.Task.setup
+type bucketCallback = Reventless.Task.bucketCallback
+type bucketMode = Reventless.Task.bucketMode = Read | Write | ReadWrite
+type bucketSpec = Reventless.Task.bucketSpec
+type sideEffects = Reventless.Task.sideEffects
+type config = Reventless.Task.config
+type setup = Reventless.Task.setup
 
-module type Spec = ReventlessSpec.Task.Spec
+module type Spec = Reventless.Task.Spec
 
 type maker = (
   ~queryBucketName: queryBucketName,
   ~scheduler: Scheduler.operations,
   ~publishToAggregates: dict<CommandTopic.publishJsons>,
-  ~queryEngine: ReventlessSpec.QueryEngine.operations,
-  ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+  ~queryEngine: Reventless.QueryEngine.operations,
+  ~resourceNaming: Reventless.ResourceNaming.operations,
   ~allAggregates: dict<Aggregate.outputs>,
   ~opts: option<Pulumi.ComponentResource.options>,
 ) => component

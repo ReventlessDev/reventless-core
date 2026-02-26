@@ -18,13 +18,13 @@ module Make = (
     let opts2 = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     module ReferencesSpec = {
-      module Id = ReventlessSpec.Id.StringPure
+      module Id = Reventless.Id.StringPure
       let name = name ++ "References"
       @schema
       type state = Counter_Operations.referencesState
 
       let subIdConfig = None
-      let config = ReventlessSpec.ReadModel.config()
+      let config = Reventless.ReadModel.config()
     }
 
     module ReferencesDb = QueryDb_Builder.Make(
@@ -34,13 +34,13 @@ module Make = (
     )
 
     module CountsSpec = {
-      module Id = ReventlessSpec.Id.StringPure
+      module Id = Reventless.Id.StringPure
       let name = name ++ "Counts"
       @schema
       type state = Counter_Callback.countsState
 
       let subIdConfig = None
-      let config = ReventlessSpec.ReadModel.config()
+      let config = Reventless.ReadModel.config()
     }
     module CountsDb = QueryDb_Builder.Make(
       CountsSpec,

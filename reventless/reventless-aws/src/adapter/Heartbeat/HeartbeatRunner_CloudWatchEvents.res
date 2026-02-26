@@ -1,13 +1,13 @@
 type runtimeParts = Util.Lambda.runtimeParts
 
-let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
+let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   ~name,
   ~remoteChannel,
   ~timeout,
   ~runtime,
   ~opts,
 ) => {
-  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let cloudwatchEventRule = {
     open PulumiAws.Cloudwatch
@@ -89,7 +89,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
     resources: [
       lambda
       ->Pulumi.Output.apply(lambda => lambda->Util_Lambda.toResource)
-      ->Reventless.Adapter.outputToResource,
+      ->ReventlessCore.Adapter.outputToResource,
       cloudwatchEventRule->Util_Cloudwatch.EventRule.toResource,
     ],
   }

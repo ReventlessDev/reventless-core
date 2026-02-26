@@ -1,6 +1,6 @@
 // No-op CommandGenerator resolvers for in-memory (no AppSync).
 
-open Reventless
+open ReventlessCore
 
 type api = unit
 type runtimeParts = RuntimeEnvironment_InMemory.parts

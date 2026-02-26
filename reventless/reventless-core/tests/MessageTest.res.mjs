@@ -3,17 +3,17 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Message$Reventless from "../src/Message.res.mjs";
-import * as PluginSpec$Reventless from "../src/core/Aggregates/Plugin/PluginSpec.res.mjs";
+import * as Message$ReventlessCore from "../src/Message.res.mjs";
+import * as PluginSpec$ReventlessCore from "../src/core/Aggregates/Plugin/PluginSpec.res.mjs";
 
 Jest.describe("Message should", () => {
-  Jest.test("create a valid sequenceNr", () => Jest.Expect.toBe(Jest.Expect.expect(Message$Reventless.hrtimeToString([
+  Jest.test("create a valid sequenceNr", () => Jest.Expect.toBe(Jest.Expect.expect(Message$ReventlessCore.hrtimeToString([
     1,
     1
   ], 123456789)), "123456789-000000001"));
   Jest.test("get variant name of json without payload", () => {
-    let variantJson = Message$Reventless.encode("Heartbeat", PluginSpec$Reventless.commandSchema);
-    let variantName = Message$Reventless.variantNameOfJson(variantJson);
+    let variantJson = Message$ReventlessCore.encode("Heartbeat", PluginSpec$ReventlessCore.commandSchema);
+    let variantName = Message$ReventlessCore.variantNameOfJson(variantJson);
     return Jest.Expect.toBe(Jest.Expect.expect(variantName), "Heartbeat");
   });
   Jest.test("get variant name of json with payload", () => {
@@ -36,12 +36,12 @@ Jest.describe("Message should", () => {
         extensionProtocols: []
       }
     };
-    let variantJson = Message$Reventless.encode(variant, PluginSpec$Reventless.commandSchema);
-    let variantName = Message$Reventless.variantNameOfJson(variantJson);
+    let variantJson = Message$ReventlessCore.encode(variant, PluginSpec$ReventlessCore.commandSchema);
+    let variantName = Message$ReventlessCore.variantNameOfJson(variantJson);
     return Jest.Expect.toBe(Jest.Expect.expect(variantName), "Connect");
   });
   Jest.test("get event name of eventJson'", () => {
-    let eventJson$p = Message$Reventless.encodeEvent$p({
+    let eventJson$p = Message$ReventlessCore.encodeEvent$p({
       id: "testId",
       meta: {
         service: "testService",
@@ -52,12 +52,12 @@ Jest.describe("Message should", () => {
         correlationId: "testCorrelationId"
       },
       event: "UnknownPluginDetected"
-    }, S.string, PluginSpec$Reventless.eventSchema);
-    let eventName = Message$Reventless.eventNameOfEvent$pJson(eventJson$p);
+    }, S.string, PluginSpec$ReventlessCore.eventSchema);
+    let eventName = Message$ReventlessCore.eventNameOfEvent$pJson(eventJson$p);
     return Jest.Expect.toBe(Jest.Expect.expect(eventName), "UnknownPluginDetected");
   });
   Jest.test("get id of eventJson'", () => {
-    let eventJson$p = Message$Reventless.encodeEvent$p({
+    let eventJson$p = Message$ReventlessCore.encodeEvent$p({
       id: "testId",
       meta: {
         service: "testService",
@@ -68,8 +68,8 @@ Jest.describe("Message should", () => {
         correlationId: "testCorrelationId"
       },
       event: "UnknownPluginDetected"
-    }, S.string, PluginSpec$Reventless.eventSchema);
-    let eventId = Stdlib_Option.getOrThrow(Message$Reventless.idOfEvent$pJson(eventJson$p), undefined);
+    }, S.string, PluginSpec$ReventlessCore.eventSchema);
+    let eventId = Stdlib_Option.getOrThrow(Message$ReventlessCore.idOfEvent$pJson(eventJson$p), undefined);
     return Jest.Expect.toBe(Jest.Expect.expect(eventId), "testId");
   });
 });

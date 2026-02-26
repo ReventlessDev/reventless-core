@@ -64,9 +64,9 @@ function nextTime(h, m) {
   }
 }
 
-let ScheduleNotCreated = /* @__PURE__ */Primitive_exceptions.create("Schedule-Reventless.ScheduleNotCreated");
+let ScheduleNotCreated = /* @__PURE__ */Primitive_exceptions.create("Schedule-ReventlessCore.ScheduleNotCreated");
 
-let ScheduleNotDeleted = /* @__PURE__ */Primitive_exceptions.create("Schedule-Reventless.ScheduleNotDeleted");
+let ScheduleNotDeleted = /* @__PURE__ */Primitive_exceptions.create("Schedule-ReventlessCore.ScheduleNotDeleted");
 
 function create(scheduler, channelResources, resourceNaming) {
   return async schedule => {

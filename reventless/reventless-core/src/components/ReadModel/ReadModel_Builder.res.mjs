@@ -2,23 +2,23 @@
 
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as ReadModel$Reventless from "./ReadModel.res.mjs";
-import * as EventTopic$Reventless from "../EventTopic/EventTopic.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as QueryDb_Builder$Reventless from "../QueryDb/QueryDb_Builder.res.mjs";
-import * as ReadModel_Callback$Reventless from "./ReadModel_Callback.res.mjs";
-import * as EventCollector_Builder$Reventless from "../EventCollector/EventCollector_Builder.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as ReadModel$ReventlessCore from "./ReadModel.res.mjs";
+import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
+import * as ReadModel_Callback$ReventlessCore from "./ReadModel_Callback.res.mjs";
+import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
 
 function Make(Spec) {
   return Mappings => (RuntimeEnvironment => (QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => {
-    let make = (api, apiRole, allEventTopics, opts) => Component$Reventless.make(ComponentType$Reventless.toString(ReadModel$Reventless.componentType), Spec.name, (extra, extra$1) => {
-      let opts_parent = Component$Reventless.toPulumiResource(extra);
+    let make = (api, apiRole, allEventTopics, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ReadModel$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+      let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let name = ComponentType$Reventless.name(extra$1, ReadModel$Reventless.componentType);
-      let SpecificQueryDb = QueryDb_Builder$Reventless.Make(Spec)(QueryDbStorage)(QueryDbResolvers);
+      let name = ComponentType$ReventlessCore.name(extra$1, ReadModel$ReventlessCore.componentType);
+      let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make(Spec)(QueryDbStorage)(QueryDbResolvers);
       let queryDb = SpecificQueryDb.make(api, apiRole, undefined, opts);
       let toProjectionOperations = param => {
         let deleteBatch = param.deleteBatch;
@@ -44,23 +44,23 @@ function Make(Spec) {
         };
       };
       let sourceNames = Belt_SetString.fromArray(Mappings.mappings.map(Mapping => Mapping.sourceName));
-      let SpecificEventCollector = EventCollector_Builder$Reventless.Make(RuntimeEnvironment)(EventCollectorChannel);
-      let eventCollector = Component$Reventless.operations(queryDb).apply(operations => {
-        let eventTopics = EventTopic$Reventless.filter(allEventTopics, sourceNames);
+      let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
+      let eventCollector = Component$ReventlessCore.operations(queryDb).apply(operations => {
+        let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, sourceNames);
         let eventCollector = SpecificEventCollector.make(name, eventTopics, opts);
         let operations$1 = toProjectionOperations(operations);
-        let Callback = ReadModel_Callback$Reventless.Make(Spec)(Mappings)({
+        let Callback = ReadModel_Callback$ReventlessCore.Make(Spec)(Mappings)({
           ReadModelSpec: Spec,
           operations: operations$1
         });
         let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-        let resources = Component$Reventless.outputs(queryDb).resources;
+        let resources = Component$ReventlessCore.outputs(queryDb).resources;
         EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
         return eventCollector;
       });
-      Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, Component$Reventless.operations).apply(param => param.enqueueEvent));
-      let rmOutputs_queryDb = Component$Reventless.outputs(queryDb);
-      let rmOutputs_eventCollector = Component$Reventless.wrappedOutputs(eventCollector);
+      Component$ReventlessCore.setOperations(extra, Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations).apply(param => param.enqueueEvent));
+      let rmOutputs_queryDb = Component$ReventlessCore.outputs(queryDb);
+      let rmOutputs_eventCollector = Component$ReventlessCore.wrappedOutputs(eventCollector);
       let rmOutputs_sourceNames = Belt_SetString.toArray(sourceNames);
       let rmOutputs = {
         name: name,
@@ -68,15 +68,15 @@ function Make(Spec) {
         eventCollector: rmOutputs_eventCollector,
         sourceNames: rmOutputs_sourceNames
       };
-      return Component$Reventless.setOutputs(extra, rmOutputs);
+      return Component$ReventlessCore.setOutputs(extra, rmOutputs);
     }, opts);
     let finish = () => EventCollectorRuntimeBuilder.finish();
     return {
       Spec: Spec,
       EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
       make: make,
-      outputs: Component$Reventless.outputs,
-      operations: Component$Reventless.operations,
+      outputs: Component$ReventlessCore.outputs,
+      operations: Component$ReventlessCore.operations,
       finish: finish
     };
   })))));

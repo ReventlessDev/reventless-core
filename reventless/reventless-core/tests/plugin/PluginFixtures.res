@@ -1,5 +1,5 @@
 let pluginDefinition = {
-  ReventlessSpec.Plugin.id: "id@1",
+  Reventless.Plugin.id: "id@1",
   name: "name",
   version: "1",
   extensionPoints: [],
@@ -22,11 +22,11 @@ let state: PluginReadModelSpec.state = {
 
 let extensionPointNames2 = ["Test.Test"]
 let pluginDefinition2 = {
-  ReventlessSpec.Plugin.id: "id2@1",
+  Reventless.Plugin.id: "id2@1",
   name: "name2",
   version: "1",
   extensionPoints: extensionPointNames2->Array.mapWithIndex((name, idx) => {
-    ReventlessSpec.Plugin.name,
+    Reventless.Plugin.name,
     commandTopic: `commandTopic${idx->Int.toString}`,
     eventTopic: `eventTopic${idx->Int.toString}`,
   }),

@@ -1,12 +1,12 @@
 let componentType = ComponentType.ReadModel
 
 type t
-type outputs = ReventlessSpec.ReadModel.outputs
-type operations = ReventlessSpec.ReadModel.operations
+type outputs = Reventless.ReadModel.outputs
+type operations = Reventless.ReadModel.operations
 type component = Component.t<t, outputs, operations>
 
 module type T = {
-  module Spec: ReventlessSpec.ReadModel.Spec
+  module Spec: Reventless.ReadModel.Spec
   module EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
 
   type api

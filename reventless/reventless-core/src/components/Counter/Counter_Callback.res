@@ -30,7 +30,7 @@ module Make = (Spec: Spec) => {
     ->groupByCounterId
     ->Array.map(((counterId, dec)) =>
       Spec.countsDbCount(
-        counterId->ReventlessSpec.Id.StringPure.makeFromString,
+        counterId->Reventless.Id.StringPure.makeFromString,
         Counter.countFieldName,
         -dec,
       )

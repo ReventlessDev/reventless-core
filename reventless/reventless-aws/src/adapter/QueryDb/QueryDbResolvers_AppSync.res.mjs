@@ -2,14 +2,14 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
-import * as Util_QueryDb$Reventless from "@reventlessdev/reventless-core/src/util/Util_QueryDb.res.mjs";
-import * as Plugin_Helpers$Reventless from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as AppSync_Function$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.mjs";
 import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
+import * as Util_QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDb.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
 
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
@@ -26,7 +26,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       let match = indexConfig.authorization;
       if (match !== undefined) {
         let group = match.group;
-        let authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$2 + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDb$Reventless.getLocalStorageResources(allQueryDbs, match.tableName)).name, apiRole, opts);
+        let authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$2 + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDb$ReventlessCore.getLocalStorageResources(allQueryDbs, match.tableName)).name, apiRole, opts);
         let authFunction = AppSync_Function$PulumiAws.make(name$2 + "Auth", api, authDataSource.name, AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessRequest(index, group), AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessResponse(group), opts);
         let queryFunction = AppSync_Function$PulumiAws.make(name$2, api, dataSourceName, AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, opts);
         return AppSync_Resolver$PulumiAws.makePipelineResolver(name$2, api, "Query", AppSync_Resolver_Templates$PulumiAws.uncapitalize(name$2), "{}", AppSync_Resolver_Templates$PulumiAws.result, [
@@ -37,7 +37,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       let sortField = indexConfig.subIdField;
       return AppSync_Resolver$PulumiAws.makeUnitResolver(name$2, api, dataSourceName, "Query", AppSync_Resolver_Templates$PulumiAws.uncapitalize(name$2), sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIndexSortFiltered(index, idField, sortField) : AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, opts);
     });
-    let storageResource = (pluginName, tableName) => Adapter$Reventless.outputToResource(Util_DynamoDb$ReventlessAws.findResourceInOutput(Plugin_Helpers$Reventless.getStorageResources(allQueryDbs, pluginName, tableName)));
+    let storageResource = (pluginName, tableName) => Adapter$ReventlessCore.outputToResource(Util_DynamoDb$ReventlessAws.findResourceInOutput(Plugin_Helpers$ReventlessCore.getStorageResources(allQueryDbs, pluginName, tableName)));
     let generateTemplate = (storageResource, template) => storageResource.name.apply(realTableName => template(realTableName));
     let idResolvers = idResolverConfigs.map(config => {
       let target = config.target;
@@ -127,4 +127,4 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
 export {
   make,
 }
-/* Adapter-Reventless Not a pure module */
+/* Adapter-ReventlessCore Not a pure module */

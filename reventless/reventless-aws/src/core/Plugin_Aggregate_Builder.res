@@ -1,5 +1,5 @@
 include Aggregate_Builder_Single.Make(
-  Reventless.PluginSpec,
-  Reventless.PluginBehavior,
-  ReventlessSpec.NoEventMappings.Make(Reventless.PluginSpec),
+  ReventlessCore.PluginSpec,
+  ReventlessCore.PluginBehavior,
+  Reventless.NoEventMappings.Make(ReventlessCore.PluginSpec),
 )

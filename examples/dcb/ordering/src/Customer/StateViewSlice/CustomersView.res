@@ -1,7 +1,7 @@
 // CustomersView StateViewSlice.
 // Projects customer events from the shared ordering event log into a Customers read model.
 
-open ReventlessSpec.Projection
+open Reventless.Projection
 open OrderingEventLog
 
 let name = "CustomersView"

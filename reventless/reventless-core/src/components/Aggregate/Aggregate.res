@@ -1,12 +1,12 @@
-open ReventlessSpec.Aggregate
+open Reventless.Aggregate
 
 let componentType = ComponentType.Aggregate
 
 type t
-type outputs = ReventlessSpec.Aggregate.outputs
-type addEventMapper = ReventlessSpec.Aggregate.addEventMapper
-type allOutputs = ReventlessSpec.Aggregate.allOutputs
-type operations = ReventlessSpec.Aggregate.operations
+type outputs = Reventless.Aggregate.outputs
+type addEventMapper = Reventless.Aggregate.addEventMapper
+type allOutputs = Reventless.Aggregate.allOutputs
+type operations = Reventless.Aggregate.operations
 type component = Component.t<t, outputs, operations>
 
 type name = string
@@ -27,7 +27,7 @@ let filterEventTopics = (allAggregates, aggregateNames) =>
   ->Dict.fromArray
 
 module type T = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   module AggregateRuntimeBuilder: AggregateRuntime_Builder.T
 
   type api

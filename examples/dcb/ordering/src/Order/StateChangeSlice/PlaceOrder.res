@@ -1,7 +1,7 @@
 // PlaceOrder StateChangeSlice.
 // Handles the PlaceOrder command; rejects duplicate placement.
 
-open ReventlessSpec
+open Reventless
 open OrderingEventLog
 
 let name = "PlaceOrder"

@@ -40,7 +40,7 @@ The QueryDb uses the ReadModel spec which defines the QueryDb's name, Id module 
 ```rescript title="CustomerReadModel_Spec.res"
 let name = "Customer"
 
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type state = {

@@ -1,4 +1,4 @@
-open ReventlessSpec.ExtensionMapping
+open Reventless.ExtensionMapping
 open PluginExtensionPointSpec
 
 type extensionPointName = string
@@ -15,7 +15,7 @@ type abstractIncomingCommandAction =
 type abstractOutgoingCommandAction =
   | AbstractPublishPluginExtensionPointCommand(Message.commandJson)
   | AbstractPublishExtensionPointCommand(extensionPointName, Message.commandJson)
-  | AbstractCall(ReventlessSpec.Handler.handler<unit>)
+  | AbstractCall(Reventless.Handler.handler<unit>)
 
 module type T = {
   module ExtensionPoint: Spec
@@ -25,7 +25,7 @@ module type T = {
   let mapIncomingEvent: (
     Message.event'<string, ExtensionPoint.event>,
     pluginDefinition,
-    ReventlessSpec.QueryEngine.operations,
+    Reventless.QueryEngine.operations,
   ) => array<abstractIncomingCommandAction>
 
   let mapOutgoingEvent: option<(JSON.t, pluginDefinition) => array<abstractOutgoingCommandAction>>

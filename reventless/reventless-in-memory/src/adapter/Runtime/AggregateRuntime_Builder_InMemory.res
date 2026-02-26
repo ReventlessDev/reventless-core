@@ -4,12 +4,12 @@
 
 module Make = (
   Bus: InMemory_Bus.T,
-  CommandTopicChannel: Reventless.CommandTopic_Adapter.Channel
+  CommandTopicChannel: ReventlessCore.CommandTopic_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment_InMemory.parts,
-  EventCollectorChannel: Reventless.EventCollector_Adapter.Channel
+  EventCollectorChannel: ReventlessCore.EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment_InMemory.parts,
 ): (
-  Reventless.AggregateRuntime_Builder.T
+  ReventlessCore.AggregateRuntime_Builder.T
     with type context = RuntimeEnvironment_InMemory.context
     and type runtimeParts = RuntimeEnvironment_InMemory.parts
     and module CommandTopicChannel = CommandTopicChannel
@@ -30,10 +30,10 @@ module Make = (
     // Call connect(~runtime) so CommandGeneratorResolvers_GraphQL.make registers SDL+resolvers.
     // The runtime's handlerRef is unused by the GraphQL resolver path, but we create a proper
     // runtime so the type is satisfied and future callers that need handlerRef will work.
-    let resource = commandGenerator->Reventless.Component.toPulumiResource
+    let resource = commandGenerator->ReventlessCore.Component.toPulumiResource
     let runtime = RuntimeEnvironment_InMemory.make(
-      ~name=resource.name->Reventless.ComponentType.nameOpt(
-        Reventless.CommandGenerator.componentType,
+      ~name=resource.name->ReventlessCore.ComponentType.nameOpt(
+        ReventlessCore.CommandGenerator.componentType,
       ),
       ~handler=handler->Pulumi.Output.apply(h => h->RuntimeEnvironment_InMemory.asEventHandler),
     )
@@ -47,9 +47,9 @@ module Make = (
     ~timeout as _=?,
     commandTopic,
   ) => {
-    let resource = commandTopic->Reventless.Component.toPulumiResource
+    let resource = commandTopic->ReventlessCore.Component.toPulumiResource
     let runtime = RuntimeEnvironment_InMemory.make(
-      ~name=resource.name->Reventless.ComponentType.nameOpt(Reventless.CommandTopic.componentType),
+      ~name=resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.CommandTopic.componentType),
       ~handler=handler->Pulumi.Output.apply(h => h->RuntimeEnvironment_InMemory.asEventHandler),
     )
     connect(~runtime)
@@ -63,9 +63,9 @@ module Make = (
     ~timeout as _=?,
     eventCollector,
   ) => {
-    let resource = eventCollector->Reventless.Component.toPulumiResource
+    let resource = eventCollector->ReventlessCore.Component.toPulumiResource
     let name =
-      resource.name->Reventless.ComponentType.nameOpt(Reventless.EventCollector.componentType)
+      resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.EventCollector.componentType)
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment_InMemory.make(
       ~name,
@@ -74,7 +74,7 @@ module Make = (
     let _connectResources = EventCollectorChannel.connect(
       ~name,
       ~channelSpecs=[
-        {channel: eventCollector->Reventless.EventCollector_Adapter.channel, eventTopics, resources},
+        {channel: eventCollector->ReventlessCore.EventCollector_Adapter.channel, eventTopics, resources},
       ],
       ~runtime,
       ~opts,

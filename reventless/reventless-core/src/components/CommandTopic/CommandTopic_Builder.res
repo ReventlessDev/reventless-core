@@ -1,4 +1,4 @@
-module Make = (Spec: ReventlessSpec.CommandTopic.T, Channel: CommandTopic_Adapter.Channel): (
+module Make = (Spec: Reventless.CommandTopic.T, Channel: CommandTopic_Adapter.Channel): (
   CommandTopic.T with module Spec = Spec and type callbackEvent = Channel.callbackEvent
 ) => {
   module Spec = Spec
@@ -32,7 +32,7 @@ module Make = (Spec: ReventlessSpec.CommandTopic.T, Channel: CommandTopic_Adapte
     let allResults = []
 
     let processItem = async item => {
-      let {ReventlessSpec.CommandTopic.reference: reference, command: json} = item
+      let {Reventless.CommandTopic.reference: reference, command: json} = item
       let typeName = extractTypeNameFromJson(json)
 
       // Look up handlers for this command type in the global registry
@@ -42,7 +42,7 @@ module Make = (Spec: ReventlessSpec.CommandTopic.T, Channel: CommandTopic_Adapte
       let handlerPromises = handlers->Array.map(async handlerEntry => {
         let {CommandTopic.handler: handler} = handlerEntry
         try {
-          let results = await handler([{ReventlessSpec.CommandTopic.reference, command: json}])
+          let results = await handler([{Reventless.CommandTopic.reference, command: json}])
           allResults->Array.pushMany(results)
         } catch {
         | _ => () // Skip if handler fails

@@ -3,23 +3,23 @@
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
-import * as DcbFixtures$Reventless from "./DcbFixtures.res.mjs";
-import * as DcbEventLog_Operations$Reventless from "../../src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
+import * as DcbFixtures$ReventlessCore from "./DcbFixtures.res.mjs";
+import * as DcbEventLog_Operations$ReventlessCore from "../../src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
 
-let mock = DcbFixtures$Reventless.makeMockStorage();
+let mock = DcbFixtures$ReventlessCore.makeMockStorage();
 
 let storage = mock.operations;
 
 let publishJson = mock.mockPublishJson;
 
 let TestOps = {
-  Spec: DcbFixtures$Reventless.TestEventLogSpec,
+  Spec: DcbFixtures$ReventlessCore.TestEventLogSpec,
   name: "TestDcbEventLog",
   storage: storage,
   publishJson: publishJson
 };
 
-let Ops = DcbEventLog_Operations$Reventless.Make(DcbFixtures$Reventless.TestEventLogSpec)(TestOps);
+let Ops = DcbEventLog_Operations$ReventlessCore.Make(DcbFixtures$ReventlessCore.TestEventLogSpec)(TestOps);
 
 beforeEach(() => mock.reset());
 

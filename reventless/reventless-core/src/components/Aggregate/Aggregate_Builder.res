@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.Aggregate.Spec,
+  Spec: Reventless.Aggregate.Spec,
   Behavior: Behavior.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
   RuntimeEnvironment: Runtime.Environment,

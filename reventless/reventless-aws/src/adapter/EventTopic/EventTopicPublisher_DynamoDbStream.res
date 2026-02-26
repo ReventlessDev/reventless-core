@@ -1,4 +1,4 @@
-let make: Reventless.EventTopic_Adapter.publisherMaker = (
+let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (
   ~name as _,
   ~storageResources,
   ~opts as _,
@@ -17,7 +17,7 @@ let make: Reventless.EventTopic_Adapter.publisherMaker = (
           )
         }
       )
-      ->Reventless.Adapter.outputToResource,
+      ->ReventlessCore.Adapter.outputToResource,
     ],
     publishJson: Pulumi.Output.make((_, _, _) => Promise.resolve()), // ignore
   }

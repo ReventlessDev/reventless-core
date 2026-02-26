@@ -2,18 +2,18 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
-import * as Logger$Reventless from "../src/util/Logger.res.mjs";
-import * as Message$Reventless from "../src/Message.res.mjs";
-import * as PluginSpec$Reventless from "../src/core/Aggregates/Plugin/PluginSpec.res.mjs";
+import * as Logger$ReventlessCore from "../src/util/Logger.res.mjs";
+import * as Message$ReventlessCore from "../src/Message.res.mjs";
+import * as PluginSpec$ReventlessCore from "../src/core/Aggregates/Plugin/PluginSpec.res.mjs";
 
 S.enableJson();
 
 Jest.describe("Logger", () => {
-  Jest.describe("commandJsonsToLogMessage", () => Jest.test("createTag", () => Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.createTag("Info", "File \"Aggregate.res\", line 214, characters 17-24")), "Aggregate#214:")));
+  Jest.describe("commandJsonsToLogMessage", () => Jest.test("createTag", () => Jest.Expect.toEqual(Jest.Expect.expect(Logger$ReventlessCore.createTag("Info", "File \"Aggregate.res\", line 214, characters 17-24")), "Aggregate#214:")));
   Jest.describe("commandJsonsToLogMessage", () => {
     Jest.test("empty", () => {
       let arr = [];
-      return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), []);
+      return Jest.Expect.toEqual(Jest.Expect.expect(Logger$ReventlessCore.commandJsonsToLogMessages(arr)), []);
     });
     Jest.test("simple", () => {
       let commands = ["Heartbeat"];
@@ -25,14 +25,14 @@ Jest.describe("Logger", () => {
         msgId: "testMsgId",
         correlationId: "testCorrelationId"
       };
-      let metaStr = JSON.stringify(Message$Reventless.encode(meta, Message$Reventless.metaSchema));
+      let metaStr = JSON.stringify(Message$ReventlessCore.encode(meta, Message$ReventlessCore.metaSchema));
       let arr = commands.map((command, idx) => ({
         id: idx.toString(),
         meta: meta,
-        commandJson: Message$Reventless.encode(command, PluginSpec$Reventless.commandSchema)
+        commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
       let expected = `1/1: Heartbeat(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":0}`;
-      return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), [expected]);
+      return Jest.Expect.toEqual(Jest.Expect.expect(Logger$ReventlessCore.commandJsonsToLogMessages(arr)), [expected]);
     });
     Jest.test("complex", () => {
       let commands = [
@@ -65,22 +65,22 @@ Jest.describe("Logger", () => {
         msgId: "testMsgId",
         correlationId: "testCorrelationId"
       };
-      let metaStr = JSON.stringify(Message$Reventless.encode(meta, Message$Reventless.metaSchema));
+      let metaStr = JSON.stringify(Message$ReventlessCore.encode(meta, Message$ReventlessCore.metaSchema));
       let arr = commands.map((command, idx) => ({
         id: idx.toString(),
         meta: meta,
-        commandJson: Message$Reventless.encode(command, PluginSpec$Reventless.commandSchema)
+        commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
       let expected1 = `1/2: Heartbeat(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":0}`;
       let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[]}},"meta":` + metaStr + `,"id":1}`;
-      return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), [
+      return Jest.Expect.toEqual(Jest.Expect.expect(Logger$ReventlessCore.commandJsonsToLogMessages(arr)), [
         expected1,
         expected2
       ]);
     });
   });
   Jest.describe("event'JsonToLogMessage", () => Jest.test("simple", () => {
-    let eventJson$p = Message$Reventless.encodeEvent$p({
+    let eventJson$p = Message$ReventlessCore.encodeEvent$p({
       id: "testId",
       meta: {
         service: "testService",
@@ -91,8 +91,8 @@ Jest.describe("Logger", () => {
         correlationId: "testCorrelationId"
       },
       event: "UnknownPluginDetected"
-    }, S.string, PluginSpec$Reventless.eventSchema);
-    let msg = Logger$Reventless.event$pJsonToLogMessage(eventJson$p);
+    }, S.string, PluginSpec$ReventlessCore.eventSchema);
+    let msg = Logger$ReventlessCore.event$pJsonToLogMessage(eventJson$p);
     return Jest.Expect.toEqual(Jest.Expect.expect(msg), `UnknownPluginDetected(testId): {"event":"UnknownPluginDetected","meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`);
   }));
 });

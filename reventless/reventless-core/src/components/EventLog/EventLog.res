@@ -1,6 +1,6 @@
 let componentType = ComponentType.EventLog
 
-type outputs = ReventlessSpec.EventLog.outputs
+type outputs = Reventless.EventLog.outputs
 
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
@@ -11,7 +11,7 @@ type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, str
 type replay<'id, 'event> = 'id => promise<array<'event>>
 
 module type T = {
-  module Spec: ReventlessSpec.EventLog.T
+  module Spec: Reventless.EventLog.T
 
   type operations = {
     append: append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,

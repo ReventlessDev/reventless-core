@@ -3,17 +3,17 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Message$Reventless from "../../Message.res.mjs";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as DcbTag$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
 
 function Make(Spec) {
   return Ops => {
     let name = Ops.name;
     let encodeEvent = event => {
       let json = S.reverseConvertToJsonOrThrow(event, Spec.eventSchema);
-      let match = Message$Reventless.splitMessage(json);
-      let tags = DcbTag$ReventlessSpec.extractTags(Spec.eventSchema, event);
+      let match = Message$ReventlessCore.splitMessage(json);
+      let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, event);
       return {
         eventType: match[0],
         data: match[1],
@@ -21,7 +21,7 @@ function Make(Spec) {
       };
     };
     let decodeEvent = raw => {
-      let json = Message$Reventless.combineMessage(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
+      let json = Message$ReventlessCore.combineMessage(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
       let event = S.parseJsonOrThrow(json, Spec.eventSchema);
       return {
         position: raw.position,
@@ -32,7 +32,7 @@ function Make(Spec) {
     let publishToEventTopic = async events => {
       await Promise.all(events.map(async event => {
         let json = S.reverseConvertToJsonOrThrow(event, Spec.eventSchema);
-        let meta = Message$Reventless.generateMeta(name, undefined, undefined);
+        let meta = Message$ReventlessCore.generateMeta(name, undefined, undefined);
         try {
           return await Ops.publishJson(name, meta, json);
         } catch (raw_err) {

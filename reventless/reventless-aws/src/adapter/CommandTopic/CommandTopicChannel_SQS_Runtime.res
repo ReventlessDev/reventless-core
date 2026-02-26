@@ -19,7 +19,7 @@ let handleQueueEvent = (queue, handleCommands) =>
       ->Array.map(record => record.receiptHandle)
       ->Belt.Array.zip(jsons)
       ->Array.map(((reference, command)) => {
-        ReventlessSpec.CommandTopic.reference,
+        Reventless.CommandTopic.reference,
         command,
       })
 
@@ -50,7 +50,7 @@ let handleQueueEvent = (queue, handleCommands) =>
       ->Array.filterMap(x => x)
       ->Util.SQS_Runtime.deleteMessages(queue) {
       | () =>
-        Reventless.Logger.debug(
+        ReventlessCore.Logger.debug(
           ~loc=__LOC__,
           "handleQueueEvent:",
           "Deleted all commands from queue",

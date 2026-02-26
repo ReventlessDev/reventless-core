@@ -1,4 +1,4 @@
-/** Central type definitions for AWS resources used by Reventless.
+/** Central type definitions for AWS resources used by ReventlessCore.
   * 
   * All AWS-specific types should be defined here and imported from 
   * this module rather than directly from PulumiAws.

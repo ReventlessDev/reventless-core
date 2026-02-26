@@ -1,7 +1,7 @@
 // Product aggregate specification.
 // A product listing with name, description, and price.
 
-open ReventlessSpec
+open Reventless
 module Id = Id.String
 
 let name = "Product"

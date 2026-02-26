@@ -60,7 +60,7 @@ Components use first-class modules and functors for type-safe configuration:
 
 ```rescript
 module type T = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
 }
 

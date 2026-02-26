@@ -43,7 +43,7 @@ The Aggregate's Behavior module must define a `resolverConfig` that specifies wh
 
 ```rescript
 module type Behavior = {
-  module Spec: ReventlessSpec.Aggregate.Spec
+  module Spec: Reventless.Aggregate.Spec
   
   type resolverConfig = {
     fields: array<string>,              // GraphQL mutation field names

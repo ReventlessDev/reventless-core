@@ -1,7 +1,7 @@
 // Category aggregate behavior.
 // Implements the state machine for adding, renaming, and archiving categories.
 
-open ReventlessSpec
+open Reventless
 open Category
 
 module Spec = Category

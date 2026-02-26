@@ -9,7 +9,7 @@ let urnName: string => string = arn =>
   arn->String.split(":")->Array.get(5)->Option.getOr("unknown")
 
 // Export as operations interface
-let operations: ReventlessSpec.ResourceNaming.operations = {
+let operations: Reventless.ResourceNaming.operations = {
   validateName,
   urnName,
 }

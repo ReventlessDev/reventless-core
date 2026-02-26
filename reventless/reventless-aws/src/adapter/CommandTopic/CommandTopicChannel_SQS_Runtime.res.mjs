@@ -4,8 +4,8 @@ import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Logger$Reventless from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Util_SQS_Runtime$ReventlessAws from "../../util/Util_SQS_Runtime.res.mjs";
 
 function handleQueueEvent(queue, handleCommands) {
@@ -64,7 +64,7 @@ function handleQueueEvent(queue, handleCommands) {
         throw e;
       }
       if (exit$1 === 2) {
-        return Logger$Reventless.debug("File \"CommandTopicChannel_SQS_Runtime.res\", line 54, characters 15-22", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
+        return Logger$ReventlessCore.debug("File \"CommandTopicChannel_SQS_Runtime.res\", line 54, characters 15-22", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
       }
     }
   };

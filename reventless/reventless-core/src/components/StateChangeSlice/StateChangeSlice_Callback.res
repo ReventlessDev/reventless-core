@@ -1,24 +1,24 @@
 module type T = {
-  module Spec: ReventlessSpec.StateChangeSlice.Spec
+  module Spec: Reventless.StateChangeSlice.Spec
   let handleCommands: (
     DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
-    array<CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, Spec.command>>>,
+    array<CommandTopic.topicItem<Message.command'<Reventless.Id.String.t, Spec.command>>>,
   ) => promise<array<result<string, string>>>
 }
 
-module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (T with module Spec = Spec) => {
+module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  let queryEventTypes = ReventlessSpec.DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)
+  let queryEventTypes = Reventless.DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)
 
   let maxRetries = 3
 
   let handleSingleCommand = async (
     dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
-    command': Message.command'<ReventlessSpec.Id.String.t, Spec.command>,
+    command': Message.command'<Reventless.Id.String.t, Spec.command>,
   ) => {
-    let commandTags = ReventlessSpec.DcbTag.extractTags(Spec.commandSchema, command'.command)
-    let query: ReventlessSpec.DcbTag.query = [
+    let commandTags = Reventless.DcbTag.extractTags(Spec.commandSchema, command'.command)
+    let query: Reventless.DcbTag.query = [
       {
         eventTypes: queryEventTypes,
         tags: commandTags,
@@ -38,7 +38,7 @@ module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (T with module Spec 
         Logger.debug(~loc=__LOC__, `StateChangeSlice(${Spec.name})`, "no events generated")
         Ok("ok")
       | Ok(newEvents) =>
-        let condition: ReventlessSpec.DcbTag.appendCondition = {
+        let condition: Reventless.DcbTag.appendCondition = {
           query,
           after: ?readResult.headPosition,
         }
@@ -76,7 +76,7 @@ module Make = (Spec: ReventlessSpec.StateChangeSlice.Spec): (T with module Spec 
   let handleCommands = async (dcbEventLog, topicItems) => {
     Logger.debug(~loc=__LOC__, "starting", "StateChangeSlice.handleCommands")
     let results = await topicItems
-    ->Array.map(async ({ReventlessSpec.CommandTopic.reference: reference, command}) => {
+    ->Array.map(async ({Reventless.CommandTopic.reference: reference, command}) => {
       switch await handleSingleCommand(dcbEventLog, command) {
       | Ok(_) => Ok(reference)
       | Error(_) => Error(reference)

@@ -144,7 +144,7 @@ type outputs = {
   aggregates: Pulumi.Output.t<dict<Aggregate.outputs>>,
   readModels: Pulumi.Output.t<dict<ReadModel.outputs>>,
   tasks: Pulumi.Output.t<dict<Task.outputs>>,
-  resolvers: Pulumi.Output.t<array<ReventlessSpec.Adapter.resource>>,
+  resolvers: Pulumi.Output.t<array<Reventless.Adapter.resource>>,
   heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
 }
 ```

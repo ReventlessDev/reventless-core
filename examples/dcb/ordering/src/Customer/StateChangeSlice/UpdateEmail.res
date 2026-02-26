@@ -1,7 +1,7 @@
 // UpdateEmail StateChangeSlice.
 // Requires customer to exist and not be deactivated; idempotent when email is unchanged.
 
-open ReventlessSpec
+open Reventless
 open OrderingEventLog
 
 let name = "UpdateEmail"

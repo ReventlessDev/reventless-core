@@ -58,7 +58,7 @@ type schedule = {
 ```rescript
 // Daily report generation at 9:00 AM
 let dailyReport = {
-  ReventlessSpec.Schedule.name: "daily-report",
+  Reventless.Schedule.name: "daily-report",
   rate: Daily(9, 0),
   payload: `{"type": "GenerateReport", "reportType": "daily"}`,
 }
@@ -98,7 +98,7 @@ module MyPlugin = {
 // Create a schedule dynamically
 let createDailyBackup = async () => {
   let schedule = {
-    ReventlessSpec.Schedule.name: "daily-backup",
+    Reventless.Schedule.name: "daily-backup",
     rate: Daily(2, 0), // 2:00 AM daily
     payload: `{"type": "StartBackup", "target": "database"}`,
   }

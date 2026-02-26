@@ -1,11 +1,11 @@
 module type Spec = {
-  module ReadModelSpec: ReventlessSpec.ReadModel.Spec
+  module ReadModelSpec: Reventless.ReadModel.Spec
   let operations: QueryDb.operations<string, ReadModelSpec.state>
 }
 
 module Make = (
-  ReadModelSpec: ReventlessSpec.ReadModel.Spec,
-  Mappings: ReventlessSpec.Projection.Mappings with module Target := ReadModelSpec,
+  ReadModelSpec: Reventless.ReadModel.Spec,
+  Mappings: Reventless.Projection.Mappings with module Target := ReadModelSpec,
   Spec: Spec with module ReadModelSpec = ReadModelSpec,
 ) => {
   module EventProjector = ProjectionMapper.Make(ReadModelSpec, Mappings)
@@ -15,7 +15,7 @@ module Make = (
     jsons
     ->Array.mapWithIndex((json, idx) => {
       let idx = idx + 1
-      let sourceName = (json->Message.decode(ReventlessSpec.Message.contextSchema)).meta.service
+      let sourceName = (json->Message.decode(Reventless.Message.contextSchema)).meta.service
       Console.log2(
         `ReadModel ${ReadModelSpec.name}: handling event ${idx->Int.toString}/${eventCount->Int.toString} from ${sourceName}:`,
         json,

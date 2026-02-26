@@ -3,9 +3,9 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as DcbTag$ReventlessSpec from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
-import * as CommandTopic$Reventless from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "../../../src/components/DcbEventLog_Builder.res.mjs";
@@ -13,7 +13,7 @@ import * as StateChangeSlice_Builder$ReventlessInMemory from "../../../src/compo
 
 let eventSchema = S.schema(s => ({
   TAG: "ItemAdded",
-  id: s.m(DcbTag$ReventlessSpec.string),
+  id: s.m(DcbTag$Reventless.string),
   name: s.m(S.string)
 }));
 
@@ -25,7 +25,7 @@ let name = "AddItem";
 
 let commandSchema = S.schema(s => ({
   TAG: "AddItem",
-  id: s.m(DcbTag$ReventlessSpec.string),
+  id: s.m(DcbTag$Reventless.string),
   name: s.m(S.string)
 }));
 
@@ -107,14 +107,14 @@ async function publishJsons(cmdJsons) {
       ],
       [
         "meta",
-        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$ReventlessSpec.metaSchema)
+        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$Reventless.metaSchema)
       ],
       [
         "command",
         cmdJson.commandJson
       ]
     ]);
-    let handlers = CommandTopic$Reventless.getHandlers(typeName);
+    let handlers = CommandTopic$ReventlessCore.getHandlers(typeName);
     await Promise.all(handlers.map(async entry => {
       await entry.handler([{
           command: fullBody,

@@ -1,7 +1,7 @@
 // AddCategory StateChangeSlice.
 // Handles the AddCategory command; rejects duplicate creation via DCB optimistic concurrency.
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "AddCategory"

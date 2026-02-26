@@ -1,1 +1,1 @@
-include module type of ReventlessSpec.Component
+include module type of Reventless.Component

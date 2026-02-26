@@ -1,5 +1,5 @@
 module type Service = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
 
   @schema
   type id = Id.t
@@ -14,7 +14,7 @@ module type Service = {
   let name: string
 }
 
-include ReventlessSpec.Message
+include Reventless.Message
 
 let toEventSchema' = (idSchema, eventSchema) =>
   S.object(s => {
@@ -135,7 +135,7 @@ let idMetaEventOfEvent'Json = json => {
 
 type eventsHandler<'id, 'event> = (
   'id,
-  array<ReventlessSpec.Message.event'<'id, 'event>>,
+  array<Reventless.Message.event'<'id, 'event>>,
 ) => promise<unit>
 
 module type Events = {
@@ -161,7 +161,7 @@ let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) =
 type errorHandler<'error, 'command, 'event> = (
   'error,
   'command,
-  ReventlessSpec.Message.context,
+  Reventless.Message.context,
 ) => array<'event>
 
 let generateMeta = (~service, ~ip="", ~user="unknown") => {

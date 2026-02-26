@@ -1,6 +1,6 @@
 // Pure unit tests for CategoriesView StateViewSlice projection.
 
-open ReventlessSpec
+open Reventless
 open Jest
 open Expect
 

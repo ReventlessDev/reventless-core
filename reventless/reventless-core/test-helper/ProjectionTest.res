@@ -58,7 +58,7 @@ let unpackPlainPartial: Jest.Expect.plainPartial<'a> => 'a = p =>
 
 let handleActions = Projection.handleActions // create alias to avoid shadowing of same named modules
 
-module Make = (Projection: ReventlessSpec.Projection.Mapping): (
+module Make = (Projection: Reventless.Projection.Mapping): (
   T with type sourceEvent := Projection.sourceEvent and type targetState := Projection.targetState
 ) => {
   S.enableJson()
@@ -111,7 +111,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     | ([_], Overwrite) =>
       store->setStates(id, [state])
       Ok()->Promise.resolve
-    | _ => Error(ReventlessSpec.QueryDb.StaleState)->Promise.resolve
+    | _ => Error(Reventless.QueryDb.StaleState)->Promise.resolve
     }
   let saveBatch = (store, batch) => {
     batch->Array.forEach(((id, state, _ttl)) => store->addState(id, state))
@@ -122,7 +122,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     | (None, _) =>
       store->deleteStates(id)
       Ok()->Promise.resolve
-    | (Some((_, subId)), Some({ReventlessSpec.ReadModel.getSubId: getSubId})) =>
+    | (Some((_, subId)), Some({Reventless.ReadModel.getSubId: getSubId})) =>
       store->deleteSubState(id, subId, getSubId)
       Ok()->Promise.resolve
     | _ => Ok()->Promise.resolve
@@ -131,7 +131,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     ids->Array.forEach(((id, subId)) =>
       switch (subId, Projection.subIdConfig) {
       | (None, _) => store->deleteStates(id)
-      | (Some((_, subId)), Some({ReventlessSpec.ReadModel.getSubId: getSubId})) =>
+      | (Some((_, subId)), Some({Reventless.ReadModel.getSubId: getSubId})) =>
         store->deleteSubState(id, subId, getSubId)
       | _ => ()
       }

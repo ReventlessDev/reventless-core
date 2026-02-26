@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.EventLog.T,
+  Spec: Reventless.EventLog.T,
   Storage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
 ): (EventLog.T with module Spec = Spec) => {

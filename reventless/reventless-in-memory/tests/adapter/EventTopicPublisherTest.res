@@ -7,7 +7,7 @@ open AsyncTest.Expect
 
 let _ = TestRunner.setup()
 
-let testMeta: ReventlessSpec.Message.meta = {
+let testMeta: Reventless.Message.meta = {
   service: "test",
   time: "",
   ip: "",

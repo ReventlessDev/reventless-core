@@ -1,4 +1,4 @@
-let make: Reventless.CommandTopic_Adapter.remoteChannelMaker = resources => {
+let make: ReventlessCore.CommandTopic_Adapter.remoteChannelMaker = resources => {
   resources,
   remotePublish: resources
   ->Util.SQS.findResolvedResource

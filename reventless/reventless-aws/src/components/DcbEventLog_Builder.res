@@ -1,6 +1,6 @@
-module Make = (Spec: ReventlessSpec.DcbEventLog.Spec): (
-  Reventless.DcbEventLog.T with module Spec = Spec
-) => Reventless.DcbEventLog_Builder.Make(
+module Make = (Spec: Reventless.DcbEventLog.Spec): (
+  ReventlessCore.DcbEventLog.T with module Spec = Spec
+) => ReventlessCore.DcbEventLog_Builder.Make(
   Spec,
   DcbEventLogStorage.DynamoDb,
   EventTopicPublisher.DynamoDbStream,

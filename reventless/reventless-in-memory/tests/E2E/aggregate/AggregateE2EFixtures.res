@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 
 module ItemSpec = {
-  module Id = ReventlessSpec.Id.String
+  module Id = Reventless.Id.String
   let name = "TestItem"
 
   @schema
@@ -23,10 +23,10 @@ module ItemSpec = {
 // Item behavior: CreateItem → ItemCreated
 // ─────────────────────────────────────────────────────────────
 
-module ItemBehavior: Reventless.Behavior.T with module Spec := ItemSpec = {
+module ItemBehavior: ReventlessCore.Behavior.T with module Spec := ItemSpec = {
   type state = bool // true = item exists
 
-  let resolverConfig: Reventless.Behavior.resolverConfig<ItemSpec.command> = {
+  let resolverConfig: ReventlessCore.Behavior.resolverConfig<ItemSpec.command> = {
     commandSchema: ItemSpec.commandSchema,
     fields: [],
   }
@@ -75,7 +75,7 @@ module ItemAggregateMaker = Aggregate_Builder.Make(Bus)
 module ItemAgg = ItemAggregateMaker.Make(
   ItemSpec,
   ItemBehavior,
-  ReventlessSpec.NoEventMappings.Make(ItemSpec),
+  Reventless.NoEventMappings.Make(ItemSpec),
 )
 
 let agg = ItemAgg.make(~api=())
@@ -84,7 +84,7 @@ let agg = ItemAgg.make(~api=())
 // Test metadata
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: ReventlessSpec.Message.meta = {
+let testMeta: Reventless.Message.meta = {
   service: "test",
   time: "2024-01-01T00:00:00.000Z",
   ip: "127.0.0.1",

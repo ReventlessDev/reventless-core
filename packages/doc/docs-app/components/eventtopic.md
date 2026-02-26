@@ -45,7 +45,7 @@ The EventTopic requires a spec defining the aggregate's id type and event type:
 
 ```rescript
 module type Spec = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
 
   @schema
   type event
@@ -55,7 +55,7 @@ module type Spec = {
 For example, a Customer aggregate might define its spec as follows:
 
 ```rescript title="Customer.res"
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type event =

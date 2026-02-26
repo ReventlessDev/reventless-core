@@ -3,7 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
@@ -122,7 +122,7 @@ async function publishJsons(cmdJsons) {
       ],
       [
         "meta",
-        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$ReventlessSpec.metaSchema)
+        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$Reventless.metaSchema)
       ],
       [
         "command",
@@ -180,7 +180,7 @@ describe("Ordering DCB E2E:", () => {
     capturedEventCount.contents = 0;
   });
   test("RegisterCustomer publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "RegisterCustomer",
       customerId: "cust-1",
       email: "alice@example.com",
@@ -190,7 +190,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("duplicate RegisterCustomer produces 0 events (CustomerAlreadyRegistered)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "RegisterCustomer",
       customerId: "cust-1",
       email: "duplicate@example.com",
@@ -200,7 +200,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(0);
   });
   test("UpdateEmail on existing customer publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "UpdateEmail",
       customerId: "cust-1",
       email: "alice2@example.com"
@@ -209,7 +209,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("DeactivateCustomer publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "DeactivateCustomer",
       customerId: "cust-1"
     }, DeactivateCustomer$ReventlessdevExampleDcbOrdering.commandSchema);
@@ -217,7 +217,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("duplicate DeactivateCustomer is idempotent (0 events)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "DeactivateCustomer",
       customerId: "cust-1"
     }, DeactivateCustomer$ReventlessdevExampleDcbOrdering.commandSchema);
@@ -225,7 +225,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(0);
   });
   test("PlaceOrder publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "PlaceOrder",
       orderId: "ord-1",
       customerId: "cust-1",
@@ -238,7 +238,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("duplicate PlaceOrder produces 0 events (OrderAlreadyPlaced)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "PlaceOrder",
       orderId: "ord-1",
       customerId: "cust-1",
@@ -248,7 +248,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(0);
   });
   test("ShipOrder on placed order publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "ShipOrder",
       orderId: "ord-1"
     }, ShipOrder$ReventlessdevExampleDcbOrdering.commandSchema);
@@ -256,7 +256,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("duplicate ShipOrder is idempotent (0 events)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "ShipOrder",
       orderId: "ord-1"
     }, ShipOrder$ReventlessdevExampleDcbOrdering.commandSchema);
@@ -264,7 +264,7 @@ describe("Ordering DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(0);
   });
   test("CancelOrder on non-existent order produces 0 events (OrderNotFound)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "CancelOrder",
       orderId: "no-such-order"
     }, CancelOrder$ReventlessdevExampleDcbOrdering.commandSchema);

@@ -11,10 +11,10 @@ module Make = (Bus: InMemory_Bus.T) => {
   module QueryDbResolvers = QueryDbResolvers_GraphQL.Make(Bus)
 
   module Make = (
-    Spec: ReventlessSpec.ReadModel.Spec,
-    Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
+    Spec: Reventless.ReadModel.Spec,
+    Mappings: Reventless.Projection.Mappings with module Target := Spec,
   ) =>
-    Reventless.ReadModel_Builder.Make(
+    ReventlessCore.ReadModel_Builder.Make(
       Spec,
       Mappings,
       RuntimeEnvironment,

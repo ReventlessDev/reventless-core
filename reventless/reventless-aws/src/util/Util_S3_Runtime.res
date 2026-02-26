@@ -4,7 +4,7 @@ type runtimeBucket = {
   arn: string,
 }
 
-let toRuntimeBucket = ({id, name, urn}: Reventless.Adapter.resolvedResource) => {
+let toRuntimeBucket = ({id, name, urn}: ReventlessCore.Adapter.resolvedResource) => {
   id,
   name,
   arn: urn,

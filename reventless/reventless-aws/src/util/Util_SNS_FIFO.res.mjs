@@ -2,7 +2,7 @@
 
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
+import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
 function toResource(param) {
   let name = param.name;
@@ -16,7 +16,7 @@ function toResource(param) {
 }
 
 function findTopicInResolvedResources(resources) {
-  let resources$1 = Util_Adapter$Reventless.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS_FIFO.service]);
+  let resources$1 = Util_Adapter$ReventlessCore.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS_FIFO.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
@@ -29,4 +29,4 @@ export {
   toResource,
   findTopicInResolvedResources,
 }
-/* Util_Adapter-Reventless Not a pure module */
+/* Util_Adapter-ReventlessCore Not a pure module */

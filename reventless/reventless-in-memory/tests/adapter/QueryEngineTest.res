@@ -16,11 +16,11 @@ describe("QueryEngine_InMemory", () => {
       module QE = QueryEngine_InMemory.Make(TestBus)
       let s = Storage.make(~name="users", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("user-1", JSON.Encode.string("Alice"), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("user-1", JSON.Encode.string("Alice"), ReventlessCore.QueryDb.Any, None)
       let engine = await QE.make(Dict.make())->TestRunner.resolve
       let items = await engine.query(
         ~readModelName="users",
-        ~id=ReventlessSpec.QueryEngine.String("user-1"),
+        ~id=Reventless.QueryEngine.String("user-1"),
       )
       expect(items->Array.length)->toBe(1)
       expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("Alice"))
@@ -33,12 +33,12 @@ describe("QueryEngine_InMemory", () => {
       let s = Storage.make(~name="products", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ =
-        await ops.save("prod-key", JSON.Encode.string("Widget"), Reventless.QueryDb.Any, None)
+        await ops.save("prod-key", JSON.Encode.string("Widget"), ReventlessCore.QueryDb.Any, None)
       let engine = await QE.make(Dict.make())->TestRunner.resolve
       let items = await engine.query(
         ~readModelName="products",
         ~key="prod-key",
-        ~id=ReventlessSpec.QueryEngine.String("ignored"),
+        ~id=Reventless.QueryEngine.String("ignored"),
       )
       expect(items->Array.length)->toBe(1)
       expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("Widget"))
@@ -50,7 +50,7 @@ describe("QueryEngine_InMemory", () => {
       let engine = await QE.make(Dict.make())->TestRunner.resolve
       let items = await engine.query(
         ~readModelName="no-such-model",
-        ~id=ReventlessSpec.QueryEngine.String("any"),
+        ~id=Reventless.QueryEngine.String("any"),
       )
       expect(items->Array.length)->toBe(0)
     })
@@ -61,11 +61,11 @@ describe("QueryEngine_InMemory", () => {
       module QE = QueryEngine_InMemory.Make(TestBus)
       let s = Storage.make(~name="counters", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("42", JSON.Encode.int(100), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("42", JSON.Encode.int(100), ReventlessCore.QueryDb.Any, None)
       let engine = await QE.make(Dict.make())->TestRunner.resolve
       let items = await engine.query(
         ~readModelName="counters",
-        ~id=ReventlessSpec.QueryEngine.Int(42),
+        ~id=Reventless.QueryEngine.Int(42),
       )
       expect(items->Array.length)->toBe(1)
     })
@@ -78,8 +78,8 @@ describe("QueryEngine_InMemory", () => {
       module QE = QueryEngine_InMemory.Make(TestBus)
       let s = Storage.make(~name="orders", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let _ = await ops.save("o1", JSON.Encode.string("order1"), Reventless.QueryDb.Any, None)
-      let _ = await ops.save("o2", JSON.Encode.string("order2"), Reventless.QueryDb.Any, None)
+      let _ = await ops.save("o1", JSON.Encode.string("order1"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("o2", JSON.Encode.string("order2"), ReventlessCore.QueryDb.Any, None)
       let engine = await QE.make(Dict.make())->TestRunner.resolve
       let items = await engine.scan(~readModelName="orders", ~filterConfigs=[], ~limit=100)
       expect(items->Array.length)->toBe(2)

@@ -4,10 +4,10 @@ import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as SQS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS.res.mjs";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
-import * as Message$Reventless from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as ClientSqs from "@aws-sdk/client-sqs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Promise$Reventless from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as Util_Promise$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
 
 function toRuntimeQueue(param) {
   return {
@@ -26,7 +26,7 @@ function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
 }
 
 async function send(queue, queueService, commandJson) {
-  let messageBody = Message$Reventless.toMessageBody(commandJson);
+  let messageBody = Message$ReventlessCore.toMessageBody(commandJson);
   try {
     return await (
       queueService === "SQS_FIFO" ? sendFifoMessage(queue, commandJson.delay, commandJson.id, messageBody) : sendMessage(queue, commandJson.delay, messageBody)
@@ -36,7 +36,7 @@ async function send(queue, queueService, commandJson) {
     if (e.RE_EXN_ID === "JsExn") {
       console.log("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, Stdlib_JsExn.message(e._1));
       let timeout = Stdlib_Math.Int.random(3000, 7000);
-      await Util_Promise$Reventless.finishTimeout(timeout);
+      await Util_Promise$ReventlessCore.finishTimeout(timeout);
       console.log(`Retry send after ` + timeout.toString() + ` ms ...`);
       return await send(queue, queueService, commandJson);
     }
@@ -46,7 +46,7 @@ async function send(queue, queueService, commandJson) {
 
 function makeEntry(queueService, commandJson) {
   let messageId = commandJson.meta.msgId;
-  let messageBody = Message$Reventless.toMessageBody(commandJson);
+  let messageBody = Message$ReventlessCore.toMessageBody(commandJson);
   if (queueService === "SQS_FIFO") {
     return SQS$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, commandJson.delay);
   } else {
@@ -66,7 +66,7 @@ async function sendMessages(queue, queueService, commandJsons) {
     return Belt_Array.some(failedIds$1, failedId => failedId === msgId);
   });
   let timeout = Stdlib_Math.Int.random(3000, 7000);
-  await Util_Promise$Reventless.finishTimeout(timeout);
+  await Util_Promise$ReventlessCore.finishTimeout(timeout);
   console.log(`Retry sendMessages after ` + timeout.toString() + ` ms:`, commandJsonsToRetry);
   return await sendMessages(queue, queueService, commandJsonsToRetry);
 }
@@ -93,7 +93,7 @@ async function deleteMessages(entries, queue) {
     ReceiptHandle: entry.ReceiptHandle
   }));
   let timeout = Stdlib_Math.Int.random(3000, 7000);
-  await Util_Promise$Reventless.finishTimeout(timeout);
+  await Util_Promise$ReventlessCore.finishTimeout(timeout);
   console.log(`Retry deleteMessages after ` + timeout.toString() + ` ms:`, entriesToRetry);
   return await deleteMessages(entriesToRetry, queue);
 }

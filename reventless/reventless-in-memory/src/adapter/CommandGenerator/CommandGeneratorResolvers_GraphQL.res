@@ -3,7 +3,7 @@
 // Uses a module-level pending-handler slot that is populated by handleResolversEvent
 // (called via makeHandler) immediately before make() is called via connect().
 
-open Reventless
+open ReventlessCore
 
 type api = unit
 type runtimeParts = RuntimeEnvironment_InMemory.parts

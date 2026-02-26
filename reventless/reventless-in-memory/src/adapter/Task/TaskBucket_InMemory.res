@@ -1,7 +1,7 @@
 // In-memory task bucket.
 // No S3 buckets created; makeHandler calls the callback with extracted event fields.
 
-open Reventless
+open ReventlessCore
 
 type runtimeParts = RuntimeEnvironment_InMemory.parts
 type callbackEvent = JSON.t

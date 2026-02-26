@@ -2,7 +2,7 @@
 
 open ReventlessInMemory.AsyncTest
 open ReventlessInMemory.AsyncTest.Expect
-open ReventlessSpec
+open Reventless
 
 module Bus = ReventlessInMemory.InMemory_Bus.Make()
 

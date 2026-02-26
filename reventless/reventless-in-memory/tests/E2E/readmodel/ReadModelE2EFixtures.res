@@ -2,15 +2,15 @@
 // Builds a ReadModel from a manually constructed allEventTopics and publishes
 // events directly via the bus to verify projection into the QueryDb.
 
-open ReventlessSpec
-open ReventlessSpec.Projection
+open Reventless
+open Reventless.Projection
 
 // ─────────────────────────────────────────────────────────────
 // Minimal ReadModel spec
 // ─────────────────────────────────────────────────────────────
 
 module ItemReadModelSpec = {
-  module Id = ReventlessSpec.Id.String
+  module Id = Reventless.Id.String
   let name = "TestItemReadModel"
 
   @schema
@@ -26,7 +26,7 @@ module ItemReadModelSpec = {
 // ─────────────────────────────────────────────────────────────
 
 module ItemEventSource = {
-  module Id = ReventlessSpec.Id.String
+  module Id = Reventless.Id.String
   let name = "TestItemEventTopic" // must match allEventTopics key AND meta.service in published events
 
   @schema

@@ -1,4 +1,4 @@
-type bucket<'bucketParts> = {resources: array<ReventlessSpec.Adapter.resource>, parts: 'bucketParts}
+type bucket<'bucketParts> = {resources: array<Reventless.Adapter.resource>, parts: 'bucketParts}
 
 type connect<'bucketParts, 'runtimeParts> = (
   ~name: string,
@@ -7,7 +7,7 @@ type connect<'bucketParts, 'runtimeParts> = (
   ~commandTopics: Pulumi.Output.t<CommandTopic.allOutputs>,
   ~runtime: Runtime.environment<'runtimeParts>,
   ~opts: Pulumi.ComponentResource.options,
-) => unit // array<ReventlessSpec.Adapter.resource>
+) => unit // array<Reventless.Adapter.resource>
 
 type bucketMaker<'parts> = (
   ~name: string,

@@ -4,14 +4,14 @@ type channelParts = Util.SQS.channelParts
 
 let connect = CommandTopicChannel_SQS.connect
 
-let make: Reventless.CommandTopic_Adapter.channelMaker<
+let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   callbackEvent,
   'context,
   Util.SQS.channelParts,
   Util.Lambda.runtimeParts,
 > = (~name, ~opts=?) => {
   let opts =
-    opts->Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+    opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={
@@ -26,7 +26,7 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<
       sqsManagedSseEnabled: false->Pulumi.Input.make,
       deduplicationScope: MessageGroup,
       fifoThroughputLimit: PerMessageGroupId,
-      tags: AWS.Tags.make(~name, Reventless.CommandTopic.componentType),
+      tags: AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
     },
     ~opts?,
   )

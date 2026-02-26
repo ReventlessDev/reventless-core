@@ -1,4 +1,4 @@
-// Output.t-free counterpart of ReventlessSpec.EventTopic.outputs.
+// Output.t-free counterpart of Reventless.EventTopic.outputs.
 // Sub-type of ExtensionPoint.resolvedOutputs; holds the topic URN so extensions
 // can subscribe to events published by this extension point.
 

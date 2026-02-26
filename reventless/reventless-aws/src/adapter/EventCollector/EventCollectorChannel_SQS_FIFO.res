@@ -4,12 +4,12 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 let connect = EventCollectorChannel_SQS.connect
 
-let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
+let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
   ~name,
   ~eventTopics,
   ~opts,
 ) => {
-  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
@@ -25,7 +25,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,
-      tags: AWS.Tags.make(~name, Reventless.EventCollector.componentType),
+      tags: AWS.Tags.make(~name, ReventlessCore.EventCollector.componentType),
     },
     ~opts,
   )
@@ -50,7 +50,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
     ->Array.map(outputs => outputs.resources->Array.getUnsafe(0)) // FIXME
 
   {
-    Reventless.EventCollector_Adapter.parts: {queue: queue},
+    ReventlessCore.EventCollector_Adapter.parts: {queue: queue},
     resources: eventTopicResources->Array.concat([queue->Util_SQS.toResource]),
     enqueueEvent,
     handleChannelEvent,

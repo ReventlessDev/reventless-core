@@ -2,7 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
+import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
 function toResource(param) {
   let name = param.name;
@@ -21,7 +21,7 @@ function fromResource(param) {
 }
 
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.SQS_FIFO.service);
+  return Util_Adapter$ReventlessCore.findResource(resources, AWS$ReventlessAws.SQS_FIFO.service);
 }
 
 export {

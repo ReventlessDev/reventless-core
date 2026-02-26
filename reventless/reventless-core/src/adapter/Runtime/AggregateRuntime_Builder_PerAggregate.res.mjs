@@ -2,13 +2,13 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Aggregate$Reventless from "../../components/Aggregate/Aggregate.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as AggregateRuntime_Builder_Common$Reventless from "./AggregateRuntime_Builder_Common.res.mjs";
+import * as Aggregate$ReventlessCore from "../../components/Aggregate/Aggregate.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as AggregateRuntime_Builder_Common$ReventlessCore from "./AggregateRuntime_Builder_Common.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return CommandTopicChannel => (EventCollectorChannel => {
-    let include = AggregateRuntime_Builder_Common$Reventless.Make(RuntimeEnvironment)(CommandTopicChannel)(EventCollectorChannel);
+    let include = AggregateRuntime_Builder_Common$ReventlessCore.Make(RuntimeEnvironment)(CommandTopicChannel)(EventCollectorChannel);
     let EventCollectorChannel$1 = include.EventCollectorChannel;
     let runtimeSpecs = include.runtimeSpecs;
     let aggregateHandler = include.aggregateHandler;
@@ -24,7 +24,7 @@ function Make(RuntimeEnvironment) {
           let opts = {
             parent: opts_parent
           };
-          let runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(aggregateName, Aggregate$Reventless.componentType), Pulumi.output(aggregateHandler(aggregateName)), match.memorySize, match.timeout, opts);
+          let runtime = RuntimeEnvironment.make(ComponentType$ReventlessCore.name(aggregateName, Aggregate$ReventlessCore.componentType), Pulumi.output(aggregateHandler(aggregateName)), match.memorySize, match.timeout, opts);
           match.connects.forEach(connect => connect(runtime));
           Stdlib_Option.map(match.eventCollectorChannelSpec, channelSpec => EventCollectorChannel$1.connect("AllReadModels", [channelSpec], runtime, opts));
         });

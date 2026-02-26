@@ -1,5 +1,5 @@
-// Re-export from spec so Reventless.CommandTopic.topicItem === ReventlessSpec.CommandTopic.topicItem
-type topicItem<'command> = ReventlessSpec.CommandTopic.topicItem<'command>
+// Re-export from spec so ReventlessCore.CommandTopic.topicItem === Reventless.CommandTopic.topicItem
+type topicItem<'command> = Reventless.CommandTopic.topicItem<'command>
 
 type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<string, string>>>
 
@@ -7,7 +7,7 @@ type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<stri
 // For a variant type like `type command = CreateItem({...}) | UpdateItem({...})`,
 // this extracts ["CreateItem", "UpdateItem"]
 let extractTypeNamesFromSchema = (schema: S.t<unknown>): array<string> =>
-  ReventlessSpec.DcbTag.extractEventTypes(schema)
+  Reventless.DcbTag.extractEventTypes(schema)
 
 // Global registry for schema-based filtering
 // Keyed by command type name (e.g., "CreateItem", "UpdateItem")

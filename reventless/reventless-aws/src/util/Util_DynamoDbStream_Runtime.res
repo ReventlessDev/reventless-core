@@ -7,15 +7,15 @@ type result =
 let buildJsonEvent' = dict =>
   [
     ("id", dict->Dict.get("id")->Option.getOrThrow),
-    ("meta", dict->Reventless.Message.composeMeta),
+    ("meta", dict->ReventlessCore.Message.composeMeta),
     (
       "event",
       switch (dict->Dict.get("type"), dict->Dict.get("data")) {
       | (Some(JSON.String(eventType)), Some(JSON.Object(data))) =>
-        Reventless.Message.combineMessage(eventType, data)
+        ReventlessCore.Message.combineMessage(eventType, data)
       | (Some(JSON.String(eventType)), None) =>
-        Reventless.Message.combineMessage(eventType, Dict.make())
-      | _ => Reventless.Message.combineMessage("Unknown", Dict.make())
+        ReventlessCore.Message.combineMessage(eventType, Dict.make())
+      | _ => ReventlessCore.Message.combineMessage("Unknown", Dict.make())
       },
     ),
   ]
@@ -67,4 +67,4 @@ let parseDynamoDbStreamRecordState: PulumiAws.DynamoDb.Stream.record => result =
   parseDynamoDbStreamRecord(buildJsonState, record)
 
 let findResource = resources =>
-  resources->Reventless.Util.AdapterRuntime.findResource(AWS.DynamoDbStream.service)
+  resources->ReventlessCore.Util.AdapterRuntime.findResource(AWS.DynamoDbStream.service)

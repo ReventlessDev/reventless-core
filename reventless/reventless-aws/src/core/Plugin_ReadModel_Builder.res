@@ -1,12 +1,12 @@
-module MappingsType = ReventlessSpec.Projection.Mappings.Make(Reventless.PluginReadModelSpec)
+module MappingsType = Reventless.Projection.Mappings.Make(ReventlessCore.PluginReadModelSpec)
 
 module Mappings = {
   module type Mapping = MappingsType.Mapping
 
-  let mappings: array<module(Mapping)> = [module(Reventless.PluginProjection.PluginMapping)]
+  let mappings: array<module(Mapping)> = [module(ReventlessCore.PluginProjection.PluginMapping)]
 }
 
 include ReadModel_Builder_Single.Make(
-  Reventless.PluginReadModelSpec,
+  ReventlessCore.PluginReadModelSpec,
   Mappings,
 )

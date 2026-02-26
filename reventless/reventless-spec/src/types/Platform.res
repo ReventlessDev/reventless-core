@@ -6,7 +6,7 @@
 // Usage pattern:
 //
 //   // app/MyPlugin.res — imports reventless-spec, NOT reventless or reventless-aws
-//   module Make = (Platform: ReventlessSpec.Platform.T) => {
+//   module Make = (Platform: Reventless.Platform.T) => {
 //     module MyAggregate = Platform.Aggregate.Make(MySpec, MyBehavior, MyMappings)
 //     module MyReadModel = Platform.ReadModel.Make(MyRmSpec, MyMappings)
 //     // ...

@@ -3,7 +3,7 @@
 // QueryDbResolvers_GraphQL and QueryEngine_InMemory can look up data by read model name.
 
 module Make = (Bus: InMemory_Bus.T) => {
-  open Reventless
+  open ReventlessCore
 
   type api = unit
   type role = unit

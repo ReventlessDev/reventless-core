@@ -15,7 +15,7 @@ module type GenericTarget = {
 }
 
 module type EventSource = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
   let name: string
   @schema
   type event

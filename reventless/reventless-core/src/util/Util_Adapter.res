@@ -1,4 +1,4 @@
-open ReventlessSpec.Adapter
+open Reventless.Adapter
 
 let filterSupportedResources: (
   array<resource>,

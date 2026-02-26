@@ -5,12 +5,12 @@ type runtimeParts = Util.Lambda.runtimeParts
 let connect = (
   ~name,
   ~channelSpecs: array<
-    Reventless.EventCollector_Adapter.channelSpec<callbackEvent, 'context, channelParts>,
+    ReventlessCore.EventCollector_Adapter.channelSpec<callbackEvent, 'context, channelParts>,
   >,
-  ~runtime: Reventless.Runtime.environment<runtimeParts>,
+  ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
   ~opts,
 ) => {
-  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
@@ -25,7 +25,7 @@ let connect = (
   lambda->connectLambda(name, lambdaRole, queues, eventTopics, resources, opts)
 }
 
-let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
+let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
   ~name as _,
   ~eventTopics,
   ~opts as _,
@@ -48,7 +48,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
     EventCollectorChannel_SQS_Runtime.handleDynamoDbEvent(handleEvents, ...)->Pulumi.Output.make
 
   {
-    Reventless.EventCollector_Adapter.parts: (),
+    ReventlessCore.EventCollector_Adapter.parts: (),
     resources: eventTopicResources,
     enqueueEvent: enqueueEventNotSupported->Pulumi.Output.make,
     handleChannelEvent,

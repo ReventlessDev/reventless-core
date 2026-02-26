@@ -2,12 +2,12 @@ type rec connect<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
   ~channel: channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
   ~runtime: Runtime.environment<'runtimeParts>,
-  ~resources: array<ReventlessSpec.Adapter.resource>,
+  ~resources: array<Reventless.Adapter.resource>,
   ~opts: Pulumi.ComponentResource.options,
-) => array<ReventlessSpec.Adapter.resource>
+) => array<Reventless.Adapter.resource>
 and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {
   parts: 'channelParts,
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
   handleChannelEvent: CommandTopic.jsonCommandsHandler => Pulumi.Output.t<
     Runtime.eventHandler<'callbackEvent, 'context, unit>,
@@ -41,10 +41,10 @@ module type Channel = {
 }
 
 type remoteChannel = {
-  resources: array<Reventless.Adapter.resolvedResource>,
+  resources: array<ReventlessCore.Adapter.resolvedResource>,
   remotePublish: CommandTopic.publishJsons,
 }
-type remoteChannelMaker = array<Reventless.Adapter.resolvedResource> => remoteChannel
+type remoteChannelMaker = array<ReventlessCore.Adapter.resolvedResource> => remoteChannel
 
 module type RemoteChannel = {
   let make: remoteChannelMaker

@@ -2,7 +2,7 @@ open PulumiAws
 
 type api = Types.AppSync.api
 
-let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
+let make: ReventlessCore.Cloner.Adapter.runnerMaker<api> = (
   ~name,
   ~api: api,
   ~fullQualifiedStackName,

@@ -1,4 +1,4 @@
-open Reventless.Cloner
+open ReventlessCore.Cloner
 
 let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, payload, _) => {
   Console.log(

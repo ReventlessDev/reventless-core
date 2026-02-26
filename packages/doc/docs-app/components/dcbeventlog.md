@@ -292,7 +292,7 @@ The flow:
 
 ```rescript
 type outputs = {
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   eventTopic: EventTopic.outputs,
 }
 ```

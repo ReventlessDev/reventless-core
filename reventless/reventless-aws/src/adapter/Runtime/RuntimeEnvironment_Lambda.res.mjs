@@ -7,26 +7,26 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
-import * as CommandTopic$Reventless from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
 
 function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
-  let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
+  let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  let lambda = handler.apply(handler => new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name, CommandTopic$Reventless.componentType), undefined), opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined));
+  let lambda = handler.apply(handler => new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType), undefined), opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined));
   return {
     parts: {
       lambda: lambda,
       lambdaRole: lambdaRole
     },
     resources: [
-      Adapter$Reventless.outputToResource(lambda.apply(Util_Lambda$ReventlessAws.toResource)),
+      Adapter$ReventlessCore.outputToResource(lambda.apply(Util_Lambda$ReventlessAws.toResource)),
       Util_IAM_Role$ReventlessAws.toResource(lambdaRole)
     ]
   };

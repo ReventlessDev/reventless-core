@@ -44,7 +44,7 @@ open Customer
 
 let name = "Customer"
 
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @decco
 type state = {
@@ -54,7 +54,7 @@ type state = {
 
 let subIdConfig = None
 
-let config = ReventlessSpec.ReadModel.Spec.config(
+let config = Reventless.ReadModel.Spec.config(
   ~indexes=[
     {
       index: "name",
@@ -92,7 +92,7 @@ In this example, there is no sub id used, therefore `None` is provided
 
 ### config
 
-`ReventlessSpec.ReadModel.config` is a convenience function to create the actual config value. The function takes these optional arguments:
+`Reventless.ReadModel.config` is a convenience function to create the actual config value. The function takes these optional arguments:
 
 - `indexes`: enable performant access to the Read Model via different ids - an additional id may be any field of the state type  
   An index configuration is a record with these fields:
@@ -111,11 +111,11 @@ In this example, there is no sub id used, therefore `None` is provided
 
 ```rescript title="Customer_ReadModelSpec.res" showLineNumbers
 let subIdConfig = Some({
-  ReventlessSpec.ReadModel.Spec.subIdField: "subId",
+  Reventless.ReadModel.Spec.subIdField: "subId",
   getSubId: state => state.subId,
 })
 
-let config = ReventlessSpec.ReadModel.Spec.config(
+let config = Reventless.ReadModel.Spec.config(
   ~idResolvers=[
     {
       source: {
@@ -204,8 +204,8 @@ Example result of `customer("1234")` API query:
 ### Example
 
 ```rescript title="Customer_Projection.res" showLineNumbers
-open ReventlessSpec.Message
-open ReventlessSpec.Projection
+open Reventless.Message
+open Reventless.Projection
 open Customer_ReadModelSpec
 
 module Mapping = Reventless.Projection.Mapping.Make(

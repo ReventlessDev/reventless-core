@@ -5,13 +5,13 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
-import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 
-let NotPublishedToPublisher = /* @__PURE__ */Primitive_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
+let NotPublishedToPublisher = /* @__PURE__ */Primitive_exceptions.create("EventTopic-ReventlessCore.NotPublishedToPublisher");
 
 function toResolvedOutputs(outputs) {
-  return Adapter$Reventless.resourcesToResolvedOutput(outputs.resources).apply(resources => ({
+  return Adapter$ReventlessCore.resourcesToResolvedOutput(outputs.resources).apply(resources => ({
     resources: resources.map(r => ({
       name: r.name,
       id: r.id,

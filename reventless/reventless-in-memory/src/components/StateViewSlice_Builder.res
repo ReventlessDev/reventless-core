@@ -1,5 +1,5 @@
 // In-memory StateViewSlice builder.
-// Wires in-memory adapters and delegates to the core Reventless.StateViewSlice_Builder.
+// Wires in-memory adapters and delegates to the core ReventlessCore.StateViewSlice_Builder.
 
 module Make = (Bus: InMemory_Bus.T) => {
   module RuntimeEnvironment = RuntimeEnvironment_InMemory
@@ -17,7 +17,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     let apiRole = ()
   }
 
-  module CoreMaker = Reventless.StateViewSlice_Builder.Make(
+  module CoreMaker = ReventlessCore.StateViewSlice_Builder.Make(
     RuntimeEnvironment,
     QueryDbStorage,
     QueryDbResolvers,
@@ -26,10 +26,10 @@ module Make = (Bus: InMemory_Bus.T) => {
     InMemoryApi,
   )
 
-  module Make = (Spec: ReventlessSpec.StateViewSlice.Spec) => {
+  module Make = (Spec: Reventless.StateViewSlice.Spec) => {
     include CoreMaker.Make(Spec)
     // Re-expose operations for test resolution
-    let operations: component => Pulumi.Output.t<Reventless.StateViewSlice.operations> =
-      Reventless.Component.operations
+    let operations: component => Pulumi.Output.t<ReventlessCore.StateViewSlice.operations> =
+      ReventlessCore.Component.operations
   }
 }

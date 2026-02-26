@@ -40,7 +40,7 @@ module type T = {
 
 module Make = (
   Spec: BehaviorSpec,
-  Behavior: ReventlessSpec.Behavior.T with module Spec := Spec,
+  Behavior: Reventless.Behavior.T with module Spec := Spec,
 ): (T with module Spec = Spec) => {
   module Spec = Spec
 
@@ -58,7 +58,7 @@ module Make = (
 
   let errors = ref([])
 
-  let errorHandler: ReventlessSpec.Handler.errorHandler<Spec.error, Spec.command, Spec.event> = (
+  let errorHandler: Reventless.Handler.errorHandler<Spec.error, Spec.command, Spec.event> = (
     error,
     _,
     _,
@@ -75,18 +75,18 @@ module Make = (
       try Behavior.execute(
         currentState(history),
         command,
-        Reventless.TestFixtures.context,
+        ReventlessCore.TestFixtures.context,
         errorHandler,
       ) catch {
-      | ReventlessSpec.Message.InvalidEvent(_) => []
+      | Reventless.Message.InvalidEvent(_) => []
       }
     }
   }
 
   let givenEvents = events => events
-  let whenCmd = (history, cmd) => history->exec(Reventless.TestFixtures.context, cmd)
+  let whenCmd = (history, cmd) => history->exec(ReventlessCore.TestFixtures.context, cmd)
   let whenCmdWithId = (history, id, cmd) =>
-    history->exec({...Reventless.TestFixtures.context, id}, cmd)
+    history->exec({...ReventlessCore.TestFixtures.context, id}, cmd)
 
   open Jest.Expect
 
@@ -118,7 +118,7 @@ module Make = (
               it relies on decco decoding the error-varints to arrays of string
  */
       err
-      ->ReventlessSpec.Message.encode(Spec.errorSchema)
+      ->Reventless.Message.encode(Spec.errorSchema)
       ->JSON.Decode.array
       ->Option.getOrThrow
       ->Array.getUnsafe(0)

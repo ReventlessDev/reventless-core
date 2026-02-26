@@ -30,7 +30,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
   ~api: api,
   ~fields,
   ~runtime,
-  ~resources: array<ReventlessSpec.Adapter.resource>,
+  ~resources: array<Reventless.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions

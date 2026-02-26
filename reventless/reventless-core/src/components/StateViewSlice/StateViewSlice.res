@@ -1,13 +1,13 @@
 let componentType = ComponentType.StateViewSlice
 
 type t
-type outputs = ReventlessSpec.StateViewSlice.outputs
-type operations = ReventlessSpec.StateViewSlice.operations
+type outputs = Reventless.StateViewSlice.outputs
+type operations = Reventless.StateViewSlice.operations
 type component = Component.t<t, outputs, operations>
 
 module type T = {
   type dcbEvent
-  module Spec: ReventlessSpec.StateViewSlice.Spec
+  module Spec: Reventless.StateViewSlice.Spec
   type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
   type component = Component.t<t, outputs, operations>
 

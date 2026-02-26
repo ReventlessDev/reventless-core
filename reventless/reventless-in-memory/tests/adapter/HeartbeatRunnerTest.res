@@ -34,7 +34,7 @@ let _ = afterAll(() => {
 
 let makeRuntime = (
   handlerRef: ref<option<(JSON.t, unit) => promise<unit>>>,
-): Reventless.Runtime.environment<HeartbeatRunner_InMemory.runtimeParts> => {
+): ReventlessCore.Runtime.environment<HeartbeatRunner_InMemory.runtimeParts> => {
   parts: {handlerRef: handlerRef},
   resources: [],
 }

@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.ExtensionPointMapping.Spec,
+  Spec: Reventless.ExtensionPointMapping.Spec,
   Mappings: ExtensionPoint.Mappings with module Spec := Spec,
   RuntimeEnvironment: Runtime.Environment,
   CommandTopicChannel: CommandTopic_Adapter.Channel
@@ -13,12 +13,12 @@ module Make = (
   type operations = ExtensionPoint.operations
   type component = ExtensionPoint.component<operations>
 
-  module SpecWithId: ReventlessSpec.ExtensionPoint.Spec
+  module SpecWithId: Reventless.ExtensionPoint.Spec
     with type command = Spec.command
     and type event = Spec.event
     and type directive = Spec.directive = {
     include Spec
-    module Id = ReventlessSpec.Id.String
+    module Id = Reventless.Id.String
   }
 
   let filterAggregateResources = (aggregateResources, aggregateNames) =>
@@ -34,8 +34,8 @@ module Make = (
     ~aggregateResources,
     ~publishToAggregates,
     ~scheduler: Scheduler.operations,
-    ~queryEngine: ReventlessSpec.QueryEngine.operations,
-    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+    ~queryEngine: Reventless.QueryEngine.operations,
+    ~resourceNaming: Reventless.ResourceNaming.operations,
     self,
     name,
   ) => {

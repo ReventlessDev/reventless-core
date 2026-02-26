@@ -37,7 +37,7 @@ The CommandTopic requires a spec defining the Aggregate's id type and command ty
 
 ```rescript
 module type Spec = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
 
   @schema
   type command
@@ -46,7 +46,7 @@ module type Spec = {
 
 Take the following spec for a Customer aggregate as an example:
 ```rescript title="Customer.res"
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
 @schema
 type command =
@@ -104,7 +104,7 @@ The `publishJsons` operation sends multiple JSON commands efficiently:
 
 ```rescript
 type publishJsons = (
-  array<ReventlessSpec.Message.commandJson>
+  array<Reventless.Message.commandJson>
 ) => promise<unit>
 ```
 

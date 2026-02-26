@@ -1,7 +1,7 @@
 // Orders read model specification.
 // Query-side state for customer orders.
 
-open ReventlessSpec
+open Reventless
 module Id = Id.String
 
 @schema
@@ -14,6 +14,6 @@ type state = {
 
 let name = "Orders"
 
-open ReventlessSpec.ReadModel
+open Reventless.ReadModel
 let config = config()
 let subIdConfig = None

@@ -2,23 +2,23 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Logger$Reventless from "../../util/Logger.res.mjs";
-import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
 
 function Make(Spec) {
   return Ops => {
     let handleJsonCommands = async jsonItems => {
-      Logger$Reventless.debug("File \"CommandTopic_Callback.res\", line 12, characters 22-29", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
+      Logger$ReventlessCore.debug("File \"CommandTopic_Callback.res\", line 12, characters 22-29", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
       let topicItems = Stdlib_Array.filterMap(jsonItems, param => {
         let json = param.command;
         let command$p;
         try {
-          command$p = Message$Reventless.decodeCommand$p(json, Spec.Id.schema, Spec.commandSchema);
+          command$p = Message$ReventlessCore.decodeCommand$p(json, Spec.Id.schema, Spec.commandSchema);
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
           let commandStr = JSON.stringify(json);
-          Logger$Reventless.error("File \"CommandTopic_Callback.res\", line 21, characters 26-33", undefined, undefined, `Couldn't decode command ` + commandStr + `:`, err);
+          Logger$ReventlessCore.error("File \"CommandTopic_Callback.res\", line 21, characters 26-33", undefined, undefined, `Couldn't decode command ` + commandStr + `:`, err);
           return;
         }
         return {
@@ -32,12 +32,12 @@ function Make(Spec) {
       } catch (raw_e) {
         let e = Primitive_exceptions.internalToException(raw_e);
         if (e.RE_EXN_ID === "JsExn") {
-          Logger$Reventless.error("File \"CommandTopic_Callback.res\", line 30, characters 24-31", undefined, undefined, "Couldn't handle commands", e._1);
+          Logger$ReventlessCore.error("File \"CommandTopic_Callback.res\", line 30, characters 24-31", undefined, undefined, "Couldn't handle commands", e._1);
           return Stdlib_JsError.throwWithMessage("File \"CommandTopic_Callback.res\", line 31, characters 31-38" + `Error: Couldn't handle commands`);
         }
         throw e;
       }
-      Logger$Reventless.debug("File \"CommandTopic_Callback.res\", line 27, characters 24-31", undefined, undefined, "finished", "CommandTopic.handleCommands");
+      Logger$ReventlessCore.debug("File \"CommandTopic_Callback.res\", line 27, characters 24-31", undefined, undefined, "finished", "CommandTopic.handleCommands");
       return res;
     };
     return {
@@ -49,4 +49,4 @@ function Make(Spec) {
 export {
   Make,
 }
-/* Logger-Reventless Not a pure module */
+/* Logger-ReventlessCore Not a pure module */

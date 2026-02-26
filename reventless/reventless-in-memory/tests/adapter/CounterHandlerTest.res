@@ -27,7 +27,7 @@ describe("CounterHandler_InMemory", () => {
     testPromise("increments counter by target amount", async () => {
       let handler = makeHandler()
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "likes",
+        Reventless.Counter.counterId: "likes",
         target: 3,
         targetRef: "ref-1",
       })
@@ -37,13 +37,13 @@ describe("CounterHandler_InMemory", () => {
     testPromise("same (counterId, targetRef) pair is counted only once", async () => {
       let handler = makeHandler()
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "likes",
+        Reventless.Counter.counterId: "likes",
         target: 5,
         targetRef: "ref-dup",
       })
       // Duplicate — should be ignored
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "likes",
+        Reventless.Counter.counterId: "likes",
         target: 5,
         targetRef: "ref-dup",
       })
@@ -53,12 +53,12 @@ describe("CounterHandler_InMemory", () => {
     testPromise("different targetRef values for same counterId accumulate", async () => {
       let handler = makeHandler()
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "views",
+        Reventless.Counter.counterId: "views",
         target: 2,
         targetRef: "ref-a",
       })
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "views",
+        Reventless.Counter.counterId: "views",
         target: 3,
         targetRef: "ref-b",
       })
@@ -68,12 +68,12 @@ describe("CounterHandler_InMemory", () => {
     testPromise("multiple counters are tracked independently", async () => {
       let handler = makeHandler()
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "alpha",
+        Reventless.Counter.counterId: "alpha",
         target: 10,
         targetRef: "r1",
       })
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "beta",
+        Reventless.Counter.counterId: "beta",
         target: 7,
         targetRef: "r1",
       })
@@ -92,7 +92,7 @@ describe("CounterHandler_InMemory", () => {
     testPromise("clears all counter values and deduplication state", async () => {
       let handler = makeHandler()
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "x",
+        Reventless.Counter.counterId: "x",
         target: 99,
         targetRef: "ref-x",
       })
@@ -101,7 +101,7 @@ describe("CounterHandler_InMemory", () => {
       expect(CounterHandler_InMemory.getCount("x"))->toBe(0)
       // After reset, the same (counterId, targetRef) pair should count again
       await handler.addToCounterTarget({
-        ReventlessSpec.Counter.counterId: "x",
+        Reventless.Counter.counterId: "x",
         target: 99,
         targetRef: "ref-x",
       })

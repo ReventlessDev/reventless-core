@@ -3,7 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Message$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
@@ -122,7 +122,7 @@ async function publishJsons(cmdJsons) {
       ],
       [
         "meta",
-        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$ReventlessSpec.metaSchema)
+        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$Reventless.metaSchema)
       ],
       [
         "command",
@@ -180,7 +180,7 @@ describe("Catalog DCB E2E:", () => {
     capturedEventCount.contents = 0;
   });
   test("AddProduct publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "AddProduct",
       productId: "prod-1",
       name: "Laptop",
@@ -191,7 +191,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("duplicate AddProduct produces 0 events (ProductAlreadyExists)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "AddProduct",
       productId: "prod-1",
       name: "Duplicate",
@@ -202,7 +202,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(0);
   });
   test("UpdateProductName on existing product publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "UpdateProductName",
       productId: "prod-1",
       name: "Gaming Laptop"
@@ -211,7 +211,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("UpdateProductName on non-existent product produces 0 events (ProductNotFound)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "UpdateProductName",
       productId: "no-such-product",
       name: "Ghost"
@@ -220,7 +220,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(0);
   });
   test("AddCategory publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "AddCategory",
       categoryId: "cat-1",
       name: "Electronics"
@@ -229,7 +229,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("duplicate AddCategory produces 0 events (CategoryAlreadyExists)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "AddCategory",
       categoryId: "cat-1",
       name: "Duplicate"
@@ -238,7 +238,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(0);
   });
   test("RenameCategory on existing category publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "RenameCategory",
       categoryId: "cat-1",
       name: "Consumer Electronics"
@@ -247,7 +247,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("ArchiveCategory publishes 1 event", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "ArchiveCategory",
       categoryId: "cat-1"
     }, ArchiveCategory$ReventlessdevExampleDcbCatalog.commandSchema);
@@ -255,7 +255,7 @@ describe("Catalog DCB E2E:", () => {
     expect(capturedEventCount.contents).toBe(1);
   });
   test("duplicate ArchiveCategory is idempotent (0 events)", async () => {
-    let cmd = Message$ReventlessSpec.encode({
+    let cmd = Message$Reventless.encode({
       TAG: "ArchiveCategory",
       categoryId: "cat-1"
     }, ArchiveCategory$ReventlessdevExampleDcbCatalog.commandSchema);

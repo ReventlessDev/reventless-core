@@ -90,7 +90,7 @@ Task callbacks can return various actions to be executed:
 ```rescript
 type taskAction =
   | PublishCommands(string, array<Message.commandJson>)  // Send commands to aggregates
-  | CreateSchedule(ReventlessSpec.Schedule.schedule)     // Create scheduled tasks
+  | CreateSchedule(Reventless.Schedule.schedule)     // Create scheduled tasks
   | DeleteSchedule(string)                               // Remove scheduled tasks
 ```
 

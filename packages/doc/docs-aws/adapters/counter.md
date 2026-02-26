@@ -89,8 +89,8 @@ The `handleStreamEvent` operation processes DynamoDB Stream records:
 
 ```rescript
 let handleStreamEvent = (
-  ~referencesStream: ReventlessSpec.Adapter.resource,
-  ~countsStream: ReventlessSpec.Adapter.resource,
+  ~referencesStream: Reventless.Adapter.resource,
+  ~countsStream: Reventless.Adapter.resource,
   ~counterHandler: Reventless.Counter_Callback.counterHandler,
   streamEvent: PulumiAws.DynamoDb.Stream.event,
   _,
@@ -153,7 +153,7 @@ The `addToCounterTarget` operation atomically updates a counter value:
 
 ```rescript
 let addToCounterTarget = async (
-  table: ReventlessSpec.Adapter.resource,
+  table: Reventless.Adapter.resource,
   {Reventless.Counter.counterId: counterId, target, targetRef},
 ) => {
   let tableName = table.name->Pulumi.Output.get

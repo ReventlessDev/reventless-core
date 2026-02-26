@@ -10,8 +10,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
-import * as Projection$Reventless from "@reventlessdev/reventless-core/src/Projection.res.mjs";
-import * as TestFixtures$Reventless from "@reventlessdev/reventless-core/test-helper/TestFixtures.res.mjs";
+import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
+import * as TestFixtures$ReventlessCore from "@reventlessdev/reventless-core/test-helper/TestFixtures.res.mjs";
 
 function unpackPlainPartial(p) {
   return p.VAL;
@@ -20,10 +20,10 @@ function unpackPlainPartial(p) {
 function Make(Projection) {
   S.enableJson();
   let testId = {
-    contents: TestFixtures$Reventless.id
+    contents: TestFixtures$ReventlessCore.id
   };
   let meta = {
-    contents: TestFixtures$Reventless.meta
+    contents: TestFixtures$ReventlessCore.meta
   };
   let describeWithId = (description, id, fn) => {
     testId.contents = id;
@@ -50,7 +50,7 @@ function Make(Projection) {
   };
   let update = async (store, events$p) => {
     let actions = events$p.map(event$p => Projection.map(event$p));
-    await Projection$Reventless.handleActions(actions, {
+    await Projection$ReventlessCore.handleActions(actions, {
       load: extra => Promise.resolve({
         TAG: "Ok",
         _0: states(store, extra)
@@ -323,7 +323,7 @@ function Make(Projection) {
   };
 }
 
-let handleActions = Projection$Reventless.handleActions;
+let handleActions = Projection$ReventlessCore.handleActions;
 
 export {
   unpackPlainPartial,

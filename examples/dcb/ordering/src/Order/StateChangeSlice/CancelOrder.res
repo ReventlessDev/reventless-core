@@ -1,7 +1,7 @@
 // CancelOrder StateChangeSlice.
 // Requires order to exist and not be shipped; idempotent if already cancelled.
 
-open ReventlessSpec
+open Reventless
 open OrderingEventLog
 
 let name = "CancelOrder"

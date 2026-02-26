@@ -1,8 +1,8 @@
 let name = "Plugin"
 
-module Id = ReventlessSpec.Id.String
+module Id = Reventless.Id.String
 
-open ReventlessSpec.Plugin
+open Reventless.Plugin
 
 @schema
 type command =

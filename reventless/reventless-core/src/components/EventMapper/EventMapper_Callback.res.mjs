@@ -7,10 +7,10 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Logger$Reventless from "../../util/Logger.res.mjs";
-import * as Message$Reventless from "../../Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Promise$Reventless from "../../util/Util_Promise.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function MakeCounterHandler(Target) {
   return Mappings => (Ops => {
@@ -18,7 +18,7 @@ function MakeCounterHandler(Target) {
     let findMapping = (mappings, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
       let eventMeta;
       try {
-        eventMeta = Stdlib_Option.map(eventObj$p["meta"], metaJson => Message$Reventless.decode(metaJson, Message$Reventless.metaSchema));
+        eventMeta = Stdlib_Option.map(eventObj$p["meta"], metaJson => Message$ReventlessCore.decode(metaJson, Message$ReventlessCore.metaSchema));
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         console.log("EventMapper_Callback.findMapping: Couldn't decode meta:", err);
@@ -45,13 +45,13 @@ function MakeCounterHandler(Target) {
       id: Target.Id.toString(id),
       meta: {
         service: Target.name,
-        time: Message$Reventless.nowAsISOString(),
+        time: Message$ReventlessCore.nowAsISOString(),
         ip: meta.ip,
         user: meta.user,
-        msgId: Message$Reventless.uuid(),
+        msgId: Message$ReventlessCore.uuid(),
         correlationId: meta.correlationId
       },
-      commandJson: Message$Reventless.encode(command, Target.commandSchema),
+      commandJson: Message$ReventlessCore.encode(command, Target.commandSchema),
       delay: delay
     });
     let processMappingActions = (actions, eventMeta) => actions.map(action => {
@@ -115,7 +115,7 @@ function MakeCounterHandler(Target) {
       let eventsCount = eventsJson$p.length;
       let match = Belt_Array.partition(Stdlib_Array.filterMap(eventsJson$p.map((eventJson$p, idx) => {
         let idx$1 = idx + 1 | 0;
-        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, `EventMapper.eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `:`);
+        Logger$ReventlessCore.logJsonEvent(undefined, undefined, eventJson$p, `EventMapper.eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `:`);
         let match = findMapping(Mappings.mappings, eventJson$p);
         if (match === undefined) {
           return;
@@ -123,8 +123,8 @@ function MakeCounterHandler(Target) {
         let mapping = match[2];
         let eventObj = match[0];
         try {
-          let idDecoded = Stdlib_Option.map(eventObj["id"], id => Message$Reventless.decode(id, mapping.Source.Id.schema));
-          let eventDecoded = Stdlib_Option.map(eventObj["event"], event => Message$Reventless.decode(event, mapping.Source.eventSchema));
+          let idDecoded = Stdlib_Option.map(eventObj["id"], id => Message$ReventlessCore.decode(id, mapping.Source.Id.schema));
+          let eventDecoded = Stdlib_Option.map(eventObj["event"], event => Message$ReventlessCore.decode(event, mapping.Source.eventSchema));
           if (idDecoded !== undefined && eventDecoded !== undefined) {
             return processMappingActions(mapping.map(Primitive_option.valFromOption(idDecoded), Primitive_option.valFromOption(eventDecoded), Ops.queryEngine), match[1]);
           } else {
@@ -181,9 +181,9 @@ function MakeEventCollectorHandler(Ops) {
       return;
     } catch (raw_e) {
       let e = Primitive_exceptions.internalToException(raw_e);
-      console.log("EventMapper_Callback-Reventless" + ".doCount: count error", e);
+      console.log("EventMapper_Callback-ReventlessCore" + ".doCount: count error", e);
       let timeout = Stdlib_Math.Int.random(1000, 3000);
-      await Util_Promise$Reventless.finishTimeout(timeout);
+      await Util_Promise$ReventlessCore.finishTimeout(timeout);
       console.log(`Retry count after ` + timeout.toString() + ` ms`);
       return await doCount(countItems);
     }
@@ -200,7 +200,7 @@ function MakeEventCollectorHandler(Ops) {
     console.log("EventMapper.eventCollectorEventsHandler: countItems:", countItems.length);
     await doCount(countItems);
     console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", JSON.stringify(addToCounterTargetActions));
-    await Util_Promise$Reventless.toUnit(Promise.all(addToCounterTargetActions.map(async x => {
+    await Util_Promise$ReventlessCore.toUnit(Promise.all(addToCounterTargetActions.map(async x => {
       if (x.TAG === "Count") {
         return;
       } else {
@@ -218,4 +218,4 @@ export {
   MakeCounterHandler,
   MakeEventCollectorHandler,
 }
-/* Logger-Reventless Not a pure module */
+/* Logger-ReventlessCore Not a pure module */

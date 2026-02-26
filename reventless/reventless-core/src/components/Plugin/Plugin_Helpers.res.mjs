@@ -9,26 +9,26 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
-import * as Adapter$Reventless from "../../adapter/Adapter.res.mjs";
-import * as QueryDb$Reventless from "../QueryDb/QueryDb.res.mjs";
-import * as Component$Reventless from "../Component.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
+import * as QueryDb$ReventlessCore from "../QueryDb/QueryDb.res.mjs";
 import * as Task$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Task.res.mjs";
 import * as Query$ReventlessInterop from "@reventlessdev/reventless-interop/src/Query.res.mjs";
-import * as Util_QueryDb$Reventless from "../../util/Util_QueryDb.res.mjs";
 import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src/Compat.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Plugin$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Plugin.res.mjs";
-import * as ExtensionPoint$Reventless from "../ExtensionPoint/ExtensionPoint.res.mjs";
-import * as Util_StackRefs$Reventless from "../../util/Util_StackRefs.res.mjs";
-import * as Plugin_Callback$Reventless from "./Plugin_Callback.res.mjs";
+import * as Util_QueryDb$ReventlessCore from "../../util/Util_QueryDb.res.mjs";
 import * as ExportMeta$ReventlessInterop from "@reventlessdev/reventless-interop/src/ExportMeta.res.mjs";
 import * as EventMapper$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/EventMapper.res.mjs";
-import * as ResourceQueryRuntime$Reventless from "../../util/ResourceQueryRuntime.res.mjs";
-import * as EventCollector_Builder$Reventless from "../EventCollector/EventCollector_Builder.res.mjs";
-import * as PluginConnectExtension_Builder$Reventless from "../../core/Extensions/Connect/PluginConnectExtension_Builder.res.mjs";
+import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
+import * as Util_StackRefs$ReventlessCore from "../../util/Util_StackRefs.res.mjs";
+import * as Plugin_Callback$ReventlessCore from "./Plugin_Callback.res.mjs";
+import * as ResourceQueryRuntime$ReventlessCore from "../../util/ResourceQueryRuntime.res.mjs";
+import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
+import * as PluginConnectExtension_Builder$ReventlessCore from "../../core/Extensions/Connect/PluginConnectExtension_Builder.res.mjs";
 
 function getRemoteStorageResources(pluginName, queryDbName) {
-  let resources = Stdlib_Option.map(Util_StackRefs$Reventless.get(pluginName), stackRef => {
+  let resources = Stdlib_Option.map(Util_StackRefs$ReventlessCore.get(pluginName), stackRef => {
     let metaOutput = stackRef.getOutput("_interopMeta");
     let pluginOutput = stackRef.getOutput("plugin");
     return Output$Pulumi.flatMap(metaOutput, metaOpt => pluginOutput.apply(pluginOpt => {
@@ -56,7 +56,7 @@ function getRemoteStorageResources(pluginName, queryDbName) {
           }
         });
         if (plugin.TAG === "Ok") {
-          return Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(plugin._0.readModels, readModels => readModels[queryDbName]), readModel => Adapter$Reventless.fromInteropResources(readModel.queryDb.resources)), []);
+          return Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(plugin._0.readModels, readModels => readModels[queryDbName]), readModel => Adapter$ReventlessCore.fromInteropResources(readModel.queryDb.resources)), []);
         }
         console.log(`Plugin_Builder.getRemoteStorageResources: compat error for ` + pluginName + `:`, plugin._0);
         return [];
@@ -77,7 +77,7 @@ function getStorageResources(allQueryDbs, pluginName, queryDbName) {
   if (pluginName !== undefined) {
     return getRemoteStorageResources(pluginName, queryDbName);
   } else {
-    return Pulumi.output(Util_QueryDb$Reventless.getLocalStorageResources(allQueryDbs, queryDbName));
+    return Pulumi.output(Util_QueryDb$ReventlessCore.getLocalStorageResources(allQueryDbs, queryDbName));
   }
 }
 
@@ -203,7 +203,7 @@ function createExtensionPoints(extensionPoints, aggregateResources, publishToAgg
     let extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts);
     return [
       SpecificExtensionPoint.outputs(extensionPoint),
-      Component$Reventless.operations(extensionPoint).apply(param => param.outgoingEventHandler)
+      Component$ReventlessCore.operations(extensionPoint).apply(param => param.outgoingEventHandler)
     ];
   }));
 }
@@ -213,7 +213,7 @@ function createExtensions(extensions, publishToCorePluginExtensionPoint, publish
     let extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     return [
       SpecificExtension.outputs(extension),
-      Component$Reventless.operations(extension).apply(param => ({
+      Component$ReventlessCore.operations(extension).apply(param => ({
         outgoing: param.outgoingEventHandler,
         incoming: param.incomingEventHandler
       }))
@@ -241,10 +241,10 @@ function extractExtensionDefinitions(extensionsOutputs) {
 
 function createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, runtimeOps, resourceNaming, opts) {
   return Output$Pulumi.unzip(Pulumi.all([
-    Pulumi.all(extensionPointsOutputs.map(ExtensionPoint$Reventless.toResolvedOutputs)),
+    Pulumi.all(extensionPointsOutputs.map(ExtensionPoint$ReventlessCore.toResolvedOutputs)),
     pluginDefinition
   ]).apply(param => {
-    let ConnectPluginExtension = PluginConnectExtension_Builder$Reventless.Make({
+    let ConnectPluginExtension = PluginConnectExtension_Builder$ReventlessCore.Make({
       pluginDefinition: param[1],
       extensionPointsOutputs: param[0],
       extensionsOutputs: extensionsOutputs,
@@ -252,8 +252,8 @@ function createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, 
       resourceNaming: resourceNaming
     });
     let connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-    let connectPluginExtensionOutputs = Component$Reventless.outputs(connectPluginExtension);
-    let connectPluginExtensionIncomingEventHandler = Component$Reventless.operations(connectPluginExtension).apply(param => param.incomingEventHandler);
+    let connectPluginExtensionOutputs = Component$ReventlessCore.outputs(connectPluginExtension);
+    let connectPluginExtensionIncomingEventHandler = Component$ReventlessCore.operations(connectPluginExtension).apply(param => param.incomingEventHandler);
     return [
       connectPluginExtensionOutputs,
       connectPluginExtensionIncomingEventHandler
@@ -268,21 +268,21 @@ let tasksOutputs = {
 function createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, resourceNaming, opts) {
   tasksOutputs.contents = tasks.map(SpecificTask => SpecificTask.outputs(SpecificTask.make((taskName, bucketNameOpt) => {
     let bucketName = bucketNameOpt !== undefined ? bucketNameOpt : "Bucket";
-    return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName, bucketName);
+    return ResourceQueryRuntime$ReventlessCore.bucketNameOfTaskExn(tasksOutputs.contents, taskName, bucketName);
   }, scheduler, publishToAggregates, queryEngine, resourceNaming, aggregatesOutputs, opts)));
   return tasksOutputs.contents;
 }
 
 function createResolvers(allQueryDbs) {
-  return QueryDb$Reventless.allResolversMakers(allQueryDbs).map(resolverMaker => resolverMaker(allQueryDbs)).flat();
+  return QueryDb$ReventlessCore.allResolversMakers(allQueryDbs).map(resolverMaker => resolverMaker(allQueryDbs)).flat();
 }
 
 function MakeEventCollectorHelper(RuntimeEnvironment) {
   return EventCollectorChannel => (PluginRuntimeBuilder => {
-    let PluginEventCollector = EventCollector_Builder$Reventless.Make(RuntimeEnvironment)(EventCollectorChannel);
+    let PluginEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
     let make = (name, eventTopics, opts) => {
       let eventCollector = PluginEventCollector.make(name, eventTopics, opts);
-      let eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
+      let eventCollectorOutputs = Component$ReventlessCore.outputs(eventCollector);
       let eventCollectorUrn = eventCollectorOutputs.resources[0].urn;
       return [
         eventCollector,
@@ -291,7 +291,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
       ];
     };
     let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs) => {
-      let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat().concat(Adapter$Reventless.fromInteropResources(corePluginExtensionPointUnwrapped.commandTopic.resources)));
+      let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat().concat(Adapter$ReventlessCore.fromInteropResources(corePluginExtensionPointUnwrapped.commandTopic.resources)));
       return Pulumi.all([
         pluginDefinition,
         connectPluginExtensionIncomingEventHandler,
@@ -310,7 +310,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           }], getIncomingEventHandler);
         let outgoingExtensionEventHandlers = serviceNameToEventHandlers(extensionsOutputs, outputs => outputs.aggregateNames, extensionsHandlers, getOutgoingEventHandler);
         let incomingExtensionEventHandlers = serviceNameToEventHandlers(extensionsOutputs, outputs => [outputs.extensionPointName], extensionsHandlers, getIncomingEventHandler);
-        let Callback = Plugin_Callback$Reventless.Make({
+        let Callback = Plugin_Callback$ReventlessCore.Make({
           pluginDefinition: pluginDefinition,
           incomingConnectExtensionEventHandlers: incomingConnectExtensionEventHandlers,
           outgoingExtensionPointEventHandlers: outgoingExtensionPointEventHandlers,
@@ -319,7 +319,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         });
         let handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[5], undefined, undefined, eventCollector);
-        Component$Reventless.outputs(eventCollector).resources[0].urn.apply(urn => {
+        Component$ReventlessCore.outputs(eventCollector).resources[0].urn.apply(urn => {
           pluginDefinition.eventCollector = urn;
         });
       });

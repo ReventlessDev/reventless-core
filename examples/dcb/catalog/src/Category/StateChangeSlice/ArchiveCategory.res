@@ -1,7 +1,7 @@
 // ArchiveCategory StateChangeSlice.
 // Requires category to exist; idempotent if already archived.
 
-open ReventlessSpec
+open Reventless
 open CatalogEventLog
 
 let name = "ArchiveCategory"

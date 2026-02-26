@@ -19,7 +19,7 @@ external clearIntervalJs: timerHandle => unit = "clearInterval"
 
 let activeTimers: ref<dict<timerHandle>> = ref(Dict.make())
 
-let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
+let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   ~name,
   ~remoteChannel as _,
   ~timeout,

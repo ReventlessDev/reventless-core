@@ -5,21 +5,21 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as SQS_Queue$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
-import * as CommandTopic$Reventless from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_SQS_FIFO$ReventlessAws from "../../util/Util_SQS_FIFO.res.mjs";
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "./CommandTopicChannel_SQS.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicChannel_SQS_Runtime.res.mjs";
 
 function make(name, opts) {
-  let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
+  let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let queue = new (Aws.sqs.Queue)(name, {
     contentBasedDeduplication: true,
     fifoQueue: true,
     redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
-    tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$Reventless.componentType),
+    tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
     visibilityTimeoutSeconds: 180,
     deduplicationScope: "messageGroup",
     fifoThroughputLimit: "perMessageGroupId",

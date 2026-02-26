@@ -1,7 +1,7 @@
 // ProductsView StateViewSlice.
 // Projects product events from the shared catalog event log into a Products read model.
 
-open ReventlessSpec.Projection
+open Reventless.Projection
 open CatalogEventLog
 
 let name = "ProductsView"

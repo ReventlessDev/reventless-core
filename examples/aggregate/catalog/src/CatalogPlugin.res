@@ -1,8 +1,8 @@
 // Catalog plugin — platform-agnostic composition root.
 // Wires the Product and Category aggregates and their read models.
 
-open ReventlessSpec
-open ReventlessSpec.Projection
+open Reventless
+open Reventless.Projection
 
 module Make = (Platform: Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(

@@ -1,18 +1,18 @@
 module type CounterOps = {
   let publishJsons: CommandTopic.publishJsons
-  let queryEngine: ReventlessSpec.QueryEngine.operations
+  let queryEngine: Reventless.QueryEngine.operations
 }
 
 module type CounterHandler = {
   let commonEventsHandler: array<JSON.t> => promise<(
-    promise<array<Reventless.Message.commandJson>>,
-    array<Reventless.Counter.action>,
+    promise<array<ReventlessCore.Message.commandJson>>,
+    array<ReventlessCore.Counter.action>,
   )>
   let handleCounterEvents: EventCollector.jsonEventsHandler
 }
 
 module MakeCounterHandler = (
-  Target: ReventlessSpec.EventMapping.Target,
+  Target: Reventless.EventMapping.Target,
   Mappings: EventMapper.Mappings with module Target := Target,
   Ops: CounterOps,
 ): CounterHandler => {
@@ -68,7 +68,7 @@ module MakeCounterHandler = (
   let processMappingActions = (actions, eventMeta) =>
     actions->Array.map(action =>
       switch action {
-      | ReventlessSpec.EventMapping.Publish(id, command) =>
+      | Reventless.EventMapping.Publish(id, command) =>
         Publisher([createCommandJson(id, eventMeta, command)]->Promise.resolve)
       | PublishDelayed(id, command, delay) =>
         Publisher([createCommandJson(~delay, id, eventMeta, command)]->Promise.resolve)
@@ -174,8 +174,8 @@ module type EventCollectorOps = {
   let count: Counter.count
   let addToCounterTarget: Counter.addToCounterTarget
   let commonEventsHandler: array<JSON.t> => promise<(
-    promise<array<Reventless.Message.commandJson>>,
-    array<Reventless.Counter.action>,
+    promise<array<ReventlessCore.Message.commandJson>>,
+    array<ReventlessCore.Counter.action>,
   )>
 }
 
@@ -192,7 +192,7 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       | exception e =>
         Console.log2(__MODULE__ ++ ".doCount: count error", e)
         let timeout = Math.Int.random(1000, 3000)
-        await Reventless.Util.Promise.finishTimeout(timeout)
+        await ReventlessCore.Util.Promise.finishTimeout(timeout)
         Console.log(`Retry count after ${timeout->Int.toString} ms`)
         await doCount(countItems)
       | _ => ()

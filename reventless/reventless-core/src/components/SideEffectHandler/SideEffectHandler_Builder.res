@@ -13,7 +13,7 @@ module Make = (
     ~targets=?,
     ~queryEngine,
     ~scheduler,
-    ~resourceNaming: ReventlessSpec.ResourceNaming.operations,
+    ~resourceNaming: Reventless.ResourceNaming.operations,
     ~memorySize,
     ~timeout,
     self,
@@ -23,7 +23,7 @@ module Make = (
 
     let aggregateNames =
       sideEffects
-      ->Array.map((module(SideEffect: ReventlessSpec.SideEffect.T)) => SideEffect.Source.name)
+      ->Array.map((module(SideEffect: Reventless.SideEffect.T)) => SideEffect.Source.name)
       ->Belt.Set.String.fromArray
 
     let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)

@@ -2,10 +2,10 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
-import * as Util$Reventless from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
+import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
 
 function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
-  return new (Aws.lambda.EventSourceMapping)(Util$Reventless.baseName(sourceName) + ("2" + targetName), {
+  return new (Aws.lambda.EventSourceMapping)(Util$ReventlessCore.baseName(sourceName) + ("2" + targetName), {
     functionName: Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     batchSize: batchSize,
     eventSourceArn: source.urn,

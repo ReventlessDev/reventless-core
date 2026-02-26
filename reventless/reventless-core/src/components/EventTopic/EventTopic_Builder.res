@@ -1,4 +1,4 @@
-module Make = (Spec: ReventlessSpec.EventTopic.T, Publisher: EventTopic_Adapter.Publisher): (
+module Make = (Spec: Reventless.EventTopic.T, Publisher: EventTopic_Adapter.Publisher): (
   EventTopic.T with module Spec = Spec
 ) => {
   module Spec = Spec

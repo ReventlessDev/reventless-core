@@ -2,7 +2,7 @@ type event = PulumiAws.Lambda.CallbackFunction.event
 type context = PulumiAws.Lambda.context
 type parts = Util.Lambda.runtimeParts
 
-let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> = (
+let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, parts> = (
   ~name,
   ~handler,
   ~memorySize: int=1024,
@@ -11,7 +11,7 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
 ) => {
   open PulumiAws
   let opts =
-    opts->Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+    opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name,
@@ -28,7 +28,7 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
           ~role=lambdaRole,
           ~memorySize=memorySize->Pulumi.Input.make,
           ~timeout=timeout->Pulumi.Input.make,
-          ~tags=AWS.Tags.make(~name, Reventless.CommandTopic.componentType),
+          ~tags=AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
         ),
         ~opts?,
       )
@@ -39,7 +39,7 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
     resources: [
       lambda
       ->Pulumi.Output.apply(lambda => lambda->Util.Lambda.toResource)
-      ->Reventless.Adapter.outputToResource,
+      ->ReventlessCore.Adapter.outputToResource,
       Util_IAM_Role.toResource(lambdaRole),
     ],
   }
@@ -55,5 +55,5 @@ let groupBySource = (event: event) => {
   dict
 }
 
-external asEventHandler: 'a => Reventless.Runtime.eventHandler<event, context, 'result> =
+external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'result> =
   "%identity"

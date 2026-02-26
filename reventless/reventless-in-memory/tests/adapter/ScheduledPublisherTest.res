@@ -38,7 +38,7 @@ let _ = afterAll(() => {
 // Helper: create a topic resource with a known name
 // ─────────────────────────────────────────────────────────────
 
-let makeTopicResource = (topicName: string): ReventlessSpec.Adapter.resolvedResource => {
+let makeTopicResource = (topicName: string): Reventless.Adapter.resolvedResource => {
   name: topicName,
   id: topicName,
   urn: topicName,
@@ -57,9 +57,9 @@ describe("ScheduledPublisher_InMemory", () => {
       })
       let pub = SP.make(~name="scheduler", ~opts={})
       let ops = await pub.operations->TestRunner.resolve
-      let schedule: ReventlessSpec.Schedule.schedule = {
+      let schedule: Reventless.Schedule.schedule = {
         name: "one-shot",
-        rate: ReventlessSpec.Schedule.Single(2024, 1, 1, 0, 0),
+        rate: Reventless.Schedule.Single(2024, 1, 1, 0, 0),
         payload: "{}",
       }
       await ops.createSchedule([makeTopicResource("sched-topic")], schedule)
@@ -78,9 +78,9 @@ describe("ScheduledPublisher_InMemory", () => {
       })
       let pub = SP.make(~name="scheduler2", ~opts={})
       let ops = await pub.operations->TestRunner.resolve
-      let schedule: ReventlessSpec.Schedule.schedule = {
+      let schedule: Reventless.Schedule.schedule = {
         name: "every-minute",
-        rate: ReventlessSpec.Schedule.Minutes(1),
+        rate: Reventless.Schedule.Minutes(1),
         payload: "{}",
       }
       await ops.createSchedule([makeTopicResource("repeat-topic")], schedule)
@@ -101,9 +101,9 @@ describe("ScheduledPublisher_InMemory", () => {
       })
       let pub = SP.make(~name="scheduler3", ~opts={})
       let ops = await pub.operations->TestRunner.resolve
-      let schedule: ReventlessSpec.Schedule.schedule = {
+      let schedule: Reventless.Schedule.schedule = {
         name: "to-delete",
-        rate: ReventlessSpec.Schedule.Minutes(1),
+        rate: Reventless.Schedule.Minutes(1),
         payload: "{}",
       }
       await ops.createSchedule([makeTopicResource("del-topic")], schedule)
@@ -124,9 +124,9 @@ describe("ScheduledPublisher_InMemory", () => {
       })
       let pub = SP.make(~name="scheduler4", ~opts={})
       let ops = await pub.operations->TestRunner.resolve
-      let schedule: ReventlessSpec.Schedule.schedule = {
+      let schedule: Reventless.Schedule.schedule = {
         name: "reset-sched",
-        rate: ReventlessSpec.Schedule.Minutes(5),
+        rate: Reventless.Schedule.Minutes(5),
         payload: "{}",
       }
       await ops.createSchedule([makeTopicResource("reset-topic")], schedule)
@@ -146,9 +146,9 @@ describe("ScheduledPublisher_InMemory", () => {
       })
       let pub = SP.make(~name="rate-scheduler", ~opts={})
       let ops = await pub.operations->TestRunner.resolve
-      let schedule: ReventlessSpec.Schedule.schedule = {
+      let schedule: Reventless.Schedule.schedule = {
         name: "rate-sched",
-        rate: ReventlessSpec.Schedule.Minutes(3),
+        rate: Reventless.Schedule.Minutes(3),
         payload: "{}",
       }
       await ops.createSchedule([makeTopicResource("rate-topic")], schedule)
@@ -170,9 +170,9 @@ describe("ScheduledPublisher_InMemory", () => {
       })
       let pub = SP.make(~name="hours-scheduler", ~opts={})
       let ops = await pub.operations->TestRunner.resolve
-      let schedule: ReventlessSpec.Schedule.schedule = {
+      let schedule: Reventless.Schedule.schedule = {
         name: "hours-sched",
-        rate: ReventlessSpec.Schedule.Hours(2),
+        rate: Reventless.Schedule.Hours(2),
         payload: "{}",
       }
       await ops.createSchedule([makeTopicResource("hours-topic")], schedule)

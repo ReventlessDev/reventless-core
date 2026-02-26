@@ -5,11 +5,11 @@ import * as Ssh2 from "ssh2";
 import * as Stream from "stream";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as FTP$Reventless from "./FTP.res.mjs";
-import * as Message$Reventless from "../Message.res.mjs";
+import * as FTP$ReventlessCore from "./FTP.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Error$Reventless from "./Util_Error.res.mjs";
-import * as Util_Promise$Reventless from "./Util_Promise.res.mjs";
+import * as Message$ReventlessCore from "../Message.res.mjs";
+import * as Util_Error$ReventlessCore from "./Util_Error.res.mjs";
+import * as Util_Promise$ReventlessCore from "./Util_Promise.res.mjs";
 
 function ftp(connectionParams, ftpAction) {
   let readyTimeout = connectionParams.readyTimeout;
@@ -18,7 +18,7 @@ function ftp(connectionParams, ftpAction) {
   let path = connectionParams.path;
   let port = connectionParams.port;
   let host = connectionParams.host;
-  let match = Util_Promise$Reventless.make();
+  let match = Util_Promise$ReventlessCore.make();
   let resolve = match[1];
   let result = {
     contents: {
@@ -49,18 +49,18 @@ function ftp(connectionParams, ftpAction) {
     TAG: "Error",
     _0: Stdlib_Option.getOr(Stdlib_JsExn.message(err), "Error contains no message.")
   })).on("timeout", () => {
-    client.emit("error", Message$Reventless.log(new Error("SSH-Client Error: Connection timed out"), "Client.onTimeout"));
+    client.emit("error", Message$ReventlessCore.log(new Error("SSH-Client Error: Connection timed out"), "Client.onTimeout"));
   }), client => {
-    Util_Promise$Reventless.onEndHandler(async () => {
+    Util_Promise$ReventlessCore.onEndHandler(async () => {
       let exit = 0;
       let sftp;
       try {
-        sftp = await FTP$Reventless.make(client);
+        sftp = await FTP$ReventlessCore.make(client);
         exit = 1;
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
-        if (err.RE_EXN_ID === FTP$Reventless.CouldNotEstablishSftpConnection) {
-          client.emit("error", Message$Reventless.log(err._1, "Couldn't establish SFTP connection:"));
+        if (err.RE_EXN_ID === FTP$ReventlessCore.CouldNotEstablishSftpConnection) {
+          client.emit("error", Message$ReventlessCore.log(err._1, "Couldn't establish SFTP connection:"));
           return;
         }
         throw err;
@@ -83,14 +83,14 @@ function ftp(connectionParams, ftpAction) {
           let exit$1 = 0;
           let entities;
           try {
-            entities = await FTP$Reventless.readdir(sftp, path);
+            entities = await FTP$ReventlessCore.readdir(sftp, path);
             exit$1 = 2;
           } catch (raw_e) {
             let e = Primitive_exceptions.internalToException(raw_e);
             if (e.RE_EXN_ID === "JsExn") {
               result.contents = {
                 TAG: "Error",
-                _0: Util_Error$Reventless.message(undefined, e._1)
+                _0: Util_Error$ReventlessCore.message(undefined, e._1)
               };
               return;
             }
@@ -104,7 +104,7 @@ function ftp(connectionParams, ftpAction) {
             return;
           }
         } else {
-          let ws = sftp.createWriteStream(Message$Reventless.log(path + ("/" + ftpAction._1), "FTPHandler: path for write stream")).on("finish", () => {
+          let ws = sftp.createWriteStream(Message$ReventlessCore.log(path + ("/" + ftpAction._1), "FTPHandler: path for write stream")).on("finish", () => {
             result.contents = {
               TAG: "Ok",
               _0: true

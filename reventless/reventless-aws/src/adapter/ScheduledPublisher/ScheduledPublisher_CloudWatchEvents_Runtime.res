@@ -1,4 +1,4 @@
-open ReventlessSpec.Schedule
+open Reventless.Schedule
 open AwsSdk.CloudWatchEvents
 
 let plural = count => count == 1 ? "" : "s"
@@ -22,7 +22,7 @@ let toScheduleExpression = x =>
     `cron(${minute->Int.toString} ${hour->Int.toString} ? * MON-SAT *)`
   }
 
-let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule = role =>
+let createSchedule: PulumiAws.IAM.Role.t => ReventlessCore.Scheduler.createSchedule = role =>
   async (queueResources, schedule) =>
     switch queueResources {
     | [] =>
@@ -53,7 +53,7 @@ let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule 
       )
     }
 
-let deleteSchedule: Reventless.Scheduler.deleteSchedule = async (queueResources, name) =>
+let deleteSchedule: ReventlessCore.Scheduler.deleteSchedule = async (queueResources, name) =>
   switch queueResources {
   | [] =>
     let err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !"

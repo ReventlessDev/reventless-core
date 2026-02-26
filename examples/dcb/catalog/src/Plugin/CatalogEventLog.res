@@ -1,7 +1,7 @@
 // Catalog DCB event log specification.
 // All events for the Catalog plugin live in this shared log, tagged by their entity ID.
 
-open ReventlessSpec
+open Reventless
 @schema
 type event =
   | ProductAdded({

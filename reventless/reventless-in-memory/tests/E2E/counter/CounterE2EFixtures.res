@@ -37,6 +37,6 @@ let counter = CounterMaker.make(
 // ─────────────────────────────────────────────────────────────
 
 let resolveOps = async () => {
-  let c: Reventless.Counter.component = counter->Obj.magic
-  await c->Reventless.Component.operations->TestRunner.resolve
+  let c: ReventlessCore.Counter.component = counter->Obj.magic
+  await c->ReventlessCore.Component.operations->TestRunner.resolve
 }

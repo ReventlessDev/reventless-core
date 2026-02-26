@@ -7,16 +7,16 @@ module Make = (Bus: InMemory_Bus.T) => {
     Bus,
     EventCollectorChannel,
   )
-  module TaskRuntimeBuilder = Reventless.TaskRuntime_Builder_PerBucket.Make(
+  module TaskRuntimeBuilder = ReventlessCore.TaskRuntime_Builder_PerBucket.Make(
     RuntimeEnvironment,
     TaskBucket_InMemory,
   )
   module SideEffectHandler = SideEffectHandler_InMemory
 
   module Make = (
-    Spec: Reventless.Task.Spec,
-  ): (Reventless.Task.T with module Spec = Spec) =>
-    Reventless.Task_Builder.Make(
+    Spec: ReventlessCore.Task.Spec,
+  ): (ReventlessCore.Task.T with module Spec = Spec) =>
+    ReventlessCore.Task_Builder.Make(
       Spec,
       RuntimeEnvironment,
       EventCollectorChannel,

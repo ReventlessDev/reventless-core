@@ -1,8 +1,8 @@
 // Order aggregate behavior.
 // Implements the lifecycle for placing, shipping, and cancelling orders.
 
-open ReventlessSpec
-open ReventlessSpec.Message
+open Reventless
+open Reventless.Message
 open Order
 
 module Spec = Order

@@ -3,16 +3,16 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Component$Reventless from "../Component.res.mjs";
-import * as Extension$Reventless from "./Extension.res.mjs";
-import * as ComponentType$Reventless from "../../ComponentType.res.mjs";
-import * as ExtensionMapping$ReventlessSpec from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
-import * as Extension_Operations$Reventless from "./Extension_Operations.res.mjs";
+import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as Extension$ReventlessCore from "./Extension.res.mjs";
+import * as ExtensionMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as Extension_Operations$ReventlessCore from "./Extension_Operations.res.mjs";
 
 function Make(Spec) {
   return Mappings => {
-    let make = (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) => Component$Reventless.make(ComponentType$Reventless.toString(Extension$Reventless.componentType), Spec.name + ("." + Mappings.name), (extra, extra$1) => {
-      let Operations = Extension_Operations$Reventless.Make(Spec)(Mappings)({
+    let make = (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Extension$ReventlessCore.componentType), Spec.name + ("." + Mappings.name), (extra, extra$1) => {
+      let Operations = Extension_Operations$ReventlessCore.Make(Spec)(Mappings)({
         publishToAggregates: publishToAggregates,
         publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
         readModelNamesForSourceName: readModelNamesForSourceName,
@@ -25,10 +25,10 @@ function Make(Spec) {
         incomingEventHandler: operations_incomingEventHandler,
         outgoingEventHandler: operations_outgoingEventHandler
       };
-      Component$Reventless.setOperations(extra, Pulumi.output(operations));
+      Component$ReventlessCore.setOperations(extra, Pulumi.output(operations));
       let extOutputs_extensionPointName = Spec.name;
       let extOutputs_aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => {
-        if (Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
+        if (Mapping.aggregateName === ExtensionMapping$Reventless.NoAggregate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
           return;
         } else {
           return Mapping.aggregateName;
@@ -39,11 +39,11 @@ function Make(Spec) {
         extensionPointName: extOutputs_extensionPointName,
         aggregateNames: extOutputs_aggregateNames
       };
-      return Component$Reventless.setOutputs(extra, extOutputs);
+      return Component$ReventlessCore.setOutputs(extra, extOutputs);
     }, opts);
     return {
       make: make,
-      outputs: Component$Reventless.outputs
+      outputs: Component$ReventlessCore.outputs
     };
   };
 }

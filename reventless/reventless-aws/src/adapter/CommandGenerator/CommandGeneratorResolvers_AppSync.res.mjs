@@ -8,12 +8,12 @@ import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
 
 function handleResolversEvent(generateCommand) {
@@ -21,7 +21,7 @@ function handleResolversEvent(generateCommand) {
 }
 
 function make(name, api, fields, runtime, resources, opts) {
-  let opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
   let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
@@ -29,9 +29,9 @@ function make(name, api, fields, runtime, resources, opts) {
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     Output$Pulumi.flatMap(lambda, lambda => lambda.name),
     lambdaRole.id,
-    Adapter$Reventless.resourcesToResolvedOutput(resources)
+    Adapter$ReventlessCore.resourcesToResolvedOutput(resources)
   ]).apply(param => {
-    let targetSqsResources = Util_Adapter$Reventless.filterSupportedResolvedResources(param[3], [
+    let targetSqsResources = Util_Adapter$ReventlessCore.filterSupportedResolvedResources(param[3], [
       AWS$ReventlessAws.SQS.service,
       AWS$ReventlessAws.SQS_FIFO.service
     ]);
@@ -39,7 +39,7 @@ function make(name, api, fields, runtime, resources, opts) {
           Sid: "LambdaAllowSendSQS",
           Effect: "Allow",
           Action: "sqs:SendMessage",
-          Resource: Adapter$Reventless.urns(targetSqsResources)
+          Resource: Adapter$ReventlessCore.urns(targetSqsResources)
         }]) : undefined;
     new (Aws.iam.RolePolicy)(name, {
       policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Stdlib_Array.keepSome([

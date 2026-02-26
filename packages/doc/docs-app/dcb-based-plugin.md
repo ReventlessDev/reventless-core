@@ -60,7 +60,7 @@ The following example builds an **Item Catalog** plugin using DCB. Items can be 
 
 ### Step 1: Define the Shared Event Log Spec
 
-The `ReventlessSpec.DcbEventLog.Spec` requires only a single `@schema type event`. Every field that should act as a DCB tag must be annotated with `@s.matches(DcbTag.string)` (or `DcbTag.int`). These tags are extracted and stored alongside each event for efficient querying.
+The `Reventless.DcbEventLog.Spec` requires only a single `@schema type event`. Every field that should act as a DCB tag must be annotated with `@s.matches(DcbTag.string)` (or `DcbTag.int`). These tags are extracted and stored alongside each event for efficient querying.
 
 ```rescript
 // ItemEventLogSpec.res
@@ -75,7 +75,7 @@ All variant constructors must have a payload. Payload-less variants (e.g., `| So
 
 ### Step 2: Implement StateChangeSlice Specs
 
-Each `StateChangeSlice` handles one command type (or a related group). The spec implements `ReventlessSpec.StateChangeSlice.Spec`:
+Each `StateChangeSlice` handles one command type (or a related group). The spec implements `Reventless.StateChangeSlice.Spec`:
 
 - **`decisionModel`** / **`initialDecisionModel`** — the minimal state built from past events
 - **`reduce`** — folds a DCB event into the decision model
@@ -192,9 +192,9 @@ let decide = (model, command) =>
 
 ### Step 3: Implement a StateViewSlice Spec
 
-A `StateViewSlice` projects events from the shared log into a queryable read model state. The spec implements `ReventlessSpec.StateViewSlice.Spec`.
+A `StateViewSlice` projects events from the shared log into a queryable read model state. The spec implements `Reventless.StateViewSlice.Spec`.
 
-The `project` function takes an `option<state>` (existing state or `None` if the entry doesn't exist yet) and a DCB event, and returns an **array** of `ReventlessSpec.Projection.action` values.
+The `project` function takes an `option<state>` (existing state or `None` if the entry doesn't exist yet) and a DCB event, and returns an **array** of `Reventless.Projection.action` values.
 
 ```rescript
 // ItemViewSpec.res
@@ -217,15 +217,15 @@ type state = {
 let project = (existingState, event) =>
   switch event {
   | ItemEventLogSpec.ItemCreated({itemId, name}) =>
-    [ReventlessSpec.Projection.Set(itemId, {itemId, name})]
+    [Reventless.Projection.Set(itemId, {itemId, name})]
   | ItemEventLogSpec.ItemRenamed({itemId, newName}) =>
     switch existingState {
     | Some(state) =>
-      [ReventlessSpec.Projection.Set(itemId, {...state, name: newName})]
+      [Reventless.Projection.Set(itemId, {...state, name: newName})]
     | None => []
     }
   | ItemEventLogSpec.ItemDeleted({itemId}) =>
-    [ReventlessSpec.Projection.Delete(itemId)]
+    [Reventless.Projection.Delete(itemId)]
   }
 ```
 
@@ -237,7 +237,7 @@ The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) 
 // ItemCatalogPlugin.res
 // Imports only `reventless-spec`, not `reventless` or `reventless-aws`
 
-module Make = (Platform: ReventlessSpec.Platform.T) => {
+module Make = (Platform: Reventless.Platform.T) => {
   // Build each StateChangeSlice from its spec
   module CreateItem = Platform.StateChangeSlice.Make(CreateItemSpec)
   module RenameItem = Platform.StateChangeSlice.Make(RenameItemSpec)
@@ -248,17 +248,17 @@ module Make = (Platform: ReventlessSpec.Platform.T) => {
 
   // Bundle into a DcbSpec for the plugin
   // The event type must match the shared DcbEventLogSpec.event
-  module DcbSpec: ReventlessSpec.Plugin.DcbSpec = {
+  module DcbSpec: Reventless.Plugin.DcbSpec = {
     @schema
     type event = ItemEventLogSpec.event
 
-    let stateChangeSlices: array<module(ReventlessSpec.StateChangeSlice.T with type dcbEvent = event)> = [
+    let stateChangeSlices: array<module(Reventless.StateChangeSlice.T with type dcbEvent = event)> = [
       module(CreateItem),
       module(RenameItem),
       module(DeleteItem),
     ]
 
-    let stateViewSlices: array<module(ReventlessSpec.StateViewSlice.T with type dcbEvent = event)> = [
+    let stateViewSlices: array<module(Reventless.StateViewSlice.T with type dcbEvent = event)> = [
       module(ItemView),
     ]
   }

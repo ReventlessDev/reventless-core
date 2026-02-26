@@ -3,7 +3,7 @@ open QueryDbStorage_DynamoDb
 type api = Types.AppSync.api
 type role = Types.AppSync.role
 
-let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
+let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
   ~indexes,
   ~subIdField=?,
@@ -19,7 +19,7 @@ let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
     ~streamViewType=NEW_AND_OLD_IMAGES,
-    ~tags=AWS.Tags.make(~name, Reventless.QueryDb.componentType),
+    ~tags=AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType),
     ~opts,
   )
   open QueryDbStorage_DynamoDb_Runtime
@@ -29,7 +29,7 @@ let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
     operations: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
-      Reventless.QueryDb.load: runtimeTable->load,
+      ReventlessCore.QueryDb.load: runtimeTable->load,
       save: runtimeTable->save,
       saveBatch: runtimeTable->saveBatch,
       count: runtimeTable->count,

@@ -1,7 +1,7 @@
 // Catalog DCB plugin — platform-agnostic composition root.
 // Wires the shared event log, all StateChangeSlices, and StateViewSlices for Product and Category.
 
-open ReventlessSpec
+open Reventless
 module Make = (Platform: Platform.T) => {
   module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
 

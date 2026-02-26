@@ -4,7 +4,7 @@ import * as SSH2 from "@reventlessdev/rescript-ssh2/src/SSH2.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Util_Promise$Reventless from "./Util_Promise.res.mjs";
+import * as Util_Promise$ReventlessCore from "./Util_Promise.res.mjs";
 
 function parseUrl(url) {
   let colonI = url.indexOf(":");
@@ -43,10 +43,10 @@ function parseUrl(url) {
   ];
 }
 
-let CouldNotEstablishSftpConnection = /* @__PURE__ */Primitive_exceptions.create("FTP-Reventless.CouldNotEstablishSftpConnection");
+let CouldNotEstablishSftpConnection = /* @__PURE__ */Primitive_exceptions.create("FTP-ReventlessCore.CouldNotEstablishSftpConnection");
 
 function make(client) {
-  let match = Util_Promise$Reventless.make();
+  let match = Util_Promise$ReventlessCore.make();
   let reject = match[2];
   let resolve = match[1];
   client.sftp((readdirError, entities) => {
@@ -62,10 +62,10 @@ function make(client) {
   return match[0];
 }
 
-let CouldNotReadDirectory = /* @__PURE__ */Primitive_exceptions.create("FTP-Reventless.CouldNotReadDirectory");
+let CouldNotReadDirectory = /* @__PURE__ */Primitive_exceptions.create("FTP-ReventlessCore.CouldNotReadDirectory");
 
 function readdir(client, dirName) {
-  let match = Util_Promise$Reventless.make();
+  let match = Util_Promise$ReventlessCore.make();
   let reject = match[2];
   let resolve = match[1];
   client.readdir(dirName, (readdirError, entities) => {
@@ -98,4 +98,4 @@ export {
   CouldNotReadDirectory,
   readdir,
 }
-/* Util_Promise-Reventless Not a pure module */
+/* Util_Promise-ReventlessCore Not a pure module */

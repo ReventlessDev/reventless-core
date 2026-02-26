@@ -106,7 +106,7 @@ let createLambdaPolicy = (
   name,
   bucket: PulumiAws.S3.Bucket.t,
   bucketMode: Reventless.Task.bucketMode,
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
   opts,
 ) => {
   let _ = (bucket.arn, resources->Reventless.Adapter.resourcesToResolvedOutput)

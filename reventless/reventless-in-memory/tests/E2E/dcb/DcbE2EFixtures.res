@@ -7,7 +7,7 @@
 
 module ItemEventLog = {
   @schema
-  type event = | ItemAdded({id: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
+  type event = | ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ module AddItemSpec = {
   module DcbEventLogSpec = ItemEventLog
 
   @schema
-  type command = | AddItem({id: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
+  type command = | AddItem({id: @s.matches(Reventless.DcbTag.string) string, name: string})
 
   @schema
   type error = | ItemAlreadyExists
@@ -74,7 +74,7 @@ let eventLog = ItemEventLogMaker.make(~name="ItemEventLog")
 module AddItemMaker = StateChangeSlice_Builder.Make(AddItemSpec)
 
 // publishJsons routing — dispatches each command to its registered handler.
-let publishJsons: ReventlessSpec.CommandTopic.publishJsons = async cmdJsons => {
+let publishJsons: Reventless.CommandTopic.publishJsons = async cmdJsons => {
   let _ = await cmdJsons
   ->Array.map(async cmdJson => {
     let typeName = switch cmdJson.commandJson {
@@ -93,14 +93,14 @@ let publishJsons: ReventlessSpec.CommandTopic.publishJsons = async cmdJsons => {
     let fullBody = JSON.Encode.object(
       Dict.fromArray([
         ("id", JSON.Encode.string(cmdJson.id)),
-        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(ReventlessSpec.Message.metaSchema)),
+        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
         ("command", cmdJson.commandJson),
       ]),
     )
-    let handlers = Reventless.CommandTopic.getHandlers(typeName)
+    let handlers = ReventlessCore.CommandTopic.getHandlers(typeName)
     let _ = await handlers
     ->Array.map(async entry => {
-      let _ = await entry.handler([{ReventlessSpec.CommandTopic.reference: cmdJson.id, command: fullBody}])
+      let _ = await entry.handler([{Reventless.CommandTopic.reference: cmdJson.id, command: fullBody}])
     })
     ->Promise.all
   })
@@ -115,7 +115,7 @@ let _addItemSlice = AddItemMaker.make(~dcbEventLog=eventLog, ~publishJsons=publi
 // Test helpers
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: ReventlessSpec.Message.meta = {
+let testMeta: Reventless.Message.meta = {
   service: "test",
   time: "2024-01-01T00:00:00.000Z",
   ip: "127.0.0.1",
@@ -125,4 +125,4 @@ let testMeta: ReventlessSpec.Message.meta = {
 }
 
 let dispatch = async (commandJson, id) =>
-  await publishJsons([{ReventlessSpec.Message.id, meta: testMeta, commandJson}])
+  await publishJsons([{Reventless.Message.id, meta: testMeta, commandJson}])

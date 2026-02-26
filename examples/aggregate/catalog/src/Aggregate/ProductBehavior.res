@@ -1,7 +1,7 @@
 // Product aggregate behavior.
 // Implements the state machine for adding and updating products.
 
-open ReventlessSpec
+open Reventless
 open Product
 
 module Spec = Product

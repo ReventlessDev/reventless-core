@@ -1,6 +1,6 @@
 let componentType = ComponentType.Cloner
 
-type outputs = {resources: Pulumi.Output.t<array<ReventlessSpec.Adapter.resource>>}
+type outputs = {resources: Pulumi.Output.t<array<Reventless.Adapter.resource>>}
 
 type fullQualifiedStackName = {
   organization: string,
@@ -17,7 +17,7 @@ module type T = {
 }
 
 module Adapter = {
-  type runner = {resources: Pulumi.Output.t<array<ReventlessSpec.Adapter.resource>>}
+  type runner = {resources: Pulumi.Output.t<array<Reventless.Adapter.resource>>}
   type runnerMaker<'api> = (
     ~name: string,
     ~api: 'api,

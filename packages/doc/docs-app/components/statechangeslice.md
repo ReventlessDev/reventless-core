@@ -224,7 +224,7 @@ When concurrent modifications cause conflicts:
 
 ```rescript
 type outputs = {
-  resources: array<ReventlessSpec.Adapter.resource>,
+  resources: array<Reventless.Adapter.resource>,
 }
 ```
 

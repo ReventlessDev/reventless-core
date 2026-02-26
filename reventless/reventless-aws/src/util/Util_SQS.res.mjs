@@ -2,10 +2,10 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Util$Reventless from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as Util_Adapter$Reventless from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
-import * as Util_AdapterRuntime$Reventless from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
+import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
+import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
+import * as Util_AdapterRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
 
 function toRuntimeQueueOutput(param) {
   return Pulumi.all([
@@ -44,7 +44,7 @@ function arn2Account(arn) {
 }
 
 function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
-  return new (Aws.sns.TopicSubscription)(Util$Reventless.baseName(sourceName) + ("2" + targetName), {
+  return new (Aws.sns.TopicSubscription)(Util$ReventlessCore.baseName(sourceName) + ("2" + targetName), {
     endpoint: queue.arn,
     topic: topic.urn,
     protocol: "sqs",
@@ -53,15 +53,15 @@ function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
 }
 
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.SQS.service);
+  return Util_Adapter$ReventlessCore.findResource(resources, AWS$ReventlessAws.SQS.service);
 }
 
 function findResourceInOutput(resourcesOutput) {
-  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, AWS$ReventlessAws.SQS.service);
+  return Util_Adapter$ReventlessCore.findResourceInOutput(resourcesOutput, AWS$ReventlessAws.SQS.service);
 }
 
 function findResolvedResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResolvedResource(resources, AWS$ReventlessAws.SQS.service);
+  return Util_AdapterRuntime$ReventlessCore.findResolvedResource(resources, AWS$ReventlessAws.SQS.service);
 }
 
 function toResource$1(param) {

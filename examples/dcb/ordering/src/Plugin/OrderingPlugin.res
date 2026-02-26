@@ -1,7 +1,7 @@
 // Ordering DCB plugin — platform-agnostic composition root.
 // Wires the shared event log, all StateChangeSlices, and StateViewSlices for Customer and Order.
 
-open ReventlessSpec
+open Reventless
 module Make = (Platform: Platform.T) => {
   module OrderingEventLogMaker = Platform.DcbEventLog.Make(OrderingEventLog)
 

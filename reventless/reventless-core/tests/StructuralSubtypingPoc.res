@@ -15,7 +15,7 @@
 // ============================================================================
 
 module type SpecLike = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
   let name: string
   @schema
   type command
@@ -128,7 +128,7 @@ let platformImplSatisfiesSpec = (module(P: Platform_Impl)): module(Platform_Spec
 // ============================================================================
 
 module type ReadModel_Subset = {
-  module Spec: ReventlessSpec.ReadModel.T
+  module Spec: Reventless.ReadModel.T
   type api
   type role
   let make: (
@@ -140,7 +140,7 @@ module type ReadModel_Subset = {
 }
 
 module type ReadModel_Superset = {
-  module Spec: ReventlessSpec.ReadModel.T
+  module Spec: Reventless.ReadModel.T
   type api
   type role
   let make: (

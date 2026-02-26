@@ -3,20 +3,20 @@
 import * as Aws from "@pulumi/aws";
 import * as SQS_Queue$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
-import * as Util_Pulumi$Reventless from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
-import * as EventCollector$Reventless from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "./EventCollectorChannel_SQS.res.mjs";
 import * as EventCollectorChannel_SQS_Runtime$ReventlessAws from "./EventCollectorChannel_SQS_Runtime.res.mjs";
 
 function make(name, eventTopics, opts) {
-  let opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let queue = new (Aws.sqs.Queue)(name, {
     contentBasedDeduplication: true,
     fifoQueue: true,
     redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
-    tags: AWS_Tags$ReventlessAws.make(name, EventCollector$Reventless.componentType),
+    tags: AWS_Tags$ReventlessAws.make(name, EventCollector$ReventlessCore.componentType),
     visibilityTimeoutSeconds: 30,
     deduplicationScope: "messageGroup",
     fifoThroughputLimit: "perMessageGroupId",

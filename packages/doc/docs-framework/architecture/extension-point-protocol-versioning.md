@@ -39,7 +39,7 @@ Plugin B declares which schema versions it was compiled against inside its
 `pluginDefinition.extensionProtocols` array, which is sent in the `ConnectPlugin` command:
 
 ```rescript
-let pluginDef: ReventlessSpec.Plugin.pluginDefinition = {
+let pluginDef: Reventless.Plugin.pluginDefinition = {
   id: "my-plugin",
   name: "My Plugin",
   version: "2.0.0",
@@ -145,7 +145,7 @@ registry — each plugin validates incoming connections using its own declared v
 // MyExtensionPoint.res  (in your plugin package)
 let name = "MyPlugin.MyExtensionPoint"
 
-module Spec: ReventlessSpec.ExtensionPointMapping.Spec = {
+module Spec: Reventless.ExtensionPointMapping.Spec = {
   @schema type command  = | DoThing(string) | DoOtherThing
   @schema type event    = | ThingDone(string)
   @schema type directive = | NoOp

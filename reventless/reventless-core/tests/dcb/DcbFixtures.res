@@ -5,9 +5,9 @@ S.enableJson()
 module TestEventLogSpec = {
   @schema
   type event =
-    | ItemCreated({itemId: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
-    | ItemRenamed({itemId: @s.matches(ReventlessSpec.DcbTag.string) string, newName: string})
-    | CountUpdated({category: @s.matches(ReventlessSpec.DcbTag.string) string, amount: @s.matches(ReventlessSpec.DcbTag.int) int})
+    | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+    | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
+    | CountUpdated({category: @s.matches(Reventless.DcbTag.string) string, amount: @s.matches(Reventless.DcbTag.int) int})
     | SimpleEvent
 }
 
@@ -24,7 +24,7 @@ module UntaggedEventSpec = {
 
 @schema
 type objectEvent = {
-  tenantId: @s.matches(ReventlessSpec.DcbTag.string) string,
+  tenantId: @s.matches(Reventless.DcbTag.string) string,
   data: string,
 }
 
@@ -37,8 +37,8 @@ module TestCommandSpec = {
 
   @schema
   type command =
-    | CreateItem({itemId: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
-    | RenameItem({itemId: @s.matches(ReventlessSpec.DcbTag.string) string, newName: string})
+    | CreateItem({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+    | RenameItem({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
     | NoOp
 
   @schema
@@ -100,7 +100,7 @@ let makeMockStorage = (): mockStorage => {
   let publishedEventsRef: ref<array<publishedEvent>> = ref([])
   let failNextAppendsRef = ref(0)
 
-  let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: ReventlessSpec.DcbTag.query) =>
+  let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: Reventless.DcbTag.query) =>
     if query->Array.length == 0 {
       true
     } else {
@@ -144,7 +144,7 @@ let makeMockStorage = (): mockStorage => {
       Error("conflict")
     } else {
       let conflictDetected = switch condition {
-      | Some(cond: ReventlessSpec.DcbTag.appendCondition) =>
+      | Some(cond: Reventless.DcbTag.appendCondition) =>
         events.contents->Array.some(event => {
           let afterMatch = switch cond.after {
           | Some(pos) => event.position->posToInt > pos->posToInt
@@ -213,8 +213,8 @@ type plainRecord = {
 
 @schema
 type multiTagRecord = {
-  userId: @s.matches(ReventlessSpec.DcbTag.string) string,
-  tenantId: @s.matches(ReventlessSpec.DcbTag.string) string,
+  userId: @s.matches(Reventless.DcbTag.string) string,
+  tenantId: @s.matches(Reventless.DcbTag.string) string,
   data: string,
 }
 
@@ -222,33 +222,33 @@ type multiTagRecord = {
 type emptyVariant = Empty
 
 @schema
-type intTagEvent = CountEvent({count: @s.matches(ReventlessSpec.DcbTag.int) int})
+type intTagEvent = CountEvent({count: @s.matches(Reventless.DcbTag.int) int})
 
 @schema
 type mixedEvent =
-  | EventA({id: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
-  | EventB({id: @s.matches(ReventlessSpec.DcbTag.string) string, count: int})
+  | EventA({id: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | EventB({id: @s.matches(Reventless.DcbTag.string) string, count: int})
   | EventC({untaggedField: string})
 
 @schema
 type complexEvent =
-  | UserCreated({userId: @s.matches(ReventlessSpec.DcbTag.string) string, name: string})
-  | UserUpdated({userId: @s.matches(ReventlessSpec.DcbTag.string) string, email: string})
+  | UserCreated({userId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | UserUpdated({userId: @s.matches(Reventless.DcbTag.string) string, email: string})
   | OrderPlaced({
-      orderId: @s.matches(ReventlessSpec.DcbTag.string) string,
-      userId: @s.matches(ReventlessSpec.DcbTag.string) string,
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+      userId: @s.matches(Reventless.DcbTag.string) string,
       amount: float,
     })
   | OrderShipped({
-      orderId: @s.matches(ReventlessSpec.DcbTag.string) string,
-      trackingId: @s.matches(ReventlessSpec.DcbTag.string) string,
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+      trackingId: @s.matches(Reventless.DcbTag.string) string,
     })
-  | PaymentProcessed({paymentId: @s.matches(ReventlessSpec.DcbTag.string) string, amount: float})
+  | PaymentProcessed({paymentId: @s.matches(Reventless.DcbTag.string) string, amount: float})
 
 @schema
 type multiFieldEvent =
   | EventWithMultipleTags({
-      userId: @s.matches(ReventlessSpec.DcbTag.string) string,
-      tenantId: @s.matches(ReventlessSpec.DcbTag.string) string,
-      sessionId: @s.matches(ReventlessSpec.DcbTag.string) string,
+      userId: @s.matches(Reventless.DcbTag.string) string,
+      tenantId: @s.matches(Reventless.DcbTag.string) string,
+      sessionId: @s.matches(Reventless.DcbTag.string) string,
     })

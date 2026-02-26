@@ -5,12 +5,12 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Logger$Reventless from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
-import * as Adapter$Reventless from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
-import * as Util_QueryDbRuntime$Reventless from "@reventlessdev/reventless-core/src/util/Util_QueryDbRuntime.res.mjs";
+import * as Util_QueryDbRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDbRuntime.res.mjs";
 
 function toJson(x) {
   switch (x.TAG) {
@@ -164,13 +164,13 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     Limit: params_Limit,
     ScanIndexForward: params_ScanIndexForward
   };
-  Logger$Reventless.debug("File \"QueryEngine_DynamoDb.res\", line 101, characters 31-38", undefined, undefined, "queryByTableName params:", params);
+  Logger$ReventlessCore.debug("File \"QueryEngine_DynamoDb.res\", line 101, characters 35-42", undefined, undefined, "queryByTableName params:", params);
   let result;
   try {
     result = await DynamoDb_DocumentClient$AwsSdk.queryRecursive(undefined, params);
   } catch (raw_err) {
     let err = Primitive_exceptions.internalToException(raw_err);
-    Logger$Reventless.error("File \"QueryEngine_DynamoDb.res\", line 108, characters 33-40", undefined, undefined, "Error:", err);
+    Logger$ReventlessCore.error("File \"QueryEngine_DynamoDb.res\", line 108, characters 37-44", undefined, undefined, "Error:", err);
     return [];
   }
   return Stdlib_Option.getOr(result.Items, []).map(js => JSON.parse(JSON.stringify(js)));
@@ -200,14 +200,14 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     FilterExpression: params_FilterExpression,
     Limit: params_Limit
   };
-  Logger$Reventless.debug("File \"QueryEngine_DynamoDb.res\", line 132, characters 31-38", undefined, undefined, "scanByTableName params:", params);
+  Logger$ReventlessCore.debug("File \"QueryEngine_DynamoDb.res\", line 132, characters 35-42", undefined, undefined, "scanByTableName params:", params);
   let result;
   try {
     result = await DynamoDb_DocumentClient$AwsSdk.scanRecursive(undefined, params);
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      Logger$Reventless.error("File \"QueryEngine_DynamoDb.res\", line 139, characters 33-40", undefined, undefined, "Error:", e._1);
+      Logger$ReventlessCore.error("File \"QueryEngine_DynamoDb.res\", line 139, characters 37-44", undefined, undefined, "Error:", e._1);
       return [];
     }
     throw e;
@@ -216,10 +216,10 @@ async function scanByTableName(tableName, filterConfigs, limit) {
 }
 
 function make(allQueryDbs) {
-  let allRuntimeQueryDbsOutputs = Pulumi.all(Stdlib_Dict.mapValues(allQueryDbs, queryDb => Adapter$Reventless.resourceToResolvedOutput(Util_DynamoDb$ReventlessAws.findResource(queryDb.resources))));
+  let allRuntimeQueryDbsOutputs = Pulumi.all(Stdlib_Dict.mapValues(allQueryDbs, queryDb => Adapter$ReventlessCore.resourceToResolvedOutput(Util_DynamoDb$ReventlessAws.findResource(queryDb.resources))));
   return allRuntimeQueryDbsOutputs.apply(allRuntimeQueryDbs => ({
-    scan: (readModelName, filterConfigs, limit) => scanByTableName(Util_QueryDbRuntime$Reventless.getRuntimeResource(allRuntimeQueryDbs, readModelName).name, filterConfigs, limit),
-    query: (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) => queryByTableName(Util_QueryDbRuntime$Reventless.getRuntimeResource(allRuntimeQueryDbs, readModelName).name, key, id, subIdConfig, filterConfigs, ascending, limit)
+    scan: (readModelName, filterConfigs, limit) => scanByTableName(Util_QueryDbRuntime$ReventlessCore.getRuntimeResource(allRuntimeQueryDbs, readModelName).name, filterConfigs, limit),
+    query: (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) => queryByTableName(Util_QueryDbRuntime$ReventlessCore.getRuntimeResource(allRuntimeQueryDbs, readModelName).name, key, id, subIdConfig, filterConfigs, ascending, limit)
   }));
 }
 

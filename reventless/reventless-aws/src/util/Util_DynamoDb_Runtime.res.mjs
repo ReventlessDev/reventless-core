@@ -4,11 +4,11 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Message$Reventless from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
-import * as Util_Error$Reventless from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
-import * as Util_Promise$Reventless from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as Util_Promise$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 
 function put(table, item) {
@@ -30,7 +30,7 @@ async function putWithRetries(retryOpt, maxRetriesOpt, table, id, item) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      let errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
       console.log("Util_DynamoDb_Runtime-ReventlessAws" + (`.putWithRetries: id=` + id + `: retry ` + retry.toString() + ` failed: ` + errorMsg));
       if (retry >= maxRetries) {
         return {
@@ -39,7 +39,7 @@ async function putWithRetries(retryOpt, maxRetriesOpt, table, id, item) {
         };
       }
       let timeout = Stdlib_Math.Int.random(500, 1500);
-      await Util_Promise$Reventless.finishTimeout(timeout);
+      await Util_Promise$ReventlessCore.finishTimeout(timeout);
       console.log(`Retry put after ` + timeout.toString() + ` ms`);
       return await putWithRetries(retry + 1 | 0, maxRetries, table, id, item);
     }
@@ -67,7 +67,7 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
           _0: `Stale State: id=` + id
         };
       }
-      let errorMsg = Util_Error$Reventless.message(undefined, e$1);
+      let errorMsg = Util_Error$ReventlessCore.message(undefined, e$1);
       console.log("Util_DynamoDb_Runtime-ReventlessAws" + (`.putIfNotExistsWithRetries: id=` + id + `: retry ` + retry.toString() + ` failed: ` + errorMsg));
       if (retry >= maxRetries) {
         return {
@@ -76,7 +76,7 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
         };
       }
       let timeout = Stdlib_Math.Int.random(500, 1500);
-      await Util_Promise$Reventless.finishTimeout(timeout);
+      await Util_Promise$ReventlessCore.finishTimeout(timeout);
       console.log(`Retry putIfNotExists after ` + timeout.toString() + ` ms`);
       return await putIfNotExistsWithRetries(retry + 1 | 0, maxRetries, idKey, sortKey, table, id, item);
     }
@@ -100,7 +100,7 @@ async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      let errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
       console.log("Util_DynamoDb_Runtime-ReventlessAws" + (`.delete: id=` + id + `: retry ` + retry.toString() + ` failed: ` + errorMsg));
       if (retry >= maxRetries) {
         return {
@@ -109,7 +109,7 @@ async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
         };
       }
       let timeout = Stdlib_Math.Int.random(500, 1500);
-      await Util_Promise$Reventless.finishTimeout(timeout);
+      await Util_Promise$ReventlessCore.finishTimeout(timeout);
       console.log(`Retry delete after ` + timeout.toString() + ` ms`);
       return await deleteWithRetries(retry + 1 | 0, maxRetries, undefined, table, id);
     }
@@ -155,7 +155,7 @@ function keysFromResource(resource) {
 let purgeTimeAttributeName = "reventlessPurgeTime";
 
 function calcPurgeTime(ttl) {
-  let now_ms = Message$Reventless.now();
+  let now_ms = Message$ReventlessCore.now();
   let now_s = now_ms / 1000.0;
   let now_s_rounded = now_s | 0;
   return now_s_rounded + ttl | 0;
@@ -189,7 +189,7 @@ async function retryBatchWriteIfNecessary(p, allItems, retry, maxRetries) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      let errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
       console.log("Util_DynamoDb_Runtime-ReventlessAws" + (`.retryBatchWriteIfNecessary: retry ` + retry.toString() + ` failed: ` + errorMsg));
       if (retry < maxRetries) {
         return await retryBatchWriteIfNecessary(batchWrite(allItems), allItems, retry + 1 | 0, maxRetries);
@@ -231,7 +231,7 @@ async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      let errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
       console.log("Util_DynamoDb_Runtime-ReventlessAws" + (`.batchWriteWithRetries: retry ` + retry.toString() + ` failed: ` + errorMsg));
       if (retry >= maxRetries) {
         return {
@@ -240,7 +240,7 @@ async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests
         };
       }
       let timeout = Stdlib_Math.Int.random(500, 1500);
-      await Util_Promise$Reventless.finishTimeout(timeout);
+      await Util_Promise$ReventlessCore.finishTimeout(timeout);
       console.log(`Retry batchWrite after ` + timeout.toString() + ` ms`);
       return await batchWriteWithRetries(retry + 1 | 0, maxRetries, batchWriteRequests);
     }
@@ -257,7 +257,7 @@ async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests
   console.log("Util_DynamoDb_Runtime-ReventlessAws" + (`.batchWriteWithRetries: retry ` + retry.toString() + `: ` + unprocessedRequestCount + ` unprocessed items`));
   if (retry < maxRetries) {
     let timeout$1 = Stdlib_Math.Int.random(500, 1500);
-    await Util_Promise$Reventless.finishTimeout(timeout$1);
+    await Util_Promise$ReventlessCore.finishTimeout(timeout$1);
     console.log(`Retry batchWrite for ` + unprocessedRequestCount + ` unprocessed items after ` + timeout$1.toString() + ` ms`);
     return await batchWriteWithRetries(retry + 1 | 0, maxRetries, unprocessedRequests);
   }
@@ -310,4 +310,4 @@ export {
   toDeleteRequest,
   toTable,
 }
-/* Message-Reventless Not a pure module */
+/* @aws-sdk/lib-dynamodb Not a pure module */

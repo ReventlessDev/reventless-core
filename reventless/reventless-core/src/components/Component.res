@@ -1,1 +1,1 @@
-include ReventlessSpec.Component
+include Reventless.Component

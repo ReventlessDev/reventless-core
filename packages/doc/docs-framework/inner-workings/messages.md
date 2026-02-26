@@ -599,7 +599,7 @@ type statusChange = {
 
 ```rescript
 module type Service = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Reventless.Id.T
   type id = Id.t
   type command
   type event  

@@ -16,13 +16,13 @@ let rec putWithRetries = async (~retry=0, ~maxRetries=5, table, id, item) =>
   switch await table->put(item) {
   | _ => Ok()
   | exception JsExn(e) =>
-    let errorMsg = e->Reventless.Util.Error.message
+    let errorMsg = e->ReventlessCore.Util.Error.message
     Console.log(
       __MODULE__ ++ `.putWithRetries: id=${id}: retry ${retry->Int.toString} failed: ${errorMsg}`,
     )
     if retry < maxRetries {
       let timeout = Math.Int.random(500, 1500)
-      await Reventless.Util.Promise.finishTimeout(timeout)
+      await ReventlessCore.Util.Promise.finishTimeout(timeout)
       Console.log(`Retry put after ${timeout->Int.toString} ms`)
       await table->putWithRetries(id, item, ~retry=retry + 1, ~maxRetries)
     } else {
@@ -45,14 +45,14 @@ let rec putIfNotExistsWithRetries = async (
     switch e->PutError.classify {
     | ConditionCheckFailedException(_err) => Error(`Stale State: id=${id}`)
     | _ =>
-      let errorMsg = e->Reventless.Util.Error.message
+      let errorMsg = e->ReventlessCore.Util.Error.message
       Console.log(
         __MODULE__ ++
         `.putIfNotExistsWithRetries: id=${id}: retry ${retry->Int.toString} failed: ${errorMsg}`,
       )
       if retry < maxRetries {
         let timeout = Math.Int.random(500, 1500)
-        await Reventless.Util.Promise.finishTimeout(timeout)
+        await ReventlessCore.Util.Promise.finishTimeout(timeout)
         Console.log(`Retry putIfNotExists after ${timeout->Int.toString} ms`)
         await table->putIfNotExistsWithRetries(
           ~retry=retry + 1,
@@ -76,11 +76,11 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
   switch await table->delete(id, ~sort?) {
   | _ => Ok()
   | exception JsExn(e) =>
-    let errorMsg = e->Reventless.Util.Error.message
+    let errorMsg = e->ReventlessCore.Util.Error.message
     Console.log(__MODULE__ ++ `.delete: id=${id}: retry ${retry->Int.toString} failed: ${errorMsg}`)
     if retry < maxRetries {
       let timeout = Math.Int.random(500, 1500)
-      await Reventless.Util.Promise.finishTimeout(timeout)
+      await ReventlessCore.Util.Promise.finishTimeout(timeout)
       Console.log(`Retry delete after ${timeout->Int.toString} ms`)
       await table->deleteWithRetries(id, ~retry=retry + 1, ~maxRetries)
     } else {
@@ -90,7 +90,7 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
 
 let queryById = (table, id) => queryById(table.name, id)
 
-let keysFromResource: ReventlessSpec.Adapter.resource => (string, option<string>) = resource =>
+let keysFromResource: Reventless.Adapter.resource => (string, option<string>) = resource =>
   switch resource.info->Pulumi.Output.get->String.split(",") {
   | [] =>
     JsError.throwWithMessage("No id field given for table " ++ resource.name->Pulumi.Output.get)
@@ -102,7 +102,7 @@ let keysFromResource: ReventlessSpec.Adapter.resource => (string, option<string>
 let purgeTimeAttributeName = "reventlessPurgeTime"
 
 let calcPurgeTime = ttl => {
-  let now_ms = Reventless.Message.now()
+  let now_ms = ReventlessCore.Message.now()
   let now_s = now_ms /. 1000.0
   let now_s_rounded = now_s->Float.toInt
 
@@ -176,7 +176,7 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): res
     }
 
   | exception JsExn(e) =>
-    let errorMsg = e->Reventless.Util.Error.message
+    let errorMsg = e->ReventlessCore.Util.Error.message
     Console.log(
       __MODULE__ ++ `.retryBatchWriteIfNecessary: retry ${retry->Int.toString} failed: ${errorMsg}`,
     )
@@ -202,7 +202,7 @@ let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteReques
       )
       if retry < maxRetries {
         let timeout = Math.Int.random(500, 1500)
-        await Reventless.Util.Promise.finishTimeout(timeout)
+        await ReventlessCore.Util.Promise.finishTimeout(timeout)
         Console.log(
           `Retry batchWrite for ${unprocessedRequestCount} unprocessed items after ${timeout->Int.toString} ms`,
         )
@@ -217,13 +217,13 @@ let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteReques
       Ok()
     }
   | exception JsExn(e) =>
-    let errorMsg = e->Reventless.Util.Error.message
+    let errorMsg = e->ReventlessCore.Util.Error.message
     Console.log(
       __MODULE__ ++ `.batchWriteWithRetries: retry ${retry->Int.toString} failed: ${errorMsg}`,
     )
     if retry < maxRetries {
       let timeout = Math.Int.random(500, 1500)
-      await Reventless.Util.Promise.finishTimeout(timeout)
+      await ReventlessCore.Util.Promise.finishTimeout(timeout)
       Console.log(`Retry batchWrite after ${timeout->Int.toString} ms`)
       await batchWriteWithRetries(~retry=retry + 1, ~maxRetries, batchWriteRequests)
     } else {

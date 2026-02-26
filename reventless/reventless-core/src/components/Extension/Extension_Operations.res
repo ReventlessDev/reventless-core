@@ -1,5 +1,5 @@
 module type Mappings = {
-  module Spec: ReventlessSpec.ExtensionMapping.Spec
+  module Spec: Reventless.ExtensionMapping.Spec
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
   let name: string
   let mappings: array<module(Mapping)>
@@ -10,7 +10,7 @@ module type Ops = {
   let publishToCorePluginExtensionPoint: CommandTopic.publishJsons
   let readModelNamesForSourceName: dict<array<string>>
   let publishToReadModels: dict<EventCollector.enqueueEvent>
-  let queryEngine: ReventlessSpec.QueryEngine.operations
+  let queryEngine: Reventless.QueryEngine.operations
 }
 
 module type T = {
@@ -19,7 +19,7 @@ module type T = {
 }
 
 module Make = (
-  MappingSpec: ReventlessSpec.ExtensionMapping.Spec,
+  MappingSpec: Reventless.ExtensionMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
   Ops: Ops,
 ): T => {
@@ -134,7 +134,7 @@ module Make = (
 
   let incomingEventHandler = async (eventJson', pluginDef) => {
     switch eventJson'->Message.decodeEvent'(
-      ReventlessSpec.Id.StringPure.schema,
+      Reventless.Id.StringPure.schema,
       MappingSpec.eventSchema,
     ) {
     | event' =>

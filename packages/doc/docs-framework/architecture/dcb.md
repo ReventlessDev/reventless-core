@@ -81,7 +81,7 @@ module type Spec = {
   type state  // state type for the read model
 
   // Projection function: transforms events into projection actions
-  let project: (option<state>, DcbEventLogSpec.event) => array<ReventlessSpec.Projection.Spec.action<string, state>>
+  let project: (option<state>, DcbEventLogSpec.event) => array<Reventless.Projection.Spec.action<string, state>>
 }
 ```
 
@@ -383,7 +383,7 @@ let filteringHandler: jsonCommandsHandler = async jsonItems => {
 1. Decodes each JSON event using `Spec.eventSchema`
 2. Retrieves current state from QueryDb: `queryDb.get(~key=viewKey)`
 3. Applies the projection function: `Spec.project(currentState, event)` which returns an array of projection actions
-4. Uses `ReventlessSpec.Projection.Spec.handleActions` to process the actions and update state
+4. Uses `Reventless.Projection.Spec.handleActions` to process the actions and update state
 5. Writes the updated state back to QueryDb: `queryDb.put(~key=viewKey, ~value=updatedState)`
 
 The projection pattern allows StateViewSlice to maintain materialized views of the event log state, providing optimized read access to application data.

@@ -1,8 +1,8 @@
-type eventHandler = (JSON.t, ReventlessSpec.Plugin.pluginDefinition) => promise<unit>
+type eventHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
 type eventHandlersByService = dict<array<eventHandler>>
 
 module type Spec = {
-  let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
+  let pluginDefinition: Reventless.Plugin.pluginDefinition
   let incomingConnectExtensionEventHandlers: eventHandlersByService
   let outgoingExtensionPointEventHandlers: eventHandlersByService
   let outgoingExtensionEventHandlers: eventHandlersByService
