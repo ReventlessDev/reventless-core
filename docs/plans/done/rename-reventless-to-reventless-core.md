@@ -216,6 +216,8 @@ ReScript namespace "Reventless" is unchanged — no source code updates required
 
 ## Status
 
+### PR 1 — Package rename (Option A) ✅ COMPLETE
+
 - [x] Step 1 — Rename directory (`git mv`)
 - [x] Step 2 — Update package files
 - [x] Step 3 — Update root `rescript.json` and `package.json` (including name collision fix)
@@ -223,4 +225,68 @@ ReScript namespace "Reventless" is unchanged — no source code updates required
 - [x] Step 5 — `npm install`
 - [x] Step 6 — Build + test verification (556 modules compiled, 48 tests pass)
 - [x] Step 7 — Documentation check (no stale references found)
-- [ ] Step 8 — Commit
+- [x] Step 8 — Committed: `feat(reventless-core)!: rename package from @reventlessdev/reventless to @reventlessdev/reventless-core`
+
+### PR 2 — Namespace swap (Option C) ✅ COMPLETE
+
+Committed `0fcf24e3` on branch `alpha`: `feat(reventless-spec)!: swap namespaces — spec→Reventless, core→ReventlessCore`
+
+**568 files changed**, 3164 insertions, 3164 deletions.
+
+#### Actual scope (vs estimate)
+
+| Change | Estimated | Actual |
+|--------|-----------|--------|
+| `ReventlessSpec.` → `Reventless.` | ~716 occurrences / 195 files | ~732 occurrences / 209 files (src only; excl. `.history/`, `lib/`) |
+| `Reventless.` → `ReventlessCore.` | ~150–200 files (aws+in-memory) | ~333 files (aws + in-memory) |
+| Total files | 250–300 | 568 (includes `.res.mjs` compiled outputs) |
+
+#### Implementation technique: three-step placeholder
+
+To avoid the `Reventless`/`ReventlessSpec` prefix collision (a naive `s/Reventless/ReventlessCore/g` would corrupt `ReventlessSpec` → `ReventlessCoreSpec`):
+
+```bash
+# Step 1 — placeholder (all .res/.resi files, monorepo-wide)
+find . \( -path ./node_modules -prune -o -path ./.history -prune -o -path ./lib -prune \) \
+  -o -name "*.res" -print -o -name "*.resi" -print | ... | xargs sed -i '' 's/ReventlessSpec/__RS__/g'
+
+# Step 2 — core rename (aws + in-memory only)
+find reventless/reventless-aws reventless/reventless-in-memory -name "*.res" -o -name "*.resi" | \
+  xargs sed -i '' 's/Reventless/ReventlessCore/g'
+
+# Step 3 — restore (all .res/.resi files, monorepo-wide)
+find . ... | xargs sed -i '' 's/__RS__/Reventless/g'
+```
+
+#### Deviation from plan: additional files requiring step 2
+
+The plan specified step 2 only for `reventless-aws` and `reventless-in-memory`. Two additional file groups also had original `Reventless.X` self-references (referencing `reventless-core`'s own namespace) that were NOT spec references:
+
+1. **`reventless/reventless-core/test-helper/`** (5 files) — used `Reventless.Behavior.T`, `Reventless.Message.errorHandler`, `Reventless.Message.context`, `Reventless.Message.InvalidEvent`, `Reventless.QueryDb`, `Reventless.Projection.Mapping`
+2. **`reventless/reventless-core/tests/`** (12 files) — similar self-references in test helpers
+3. **`reventless/reventless-core/src/`** (6 files) — `CommandTopic_Adapter.res`, `CommandTopic_Helpers.res`, `EventLog_Operations.res`, `EventMapper_Callback.res`, `CommandPublisher.res`, `FTPHandler.res`
+
+**Fix applied**: for each affected file, fetched original from `git show HEAD:<file>`, applied all three steps to the original content, and wrote back. This correctly distinguished spec references from core self-references.
+
+#### Why the plan's verification check 3 shows 11 (not 0)
+
+Check 3: `grep -r "ReventlessCore" reventless/reventless-core/src --include="*.res"` → expected 0.
+
+After applying the full three steps to the 6 core src files, `Reventless.X` self-references (original core namespace) correctly became `ReventlessCore.X`. This is valid — ReScript allows using the fully-qualified namespace even within the same package, and `CommandTopic_Helpers.res` even has a comment explaining the intent:
+```
+// Re-export from spec so ReventlessCore.CommandTopic.topicItem === Reventless.CommandTopic.topicItem
+```
+The build succeeds (556 modules compiled), so these 11 occurrences are correct behaviour, not errors.
+
+#### rescript.json changes
+
+| File | Before | After |
+|------|--------|-------|
+| `reventless/reventless-spec/rescript.json` | `"namespace": "ReventlessSpec"` | `"namespace": "Reventless"` |
+| `reventless/reventless-core/rescript.json` | `"namespace": "Reventless"` | `"namespace": "ReventlessCore"` |
+
+#### Final verification
+
+- `grep -r "ReventlessSpec" reventless/ --include="*.res" | grep -v "/lib/"` → **0 results** ✓
+- Build: **556 modules compiled** ✓
+- Tests: **48/48 passed** ✓
