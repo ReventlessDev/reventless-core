@@ -1,8 +1,8 @@
 // E2E test for reventless-in-memory package.
 // Verifies the full aggregate command → event flow using the in-memory bus.
 
-open Jest
-open Expect
+open AsyncTest
+open AsyncTest.Expect
 open AggregateE2EFixtures
 
 describe("InMemory_Bus", () => {
@@ -32,7 +32,7 @@ describe("InMemory_Bus", () => {
     expect(received.contents)->toEqual(Some("hello"))
   })
 
-  test("reset clears all handlers and subscribers", () => {
+  testPromise("reset clears all handlers and subscribers", async () => {
     module TestBus = InMemory_Bus.Make()
     let count: ref<int> = ref(0)
     TestBus.subscribeToEvents("topic", async (_, _, _) => {
@@ -74,6 +74,11 @@ describe("EventLogStorage_InMemory", () => {
 })
 
 describe("Aggregate E2E", () => {
+  // Resolve the Output chain before any test runs so bus wiring is complete.
+  let _ = beforeAllAsync(async () => {
+    let _ = await agg->ItemAgg.operations->TestRunner.resolve
+  })
+
   let _ = beforeEach(() => {
     capturedEventCount := 0
   })
@@ -93,8 +98,7 @@ describe("Aggregate E2E", () => {
   })
 
   testPromise("second CreateItem for same id produces no events (AlreadyExists)", async () => {
-    // Note: this test relies on state from the previous test (same aggregate instance)
-    // item-1 was already created above
+    // item-1 was already created in the previous test (same aggregate instance)
     let ops = await agg->ItemAgg.operations->TestRunner.resolve
     let commandJson =
       ItemSpec.CreateItem({name: "Widget2"})->Reventless.Message.encode(ItemSpec.commandSchema)
