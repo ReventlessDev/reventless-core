@@ -9,7 +9,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as TestFixtures$ReventlessCore from "@reventlessdev/reventless-core/test-helper/TestFixtures.res.mjs";
+import * as TestFixtures$ReventlessCore from "@reventlessdev/reventless-core/tests/TestFixtures.res.mjs";
 
 function Make(Spec) {
   return Behavior => {

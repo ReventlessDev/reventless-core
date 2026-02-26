@@ -15,10 +15,6 @@
         {
             "dir": "tests",
             "subdirs": true
-        },
-        {
-            "dir": "test-helper",
-            "subdirs": true
         }
     ],
     "dependencies": [
