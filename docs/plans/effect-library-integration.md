@@ -1,6 +1,6 @@
 # Effect Library Integration Analysis
 
-**Status:** Backlog
+**Status:** Phases 0–4 complete; Phase 5 (streaming/future) in backlog
 **Created:** 2026-02-27
 **Summary:** Analysis of the [Effect TypeScript library](https://effect.website/) features and how they could improve the Reventless architecture. Covers typed errors, retry/scheduling, resource management, concurrency, streaming, schema versioning, and future distributed systems patterns.
 
@@ -1014,7 +1014,21 @@ The clearest near-term path is writing thin ReScript bindings for Effect core pr
   - Retry exhaustion test takes ~3100ms (real time, no TestClock) — 12s timeout gives 2× headroom above jitter ceiling
   - Using TestClock for retry delays requires `append` to return `Effect.t` instead of `promise` — architectural change deferred
 
-**Phase 4 — Streaming and future (evaluate when Phases 1–3 are complete):**
+**Phase 4 — InMemory_Bus Queue + Deferred delivery: ✅ COMPLETE**
+- [x] Replace callback-based fan-out in `InMemory_Bus` with Effect Queue + Deferred completion signals
+  - Each subscriber gets an `Queue.unbounded<queuedEvent>` and a drain fiber started via `Effect.runFork`
+  - Drain loop: `Queue.take -> Effect.promise(callback) -> Deferred.succeed(signal)` wrapped in `Effect.forever`
+  - `publishEvent`: synchronously create signal Deferred + offer to queue via `Effect.runSync` for each subscriber, then `Promise.all` the signal awaits
+  - `reset`: `Queue.shutdown` all subscriber queues (interrupts drain fibers cleanly), clear all registries
+- [x] Fix 6 failing scheduler tests caused by async delivery timing
+- **Build:** 363 modules, zero warnings; 129/129 tests pass (26 test suites)
+- **Implementation notes:**
+  - `Effect.all({concurrency: "unbounded"})` internally uses `forEachConcurrentDiscard` which creates a `processingFiber` + child fibers via `scheduleTask` — **4 scheduling hops** before drain callback runs
+  - Effect's `MixedScheduler` uses `Promise.resolve(void 0).then()` for fiber scheduling (NOT `queueMicrotask`) — so `doNotFake: ['queueMicrotask']` has no effect on Effect fiber scheduling
+  - Fix: use `Effect.runSync` for synchronous operations (`Deferred.make`, `Queue.offer`) + native `Promise.all` for signal awaiting → **2 scheduling hops**, matching the 2 `await Promise.resolve()` ticks in test helpers
+  - `Queue.shutdown` is a pure synchronous Effect value — can be collected into an array and run via `Effect.all->Effect.runSync`
+
+**Phase 5 — Streaming and future (evaluate when ready):**
 - [ ] Evaluate `Stream`-based `EventLog.replay` for large aggregate support
 - [ ] Evaluate `Effect.Schema` migration (assess scope vs. benefit)
 - [ ] Track `@effect/workflow` and `@effect/cluster` maturity for future architectural decisions

@@ -57,6 +57,8 @@ describe("ScheduledPublisher_InMemory", () => {
         payload: "{}"
       });
       Globals.jest.runAllTimers();
+      await Promise.resolve();
+      await Promise.resolve();
       expect(count.contents).toBe(1);
       return SP.reset();
     });
@@ -86,7 +88,11 @@ describe("ScheduledPublisher_InMemory", () => {
         payload: "{}"
       });
       Globals.jest.advanceTimersByTime(60000);
+      await Promise.resolve();
+      await Promise.resolve();
       Globals.jest.advanceTimersByTime(60000);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(count.contents).toBe(2);
       return SP.reset();
     });
@@ -183,6 +189,8 @@ describe("ScheduledPublisher_InMemory", () => {
       Globals.jest.advanceTimersByTime(179999);
       expect(count.contents).toBe(0);
       Globals.jest.advanceTimersByTime(1);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(count.contents).toBe(1);
       return SP.reset();
     });
@@ -212,6 +220,8 @@ describe("ScheduledPublisher_InMemory", () => {
         payload: "{}"
       });
       Globals.jest.advanceTimersByTime(7200000);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(count.contents).toBe(1);
       return SP.reset();
     });

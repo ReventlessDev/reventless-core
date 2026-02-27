@@ -43,8 +43,12 @@ describe("Scheduler_Builder.Make:", () => {
         payload: "{}"
       });
       Globals.jest.advanceTimersByTime(60000);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(count.contents).toBe(1);
       Globals.jest.advanceTimersByTime(60000);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(count.contents).toBe(2);
     });
     test("single-shot schedule fires once then stops", async () => {
@@ -68,6 +72,8 @@ describe("Scheduler_Builder.Make:", () => {
         payload: "{}"
       });
       Globals.jest.advanceTimersByTime(0);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(count.contents).toBe(1);
       Globals.jest.advanceTimersByTime(60000);
       expect(count.contents).toBe(1);

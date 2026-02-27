@@ -157,6 +157,15 @@ external sleep: Duration.t => t<unit, 'e, 'r> = "sleep"
 @module("effect") @scope("Effect")
 external timeout: (t<'a, 'e, 'r>, Duration.t) => t<option<'a>, 'e, 'r> = "timeout"
 
+// ─── Repetition ──────────────────────────────────────────────────────────
+
+// Repeat an effect forever (until it fails or is interrupted).
+// Useful for drain loops: the effect runs, then immediately runs again.
+// When the underlying resource (e.g. a Queue) is shut down, Queue.take fails
+// with interruption and this propagates out, ending the loop cleanly.
+@module("effect") @scope("Effect")
+external forever: t<'a, 'e, 'r> => t<'b, 'e, 'r> = "forever"
+
 // ─── Dependency injection ─────────────────────────────────────────────────
 
 // Provide a Layer to satisfy an Effect's requirements ('r channel).
@@ -191,3 +200,10 @@ external runSync: t<'a, 'e, 'r> => 'a = "runSync"
 // Run synchronously, returning an Exit instead of throwing.
 @module("effect") @scope("Effect")
 external runSyncExit: t<'a, 'e, 'r> => Exit.t<'a, 'e> = "runSyncExit"
+
+// Start an effect in a new background fiber using the default runtime.
+// Returns the RuntimeFiber immediately — the effect runs concurrently.
+// The fiber is a daemon (not tied to any scope); it runs until completion,
+// failure, or Queue.shutdown interrupts it.
+@module("effect") @scope("Effect")
+external runFork: t<'a, 'e, 'r> => fiber<'a, 'e> = "runFork"

@@ -15,7 +15,6 @@ type jestObj
 @send external runAllTimers: jestObj => unit = "runAllTimers"
 @send external advanceTimersByTime: (jestObj, int) => unit = "advanceTimersByTime"
 
-// In Jest ESM mode, jest global is only available inside callbacks (not at module top level).
 let _ = beforeAll(() => {
   jest->useFakeTimers
 })
@@ -64,7 +63,11 @@ describe("ScheduledPublisher_InMemory", () => {
       }
       await ops.createSchedule([makeTopicResource("sched-topic")], schedule)
       jest->runAllTimers
-      // Bus.publishEvent runs subscriber bodies synchronously before first await
+      // Two microtask ticks: publishEvent uses Effect.all(concurrency=unbounded) which forks
+      // child fibers via startFork — one tick for the child fiber to offer to the Queue,
+      // a second tick for the drain fiber to run the callback.
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       expect(count.contents)->toBe(1)
       SP.reset()
     })
@@ -85,7 +88,11 @@ describe("ScheduledPublisher_InMemory", () => {
       }
       await ops.createSchedule([makeTopicResource("repeat-topic")], schedule)
       jest->advanceTimersByTime(60 * 1000)
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       jest->advanceTimersByTime(60 * 1000)
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       expect(count.contents)->toBe(2)
       SP.reset()
     })
@@ -155,8 +162,10 @@ describe("ScheduledPublisher_InMemory", () => {
       // Advance by slightly less than 3 minutes — should not fire
       jest->advanceTimersByTime(3 * 60 * 1000 - 1)
       expect(count.contents)->toBe(0)
-      // Advance the remaining millisecond — now fires
+      // Advance the remaining millisecond — now fires; two ticks for Effect.all drain
       jest->advanceTimersByTime(1)
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       expect(count.contents)->toBe(1)
       SP.reset()
     })
@@ -177,6 +186,8 @@ describe("ScheduledPublisher_InMemory", () => {
       }
       await ops.createSchedule([makeTopicResource("hours-topic")], schedule)
       jest->advanceTimersByTime(2 * 60 * 60 * 1000)
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       expect(count.contents)->toBe(1)
       SP.reset()
     })

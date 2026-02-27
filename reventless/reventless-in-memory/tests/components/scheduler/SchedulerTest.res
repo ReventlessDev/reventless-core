@@ -53,9 +53,16 @@ describe("Scheduler_Builder.Make:", () => {
         [makeTopicResource("sched-recurring")],
         {name: "test-recurring", rate: Reventless.Schedule.Minutes(1), payload: "{}"},
       )
+      // Two microtask ticks: publishEvent uses Effect.all(concurrency=unbounded) which forks
+      // child fibers via startFork — one tick runs the child fiber (Queue.offer),
+      // a second tick runs the drain fiber callback.
       jest->advanceTimersByTime(60 * 1000)
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       expect(count.contents)->toBe(1)
       jest->advanceTimersByTime(60 * 1000)
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       expect(count.contents)->toBe(2)
     })
 
@@ -74,6 +81,8 @@ describe("Scheduler_Builder.Make:", () => {
         },
       )
       jest->advanceTimersByTime(0)
+      let _ = await Promise.resolve(())
+      let _ = await Promise.resolve(())
       expect(count.contents)->toBe(1)
       jest->advanceTimersByTime(60 * 1000)
       expect(count.contents)->toBe(1) // No further firing
