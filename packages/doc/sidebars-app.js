@@ -9,7 +9,14 @@ const sidebars = {
     'dcb-based-plugin',
     'plugin-system',
     'component-overview',
-    'unit-testing',
+    {
+      type: 'category',
+      label: 'Testing',
+      items: [
+        'running-tests',
+        'writing-unit-tests',
+      ],
+    },
     {
       type: 'category',
       label: 'Architecture',
