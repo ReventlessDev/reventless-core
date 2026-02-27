@@ -20,6 +20,7 @@
     "dependencies": [
         "sury",
         "@glennsl/rescript-jest",
+        "@reventlessdev/rescript-effect",
         "@reventlessdev/rescript-fast-csv",
         "@reventlessdev/rescript-hash-object",
         "@reventlessdev/rescript-node-streams",

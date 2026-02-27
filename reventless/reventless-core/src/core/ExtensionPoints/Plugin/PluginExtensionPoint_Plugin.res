@@ -67,7 +67,7 @@ module Make = (Spec: Spec) => {
     | PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
       await createSchedule({
         name: Spec.environment ++ ("-" ++ id),
-        rate: timeout->Schedule.minutesFromNow,
+        rate: timeout->ScheduleOps.minutesFromNow,
         payload: {
           Message.id,
           meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),

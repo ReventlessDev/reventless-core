@@ -5,7 +5,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
-import * as Schedule$ReventlessCore from "../../util/Schedule.res.mjs";
+import * as ScheduleOps$ReventlessCore from "../../util/ScheduleOps.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function Make(MappingSpec) {
@@ -18,7 +18,7 @@ function Make(MappingSpec) {
       }
       let mapOutgoingEvent$1 = Mapping.mapOutgoingEvent;
       if (mapOutgoingEvent$1 !== undefined) {
-        return mapOutgoingEvent$1(eventJson$p, Schedule$ReventlessCore.create(scheduler, queue, resourceNaming), Schedule$ReventlessCore.$$delete(scheduler, queue, resourceNaming), queryEngine);
+        return mapOutgoingEvent$1(eventJson$p, ScheduleOps$ReventlessCore.create(scheduler, queue, resourceNaming), ScheduleOps$ReventlessCore.$$delete(scheduler, queue, resourceNaming), queryEngine);
       } else {
         Logger$ReventlessCore.error("File \"ExtensionPoint_Operations.res\", line 40, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
         return [];

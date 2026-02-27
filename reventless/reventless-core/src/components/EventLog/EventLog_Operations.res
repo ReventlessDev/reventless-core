@@ -1,3 +1,7 @@
+// Used to extract the Cause from a failed Exit without pattern-matching
+// on Effect's internal variant representation.
+type exitCausePayload<'e> = {cause: Cause.t<'e>}
+
 module type Ops = {
   module Spec: Reventless.EventLog.T
   module EventTopic: EventTopic.T with module Spec.Id = Spec.Id and type Spec.event = Spec.event
@@ -10,6 +14,22 @@ module type T = {
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
 }
+
+// Retry schedule for transient storage errors.
+// Exponential backoff: 100ms, ~200ms, ~400ms, ~800ms, ~1600ms — max 5 retries.
+// Only retries on recognised transient error messages; permanent errors propagate immediately.
+let isTransient = (msg: string) =>
+  msg->String.includes("ThrottlingException") ||
+  msg->String.includes("ProvisionedThroughputExceededException") ||
+  msg->String.includes("ServiceUnavailable") ||
+  msg->String.includes("RequestLimitExceeded") ||
+  msg->String.includes("InternalServerError")
+
+let storageRetrySchedule: Schedule.t<(Duration.t, int), string, unit> =
+  Schedule.exponential(Duration.millis(100))
+  ->Schedule.jittered
+  ->Schedule.intersect(Schedule.recurs(5))
+  ->Schedule.whileInput(isTransient)
 
 module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
@@ -50,18 +70,35 @@ module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
   }
 
   // append returns result<unit, string> — never throws.
-  // Storage errors (including exceptions) and publish errors are surfaced as Error values.
+  // Storage errors are retried with exponential backoff (up to 5 times for transient errors).
+  // After exhausting retries, or on permanent errors, returns Error.
   let append = async (sequenceNr, id, events') => {
     let eventsJson = events'->encodeEvents'(id)
     let idStr = id->Spec.Id.toString
-    switch await Ops.storage.append(sequenceNr, idStr, eventsJson) {
-    | Ok(_) => await publishToEventTopic(id, events')
-    | Error(msg) =>
-      Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${msg}`)
-    | exception JsExn(e) =>
-      Error(
-        `EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ` ++ e->Util.Error.message,
+    // Build an Effect that fails with a string on storage error (enabling retry)
+    let storageEffect =
+      Effect.tryPromise({
+        "try": () => Ops.storage.append(sequenceNr, idStr, eventsJson),
+        "catch": (err: unknown) =>
+          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("storage error"),
+      })
+      ->Effect.flatMap(result =>
+        switch result {
+        | Ok(_) => Effect.succeed(())
+        | Error(msg) => Effect.fail(msg)
+        }
       )
+      ->Effect.retry(storageRetrySchedule)
+    let exit = await storageEffect->Effect.runPromiseExit
+    if exit->Exit.isSuccess {
+      await publishToEventTopic(id, events')
+    } else {
+      // Retry exhausted — extract the final error message from the Cause
+      let failMsg = {
+        let payload: exitCausePayload<string> = exit->Obj.magic
+        payload.cause->Cause.failures->Array.get(0)->Option.getOr("storage error")
+      }
+      Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${failMsg}`)
     }
   }
 

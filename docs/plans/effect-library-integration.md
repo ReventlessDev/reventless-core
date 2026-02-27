@@ -974,12 +974,28 @@ The clearest near-term path is writing thin ReScript bindings for Effect core pr
 - [x] Fix `EventLog_Operations` — remove FIXME and all throw/re-throw patterns; `publishToEventTopic` now returns `result<unit, string>`; `append` switches on storage result and returns `Error` on failure — never throws
 - [x] Fix `QueryDb_Operations` — `decode` returns `result<state, storageError>` (was `[state]` / `[]`); `load` sequences decode results via `Result.flatMap` accumulator; `save`/`saveBatch` propagate encode errors instead of `Console.log` + silent skip
 - [x] Apply STM to `EventLogStorage_InMemory` — `ref<dict<...>>` replaced with `Stm.TRef`; `append` uses `Stm.TRef.modify->Stm.commit->Effect.runPromise`; `replay` uses `Stm.TRef.get->Stm.commit->Effect.runPromise`
-- **Deferred:** `Schedule` + `retry` for `EventLog.append` — `ReventlessCore.Schedule` module conflicts with rescript-effect's bare `Schedule` (namespace: false). Renaming affects 12 files across 3 packages. Deferred to a focused sub-task.
-- **Deferred:** Replace `InMemory_Bus` with `PubSub` — requires refactoring all consumers (EventTopicPublisher, EventCollectorChannel) from callback model to Queue.take model. Deferred to Phase 2.5 alongside Phase 3 test infrastructure.
+- **Deferred:** Replace `InMemory_Bus` with `PubSub` / Effect Queue — requires refactoring all consumers from callback model to Queue.take model. Deferred to Phase 3: with the callback model, `publishEvent` awaits all subscribers synchronously; switching to Queue makes delivery asynchronous, which breaks existing tests that rely on immediate propagation. Requires `@effect/vitest` + `TestClock` to manage timing deterministically.
 - **Build:** 353 modules, zero warnings; 129/129 tests pass
+
+**Phase 2.5 — Namespace fix + retry: ✅ COMPLETE**
+- [x] Rename `reventless-core/src/util/Schedule.res` → `ScheduleOps.res` — frees the bare `Schedule` name for rescript-effect
+- [x] Update 4 callers inside reventless-core: `ExtensionPoint_Operations.res`, `ExtensionPoint_Callback.res`, `SideEffectHandler_Builder.res`, `PluginExtensionPoint_Plugin.res` (`Schedule.*` → `ScheduleOps.*`)
+- [x] Add `@reventlessdev/rescript-effect` to `reventless-core` `rescript.json` + `package.json`
+- [x] Add `Effect.retry` to `EventLog_Operations.res`:
+  - `isTransient` predicate (ThrottlingException, ProvisionedThroughputExceededException, ServiceUnavailable, RequestLimitExceeded, InternalServerError)
+  - `storageRetrySchedule`: `exponential(100ms) -> jittered -> intersect(recurs(5)) -> whileInput(isTransient)`
+  - `append` wraps storage call in `Effect.tryPromise -> flatMap (Ok→succeed / Error→fail) -> retry(schedule)`, runs with `Effect.runPromiseExit`, branches on `Exit.isSuccess`
+  - `exitCausePayload<'e>` type at module scope for safe cause extraction via `Obj.magic`
+- **Implementation notes:**
+  - `Schedule.recurs(5)` creates a standalone schedule (not a modifier) — compose via `Schedule.intersect(expBackoff, recurs(5))`, not pipe
+  - Top-level schedule value needs explicit type annotation `Schedule.t<(Duration.t, int), string, unit>` to resolve value restriction weak type variable
+  - `Exit.toOption` returns Effect's tagged Option (not ReScript option) — use `Exit.isSuccess` + `Obj.magic` cast to `exitCausePayload` for safe branching and cause extraction
+  - `Effect.either` also returns Effect's Either, not ReScript result — do not use for bridging
+  - **Build:** 615 modules, zero warnings; 172/172 reventless-core + 129/129 reventless-in-memory tests pass
 
 **Phase 3 — Test infrastructure:**
 - [ ] Migrate test files to `@effect/vitest` + `TestClock`
+- [ ] Replace `InMemory_Bus` event delivery with Effect Queue (requires `TestClock` for deterministic timing)
 
 **Phase 4 — Streaming and future (evaluate when Phases 1–3 are complete):**
 - [ ] Evaluate `Stream`-based `EventLog.replay` for large aggregate support

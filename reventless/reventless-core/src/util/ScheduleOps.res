@@ -72,9 +72,9 @@ let create = (
     let schedule = {...schedule, name}
     let createSchedule = scheduler.createSchedule
     switch await createSchedule(channelResources, schedule) {
-    | _ => Console.log2("Schedule.create: created", schedule)
+    | _ => Console.log2("ScheduleOps.create: created", schedule)
     | exception err => {
-        Console.log3("Schedule.create: couldn't create", schedule, err)
+        Console.log3("ScheduleOps.create: couldn't create", schedule, err)
         throw(ScheduleNotCreated(schedule))
       }
     }
@@ -89,9 +89,9 @@ let delete = (
     let name = name->resourceNaming.validateName
     let deleteSchedule = scheduler.deleteSchedule
     switch await deleteSchedule(channelResources, name) {
-    | _ => Console.log2("Schedule.delete: deleted", name)
+    | _ => Console.log2("ScheduleOps.delete: deleted", name)
     | exception err => {
-        Console.log3("Schedule.delete: couldn't delete", name, err)
+        Console.log3("ScheduleOps.delete: couldn't delete", name, err)
         throw(ScheduleNotDeleted(name))
       }
     }

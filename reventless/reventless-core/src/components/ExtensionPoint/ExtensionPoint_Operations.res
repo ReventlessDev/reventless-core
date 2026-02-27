@@ -31,8 +31,8 @@ module Make = (
       | Some(mapOutgoingEvent) =>
         mapOutgoingEvent(
           eventJson',
-          Schedule.create(~scheduler, ~channelResources=queue, ~resourceNaming),
-          Schedule.delete(~scheduler, ~channelResources=queue, ~resourceNaming),
+          ScheduleOps.create(~scheduler, ~channelResources=queue, ~resourceNaming),
+          ScheduleOps.delete(~scheduler, ~channelResources=queue, ~resourceNaming),
           queryEngine,
         )
       | None =>
