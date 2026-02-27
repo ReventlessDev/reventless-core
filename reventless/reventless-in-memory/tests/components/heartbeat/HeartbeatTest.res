@@ -59,13 +59,20 @@ describe("Heartbeat_Builder.Make:", () => {
     testPromise("handler fires once after 1-minute interval", async () => {
       let handler = resolvedHandler.contents->Option.getUnsafe
       let heartbeat = HeartbeatMaker.make(~name="hb-test-1")
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(Some(Obj.magic(handler)))
+      let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+        Deferred.make()->Effect.runSync
+      Deferred.succeed(handlerDeferred, Obj.magic(handler))->Effect.runSync->ignore
       let runtime: ReventlessCore.Runtime.environment<HeartbeatRunner_InMemory.runtimeParts> = {
-        parts: {handlerRef: handlerRef},
+        parts: {
+          handlerDeferred,
+          subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+        },
         resources: [],
       }
       HeartbeatMaker.connect(~runtime, ~remoteChannel=Obj.magic(()), ~timeout=1, heartbeat)
       jest->advanceTimersByTime(1 * 60 * 1000)
+      // Give the Effect.runPromise microtask one tick to complete
+      let _ = await Promise.resolve()
       expect(capturedCount.contents)->toBe(1)
       HeartbeatRunner_InMemory.reset()
     })
@@ -73,14 +80,21 @@ describe("Heartbeat_Builder.Make:", () => {
     testPromise("handler fires twice after two interval advances", async () => {
       let handler = resolvedHandler.contents->Option.getUnsafe
       let heartbeat = HeartbeatMaker.make(~name="hb-test-2")
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(Some(Obj.magic(handler)))
+      let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+        Deferred.make()->Effect.runSync
+      Deferred.succeed(handlerDeferred, Obj.magic(handler))->Effect.runSync->ignore
       let runtime: ReventlessCore.Runtime.environment<HeartbeatRunner_InMemory.runtimeParts> = {
-        parts: {handlerRef: handlerRef},
+        parts: {
+          handlerDeferred,
+          subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+        },
         resources: [],
       }
       HeartbeatMaker.connect(~runtime, ~remoteChannel=Obj.magic(()), ~timeout=1, heartbeat)
       jest->advanceTimersByTime(1 * 60 * 1000)
+      let _ = await Promise.resolve()
       jest->advanceTimersByTime(1 * 60 * 1000)
+      let _ = await Promise.resolve()
       expect(capturedCount.contents)->toBe(2)
       HeartbeatRunner_InMemory.reset()
     })

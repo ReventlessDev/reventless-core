@@ -959,10 +959,16 @@ The clearest near-term path is writing thin ReScript bindings for Effect core pr
   - `Stm.TRef` nested module uses local `type stm<'a,'e,'r> = t<'a,'e,'r>` alias to avoid self-referencing `Stm` by name inside the same file
   - `rebuild` script uses `-with-deps` which is invalid in ReScript v12; use `npx rescript clean && npx rescript build` instead
 
-**Phase 1 — In-memory adapter improvements:**
-- [ ] Replace `handlerRef: ref<option<handler>>` with `Deferred` in `RuntimeEnvironment_InMemory`
-- [ ] Fix `EventCollectorChannel_InMemory` subscription race with `Latch`
-- [ ] Replace `setInterval` in `HeartbeatRunner_InMemory` with `Schedule`-based repeat
+**Phase 1 — In-memory adapter improvements: ✅ COMPLETE**
+- [x] Replace `handlerRef: ref<option<handler>>` with `Deferred` in `RuntimeEnvironment_InMemory`
+- [x] Fix `EventCollectorChannel_InMemory` subscription race with `Latch` (subscriptionLatch opens after subscription registers; `Latch.await_` replaces `await resource.name->TestRunner.resolve` in single-topic tests)
+- [x] `HeartbeatRunner_InMemory` and `CommandTopicChannel_InMemory` updated to use `Deferred.await_` (no more `None` check / warning log)
+- **Implementation notes:**
+  - `parts` type: `{handlerDeferred: Deferred.t<handler, unit>, subscriptionLatch: Latch.t}`
+  - Creation (`Deferred.make`, `Effect.makeLatch`) via `Effect.runSync` (purely synchronous)
+  - Completion (`Deferred.succeed`, `Latch.open_`) via `Effect.runPromise` (fiber wake-ups are async-safe)
+  - setInterval replacement with Schedule deferred to Phase 3 (requires TestClock infrastructure)
+  - 353 modules compiled, zero warnings; 129/129 tests pass
 
 **Phase 2 — Core framework:**
 - [ ] Apply typed errors (`Effect<A,E,R>`) to `EventLog_Operations` — fix the FIXME

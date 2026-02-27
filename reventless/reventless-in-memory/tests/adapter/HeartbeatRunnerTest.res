@@ -29,28 +29,32 @@ let _ = afterAll(() => {
 })
 
 // ─────────────────────────────────────────────────────────────
-// Helper: build a minimal runtime environment
+// Helper: build a minimal runtime with a completed handler Deferred
 // ─────────────────────────────────────────────────────────────
 
 let makeRuntime = (
-  handlerRef: ref<option<(JSON.t, unit) => promise<unit>>>,
+  handler: RuntimeEnvironment_InMemory.handler,
 ): ReventlessCore.Runtime.environment<HeartbeatRunner_InMemory.runtimeParts> => {
-  parts: {handlerRef: handlerRef},
-  resources: [],
+  let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+    Deferred.make()->Effect.runSync
+  // Complete before any fiber waits — runSync is safe here
+  Deferred.succeed(handlerDeferred, handler)->Effect.runSync->ignore
+  {
+    parts: {
+      handlerDeferred,
+      subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+    },
+    resources: [],
+  }
 }
 
 describe("HeartbeatRunner_InMemory", () => {
   describe("make", () => {
     testPromise("after advanceTimersByTime(timeout * 60 * 1000), handler is called", async () => {
       let count: ref<int> = ref(0)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      handlerRef :=
-        Some(
-          async (_, _) => {
-            count := count.contents + 1
-          },
-        )
-      let runtime = makeRuntime(handlerRef)
+      let runtime = makeRuntime(async (_, _) => {
+        count := count.contents + 1
+      })
       let _runner = HeartbeatRunner_InMemory.make(
         ~name="hb-test",
         ~remoteChannel=Obj.magic(()),
@@ -59,20 +63,17 @@ describe("HeartbeatRunner_InMemory", () => {
         ~opts={},
       )
       jest->advanceTimersByTime(1 * 60 * 1000)
+      // Give the Effect.runPromise microtask one tick to complete
+      let _ = await Promise.resolve()
       expect(count.contents)->toBe(1)
       HeartbeatRunner_InMemory.reset()
     })
 
     testPromise("handler fires again on each subsequent interval", async () => {
       let count: ref<int> = ref(0)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      handlerRef :=
-        Some(
-          async (_, _) => {
-            count := count.contents + 1
-          },
-        )
-      let runtime = makeRuntime(handlerRef)
+      let runtime = makeRuntime(async (_, _) => {
+        count := count.contents + 1
+      })
       let _runner = HeartbeatRunner_InMemory.make(
         ~name="hb-test-2",
         ~remoteChannel=Obj.magic(()),
@@ -81,15 +82,25 @@ describe("HeartbeatRunner_InMemory", () => {
         ~opts={},
       )
       jest->advanceTimersByTime(2 * 60 * 1000)
+      let _ = await Promise.resolve()
       jest->advanceTimersByTime(2 * 60 * 1000)
+      let _ = await Promise.resolve()
       expect(count.contents)->toBe(2)
       HeartbeatRunner_InMemory.reset()
     })
 
-    testPromise("unset handlerRef does not crash when interval fires", async () => {
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      // handlerRef intentionally left as None
-      let runtime = makeRuntime(handlerRef)
+    testPromise("unresolved Deferred does not crash when interval fires", async () => {
+      // Deferred intentionally left incomplete — simulates handler not yet registered.
+      // Effect.runPromise stays pending (no crash); test verifies no exception.
+      let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+        Deferred.make()->Effect.runSync
+      let runtime: ReventlessCore.Runtime.environment<HeartbeatRunner_InMemory.runtimeParts> = {
+        parts: {
+          handlerDeferred,
+          subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+        },
+        resources: [],
+      }
       let _runner = HeartbeatRunner_InMemory.make(
         ~name="hb-no-handler",
         ~remoteChannel=Obj.magic(()),
@@ -100,20 +111,17 @@ describe("HeartbeatRunner_InMemory", () => {
       jest->advanceTimersByTime(1 * 60 * 1000)
       expect(true)->toBe(true)
       HeartbeatRunner_InMemory.reset()
+      // Complete the Deferred to avoid open handle — interval is already cleared
+      Deferred.succeed(handlerDeferred, async (_, _) => ())->Effect.runSync->ignore
     })
   })
 
   describe("reset", () => {
     testPromise("clears all intervals; subsequent advance does not fire handler", async () => {
       let count: ref<int> = ref(0)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      handlerRef :=
-        Some(
-          async (_, _) => {
-            count := count.contents + 1
-          },
-        )
-      let runtime = makeRuntime(handlerRef)
+      let runtime = makeRuntime(async (_, _) => {
+        count := count.contents + 1
+      })
       let _runner = HeartbeatRunner_InMemory.make(
         ~name="hb-reset",
         ~remoteChannel=Obj.magic(()),

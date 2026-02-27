@@ -118,19 +118,20 @@ describe("CommandTopicChannel_InMemory", () => {
   })
 
   describe("connect", () => {
-    testPromise("registers handler; dispatch reaches the runtime handlerRef", async () => {
+    testPromise("registers handler; dispatch reaches the runtime handlerDeferred", async () => {
       module TestBus = InMemory_Bus.Make()
       module TestChannel = CommandTopicChannel_InMemory.Make(TestBus)
       let received: ref<option<JSON.t>> = ref(None)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      handlerRef :=
-        Some(
-          async (json, _ctx) => {
-            received := Some(json)
-          },
-        )
+      let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+        Deferred.make()->Effect.runSync
+      Deferred.succeed(handlerDeferred, async (json, _ctx) => {
+        received := Some(json)
+      })->Effect.runSync->ignore
       let runtime: ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
-        parts: {handlerRef: handlerRef},
+        parts: {
+          handlerDeferred,
+          subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+        },
         resources: [],
       }
       let ch = TestChannel.make(~name="testCmd")
@@ -145,12 +146,17 @@ describe("CommandTopicChannel_InMemory", () => {
       expect(received.contents)->toEqual(Some(JSON.Encode.string("test-payload")))
     })
 
-    testPromise("unregistered handlerRef does not crash", async () => {
+    testPromise("unresolved Deferred does not crash on dispatch", async () => {
       module TestBus = InMemory_Bus.Make()
       module TestChannel = CommandTopicChannel_InMemory.Make(TestBus)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
+      // Deferred left incomplete — dispatch starts a pending Effect (no crash)
+      let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+        Deferred.make()->Effect.runSync
       let runtime: ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
-        parts: {handlerRef: handlerRef},
+        parts: {
+          handlerDeferred,
+          subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+        },
         resources: [],
       }
       let ch = TestChannel.make(~name="noHandlerCmd")
@@ -161,8 +167,11 @@ describe("CommandTopicChannel_InMemory", () => {
         ~resources=[],
         ~opts={},
       )
-      await TestBus.dispatchCommand("noHandlerCmd", JSON.Null)
+      // Fire-and-forget — the Deferred.await_ will stay pending
+      TestBus.dispatchCommand("noHandlerCmd", JSON.Null)->ignore
       expect(true)->toBe(true)
+      // Complete the Deferred to avoid open handle
+      Deferred.succeed(handlerDeferred, async (_, _) => ())->Effect.runSync->ignore
     })
   })
 })

@@ -1,6 +1,9 @@
 // In-memory EventCollector channel.
 // connect subscribes to all event topics in the bus using the resource name as topic key.
-// Each published event is delivered directly to the runtime handler.
+// Each published event awaits the handler Deferred before delivery — eliminating the race
+// where consumers see None and silently drop events.
+// The runtime's subscriptionLatch is opened after each subscription is registered so
+// callers can await it to know subscriptions are ready before publishing.
 
 module Make = (Bus: InMemory_Bus.T) => {
   type callbackEvent = JSON.t
@@ -45,12 +48,13 @@ module Make = (Bus: InMemory_Bus.T) => {
           // resource.name is the bus topic key set by EventTopicPublisher_InMemory
           let _ = resource.name->Pulumi.Output.apply(topicName => {
             Bus.subscribeToEvents(topicName, async (_service, _meta, json) => {
-              switch runtime.parts.handlerRef.contents {
-              | Some(handler) => await handler(json, ())
-              | None =>
-                Console.log2("InMemory EventCollector: handler not yet registered for", topicName)
-              }
+              let handler =
+                await runtime.parts.handlerDeferred->Deferred.await_->Effect.runPromise
+              await handler(json, ())
             })
+            // Signal that this topic's subscription is registered.
+            // Latch.open_ is idempotent — calling it for multiple topics is safe.
+            runtime.parts.subscriptionLatch->Latch.open_->Effect.runPromise->ignore
           })
         })
       })

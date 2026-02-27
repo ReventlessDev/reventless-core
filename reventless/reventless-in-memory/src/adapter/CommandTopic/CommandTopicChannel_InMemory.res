@@ -70,14 +70,11 @@ module Make = (Bus: InMemory_Bus.T) => {
       channelParts,
       runtimeParts,
     > = (~name as _, ~channel, ~runtime, ~resources as _, ~opts as _) => {
-      Bus.registerCommandHandler(channel.parts.name, (json, ctx) =>
-        switch runtime.parts.handlerRef.contents {
-        | Some(h) => h(json, ctx)
-        | None =>
-          Console.log2("InMemory CommandTopic: handler not registered for", channel.parts.name)
-          Promise.resolve()
-        }
-      )
+      Bus.registerCommandHandler(channel.parts.name, async (json, ctx) => {
+        let handler =
+          await runtime.parts.handlerDeferred->Deferred.await_->Effect.runPromise
+        await handler(json, ctx)
+      })
       []
     }
 
