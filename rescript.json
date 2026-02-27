@@ -11,6 +11,7 @@
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/rescript-ssh2",
     "@reventlessdev/rescript-graphql-yoga",
+    "@reventlessdev/rescript-effect",
     "@reventlessdev/rescript-uuid",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-interop",

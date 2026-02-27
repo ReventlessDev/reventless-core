@@ -1,0 +1,15 @@
+{
+  "name": "@reventlessdev/rescript-effect",
+  "namespace": false,
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "dependencies": []
+}

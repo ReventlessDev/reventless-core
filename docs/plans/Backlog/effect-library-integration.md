@@ -944,33 +944,40 @@ Before each binding file is considered complete:
 
 The clearest near-term path is writing thin ReScript bindings for Effect core primitives and applying them to the in-memory adapter and EventLog operations first — measurable improvements with contained scope before considering the deeper Stream or Schema migration.
 
-**Phase 0 — Create `rescript-effect` package:**
-0. Scaffold `rescript/rescript-effect/` with `package.json`, `rescript.json`
-1. Implement `Duration.res`, `Effect.res`, `Exit.res`, `Cause.res` (foundational)
-2. Implement `Schedule.res`, `Fiber.res` (needed for retry and concurrency)
-3. Implement `Deferred.res`, `Ref.res`, `SynchronizedRef.res`, `Latch.res` (synchronization)
-4. Add `@reventlessdev/rescript-effect` to root `rescript.json` dependencies and run `npm install`
+**Phase 0 — Create `rescript-effect` package: ✅ COMPLETE**
+- [x] Scaffold `rescript/rescript-effect/` with `package.json`, `rescript.json`, `.gitignore`
+- [x] Implement `Duration.res`, `Effect.res`, `Exit.res`, `Cause.res` (foundational)
+- [x] Implement `Schedule.res`, `Fiber.res` (retry and concurrency)
+- [x] Implement `Deferred.res`, `Ref.res`, `SynchronizedRef.res`, `Latch.res` (synchronization)
+- [x] Implement `Queue.res`, `PubSub.res`, `Stm.res` (Phase 2 primitives, included upfront)
+- [x] Add to root `rescript.json` and run `npm install`
+- [x] Full clean build: 13 modules, zero warnings
+- **Implementation notes:**
+  - `await` is a reserved keyword in ReScript — bound as `await_` in `Deferred.res` and `Latch.res`
+  - Circular deps broken via abstract forward-declared types in `Effect.res`: `fiber<'a,'e>`, `latch`, `semaphore`, `schedule<'out,'in_,'r>`; dependent modules use transparent type aliases (e.g. `type t<'a,'e> = Effect.fiber<'a,'e>`)
+  - `Latch` properties (`await`, `open`, `close`) use `@get` (not `@send`) — they are getter properties in Effect, not callable methods
+  - `Stm.TRef` nested module uses local `type stm<'a,'e,'r> = t<'a,'e,'r>` alias to avoid self-referencing `Stm` by name inside the same file
+  - `rebuild` script uses `-with-deps` which is invalid in ReScript v12; use `npx rescript clean && npx rescript build` instead
 
 **Phase 1 — In-memory adapter improvements:**
-5. Replace `handlerRef: ref<option<handler>>` with `Deferred` in `RuntimeEnvironment_InMemory`
-6. Fix `EventCollectorChannel_InMemory` subscription race with `Latch`
-7. Replace `setInterval` in `HeartbeatRunner_InMemory` with `Schedule`-based repeat
+- [ ] Replace `handlerRef: ref<option<handler>>` with `Deferred` in `RuntimeEnvironment_InMemory`
+- [ ] Fix `EventCollectorChannel_InMemory` subscription race with `Latch`
+- [ ] Replace `setInterval` in `HeartbeatRunner_InMemory` with `Schedule`-based repeat
 
 **Phase 2 — Core framework:**
-8. Apply typed errors (`Effect<A,E,R>`) to `EventLog_Operations` — fix the FIXME
-9. Apply typed errors to `QueryDb_Operations` — eliminate silent decode failures
-10. Add `Schedule` + `retry` to `EventLog.append` for DynamoDB throttle handling
-11. Implement `Queue.res`, `PubSub.res`, `Stm.res`
-12. Replace `InMemory_Bus` with `PubSub` for backpressure-realistic testing
-13. Apply STM to `EventLogStorage_InMemory` for atomic append + publish
+- [ ] Apply typed errors (`Effect<A,E,R>`) to `EventLog_Operations` — fix the FIXME
+- [ ] Apply typed errors to `QueryDb_Operations` — eliminate silent decode failures
+- [ ] Add `Schedule` + `retry` to `EventLog.append` for DynamoDB throttle handling
+- [ ] Replace `InMemory_Bus` with `PubSub` for backpressure-realistic testing
+- [ ] Apply STM to `EventLogStorage_InMemory` for atomic append + publish
 
 **Phase 3 — Test infrastructure:**
-14. Migrate test files to `@effect/vitest` + `TestClock`
+- [ ] Migrate test files to `@effect/vitest` + `TestClock`
 
 **Phase 4 — Streaming and future (evaluate when Phases 1–3 are complete):**
-15. Evaluate `Stream`-based `EventLog.replay` for large aggregate support
-16. Evaluate `Effect.Schema` migration (assess scope vs. benefit)
-17. Track `@effect/workflow` and `@effect/cluster` maturity for future architectural decisions
+- [ ] Evaluate `Stream`-based `EventLog.replay` for large aggregate support
+- [ ] Evaluate `Effect.Schema` migration (assess scope vs. benefit)
+- [ ] Track `@effect/workflow` and `@effect/cluster` maturity for future architectural decisions
 
 ---
 
