@@ -43,10 +43,10 @@ module TestBehavior = {
     | Renamed({newName}) => {name: newName}
     }
 
-  let apply = (state: state, event: AggSpec.event): state =>
+  let apply = (_state: state, event: AggSpec.event): state =>
     switch event {
     | Created({name}) => {name: name}
-    | Renamed({newName}) => {...state, name: newName}
+    | Renamed({newName}) => {name: newName}
     }
 
   let create = (command: AggSpec.command, _ctx, _errHandler): array<AggSpec.event> =>

@@ -1,5 +1,5 @@
 // Unit tests for TaskBucket_InMemory.
-// Covers makeHandler (event extraction) and make (empty resources).
+// Covers makeHandler (event extraction) and make (dummy resource for Task_Builder compatibility).
 
 open AsyncTest
 open AsyncTest.Expect
@@ -96,9 +96,12 @@ describe("TaskBucket_InMemory", () => {
   })
 
   describe("make", () => {
-    testPromise("returns empty resources", async () => {
-      let bucket = TaskBucket_InMemory.make(~name="my-bucket", ~opts={})
-      expect(bucket.resources->Array.length)->toBe(0)
-    })
+    testPromise(
+      "returns one dummy resource so Task_Builder can access resources[0]",
+      async () => {
+        let bucket = TaskBucket_InMemory.make(~name="my-bucket", ~opts={})
+        expect(bucket.resources->Array.length)->toBe(1)
+      },
+    )
   })
 })

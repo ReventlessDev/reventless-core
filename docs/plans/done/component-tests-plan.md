@@ -423,6 +423,31 @@ The comment in each explains the original blocker:
 | `reventless-in-memory/tests/components/scheduler/SchedulerTest.res` | "adapter tests cover low-level" | Adapter tests exist; add builder-level test: scheduler fires → event published on interval |
 | `reventless-in-memory/tests/components/commandgenerator/CommandGeneratorTest.res` | "requires GraphQL server setup" | The GraphQL layer is optional; test the builder wiring without GraphQL by calling `generateCommand` directly via `TestRunner.resolve` |
 
+## Phase 7 — Remaining Placeholders
+
+After Phase 6, two placeholders remained:
+
+| File | Placeholder reason | Resolution |
+|------|--------------------|------------|
+| `reventless-core/tests/extensionpoint/ExtensionPointOperationsTest.res` | "requires plugin lifecycle setup" | Implemented unit tests for `ExtensionPoint_Operations.Make.outgoingEventHandler`; covers AbstractPublishEvent, AbstractCall, AbstractPublishEventAsync, and unknown-aggregate error path |
+| `reventless-in-memory/tests/components/task/TaskTest.res` | "adapter-level tests are in TaskBucketTest.res" | Fixed `TaskBucket_InMemory.make` to return a dummy resource (was `[]`, which caused `Array.getUnsafe(0)` to throw in `Task_Builder`); implemented builder integration tests for component creation and output structure |
+
+### Notes on Phase 7 implementation
+
+**ExtensionPointOperationsTest.res**: The operations module handles OUTGOING events from aggregates to the EP.
+Tests exercise `outgoingEventHandler` with inline mock mappings that return each action type.
+The "missing mapping" error path is also tested.
+
+**TaskTest.res + TaskBucket_InMemory fix**: The task builder calls `(bucket.resources->Array.getUnsafe(0)).id`
+unconditionally when `config.buckets` is present. `TaskBucket_InMemory.make` previously returned `{resources: []}`,
+making it impossible to create a task with buckets in tests. The fix adds one dummy resource.
+`TaskBucketTest.res` was updated to reflect the new expected resource count (1 instead of 0).
+
+The callback-to-`publishToAggregates` path cannot be tested end-to-end from outside the builder because
+`TaskRuntime_Builder_PerBucket.forBucketCallback` creates the runtime locally and `TaskBucket_InMemory.connect`
+is a no-op. This path is covered at the unit level by `TaskBucketTest.res` (handler extraction)
+and `Task_Builder.Make` (wiring).
+
 ---
 
 ## Implementation steps
@@ -462,6 +487,12 @@ The comment in each explains the original blocker:
 - [x] **6d** Implement `tests/components/scheduler/SchedulerTest.res` (replace placeholder)
 - [x] **6e** Implement `tests/components/commandgenerator/CommandGeneratorTest.res` (replace placeholder)
 - [x] **6f** `npm test` in reventless-in-memory; 125 tests, 26 suites — all pass
+- [x] **7a** Implement `tests/extensionpoint/ExtensionPointOperationsTest.res` (reventless-core) — covers AbstractPublishEvent, AbstractCall, AbstractPublishEventAsync, unknown-aggregate error
+- [x] **7b** Fix `TaskBucket_InMemory.make` to return a dummy resource; update `TaskBucketTest.res` expected count
+- [x] **7c** Implement `tests/components/task/TaskTest.res` + `TaskFixtures.res` — covers component creation, output name, bucketNames structure, and bucket id resolution
+- [x] **Final (Phase 7)** `npm test` across both packages; no regressions
+  - reventless-core: 172 tests, 19 suites — all pass
+  - reventless-in-memory: 129 tests, 26 suites — all pass
 
 ---
 

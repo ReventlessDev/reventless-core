@@ -108,9 +108,9 @@ describe("TaskBucket_InMemory", () => {
     });
   });
   describe("make", () => {
-    test("returns empty resources", async () => {
+    test("returns one dummy resource so Task_Builder can access resources[0]", async () => {
       let bucket = TaskBucket_InMemory$ReventlessInMemory.make("my-bucket", {});
-      expect(bucket.resources.length).toBe(0);
+      expect(bucket.resources.length).toBe(1);
     });
   });
 });

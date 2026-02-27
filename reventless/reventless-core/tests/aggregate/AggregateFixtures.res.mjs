@@ -62,7 +62,7 @@ function init(event) {
   }
 }
 
-function apply(state, event) {
+function apply(_state, event) {
   if (event.TAG === "Created") {
     return {
       name: event.name

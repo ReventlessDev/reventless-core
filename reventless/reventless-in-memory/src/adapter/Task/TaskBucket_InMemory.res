@@ -53,6 +53,18 @@ let makeHandler = (callback: Task.bucketCallback): Runtime.eventHandler<
   }
 }
 
-let make: Task_Adapter.bucketMaker<bucketParts> = (~name as _, ~opts as _) => {
-  {resources: [], parts: ()}
+let make: Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts as _) => {
+  // Return a single dummy resource so Task_Builder can access Array.getUnsafe(0).id.
+  {
+    resources: [
+      {
+        name: name->Pulumi.Output.make,
+        id: name->Pulumi.Output.make,
+        urn: ("urn:" ++ name)->Pulumi.Output.make,
+        info: "in-memory"->Pulumi.Output.make,
+        service: "InMemory"->Pulumi.Output.make,
+      },
+    ],
+    parts: (),
+  }
 }
