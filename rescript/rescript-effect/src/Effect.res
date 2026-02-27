@@ -157,6 +157,23 @@ external sleep: Duration.t => t<unit, 'e, 'r> = "sleep"
 @module("effect") @scope("Effect")
 external timeout: (t<'a, 'e, 'r>, Duration.t) => t<option<'a>, 'e, 'r> = "timeout"
 
+// ─── Dependency injection ─────────────────────────────────────────────────
+
+// Provide a Layer to satisfy an Effect's requirements ('r channel).
+// After providing a layer that covers all requirements, the returned Effect
+// has unit requirements and can be run with runPromise / runSync.
+// The 'layer type is polymorphic — pass any TestContext.layer or custom Layer.
+@module("effect") @scope("Effect")
+external provide: (t<'a, 'e, 'r>, 'layer) => t<'a, 'e, unit> = "provide"
+
+// ─── Fiber control ───────────────────────────────────────────────────────
+
+// Yield control to the Effect scheduler — allows other fibers to run before continuing.
+// Useful when testing concurrent effects or when you need to ensure a forked fiber
+// has had a chance to start.
+@module("effect") @scope("Effect")
+external yieldNow: unit => t<unit, 'e, 'r> = "yieldNow"
+
 // ─── Running effects ─────────────────────────────────────────────────────
 
 // Run to Promise. Rejects on typed errors and defects.

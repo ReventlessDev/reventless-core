@@ -18,12 +18,20 @@ module ItemEventLogSpec = {
 
 let storedEvents: ref<dict<array<JSON.t>>> = ref(Dict.make())
 let failNextAppend = ref(false)
+// Inject N transient failures: each call decrements the counter and returns ThrottlingException
+let failNextAppendsWithTransient: ref<int> = ref(0)
+// Total number of storage.append calls (including retried attempts)
+let appendCallCount: ref<int> = ref(0)
 
 let mockStorage: EventLog_Adapter.operations = {
   append: async (_seqNr, id, jsons) => {
+    appendCallCount := appendCallCount.contents + 1
     if failNextAppend.contents {
       failNextAppend := false
       Error("mock storage failure")
+    } else if failNextAppendsWithTransient.contents > 0 {
+      failNextAppendsWithTransient := failNextAppendsWithTransient.contents - 1
+      Error("ThrottlingException: Rate exceeded")
     } else {
       let existing = storedEvents.contents->Dict.get(id)->Option.getOr([])
       storedEvents.contents->Dict.set(id, existing->Array.concat(jsons))
@@ -84,5 +92,7 @@ let makeEvent' = (id, event) => {
 let reset = () => {
   storedEvents := Dict.make()
   failNextAppend := false
+  failNextAppendsWithTransient := 0
+  appendCallCount := 0
   capturedPublishes := []
 }

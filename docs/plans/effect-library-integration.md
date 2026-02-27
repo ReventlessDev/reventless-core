@@ -993,9 +993,26 @@ The clearest near-term path is writing thin ReScript bindings for Effect core pr
   - `Effect.either` also returns Effect's Either, not ReScript result — do not use for bridging
   - **Build:** 615 modules, zero warnings; 172/172 reventless-core + 129/129 reventless-in-memory tests pass
 
-**Phase 3 — Test infrastructure:**
-- [ ] Migrate test files to `@effect/vitest` + `TestClock`
-- [ ] Replace `InMemory_Bus` event delivery with Effect Queue (requires `TestClock` for deterministic timing)
+**Phase 3 — Test infrastructure: ✅ COMPLETE**
+- [x] Add `TestClock.res` bindings: `adjust(duration)`, `currentTimeMillis` (both at `@module("effect") @scope("TestClock")`)
+- [x] Add `TestContext.res` bindings: abstract `layer` type, `testContext` Layer value (`@scope("TestContext") external testContext = "TestContext"`)
+- [x] Add `Effect.provide` and `Effect.yieldNow` to `Effect.res`
+- [x] Add `AsyncTest.testPromiseWithTimeout` for tests requiring custom Jest timeouts
+- [x] Extend `EventLogFixtures` with counter-based mocks: `failNextAppendsWithTransient: ref<int>`, `appendCallCount: ref<int>`
+- [x] Write `EventLogRetryTest.res` — 13 tests verifying retry behavior:
+  - `isTransient` predicate (7 tests): ThrottlingException, ProvisionedThroughputExceededException, ServiceUnavailable, RequestLimitExceeded, InternalServerError are transient; ValidationException and generic failures are not
+  - Permanent failure (2 tests): returns Error immediately, no publish, exactly 1 storage call
+  - Transient failure retry (3 tests): 1 failure → 2 calls → Ok; events stored+published; 2 failures → 3 calls → Ok
+  - Retry exhaustion (1 test): 6 transient failures exhaust 5 retries → Error, no publish, exactly 6 storage calls (12s timeout)
+- **Deferred:** Replace `InMemory_Bus` event delivery with Effect Queue — `Ops.append` runs Effect internally via `Effect.runPromiseExit` (creates its own runtime), so `Effect.provide(TestContext)` from outside cannot inject TestClock into those retry sleeps. Queue replacement requires refactoring `append` to expose an Effect (rather than a promise) or using a different concurrency approach. Deferred to Phase 4.
+- **Build:** 196 modules, zero warnings; 185/185 tests pass (13 new retry tests)
+- **Implementation notes:**
+  - `TC.adjust` is a function, `TC.currentTimeMillis` is a value (Effect object) — bind accordingly
+  - `TestContext.TestContext` (capital T) is the Layer; `testContext` is the binding name in ReScript
+  - `Effect.provide` is typed as `('layer) => t<'a, 'e, unit>` — polymorphic layer type, unit requirements after providing
+  - `Effect.yieldNow` is a function `(unit) => Effect.t<unit,'e,'r>` in Effect v3 (takes options? object — bind as unit)
+  - Retry exhaustion test takes ~3100ms (real time, no TestClock) — 12s timeout gives 2× headroom above jitter ceiling
+  - Using TestClock for retry delays requires `append` to return `Effect.t` instead of `promise` — architectural change deferred
 
 **Phase 4 — Streaming and future (evaluate when Phases 1–3 are complete):**
 - [ ] Evaluate `Stream`-based `EventLog.replay` for large aggregate support

@@ -25,6 +25,10 @@
 // Registers an async test that Jest properly awaits before running the next test.
 @val external testPromise: (string, unit => promise<unit>) => unit = "test"
 
+// Registers an async test with a custom timeout (milliseconds).
+// Use for tests that involve real-time delays (e.g., retry exhaustion tests).
+@val external testPromiseWithTimeout: (string, unit => promise<unit>, int) => unit = "test"
+
 // Opaque handle returned by `expect`.
 type expectResult
 

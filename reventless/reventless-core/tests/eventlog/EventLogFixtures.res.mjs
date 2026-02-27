@@ -31,12 +31,28 @@ let failNextAppend = {
   contents: false
 };
 
+let failNextAppendsWithTransient = {
+  contents: 0
+};
+
+let appendCallCount = {
+  contents: 0
+};
+
 async function mockStorage_append(_seqNr, id, jsons) {
+  appendCallCount.contents = appendCallCount.contents + 1 | 0;
   if (failNextAppend.contents) {
     failNextAppend.contents = false;
     return {
       TAG: "Error",
       _0: "mock storage failure"
+    };
+  }
+  if (failNextAppendsWithTransient.contents > 0) {
+    failNextAppendsWithTransient.contents = failNextAppendsWithTransient.contents - 1 | 0;
+    return {
+      TAG: "Error",
+      _0: "ThrottlingException: Rate exceeded"
     };
   }
   let existing = Stdlib_Option.getOr(storedEvents.contents[id], []);
@@ -107,6 +123,8 @@ function makeEvent$p(id, event) {
 function reset() {
   storedEvents.contents = {};
   failNextAppend.contents = false;
+  failNextAppendsWithTransient.contents = 0;
+  appendCallCount.contents = 0;
   capturedPublishes.contents = [];
 }
 
@@ -114,6 +132,8 @@ export {
   ItemEventLogSpec,
   storedEvents,
   failNextAppend,
+  failNextAppendsWithTransient,
+  appendCallCount,
   mockStorage,
   capturedPublishes,
   MockEventTopic,
