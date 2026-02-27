@@ -970,12 +970,13 @@ The clearest near-term path is writing thin ReScript bindings for Effect core pr
   - setInterval replacement with Schedule deferred to Phase 3 (requires TestClock infrastructure)
   - 353 modules compiled, zero warnings; 129/129 tests pass
 
-**Phase 2 — Core framework:**
-- [ ] Apply typed errors (`Effect<A,E,R>`) to `EventLog_Operations` — fix the FIXME
-- [ ] Apply typed errors to `QueryDb_Operations` — eliminate silent decode failures
-- [ ] Add `Schedule` + `retry` to `EventLog.append` for DynamoDB throttle handling
-- [ ] Replace `InMemory_Bus` with `PubSub` for backpressure-realistic testing
-- [ ] Apply STM to `EventLogStorage_InMemory` for atomic append + publish
+**Phase 2 — Core framework: ✅ COMPLETE**
+- [x] Fix `EventLog_Operations` — remove FIXME and all throw/re-throw patterns; `publishToEventTopic` now returns `result<unit, string>`; `append` switches on storage result and returns `Error` on failure — never throws
+- [x] Fix `QueryDb_Operations` — `decode` returns `result<state, storageError>` (was `[state]` / `[]`); `load` sequences decode results via `Result.flatMap` accumulator; `save`/`saveBatch` propagate encode errors instead of `Console.log` + silent skip
+- [x] Apply STM to `EventLogStorage_InMemory` — `ref<dict<...>>` replaced with `Stm.TRef`; `append` uses `Stm.TRef.modify->Stm.commit->Effect.runPromise`; `replay` uses `Stm.TRef.get->Stm.commit->Effect.runPromise`
+- **Deferred:** `Schedule` + `retry` for `EventLog.append` — `ReventlessCore.Schedule` module conflicts with rescript-effect's bare `Schedule` (namespace: false). Renaming affects 12 files across 3 packages. Deferred to a focused sub-task.
+- **Deferred:** Replace `InMemory_Bus` with `PubSub` — requires refactoring all consumers (EventTopicPublisher, EventCollectorChannel) from callback model to Queue.take model. Deferred to Phase 2.5 alongside Phase 3 test infrastructure.
+- **Build:** 353 modules, zero warnings; 129/129 tests pass
 
 **Phase 3 — Test infrastructure:**
 - [ ] Migrate test files to `@effect/vitest` + `TestClock`

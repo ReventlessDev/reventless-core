@@ -15,14 +15,26 @@ function Make(ReadModelSpec) {
         state = Message$ReventlessCore.decode(stateJson, ReadModelSpec.stateSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
-        console.log(`QueryDb: Error: Couldn't decode state for ` + ReadModelSpec.Id.toString(id) + `: ` + Stdlib_Option.getOrThrow(JSON.stringify(err), undefined));
-        return [];
+        let errStr = Stdlib_Option.getOr(JSON.stringify(err), "unknown error");
+        return {
+          TAG: "Error",
+          _0: {
+            TAG: "NotLoadedFromStorage",
+            _0: `QueryDb: Error: Couldn't decode state for ` + ReadModelSpec.Id.toString(id) + `: ` + errStr
+          }
+        };
       }
-      return [state];
+      return {
+        TAG: "Ok",
+        _0: state
+      };
     };
     let load = async id => {
       let result = await Ops.jsonOps.load(ReadModelSpec.Id.toString(id));
-      return Stdlib_Result.map(result, states => states.map(state => decode(id, state)).flat());
+      return Stdlib_Result.flatMap(result, states => Stdlib_Array.reduce(states, {
+        TAG: "Ok",
+        _0: []
+      }, (acc, state) => Stdlib_Result.flatMap(acc, arr => Stdlib_Result.map(decode(id, state), s => arr.concat([s])))));
     };
     let save = async (id, state, saveMode, ttl) => {
       let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
@@ -30,34 +42,54 @@ function Make(ReadModelSpec) {
         dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
         return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
       } else {
-        console.log("QueryDB.saveState: Error: Couldn't decodeObject:", JSON.stringify(state));
         return {
           TAG: "Error",
           _0: {
             TAG: "NotSavedToStorage",
-            _0: "Couldn't decodeObject"
+            _0: "Couldn't encode state as JSON object"
           }
         };
       }
     };
     let saveBatch = async states => {
-      let batch = Stdlib_Array.filterMap(states, param => {
+      let batchResult = Stdlib_Array.reduce(states, {
+        TAG: "Ok",
+        _0: []
+      }, (acc, param) => {
+        let ttl = param[2];
         let state = param[1];
         let id = param[0];
-        let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
-        if (dict !== undefined) {
-          dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
-          return [
-            ReadModelSpec.Id.toString(id),
-            dict,
-            param[2]
-          ];
-        } else {
-          console.log("QueryDB.saveStates: Error: Couldn't decodeObject:", JSON.stringify(state));
-          return;
-        }
+        return Stdlib_Result.flatMap(acc, batch => {
+          let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
+          if (dict !== undefined) {
+            dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
+            return {
+              TAG: "Ok",
+              _0: batch.concat([[
+                  ReadModelSpec.Id.toString(id),
+                  dict,
+                  ttl
+                ]])
+            };
+          } else {
+            return {
+              TAG: "Error",
+              _0: {
+                TAG: "NotSavedToStorage",
+                _0: `Couldn't encode state for ` + ReadModelSpec.Id.toString(id)
+              }
+            };
+          }
+        });
       });
-      return await Ops.jsonOps.saveBatch(batch);
+      if (batchResult.TAG === "Ok") {
+        return await Ops.jsonOps.saveBatch(batchResult._0);
+      } else {
+        return {
+          TAG: "Error",
+          _0: batchResult._0
+        };
+      }
     };
     let count = async (id, fieldName, inc) => await Ops.jsonOps.count(ReadModelSpec.Id.toString(id), fieldName, inc);
     let $$delete = async (id, subId) => await Ops.jsonOps.delete(ReadModelSpec.Id.toString(id), subId);

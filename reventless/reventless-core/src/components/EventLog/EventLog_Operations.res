@@ -35,46 +35,33 @@ module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
 
   let encodeEvents' = (events', id) => events'->Array.map(event => encodeEvent'(id, event))
 
-  let storageAppendErrorHandler = (id, err) => {
-    let errMsg =
-      `EventLog: Error: Couldn't append for ${Spec.name}(${id->Spec.Id.toString}):` ++
-      err->Util.Error.message
-    Console.log(errMsg)
-    errMsg->Error
-  }
-
+  // Returns result<unit, string> — never throws. Publish failures are surfaced as Error.
   let publishToEventTopic = async (id, events') => {
-    try await Ops.eventTopic.publish(events') catch {
+    try {
+      let _ = await Ops.eventTopic.publish(events')
+      Ok()
+    } catch {
     | JsExn(err) =>
-      let msg = `EventLog.appendFn(${id->Spec.Id.toString}): EventTopic.publish Error: `
-      Console.log2(msg, err)
-      JsError.throwWithMessage(msg ++ err->JsExn.message->Option.getOr("no error message given"))
+      let msg =
+        `EventLog.append(${id->Spec.Id.toString}): EventTopic.publish Error: ` ++
+        err->JsExn.message->Option.getOr("no error message given")
+      Error(msg)
     }
   }
 
-  let catchErrorHandler = exn => {
-    Console.log2("EventLog.append: Error:", exn)
-    throw(exn)
-  }
-
-  // FIXME: append is supposed to return result<unit, string/*errorMessage*/>, but at the same moment, we throw errors
-  //        We should use result everywhere instead of throwing errors / exceptions
-  let append = async (
-    sequenceNr: int,
-    id: 'specId,
-    events': array<ReventlessCore.Message.event'<'specId, 'specEvent>>,
-  ) => {
-    try {
-      let eventsJson = events'->encodeEvents'(id)
-
-      switch await Ops.storage.append(sequenceNr, id->Spec.Id.toString, eventsJson) {
-      | appendResult =>
-        await publishToEventTopic(id, events')
-        appendResult
-      | exception JsExn(e) => storageAppendErrorHandler(id, e)
-      }
-    } catch {
-    | exn => catchErrorHandler(exn)
+  // append returns result<unit, string> — never throws.
+  // Storage errors (including exceptions) and publish errors are surfaced as Error values.
+  let append = async (sequenceNr, id, events') => {
+    let eventsJson = events'->encodeEvents'(id)
+    let idStr = id->Spec.Id.toString
+    switch await Ops.storage.append(sequenceNr, idStr, eventsJson) {
+    | Ok(_) => await publishToEventTopic(id, events')
+    | Error(msg) =>
+      Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${msg}`)
+    | exception JsExn(e) =>
+      Error(
+        `EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ` ++ e->Util.Error.message,
+      )
     }
   }
 

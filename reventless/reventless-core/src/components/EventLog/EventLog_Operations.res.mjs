@@ -34,47 +34,46 @@ function Make(Spec) {
     });
     let publishToEventTopic = async (id, events$p) => {
       try {
-        return await Ops.eventTopic.publish(events$p);
+        await Ops.eventTopic.publish(events$p);
+        return {
+          TAG: "Ok",
+          _0: undefined
+        };
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {
-          let err$1 = err._1;
-          let msg = `EventLog.appendFn(` + Spec.Id.toString(id) + `): EventTopic.publish Error: `;
-          console.log(msg, err$1);
-          return Stdlib_JsError.throwWithMessage(msg + Stdlib_Option.getOr(Stdlib_JsExn.message(err$1), "no error message given"));
+          let msg = `EventLog.append(` + Spec.Id.toString(id) + `): EventTopic.publish Error: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "no error message given");
+          return {
+            TAG: "Error",
+            _0: msg
+          };
         }
         throw err;
       }
     };
     let append = async (sequenceNr, id, events$p) => {
+      let eventsJson = encodeEvents$p(events$p, id);
+      let idStr = Spec.Id.toString(id);
+      let msg;
       try {
-        let eventsJson = encodeEvents$p(events$p, id);
-        let exit = 0;
-        let appendResult;
-        try {
-          appendResult = await Ops.storage.append(sequenceNr, Spec.Id.toString(id), eventsJson);
-          exit = 1;
-        } catch (raw_e) {
-          let e = Primitive_exceptions.internalToException(raw_e);
-          if (e.RE_EXN_ID === "JsExn") {
-            let err = e._1;
-            let errMsg = `EventLog: Error: Couldn't append for ` + Spec.name + `(` + Spec.Id.toString(id) + `):` + Util_Error$ReventlessCore.message(undefined, err);
-            console.log(errMsg);
-            return {
-              TAG: "Error",
-              _0: errMsg
-            };
-          }
-          throw e;
+        msg = await Ops.storage.append(sequenceNr, idStr, eventsJson);
+      } catch (raw_e) {
+        let e = Primitive_exceptions.internalToException(raw_e);
+        if (e.RE_EXN_ID === "JsExn") {
+          return {
+            TAG: "Error",
+            _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + idStr + `): ` + Util_Error$ReventlessCore.message(undefined, e._1)
+          };
         }
-        if (exit === 1) {
-          await publishToEventTopic(id, events$p);
-          return appendResult;
-        }
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        console.log("EventLog.append: Error:", exn);
-        throw exn;
+        throw e;
+      }
+      if (msg.TAG === "Ok") {
+        return await publishToEventTopic(id, events$p);
+      } else {
+        return {
+          TAG: "Error",
+          _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + idStr + `): ` + msg._0
+        };
       }
     };
     let replay = async id => {
