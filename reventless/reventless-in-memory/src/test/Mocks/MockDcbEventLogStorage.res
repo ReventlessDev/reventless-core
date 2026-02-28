@@ -105,9 +105,15 @@ let make = (~name="mock-dcb-log", ~indexes: array<string>=[], ~opts: Pulumi.Cust
     publishedEventsRef := publishedEventsRef.contents->Array.concat([{service, meta, json}])
   }
 
+  let readStream = (~query, ~after=?) =>
+    Effect.promise(() => read(~query, ~after?))
+    ->Effect.map(result => result.events)
+    ->Stream.fromEffect
+    ->Stream.flatMap(arr => Stream.fromIterable(arr))
+
   let storage: DcbEventLog_Adapter.storage = {
     resources: [],
-    operations: Pulumi.Output.make({DcbEventLog_Adapter.read, append}),
+    operations: Pulumi.Output.make({DcbEventLog_Adapter.read, append, readStream}),
   }
 
   let reset = () => {

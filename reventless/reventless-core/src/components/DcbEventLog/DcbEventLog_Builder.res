@@ -69,6 +69,7 @@ module Make = (
         let ops: DcbEventLog.operations<_> = {
           read: Ops.read,
           append: Ops.append,
+          readStream: Ops.readStream,
         }
         ops
       }),

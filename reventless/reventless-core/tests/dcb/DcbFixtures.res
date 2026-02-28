@@ -173,6 +173,12 @@ let makeMockStorage = (): mockStorage => {
     }
   }
 
+  let readStream = (~query, ~after=?) =>
+    Effect.promise(() => read(~query, ~after?))
+    ->Effect.map(result => result.events)
+    ->Stream.fromEffect
+    ->Stream.flatMap(arr => Stream.fromIterable(arr))
+
   let mockPublishJson: EventTopic.publishJson = async (service, meta, json) => {
     publishedEventsRef := publishedEventsRef.contents->Array.concat([{service, meta, json}])
   }
@@ -185,7 +191,7 @@ let makeMockStorage = (): mockStorage => {
   }
 
   {
-    operations: {read, append},
+    operations: {read, append, readStream},
     getEvents: () => events.contents,
     publishedEvents: publishedEventsRef,
     mockPublishJson,

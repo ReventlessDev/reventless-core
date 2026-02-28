@@ -25,9 +25,12 @@ let testDcbEventLog_read = EventLogOps.read;
 
 let testDcbEventLog_append = EventLogOps.append;
 
+let testDcbEventLog_readStream = EventLogOps.readStream;
+
 let testDcbEventLog = {
   read: testDcbEventLog_read,
-  append: testDcbEventLog_append
+  append: testDcbEventLog_append,
+  readStream: testDcbEventLog_readStream
 };
 
 let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({

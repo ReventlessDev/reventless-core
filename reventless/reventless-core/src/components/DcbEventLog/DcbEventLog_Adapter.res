@@ -25,6 +25,10 @@ type operations = {
     array<rawStoredEvent>,
     ~condition: Reventless.DcbTag.appendCondition=?,
   ) => promise<result<Reventless.DcbTag.sequencePosition, string>>,
+  readStream: (
+    ~query: Reventless.DcbTag.query,
+    ~after: Reventless.DcbTag.sequencePosition=?,
+  ) => Stream.t<rawSequencedEvent, string, unit>,
 }
 
 type storage = {

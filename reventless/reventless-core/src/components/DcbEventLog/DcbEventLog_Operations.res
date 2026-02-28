@@ -9,6 +9,7 @@ module type T = {
   module Spec: Reventless.DcbEventLog.Spec
   let read: DcbEventLog.read<Spec.event>
   let append: DcbEventLog.append<Spec.event>
+  let readStream: DcbEventLog.readStream<Spec.event>
 }
 
 module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
@@ -75,4 +76,8 @@ module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Sp
     }
     result
   }
+
+  let readStream: DcbEventLog.readStream<Spec.event> = (~query, ~after=?) =>
+    Ops.storage.readStream(~query, ~after?)
+    ->Stream.map(raw => decodeEvent(raw))
 }

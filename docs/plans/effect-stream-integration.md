@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** In progress — Phases A–C complete, Phases D–E pending
+**Status:** In progress — Phases A–D complete, Phase E pending
 **Created:** 2026-02-28
 **Revised:** 2026-02-28
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
@@ -896,7 +896,7 @@ describe("scan with ~limit", () => {
 
 ---
 
-### Phase D — DcbEventLog.readStream + StateChangeSlice_Callback Adaptation
+### Phase D — DcbEventLog.readStream + StateChangeSlice_Callback Adaptation ✅ COMPLETE
 
 **Goal:** DCB decision-model building pages through events lazily rather than loading the full
 matching event set into memory on every command. Structurally mirrors Phase B.
@@ -1046,12 +1046,28 @@ describe("DcbEventLog.readStream", () => {
 })
 ```
 
-#### D.3 Acceptance criteria
+#### D.3 Acceptance criteria ✅
 
-- All existing DCB E2E tests pass unchanged
-- `DcbEventLogStreamTest.res` tests pass
-- StateChangeSlice integration regression test passes
-- Zero new warnings
+- All existing DCB E2E tests pass unchanged ✅
+- `DcbEventLogStreamTest.res` tests pass (8 tests) ✅
+- StateChangeSlice integration regression test passes ✅
+- Zero new warnings ✅
+
+**Implementation notes:**
+- `reventless-spec` required `rescript-effect` added to both `package.json` and `rescript.json`
+  (not previously a dependency — needed for `Stream.t` in `Reventless.DcbEventLog.readStream` type).
+- `readStream` added to spec-level `Reventless.DcbEventLog.operations<'event>` and propagated
+  through `DcbEventLog_Adapter.operations`, `DcbEventLog_Operations.T/Make`,
+  `DcbEventLog_Builder`, `DcbEventLogStorage_InMemory`, `DcbEventLogStorage_DynamoDb`.
+- In-memory implementation: `Effect.promise(read) →Stream.fromEffect → Stream.flatMap(fromIterable)`.
+  Same pattern as Phase B's EventLog replayStream in-memory adapter.
+- DynamoDB implementation wraps existing `read` call with `Effect.tryPromise` (same bridge as
+  Phase B DynamoDB `replayStream`); full DynamoDB pagination a follow-up.
+- `MockDcbEventLogStorage.res` and `DcbStateChangeSliceTest.res` updated with `readStream` field.
+- `StateChangeSlice_Callback.handleSingleCommand` replaced `dcbEventLog.read` + `Array.reduce`
+  with `dcbEventLog.readStream → Stream.runFold` producing `(decisionModel, headPosition)`.
+- `reventless-core`: 185 tests pass unchanged.
+- `reventless-in-memory`: 148 tests pass (was 140 after Phase C, +8 from new stream tests).
 
 ---
 

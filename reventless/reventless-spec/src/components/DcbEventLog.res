@@ -32,7 +32,13 @@ type append<'event> = (
   ~condition: DcbTag.appendCondition=?,
 ) => promise<result<DcbTag.sequencePosition, string>>
 
+type readStream<'event> = (
+  ~query: DcbTag.query,
+  ~after: DcbTag.sequencePosition=?,
+) => Stream.t<sequencedEvent<'event>, string, unit>
+
 type operations<'event> = {
   read: read<'event>,
   append: append<'event>,
+  readStream: readStream<'event>,
 }
