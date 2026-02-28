@@ -1,6 +1,6 @@
-# Plan: Stream-Based Handler Implementation (Phases J–L)
+# Plan: Stream-Based Handler Implementation (Phases J–P)
 
-**Status:** Phases J–K complete; Phase L pending
+**Status:** Phases J–K complete; Phase L pending; Phases M–P planned
 
 **Created:** 2026-02-28
 
@@ -413,3 +413,605 @@ the runtime (which is now stream-based after K.3).
    subscribe/unsubscribe operations race with a publishEvent, the count may be stale. This is
    the same limitation as the current `subscribeToEvents` implementation; document but do not
    fix in this plan.
+
+---
+
+## Phase M — Native Stream Event Handlers
+
+**Scope:** Remove all `fromArrayHandler` bridges from callback modules. Rewrite every
+array-based event-handler implementation as a native stream consumer. Apply the naming
+convention below to all handler types and values throughout the codebase.
+
+**Naming convention (established across Phases M and N):**
+
+> `json` in the name signals the handler works with `JSON.t` (the wire format).
+> No qualifier signals the handler works with typed domain objects (`'event`, `'command`).
+> Types are nouns; values are verbs.
+
+| Encoding | Direction | Type name | Value name |
+|----------|-----------|-----------|------------|
+| Typed | events | `eventsHandler` | `handleEvents` |
+| Typed | commands | `commandsHandler` | `handleCommands` |
+| JSON | events | `jsonEventsHandler` | `handleJsonEvents` |
+| JSON | commands | `jsonCommandsHandler` | `handleJsonCommands` |
+
+### M.1 — Type renames: apply the json/typed naming rule
+
+Several types are JSON-based but their names lack the `json` qualifier. Rename them now so
+the type vocabulary is consistent before rewriting implementations.
+
+**`Counter.counterEventsHandler` → `Counter.jsonEventsHandler`**
+
+File: `reventless-spec/src/components/Counter.res`
+
+```rescript
+// Before
+type counterEventsHandler = array<JSON.t> => promise<unit>
+
+// After — renamed AND changed to stream shape
+type jsonEventsHandler = Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>
+```
+
+The `counter` prefix was redundant: the module already says `Counter`. The `json` qualifier
+makes the encoding explicit. All callers update their type references accordingly.
+
+**`Extension.eventHandler` → `Extension.jsonEventsHandler`**
+
+File: `reventless-core/src/components/Extension/Extension.res`
+
+```rescript
+// Before
+type eventHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
+
+// After
+type jsonEventsHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
+```
+
+Singular `event` → plural `events` for consistency; `json` qualifier added.
+
+**`ExtensionPoint.eventHandler` → `ExtensionPoint.jsonEventsHandler`**
+
+File: `reventless-core/src/components/ExtensionPoint/ExtensionPoint.res`
+
+Same rename as Extension above.
+
+All `operations` records referencing these types (`incomingEventHandler`,
+`outgoingEventHandler`) use the renamed type but keep their field names.
+
+### M.2 — SideEffectHandler_Callback
+
+**File:** `reventless-core/src/components/SideEffectHandler/SideEffectHandler_Callback.res`
+
+Remove `eventsHandlerImpl` + `EventCollector.fromArrayHandler` bridge. Rewrite as a native
+stream handler. Rename the exposed value from `eventsHandler` to `handleJsonEvents` (JSON-based
+handler, verb form):
+
+```rescript
+// Before — module type T
+let eventsHandler: EventCollector.jsonEventsHandler
+
+// After — module type T
+let handleJsonEvents: EventCollector.jsonEventsHandler
+```
+
+```rescript
+// Before — implementation
+let eventsHandlerImpl = (eventsJson': array<JSON.t>) => {
+  eventsJson'
+  ->Array.map(async eventJson' => ...)
+  ->Promise.all
+  ->Util.Promise.toUnit
+}
+let eventsHandler = EventCollector.fromArrayHandler(eventsHandlerImpl)
+
+// After — implementation
+let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
+  stream
+  ->Stream.mapEffect(eventJson' =>
+    switch Spec.sideEffects->findSideEffect(eventJson') {
+    | Some((eventObj, eventMeta, sideEffect)) =>
+      Effect.promise(async () => {
+        module SideEffect = unpack(sideEffect)
+        // ... same logic as before ...
+      })
+    | None => Effect.succeed(())
+    }
+  )
+  ->Stream.runDrain
+```
+
+### M.3 — ReadModel_Callback
+
+**File:** `reventless-core/src/components/ReadModel/ReadModel_Callback.res`
+
+Current `eventsHandler` is `array<JSON.t> => promise<unit>`, wrapped at the builder call site
+with `fromArrayHandler`. Convert to a native stream handler, remove the call-site wrapper, and
+rename to `handleJsonEvents`:
+
+```rescript
+// Before
+let eventsHandler = jsons => {
+  jsons
+  ->Array.mapWithIndex((json, idx) => {
+    json->EventProjector.map(~sourceName=Some(sourceName))
+  })
+  ->Array.flat
+  ->Projection.handleActions(Spec.operations, ReadModelSpec.subIdConfig)
+}
+
+// After
+let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
+  stream
+  ->Stream.mapEffect(json =>
+    Effect.sync(() => {
+      let sourceName = (json->Message.decode(Reventless.Message.contextSchema)).meta.service
+      Console.log2(`ReadModel ${ReadModelSpec.name}: handling event from ${sourceName}:`, json)
+      json->EventProjector.map(~sourceName=Some(sourceName))
+    })
+  )
+  ->Stream.flatMap(actions => Stream.fromIterable(actions))
+  ->Stream.runForEach(action =>
+    Effect.promise(() =>
+      Projection.handleAction(Spec.operations, ReadModelSpec.subIdConfig, action)
+    )
+  )
+```
+
+Also remove `fromArrayHandler` wrapper in `ReadModel_Builder.res` and update the call site
+reference from `Callback.eventsHandler` to `Callback.handleJsonEvents`.
+
+### M.4 — EventMapper_Callback
+
+**File:** `reventless-core/src/components/EventMapper/EventMapper_Callback.res`
+
+The `commonEventsHandler` design is "collect all actions then publish as a batch". This
+ordering guarantee must be preserved in the stream version using `Stream.runFold`.
+
+In `MakeEventCollectorHandler`, rename `eventsHandler` → `handleJsonEvents`. Use
+`Stream.runFold` to accumulate all actions before publishing (preserves the current
+batch-then-publish ordering guarantee):
+
+```rescript
+// MakeEventCollectorHandler
+
+let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
+  stream
+  ->Stream.mapEffect(eventJson' =>
+    Effect.sync(() => {
+      switch findMapping(Mappings.mappings, eventJson') {
+      | Some((eventObj, eventMeta, mapping)) => ... // produce actions list
+      | None => []
+      }
+    })
+  )
+  ->Stream.flatMap(actions => Stream.fromIterable(actions))
+  ->Stream.runFold(([], []), ((publishers, counters), action) =>
+    switch action {
+    | Publisher(p) => (publishers->Array.concat([p]), counters)
+    | Counter(c)   => (publishers, counters->Array.concat([c]))
+    }
+  )
+  ->Effect.flatMap(((publisherPromises, counterActions)) =>
+    Effect.promise(async () => {
+      let entries = (await publisherPromises->Promise.all)->Array.flat
+      await doCount(counterActions)
+      await Ops.publishJsons(entries)
+    })
+  )
+```
+
+In `MakeCounterHandler`, `handleCounterEvents` keeps its semantic name (it is a scoped
+internal helper, not a primary module export). Its type reference updates from
+`Counter.counterEventsHandler` to `Counter.jsonEventsHandler` (the rename from M.1):
+
+```rescript
+// Type reference updated; semantic name kept
+let handleCounterEvents: Counter.jsonEventsHandler = stream =>
+  stream
+  ->Stream.mapEffect(...)
+  ->Stream.runFold(...)
+  ->Effect.flatMap(...)
+```
+
+Update the `CounterHandler` module type field accordingly:
+
+```rescript
+// Before
+module type CounterHandler = {
+  let handleCounterEvents: Counter.counterEventsHandler
+  ...
+}
+// After
+module type CounterHandler = {
+  let handleCounterEvents: Counter.jsonEventsHandler
+  ...
+}
+```
+
+Remove `fromArrayHandler` wrapper in `EventMapper_Builder.res` and update the call site
+reference from `Callback.eventsHandler` to `Callback.handleJsonEvents`.
+
+### M.5 — Naming standardisation: EventCollector_Builder parameter rename
+
+The `makeStreamHandler` function in `EventCollector_Builder.res` accepts a typed event stream
+handler via `~eventsStreamHandler`. The `Stream` suffix is redundant once all handlers are
+stream-based — rename the parameter to `~eventsHandler` (typed, no `json` qualifier, no
+`stream` suffix):
+
+```rescript
+// Before
+let makeStreamHandler = (
+  ~eventCollector: EventCollector.component,
+  ~schema: S.t<'event>,
+  ~eventsStreamHandler: Stream.t<'event, string, unit> => Effect.t<unit, string, unit>,
+) => { ... }
+
+// After
+let makeStreamHandler = (
+  ~eventCollector: EventCollector.component,
+  ~schema: S.t<'event>,
+  ~eventsHandler: Stream.t<'event, string, unit> => Effect.t<unit, string, unit>,
+) => { ... }
+```
+
+`handleJsonEvents` in `EventMapper_Callback.EventCollectorHandler`, `Core_Helpers.res`, and
+`Plugin_Helpers.res` is already correct — no rename needed there.
+
+### Files changed — Phase M
+
+| File | Change |
+|------|--------|
+| `reventless-spec/src/components/Counter.res` | Rename `counterEventsHandler` → `jsonEventsHandler`; change type to stream |
+| `reventless-core/src/components/Extension/Extension.res` | Rename `eventHandler` → `jsonEventsHandler` |
+| `reventless-core/src/components/ExtensionPoint/ExtensionPoint.res` | Rename `eventHandler` → `jsonEventsHandler` |
+| `reventless-core/src/components/SideEffectHandler/SideEffectHandler_Callback.res` | Native stream handler; rename `eventsHandler` → `handleJsonEvents` in module type and implementation |
+| `reventless-core/src/components/ReadModel/ReadModel_Callback.res` | Native stream handler; rename `eventsHandler` → `handleJsonEvents` |
+| `reventless-core/src/components/ReadModel/ReadModel_Builder.res` | Remove `fromArrayHandler` at call site; update reference to `Callback.handleJsonEvents` |
+| `reventless-core/src/components/EventMapper/EventMapper_Callback.res` | Native stream handlers; rename `eventsHandler` → `handleJsonEvents` in `MakeEventCollectorHandler`; update `CounterHandler` module type to use `Counter.jsonEventsHandler` |
+| `reventless-core/src/components/EventMapper/EventMapper_Builder.res` | Remove `fromArrayHandler` at call site; update reference to `Callback.handleJsonEvents` |
+| `reventless-core/src/components/Plugin/Plugin_Callback.res` | Native stream handler (`handleJsonEvents` already correct — no rename) |
+| `reventless-core/src/core/Core/Core_Helpers.res` | `Callback.handleJsonEvents` already correct — no rename |
+| `reventless-core/src/components/Plugin/Plugin_Helpers.res` | `Callback.handleJsonEvents` already correct — no rename |
+| `reventless-core/src/components/EventCollector/EventCollector_Builder.res` | Rename param `~eventsStreamHandler` → `~eventsHandler` |
+| All callers of `Counter.counterEventsHandler` | Update type reference to `Counter.jsonEventsHandler` |
+| All callers of `Extension.eventHandler` / `ExtensionPoint.eventHandler` | Update type reference to `jsonEventsHandler` |
+| `reventless-core/tests/eventmapper/EventMapperCallbackTest.res` | Update tests to use stream input directly |
+| `reventless-core/tests/sideeffecthandler/SideEffectHandlerCallbackTest.res` | Update tests to use stream input directly |
+
+---
+
+## Phase N — Stream Command Handler Type
+
+**Scope:** Change `CommandTopic.jsonCommandsHandler` from array to stream type — the same
+transformation Phase K applied to `EventCollector.jsonEventsHandler`. Add a
+`fromArrayCommandsHandler` bridge for callers that cannot yet be migrated.
+
+`handleJsonCommands` is already the correct name per the naming convention (JSON-encoded
+command handler, verb form) — no rename is needed.
+
+### N.1 — Change jsonCommandsHandler type
+
+**File:** `reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res`
+
+```rescript
+// Before
+type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<string, string>>>
+
+// After
+type jsonCommandsHandler =
+  Stream.t<topicItem<JSON.t>, string, unit> => Effect.t<array<result<string, string>>, string, unit>
+
+// Backward-compat bridge
+let fromArrayCommandsHandler: (
+  array<topicItem<JSON.t>> => promise<array<result<string, string>>>
+) => jsonCommandsHandler =
+  arrayHandler => stream =>
+    stream
+    ->Stream.runCollect
+    ->Effect.flatMap(chunk =>
+      Effect.promise(() => arrayHandler(chunk->Chunk.toArray))
+    )
+```
+
+The global registry `handlerEntry.handler` field type changes accordingly.
+
+### N.2 — CommandTopic_Callback
+
+**File:** `reventless-core/src/components/CommandTopic/CommandTopic_Callback.res`
+
+Rewrite as a native stream handler. `handleJsonCommands` is already the correct name and is
+kept:
+
+```rescript
+// module type T — name unchanged
+module type T = {
+  let handleJsonCommands: CommandTopic.jsonCommandsHandler
+}
+
+// Implementation — rewritten as native stream consumer
+let handleJsonCommands: CommandTopic.jsonCommandsHandler = stream =>
+  stream
+  ->Stream.mapEffect(({Reventless.CommandTopic.reference, command: json}) =>
+    Effect.sync(() =>
+      switch json->Message.decodeCommand'(Spec.Id.schema, Spec.commandSchema) {
+      | command' => Some({Reventless.CommandTopic.reference, command: command'})
+      | exception err =>
+        Logger.error(~loc=__LOC__, `Couldn't decode command:`, err)
+        None
+      }
+    )
+  )
+  ->Stream.filterMap(x => x)
+  ->Stream.runCollect
+  ->Effect.flatMap(chunk =>
+    Effect.promise(() => Ops.commandsHandler(chunk->Chunk.toArray))
+  )
+```
+
+### N.3 — AWS SQS command channel runtime
+
+**File:** `reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res`
+
+Wrap the SQS batch in `Stream.fromIterable`, same pattern as the EventCollector SQS channel:
+
+```rescript
+// Before
+let topicItems = records->Array.map(...)->Belt.Array.zip(jsons)->Array.map(...)
+switch await handleCommands(topicItems) { ... }
+
+// After
+let topicItems = records->Array.map(...)->Belt.Array.zip(jsons)->Array.map(...)
+let _ = await (Stream.fromIterable(topicItems)->handleJsonCommands->Effect.runPromise)
+```
+
+### N.4 — In-memory CommandTopic channel
+
+**File:** `reventless-in-memory/src/adapter/CommandTopic/CommandTopicChannel_InMemory.res`
+
+Wrap a single dispatched command in `Stream.fromIterable([cmd])`:
+
+```rescript
+// Before
+handleChannelCommand: handleJsonCommands => (cmd => handleJsonCommands([cmd]))->Pulumi.Output.make
+
+// After
+handleChannelCommand: handleJsonCommands =>
+  (cmd =>
+    handleJsonCommands(Stream.fromIterable([cmd]))->Effect.runPromise
+  )->Pulumi.Output.make
+```
+
+### Files changed — Phase N
+
+| File | Change |
+|------|--------|
+| `reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res` | New `jsonCommandsHandler` stream type; `fromArrayCommandsHandler` bridge |
+| `reventless-core/src/components/CommandTopic/CommandTopic_Callback.res` | Rewrite as native stream handler; `handleJsonCommands` name unchanged |
+| `reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res` | `Stream.fromIterable` + `Effect.runPromise` |
+| `reventless-in-memory/src/adapter/CommandTopic/CommandTopicChannel_InMemory.res` | Wrap single command in stream |
+| `reventless-core/tests/commandtopic/CommandTopicCallbackTest.res` | Update to use stream input |
+
+---
+
+## Phase O — QueryDb Stream Reads
+
+**Scope:** Add `loadStream` to the `QueryDb.operations` record and implement it in DynamoDB and
+in-memory adapters. This provides lazy consumption of read-model state without materialising
+the whole array — important for large read models.
+
+No existing callers are broken: `loadStream` is a new optional-style addition.
+
+### O.1 — Add loadStream type and field
+
+**File:** `reventless-core/src/components/QueryDb/QueryDb.res`
+
+```rescript
+// New type
+type loadStream<'id, 'state> =
+  'id => Stream.t<'state, Reventless.QueryDb.storageError, unit>
+
+// Extended operations record
+type operations<'id, 'state> = {
+  load: load<'id, 'state>,
+  loadStream: loadStream<'id, 'state>,   // NEW
+  save: save<'id, 'state>,
+  saveBatch: saveBatch<'id, 'state>,
+  count: count<'id>,
+  delete: delete<'id>,
+  deleteBatch: deleteBatch<'id>,
+}
+```
+
+### O.2 — QueryDb_Operations.res
+
+**File:** `reventless-core/src/components/QueryDb/QueryDb_Operations.res`
+
+Implement `loadStream` using the existing `load` operation:
+
+```rescript
+let loadStream = id =>
+  Stream.fromEffect(
+    Effect.tryPromise({
+      "try": () => Ops.jsonOps.load(id->ReadModelSpec.Id.toString),
+      "catch": err =>
+        NotLoadedFromStorage(
+          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("loadStream error")
+        ),
+    })
+    ->Effect.flatMap(result =>
+      switch result {
+      | Ok(jsons) => Effect.succeed(jsons)
+      | Error(e) => Effect.fail(e)
+      }
+    )
+  )
+  ->Stream.flatMap(jsons =>
+    Stream.fromIterable(jsons)
+    ->Stream.mapEffect(json =>
+      Effect.sync(() => decode(id, json))
+      ->Effect.flatMap(r =>
+        switch r {
+        | Ok(s) => Effect.succeed(s)
+        | Error(e) => Effect.fail(NotLoadedFromStorage(e))
+        }
+      )
+    )
+  )
+```
+
+### O.3 — DynamoDB adapter
+
+**File:** `reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res`
+
+Add `loadStream` delegating to the existing `load` function wrapped as a one-shot stream
+(using `Stream.fromEffect` + `Stream.flatMap(Stream.fromIterable(...))`):
+
+```rescript
+let loadStream = table =>
+  id =>
+    Effect.tryPromise({
+      "try": () => Util_DynamoDb_Runtime.queryById(table, id),
+      "catch": err =>
+        QueryDb.NotLoadedFromStorage(
+          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB loadStream error")
+        ),
+    })
+    ->Stream.fromEffect
+    ->Stream.flatMap(items => Stream.fromIterable(items))
+```
+
+Future improvement: replace with `Stream.paginateEffect` to lazily page through DynamoDB
+results without fetching all pages upfront (see Phase P).
+
+### O.4 — In-memory adapter
+
+**File:** `reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res`
+
+```rescript
+let loadStream = id =>
+  load(id)
+  ->Effect.fromPromise(...)
+  ->Stream.fromEffect
+  ->Stream.flatMap(result =>
+    switch result {
+    | Ok(items) => Stream.fromIterable(items)
+    | Error(e) => Stream.fail(e)
+    }
+  )
+```
+
+### Files changed — Phase O
+
+| File | Change |
+|------|--------|
+| `reventless-core/src/components/QueryDb/QueryDb.res` | Add `loadStream` type + field in `operations` |
+| `reventless-core/src/components/QueryDb/QueryDb_Operations.res` | Implement `loadStream` |
+| `reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res` | Implement `loadStream` |
+| `reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res` | Implement `loadStream` |
+| `reventless-core/tests/querydb/QueryDbTest.res` | Add `loadStream` test |
+
+---
+
+## Phase P — DcbEventLog True Lazy Pagination (Optional)
+
+**Scope:** Replace the recursive-fetch-then-wrap pattern in the DynamoDB DcbEventLog storage
+adapter with `Stream.paginateEffect` so that DynamoDB pages are fetched lazily as the stream
+is consumed.
+
+This is a pure performance/memory optimisation — the observable order of events is unchanged.
+Mark as optional because it requires `Stream.paginateEffect` to be confirmed available (or
+added) in the `rescript-effect` bindings.
+
+### P.1 — queryBySingleTagStream
+
+**File:** `reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res`
+
+```rescript
+let queryBySingleTagStream = (
+  table: runtimeTable,
+  tagKey: string,
+  tagValue: string,
+  ~after: option<string>=?,
+) =>
+  Stream.paginateEffect(None, cursor =>
+    Effect.promise(() =>
+      queryPage(table, tagKey, tagValue, ~after?, ~lastEvaluatedKey=?cursor)
+    )
+    ->Effect.map(({items, lastEvaluatedKey}) =>
+      (items->Option.getOr([]), lastEvaluatedKey)
+    )
+  )
+  ->Stream.flatMap(items => Stream.fromIterable(items))
+```
+
+The existing `queryBySingleTag` (returns full array) is kept for callers that need the full
+result. `readStream` in the operations layer is updated to call `queryBySingleTagStream`.
+
+### P.2 — Same treatment for queryByCompositeTags and scanWithFilter
+
+Same `Stream.paginateEffect` pattern applied to `queryByCompositeTags` and `scanWithFilter`.
+
+### Precondition for Phase P
+
+Confirm or add `Stream.paginateEffect` binding in `rescript-effect/src/Stream.res`:
+
+```rescript
+@send external paginateEffect: (
+  'seed,
+  'seed => Effect.t<('a, option<'seed>), 'err, 'r>,
+) => Stream.t<'a, 'err, 'r> = "paginateEffect"
+```
+
+### Files changed — Phase P
+
+| File | Change |
+|------|--------|
+| `rescript-effect/src/Stream.res` | Add `paginateEffect` binding (if missing) |
+| `reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res` | Add `*Stream` variants for all three query helpers; update `readStream` to use them |
+
+---
+
+## Revised Execution Order
+
+```
+Phase J  →  Phase K  →  Phase L
+                            ↓
+                        Phase M  (native stream event handlers)
+                            ↓
+                        Phase N  (stream command handler type)
+                            ↓
+                        Phase O  (QueryDb loadStream)
+                            ↓
+                        Phase P  (optional: DcbEventLog lazy pagination)
+```
+
+Phases M, N, O are independent of each other once L is done; they can be implemented in
+parallel or in any order within the L → M/N/O dependency boundary.
+
+---
+
+## Naming Convention Summary (all phases complete)
+
+### Rule
+
+> `json` in the name = handler works with `JSON.t` (wire format).
+> No qualifier = handler works with typed domain objects (`'event`, `'command`).
+> Types are nouns. Values are verbs.
+
+| Encoding | Direction | Type name | Value name | Definition location |
+|----------|-----------|-----------|------------|---------------------|
+| Typed | events | `eventsHandler` | `handleEvents` | `Handler.res` (reventless-spec) |
+| Typed | commands | `commandsHandler` | `handleCommands` | `Handler.res` / `CommandTopic.res` |
+| JSON | events | `jsonEventsHandler` | `handleJsonEvents` | `EventCollector.res` |
+| JSON | commands | `jsonCommandsHandler` | `handleJsonCommands` | `CommandTopic_Helpers.res` |
+
+### Handler type inventory (stream shapes, after all phases)
+
+| Type | Module | Signature |
+|------|--------|-----------|
+| `jsonEventsHandler` | `EventCollector` | `Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>` |
+| `jsonEventsHandler` | `Counter` (renamed from `counterEventsHandler` in M.1) | `Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>` |
+| `jsonEventsHandler` | `Extension` (renamed from `eventHandler` in M.1) | `(JSON.t, pluginDefinition) => promise<unit>` (stream migration TBD) |
+| `jsonEventsHandler` | `ExtensionPoint` (renamed from `eventHandler` in M.1) | `(JSON.t, pluginDefinition) => promise<unit>` (stream migration TBD) |
+| `jsonCommandsHandler` | `CommandTopic_Helpers` | `Stream.t<topicItem<JSON.t>, string, unit> => Effect.t<array<result<string, string>>, string, unit>` |
+| `loadStream` | `QueryDb` (new in O.1) | `'id => Stream.t<'state, storageError, unit>` |
