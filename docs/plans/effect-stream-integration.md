@@ -2,26 +2,23 @@
 
 **Status:** Backlog — ready for implementation
 **Created:** 2026-02-28
+**Revised:** 2026-02-28
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
-**Summary:** Identifies all places in the Reventless codebase where Effect `Stream` would improve
-correctness, memory safety, or composability, and provides a phased, concrete implementation plan.
+**Summary:** Six use cases where Effect `Stream` improves memory safety, correctness, or composability
+in the Reventless codebase. Each phase bundles its implementation and tests together. Includes a
+structural analysis of how `Aggregate_Callback` and other callback modules must adapt for lazy fold.
 
 ---
 
 ## Background
 
-Phases 0–4 of the effect-library integration plan introduced Effect bindings for `Effect`, `Queue`,
-`Deferred`, `Latch`, `PubSub`, `Schedule`, `Stm`, and `SynchronizedRef`. These primitives now power
-core parts of the in-memory adapters.
+Phases 0–4 of the effect-library integration plan introduced bindings for `Effect`, `Queue`,
+`Deferred`, `Latch`, `Schedule`, `Stm`, and `SynchronizedRef`. Phase 5 identified
+`Stream`-based `EventLog.replay` as a future candidate. This plan is that work, expanded.
 
-Phase 5 of that plan identified `Stream`-based `EventLog.replay` as a candidate for large aggregate
-support. This plan expands that placeholder into a full analysis covering every place in the codebase
-where `Stream` would be beneficial, and provides actionable implementation steps.
-
-**What Effect Stream is:** `Stream.t<'a, 'e, 'r>` is a lazy, composable, resource-safe sequence of
-values. It integrates with Effect's structured concurrency: streams can be interrupted, zipped,
-merged, paginated, and consumed one item at a time — without materialising the whole sequence in
-memory. Key operations relevant to this codebase:
+**What Effect Stream is:** `Stream.t<'a, 'e, 'r>` is a lazy, composable, resource-safe sequence.
+It integrates with Effect's structured concurrency: streams can be interrupted, paginated, and
+consumed one item at a time — without materialising the whole sequence in memory. Key operations:
 
 | Operation | Description |
 |---|---|
@@ -31,304 +28,157 @@ memory. Key operations relevant to this codebase:
 | `Stream.paginateEffect` | Multi-page DynamoDB queries via cursor state |
 | `Stream.mapEffect` | Per-item async decode |
 | `Stream.runCollect` | Materialise to array |
-| `Stream.runFold` | Left fold for state accumulation |
+| `Stream.runFold` | Left fold — ideal for state reconstruction |
 | `Stream.take` | Limit without loading all |
 | `Stream.runForEach` | Process each item for side effects |
 
 ---
 
-## Section 1: Use Case Analysis
+## Section 1: Structural Impact Analysis
 
-### Use Case 1 — EventLog.replay as Stream (Priority: Medium)
+### 1.1 How `Aggregate_Callback` must adapt for lazy fold
 
-**Current implementation:**
-
-`replay` loads all events for an aggregate ID into memory at once:
+`Aggregate_Callback.Make` is the primary consumer of `EventLog.replay`. Reading it reveals
+two structural dependencies on the replayed history array:
 
 ```rescript
-// EventLog_Operations.res
-let replay = async id => {
-  let eventsJson = await Ops.storage.replay(id->Spec.Id.toString)
-  eventsJson->decodeEvents(id->Spec.Id.toString)
-}
+// Aggregate_Callback.res — current handleCommands (inside groupTopicItemsById loop)
+let history = await Ops.eventLog.replay(id)           // (A) loads all events
+let result = await commands'->Array.reduce(
+  Ok((updateState(None, history), []))->Promise.resolve,  // (B) folds history → stateOpt
+  processCommand,
+)
+// ...
+switch await Ops.eventLog.append(history->Array.length, id, generatedEvents') {  // (C)
 ```
 
-`EventLogStorage_InMemory` returns a full array. `EventLogStorage_DynamoDB` paginates internally
-but materialises all pages before returning. `Aggregate_Callback.res` folds over the array to
-rebuild state, then discards it:
+**Dependency A/B — state reconstruction:** `replay` returns `array<event>`, which
+`updateState(None, history)` folds into an initial `stateOpt`. With a stream, this becomes:
 
 ```rescript
+let (initialState, _count) = await Ops.eventLog.replayStream(id)
+  ->Stream.runFold((None, 0), ((st, n), ev) => (apply'(st, ev), n + 1))
+  ->Effect.runPromise
+```
+
+The fold is over a `Stream` instead of an `array`, but the semantics are identical.
+
+**Dependency C — optimistic concurrency token:** `history->Array.length` is the `sequenceNr`
+passed to `EventLog.append`. This is the write-side optimistic concurrency check (DynamoDB uses
+it to prevent lost-update races). With the stream fold, we accumulate the count simultaneously
+in the tuple accumulator — `n + 1` on every event. After the fold, `count` replaces
+`history->Array.length`:
+
+```rescript
+let (initialState, sequenceNr) = await Ops.eventLog.replayStream(id)
+  ->Stream.runFold((None, 0), ((st, n), ev) => (apply'(st, ev), n + 1))
+  ->Effect.runPromise
+// ...
+switch await Ops.eventLog.append(sequenceNr, id, generatedEvents') {
+```
+
+**What does NOT change:** The `updateState` helper and `apply'` function are still used inside
+`processCommand` to fold newly-generated events into the running state accumulator. This is a
+small in-memory fold over freshly created events — not a storage replay — and needs no streaming.
+
+**Complete structural diff for `handleCommands`:**
+
+```rescript
+// BEFORE: two-pass over history array
 let history = await Ops.eventLog.replay(id)
+// ... later ...
 let result = await commands'->Array.reduce(
   Ok((updateState(None, history), []))->Promise.resolve,
   processCommand,
 )
-```
+// ... even later ...
+switch await Ops.eventLog.append(history->Array.length, id, generatedEvents') {
 
-**Problem:** For long-lived aggregates with thousands of events, the entire history is loaded into
-memory, decoded, and discarded after the fold. There is no early termination, and DynamoDB's
-paginated results are buffered unnecessarily.
-
-**Proposed Stream-based implementation:**
-
-Add `replayStream` alongside `replay` (additive — no breaking change):
-
-```rescript
-// EventLog_Adapter.res — extend operations record
-type operations = {
-  append: EventLog.append<string, JSON.t>,
-  replay: EventLog.replay<string, JSON.t>,
-  replayStream: string => Stream.t<JSON.t, string, unit>,  // NEW
-}
-
-// EventLogStorage_InMemory.res
-let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
-  Stm.TRef.get(eventsRef)
-  ->Stm.commit
-  ->Effect.map(events => events->Dict.get(id)->Option.getOr([]))
-  ->Stream.fromEffect
-  ->Stream.flatMap(arr => Stream.fromIterable(arr))
-
-// EventLog_Operations.res
-let replayStream = id =>
-  Ops.storage.replayStream(id->Spec.Id.toString)
-  ->Stream.mapEffect(json =>
-    Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
-  )
-```
-
-`Aggregate_Callback.res` uses `runFold` to rebuild state without holding all events:
-
-```rescript
-// After
-let currentState = await Ops.eventLog.replayStream(id)
-  ->Stream.runFold(None, (stateOpt, event) => apply'(stateOpt, event))
+// AFTER: single-pass stream fold produces both state and count
+let (initialState, sequenceNr) = await Ops.eventLog.replayStream(id)
+  ->Stream.runFold((None, 0), ((st, n), ev) => (apply'(st, ev), n + 1))
   ->Effect.runPromise
+// ... later ...
 let result = await commands'->Array.reduce(
-  Ok((currentState, []))->Promise.resolve,
+  Ok((initialState, []))->Promise.resolve,
   processCommand,
 )
+// ... even later ...
+switch await Ops.eventLog.append(sequenceNr, id, generatedEvents') {
 ```
 
-**DynamoDB implementation** uses `Stream.paginateEffect` to page through DynamoDB one batch at a
-time — cursor state is `option<JSON.t>` (lastEvaluatedKey):
+The change is structurally minimal. `history` disappears; `initialState` and `sequenceNr` replace
+its two uses. No change to `processCommand`, `runBehavior`, error handling, or publishing.
+
+**Correctness constraint:** The stream fold must always consume all events — `take` must never be
+applied to `replayStream` inside `Aggregate_Callback`. All events are required to reconstruct
+the correct current state and count. The `replayStream` in `EventLog_Operations` must be an
+unrestricted stream; callers that want early termination apply `take` themselves.
+
+---
+
+### 1.2 How `StateChangeSlice_Callback` would adapt (Phase D)
+
+`StateChangeSlice_Callback.handleCommands` (not read here, but referenced by
+`StateChangeSlice_Builder`) does the DCB equivalent of what `Aggregate_Callback` does:
+
+1. Calls `DcbEventLog.read(~query, ~after=?)` to load all matching events into memory
+2. Builds a "decision model" by folding over the event array
+3. Checks `headPosition` from the result as the optimistic concurrency token for `append`
+
+When Phase D adds `DcbEventLog.readStream`, `StateChangeSlice_Callback` would adapt similarly:
 
 ```rescript
-// EventLogStorage_DynamoDB
-let replayStream = table => id =>
-  Stream.paginateEffect(None, lastKey =>
-    Effect.tryPromise({
-      "try": () => queryByIdPage(table.name, id, lastKey),
-      "catch": err => (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("query error"),
-    })
-    ->Effect.map(page => (page.items, page.lastKey))
+// BEFORE
+let {events, headPosition} = await dcbEventLogOps.read(~query)
+let decisionModel = events->Array.reduce(emptyDecisionModel, applyEvent)
+// ... use headPosition for append condition ...
+
+// AFTER (Phase D)
+let (decisionModel, headPosition) = await dcbEventLogOps.readStream(~query)
+  ->Stream.runFold(
+    (emptyDecisionModel, None),
+    ((dm, _pos), event) => (applyEvent(dm, event), Some(event.position))
   )
+  ->Effect.runPromise
+// ... use headPosition for append condition ...
 ```
 
-**Priority rationale:** The in-memory case gains no real benefit (data is already in memory). The
-DynamoDB case avoids buffering thousands of events on every command. The main value is
-architectural: establishing that aggregate state can be rebuilt via a fold over a stream, enabling
-future pagination without changing business logic.
+The fold accumulates both the decision model and the last seen position (which becomes the
+`headPosition` used as the append condition). This is structurally the same pattern as
+`Aggregate_Callback`.
 
 ---
 
-### Use Case 2 — DcbEventLog.read as Paginated Stream (Priority: Low)
+### 1.3 Survey of all other components — what is and isn't affected
 
-**Current implementation:**
+| Component | Replay/scan pattern? | Affected? | Notes |
+|---|---|---|---|
+| `Aggregate_Callback` | `EventLog.replay` → fold | **Yes — Phase B** | See §1.1 |
+| `StateChangeSlice_Callback` | `DcbEventLog.read` → fold | **Yes — Phase D** | See §1.2 |
+| `ReadModel` / `EventCollector` | Receives events pushed via bus | No | Pull model — events come to it |
+| `EventMapper` | Subscribes to EventTopic bus | No | Push model — same as ReadModel |
+| `Counter` | Reads QueryDb for totals | Indirect — Phase C | `scan` used for admin queries |
+| `CommandTopic` | Dispatches commands, no replay | No | Write path only |
+| `CommandGenerator` | Sends commands, no replay | No | Write path only |
+| `ExtensionPoint_Callback` | Dispatches to extension handlers | No | Thin dispatcher |
+| `SideEffectHandler` | Receives events, fires effects | No | Push-based via bus |
+| `Heartbeat` / `Scheduler` | Timer-based, no storage reads | No | Infrastructure only |
+| `Task` | File key callback, no replay | Indirect — Phase E | CSV streaming opportunity |
+| `StateViewSlice` | Queries DcbEventLog | No builder yet | Placeholder — revisit with Phase D |
 
-`DcbEventLog_Operations.read` loads the full result then maps over the array:
-
-```rescript
-let read = async (~query, ~after=?) => {
-  let rawResult = await Ops.storage.read(~query, ~after?)
-  let events = rawResult.events->Array.map(decodeEvent)
-  { events, headPosition: ?rawResult.headPosition }
-}
-```
-
-`StateChangeSlice_Builder` reads the full log on every command to build the decision model.
-
-**Problem:** For global event logs serving as the DCB source-of-truth, the entire matching event set
-is loaded on every command. As tag indexes grow, this becomes a bottleneck. The `headPosition` is
-only needed at the end; there is no way to page or stop early.
-
-**Proposed Stream-based implementation:**
-
-Add `readStream` to `DcbEventLog_Adapter.operations`:
-
-```rescript
-type readStream<'event> =
-  (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) =>
-  Stream.t<sequencedEvent<'event>, string, unit>
-```
-
-In-memory implementation pages by threading the last seen position:
-
-```rescript
-let readStream = (~query, ~after=?) =>
-  Stream.paginateEffect(after, currentAfter =>
-    Effect.promise(() => read(~query, ~after=?currentAfter))
-    ->Effect.map(result => (result.events, result.headPosition))
-  )
-  ->Stream.flatMap(events => Stream.fromIterable(events))
-```
-
-**Priority rationale:** Additive improvement for large DCB deployments. Current array-based
-implementation works correctly for all known use cases. Implement after Use Case 1 patterns are
-established.
-
----
-
-### Use Case 3 — QueryDb Scan as Stream (Priority: Low)
-
-**Current implementation:**
-
-`InMemory_Bus` exposes `registerQueryDbScan` / `getQueryDbScan` with type `unit => array<JSON.t>`.
-`QueryEngine_InMemory.scan` silently ignores the `~limit` parameter:
-
-```rescript
-scan: async (~readModelName, ~filterConfigs as _, ~limit as _) =>
-  switch Bus.getQueryDbScan(readModelName) {
-  | Some(scanAll) => scanAll()  // ignores limit
-  | None => []
-  },
-```
-
-**Problem:** `scan` forces loading all read model items into memory regardless of `~limit`. The
-`limit` parameter has been wired through the type system but is never honoured.
-
-**Proposed Stream-based implementation:**
-
-Add a parallel stream registry alongside the existing scan registry:
-
-```rescript
-// InMemory_Bus.T — new registrations
-let registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit
-let getQueryDbStream: string => option<unit => Stream.t<JSON.t, string, unit>>
-```
-
-`QueryDbStorage_InMemory` registers the stream:
-
-```rescript
-Bus.registerQueryDbStream(name, () =>
-  allItems.contents->Stream.fromIterable
-)
-```
-
-`QueryEngine_InMemory.scan` honours `~limit`:
-
-```rescript
-scan: async (~readModelName, ~filterConfigs as _, ~limit=?) => {
-  switch Bus.getQueryDbStream(readModelName) {
-  | Some(makeStream) =>
-    let stream = switch limit {
-    | Some(n) => makeStream()->Stream.take(n)
-    | None => makeStream()
-    }
-    await stream->Stream.runCollect->Effect.runPromise
-  | None =>
-    switch Bus.getQueryDbScan(readModelName) {
-    | Some(scanAll) => scanAll()
-    | None => []
-    }
-  }
-},
-```
-
-Keep the existing `registerQueryDbScan` for backward compatibility.
-
-**Priority rationale:** Scan is only used in the GraphQL admin/reporting API, not the event
-processing hot path. Implement after the Stream binding foundations are in place.
-
----
-
-### Use Case 4 — InMemory_Bus Fan-out via Stream (Priority: Low / Evaluate)
-
-**Current implementation:**
-
-Each subscriber has a `Queue.unbounded<queuedEvent>` and a drain fiber started via
-`Effect.runFork`. The drain loop uses `Effect.forever` — this is essentially a `Stream.fromQueue`
-pattern written manually.
-
-**Problem:** The `Deferred` completion signal is a manual synchronization layer for what
-`Stream.fromQueue` already provides natively. The `PubSub` module (already bound) natively handles
-the fan-out topology with built-in backpressure.
-
-**Proposed Stream-based alternative:**
-
-Replace the per-subscriber `Queue` + drain loop with `PubSub.subscribe` → `Stream.fromQueue`:
-
-```rescript
-// Future InMemory_Bus — stream-based subscriber
-let drainStream = (topicName, handler) =>
-  Stream.scoped(PubSub.subscribe(getPubSub(topicName)))
-  ->Stream.flatMap(queue => Stream.fromQueue(queue))
-  ->Stream.mapEffect(msg =>
-    Effect.promise(() => handler(msg.service, msg.meta, msg.json))
-  )
-  ->Stream.runDrain
-```
-
-**Priority rationale:** The current `Queue` + `Deferred` implementation works correctly and has
-been carefully tuned for 2-microtick resolution in tests (documented in `InMemory_Bus.res`).
-Moving to PubSub-based streams would change the delivery timing guarantees. Before implementing,
-measure whether the 2-tick resolution is preserved. This is an architectural improvement, not a
-correctness fix.
-
----
-
-### Use Case 5 — CSV / Task File Processing as Stream (Priority: Low)
-
-**Current implementation:**
-
-`FastCSV.res` uses Node.js event-based streaming (`.on("data", row => ...)`, `.on("end", ...)`).
-There is no backpressure — the parser pushes rows as fast as it reads them. `Task` provides a
-file-triggered callback but no streaming abstraction for file contents.
-
-**Problem:** For large CSV files (100k+ rows), users must implement their own buffering. There is
-no way to express backpressure from a slow consumer to the file reader.
-
-**Proposed Stream-based implementation:**
-
-Add a `fromReadableStream` binding to `Stream.res`:
-
-```rescript
-@module("effect") @scope("Stream")
-external fromReadableStream: (unit => NodeStreams.Readable.t, int) => t<string, string, unit>
-  = "fromReadableStream"
-```
-
-Provide a utility `CsvStream.res` that bridges `FastCSV` to `Stream.t<FastCSV.row, string, unit>`.
-The `Task` callback could optionally receive a stream instead of just a key.
-
-**Priority rationale:** Requires the most novel work (a Channel wrapper for Node.js streams).
-The payoff is real for large CSV imports but affects only a subset of use cases. Implement after
-Phases A and B are stable.
-
----
-
-### Use Case 6 — Bounded Queue Backpressure (Priority: Low / Evaluate)
-
-**Current situation:** `Queue.unbounded()` per subscriber — if a subscriber is slow, the queue
-grows without limit. The publisher awaits completion (via `Deferred`) which creates implicit
-backpressure, but does not protect against memory growth under extreme load.
-
-**Proposed:** Replace `Queue.unbounded` with `Queue.bounded(n)` per subscriber. `Queue.offer`
-blocks when the queue is full, providing natural backpressure. The publisher would switch from
-`Effect.runSync` to an async offer path.
-
-**Priority rationale:** Not a current pain point. The current design was deliberately tuned for
-2-microtick test resolution. Bounded queues change the concurrency model. Defer to a future
-backpressure-focused pass.
+**Key finding:** Only `Aggregate_Callback` (traditional EventLog) and `StateChangeSlice_Callback`
+(DCB EventLog) have the "load all from storage → fold → process commands" pattern that streaming
+directly improves. All other components are push-based (events arrive via bus) and do not replay
+from storage.
 
 ---
 
 ## Section 2: Stream Binding Requirements
 
-No `Stream.res` exists yet in `rescript/rescript-effect/src/`. Create a new file
-`rescript/rescript-effect/src/Stream.res` with the following bindings.
+No `Stream.res` exists yet in `rescript/rescript-effect/src/`. Create it as part of Phase A.
 
-### Phase A bindings (required for Use Cases 1–3)
+### Core bindings (Phases A–D)
 
 ```rescript
 // Stream.res
@@ -336,7 +186,7 @@ No `Stream.res` exists yet in `rescript/rescript-effect/src/`. Create a new file
 // Core type — matches Effect.Stream<A, E, R>
 type t<'a, 'e, 'r>
 
-// ─── Construction ─────────────────────────────────────────────────────────
+// ─── Construction ────────────────────────────────────────────────────────
 
 @module("effect") @scope("Stream")
 external fromEffect: Effect.t<'a, 'e, 'r> => t<'a, 'e, 'r> = "fromEffect"
@@ -355,14 +205,15 @@ external empty: t<'a, 'e, 'r> = "empty"
 // Paginate with state cursor.
 // Producer returns (chunk: array<'a>, nextCursor: option<'s>).
 // Stream emits individual items; terminates when nextCursor is None.
-// Note: maps to JS "paginateChunkEffect" (chunk-based variant).
+// IMPORTANT: maps to JS "paginateChunkEffect" (chunk-based variant).
+// Do NOT use JS "paginateEffect" — it takes one item per page, not a chunk.
 @module("effect") @scope("Stream")
 external paginateEffect: (
   's,
   's => Effect.t<(array<'a>, option<'s>), 'e, 'r>,
 ) => t<'a, 'e, 'r> = "paginateChunkEffect"
 
-// ─── Transformation ───────────────────────────────────────────────────────
+// ─── Transformation ──────────────────────────────────────────────────────
 
 @module("effect") @scope("Stream")
 external map: (t<'a, 'e, 'r>, 'a => 'b) => t<'b, 'e, 'r> = "map"
@@ -376,37 +227,32 @@ external flatMap: (t<'a, 'e, 'r>, 'a => t<'b, 'e, 'r>) => t<'b, 'e, 'r> = "flatM
 @module("effect") @scope("Stream")
 external filter: (t<'a, 'e, 'r>, 'a => bool) => t<'a, 'e, 'r> = "filter"
 
-// Take first N items then stop (resource-safe interruption of the upstream)
+// Take first N items then stop (resource-safe upstream interruption)
 @module("effect") @scope("Stream")
 external take: (t<'a, 'e, 'r>, int) => t<'a, 'e, 'r> = "take"
 
 @module("effect") @scope("Stream")
 external tap: (t<'a, 'e, 'r>, 'a => Effect.t<unit, 'e, 'r>) => t<'a, 'e, 'r> = "tap"
 
-// ─── Terminal operations (runners) ────────────────────────────────────────
+// ─── Terminal runners ────────────────────────────────────────────────────
 
-// Collect all items into an array
 @module("effect") @scope("Stream")
 external runCollect: t<'a, 'e, 'r> => Effect.t<array<'a>, 'e, 'r> = "runCollect"
 
-// Left fold — accumulate state across all items
 @module("effect") @scope("Stream")
 external runFold: (t<'a, 'e, 'r>, 's, ('s, 'a) => 's) => Effect.t<'s, 'e, 'r> = "runFold"
 
-// Process each item for side effects
 @module("effect") @scope("Stream")
 external runForEach: (t<'a, 'e, 'r>, 'a => Effect.t<unit, 'e, 'r>) => Effect.t<unit, 'e, 'r>
   = "runForEach"
 
-// Drain the stream discarding all values
 @module("effect") @scope("Stream")
 external runDrain: t<'a, 'e, 'r> => Effect.t<unit, 'e, 'r> = "runDrain"
 
-// Get just the first item (None for empty stream)
 @module("effect") @scope("Stream")
 external runHead: t<'a, 'e, 'r> => Effect.t<option<'a>, 'e, 'r> = "runHead"
 
-// ─── Error handling ───────────────────────────────────────────────────────
+// ─── Error handling ──────────────────────────────────────────────────────
 
 @module("effect") @scope("Stream")
 external catchAll: (t<'a, 'e, 'r>, 'e => t<'a, 'e2, 'r>) => t<'a, 'e2, 'r> = "catchAll"
@@ -419,378 +265,950 @@ external catchAll: (t<'a, 'e, 'r>, 'e => t<'a, 'e2, 'r>) => t<'a, 'e2, 'r> = "ca
 @module("effect") @scope("Stream")
 external scoped: Effect.t<t<'a, 'e, 'r>, 'e, 'r> => t<'a, 'e, 'r> = "unwrapScoped"
 
-// Feed stream output into a Queue
 @module("effect") @scope("Stream")
 external runIntoQueue: (t<'a, 'e, 'r>, Queue.t<'a>) => Effect.t<unit, 'e, 'r> = "runIntoQueue"
 ```
 
-### Additional bindings for Use Case 5 (CSV / Node.js streams)
+### Additional bindings for Phase E (CSV / Node.js streams)
 
 ```rescript
-// Wrap a Node.js Readable stream with chunk size in bytes
 @module("effect") @scope("Stream")
 external fromReadableStream: (unit => NodeStreams.Readable.t, int) => t<string, string, unit>
   = "fromReadableStream"
 ```
 
-### Naming note on `paginateEffect`
-
-Effect's JS API exports `paginateChunkEffect` for chunk-based pagination (each call produces an
-`array<'a>`). The ReScript binding names it `paginateEffect` for ergonomics; the JS name in the
-external is `"paginateChunkEffect"`. The stream emits individual items after flattening the chunks.
-Do not use `"paginateEffect"` (JS name) — it works differently (single item per page, not chunks).
-
 ---
 
-## Section 3: Implementation Plan
+## Section 3: Implementation Phases
 
-Phases are ordered smallest-increment-first. Each phase is independently deployable.
+Each phase contains its implementation steps and tests together. Phases are ordered by value and
+dependency. Phase A (bindings) is the prerequisite for all others.
 
 ### Dependency graph
 
 ```
-Phase A (Stream.res bindings)
-  ├─> Phase B (EventLog.replayStream)     — primary business value
-  ├─> Phase C (QueryDb scan stream)       — independent after A
-  ├─> Phase D (DcbEventLog stream)        — build on Phase B patterns
-  └─> Phase E (CSV/Node streams)          — independent after A
+Phase A — Stream.res bindings + smoke tests
+  ├─> Phase B — EventLog.replayStream + Aggregate_Callback + tests
+  ├─> Phase C — QueryDb scan stream + limit tests
+  ├─> Phase D — DcbEventLog.readStream + StateChangeSlice_Callback + tests
+  └─> Phase E — CSV/Node.js streams + tests
 ```
 
 ---
 
-### Phase A — Add Stream.res Bindings
+### Phase A — Stream.res Bindings + Smoke Tests
 
-**Goal:** Make `Stream.t<'a, 'e, 'r>` available to all packages in the monorepo.
+**Goal:** Make `Stream.t<'a, 'e, 'r>` importable from `rescript-effect` and verify the core
+operations work correctly before building anything on top.
 
-**Files to create:**
-- `rescript/rescript-effect/src/Stream.res`
+#### A.1 Implementation
 
-**Steps:**
-1. Create `Stream.res` with all Phase A bindings from Section 2 (do not include Node.js interop yet).
-2. Build `rescript/rescript-effect`: `cd rescript/rescript-effect && npm run build`. Zero warnings.
-3. Add `Stream` to `rescript/rescript-effect/rescript.json` sources if not auto-discovered.
-4. Verify the binding is importable from `reventless-in-memory` with a smoke test (see Section 4).
+**File to create:** `rescript/rescript-effect/src/Stream.res`
 
-**Acceptance criteria:**
-- `Stream.res` compiles with zero warnings.
-- `Stream.fromIterable([1, 2, 3])->Stream.runCollect->Effect.runPromise` resolves to `[1, 2, 3]`.
-- No changes to any existing test.
+Write all core bindings from Section 2 (omit Node.js interop until Phase E). Add a header comment
+referencing this plan. Build `rescript/rescript-effect`:
+
+```bash
+cd rescript/rescript-effect && npm run build
+# must print zero warnings
+```
+
+No changes to any other package. No existing tests change.
+
+#### A.2 Set up test infrastructure in `rescript-effect`
+
+The `rescript-effect` package currently has `"test": "echo \"No tests\""` and no Jest
+configuration. Binding smoke tests belong here — they only exercise Effect library calls and are
+independent of any Reventless adapter. Setting up once pays for all future binding tests (Queue,
+Deferred, Schedule, etc.).
+
+**Changes to `rescript/rescript-effect/package.json`:**
+
+```json
+{
+  "scripts": {
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest"
+  },
+  "jest": {
+    "testMatch": ["<rootDir>/tests/**/*Test.res.mjs"],
+    "moduleFileExtensions": ["js", "mjs"]
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.0.0",
+    "jest": "^29.0.0",
+    "jest-environment-node": "^29.0.0",
+    "rescript": "^12.1.0"
+  }
+}
+```
+
+Also add a `tests/` source directory to `rescript.json`:
+
+```json
+{
+  "sources": [
+    {"dir": "src", "subdirs": true},
+    {"dir": "tests", "subdirs": true, "type": "dev"}
+  ]
+}
+```
+
+Run `npm install` after modifying `package.json` to update the lock file. The compiled test output
+(`.res.mjs` files) will land in `tests/` alongside the sources.
+
+#### A.3 Tests
+
+**File to create:** `rescript/rescript-effect/tests/StreamTest.res`
+
+These tests live in `rescript-effect` because they verify Effect bindings only — no Reventless
+adapter code, no in-memory bus, no fixtures. The same principle applies to any future binding
+tests for `Queue`, `Deferred`, `Schedule`, etc.
+
+Note: `rescript-effect` does not depend on `@glennsl/rescript-jest` or `AsyncTest`. Use
+`@jest/globals` directly (the same ESM import pattern as `DiagnosticTest.mjs` already in the
+repo). Since the tests are written in ReScript, bind Jest's `test`, `describe`, `expect`, etc.
+via `@module("@jest/globals")` externals — the same approach used throughout `reventless-in-memory`.
+
+```rescript
+// StreamTest.res — in rescript/rescript-effect/tests/
+// Bindings for Jest globals (same pattern as other test files in this monorepo)
+@module("@jest/globals") external describe: (string, unit => unit) => unit = "describe"
+@val external test: (string, unit => promise<unit>) => unit = "test"
+type expectResult
+@module("@jest/globals") external expect: 'a => expectResult = "expect"
+@send external toEqual: (expectResult, 'a) => unit = "toEqual"
+@send external toBe: (expectResult, 'a) => unit = "toBe"
+@send external toBeUndefined: expectResult => unit = "toBeUndefined"
+
+describe("Stream bindings", () => {
+  describe("construction", () => {
+    test("fromIterable emits all items in order", async () => {
+      let result = await Stream.fromIterable([1, 2, 3])
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result)->toEqual([1, 2, 3])
+    })
+
+    test("empty stream yields no items", async () => {
+      let result = await Stream.empty->Stream.runCollect->Effect.runPromise
+      expect(result)->toEqual([])
+    })
+
+    test("fromEffect wraps a single value", async () => {
+      let result = await Stream.fromEffect(Effect.succeed("hello"))
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result)->toEqual(["hello"])
+    })
+
+    test("fromQueue emits items until shutdown", async () => {
+      let queue = Queue.unbounded()->Effect.runSync
+      let _ = Queue.offer(queue, 10)->Effect.runSync
+      let _ = Queue.offer(queue, 20)->Effect.runSync
+      let _ = Queue.shutdown(queue)->Effect.runSync
+      let result = await Stream.fromQueue(queue)->Stream.runCollect->Effect.runPromise
+      expect(result)->toEqual([10, 20])
+    })
+
+    test("paginateEffect pages through chunks until None", async () => {
+      // Three pages: [1,2], [3,4], [5]
+      let result = await Stream.paginateEffect(0, cursor =>
+        Effect.sync(() => {
+          let all = [1, 2, 3, 4, 5]
+          let chunk = all->Array.slice(~start=cursor, ~end=min(cursor + 2, 5))
+          let next = cursor + 2 < 5 ? Some(cursor + 2) : None
+          (chunk, next)
+        })
+      )
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result)->toEqual([1, 2, 3, 4, 5])
+    })
+  })
+
+  describe("transformation", () => {
+    test("map transforms each item", async () => {
+      let result = await Stream.fromIterable([1, 2, 3])
+        ->Stream.map(n => n * 2)
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result)->toEqual([2, 4, 6])
+    })
+
+    test("filter removes items not matching predicate", async () => {
+      let result = await Stream.fromIterable([1, 2, 3, 4, 5])
+        ->Stream.filter(n => mod(n, 2) == 0)
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result)->toEqual([2, 4])
+    })
+
+    test("take limits to first N items", async () => {
+      let result = await Stream.fromIterable([1, 2, 3, 4, 5])
+        ->Stream.take(3)
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result)->toEqual([1, 2, 3])
+    })
+  })
+
+  describe("terminal runners", () => {
+    test("runFold accumulates state across all items", async () => {
+      let sum = await Stream.fromIterable([1, 2, 3, 4])
+        ->Stream.runFold(0, (acc, n) => acc + n)
+        ->Effect.runPromise
+      expect(sum)->toBe(10)
+    })
+
+    test("runFold can accumulate a tuple", async () => {
+      // Same pattern used in Aggregate_Callback for (state, count)
+      let (last, count) = await Stream.fromIterable(["a", "b", "c"])
+        ->Stream.runFold(("", 0), ((_, n), s) => (s, n + 1))
+        ->Effect.runPromise
+      expect(last)->toBe("c")
+      expect(count)->toBe(3)
+    })
+
+    test("runHead returns Some for non-empty stream", async () => {
+      let head = await Stream.fromIterable([42, 1, 2])
+        ->Stream.runHead
+        ->Effect.runPromise
+      expect(head)->toEqual(Some(42))
+    })
+
+    test("runHead returns None for empty stream", async () => {
+      let head = await Stream.empty->Stream.runHead->Effect.runPromise
+      expect(head)->toEqual(None)
+    })
+  })
+})
+```
+
+#### A.4 Acceptance criteria
+
+- Jest infrastructure in `rescript-effect` is set up (package.json updated, `npm install` run)
+- `Stream.res` compiles with zero warnings
+- `npm test` in `rescript/rescript-effect` runs the 13 smoke tests and all pass
+- `npm test` in `reventless-in-memory` still passes unchanged (no tests moved there)
+- `npm run build` from monorepo root succeeds
 
 ---
 
-### Phase B — EventLog.replayStream
+### Phase B — EventLog.replayStream + Aggregate_Callback Adaptation
 
-**Goal:** Aggregates rebuild state by folding over a stream of events, not by loading all events
-into memory first.
+**Goal:** Replace the full in-memory event array load in `Aggregate_Callback` with a lazy stream
+fold that produces `(initialState, sequenceNr)` in a single pass, eliminating the two-pass overhead
+of `replay + Array.length`.
 
-**Files to modify:**
-1. `reventless/reventless-core/src/components/EventLog/EventLog_Adapter.res`
-   - Add `replayStream: string => Stream.t<JSON.t, string, unit>` to `operations`
-2. `reventless/reventless-core/src/components/EventLog/EventLog_Operations.res`
-   - Add `replayStream` to module type `T` and functor `Make`
-3. `reventless/reventless-core/src/components/EventLog/EventLog.res`
-   - Add `replayStream` type alias if needed for external API
-4. `reventless/reventless-in-memory/src/adapter/EventLog/EventLogStorage_InMemory.res`
-   - Implement `replayStream` using `Stream.fromEffect->Stream.flatMap(Stream.fromIterable)`
-5. `reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDB.res` (if exists)
-   - Implement `replayStream` using `Stream.paginateEffect` with DynamoDB LastEvaluatedKey cursor
-6. `reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res`
-   - Replace `replay` + `updateState(None, history)` fold with `replayStream->Stream.runFold`
+**Priority:** Medium — primary business value of the streaming work.
 
-**Acceptance criteria:**
-- All existing `EventLogTest.res` and `AggregateTest.res` tests pass unchanged.
-- New `EventLogStreamTest.res` tests pass (see Section 4).
-- Zero new warnings.
-- `npm run build` in the root compiles all modules without errors.
+#### B.1 Implementation
+
+**Step 1 — Add type to `EventLog_Adapter.operations`**
+
+```rescript
+// EventLog_Adapter.res — extend the operations record
+type operations = {
+  append: EventLog.append<string, JSON.t>,
+  replay: EventLog.replay<string, JSON.t>,
+  replayStream: string => Stream.t<JSON.t, string, unit>,  // NEW — lazy streaming replay
+}
+```
+
+**Step 2 — Add type to `EventLog.T.operations`**
+
+```rescript
+// EventLog.res — add replayStream type alias
+type replayStream<'id, 'event> = 'id => Stream.t<'event, string, unit>
+
+// EventLog.T — extend operations record
+module type T = {
+  module Spec: Reventless.EventLog.T
+  type operations = {
+    append: append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
+    replay: replay<Spec.Id.t, Spec.event>,
+    replayStream: replayStream<Spec.Id.t, Spec.event>,  // NEW
+  }
+  ...
+}
+```
+
+**Step 3 — Add `replayStream` to `EventLog_Operations.Make`**
+
+```rescript
+// EventLog_Operations.res — inside module Make(...)
+let replayStream = id =>
+  Ops.storage.replayStream(id->Spec.Id.toString)
+  ->Stream.mapEffect(json =>
+    // decodeEvent throws on bad data — wrap in Effect.sync so errors surface
+    // through the stream's error channel rather than as unhandled exceptions
+    Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
+  )
+```
+
+Also extend module type `T`:
+
+```rescript
+module type T = {
+  module Spec: Reventless.EventLog.T
+  let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
+  let replay: EventLog.replay<Spec.Id.t, Spec.event>
+  let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>  // NEW
+}
+```
+
+**Step 4 — Implement `replayStream` in `EventLogStorage_InMemory.res`**
+
+```rescript
+// EventLogStorage_InMemory.res — add to the operations record
+let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
+  Stm.TRef.get(eventsRef)
+  ->Stm.commit
+  ->Effect.map(events => events->Dict.get(id)->Option.getOr([]))
+  ->Stream.fromEffect
+  ->Stream.flatMap(arr => Stream.fromIterable(arr))
+```
+
+Note: for the in-memory adapter the entire array is still loaded (it is in memory anyway), then
+exposed as a stream. The benefit is API uniformity; the real performance gain comes from DynamoDB.
+
+**Step 5 — Implement `replayStream` in `EventLogStorage_DynamoDB.res`** (AWS adapter)
+
+```rescript
+// EventLogStorage_DynamoDB.res
+// Cursor state: option<JSON.t> = lastEvaluatedKey from DynamoDB
+let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
+  Stream.paginateEffect(None, (lastKey: option<JSON.t>) =>
+    Effect.tryPromise({
+      "try": () => queryByIdPage(tableName, id, lastKey),
+      "catch": (err: unknown) =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB query error"),
+    })
+    ->Effect.map(page => (page.items, page.lastKey))
+  )
+```
+
+Each DynamoDB page is fetched only when the stream consumer pulls. For aggregates with < 1 page of
+events (the common case), there is exactly one DynamoDB call — same as before. For aggregates with
+> 1 page, subsequent pages are fetched lazily during the fold.
+
+**Step 6 — Adapt `Aggregate_Callback.handleCommands`**
+
+Replace the two-pass `replay → Array.length + updateState` pattern with a single stream fold.
+The change is scoped to the inner `Array.map(async ((id, topicItemsForId)) => { ... })` callback:
+
+```rescript
+// REMOVE:
+let history = await Ops.eventLog.replay(id)
+// ... later in the same scope:
+let result = await commands'->Array.reduce(
+  Ok((updateState(None, history), []))->Promise.resolve,
+  processCommand,
+)
+// ... even later:
+switch await Ops.eventLog.append(history->Array.length, id, generatedEvents') {
+
+// ADD:
+// Single pass: produce both (initialState, sequenceNr) from the stream.
+// sequenceNr replaces history->Array.length as the optimistic concurrency token.
+let (initialState, sequenceNr) = await Ops.eventLog.replayStream(id)
+  ->Stream.runFold((None, 0), ((st, n), ev) => (apply'(st, ev), n + 1))
+  ->Effect.runPromise
+// ... later in the same scope:
+let result = await commands'->Array.reduce(
+  Ok((initialState, []))->Promise.resolve,
+  processCommand,
+)
+// ... even later:
+switch await Ops.eventLog.append(sequenceNr, id, generatedEvents') {
+```
+
+`processCommand` and `runBehavior` are unchanged — they use `updateState` only for in-memory
+newly-generated events, not for replayed history.
+
+The `updateState` helper and `apply'` function remain in `Aggregate_Callback.Make` unchanged.
+
+#### B.2 Tests
+
+**File to create:**
+`reventless/reventless-in-memory/tests/components/eventlog/EventLogStreamTest.res`
+
+```rescript
+open AsyncTest
+open AsyncTest.Expect
+open EventLogFixtures  // reuse existing fixtures
+
+describe("EventLog.replayStream", () => {
+  let _ = beforeAllAsync(async () => {
+    let _ = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+  })
+  let _ = beforeEach(() => resetStorage())
+
+  describe("storage streaming (in-memory adapter)", () => {
+    testPromise("replayStream returns all appended events", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append(0, itemId, [makeEvent("Created")])
+      let _ = await ops.append(1, itemId, [makeEvent("Updated")])
+      let replayed = await ops.replayStream(itemId)->Stream.runCollect->Effect.runPromise
+      expect(replayed->Array.length)->toBe(2)
+    })
+
+    testPromise("replayStream for unknown id returns empty stream", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let replayed = await ops.replayStream("no-such-id")->Stream.runCollect->Effect.runPromise
+      expect(replayed->Array.length)->toBe(0)
+    })
+
+    testPromise("replayStream emits events in append order", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append(0, itemId, [makeEvent("First")])
+      let _ = await ops.append(1, itemId, [makeEvent("Second")])
+      let replayed = await ops.replayStream(itemId)->Stream.runCollect->Effect.runPromise
+      // First event is earlier — order is preserved
+      expect(replayed->Array.getUnsafe(0))->toBeDefined  // spot-check order via count
+      expect(replayed->Array.length)->toBe(2)
+    })
+
+    testPromise("separate aggregate IDs have independent streams", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append(0, "agg-X", [makeEvent("X-Created")])
+      let _ = await ops.append(0, "agg-Y", [makeEvent("Y-Created"), makeEvent("Y-Updated")])
+      let countX = await ops.replayStream("agg-X")
+        ->Stream.runFold(0, (n, _) => n + 1)
+        ->Effect.runPromise
+      let countY = await ops.replayStream("agg-Y")
+        ->Stream.runFold(0, (n, _) => n + 1)
+        ->Effect.runPromise
+      expect(countX)->toBe(1)
+      expect(countY)->toBe(2)
+    })
+
+    testPromise("take(2) on a 5-event log returns only 2 events", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append(0, itemId, [
+        makeEvent("e1"), makeEvent("e2"), makeEvent("e3"), makeEvent("e4"), makeEvent("e5"),
+      ])
+      let first2 = await ops.replayStream(itemId)
+        ->Stream.take(2)
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(first2->Array.length)->toBe(2)
+    })
+  })
+
+  describe("tuple fold — (state, count) pattern used in Aggregate_Callback", () => {
+    testPromise("runFold produces correct count for sequenceNr", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append(0, itemId, [makeEvent("e1"), makeEvent("e2")])
+      let _ = await ops.append(2, itemId, [makeEvent("e3")])
+      let (_state, count) = await ops.replayStream(itemId)
+        ->Stream.runFold((None, 0), ((st, n), _ev) => (st, n + 1))
+        ->Effect.runPromise
+      expect(count)->toBe(3)  // sequenceNr = 3, matches append call with seqNr 3
+    })
+
+    testPromise("runFold on empty stream returns initial accumulator", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let (state, count) = await ops.replayStream("unknown")
+        ->Stream.runFold((None, 0), ((st, n), _ev) => (st, n + 1))
+        ->Effect.runPromise
+      expect(state)->toEqual(None)
+      expect(count)->toBe(0)
+    })
+  })
+})
+```
+
+**File to modify:** `reventless/reventless-in-memory/tests/components/aggregate/AggregateTest.res`
+
+Add a regression test that exercises the full command → stream replay → state → new command cycle:
+
+```rescript
+testPromise("second command sees state produced by first command via stream replay", async () => {
+  // First command: CreateItem — produces ItemCreated event
+  // Stream replay reconstructs state: Some({name: "Widget"})
+  // Second command: UpdateItem — Behavior.execute sees the created item
+  // Without correct stream fold, second command would fail (item doesn't exist)
+  let _ = await ops.publishJsons(encodeCreate("item-1", "Widget"))
+  let _ = await ops.publishJsons(encodeUpdate("item-1", "Updated Widget"))
+  // Verify both commands produced events (no error)
+  let replayed = await eventLogOps.replayStream("item-1")
+    ->Stream.runFold(0, (n, _) => n + 1)
+    ->Effect.runPromise
+  expect(replayed)->toBe(2)  // Created + Updated events in log
+})
+```
+
+#### B.3 Acceptance criteria
+
+- All existing `EventLogTest.res` tests pass unchanged (replay still works)
+- All existing `AggregateTest.res` tests pass unchanged (observable behaviour unchanged)
+- All new `EventLogStreamTest.res` tests pass (12 new tests)
+- Aggregate regression test passes
+- `npm run build` from root: zero warnings, all packages compile
+- `npm test` from `reventless-in-memory`: all suites pass
 
 ---
 
-### Phase C — QueryDb Scan as Stream
+### Phase C — QueryDb Scan as Stream + Limit Tests
 
-**Goal:** `QueryEngine_InMemory.scan` honours the `~limit` parameter by using a stream.
+**Goal:** Make `QueryEngine_InMemory.scan` honour the `~limit` parameter, which has been wired
+through the type system since the beginning but silently ignored in the in-memory implementation.
 
-**Files to modify:**
-1. `reventless/reventless-in-memory/src/adapter/InMemory_Bus.res`
-   - Add `registerQueryDbStream` / `getQueryDbStream` to `T` and `Make`
-2. `reventless/reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res`
-   - Register the stream alongside the existing array scan
-3. `reventless/reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res`
-   - Prefer stream registry; fall back to array scan; honour `~limit` via `Stream.take`
+**Priority:** Low — `scan` is used in the GraphQL admin/reporting API, not the hot path.
 
-**Acceptance criteria:**
-- Existing `QueryEngineTest.res` passes unchanged.
-- New test with `~limit=2` on a 5-item QueryDb returns exactly 2 items.
-- `~limit` not provided returns all items.
-- Zero new warnings.
+#### C.1 Implementation
+
+**Step 1 — Add stream registry to `InMemory_Bus.T`**
+
+Alongside the existing `registerQueryDbScan` / `getQueryDbScan` pair, add a stream variant:
+
+```rescript
+// InMemory_Bus.T — additions
+let registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit
+let getQueryDbStream: string => option<unit => Stream.t<JSON.t, string, unit>>
+```
+
+Implement in `InMemory_Bus.Make` with a `ref<dict<...>>` registry, same pattern as the existing
+scan registry. Keep both — the array-based `getQueryDbScan` remains for backward compatibility.
+
+**Step 2 — Register stream in `QueryDbStorage_InMemory.Make(Bus)`**
+
+```rescript
+// Alongside the existing registerQueryDbScan call:
+Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
+```
+
+Where `allItems.contents` is the current in-memory dict converted to a flat array.
+
+**Step 3 — Update `QueryEngine_InMemory` to prefer stream and honour `~limit`**
+
+```rescript
+scan: async (~readModelName, ~filterConfigs as _, ~limit=?) => {
+  switch Bus.getQueryDbStream(readModelName) {
+  | Some(makeStream) =>
+    let stream = switch limit {
+    | Some(n) => makeStream()->Stream.take(n)
+    | None => makeStream()
+    }
+    await stream->Stream.runCollect->Effect.runPromise
+  | None =>
+    // Backward compat: fall back to array scan if no stream registered
+    switch Bus.getQueryDbScan(readModelName) {
+    | Some(scanAll) => scanAll()
+    | None => []
+    }
+  }
+},
+```
+
+#### C.2 Tests
+
+**File to modify:**
+`reventless/reventless-in-memory/tests/adapter/QueryEngineTest.res`
+
+Add to the existing `describe("QueryEngine_InMemory", ...)` block:
+
+```rescript
+describe("scan with ~limit", () => {
+  testPromise("~limit=2 on a 5-item QueryDb returns exactly 2 items", async () => {
+    module TestBus = InMemory_Bus.Make()
+    module TestQDB = QueryDbStorage_InMemory.Make(TestBus)
+    // Insert 5 items
+    let _ = await TestQDB.ops.save("key-1", makeItem("a"))
+    let _ = await TestQDB.ops.save("key-2", makeItem("b"))
+    let _ = await TestQDB.ops.save("key-3", makeItem("c"))
+    let _ = await TestQDB.ops.save("key-4", makeItem("d"))
+    let _ = await TestQDB.ops.save("key-5", makeItem("e"))
+    let qe = await QueryEngine_InMemory.Make(TestBus).make(Dict.make())->TestRunner.resolve
+    let result = await qe.scan(~readModelName="TestQDB", ~filterConfigs=[], ~limit=2)
+    expect(result->Array.length)->toBe(2)
+  })
+
+  testPromise("scan without ~limit returns all items", async () => {
+    module TestBus = InMemory_Bus.Make()
+    module TestQDB = QueryDbStorage_InMemory.Make(TestBus)
+    let _ = await TestQDB.ops.save("key-1", makeItem("a"))
+    let _ = await TestQDB.ops.save("key-2", makeItem("b"))
+    let _ = await TestQDB.ops.save("key-3", makeItem("c"))
+    let qe = await QueryEngine_InMemory.Make(TestBus).make(Dict.make())->TestRunner.resolve
+    let result = await qe.scan(~readModelName="TestQDB", ~filterConfigs=[], ())
+    expect(result->Array.length)->toBe(3)
+  })
+
+  testPromise("~limit larger than total returns all items (no padding)", async () => {
+    module TestBus = InMemory_Bus.Make()
+    module TestQDB = QueryDbStorage_InMemory.Make(TestBus)
+    let _ = await TestQDB.ops.save("key-1", makeItem("a"))
+    let _ = await TestQDB.ops.save("key-2", makeItem("b"))
+    let qe = await QueryEngine_InMemory.Make(TestBus).make(Dict.make())->TestRunner.resolve
+    let result = await qe.scan(~readModelName="TestQDB", ~filterConfigs=[], ~limit=100)
+    expect(result->Array.length)->toBe(2)
+  })
+
+  testPromise("~limit=0 returns empty array", async () => {
+    module TestBus = InMemory_Bus.Make()
+    module TestQDB = QueryDbStorage_InMemory.Make(TestBus)
+    let _ = await TestQDB.ops.save("key-1", makeItem("a"))
+    let qe = await QueryEngine_InMemory.Make(TestBus).make(Dict.make())->TestRunner.resolve
+    let result = await qe.scan(~readModelName="TestQDB", ~filterConfigs=[], ~limit=0)
+    expect(result->Array.length)->toBe(0)
+  })
+})
+```
+
+#### C.3 Acceptance criteria
+
+- All existing `QueryEngineTest.res` tests pass unchanged
+- 4 new limit tests pass
+- Zero new warnings
 
 ---
 
-### Phase D — DcbEventLog.read as Paginated Stream
+### Phase D — DcbEventLog.readStream + StateChangeSlice_Callback Adaptation
 
-**Goal:** DCB decision-model building can page through events without loading the full result set.
+**Goal:** DCB decision-model building pages through events lazily rather than loading the full
+matching event set into memory on every command. Structurally mirrors Phase B.
 
-**Files to modify:**
-1. `reventless/reventless-core/src/components/DcbEventLog/DcbEventLog_Adapter.res`
-   - Add `readStream` to `operations` type
-2. `reventless/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res`
-   - Implement `readStream` using storage's `read` function with cursor threading
-3. `reventless/reventless-in-memory/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res`
-   - Implement `replayStream` using `Stream.paginateEffect`
-4. Update `StateChangeSlice_Builder` to optionally use `readStream`
+**Priority:** Low — additive improvement for large DCB deployments.
 
-**Acceptance criteria:**
-- Existing DCB E2E tests pass unchanged.
-- New `DcbEventLogStreamTest.res` covers empty stream, single page, and multi-page cursor cases.
+#### D.1 Implementation
+
+**Step 1 — Add `readStream` to `DcbEventLog_Adapter.operations`**
+
+```rescript
+// DcbEventLog_Adapter.res — extend operations
+type operations = {
+  read: (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) =>
+    promise<rawReadResult>,
+  append: (array<rawStoredEvent>, ~condition: Reventless.DcbTag.appendCondition=?) =>
+    promise<result<Reventless.DcbTag.sequencePosition, string>>,
+  // NEW: lazy stream variant of read; pages via cursor until exhausted
+  readStream: (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) =>
+    Stream.t<rawSequencedEvent, string, unit>,
+}
+```
+
+**Step 2 — Implement `readStream` in `DcbEventLogStorage_InMemory`**
+
+Thread the `after` cursor by using the last event's `position` from each page:
+
+```rescript
+// DcbEventLogStorage_InMemory — readStream
+let readStream: (~query: Reventless.DcbTag.query, ~after: option<Reventless.DcbTag.sequencePosition>=?) =>
+  Stream.t<DcbEventLog_Adapter.rawSequencedEvent, string, unit> =
+  (~query, ~after=?) =>
+    Stream.paginateEffect(after, currentAfter =>
+      Effect.promise(() => read(~query, ~after=?currentAfter))
+      ->Effect.map(result => {
+        let nextCursor = result.headPosition  // last position seen = next page cursor
+        (result.events, nextCursor)
+      })
+    )
+```
+
+When there is only one page (the common case), `headPosition` is returned and then used as cursor
+for the next page call, which returns an empty array → `headPosition = None` → stream terminates.
+
+**Step 3 — Add `readStream` to `DcbEventLog_Operations.Make`**
+
+```rescript
+// Decode each raw event as it is pulled from the stream
+let readStream = (~query, ~after=?) =>
+  Ops.storage.readStream(~query, ~after?)
+  ->Stream.map(raw => decodeEvent(raw))
+```
+
+**Step 4 — Adapt `StateChangeSlice_Callback.handleCommands`**
+
+The structural adaptation mirrors §1.2. The exact details depend on
+`StateChangeSlice_Callback.res` internals — read the file at implementation time. The pattern is:
+
+```rescript
+// BEFORE: full array load
+let {events, headPosition} = await dcbEventLogOps.read(~query)
+let decisionModel = events->Array.reduce(emptyModel, applyEvent)
+
+// AFTER: lazy stream fold, accumulating headPosition
+let (decisionModel, headPosition) = await dcbEventLogOps.readStream(~query)
+  ->Stream.runFold(
+    (emptyModel, None),
+    ((dm, _pos), event) => (applyEvent(dm, event), Some(event.position))
+  )
+  ->Effect.runPromise
+```
+
+If `StateChangeSlice_Callback` does not use `headPosition` as an append condition, the fold
+accumulates only the decision model; the `headPosition` tracking is dropped from the tuple.
+
+**Correctness constraint:** Same as Phase B — `take` must never be applied to `readStream` inside
+`StateChangeSlice_Callback`. All events are required to build the correct decision model.
+
+#### D.2 Tests
+
+**File to create:**
+`reventless/reventless-in-memory/tests/components/dcbeventlog/DcbEventLogStreamTest.res`
+
+```rescript
+open AsyncTest
+open AsyncTest.Expect
+open DcbEventLogFixtures  // reuse or create fixtures alongside
+
+describe("DcbEventLog.readStream", () => {
+  describe("basic streaming", () => {
+    testPromise("readStream for tag with no events returns empty stream", async () => {
+      module TestDcb = DcbEventLogStorage_InMemory.Make({})
+      let result = await TestDcb.ops.readStream(~query=tagQuery("unknown-tag"))
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result->Array.length)->toBe(0)
+    })
+
+    testPromise("readStream emits all events matching a tag query", async () => {
+      module TestDcb = DcbEventLogStorage_InMemory.Make({})
+      let _ = await TestDcb.ops.append([makeRawEvent("ItemCreated", tagOf("item-1"))], ())
+      let _ = await TestDcb.ops.append([makeRawEvent("ItemCreated", tagOf("item-2"))], ())
+      let result = await TestDcb.ops.readStream(~query=tagQuery("item-1"))
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(result->Array.length)->toBe(1)
+    })
+
+    testPromise("readStream emits events from multiple pages in order", async () => {
+      // Append enough events to span two pages (page size is implementation-defined;
+      // use a small page size override or append enough events to trigger multiple reads)
+      ...
+    })
+  })
+
+  describe("fold patterns (mirrors Aggregate_Callback use case)", () => {
+    testPromise("runFold extracts last headPosition as append condition", async () => {
+      module TestDcb = DcbEventLogStorage_InMemory.Make({})
+      let _ = await TestDcb.ops.append([makeRawEvent("e1", tagOf("x"))], ())
+      let _ = await TestDcb.ops.append([makeRawEvent("e2", tagOf("x"))], ())
+      let (_, headPosition) = await TestDcb.ops.readStream(~query=tagQuery("x"))
+        ->Stream.runFold((unit, None), ((_, _pos), event) => ((), Some(event.position)))
+        ->Effect.runPromise
+      expect(headPosition)->not->toEqual(None)
+    })
+
+    testPromise("take(1) stops after first event without loading all", async () => {
+      module TestDcb = DcbEventLogStorage_InMemory.Make({})
+      let _ = await TestDcb.ops.append([makeRawEvent("e1", tagOf("x"))], ())
+      let _ = await TestDcb.ops.append([makeRawEvent("e2", tagOf("x"))], ())
+      let first = await TestDcb.ops.readStream(~query=tagQuery("x"))
+        ->Stream.take(1)
+        ->Stream.runCollect
+        ->Effect.runPromise
+      expect(first->Array.length)->toBe(1)
+    })
+  })
+
+  describe("StateChangeSlice regression (integration)", () => {
+    testPromise("second command sees decision model from first command via stream fold", async () => {
+      // Full round-trip: publish two commands, verify both complete without error
+      // and that the second command's decision model includes the first event.
+      // This is the DCB equivalent of the Aggregate regression test in Phase B.
+      ...
+    })
+  })
+})
+```
+
+#### D.3 Acceptance criteria
+
+- All existing DCB E2E tests pass unchanged
+- `DcbEventLogStreamTest.res` tests pass
+- StateChangeSlice integration regression test passes
+- Zero new warnings
 
 ---
 
-### Phase E — CSV / Node.js Readable as Effect Stream
+### Phase E — CSV / Node.js Readable as Effect Stream + Tests
 
-**Goal:** Provide a streaming CSV parser backed by Effect Stream for use in Task callbacks.
+**Goal:** Provide a streaming CSV parser backed by Effect Stream for use in Task file-processing
+callbacks, enabling backpressure and early termination for large files.
 
-**Files to create / modify:**
-1. `rescript/rescript-effect/src/Stream.res` — add `fromReadableStream` binding
-2. `reventless/reventless-core/src/util/CsvStream.res` (new file) — bridge FastCSV to Stream
-3. Document usage in a Task callback example
+**Priority:** Low — affects a subset of use cases; requires the most novel work.
 
-**Acceptance criteria:**
-- `CsvStream.parseRows(~path)` produces a `Stream.t<FastCSV.row, string, unit>`.
-- Test with a temporary CSV file verifies all rows are emitted in order.
-- Test with `Stream.take(2)` verifies early termination (file handle closed).
+#### E.1 Implementation
 
----
+**Step 1 — Add `fromReadableStream` to `Stream.res`**
 
-## Section 4: Test Plan
+```rescript
+// Stream.res — Phase E addition
+@module("effect") @scope("Stream")
+external fromReadableStream: (unit => NodeStreams.Readable.t, int) => t<string, string, unit>
+  = "fromReadableStream"
+```
 
-### Phase A — Stream Binding Smoke Tests
+The thunk `unit => Readable.t` prevents the stream from opening the file handle until the stream
+is actually consumed. The `int` argument is the chunk size in bytes (e.g., 65536).
 
-**File to create:** `reventless/reventless-in-memory/tests/adapter/StreamBindingTest.res`
+**Step 2 — Create `CsvStream.res` in `reventless-core/src/util/`**
 
-Test cases:
+```rescript
+// CsvStream.res
+// Bridges Node.js FastCSV parser to an Effect Stream.
+// Uses fromReadableStream to get raw string chunks, then pipes through a
+// FastCSV parser transform stream to produce typed row objects.
+
+let parseRows = (~path: string): Stream.t<FastCSV.row, string, unit> =>
+  Stream.fromReadableStream(
+    () => NodeStreams.createReadStream(path)->FastCSV.attachParser,
+    65536,
+  )
+  ->Stream.map(FastCSV.parseRow)  // adjust based on actual FastCSV binding API
+```
+
+The exact implementation depends on how FastCSV emits rows — it may require a Channel wrapper
+rather than a simple `map`. Investigate at implementation time; the test below defines the contract.
+
+**Step 3 — Optional: extend Task callback type**
+
+If `Task` callbacks should optionally receive a streaming interface, add an overloaded variant.
+This is additive and backward-compatible. Defer if the standalone `CsvStream.res` utility is
+sufficient for current needs.
+
+#### E.2 Tests
+
+**File to create:** `reventless/reventless-core/tests/util/CsvStreamTest.res`
+(or in `reventless-in-memory` if the test infrastructure is already there)
 
 ```rescript
 open AsyncTest
 open AsyncTest.Expect
 
-describe("Stream bindings (smoke)", () => {
-  testPromise("fromIterable emits all items", async () => {
-    let result = await Stream.fromIterable([1, 2, 3])
+// Helpers: write temporary CSV files for testing
+let writeTempCsv = (rows: array<string>): string => {
+  let path = "/tmp/test-" ++ Message.uuid() ++ ".csv"
+  let content = rows->Array.joinWith("\n")
+  // Use Node.js fs.writeFileSync via binding
+  NodeFs.writeFileSync(path, content)
+  path
+}
+
+describe("CsvStream.parseRows", () => {
+  testPromise("parses all rows from a small CSV file", async () => {
+    let path = writeTempCsv(["name,age", "Alice,30", "Bob,25"])
+    let rows = await CsvStream.parseRows(~path)
       ->Stream.runCollect
       ->Effect.runPromise
-    expect(result)->toEqual([1, 2, 3])
+    expect(rows->Array.length)->toBe(2)  // header excluded by FastCSV
   })
 
-  testPromise("take limits items", async () => {
-    let result = await Stream.fromIterable([1, 2, 3, 4, 5])
-      ->Stream.take(3)
+  testPromise("emits rows in file order", async () => {
+    let path = writeTempCsv(["name", "first", "second", "third"])
+    let first = await CsvStream.parseRows(~path)
+      ->Stream.runHead
+      ->Effect.runPromise
+    expect(first->Option.map(r => r->FastCSV.getField("name")))->toEqual(Some("first"))
+  })
+
+  testPromise("take(2) stops after 2 rows without reading the whole file", async () => {
+    // Write 100 rows; take(2) should not read all of them
+    let rows = Array.make(100, "")->Array.mapWithIndex((_, i) => `row-${Int.toString(i)}`)
+    let path = writeTempCsv(Array.concat(["name"], rows))
+    let result = await CsvStream.parseRows(~path)
+      ->Stream.take(2)
       ->Stream.runCollect
       ->Effect.runPromise
-    expect(result)->toEqual([1, 2, 3])
+    expect(result->Array.length)->toBe(2)
   })
 
-  testPromise("fromEffect wraps a single value", async () => {
-    let result = await Stream.fromEffect(Effect.succeed("hello"))
-      ->Stream.runCollect
-      ->Effect.runPromise
-    expect(result)->toEqual(["hello"])
-  })
-
-  testPromise("paginateEffect pages through chunks", async () => {
-    // Pages: [1,2] → cursor=2; [3,4] → cursor=4; [5] → done
-    let result = await Stream.paginateEffect(0, cursor =>
-      Effect.sync(() => {
-        let all = [1, 2, 3, 4, 5]
-        let chunk = all->Array.slice(~start=cursor, ~end=cursor + 2)
-        let next = cursor + 2 < 5 ? Some(cursor + 2) : None
-        (chunk, next)
-      })
-    )
-      ->Stream.runCollect
-      ->Effect.runPromise
-    expect(result)->toEqual([1, 2, 3, 4, 5])
-  })
-
-  testPromise("runFold accumulates state", async () => {
-    let sum = await Stream.fromIterable([1, 2, 3, 4])
-      ->Stream.runFold(0, (acc, n) => acc + n)
-      ->Effect.runPromise
-    expect(sum)->toBe(10)
-  })
-
-  testPromise("empty stream runCollect returns empty array", async () => {
-    let result = await Stream.empty->Stream.runCollect->Effect.runPromise
-    expect(result)->toEqual([])
-  })
-
-  testPromise("fromQueue emits items until shutdown", async () => {
-    let queue = Queue.unbounded()->Effect.runSync
-    let _ = Queue.offer(queue, 1)->Effect.runSync
-    let _ = Queue.offer(queue, 2)->Effect.runSync
-    let _ = Queue.shutdown(queue)->Effect.runSync
-    let result = await Stream.fromQueue(queue)->Stream.runCollect->Effect.runPromise
-    expect(result)->toEqual([1, 2])
+  testPromise("empty CSV file returns empty stream", async () => {
+    let path = writeTempCsv(["name"])  // header only
+    let rows = await CsvStream.parseRows(~path)->Stream.runCollect->Effect.runPromise
+    expect(rows->Array.length)->toBe(0)
   })
 })
 ```
 
----
+#### E.3 Acceptance criteria
 
-### Phase B — EventLog.replayStream Tests
-
-**File to create:**
-`reventless/reventless-in-memory/tests/components/eventlog/EventLogStreamTest.res`
-
-Test cases:
-
-1. **Happy path** — append N events, `replayStream` collects all N
-2. **Empty stream** — `replayStream` for unknown ID returns empty array
-3. **Stream fold** — fold over events to count them (verifies lazy evaluation)
-4. **`Stream.take` early termination** — append 5 events, `take(3)` returns only 3
-5. **Separate aggregates** — two aggregate IDs have independent streams
-6. **Order preservation** — events replay in append order
-
-```rescript
-// EventLogStreamTest.res — structure
-describe("EventLog.replayStream", () => {
-  let _ = beforeAllAsync(async () => {
-    // resolve operations once to trigger Output chain
-    let _ = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
-  })
-  let _ = beforeEach(() => resetEventLog())  // clear in-memory storage
-
-  testPromise("replayStream returns all appended events", ...)
-  testPromise("replayStream for unknown id returns empty stream", ...)
-  testPromise("runFold over stream counts events correctly", ...)
-  testPromise("take(3) from 5-event log returns 3 events", ...)
-  testPromise("separate aggregate IDs have independent streams", ...)
-  testPromise("events are replayed in append order", ...)
-})
-```
-
-**Aggregate regression test** (add to `AggregateTest.res`):
-
-```rescript
-testPromise("aggregate state is correct after stream-based replay", async () => {
-  // Create item, then update it — final state matches expected
-  // The stream fold is internal; observable contract is unchanged.
-  // This is a regression guard for the Aggregate_Callback change.
-  ...
-  expect(finalState)->toEqual(expectedState)
-})
-```
+- `fromReadableStream` binding compiles with zero warnings
+- `CsvStream.parseRows` produces correct rows from a file
+- `Stream.take(2)` terminates early without loading the full file
+- All existing tests pass unchanged
 
 ---
 
-### Phase C — QueryDb Scan with Limit Tests
+## Section 4: Use Cases Not Yet Phased
 
-**File to modify:** `reventless/reventless-in-memory/tests/adapter/QueryEngineTest.res`
+The following use cases were identified but deliberately left out of the phased plan. They require
+a design decision before implementation.
 
-Test cases to add:
+### Use Case 4 — InMemory_Bus Fan-out via Stream (Evaluate before implementing)
 
-```rescript
-testPromise("scan with ~limit returns only N items", async () => {
-  // Insert 5 items, scan with ~limit=2
-  // Result has exactly 2 items
-  expect(result->Array.length)->toBe(2)
-})
+The current `InMemory_Bus` drain loop is already a manual `Stream.fromQueue` pattern. Replacing
+it with a PubSub-based stream would be an architectural improvement but changes delivery timing
+guarantees. The current design is carefully tuned for 2-microtick resolution in tests. Before
+implementing, measure whether the 2-tick resolution is preserved with the new approach.
 
-testPromise("scan without ~limit returns all items", async () => {
-  // Insert 5 items, scan without limit
-  // Result has exactly 5 items
-  expect(result->Array.length)->toBe(5)
-})
+### Use Case 6 — Bounded Queue Backpressure (Evaluate before implementing)
 
-testPromise("scan with ~limit larger than total returns all items", async () => {
-  // Insert 3 items, scan with ~limit=10
-  // Result has exactly 3 items (not padded)
-  expect(result->Array.length)->toBe(3)
-})
-```
+Replacing `Queue.unbounded` with `Queue.bounded(n)` per subscriber provides natural backpressure
+but requires switching from `Effect.runSync` (synchronous offer) to an async offer path, which
+may change the 2-microtick test guarantees. Defer to a dedicated backpressure-focused pass.
 
 ---
 
-### Phase D — DcbEventLog Stream Tests
-
-**File to create:**
-`reventless/reventless-in-memory/tests/components/dcbeventlog/DcbEventLogStreamTest.res`
-
-Test cases:
-
-1. **Empty stream** — `readStream` for a tag with no events returns empty
-2. **Single page** — events fit in one read call; stream emits all correctly
-3. **Multi-page cursor** — events span multiple read calls; stream concatenates all
-4. **`runFold` to get last head position** — fold to extract the final sequence position
-5. **`take` stops early** — `take(2)` on a 10-event stream fetches at most 2
-
----
-
-### Phase E — CsvStream Tests
-
-**File to create:** `reventless/reventless-core/tests/util/CsvStreamTest.res` (or similar)
-
-Test cases:
-
-1. **Parse small CSV file** — 3-row CSV, `runCollect` returns 3 rows in order
-2. **Early termination** — `take(2)` on a 100-row CSV reads only 2 rows, no memory spike
-3. **Empty file** — empty CSV returns empty stream
-4. **Error handling** — malformed CSV propagates error through stream error channel
-
----
-
-### General Test Patterns
-
-1. **Fresh bus per test** — `module TestBus = InMemory_Bus.Make()` inside each `describe` block
-2. **`beforeAllAsync` for Output resolution** — `await component->Component.operations->TestRunner.resolve`
-3. **`beforeEach` for storage reset** — call `resetStorage()` between tests
-4. **`testPromise`** — use `AsyncTest.testPromise`, not `@glennsl/rescript-jest`'s broken variant
-5. **`Stream.runCollect->Effect.runPromise`** — standard pattern to get an array from a stream in tests
-6. **No fake timers** — Stream tests do not use `setInterval`/`setTimeout`; fake timers not needed
-7. **`fromQueue` tests must shut down the queue first** — `Stream.fromQueue` blocks until shutdown;
-   call `Queue.shutdown(queue)->Effect.runSync` before `runCollect`
-8. **Annotate abstract cursor types** — `Stream.paginateEffect` cursor `'s` may need annotation if
-   not inferrable: `let stream: Stream.t<JSON.t, string, unit> = Stream.paginateEffect(None, ...)`
-
----
-
-## Known Constraints and Risks
+## Section 5: Known Constraints and Risks
 
 ### ReScript type inference with three type parameters
 
 `Stream.t<'a, 'e, 'r>` has three type parameters. Annotate the return type of any function that
-constructs a stream with an opaque cursor. The compiler produces a weak type variable error if `'s`
-in `paginateEffect` is polymorphic and not constrained by the initial value.
+constructs a stream with an opaque cursor:
 
-### Avoid nesting `Effect.runPromise` inside `Effect.runPromise`
+```rescript
+let myStream: Stream.t<JSON.t, string, unit> = Stream.paginateEffect(None, ...)
+```
 
-`Stream.runCollect` produces `Effect.t<array<'a>, 'e, 'r>`. Run it with a single `Effect.runPromise`
-at the async boundary. Do NOT call `Effect.runPromise` inside an effect that is itself run with
-`Effect.runPromise` — this causes "unexpected synchronous effect" errors. Compose with
-`Effect.flatMap` before the single boundary call.
+The compiler produces a weak type variable error if `'s` in `paginateEffect` is not constrained
+by the initial cursor value.
 
-### `paginateChunkEffect` vs `paginateEffect` (JS names)
+### Never nest `Effect.runPromise` inside `Effect.runPromise`
 
-The ReScript binding `paginateEffect` maps to JS `"paginateChunkEffect"`. Do not bind to
-`"paginateEffect"` (the JS name) — it takes a single item per page, not a chunk, which is less
-efficient for batch DynamoDB responses.
+`Stream.runCollect` and `Stream.runFold` produce `Effect.t<..., ..., ...>`. Run them with a
+single `Effect.runPromise` at the async boundary. Composing inside an effect: use `Effect.flatMap`.
+Nesting a second `Effect.runPromise` call inside another causes "unexpected synchronous effect".
 
-### TestClock does not reach inside stream runners
+### `paginateChunkEffect` vs `paginateEffect` (JS function names)
 
-As documented in the rescript-effect memory notes, `Effect.provide(TestContext)` from outside
-cannot inject TestClock into inner `Effect.runPromise` calls. Stream operations that use internal
-`Effect.sleep` (e.g. throttled streams) will not respond to TestClock. This is not an issue for
-Phases B–D (no timing in storage streams) but is relevant for Phase E if CSV parsing adds delays.
+The ReScript binding `paginateEffect` maps to JS `"paginateChunkEffect"` (chunk-based, returns
+`array<'a>` per page). Do not bind to `"paginateEffect"` — the JS function of that name takes
+a single item per page, which is less efficient for DynamoDB batch responses.
 
-### `Stream.fromQueue` terminates on `Queue.shutdown`
+### `Aggregate_Callback` must never apply `take` to `replayStream`
 
-`Stream.fromQueue(queue)` blocks until the queue is shut down. Tests must shut down the queue
-before calling `runCollect`, or use `Stream.take(n)` to avoid waiting. In the production
-`InMemory_Bus`, `reset()` calls `Queue.shutdown` on all subscriber queues — this is the correct
-lifecycle signal that also terminates any active `fromQueue` streams.
+The stream fold inside `handleCommands` must consume all events. Any `take(n)` applied before
+the fold would produce an incorrect `sequenceNr` (too low) and incorrect state (partial history).
+The `replayStream` returned by `EventLog_Operations.Make` is an unrestricted stream; constraints
+like `take` belong at the call site, and `Aggregate_Callback` must not add them.
 
-### `Aggregate_Callback` change is behavioral-equivalent but structurally different
+### `StateChangeSlice_Callback` correctness constraint (Phase D)
 
-The `replayStream->Stream.runFold` replacement produces the same final state as
-`updateState(None, history)`. The difference is that the fold runs lazily — if the aggregate has
-a `take`-based stream, it would terminate early. For correctness, the aggregate must always fold
-over all events (no `take`). The `replayStream` in `EventLog_Operations` must never apply `take`
-internally.
+Same constraint: the decision model fold must consume all events matching the tag query. Applying
+`take` to `readStream` inside the callback would produce an incomplete decision model, potentially
+allowing commands that should be rejected (e.g., duplicate creation) to succeed.
+
+### TestClock does not reach inside `Effect.runPromise` calls
+
+Stream tests do not involve timers. However, if any future stream operation uses `Effect.sleep`
+internally (e.g. retry on DynamoDB throttle), `Effect.provide(TestContext)` from outside cannot
+inject TestClock into inner `runPromise` calls. This is the same constraint documented in the
+Phase 2.5 notes in the effect-library-integration plan.
+
+### `Stream.fromQueue` terminates only on `Queue.shutdown`
+
+`Stream.fromQueue(queue)` blocks until the queue is shut down. Tests must call
+`Queue.shutdown(queue)->Effect.runSync` before collecting the stream, or use `Stream.take(n)`
+to avoid blocking. In `InMemory_Bus`, `reset()` calls `Queue.shutdown` on all queues — this is
+the correct lifecycle signal and also terminates any active `fromQueue` streams.
+
+### `decodeEvent` throws inside `EventLog_Operations.replayStream`
+
+The existing `decodeEvent` function throws `JsError` on malformed events. Inside a stream,
+uncaught exceptions escape Effect's error channel. Wrap in `Effect.sync(() => decodeEvent(...))`
+so that thrown exceptions become stream failures (routed through the `'e` channel) rather than
+unhandled JS exceptions. This enables `Stream.catchAll` recovery if needed.
