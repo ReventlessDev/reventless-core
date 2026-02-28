@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** In progress — Phases A–B complete, Phases C–E pending
+**Status:** In progress — Phases A–C complete, Phases D–E pending
 **Created:** 2026-02-28
 **Revised:** 2026-02-28
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
@@ -775,7 +775,7 @@ testPromise("second command sees state produced by first command via stream repl
 
 ---
 
-### Phase C — QueryDb Scan as Stream + Limit Tests
+### Phase C — QueryDb Scan as Stream + Limit Tests ✅ COMPLETE
 
 **Goal:** Make `QueryEngine_InMemory.scan` honour the `~limit` parameter, which has been wired
 through the type system since the beginning but silently ignored in the in-memory implementation.
@@ -882,11 +882,17 @@ describe("scan with ~limit", () => {
 })
 ```
 
-#### C.3 Acceptance criteria
+#### C.3 Acceptance criteria ✅
 
-- All existing `QueryEngineTest.res` tests pass unchanged
-- 4 new limit tests pass
-- Zero new warnings
+- All existing `QueryEngineTest.res` tests pass unchanged ✅
+- 4 new limit tests pass ✅
+- Zero new warnings ✅
+
+**Implementation notes:**
+- `~limit` kept as required `int` in `QueryEngine.scan` type — no spec change needed. `Stream.take(limit)` on a stream smaller than `limit` returns all items; `Stream.take(0)` returns zero items.
+- Plan showed `~limit=?` (optional) but spec uses required `int`; tests adapted accordingly (`~limit=100` for "no practical cap", no trailing `()` needed).
+- `reset()` in `InMemory_Bus.Make` clears the new `queryDbStreamRegistry` alongside the existing registries.
+- `reventless-in-memory`: 140 tests pass (was 129 after Phase B, +11 from Phase B stream tests and these 4 limit tests; `reventless-core`: 185 tests pass unchanged.
 
 ---
 

@@ -16,6 +16,9 @@ function Make($star) {
   let queryDbScanRegistry = {
     contents: {}
   };
+  let queryDbStreamRegistry = {
+    contents: {}
+  };
   let subscribeToEvents = (topicName, handler) => {
     let queue = Effect.Effect.runSync(Effect.Queue.unbounded());
     let drainLoop = Effect.Effect.forever(Effect.Effect.flatMap(Effect.Queue.take(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), Effect.Effect.map(Effect.Deferred.succeed(msg.signal, undefined), param => {}))));
@@ -59,6 +62,10 @@ function Make($star) {
     queryDbScanRegistry.contents[name] = scan;
   };
   let getQueryDbScan = name => queryDbScanRegistry.contents[name];
+  let registerQueryDbStream = (name, streamFn) => {
+    queryDbStreamRegistry.contents[name] = streamFn;
+  };
+  let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
   let reset = () => {
     let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventSubscribers.contents).flatMap(subs => subs.map(sub => Effect.Queue.shutdown(sub.queue))), {
       concurrency: "unbounded"
@@ -68,6 +75,7 @@ function Make($star) {
     commandHandlers.contents = {};
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
+    queryDbStreamRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -78,6 +86,8 @@ function Make($star) {
     getQueryDb: getQueryDb,
     registerQueryDbScan: registerQueryDbScan,
     getQueryDbScan: getQueryDbScan,
+    registerQueryDbStream: registerQueryDbStream,
+    getQueryDbStream: getQueryDbStream,
     reset: reset
   };
 }

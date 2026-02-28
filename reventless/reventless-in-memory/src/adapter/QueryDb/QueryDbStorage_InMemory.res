@@ -68,6 +68,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     Bus.registerQueryDb(name, ops)
     Bus.registerQueryDbScan(name, () => allItems.contents)
+    Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
 
     {
       resources: [],

@@ -93,4 +93,61 @@ describe("QueryEngine_InMemory", () => {
       expect(items->Array.length)->toBe(0)
     })
   })
+
+  describe("scan with ~limit", () => {
+    testPromise("~limit=2 on a 5-item QueryDb returns exactly 2 items", async () => {
+      module TestBus = InMemory_Bus.Make()
+      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module QE = QueryEngine_InMemory.Make(TestBus)
+      let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let ops = await s.operations->TestRunner.resolve
+      let _ = await ops.save("k1", JSON.Encode.string("a"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("k2", JSON.Encode.string("b"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("k3", JSON.Encode.string("c"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("k4", JSON.Encode.string("d"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("k5", JSON.Encode.string("e"), ReventlessCore.QueryDb.Any, None)
+      let engine = await QE.make(Dict.make())->TestRunner.resolve
+      let result = await engine.scan(~readModelName="items", ~filterConfigs=[], ~limit=2)
+      expect(result->Array.length)->toBe(2)
+    })
+
+    testPromise("~limit larger than total returns all items (no padding)", async () => {
+      module TestBus = InMemory_Bus.Make()
+      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module QE = QueryEngine_InMemory.Make(TestBus)
+      let s = Storage.make(~name="things", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let ops = await s.operations->TestRunner.resolve
+      let _ = await ops.save("t1", JSON.Encode.string("x"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("t2", JSON.Encode.string("y"), ReventlessCore.QueryDb.Any, None)
+      let engine = await QE.make(Dict.make())->TestRunner.resolve
+      let result = await engine.scan(~readModelName="things", ~filterConfigs=[], ~limit=100)
+      expect(result->Array.length)->toBe(2)
+    })
+
+    testPromise("~limit=0 returns empty array", async () => {
+      module TestBus = InMemory_Bus.Make()
+      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module QE = QueryEngine_InMemory.Make(TestBus)
+      let s = Storage.make(~name="stuff", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let ops = await s.operations->TestRunner.resolve
+      let _ = await ops.save("s1", JSON.Encode.string("z"), ReventlessCore.QueryDb.Any, None)
+      let engine = await QE.make(Dict.make())->TestRunner.resolve
+      let result = await engine.scan(~readModelName="stuff", ~filterConfigs=[], ~limit=0)
+      expect(result->Array.length)->toBe(0)
+    })
+
+    testPromise("~limit=3 on a 3-item QueryDb returns all 3 items", async () => {
+      module TestBus = InMemory_Bus.Make()
+      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module QE = QueryEngine_InMemory.Make(TestBus)
+      let s = Storage.make(~name="widgets", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let ops = await s.operations->TestRunner.resolve
+      let _ = await ops.save("w1", JSON.Encode.string("p"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("w2", JSON.Encode.string("q"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("w3", JSON.Encode.string("r"), ReventlessCore.QueryDb.Any, None)
+      let engine = await QE.make(Dict.make())->TestRunner.resolve
+      let result = await engine.scan(~readModelName="widgets", ~filterConfigs=[], ~limit=3)
+      expect(result->Array.length)->toBe(3)
+    })
+  })
 })

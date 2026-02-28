@@ -50,6 +50,10 @@ module type T = {
   let getQueryDb: string => option<ReventlessCore.QueryDb_Adapter.operations>
   let registerQueryDbScan: (string, unit => array<JSON.t>) => unit
   let getQueryDbScan: string => option<unit => array<JSON.t>>
+  // Stream variant: lazily creates a Stream from current storage contents.
+  // Used by QueryEngine_InMemory to honour ~limit via Stream.take without loading all items.
+  let registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit
+  let getQueryDbStream: string => option<unit => Stream.t<JSON.t, string, unit>>
 
   let reset: unit => unit
 }
@@ -59,6 +63,7 @@ module Make = (): T => {
   let commandHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
   let queryDbRegistry: ref<dict<ReventlessCore.QueryDb_Adapter.operations>> = ref(Dict.make())
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
+  let queryDbStreamRegistry: ref<dict<unit => Stream.t<JSON.t, string, unit>>> = ref(Dict.make())
 
   let subscribeToEvents = (topicName, handler) => {
     let queue: Queue.t<queuedEvent> = Queue.unbounded()->Effect.runSync
@@ -110,6 +115,9 @@ module Make = (): T => {
   let getQueryDb = name => queryDbRegistry.contents->Dict.get(name)
   let registerQueryDbScan = (name, scan) => queryDbScanRegistry.contents->Dict.set(name, scan)
   let getQueryDbScan = name => queryDbScanRegistry.contents->Dict.get(name)
+  let registerQueryDbStream = (name, streamFn) =>
+    queryDbStreamRegistry.contents->Dict.set(name, streamFn)
+  let getQueryDbStream = name => queryDbStreamRegistry.contents->Dict.get(name)
 
   let reset = () => {
     // Shut down all subscriber queues — Queue.shutdown interrupts any fibers blocked
@@ -125,5 +133,6 @@ module Make = (): T => {
     commandHandlers := Dict.make()
     queryDbRegistry := Dict.make()
     queryDbScanRegistry := Dict.make()
+    queryDbStreamRegistry := Dict.make()
   }
 }
