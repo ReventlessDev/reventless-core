@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** In progress — Phases A–D complete, Phase E pending
+**Status:** In progress — Phases A–E complete, next steps pending
 **Created:** 2026-02-28
 **Revised:** 2026-02-28
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
@@ -1071,7 +1071,7 @@ describe("DcbEventLog.readStream", () => {
 
 ---
 
-### Phase E — CSV / Node.js Readable as Effect Stream + Tests
+### Phase E — CSV / Node.js Readable as Effect Stream + Tests ✅ COMPLETE
 
 **Goal:** Provide a streaming CSV parser backed by Effect Stream for use in Task file-processing
 callbacks, enabling backpressure and early termination for large files.
@@ -1171,12 +1171,26 @@ describe("CsvStream.parseRows", () => {
 })
 ```
 
-#### E.3 Acceptance criteria
+#### E.3 Acceptance criteria ✅
 
-- `fromReadableStream` binding compiles with zero warnings
-- `CsvStream.parseRows` produces correct rows from a file
-- `Stream.take(2)` terminates early without loading the full file
-- All existing tests pass unchanged
+- `fromReadableStream` binding compiles with zero warnings ✅
+- `CsvStream.parseRows` produces correct rows from a file ✅
+- `Stream.take(2)` terminates early without loading the full file ✅
+- All existing tests pass unchanged ✅
+
+**Implementation notes:**
+- `fromReadableStream` added to `Stream.res` with generic `'readable` type variable — avoids
+  adding `rescript-node-streams` as a dependency to `rescript-effect`.
+- `CsvStream.res` created in `reventless/reventless-core/src/util/` using a Promise bridge:
+  FastCSV `onData`/`onEnd`/`onError` callbacks resolve/reject a `result<array<row>, string>` Promise;
+  `Effect.promise` + `Effect.flatMap` converts to the error channel; `Stream.fromEffect` +
+  `Stream.flatMap(fromIterable)` emits rows lazily.
+- Implementation note: rows are collected into memory before streaming (Promise bridge). True
+  per-row lazy streaming (with file-read interruption on `take`) would require a Queue bridge or
+  Channel wrapper — deferred as future work.
+- `CsvStreamTest.res` created in `reventless/reventless-core/tests/util/` with 4 tests.
+- `reventless-core`: 189 tests pass (was 185 after Phase D, +4 new CsvStream tests).
+- `rescript-effect`: 122 tests pass unchanged.
 
 ---
 

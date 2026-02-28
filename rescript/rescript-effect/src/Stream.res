@@ -118,3 +118,13 @@ let runHead = (stream: t<'a, 'e, 'r>): Effect.t<option<'a>, 'e, 'r> =>
 
 @module("effect") @scope("Stream")
 external catchAll: (t<'a, 'e, 'r>, 'e => t<'a, 'e2, 'r>) => t<'a, 'e2, 'r> = "catchAll"
+
+// ─── Node.js interop (Phase E) ────────────────────────────────────────────
+
+// Bridge a Node.js Readable stream to an Effect Stream of string chunks.
+// The thunk `unit => 'readable` delays opening the file handle until the
+// stream is consumed. Pass NodeStreams.Readable.t as the 'readable type.
+// The int argument is the chunk size in bytes (e.g., 65536).
+@module("effect") @scope("Stream")
+external fromReadableStream: (unit => 'readable, int) => t<string, string, unit> =
+  "fromReadableStream"
