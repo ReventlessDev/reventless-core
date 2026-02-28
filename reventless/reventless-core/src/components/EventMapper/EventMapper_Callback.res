@@ -8,8 +8,7 @@ module type CounterHandler = {
     promise<array<ReventlessCore.Message.commandJson>>,
     array<ReventlessCore.Counter.action>,
   )>
-  // array-based: used directly as Counter.counterEventsHandler (not routed via EventCollector)
-  let handleCounterEvents: Counter.counterEventsHandler
+  let handleCounterEvents: Counter.jsonEventsHandler
 }
 
 module MakeCounterHandler = (
@@ -159,15 +158,21 @@ module MakeCounterHandler = (
     (publisherEntries, counterActions)
   }
 
-  let handleCounterEvents = async eventsJson' => {
-    let (publisherEntries, countActions) = await commonEventsHandler(eventsJson')
-    if countActions->Array.length > 0 {
-      Console.log(
-        "EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!",
-      )
-    }
-    await Ops.publishJsons(await publisherEntries)
-  }
+  let handleCounterEvents: Counter.jsonEventsHandler = stream =>
+    stream
+    ->Stream.runCollect
+    ->Effect.flatMap(chunk =>
+      Effect.promise(async () => {
+        let eventsJson' = chunk
+        let (publisherEntries, countActions) = await commonEventsHandler(eventsJson')
+        if countActions->Array.length > 0 {
+          Console.log(
+            "EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!",
+          )
+        }
+        await Ops.publishJsons(await publisherEntries)
+      })
+    )
 }
 
 module type EventCollectorOps = {
@@ -200,39 +205,44 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       }
     }
 
-  let handleJsonEventsImpl = async (eventsJson': array<JSON.t>) => {
-    let (publisherEntries, counterActions) = await Ops.commonEventsHandler(eventsJson')
-    let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
-      switch x {
-      | Counter.Count(_) => true
-      | AddToCounterTarget(_) => false
-      }
-    )
+  let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
+    stream
+    ->Stream.runCollect
+    ->Effect.flatMap(chunk =>
+      Effect.promise(async () => {
+        let eventsJson' = chunk
+        let (publisherEntries, counterActions) = await Ops.commonEventsHandler(eventsJson')
+        let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
+          switch x {
+          | Counter.Count(_) => true
+          | AddToCounterTarget(_) => false
+          }
+        )
 
-    let countItems = countActions->Array.filterMap(countAction =>
-      switch countAction {
-      | Count(countItem) => Some(countItem)
-      | _ => None
-      }
-    )
-    Console.log2("EventMapper.eventCollectorEventsHandler: countItems:", countItems->Array.length)
-    await doCount(countItems)
+        let countItems = countActions->Array.filterMap(countAction =>
+          switch countAction {
+          | Count(countItem) => Some(countItem)
+          | _ => None
+          }
+        )
+        Console.log2("EventMapper.eventCollectorEventsHandler: countItems:", countItems->Array.length)
+        await doCount(countItems)
 
-    Console.log2(
-      "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
-      addToCounterTargetActions->JSON.stringifyAny,
-    )
-    await addToCounterTargetActions
-    ->Array.map(async x =>
-      switch x {
-      | AddToCounterTarget(counterTarget) => await Ops.addToCounterTarget(counterTarget)
-      | _ => ()
-      }
-    )
-    ->Promise.all
-    ->Util.Promise.toUnit
+        Console.log2(
+          "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
+          addToCounterTargetActions->JSON.stringifyAny,
+        )
+        await addToCounterTargetActions
+        ->Array.map(async x =>
+          switch x {
+          | AddToCounterTarget(counterTarget) => await Ops.addToCounterTarget(counterTarget)
+          | _ => ()
+          }
+        )
+        ->Promise.all
+        ->Util.Promise.toUnit
 
-    await Ops.publishJsons(await publisherEntries)
-  }
-  let handleJsonEvents = EventCollector.fromArrayHandler(handleJsonEventsImpl)
+        await Ops.publishJsons(await publisherEntries)
+      })
+    )
 }

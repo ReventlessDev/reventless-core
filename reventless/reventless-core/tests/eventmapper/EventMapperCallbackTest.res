@@ -18,7 +18,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
             CmdSourceSpec.eventSchema,
           ),
         )
-      await TestCounterHandler.handleCounterEvents([eventJson])
+      await TestCounterHandler.handleCounterEvents(Stream.fromIterable([eventJson]))->Effect.runPromise
       // publishJsons should have been called with 1 command
       expect(capturedCmds.contents->Array.length)->toBe(1)
     })
@@ -34,7 +34,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
             CmdSourceSpec.eventSchema,
           ),
         )
-      await TestCounterHandler.handleCounterEvents([eventJson])
+      await TestCounterHandler.handleCounterEvents(Stream.fromIterable([eventJson]))->Effect.runPromise
       expect(capturedCmds.contents->Array.length)->toBe(0)
     })
   })
@@ -42,7 +42,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
   describe("invalid event JSON", () => {
     testPromise("skipped gracefully — no throw, no publish", async () => {
       let invalidJson = JSON.Encode.string("not-an-object")
-      await TestCounterHandler.handleCounterEvents([invalidJson])
+      await TestCounterHandler.handleCounterEvents(Stream.fromIterable([invalidJson]))->Effect.runPromise
       expect(capturedCmds.contents->Array.length)->toBe(0)
     })
   })

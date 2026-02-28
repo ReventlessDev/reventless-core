@@ -14,7 +14,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
         orderId: "order-1",
         amount: 99.99
       }, EventMapperFixtures$ReventlessCore.CmdSourceSpec.eventSchema));
-      await EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents([eventJson]);
+      await Effect.Effect.runPromise(EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents(Effect.Stream.fromIterable([eventJson])));
       expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(1);
     });
   });
@@ -25,13 +25,13 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
         orderId: "order-1",
         amount: 50.0
       }, EventMapperFixtures$ReventlessCore.CmdSourceSpec.eventSchema));
-      await EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents([eventJson]);
+      await Effect.Effect.runPromise(EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents(Effect.Stream.fromIterable([eventJson])));
       expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(0);
     });
   });
   describe("invalid event JSON", () => {
     test("skipped gracefully — no throw, no publish", async () => {
-      await EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents(["not-an-object"]);
+      await Effect.Effect.runPromise(EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents(Effect.Stream.fromIterable(["not-an-object"])));
       expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(0);
     });
   });

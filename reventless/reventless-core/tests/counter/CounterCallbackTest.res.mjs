@@ -68,7 +68,7 @@ describe("Counter_Callback.groupByCounterId:", () => {
 
 describe("Counter_Callback.counterHandler:", () => {
   describe("count reaches zero", () => {
-    test("CountFinished event dispatched via counterEventsHandler", async () => {
+    test("CountFinished event dispatched via jsonEventsHandler", async () => {
       let ref1 = Counter$ReventlessCore.makeId([
         "counter-1",
         "ref-a"

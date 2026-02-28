@@ -1,26 +1,26 @@
-type eventHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
-type eventHandlersByService = dict<array<eventHandler>>
+type jsonEventsHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
+type jsonEventsHandlersByService = dict<array<jsonEventsHandler>>
 
 module type Spec = {
   let pluginDefinition: Reventless.Plugin.pluginDefinition
-  let incomingConnectExtensionEventHandlers: eventHandlersByService
-  let outgoingExtensionPointEventHandlers: eventHandlersByService
-  let outgoingExtensionEventHandlers: eventHandlersByService
-  let incomingExtensionEventHandlers: eventHandlersByService
+  let incomingConnectExtensionEventHandlers: jsonEventsHandlersByService
+  let outgoingExtensionPointEventHandlers: jsonEventsHandlersByService
+  let outgoingExtensionEventHandlers: jsonEventsHandlersByService
+  let incomingExtensionEventHandlers: jsonEventsHandlersByService
 }
 
 module type T = {
-  let handleJsonEvents: array<JSON.t> => promise<unit>
+  let handleJsonEvents: EventCollector.jsonEventsHandler
 }
 
 module Make = (Spec: Spec): T => {
-  let handleEvent = async (eventJson', eventHandlersByService) =>
+  let handleEvent = async (eventJson', jsonEventsHandlersByService) =>
     await eventJson'
     ->Message.serviceNameOfMsg
-    ->Option.flatMap(serviceName => eventHandlersByService->Dict.get(serviceName))
-    ->Option.mapOr(Promise.resolve(), async eventHandlers => {
-      await eventHandlers
-      ->Array.map(eventHandler => eventHandler(eventJson', Spec.pluginDefinition))
+    ->Option.flatMap(serviceName => jsonEventsHandlersByService->Dict.get(serviceName))
+    ->Option.mapOr(Promise.resolve(), async jsonEventsHandlers => {
+      await jsonEventsHandlers
+      ->Array.map(jsonEventsHandler => jsonEventsHandler(eventJson', Spec.pluginDefinition))
       ->Promise.all
       ->Util.Promise.toUnit
     })
@@ -39,26 +39,22 @@ module Make = (Spec: Spec): T => {
       }
     )
 
-  let handleJsonEvents = eventsJson => {
-    let id = Spec.pluginDefinition.id
-    let count = eventsJson->Array.length
-    eventsJson
-    ->Array.mapWithIndex(async (eventJson', idx) => {
-      let idx = idx + 1
-      eventJson'->Logger.logJsonEvent(
-        `Plugin ${id} handleJsonEvents: incoming event ${idx->Int.toString}/${count->Int.toString}:`,
-      )
-      detectUnhandledEvent(eventJson')
-      switch await eventJson'->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
-      | _ =>
-        [
-          eventJson'->handleEvent(Spec.outgoingExtensionPointEventHandlers),
-          eventJson'->handleEvent(Spec.outgoingExtensionEventHandlers),
-          eventJson'->handleEvent(Spec.incomingExtensionEventHandlers),
-        ]->Promise.all
-      }
-    })
-    ->Promise.all
-    ->Util.Promise.toUnit
-  }
+  let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
+    stream
+    ->Stream.mapEffect(eventJson' =>
+      Effect.promise(async () => {
+        let id = Spec.pluginDefinition.id
+        eventJson'->Logger.logJsonEvent(`Plugin ${id} handleJsonEvents: incoming event:`)
+        detectUnhandledEvent(eventJson')
+        switch await eventJson'->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
+        | _ =>
+          let _ = await [
+            eventJson'->handleEvent(Spec.outgoingExtensionPointEventHandlers),
+            eventJson'->handleEvent(Spec.outgoingExtensionEventHandlers),
+            eventJson'->handleEvent(Spec.incomingExtensionEventHandlers),
+          ]->Promise.all
+        }
+      })
+    )
+    ->Stream.runDrain
 }

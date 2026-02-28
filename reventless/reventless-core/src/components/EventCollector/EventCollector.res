@@ -10,16 +10,6 @@ type component = Component.t<t, outputs, operations>
 /** Stream-based internal handler type. All events in a batch arrive as a single Stream. */
 type jsonEventsHandler = Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>
 
-/**
- * Backward-compatibility bridge: wraps an array-based handler as a `jsonEventsHandler`.
- * Collects the stream into an array, then awaits the legacy promise handler.
- */
-let fromArrayHandler: (array<JSON.t> => promise<unit>) => jsonEventsHandler =
-  arrayHandler => stream =>
-    stream
-    ->Stream.runCollect
-    ->Effect.flatMap(arr => Effect.promise(() => arrayHandler(arr)))
-
 module type T = {
   type callbackEvent
   type runtimeParts
@@ -33,7 +23,7 @@ module type T = {
 
   let makeHandler: (
     ~eventCollector: component,
-    ~eventsHandler: jsonEventsHandler,
+    ~jsonEventsHandler: jsonEventsHandler,
   ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
 
   let make: (

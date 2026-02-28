@@ -7,8 +7,8 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "./EventCollector.res.mjs";
 
-function makeStreamHandler(eventCollector, schema, eventsStreamHandler) {
-  let jsonHandler = stream => eventsStreamHandler(Effect.Stream.mapEffect(stream, json => Effect.Effect.try({
+function makeStreamHandler(eventCollector, schema, jsonEventsHandler) {
+  let jsonHandler = stream => jsonEventsHandler(Effect.Stream.mapEffect(stream, json => Effect.Effect.try({
     try: () => S.parseOrThrow(json, schema),
     catch: _exn => "decode error"
   })));
@@ -29,9 +29,9 @@ function Make(RuntimeEnvironment) {
         parent: eventCollectorResource
       });
     };
-    let makeHandler = (eventCollector, eventsHandler) => {
+    let makeHandler = (eventCollector, jsonEventsHandler) => {
       let channel = eventCollector.channel;
-      return channel.handleChannelEvent(eventsHandler);
+      return channel.handleChannelEvent(jsonEventsHandler);
     };
     let make = (name, eventTopics, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventCollector$ReventlessCore.componentType), name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);

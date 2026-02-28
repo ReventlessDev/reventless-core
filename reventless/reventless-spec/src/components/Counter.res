@@ -23,13 +23,13 @@ type count = array<countItem> => promise<unit>
 type addToCounterTarget = counterTargetRef => promise<unit>
 type operations = {count: count, addToCounterTarget: addToCounterTarget}
 
-type counterEventsHandler = array<JSON.t> => promise<unit>
+type jsonEventsHandler = Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>
 
 module type T = {
   type component
   let make: (
     ~name: string,
-    ~counterEventsHandler: counterEventsHandler,
+    ~jsonEventsHandler: jsonEventsHandler,
     ~ttl: int=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

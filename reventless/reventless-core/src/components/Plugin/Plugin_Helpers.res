@@ -90,33 +90,33 @@ let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
   | Some(pluginName) => getRemoteStorageResources(pluginName, queryDbName)
   }
 
-type eventHandler = Plugin_Callback.eventHandler
-type eventHandlers = {
-  outgoing?: eventHandler,
-  incoming?: eventHandler,
+type jsonEventsHandler = Plugin_Callback.jsonEventsHandler
+type jsonEventsHandlers = {
+  outgoing?: jsonEventsHandler,
+  incoming?: jsonEventsHandler,
 }
-let getIncomingEventHandler = eventHandlers => eventHandlers.incoming
-let getOutgoingEventHandler = eventHandlers => eventHandlers.outgoing
+let getIncomingJsonEventsHandler = jsonEventsHandlers => jsonEventsHandlers.incoming
+let getOutgoingJsonEventsHandler = jsonEventsHandlers => jsonEventsHandlers.outgoing
 
-let serviceNameToEventHandlers: (
+let serviceNameToJsonEventsHandlers: (
   array<'o>,
   'o => array<string>,
-  array<eventHandlers>,
-  eventHandlers => option<eventHandler>,
-) => dict<array<eventHandler>> = (outputs, getServiceNames, handlers, getEventHandler) => {
+  array<jsonEventsHandlers>,
+  jsonEventsHandlers => option<jsonEventsHandler>,
+) => dict<array<jsonEventsHandler>> = (outputs, getServiceNames, handlers, getEventHandler) => {
   let dict = Dict.make()
-  Belt.Array.zip(outputs, handlers)->Array.forEach(((outputs, eventHandlers)) => {
-    eventHandlers
+  Belt.Array.zip(outputs, handlers)->Array.forEach(((outputs, jsonEventsHandlers)) => {
+    jsonEventsHandlers
     ->getEventHandler
-    ->Option.forEach(eventHandler =>
+    ->Option.forEach(jsonEventsHandler =>
       outputs
       ->getServiceNames
       ->Array.forEach(
         serviceName =>
           switch dict->Dict.get(serviceName) {
-          | Some(eventHandlers) =>
-            Dict.set(dict, serviceName, eventHandlers->Array.concat([eventHandler]))
-          | None => Dict.set(dict, serviceName, [eventHandler])
+          | Some(jsonEventsHandlers) =>
+            Dict.set(dict, serviceName, jsonEventsHandlers->Array.concat([jsonEventsHandler]))
+          | None => Dict.set(dict, serviceName, [jsonEventsHandler])
           },
       )
     )
@@ -291,7 +291,7 @@ let createExtensionPoints = (
       SpecificExtensionPoint.outputs(extensionPoint),
       concreteEP
       ->Component.operations
-      ->Pulumi.Output.apply(({outgoingEventHandler}) => outgoingEventHandler),
+      ->Pulumi.Output.apply(({outgoingJsonEventsHandler}) => outgoingJsonEventsHandler),
     )
   })
   ->Belt.Array.unzip
@@ -321,9 +321,9 @@ let createExtensions = (
       SpecificExtension.outputs(extension),
       concreteExt
       ->Component.operations
-      ->Pulumi.Output.apply(({outgoingEventHandler, incomingEventHandler}) => {
-        incoming: incomingEventHandler,
-        outgoing: outgoingEventHandler,
+      ->Pulumi.Output.apply(({outgoingJsonEventsHandler, incomingJsonEventsHandler}) => {
+        incoming: incomingJsonEventsHandler,
+        outgoing: outgoingJsonEventsHandler,
       }),
     )
   })
@@ -395,7 +395,7 @@ let createConnectPluginExtension = (
     let connectPluginExtensionIncomingEventHandler =
       connectPluginExtension
       ->Component.operations
-      ->Pulumi.Output.apply(({incomingEventHandler}) => incomingEventHandler)
+      ->Pulumi.Output.apply(({incomingJsonEventsHandler}) => incomingJsonEventsHandler)
 
     (connectPluginExtensionOutputs, connectPluginExtensionIncomingEventHandler)
   })
@@ -497,36 +497,36 @@ module MakeEventCollectorHelper = (
     )) => {
       module Callback = Plugin_Callback.Make({
         let pluginDefinition = pluginDefinition
-        let outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(
+        let outgoingExtensionPointEventHandlers = serviceNameToJsonEventsHandlers(
           extensionPointsOutputs,
           outputs => outputs.aggregateNames,
           extensionPointsHandlers->Array.map(extensionPointsHandler => {
             outgoing: extensionPointsHandler,
           }),
-          getOutgoingEventHandler,
+          getOutgoingJsonEventsHandler,
         )
-        let incomingConnectExtensionEventHandlers = serviceNameToEventHandlers(
+        let incomingConnectExtensionEventHandlers = serviceNameToJsonEventsHandlers(
           [connectPluginExtensionOutputs],
           outputs => [outputs.extensionPointName],
           [{incoming: connectPluginExtensionIncomingEventHandler}],
-          getIncomingEventHandler,
+          getIncomingJsonEventsHandler,
         )
-        let outgoingExtensionEventHandlers = serviceNameToEventHandlers(
+        let outgoingExtensionEventHandlers = serviceNameToJsonEventsHandlers(
           extensionsOutputs,
           outputs => outputs.aggregateNames,
           extensionsHandlers,
-          getOutgoingEventHandler,
+          getOutgoingJsonEventsHandler,
         )
-        let incomingExtensionEventHandlers = serviceNameToEventHandlers(
+        let incomingExtensionEventHandlers = serviceNameToJsonEventsHandlers(
           extensionsOutputs,
           outputs => [outputs.extensionPointName],
           extensionsHandlers,
-          getIncomingEventHandler,
+          getIncomingJsonEventsHandler,
         )
       })
       let handler = PluginEventCollector.makeHandler(
         ~eventCollector,
-        ~eventsHandler=EventCollector.fromArrayHandler(Callback.handleJsonEvents),
+        ~jsonEventsHandler=Callback.handleJsonEvents,
       )
       eventCollector->PluginRuntimeBuilder.forPluginEventCollector(
         ~handler,

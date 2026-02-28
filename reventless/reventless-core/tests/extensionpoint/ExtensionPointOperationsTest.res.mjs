@@ -219,44 +219,44 @@ function reset() {
 
 describe("ExtensionPoint_Operations.Make:", () => {
   beforeEach(() => reset());
-  describe("outgoingEventHandler — AbstractPublishEvent:", () => {
+  describe("outgoingJsonEventsHandler — AbstractPublishEvent:", () => {
     test("known aggregate calls publishToEventTopic with correct destination id", async () => {
       let eventJson = makeEventJsonForAgg("PublishAgg");
-      await EpOps.outgoingEventHandler(eventJson, undefined);
+      await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
       expect(capturedPublished.contents.length).toBe(1);
       let item = capturedPublished.contents[0];
       expect(item[0]).toBe("ep-dest");
     });
     test("publishToEventTopic receives the original event JSON", async () => {
       let eventJson = makeEventJsonForAgg("PublishAgg");
-      await EpOps.outgoingEventHandler(eventJson, undefined);
+      await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
       let item = capturedPublished.contents[0];
       expect(item[2]).toEqual(eventJson);
     });
   });
-  describe("outgoingEventHandler — AbstractCall:", () => {
+  describe("outgoingJsonEventsHandler — AbstractCall:", () => {
     test("known aggregate with AbstractCall invokes the handler", async () => {
       let eventJson = makeEventJsonForAgg("CallAgg");
-      await EpOps.outgoingEventHandler(eventJson, undefined);
+      await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
       expect(capturedCallCount.contents).toBe(1);
       expect(capturedPublished.contents.length).toBe(0);
     });
   });
-  describe("outgoingEventHandler — AbstractPublishEventAsync:", () => {
+  describe("outgoingJsonEventsHandler — AbstractPublishEventAsync:", () => {
     test("async mapping resolves and calls publishToEventTopic", async () => {
       let eventJson = makeEventJsonForAgg("AsyncAgg");
-      await EpOps.outgoingEventHandler(eventJson, undefined);
+      await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
       expect(capturedPublished.contents.length).toBe(1);
       let item = capturedPublished.contents[0];
       expect(item[0]).toBe("ep-async-dest");
     });
   });
-  describe("outgoingEventHandler — no matching mapping:", () => {
+  describe("outgoingJsonEventsHandler — no matching mapping:", () => {
     test("event from unknown aggregate throws", async () => {
       let eventJson = makeEventJsonForAgg("UnknownAgg");
       let didThrow = false;
       try {
-        await EpOps.outgoingEventHandler(eventJson, undefined);
+        await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
       } catch (exn) {
         didThrow = true;
       }

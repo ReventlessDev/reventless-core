@@ -19,7 +19,7 @@ let groupByCounterId = references => {
 module type Spec = {
   let name: string
   let countsDbCount: QueryDb.count<string>
-  let counterEventsHandler: Counter.counterEventsHandler
+  let jsonEventsHandler: Counter.jsonEventsHandler
 }
 
 module Make = (Spec: Spec) => {
@@ -39,8 +39,8 @@ module Make = (Spec: Spec) => {
     ->Util.Promise.toUnit
     // TODO error handling
 
-    await Spec.counterEventsHandler(
-      counts->Array.filterMap(state =>
+    await Spec.jsonEventsHandler(
+      Stream.fromIterable(counts->Array.filterMap(state =>
         switch state->Message.decode(countsStateSchema) {
         | {id, count} if count == 0 =>
           let (counterId, _) = id->Counter.unmakeId
@@ -68,7 +68,6 @@ module Make = (Spec: Spec) => {
           )
           None
         }
-      ),
-    )
+      )))->Effect.runPromise
   }
 }

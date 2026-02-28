@@ -35,7 +35,7 @@ module Make = (
     })
     let handler = SpecificEventCollector.makeHandler(
       ~eventCollector,
-      ~eventsHandler=Callback.eventsHandler,
+      ~jsonEventsHandler=Callback.handleJsonEvents,
     )
 
     let _ = allCommandTopics->Pulumi.Output.apply(allCommandTopics => {

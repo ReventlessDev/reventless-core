@@ -6,7 +6,7 @@
 let makeStreamHandler = (
   ~eventCollector: EventCollector.component,
   ~schema: S.t<'event>,
-  ~eventsStreamHandler: Stream.t<'event, string, unit> => Effect.t<unit, string, unit>,
+  ~jsonEventsHandler: Stream.t<'event, string, unit> => Effect.t<unit, string, unit>,
 ) => {
   let jsonHandler: EventCollector.jsonEventsHandler = stream =>
     stream
@@ -16,7 +16,7 @@ let makeStreamHandler = (
         "catch": _exn => "decode error",
       })
     )
-    ->eventsStreamHandler
+    ->jsonEventsHandler
 
   let channel: EventCollector_Adapter.channel<_, _, _> = eventCollector->EventCollector_Adapter.channel
   channel.handleChannelEvent(jsonHandler)
@@ -78,10 +78,10 @@ module Make = (
 
   let makeHandler = (
     ~eventCollector: EventCollector.component,
-    ~eventsHandler: EventCollector.jsonEventsHandler,
+    ~jsonEventsHandler: EventCollector.jsonEventsHandler,
   ) => {
     let channel = eventCollector->EventCollector_Adapter.channel
-    channel.handleChannelEvent(eventsHandler)
+    channel.handleChannelEvent(jsonEventsHandler)
   }
 
   let make = (~name, ~eventTopics, ~opts): EventCollector.component =>

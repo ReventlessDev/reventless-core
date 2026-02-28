@@ -10,19 +10,23 @@ module Make = (
 ) => {
   module EventProjector = ProjectionMapper.Make(ReadModelSpec, Mappings)
 
-  let eventsHandler = jsons => {
-    let eventCount = jsons->Array.length
-    jsons
-    ->Array.mapWithIndex((json, idx) => {
-      let idx = idx + 1
-      let sourceName = (json->Message.decode(Reventless.Message.contextSchema)).meta.service
-      Console.log2(
-        `ReadModel ${ReadModelSpec.name}: handling event ${idx->Int.toString}/${eventCount->Int.toString} from ${sourceName}:`,
-        json,
+  let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
+    stream
+    ->Stream.mapEffect(json =>
+      Effect.sync(() => {
+        let sourceName = (json->Message.decode(Reventless.Message.contextSchema)).meta.service
+        Console.log2(
+          `ReadModel ${ReadModelSpec.name}: handling event from ${sourceName}:`,
+          json,
+        )
+        json->EventProjector.map(~sourceName=Some(sourceName))
+      })
+    )
+    ->Stream.flatMap(actions => Stream.fromIterable(actions))
+    ->Stream.runForEach(action =>
+      Effect.promise(() =>
+        Projection.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig)
       )
-      json->EventProjector.map(~sourceName=Some(sourceName))
-    })
-    ->Array.flat
-    ->Projection.handleActions(Spec.operations, ReadModelSpec.subIdConfig)
-  }
+      ->Effect.map(_ => ())
+    )
 }

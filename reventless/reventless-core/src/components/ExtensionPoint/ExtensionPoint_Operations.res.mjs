@@ -58,8 +58,8 @@ function Make(MappingSpec) {
           }
       }
     };
-    let outgoingEventHandler = async (eventJson$p, _pluginDef) => {
-      console.log("ExtensionPoint_Operations.outgoingEventHandler:", JSON.stringify(eventJson$p));
+    let outgoingJsonEventsHandler = async (eventJson$p, _pluginDef) => {
+      console.log("ExtensionPoint_Operations.outgoingJsonEventsHandler:", JSON.stringify(eventJson$p));
       let eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Ops.scheduler, Ops.commandTopicResources, Ops.queryEngine, Ops.resourceNaming);
       return await Util_Promise$ReventlessCore.toUnit(Promise.all(eventActions.map(applyEventAction)));
     };
@@ -67,7 +67,7 @@ function Make(MappingSpec) {
       findOutgoingMapping: findOutgoingMapping,
       mapOutgoingEvent: mapOutgoingEvent,
       applyEventAction: applyEventAction,
-      outgoingEventHandler: outgoingEventHandler
+      outgoingJsonEventsHandler: outgoingJsonEventsHandler
     };
   });
 }

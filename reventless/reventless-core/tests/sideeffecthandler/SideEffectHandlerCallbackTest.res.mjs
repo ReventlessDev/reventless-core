@@ -5,7 +5,7 @@ import * as SideEffectHandlerFixtures$ReventlessCore from "./SideEffectHandlerFi
 
 beforeEach(() => SideEffectHandlerFixtures$ReventlessCore.reset());
 
-describe("SideEffectHandler_Callback.eventsHandler:", () => {
+describe("SideEffectHandler_Callback.handleJsonEvents:", () => {
   describe("event matching registered side effect", () => {
     test("execute called with decoded id and event", async () => {
       let event = {
@@ -13,7 +13,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
         value: "hello"
       };
       let eventJson = SideEffectHandlerFixtures$ReventlessCore.makeEventJson(undefined, "entity-1", event);
-      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.eventsHandler(Effect.Stream.fromIterable([eventJson])));
+      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.handleJsonEvents(Effect.Stream.fromIterable([eventJson])));
       let call = SideEffectHandlerFixtures$ReventlessCore.capturedExecuteCalls.contents[0];
       expect([
         call.id,
@@ -30,13 +30,13 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
         TAG: "SomethingHappened",
         value: "ignored"
       });
-      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.eventsHandler(Effect.Stream.fromIterable([eventJson])));
+      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.handleJsonEvents(Effect.Stream.fromIterable([eventJson])));
       expect(SideEffectHandlerFixtures$ReventlessCore.capturedExecuteCalls.contents.length).toBe(0);
     });
   });
   describe("event with malformed JSON", () => {
     test("caught gracefully — does not throw, execute not called", async () => {
-      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.eventsHandler(Effect.Stream.fromIterable(["not-an-object"])));
+      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.handleJsonEvents(Effect.Stream.fromIterable(["not-an-object"])));
       expect(SideEffectHandlerFixtures$ReventlessCore.capturedExecuteCalls.contents.length).toBe(0);
     });
   });
@@ -49,7 +49,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
       };
       let event1 = SideEffectHandlerFixtures$ReventlessCore.makeEventJson(undefined, "entity-1", event);
       let event2 = SideEffectHandlerFixtures$ReventlessCore.makeEventJson(undefined, "entity-2", event);
-      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.eventsHandler(Effect.Stream.fromIterable([
+      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.handleJsonEvents(Effect.Stream.fromIterable([
         event1,
         event2
       ])));
@@ -67,7 +67,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
         TAG: "SomethingHappened",
         value: "v"
       }));
-      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.eventsHandler(Effect.Stream.fromIterable(events)));
+      await Effect.Effect.runPromise(SideEffectHandlerFixtures$ReventlessCore.TestHandler.handleJsonEvents(Effect.Stream.fromIterable(events)));
       expect(SideEffectHandlerFixtures$ReventlessCore.capturedExecuteCalls.contents.length).toBe(3);
     });
   });

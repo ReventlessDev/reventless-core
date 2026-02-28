@@ -6,7 +6,6 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "./ReadModel.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
-import * as EventCollector$ReventlessCore from "../EventCollector/EventCollector.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
 import * as ReadModel_Callback$ReventlessCore from "./ReadModel_Callback.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
@@ -54,7 +53,7 @@ function Make(Spec) {
           ReadModelSpec: Spec,
           operations: operations$1
         });
-        let handler = SpecificEventCollector.makeHandler(eventCollector, EventCollector$ReventlessCore.fromArrayHandler(Callback.eventsHandler));
+        let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         let resources = Component$ReventlessCore.outputs(queryDb).resources;
         EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
         return eventCollector;

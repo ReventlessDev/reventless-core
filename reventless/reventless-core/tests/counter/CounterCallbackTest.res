@@ -40,11 +40,11 @@ describe("Counter_Callback.groupByCounterId:", () => {
 
 describe("Counter_Callback.counterHandler:", () => {
   describe("count reaches zero", () => {
-    testPromise("CountFinished event dispatched via counterEventsHandler", async () => {
+    testPromise("CountFinished event dispatched via jsonEventsHandler", async () => {
       let ref1 = Counter.makeId(("counter-1", "ref-a"))
       let counts = [makeCountsJson(ref1, 0)]
       await TestCounterHandler.counterHandler(~references=[(ref1, 1)], ~counts)
-      // counterEventsHandler should have been called with 1 event batch containing 1 event
+      // jsonEventsHandler should have been called with 1 event batch containing 1 event
       let batches = capturedEventBatches.contents
       expect((batches->Array.length, batches->Array.getUnsafe(0)->Array.length))->toEqual((1, 1))
     })
@@ -55,7 +55,7 @@ describe("Counter_Callback.counterHandler:", () => {
       let ref1 = Counter.makeId(("counter-1", "ref-a"))
       let counts = [makeCountsJson(ref1, 3)]
       await TestCounterHandler.counterHandler(~references=[(ref1, 1)], ~counts)
-      // counterEventsHandler called with empty array (no finished counters)
+      // jsonEventsHandler called with empty array (no finished counters)
       let batches = capturedEventBatches.contents
       let events = batches->Array.getUnsafe(0)
       expect(events->Array.length)->toBe(0)

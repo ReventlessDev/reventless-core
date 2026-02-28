@@ -29,7 +29,7 @@ function Make(RuntimeEnvironment) {
           sideEffects: sideEffects,
           queryEngine: queryEngine
         });
-        let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
+        let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         allCommandTopics.apply(allCommandTopics => {
           let commandTopics = Stdlib_Option.getOr(Stdlib_Option.map(targets, targets => Object.values(CommandTopic$ReventlessCore.filter(allCommandTopics, new Set(targets)))), []);
           let resources = commandTopics.flatMap(commandTopic => commandTopic.resources);

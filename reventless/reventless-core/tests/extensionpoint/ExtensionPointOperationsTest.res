@@ -1,5 +1,5 @@
 // Unit tests for ExtensionPoint_Operations.Make.
-// Tests outgoingEventHandler which maps aggregate events to EP actions.
+// Tests outgoingJsonEventsHandler which maps aggregate events to EP actions.
 
 open AsyncTest
 open AsyncTest.Expect
@@ -204,10 +204,10 @@ let reset = () => {
 describe("ExtensionPoint_Operations.Make:", () => {
   let _ = beforeEach(() => reset())
 
-  describe("outgoingEventHandler — AbstractPublishEvent:", () => {
+  describe("outgoingJsonEventsHandler — AbstractPublishEvent:", () => {
     testPromise("known aggregate calls publishToEventTopic with correct destination id", async () => {
       let eventJson = makeEventJsonForAgg("PublishAgg")
-      await EpOps.outgoingEventHandler(eventJson, ())
+      await EpOps.outgoingJsonEventsHandler(eventJson, ())
       expect(capturedPublished.contents->Array.length)->toBe(1)
       let item = capturedPublished.contents->Array.getUnsafe(0)
       let (id, _, _) = item
@@ -216,26 +216,26 @@ describe("ExtensionPoint_Operations.Make:", () => {
 
     testPromise("publishToEventTopic receives the original event JSON", async () => {
       let eventJson = makeEventJsonForAgg("PublishAgg")
-      await EpOps.outgoingEventHandler(eventJson, ())
+      await EpOps.outgoingJsonEventsHandler(eventJson, ())
       let item = capturedPublished.contents->Array.getUnsafe(0)
       let (_, _, capturedEventJson) = item
       expect(capturedEventJson)->toEqual(eventJson)
     })
   })
 
-  describe("outgoingEventHandler — AbstractCall:", () => {
+  describe("outgoingJsonEventsHandler — AbstractCall:", () => {
     testPromise("known aggregate with AbstractCall invokes the handler", async () => {
       let eventJson = makeEventJsonForAgg("CallAgg")
-      await EpOps.outgoingEventHandler(eventJson, ())
+      await EpOps.outgoingJsonEventsHandler(eventJson, ())
       expect(capturedCallCount.contents)->toBe(1)
       expect(capturedPublished.contents->Array.length)->toBe(0)
     })
   })
 
-  describe("outgoingEventHandler — AbstractPublishEventAsync:", () => {
+  describe("outgoingJsonEventsHandler — AbstractPublishEventAsync:", () => {
     testPromise("async mapping resolves and calls publishToEventTopic", async () => {
       let eventJson = makeEventJsonForAgg("AsyncAgg")
-      await EpOps.outgoingEventHandler(eventJson, ())
+      await EpOps.outgoingJsonEventsHandler(eventJson, ())
       expect(capturedPublished.contents->Array.length)->toBe(1)
       let item = capturedPublished.contents->Array.getUnsafe(0)
       let (id, _, _) = item
@@ -243,12 +243,12 @@ describe("ExtensionPoint_Operations.Make:", () => {
     })
   })
 
-  describe("outgoingEventHandler — no matching mapping:", () => {
+  describe("outgoingJsonEventsHandler — no matching mapping:", () => {
     testPromise("event from unknown aggregate throws", async () => {
       let eventJson = makeEventJsonForAgg("UnknownAgg")
       let didThrow = ref(false)
       try {
-        await EpOps.outgoingEventHandler(eventJson, ())
+        await EpOps.outgoingJsonEventsHandler(eventJson, ())
       } catch {
       | _ => didThrow := true
       }

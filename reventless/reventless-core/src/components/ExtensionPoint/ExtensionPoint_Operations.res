@@ -70,8 +70,8 @@ module Make = (
       }
     }
 
-  let outgoingEventHandler = async (eventJson', _pluginDef) => {
-    Console.log2("ExtensionPoint_Operations.outgoingEventHandler:", eventJson'->JSON.stringify)
+  let outgoingJsonEventsHandler = async (eventJson', _pluginDef) => {
+    Console.log2("ExtensionPoint_Operations.outgoingJsonEventsHandler:", eventJson'->JSON.stringify)
     let eventActions = mapOutgoingEvent(
       eventJson',
       Mappings.mappings,
