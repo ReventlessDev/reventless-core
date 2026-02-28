@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** Backlog — ready for implementation
+**Status:** In progress — Phase A complete, Phases B–E pending
 **Created:** 2026-02-28
 **Revised:** 2026-02-28
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
@@ -207,11 +207,17 @@ external empty: t<'a, 'e, 'r> = "empty"
 // Stream emits individual items; terminates when nextCursor is None.
 // IMPORTANT: maps to JS "paginateChunkEffect" (chunk-based variant).
 // Do NOT use JS "paginateEffect" — it takes one item per page, not a chunk.
-@module("effect") @scope("Stream")
-external paginateEffect: (
+//
+// NOTE (discovered during Phase A): paginateChunkEffect requires Effect Chunk
+// (not plain JS array) and Effect Option (not ReScript option). The binding is
+// implemented as a wrapper that converts automatically:
+//   array<'a>  →  Chunk.fromIterable(array)
+//   option<'s> →  Option.fromNullable(value|undefined)
+// See Stream.res for the raw paginateEffectRaw + chunkFromIterable + toEffectOption helpers.
+let paginateEffect: (
   's,
   's => Effect.t<(array<'a>, option<'s>), 'e, 'r>,
-) => t<'a, 'e, 'r> = "paginateChunkEffect"
+) => t<'a, 'e, 'r>
 
 // ─── Transformation ──────────────────────────────────────────────────────
 
@@ -236,8 +242,10 @@ external tap: (t<'a, 'e, 'r>, 'a => Effect.t<unit, 'e, 'r>) => t<'a, 'e, 'r> = "
 
 // ─── Terminal runners ────────────────────────────────────────────────────
 
-@module("effect") @scope("Stream")
-external runCollect: t<'a, 'e, 'r> => Effect.t<array<'a>, 'e, 'r> = "runCollect"
+// NOTE (discovered during Phase A): Stream.runCollect in Effect v3 returns a
+// Chunk<A>, not a plain JS array. The binding wraps runCollect with Array.from
+// to convert. Callers receive array<'a> as expected.
+let runCollect: t<'a, 'e, 'r> => Effect.t<array<'a>, 'e, 'r>
 
 @module("effect") @scope("Stream")
 external runFold: (t<'a, 'e, 'r>, 's, ('s, 'a) => 's) => Effect.t<'s, 'e, 'r> = "runFold"
@@ -249,8 +257,11 @@ external runForEach: (t<'a, 'e, 'r>, 'a => Effect.t<unit, 'e, 'r>) => Effect.t<u
 @module("effect") @scope("Stream")
 external runDrain: t<'a, 'e, 'r> => Effect.t<unit, 'e, 'r> = "runDrain"
 
-@module("effect") @scope("Stream")
-external runHead: t<'a, 'e, 'r> => Effect.t<option<'a>, 'e, 'r> = "runHead"
+// NOTE (discovered during Phase A): Stream.runHead in Effect v3 returns Effect's
+// Option type ({_id: "Option", _tag: "Some"/"None", value?}), not ReScript's
+// native option. The binding wraps runHead with Option.getOrUndefined to convert
+// to ReScript option (None=undefined, Some=value).
+let runHead: t<'a, 'e, 'r> => Effect.t<option<'a>, 'e, 'r>
 
 // ─── Error handling ──────────────────────────────────────────────────────
 
@@ -296,7 +307,7 @@ Phase A — Stream.res bindings + smoke tests
 
 ---
 
-### Phase A — Stream.res Bindings + Smoke Tests
+### Phase A — Stream.res Bindings + Smoke Tests ✅ COMPLETE
 
 **Goal:** Make `Stream.t<'a, 'e, 'r>` importable from `rescript-effect` and verify the core
 operations work correctly before building anything on top.
@@ -399,12 +410,17 @@ describe("Stream bindings", () => {
       expect(result)->toEqual(["hello"])
     })
 
-    testPromise("fromQueue emits items until shutdown", async () => {
+    // NOTE (discovered during Phase A): shutting down the queue BEFORE
+    // Stream.fromQueue runs interrupts all subsequent takes → yields [].
+    // Use Stream.take(2) to terminate the stream instead of pre-shutdown.
+    testPromise("fromQueue emits items already in the queue", async () => {
       let queue = Queue.unbounded()->Effect.runSync
       let _ = Queue.offer(queue, 10)->Effect.runSync
       let _ = Queue.offer(queue, 20)->Effect.runSync
-      let _ = Queue.shutdown(queue)->Effect.runSync
-      let result = await Stream.fromQueue(queue)->Stream.runCollect->Effect.runPromise
+      let result = await Stream.fromQueue(queue)
+        ->Stream.take(2)
+        ->Stream.runCollect
+        ->Effect.runPromise
       expect(result)->toEqual([10, 20])
     })
 
@@ -482,13 +498,14 @@ describe("Stream bindings", () => {
 })
 ```
 
-#### A.4 Acceptance criteria
+#### A.4 Acceptance criteria ✅
 
-- Jest infrastructure in `rescript-effect` is set up (package.json updated, `npm install` run)
-- `Stream.res` compiles with zero warnings
-- `npm test` in `rescript/rescript-effect` runs the 13 smoke tests and all pass
-- `npm test` in `reventless-in-memory` still passes unchanged (no tests moved there)
-- `npm run build` from monorepo root succeeds
+- Jest infrastructure in `rescript-effect` was already in place (set up in prior binding work)
+- `Stream.res` compiles with zero warnings ✅
+- `npm test` in `rescript/rescript-effect` runs 12 smoke tests (13 planned but `fromQueue`+shutdown
+  test replaced by `fromQueue`+`take(2)` — see note above) and all pass ✅ (122 total across all suites)
+- `npm test` in `reventless-in-memory` unchanged — no tests moved there ✅
+- `npm run build` from monorepo root: pending full monorepo build verification
 
 ---
 
@@ -1199,10 +1216,16 @@ Phase 2.5 notes in the effect-library-integration plan.
 
 ### `Stream.fromQueue` terminates only on `Queue.shutdown`
 
-`Stream.fromQueue(queue)` blocks until the queue is shut down. Tests must call
-`Queue.shutdown(queue)->Effect.runSync` before collecting the stream, or use `Stream.take(n)`
-to avoid blocking. In `InMemory_Bus`, `reset()` calls `Queue.shutdown` on all queues — this is
-the correct lifecycle signal and also terminates any active `fromQueue` streams.
+`Stream.fromQueue(queue)` blocks until the queue is shut down. **Do NOT shut down the queue
+before the stream starts consuming.** `Queue.shutdown` interrupts all pending takes; if shutdown
+runs before `Stream.fromQueue` begins pulling, subsequent takes fail and the stream emits nothing
+— even if items were already offered. The correct approach depends on the use case:
+
+- **Test with a known item count**: use `Stream.take(n)` to terminate; no shutdown needed.
+- **Concurrent producer/consumer**: fork the collection fiber first, then offer items and shut down.
+- **Production use (InMemory_Bus)**: `reset()` calls `Queue.shutdown` — this is the correct
+  lifecycle signal for active `fromQueue` streams that are already running (fibers blocked on
+  `take` get interrupted cleanly).
 
 ### `decodeEvent` throws inside `EventLog_Operations.replayStream`
 
