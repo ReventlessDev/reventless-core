@@ -65,7 +65,10 @@ module Make = (Bus: InMemory_Bus.T) => {
         (fullBody: JSON.t, _ctx) => {
           // Pass the full body as `command` — that's what handleJsonCommands decodes
           let reference = decodeId(fullBody)
-          handleCmds([{command: fullBody, reference}])->Promise.thenResolve(_ => ())
+          let item: Reventless.CommandTopic.topicItem<JSON.t> = {command: fullBody, reference}
+          handleCmds(Stream.fromIterable([item]))
+          ->Effect.runPromise
+          ->Promise.thenResolve(_ => ())
         }
       )->Pulumi.Output.make
 

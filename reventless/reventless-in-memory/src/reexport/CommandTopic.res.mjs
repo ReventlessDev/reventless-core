@@ -6,6 +6,8 @@ let componentType = CommandTopic$ReventlessCore.componentType;
 
 let NotPublishedToChannel = CommandTopic$ReventlessCore.NotPublishedToChannel;
 
+let callHandlerWithArray = CommandTopic$ReventlessCore.callHandlerWithArray;
+
 let extractTypeNamesFromSchema = CommandTopic$ReventlessCore.extractTypeNamesFromSchema;
 
 let globalRegistry = CommandTopic$ReventlessCore.globalRegistry;
@@ -21,6 +23,7 @@ let filter = CommandTopic$ReventlessCore.filter;
 export {
   componentType,
   NotPublishedToChannel,
+  callHandlerWithArray,
   extractTypeNamesFromSchema,
   globalRegistry,
   registerHandler,

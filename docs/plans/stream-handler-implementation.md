@@ -1,6 +1,6 @@
 # Plan: Stream-Based Handler Implementation (Phases J–P)
 
-**Status:** Phases J–K–L complete; Phases M–P planned
+**Status:** Phases J–K–L–M–N complete; Phases O–P planned
 
 **Created:** 2026-02-28
 
@@ -659,26 +659,36 @@ let makeStreamHandler = (
 `handleJsonEvents` in `EventMapper_Callback.EventCollectorHandler`, `Core_Helpers.res`, and
 `Plugin_Helpers.res` is already correct — no rename needed there.
 
-### Files changed — Phase M
+### Files changed — Phase M (complete)
 
 | File | Change |
 |------|--------|
 | `reventless-spec/src/components/Counter.res` | Rename `counterEventsHandler` → `jsonEventsHandler`; change type to stream |
-| `reventless-core/src/components/Extension/Extension.res` | Rename `eventHandler` → `jsonEventsHandler` |
-| `reventless-core/src/components/ExtensionPoint/ExtensionPoint.res` | Rename `eventHandler` → `jsonEventsHandler` |
+| `reventless-core/src/components/EventCollector/EventCollector.res` | Rename `makeHandler ~eventsHandler` → `~jsonEventsHandler`; remove `fromArrayHandler` entirely |
+| `reventless-core/src/components/EventCollector/EventCollector_Builder.res` | Rename `~eventsStreamHandler` → `~jsonEventsHandler` in `makeStreamHandler`; rename `~eventsHandler` → `~jsonEventsHandler` in `makeHandler` |
+| `reventless-core/src/components/Extension/Extension.res` | Rename type `eventHandler` → `jsonEventsHandler`; rename operations fields `incomingEventHandler` → `incomingJsonEventsHandler`, `outgoingEventHandler` → `outgoingJsonEventsHandler` |
+| `reventless-core/src/components/Extension/Extension_Operations.res` | Rename module type T bindings and implementation functions accordingly |
+| `reventless-core/src/components/Extension/Extension_Builder.res` | Update operations record construction to use new field names |
+| `reventless-core/src/components/ExtensionPoint/ExtensionPoint.res` | Rename type `eventHandler` → `jsonEventsHandler`; rename operations field `outgoingEventHandler` → `outgoingJsonEventsHandler` |
+| `reventless-core/src/components/ExtensionPoint/ExtensionPoint_Operations.res` | Rename `outgoingEventHandler` → `outgoingJsonEventsHandler` |
+| `reventless-core/src/components/ExtensionPoint/ExtensionPoint_Builder.res` | Update local vars and operations construction |
 | `reventless-core/src/components/SideEffectHandler/SideEffectHandler_Callback.res` | Native stream handler; rename `eventsHandler` → `handleJsonEvents` in module type and implementation |
+| `reventless-core/src/components/SideEffectHandler/SideEffectHandler_Builder.res` | `~eventsHandler=` → `~jsonEventsHandler=` |
 | `reventless-core/src/components/ReadModel/ReadModel_Callback.res` | Native stream handler; rename `eventsHandler` → `handleJsonEvents` |
-| `reventless-core/src/components/ReadModel/ReadModel_Builder.res` | Remove `fromArrayHandler` at call site; update reference to `Callback.handleJsonEvents` |
-| `reventless-core/src/components/EventMapper/EventMapper_Callback.res` | Native stream handlers; rename `eventsHandler` → `handleJsonEvents` in `MakeEventCollectorHandler`; update `CounterHandler` module type to use `Counter.jsonEventsHandler` |
-| `reventless-core/src/components/EventMapper/EventMapper_Builder.res` | Remove `fromArrayHandler` at call site; update reference to `Callback.handleJsonEvents` |
-| `reventless-core/src/components/Plugin/Plugin_Callback.res` | Native stream handler (`handleJsonEvents` already correct — no rename) |
-| `reventless-core/src/core/Core/Core_Helpers.res` | `Callback.handleJsonEvents` already correct — no rename |
-| `reventless-core/src/components/Plugin/Plugin_Helpers.res` | `Callback.handleJsonEvents` already correct — no rename |
-| `reventless-core/src/components/EventCollector/EventCollector_Builder.res` | Rename param `~eventsStreamHandler` → `~eventsHandler` |
-| All callers of `Counter.counterEventsHandler` | Update type reference to `Counter.jsonEventsHandler` |
-| All callers of `Extension.eventHandler` / `ExtensionPoint.eventHandler` | Update type reference to `jsonEventsHandler` |
+| `reventless-core/src/components/ReadModel/ReadModel_Builder.res` | Remove `fromArrayHandler`; `~eventsHandler=` → `~jsonEventsHandler=` |
+| `reventless-core/src/components/EventMapper/EventMapper_Callback.res` | Native stream handlers; `CounterHandler` module type uses `Counter.jsonEventsHandler` |
+| `reventless-core/src/components/EventMapper/EventMapper_Builder.res` | `~eventsHandler=` → `~jsonEventsHandler=` |
+| `reventless-core/src/components/Plugin/Plugin_Callback.res` | Rename type `eventHandler` → `jsonEventsHandler`, `eventHandlersByService` → `jsonEventsHandlersByService`; native stream handler |
+| `reventless-core/src/components/Plugin/Plugin_Helpers.res` | Rename derived types and functions; update `serviceNameToEventHandlers` → `serviceNameToJsonEventsHandlers`; `~eventsHandler=` → `~jsonEventsHandler=` |
+| `reventless-core/src/components/StateViewSlice/StateViewSlice_Builder.res` | Convert to native stream; `~eventsHandler=` → `~jsonEventsHandler` (pun) |
+| `reventless-core/src/core/Core/Core_Callback.res` | Rename Spec field `outgoingExtensionPointEventHandlers` → `outgoingExtensionPointJsonEventsHandlers` |
+| `reventless-core/src/core/Core/Core_Helpers.res` | Rename param `~extensionPointsOutgoingEventHandlers` → `~extensionPointsOutgoingJsonEventsHandlers`; `~eventsHandler=` → `~jsonEventsHandler=` |
+| `reventless-core/src/core/Core/Core_Builder.res` | Rename local var `extensionPointsOutgoingEventHandlers` → `extensionPointsOutgoingJsonEventsHandlers` |
+| `reventless-core/tests/extensionpoint/ExtensionPointOperationsTest.res` | `EpOps.outgoingEventHandler` → `outgoingJsonEventsHandler` |
 | `reventless-core/tests/eventmapper/EventMapperCallbackTest.res` | Update tests to use stream input directly |
 | `reventless-core/tests/sideeffecthandler/SideEffectHandlerCallbackTest.res` | Update tests to use stream input directly |
+| `reventless-core/tests/counter/CounterFixtures.res` | `mockJsonEventsHandler` as stream handler |
+| `reventless-in-memory/tests/components/counter/CounterFixtures.res` | `~jsonEventsHandler=` stream handler |
 
 ---
 
@@ -783,15 +793,21 @@ handleChannelCommand: handleJsonCommands =>
   )->Pulumi.Output.make
 ```
 
-### Files changed — Phase N
+### Files changed — Phase N (complete)
 
 | File | Change |
 |------|--------|
-| `reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res` | New `jsonCommandsHandler` stream type; `fromArrayCommandsHandler` bridge |
+| `reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res` | New `jsonCommandsHandler` stream type; `fromArrayCommandsHandler` bridge; `callHandlerWithArray` helper |
 | `reventless-core/src/components/CommandTopic/CommandTopic_Callback.res` | Rewrite as native stream handler; `handleJsonCommands` name unchanged |
+| `reventless-core/src/components/CommandTopic/CommandTopic_Builder.res` | Rewrite `filteringHandler` as native stream handler |
+| `reventless-core/src/components/StateChangeSlice/StateChangeSlice_Builder.res` | Rewrite `makeJsonHandler` as native stream handler |
 | `reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res` | `Stream.fromIterable` + `Effect.runPromise` |
 | `reventless-in-memory/src/adapter/CommandTopic/CommandTopicChannel_InMemory.res` | Wrap single command in stream |
-| `reventless-core/tests/commandtopic/CommandTopicCallbackTest.res` | Update to use stream input |
+| `reventless-in-memory/tests/components/dcb/DcbFixtures.res` | Updated `publishJsons` to use `callHandlerWithArray` |
+| `examples/dcb/ordering/tests/E2E/OrderingE2ETest.res` | Updated handler dispatch to use `callHandlerWithArray` |
+| `examples/dcb/catalog/tests/E2E/CatalogE2ETest.res` | Updated handler dispatch to use `callHandlerWithArray` |
+| `reventless-core/tests/commandtopic/CommandTopicCallbackFixtures.res` | **Created** — test spec, mock ops, helpers |
+| `reventless-core/tests/commandtopic/CommandTopicCallbackTest.res` | **Created** — 5 tests, all passing |
 
 ---
 

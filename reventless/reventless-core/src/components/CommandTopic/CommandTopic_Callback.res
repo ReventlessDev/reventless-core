@@ -8,27 +8,38 @@ module type T = {
 }
 
 module Make = (Spec: Reventless.CommandTopic.T, Ops: Ops with module Spec = Spec): T => {
-  let handleJsonCommands = async jsonItems => {
-    Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Array.length)
-    let topicItems = jsonItems->Array.filterMap(({
-      Reventless.CommandTopic.reference: reference,
-      command: json,
-    }) =>
-      switch json->Message.decodeCommand'(Spec.Id.schema, Spec.commandSchema) {
-      | command' => Some({Reventless.CommandTopic.reference, command: command'})
-      | exception err =>
-        let commandStr = json->JSON.stringify
-        Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
-        None
+  let handleJsonCommands: CommandTopic.jsonCommandsHandler = stream =>
+    stream
+    ->Stream.mapEffect(({Reventless.CommandTopic.reference: reference, command: json}) =>
+      Effect.sync(() =>
+        switch json->Message.decodeCommand'(Spec.Id.schema, Spec.commandSchema) {
+        | command' => Some({Reventless.CommandTopic.reference, command: command'})
+        | exception err =>
+          let commandStr = json->JSON.stringify
+          Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
+          None
+        }
+      )
+    )
+    ->Stream.flatMap(opt =>
+      switch opt {
+      | Some(v) => Stream.fromIterable([v])
+      | None => Stream.empty
       }
     )
-    switch await Ops.commandsHandler(topicItems) {
-    | res =>
-      Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
-      res
-    | exception JsExn(e) =>
-      Logger.error(~loc=__LOC__, "Couldn't handle commands", e)
-      JsError.throwWithMessage(__LOC__ ++ `Error: Couldn't handle commands`) // TODO: exception details
-    }
-  }
+    ->Stream.runCollect
+    ->Effect.flatMap(topicItems =>
+      Effect.tryPromise({
+        "try": () => Ops.commandsHandler(topicItems),
+        "catch": e => {
+          let err = (e->Obj.magic: JsExn.t)
+          Logger.error(~loc=__LOC__, "Couldn't handle commands", err)
+          err->JsExn.message->Option.getOr("Couldn't handle commands")
+        },
+      })
+      ->Effect.map(res => {
+        Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
+        res
+      })
+    )
 }

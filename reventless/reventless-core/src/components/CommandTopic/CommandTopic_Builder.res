@@ -29,36 +29,33 @@ module Make = (Spec: Reventless.CommandTopic.T, Channel: CommandTopic_Adapter.Ch
 
   // Filtering handler that routes commands to registered handlers via global registry.
   // Defined at module level so it can be referenced by makeFilteringHandler.
-  let filteringHandler: CommandTopic.jsonCommandsHandler = async jsonItems => {
-    let allResults = []
-
-    let processItem = async item => {
+  let filteringHandler: CommandTopic.jsonCommandsHandler = stream =>
+    stream
+    ->Stream.mapEffect(item => {
       let {Reventless.CommandTopic.reference: reference, command: json} = item
       let typeName = extractTypeNameFromJson(json)
-
-      // Look up handlers for this command type in the global registry
       let handlers = CommandTopic.getHandlers(typeName)
-
-      // Call each registered handler
-      let handlerPromises = handlers->Array.map(async handlerEntry => {
-        let {CommandTopic.handler: handler} = handlerEntry
-        try {
-          let results = await handler([{Reventless.CommandTopic.reference, command: json}])
-          allResults->Array.pushMany(results)
-        } catch {
-        | _ => () // Skip if handler fails
-        }
+      Effect.promise(async () => {
+        let allResults: array<result<string, string>> = []
+        let _ =
+          await handlers
+          ->Array.map(async handlerEntry => {
+            let {CommandTopic.handler: handler} = handlerEntry
+            try {
+              let results =
+                await handler(
+                  Stream.fromIterable([{Reventless.CommandTopic.reference, command: json}]),
+                )->Effect.runPromise
+              allResults->Array.pushMany(results)
+            } catch {
+            | _ => () // Skip if handler fails
+            }
+          })
+          ->Promise.all
+        allResults
       })
-      let _ = await Promise.all(handlerPromises)
-    }
-
-    let itemPromises = jsonItems->Array.map(async item => {
-      let _ = await processItem(item)
     })
-    let _ = await Promise.all(itemPromises)
-
-    allResults
-  }
+    ->Stream.runFold([], (acc, results) => acc->Array.concat(results))
 
   let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}

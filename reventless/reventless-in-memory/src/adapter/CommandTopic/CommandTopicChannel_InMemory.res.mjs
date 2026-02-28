@@ -40,10 +40,11 @@ function Make(Bus) {
     let publishJsonsStream = stream => Effect.Effect.flatMap(Stream.runCollect(stream), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
     let handleChannelEvent = handleCmds => Pulumi.output((fullBody, _ctx) => {
       let reference = decodeId(fullBody);
-      return handleCmds([{
-          command: fullBody,
-          reference: reference
-        }]).then(param => {});
+      let item = {
+        command: fullBody,
+        reference: reference
+      };
+      return Effect.Effect.runPromise(handleCmds(Effect.Stream.fromIterable([item]))).then(param => {});
     });
     let connect = (param, channel, runtime, param$1, param$2) => {
       Bus.registerCommandHandler(channel.parts.name, async (json, ctx) => {

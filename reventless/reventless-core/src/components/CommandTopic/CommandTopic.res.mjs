@@ -29,6 +29,8 @@ function filter(allCommandTopics, names) {
 
 let componentType = "CommandTopic";
 
+let callHandlerWithArray = CommandTopic_Helpers$ReventlessCore.callHandlerWithArray;
+
 let extractTypeNamesFromSchema = CommandTopic_Helpers$ReventlessCore.extractTypeNamesFromSchema;
 
 let globalRegistry = CommandTopic_Helpers$ReventlessCore.globalRegistry;
@@ -40,6 +42,7 @@ let getHandlers = CommandTopic_Helpers$ReventlessCore.getHandlers;
 export {
   componentType,
   NotPublishedToChannel,
+  callHandlerWithArray,
   extractTypeNamesFromSchema,
   globalRegistry,
   registerHandler,

@@ -102,7 +102,11 @@ let publishJsons: Reventless.CommandTopic.publishJsons = async cmdJsons => {
     let handlers = ReventlessCore.CommandTopic.getHandlers(typeName)
     let _ = await handlers
     ->Array.map(async entry => {
-      let _ = await entry.handler([{Reventless.CommandTopic.reference: cmdJson.id, command: fullBody}])
+      let item: Reventless.CommandTopic.topicItem<JSON.t> = {
+        reference: cmdJson.id,
+        command: fullBody,
+      }
+      let _ = await entry.handler(Stream.fromIterable([item]))->Effect.runPromise
     })
     ->Promise.all
   })

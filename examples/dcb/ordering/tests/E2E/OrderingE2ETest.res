@@ -71,9 +71,11 @@ let publishJsons: CommandTopic.publishJsons = async cmdJsons => {
     let handlers = ReventlessInMemory.CommandTopic.getHandlers(typeName)
     let _ = await handlers
     ->Array.map(async entry => {
-      let _ = await entry.handler([
-        {CommandTopic.reference: cmdJson.id, command: fullBody},
-      ])
+      let item: Reventless.CommandTopic.topicItem<JSON.t> = {
+        reference: cmdJson.id,
+        command: fullBody,
+      }
+      let _ = await ReventlessInMemory.CommandTopic.callHandlerWithArray(entry.handler, [item])
     })
     ->Promise.all
   })
