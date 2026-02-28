@@ -4,25 +4,35 @@
 // Event delivery uses Effect PubSub + Stream for fan-out and a countdown Deferred for
 // completion signaling (Phase F of effect-stream-integration plan).
 //
-//  subscribeToEvents — creates (or reuses) an unbounded PubSub hub per topic and starts
-//    a drain fiber (via Effect.runFork). The fiber runs Effect.scoped(PubSub.subscribe(hub)→…)
-//    synchronously up to the first Queue.take suspension, registering the subscription before
-//    runFork returns. The subscriber count for the topic is incremented synchronously.
+//  subscribeToEvents — creates (or reuses) a PubSub hub per topic (unbounded or bounded based
+//    on capacity) and starts a drain fiber (via Effect.runFork). The fiber runs
+//    Effect.scoped(PubSub.subscribe(hub)→…) synchronously up to the first Queue.take
+//    suspension, registering the subscription before runFork returns. The subscriber count
+//    for the topic is incremented synchronously.
 //
 //  publishEvent — uses the manually-tracked subscriber count (not PubSub.size, which measures
 //    queued messages not subscriber count), creates a countdown done_ Effect and an allDone
-//    Deferred, then publishes once to the hub via Effect.runSync (unbounded hub → synchronous
-//    fan-out to all subscriber Queues). Resolves when all subscribers have finished (2 ticks).
+//    Deferred. The publish path depends on capacity:
+//      Unbounded (capacity=None): Effect.runSync(PubSub.publish) + separate Deferred.await_.
+//        Synchronous fan-out; resolves in 2 microtask ticks.
+//      Bounded (capacity=Some(n)): PubSub.publish + Deferred.await_ in one runPromise.
+//        May suspend when any subscriber queue is full; resolves in 3 microtask ticks.
 //
 //  reset — shuts down all hubs (which terminates Stream.fromQueue consumers via PubSub.shutdown),
 //    then clears all registries.
 //
-// Timing analysis (unbounded mode):
-//   tick 0: PubSub.publish (Effect.runSync) delivers to all subscriber Queues synchronously
-//            + Deferred.await_(allDone) runPromise starts
-//   tick 1: Effect scheduler: all drain fibers wake, call handlers, run done_; last resolves allDone
-//   tick 2: Deferred.await_ promise resolves; publishEvent returns
-// → 2 microtask ticks, same as the previous Queue-based implementation.
+// Timing analysis:
+//   Unbounded — Make():
+//     tick 0: PubSub.publish (Effect.runSync) + Deferred.await_ runPromise starts
+//     tick 1: Effect scheduler: drain fibers wake, call handlers, run done_; last resolves allDone
+//     tick 2: Deferred.await_ promise resolves; publishEvent returns
+//   → 2 microtask ticks (same as the previous Queue-based implementation)
+//
+//   Bounded — MakeBounded({let capacity = n}):
+//     tick 0: Effect.runPromise(PubSub.publish → Deferred.await_) starts
+//     tick 1: publish completes; drain fibers run; Deferred.succeed called
+//     tick 2: Deferred.await_ promise resolves; publishEvent returns
+//   → 3 microtask ticks (1 extra vs unbounded due to async publish)
 //
 // NOTE: PubSub.size in Effect measures buffered message count (not subscriber count).
 // Subscriber count is tracked via a separate subscriberCounts dict.
@@ -61,8 +71,21 @@ module type T = {
   let reset: unit => unit
 }
 
-module Make = (): T => {
-  // Per-topic PubSub hub for synchronous fan-out to all subscriber Queues.
+// Internal module type for bus configuration.
+// capacity=None → unbounded hub (synchronous fan-out, no backpressure, 2-tick delivery).
+// capacity=Some(n) → bounded hub (async publish with backpressure, 3-tick delivery).
+module type BusConfig = {
+  let capacity: option<int>
+}
+
+// Full implementation parameterised by BusConfig.
+// Used by both Make (unbounded) and MakeBounded (bounded).
+module Impl = (C: BusConfig): T => {
+  let capacity = C.capacity
+
+  // Per-topic PubSub hub for fan-out to all subscriber Queues.
+  // Unbounded (capacity=None): synchronous fan-out, 2-tick delivery guarantee.
+  // Bounded (capacity=Some(n)): async publish with backpressure, 3-tick delivery.
   let eventHubs: ref<dict<PubSub.t<queuedEvent>>> = ref(Dict.make())
   // Per-topic subscriber count — tracked manually because PubSub.size measures
   // buffered message count (always 0 for unbounded after delivery), not subscriber count.
@@ -73,11 +96,20 @@ module Make = (): T => {
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
   let queryDbStreamRegistry: ref<dict<unit => Stream.t<JSON.t, string, unit>>> = ref(Dict.make())
 
+  // Create a new hub using the capacity from BusConfig.
+  // None → unbounded (synchronous fan-out, no backpressure).
+  // Some(n) → bounded (async publish, exerts backpressure when any subscriber is slow).
+  let makeHub = (): PubSub.t<queuedEvent> =>
+    switch capacity {
+    | None => PubSub.unbounded()->Effect.runSync
+    | Some(n) => PubSub.bounded(n)->Effect.runSync
+    }
+
   let subscribeToEvents = (topicName, handler) => {
     let hub = switch eventHubs.contents->Dict.get(topicName) {
     | Some(h) => h
     | None =>
-      let h: PubSub.t<queuedEvent> = PubSub.unbounded()->Effect.runSync
+      let h: PubSub.t<queuedEvent> = makeHub()
       eventHubs.contents->Dict.set(topicName, h)
       h
     }
@@ -128,12 +160,25 @@ module Make = (): T => {
               Effect.succeed(())
             }
           )
-        // Publish once — unbounded PubSub fans the same message to all N subscriber Queues
-        // synchronously. Effect.runSync is correct here: it avoids the extra microtask tick
-        // that Effect.runPromise would introduce, preserving the 2-tick guarantee.
-        let _ = PubSub.publish(hub, {service, meta, json, done_})->Effect.runSync
-        // Wait for all subscribers to finish (allDone resolves when remaining reaches 0).
-        let _ = await Deferred.await_(allDone)->Effect.runPromise
+        let msg = {service, meta, json, done_}
+        // Publish path is conditional on capacity:
+        //   None (unbounded): Effect.runSync for publish (synchronous fan-out, 2-tick path).
+        //   Some(_) (bounded): Effect.runPromise for publish (may suspend when queues full, 3-tick path).
+        // Both paths wait for allDone to resolve (all subscribers finished).
+        let publishAndWait: Effect.t<unit, unit, unit> = switch capacity {
+        | None =>
+          // Unbounded: publish synchronously inside Effect.sync so the fiber chain is uniform.
+          // Effect.runSync keeps fan-out synchronous, preserving the 2-tick guarantee.
+          Effect.sync(() => {
+            let _ = PubSub.publish(hub, msg)->Effect.runSync
+          })
+          ->Effect.zipRight(Deferred.await_(allDone))
+        | Some(_) =>
+          // Bounded: publish is an Effect that may suspend if any subscriber queue is full.
+          // This provides backpressure: publishEvent suspends until a slow subscriber drains.
+          PubSub.publish(hub, msg)->Effect.flatMap(_ => Deferred.await_(allDone))
+        }
+        let _ = await publishAndWait->Effect.runPromise
       }
     }
   }
@@ -174,4 +219,18 @@ module Make = (): T => {
     queryDbScanRegistry := Dict.make()
     queryDbStreamRegistry := Dict.make()
   }
+}
+
+// Backward-compatible unbounded bus (2-tick delivery guarantee).
+// All existing InMemory_Bus.Make() call sites work without modification.
+module Make = (): T => {
+  include Impl({let capacity: option<int> = None})
+}
+
+// Bounded bus (Phase G): each subscriber queue has a fixed capacity.
+// publishEvent suspends when any subscriber's queue is full — providing backpressure.
+// Resolves in 3 microtask ticks (1 more than unbounded).
+// Usage: module TestBus = InMemory_Bus.MakeBounded({let capacity = 2})
+module MakeBounded = (C: {let capacity: int}): T => {
+  include Impl({let capacity: option<int> = Some(C.capacity)})
 }

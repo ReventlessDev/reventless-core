@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** In progress — Phases A–F complete, Phase G planned
+**Status:** Complete — all phases A–G done
 
 **Created:** 2026-02-28
 
@@ -1609,7 +1609,7 @@ modification — the external contract of `publishEvent` and `subscribeToEvents`
 
 ---
 
-### Phase G — Bounded PubSub Backpressure
+### Phase G — Bounded PubSub Backpressure ✅ COMPLETE
 
 **Goal:** Add an optional `~capacity` parameter to `InMemory_Bus.Make` so that each topic's PubSub
 hub can be bounded. A bounded hub exerts backpressure: `publishEvent` suspends when any
@@ -1774,14 +1774,33 @@ describe("bounded InMemory_Bus (capacity=2)", () => {
 Note: `Promise.pending()` is not in RescriptCore — use an `Effect.Deferred`-based gate or a
 simple `ref<option<unit => unit>>` callback. Adjust to whatever pattern the codebase uses.
 
-#### G.4 Acceptance criteria
+#### G.4 Acceptance criteria ✅
 
-- `InMemory_Bus.Make()` (no `~capacity`) behaves identically to Phase F — all existing tests pass
-- `InMemory_Bus.Make(~capacity=n)` provides backpressure — publisher suspends when any subscriber
-  queue is full
-- Bounded-mode timing test passes (3 ticks)
-- Backpressure suspension test passes
-- Zero new warnings
+- `InMemory_Bus.Make()` (no `~capacity`) behaves identically to Phase F — all existing tests pass ✅
+- `InMemory_Bus.MakeBounded({let capacity = n})` provides backpressure — publisher suspends when
+  any subscriber queue is full ✅
+- Bounded-mode timing test passes (3 ticks) ✅
+- Backpressure suspension test passes ✅
+- Zero new warnings ✅
+
+**Implementation notes:**
+- ReScript module functions (`module F = (): T => {...}`) do not support labeled parameters.
+  The plan's `module Make = (~capacity: option<int>=?, ())` syntax is invalid ReScript.
+  Resolved with a two-functor pattern: `Impl(C: BusConfig)` holds the full implementation;
+  `Make = (): T => { include Impl({let capacity: option<int> = None}) }` provides the unchanged
+  default API; `MakeBounded = (C: {let capacity: int}): T => { include Impl({...}) }` is the new
+  bounded variant. All existing `InMemory_Bus.Make()` call sites compile without modification.
+- `module type BusConfig = { let capacity: option<int> }` — the configuration module type used by `Impl`.
+- Conditional publish path in `publishEvent`:
+  - `None` (unbounded): `Effect.sync(() => PubSub.publish->runSync)->zipRight(Deferred.await_)`,
+    then a single `Effect.runPromise` — preserves 2-tick guarantee.
+  - `Some(_)` (bounded): `PubSub.publish->flatMap(Deferred.await_)` in single `Effect.runPromise` —
+    publish may suspend when queue is full; resolves in 3 ticks.
+- Added `InMemoryBusBoundedTest.res` with 8 tests: basic delivery (3), fan-out (2),
+  backpressure suspension (1), timing (1), reset (1).
+- `reventless-in-memory`: 160 tests pass (was 152 after Phase F, +8 new bounded tests).
+- `reventless-core`: 189 tests pass unchanged.
+- `rescript-effect`: 122 tests pass unchanged.
 
 ---
 

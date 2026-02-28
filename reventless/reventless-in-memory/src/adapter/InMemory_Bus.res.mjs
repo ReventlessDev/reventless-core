@@ -4,6 +4,133 @@ import * as Effect from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 
+function Impl(C) {
+  let capacity = C.capacity;
+  let eventHubs = {
+    contents: {}
+  };
+  let subscriberCounts = {
+    contents: {}
+  };
+  let commandHandlers = {
+    contents: {}
+  };
+  let queryDbRegistry = {
+    contents: {}
+  };
+  let queryDbScanRegistry = {
+    contents: {}
+  };
+  let queryDbStreamRegistry = {
+    contents: {}
+  };
+  let makeHub = () => {
+    if (capacity !== undefined) {
+      return Effect.Effect.runSync(Effect.PubSub.bounded(capacity));
+    } else {
+      return Effect.Effect.runSync(Effect.PubSub.unbounded());
+    }
+  };
+  let subscribeToEvents = (topicName, handler) => {
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = makeHub();
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    subscriberCounts.contents[topicName] = n + 1 | 0;
+    let drainLoop = Effect.Effect.scoped(Effect.Effect.flatMap(Effect.PubSub.subscribe(hub), queue => Effect.Stream.runForEach(Effect.Stream.fromQueue(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), msg.done_))));
+    Effect.Effect.runFork(drainLoop);
+  };
+  let publishEvent = async (topicName, service, meta, json) => {
+    let hub = eventHubs.contents[topicName];
+    if (hub === undefined) {
+      return;
+    }
+    let hub$1 = Primitive_option.valFromOption(hub);
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    if (n === 0) {
+      return;
+    }
+    let allDone = Effect.Effect.runSync(Effect.Deferred.make());
+    let remaining = {
+      contents: n
+    };
+    let done_ = Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      remaining.contents = remaining.contents - 1 | 0;
+    }), () => {
+      if (remaining.contents === 0) {
+        return Effect.Effect.map(Effect.Deferred.succeed(allDone, undefined), param => {});
+      } else {
+        return Effect.Effect.succeed();
+      }
+    });
+    let msg = {
+      service: service,
+      meta: meta,
+      json: json,
+      done_: done_
+    };
+    let publishAndWait = capacity !== undefined ? Effect.Effect.flatMap(Effect.PubSub.publish(hub$1, msg), param => Effect.Deferred.await(allDone)) : Effect.Effect.zipRight(Effect.Effect.sync(() => {
+        Effect.Effect.runSync(Effect.PubSub.publish(hub$1, msg));
+      }), Effect.Deferred.await(allDone));
+    await Effect.Effect.runPromise(publishAndWait);
+  };
+  let dispatchCommand = async (channelName, json) => {
+    let handler = commandHandlers.contents[channelName];
+    if (handler !== undefined) {
+      return await handler(json, undefined);
+    } else {
+      console.log("InMemory_Bus: no command handler for channel", channelName);
+      return;
+    }
+  };
+  let registerCommandHandler = (channelName, handler) => {
+    commandHandlers.contents[channelName] = handler;
+  };
+  let registerQueryDb = (name, ops) => {
+    queryDbRegistry.contents[name] = ops;
+  };
+  let getQueryDb = name => queryDbRegistry.contents[name];
+  let registerQueryDbScan = (name, scan) => {
+    queryDbScanRegistry.contents[name] = scan;
+  };
+  let getQueryDbScan = name => queryDbScanRegistry.contents[name];
+  let registerQueryDbStream = (name, streamFn) => {
+    queryDbStreamRegistry.contents[name] = streamFn;
+  };
+  let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let reset = () => {
+    let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventHubs.contents).map(hub => Effect.PubSub.shutdown(hub)), {
+      concurrency: "unbounded"
+    }), param => {});
+    Effect.Effect.runSync(shutdownAll);
+    eventHubs.contents = {};
+    subscriberCounts.contents = {};
+    commandHandlers.contents = {};
+    queryDbRegistry.contents = {};
+    queryDbScanRegistry.contents = {};
+    queryDbStreamRegistry.contents = {};
+  };
+  return {
+    publishEvent: publishEvent,
+    subscribeToEvents: subscribeToEvents,
+    dispatchCommand: dispatchCommand,
+    registerCommandHandler: registerCommandHandler,
+    registerQueryDb: registerQueryDb,
+    getQueryDb: getQueryDb,
+    registerQueryDbScan: registerQueryDbScan,
+    getQueryDbScan: getQueryDbScan,
+    registerQueryDbStream: registerQueryDbStream,
+    getQueryDbStream: getQueryDbStream,
+    reset: reset
+  };
+}
+
 function Make($star) {
   let eventHubs = {
     contents: {}
@@ -23,13 +150,135 @@ function Make($star) {
   let queryDbStreamRegistry = {
     contents: {}
   };
+  let makeHub = () => Effect.Effect.runSync(Effect.PubSub.unbounded());
   let subscribeToEvents = (topicName, handler) => {
     let h = eventHubs.contents[topicName];
     let hub;
     if (h !== undefined) {
       hub = Primitive_option.valFromOption(h);
     } else {
-      let h$1 = Effect.Effect.runSync(Effect.PubSub.unbounded());
+      let h$1 = makeHub();
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    subscriberCounts.contents[topicName] = n + 1 | 0;
+    let drainLoop = Effect.Effect.scoped(Effect.Effect.flatMap(Effect.PubSub.subscribe(hub), queue => Effect.Stream.runForEach(Effect.Stream.fromQueue(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), msg.done_))));
+    Effect.Effect.runFork(drainLoop);
+  };
+  let publishEvent = async (topicName, service, meta, json) => {
+    let hub = eventHubs.contents[topicName];
+    if (hub === undefined) {
+      return;
+    }
+    let hub$1 = Primitive_option.valFromOption(hub);
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    if (n === 0) {
+      return;
+    }
+    let allDone = Effect.Effect.runSync(Effect.Deferred.make());
+    let remaining = {
+      contents: n
+    };
+    let done_ = Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      remaining.contents = remaining.contents - 1 | 0;
+    }), () => {
+      if (remaining.contents === 0) {
+        return Effect.Effect.map(Effect.Deferred.succeed(allDone, undefined), param => {});
+      } else {
+        return Effect.Effect.succeed();
+      }
+    });
+    let msg = {
+      service: service,
+      meta: meta,
+      json: json,
+      done_: done_
+    };
+    let publishAndWait = Effect.Effect.zipRight(Effect.Effect.sync(() => {
+      Effect.Effect.runSync(Effect.PubSub.publish(hub$1, msg));
+    }), Effect.Deferred.await(allDone));
+    await Effect.Effect.runPromise(publishAndWait);
+  };
+  let dispatchCommand = async (channelName, json) => {
+    let handler = commandHandlers.contents[channelName];
+    if (handler !== undefined) {
+      return await handler(json, undefined);
+    } else {
+      console.log("InMemory_Bus: no command handler for channel", channelName);
+      return;
+    }
+  };
+  let registerCommandHandler = (channelName, handler) => {
+    commandHandlers.contents[channelName] = handler;
+  };
+  let registerQueryDb = (name, ops) => {
+    queryDbRegistry.contents[name] = ops;
+  };
+  let getQueryDb = name => queryDbRegistry.contents[name];
+  let registerQueryDbScan = (name, scan) => {
+    queryDbScanRegistry.contents[name] = scan;
+  };
+  let getQueryDbScan = name => queryDbScanRegistry.contents[name];
+  let registerQueryDbStream = (name, streamFn) => {
+    queryDbStreamRegistry.contents[name] = streamFn;
+  };
+  let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let reset = () => {
+    let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventHubs.contents).map(hub => Effect.PubSub.shutdown(hub)), {
+      concurrency: "unbounded"
+    }), param => {});
+    Effect.Effect.runSync(shutdownAll);
+    eventHubs.contents = {};
+    subscriberCounts.contents = {};
+    commandHandlers.contents = {};
+    queryDbRegistry.contents = {};
+    queryDbScanRegistry.contents = {};
+    queryDbStreamRegistry.contents = {};
+  };
+  return {
+    publishEvent: publishEvent,
+    subscribeToEvents: subscribeToEvents,
+    dispatchCommand: dispatchCommand,
+    registerCommandHandler: registerCommandHandler,
+    registerQueryDb: registerQueryDb,
+    getQueryDb: getQueryDb,
+    registerQueryDbScan: registerQueryDbScan,
+    getQueryDbScan: getQueryDbScan,
+    registerQueryDbStream: registerQueryDbStream,
+    getQueryDbStream: getQueryDbStream,
+    reset: reset
+  };
+}
+
+function MakeBounded(C) {
+  let capacity = C.capacity;
+  let eventHubs = {
+    contents: {}
+  };
+  let subscriberCounts = {
+    contents: {}
+  };
+  let commandHandlers = {
+    contents: {}
+  };
+  let queryDbRegistry = {
+    contents: {}
+  };
+  let queryDbScanRegistry = {
+    contents: {}
+  };
+  let queryDbStreamRegistry = {
+    contents: {}
+  };
+  let makeHub = () => Effect.Effect.runSync(Effect.PubSub.bounded(capacity));
+  let subscribeToEvents = (topicName, handler) => {
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = makeHub();
       eventHubs.contents[topicName] = h$1;
       hub = h$1;
     }
@@ -60,13 +309,14 @@ function Make($star) {
         return Effect.Effect.succeed();
       }
     });
-    Effect.Effect.runSync(Effect.PubSub.publish(Primitive_option.valFromOption(hub), {
+    let msg = {
       service: service,
       meta: meta,
       json: json,
       done_: done_
-    }));
-    await Effect.Effect.runPromise(Effect.Deferred.await(allDone));
+    };
+    let publishAndWait = Effect.Effect.flatMap(Effect.PubSub.publish(Primitive_option.valFromOption(hub), msg), param => Effect.Deferred.await(allDone));
+    await Effect.Effect.runPromise(publishAndWait);
   };
   let dispatchCommand = async (channelName, json) => {
     let handler = commandHandlers.contents[channelName];
@@ -120,6 +370,8 @@ function Make($star) {
 }
 
 export {
+  Impl,
   Make,
+  MakeBounded,
 }
 /* effect Not a pure module */
