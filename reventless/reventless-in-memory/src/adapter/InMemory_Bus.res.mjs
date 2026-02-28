@@ -2,9 +2,13 @@
 
 import * as Effect from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 
 function Make($star) {
-  let eventSubscribers = {
+  let eventHubs = {
+    contents: {}
+  };
+  let subscriberCounts = {
     contents: {}
   };
   let commandHandlers = {
@@ -20,27 +24,49 @@ function Make($star) {
     contents: {}
   };
   let subscribeToEvents = (topicName, handler) => {
-    let queue = Effect.Effect.runSync(Effect.Queue.unbounded());
-    let drainLoop = Effect.Effect.forever(Effect.Effect.flatMap(Effect.Queue.take(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), Effect.Effect.map(Effect.Deferred.succeed(msg.signal, undefined), param => {}))));
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = Effect.Effect.runSync(Effect.PubSub.unbounded());
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    subscriberCounts.contents[topicName] = n + 1 | 0;
+    let drainLoop = Effect.Effect.scoped(Effect.Effect.flatMap(Effect.PubSub.subscribe(hub), queue => Effect.Stream.runForEach(Effect.Stream.fromQueue(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), msg.done_))));
     Effect.Effect.runFork(drainLoop);
-    let existing = Stdlib_Option.getOr(eventSubscribers.contents[topicName], []);
-    eventSubscribers.contents[topicName] = existing.concat([{
-        queue: queue
-      }]);
   };
   let publishEvent = async (topicName, service, meta, json) => {
-    let subscribers = Stdlib_Option.getOr(eventSubscribers.contents[topicName], []);
-    let signalPromises = subscribers.map(sub => {
-      let signal = Effect.Effect.runSync(Effect.Deferred.make());
-      Effect.Effect.runSync(Effect.Queue.offer(sub.queue, {
-        service: service,
-        meta: meta,
-        json: json,
-        signal: signal
-      }));
-      return Effect.Effect.runPromise(Effect.Deferred.await(signal));
+    let hub = eventHubs.contents[topicName];
+    if (hub === undefined) {
+      return;
+    }
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    if (n === 0) {
+      return;
+    }
+    let allDone = Effect.Effect.runSync(Effect.Deferred.make());
+    let remaining = {
+      contents: n
+    };
+    let done_ = Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      remaining.contents = remaining.contents - 1 | 0;
+    }), () => {
+      if (remaining.contents === 0) {
+        return Effect.Effect.map(Effect.Deferred.succeed(allDone, undefined), param => {});
+      } else {
+        return Effect.Effect.succeed();
+      }
     });
-    await Promise.all(signalPromises);
+    Effect.Effect.runSync(Effect.PubSub.publish(Primitive_option.valFromOption(hub), {
+      service: service,
+      meta: meta,
+      json: json,
+      done_: done_
+    }));
+    await Effect.Effect.runPromise(Effect.Deferred.await(allDone));
   };
   let dispatchCommand = async (channelName, json) => {
     let handler = commandHandlers.contents[channelName];
@@ -67,11 +93,12 @@ function Make($star) {
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
   let reset = () => {
-    let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventSubscribers.contents).flatMap(subs => subs.map(sub => Effect.Queue.shutdown(sub.queue))), {
+    let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventHubs.contents).map(hub => Effect.PubSub.shutdown(hub)), {
       concurrency: "unbounded"
     }), param => {});
     Effect.Effect.runSync(shutdownAll);
-    eventSubscribers.contents = {};
+    eventHubs.contents = {};
+    subscriberCounts.contents = {};
     commandHandlers.contents = {};
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};

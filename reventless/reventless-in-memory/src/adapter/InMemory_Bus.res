@@ -1,38 +1,41 @@
 // Shared in-memory event and command bus.
 // Each Platform.Make() creates a fresh isolated bus — no global state, no test interference.
 //
-// Event delivery uses Effect Queue + Deferred completion signals:
+// Event delivery uses Effect PubSub + Stream for fan-out and a countdown Deferred for
+// completion signaling (Phase F of effect-stream-integration plan).
 //
-//  subscribeToEvents — creates an unbounded Queue for the subscriber and starts a
-//    drain fiber (via Effect.runFork). The drain fiber loops forever: take message,
-//    call the callback, resolve the completion Deferred.
+//  subscribeToEvents — creates (or reuses) an unbounded PubSub hub per topic and starts
+//    a drain fiber (via Effect.runFork). The fiber runs Effect.scoped(PubSub.subscribe(hub)→…)
+//    synchronously up to the first Queue.take suspension, registering the subscription before
+//    runFork returns. The subscriber count for the topic is incremented synchronously.
 //
-//  publishEvent — for each subscriber, synchronously creates a Deferred and offers
-//    {payload, signal} to their Queue (via Effect.runSync, avoiding the overhead of
-//    Effect.all fiber-forking), then awaits all signals via Promise.all. publishEvent
-//    resolves only after every subscriber has finished (exactly 2 microtask ticks).
+//  publishEvent — uses the manually-tracked subscriber count (not PubSub.size, which measures
+//    queued messages not subscriber count), creates a countdown done_ Effect and an allDone
+//    Deferred, then publishes once to the hub via Effect.runSync (unbounded hub → synchronous
+//    fan-out to all subscriber Queues). Resolves when all subscribers have finished (2 ticks).
 //
-//  reset — shuts down all subscriber Queues (interrupting their drain fibers via
-//    Queue.take interruption), then clears all four registries.
+//  reset — shuts down all hubs (which terminates Stream.fromQueue consumers via PubSub.shutdown),
+//    then clears all registries.
+//
+// Timing analysis (unbounded mode):
+//   tick 0: PubSub.publish (Effect.runSync) delivers to all subscriber Queues synchronously
+//            + Deferred.await_(allDone) runPromise starts
+//   tick 1: Effect scheduler: all drain fibers wake, call handlers, run done_; last resolves allDone
+//   tick 2: Deferred.await_ promise resolves; publishEvent returns
+// → 2 microtask ticks, same as the previous Queue-based implementation.
+//
+// NOTE: PubSub.size in Effect measures buffered message count (not subscriber count).
+// Subscriber count is tracked via a separate subscriberCounts dict.
 
-// Message offered to a subscriber's Queue. The signal Deferred is resolved by the
-// drain loop after the callback returns, so the publisher can await completion.
-//
-// NOTE on scheduling hops: Deferred.make() and Queue.offer() are both pure synchronous
-// Effect values — they can be executed with Effect.runSync. This avoids the extra fiber-
-// forking overhead of Effect.all({concurrency: "unbounded"}) (which uses forEachConcurrentDiscard
-// internally and adds 4 scheduling hops). By using Effect.runSync for the synchronous parts
-// and Promise.all for the signal awaiting, publishEvent resolves in 2 microtask ticks —
-// matching the 2 `await Promise.resolve()` calls in the test helpers.
+// Message fanned out by PubSub to every subscriber's Queue.
+// done_ is run by each subscriber after the callback returns; when the last subscriber
+// finishes, done_ resolves allDone and publishEvent can return.
 type queuedEvent = {
   service: string,
   meta: ReventlessCore.Message.meta,
   json: JSON.t,
-  signal: Deferred.t<unit, unit>,
+  done_: Effect.t<unit, unit, unit>,
 }
-
-// Per-subscriber state — just the Queue that receives messages from publishers.
-type subscriber = {queue: Queue.t<queuedEvent>}
 
 module type T = {
   // Event fan-out: aggregate EventTopic → read model EventCollector
@@ -59,45 +62,80 @@ module type T = {
 }
 
 module Make = (): T => {
-  let eventSubscribers: ref<dict<array<subscriber>>> = ref(Dict.make())
+  // Per-topic PubSub hub for synchronous fan-out to all subscriber Queues.
+  let eventHubs: ref<dict<PubSub.t<queuedEvent>>> = ref(Dict.make())
+  // Per-topic subscriber count — tracked manually because PubSub.size measures
+  // buffered message count (always 0 for unbounded after delivery), not subscriber count.
+  let subscriberCounts: ref<dict<int>> = ref(Dict.make())
+
   let commandHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
   let queryDbRegistry: ref<dict<ReventlessCore.QueryDb_Adapter.operations>> = ref(Dict.make())
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
   let queryDbStreamRegistry: ref<dict<unit => Stream.t<JSON.t, string, unit>>> = ref(Dict.make())
 
   let subscribeToEvents = (topicName, handler) => {
-    let queue: Queue.t<queuedEvent> = Queue.unbounded()->Effect.runSync
-    // Drain loop: take one message, call the callback, resolve the completion signal,
-    // then immediately loop. Effect.forever repeats until Queue.take is interrupted
-    // (which happens when Queue.shutdown is called in reset).
-    let drainLoop =
-      Queue.take(queue)
-      ->Effect.flatMap(msg =>
-        Effect.promise(() => handler(msg.service, msg.meta, msg.json))
-        ->Effect.zipRight(Deferred.succeed(msg.signal, ())->Effect.map(_ => ()))
+    let hub = switch eventHubs.contents->Dict.get(topicName) {
+    | Some(h) => h
+    | None =>
+      let h: PubSub.t<queuedEvent> = PubSub.unbounded()->Effect.runSync
+      eventHubs.contents->Dict.set(topicName, h)
+      h
+    }
+    // Increment count synchronously before starting the fiber — publishEvent reads
+    // this count and must see it even if called immediately after subscribeToEvents.
+    let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(0)
+    subscriberCounts.contents->Dict.set(topicName, n + 1)
+    // Drain loop: subscribe to hub, consume messages via Stream.fromQueue → Stream.runForEach.
+    // Effect.scoped manages the subscription lifecycle; PubSub.shutdown in reset() closes it.
+    // The fiber runs synchronously up to the first Queue.take suspension, so PubSub.subscribe
+    // registers before Effect.runFork returns.
+    let drainLoop = Effect.scoped(
+      PubSub.subscribe(hub)
+      ->Effect.flatMap(queue =>
+        Stream.fromQueue(queue)
+        ->Stream.runForEach(msg =>
+          Effect.promise(() => handler(msg.service, msg.meta, msg.json))
+          ->Effect.zipRight(msg.done_)
+        )
       )
-      ->Effect.forever
-    // runFork starts the drain loop as a background fiber in the global Effect runtime.
+    )
     let _ = Effect.runFork(drainLoop)
-    let existing = eventSubscribers.contents->Dict.get(topicName)->Option.getOr([])
-    eventSubscribers.contents->Dict.set(topicName, existing->Array.concat([{queue: queue}]))
   }
 
   let publishEvent = async (topicName, service, meta, json) => {
-    let subscribers = eventSubscribers.contents->Dict.get(topicName)->Option.getOr([])
-    // For each subscriber: synchronously create a Deferred signal and offer the message
-    // to their Queue (both are pure synchronous Effect values), then collect the signal
-    // Promises. We use Effect.runSync here to avoid the extra fiber-forking overhead of
-    // Effect.all({concurrency: "unbounded"}) — that path adds 4 scheduling hops because
-    // forEachConcurrentDiscard creates a processingFiber + child fibers via scheduleTask.
-    // Using runSync + Promise.all reduces to 2 scheduling hops, so tests only need
-    // 2 `await Promise.resolve()` ticks after advancing fake timers.
-    let signalPromises = subscribers->Array.map(sub => {
-      let signal = Deferred.make()->Effect.runSync
-      let _ = Queue.offer(sub.queue, {service, meta, json, signal})->Effect.runSync
-      Deferred.await_(signal)->Effect.runPromise
-    })
-    let _ = await signalPromises->Promise.all
+    switch eventHubs.contents->Dict.get(topicName) {
+    | None => ()
+    | Some(hub) =>
+      let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(0)
+      if n == 0 {
+        ()
+      } else {
+        // One Deferred for the whole publish call. The last subscriber to finish
+        // resolves it via the countdown done_ Effect.
+        let allDone: Deferred.t<unit, unit> = Deferred.make()->Effect.runSync
+        let remaining = ref(n)
+        // done_ runs inside each drain fiber's Effect chain (via Effect.zipRight).
+        // It decrements remaining and — when reaching zero — resolves allDone.
+        // IMPORTANT: done_ must NOT be called via Effect.runSync from a JS callback.
+        // It must run within the Effect fiber so that Deferred.succeed operates in the
+        // same runtime as Deferred.await_ below.
+        let done_: Effect.t<unit, unit, unit> =
+          Effect.sync(() => {remaining := remaining.contents - 1})
+          ->Effect.flatMap(_ =>
+            if remaining.contents == 0 {
+              Deferred.succeed(allDone, ())->Effect.map(_ => ())
+            } else {
+              Effect.succeed(())
+            }
+          )
+        // Publish once — unbounded PubSub fans the same message to all N subscriber Queues
+        // synchronously. Effect.runSync is correct here: it avoids the extra microtask tick
+        // that Effect.runPromise would introduce, preserving the 2-tick guarantee.
+        let _ = PubSub.publish(hub, {service, meta, json, done_})->Effect.runSync
+        // Wait for all subscribers to finish (allDone resolves when remaining reaches 0).
+        let _ = await Deferred.await_(allDone)->Effect.runPromise
+      }
+    }
   }
 
   let dispatchCommand = async (channelName, json) => {
@@ -120,16 +158,17 @@ module Make = (): T => {
   let getQueryDbStream = name => queryDbStreamRegistry.contents->Dict.get(name)
 
   let reset = () => {
-    // Shut down all subscriber queues — Queue.shutdown interrupts any fibers blocked
-    // on Queue.take, causing their drain loops to exit cleanly.
+    // Shut down all hubs — PubSub.shutdown interrupts Stream.fromQueue consumers,
+    // causing Stream.runForEach to complete and Effect.scoped to close the subscription.
     let shutdownAll =
-      eventSubscribers.contents
+      eventHubs.contents
       ->Dict.valuesToArray
-      ->Array.flatMap(subs => subs->Array.map(sub => Queue.shutdown(sub.queue)))
+      ->Array.map(hub => PubSub.shutdown(hub))
       ->Effect.all({"concurrency": "unbounded"})
       ->Effect.map(_ => ())
     let _ = Effect.runSync(shutdownAll)
-    eventSubscribers := Dict.make()
+    eventHubs := Dict.make()
+    subscriberCounts := Dict.make()
     commandHandlers := Dict.make()
     queryDbRegistry := Dict.make()
     queryDbScanRegistry := Dict.make()

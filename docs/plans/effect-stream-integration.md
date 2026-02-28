@@ -1,12 +1,14 @@
 # Effect Stream Integration Plan
 
-**Status:** In progress — Phases A–E complete, Phases F–G planned
+**Status:** In progress — Phases A–F complete, Phase G planned
+
 **Created:** 2026-02-28
+
 **Revised:** 2026-02-28
+
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
-**Summary:** Six use cases where Effect `Stream` improves memory safety, correctness, or composability
-in the Reventless codebase. Each phase bundles its implementation and tests together. Includes a
-structural analysis of how `Aggregate_Callback` and other callback modules must adapt for lazy fold.
+
+**Summary:** Six use cases where Effect `Stream` improves memory safety, correctness, or composability in the Reventless codebase. Each phase bundles its implementation and tests together. Includes a structural analysis of how `Aggregate_Callback` and other callback modules must adapt for lazy fold.
 
 ---
 
@@ -1309,7 +1311,7 @@ describe("CsvStream.parseRows", () => {
 
 ---
 
-### Phase F — InMemory_Bus Fan-out via PubSub + Stream
+### Phase F — InMemory_Bus Fan-out via PubSub + Stream ✅ COMPLETE
 
 **Goal:** Replace the per-subscriber `Queue` array in `InMemory_Bus` with a per-topic `PubSub.t`
 hub. The PubSub hub handles subscriber fan-out automatically, eliminating the manual
@@ -1579,13 +1581,31 @@ describe("publishEvent timing (PubSub variant)", () => {
 All existing `InMemory_Bus`-dependent tests in `reventless-in-memory` must pass without
 modification — the external contract of `publishEvent` and `subscribeToEvents` is unchanged.
 
-#### F.5 Acceptance criteria
+#### F.5 Acceptance criteria ✅
 
-- All existing `reventless-in-memory` tests pass unchanged
-- Timing regression test passes (2-tick guarantee confirmed)
-- Fan-out test passes
-- `reset()` properly interrupts all drain fibers (no zombie fibers after reset)
-- Zero new warnings
+- All existing `reventless-in-memory` tests pass unchanged ✅
+- Timing regression test passes (2-tick guarantee confirmed) ✅
+- Fan-out test passes ✅
+- `reset()` properly interrupts all drain fibers (no zombie fibers after reset) ✅
+- Zero new warnings ✅
+
+**Implementation notes:**
+- `PubSub.size` in Effect measures **buffered message count** (not subscriber count) — always 0
+  for an unbounded hub after successful delivery. Plan erroneously proposed using it for countdown.
+  Fixed by adding `subscriberCounts: ref<dict<int>>` that is incremented synchronously in
+  `subscribeToEvents` and reset in `reset()`.
+- `PubSub.subscribe` inside `Effect.scoped` DOES run synchronously during `Effect.runFork` — the
+  fiber's trampoline executes all synchronous steps before hitting the first `Queue.take` suspension.
+  Subscription is registered before `subscribeToEvents` returns (no race with `publishEvent`).
+- `type subscriber` removed — no longer needed; per-subscriber state is managed by PubSub.
+- `type queuedEvent` updated: `signal: Deferred.t<unit, unit>` → `done_: Effect.t<unit, unit, unit>`
+- Drain loop updated: `Queue.take → handler → Deferred.succeed → forever` →
+  `Effect.scoped(PubSub.subscribe(hub) → Stream.fromQueue → Stream.runForEach → Effect.zipRight(done_))`
+- `publishEvent` updated: `Promise.all` of N per-subscriber Deferred promises →
+  single `allDone: Deferred.t<unit, unit>` with countdown `done_` Effect
+- `reset` updated: `Queue.shutdown` per subscriber → `PubSub.shutdown` per hub
+- Added `InMemoryBusPubSubTest.res` with 4 tests: timing (2-tick), no-subscribers, fan-out, topic isolation
+- All 619 tests pass (was 615 after Phase E; +4 new PubSub tests)
 
 ---
 
