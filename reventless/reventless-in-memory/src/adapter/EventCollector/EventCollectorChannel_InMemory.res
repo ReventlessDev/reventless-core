@@ -49,11 +49,23 @@ module Make = (Bus: InMemory_Bus.T) => {
         topicOutputs.resources->Array.forEach(resource => {
           // resource.name is the bus topic key set by EventTopicPublisher_InMemory
           let _ = resource.name->Pulumi.Output.apply(topicName => {
-            Bus.subscribeToEvents(topicName, async (_service, _meta, json) => {
-              let handler =
-                await runtime.parts.handlerDeferred->Deferred.await_->Effect.runPromise
-              await handler(json, ())
-            })
+            // Stream-based drain: subscribeToEventStream returns a scoped Effect that
+            // yields Stream<queuedEvent>. done_ is run explicitly after each handler call
+            // to unblock publishEvent.
+            let drainEffect = Effect.scoped(
+              Bus.subscribeToEventStream(topicName)
+              ->Effect.flatMap(stream =>
+                stream->Stream.runForEach(msg =>
+                  Effect.promise(async () => {
+                    let handler =
+                      await runtime.parts.handlerDeferred->Deferred.await_->Effect.runPromise
+                    await handler(msg.json, ())
+                  })
+                  ->Effect.zipRight(msg.done_)
+                )
+              ),
+            )
+            let _ = Effect.runFork(drainEffect)
             // Signal that this topic's subscription is registered.
             // Latch.open_ is idempotent — calling it for multiple topics is safe.
             runtime.parts.subscriptionLatch->Latch.open_->Effect.runPromise->ignore

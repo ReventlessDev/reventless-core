@@ -18,10 +18,11 @@ function Make(Bus) {
       Object.values(param.eventTopics).forEach(topicOutputs => {
         topicOutputs.resources.forEach(resource => {
           resource.name.apply(topicName => {
-            Bus.subscribeToEvents(topicName, async (_service, _meta, json) => {
+            let drainEffect = Effect.Effect.scoped(Effect.Effect.flatMap(Bus.subscribeToEventStream(topicName), stream => Effect.Stream.runForEach(stream, msg => Effect.Effect.zipRight(Effect.Effect.promise(async () => {
               let handler = await Effect.Effect.runPromise(Effect.Deferred.await(runtime.parts.handlerDeferred));
-              return await handler(json, undefined);
-            });
+              return await handler(msg.json, undefined);
+            }), msg.done_))));
+            Effect.Effect.runFork(drainEffect);
             Effect.Effect.runPromise(runtime.parts.subscriptionLatch.open);
           });
         });

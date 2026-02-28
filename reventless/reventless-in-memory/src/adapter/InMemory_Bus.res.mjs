@@ -47,6 +47,24 @@ function Impl(C) {
     let drainLoop = Effect.Effect.scoped(Effect.Effect.flatMap(Effect.PubSub.subscribe(hub), queue => Effect.Stream.runForEach(Effect.Stream.fromQueue(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), msg.done_))));
     Effect.Effect.runFork(drainLoop);
   };
+  let subscribeToEventStream = topicName => {
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = makeHub();
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    return Effect.Effect.map(Effect.Effect.acquireRelease(Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+      subscriberCounts.contents[topicName] = n + 1 | 0;
+    }), () => Effect.PubSub.subscribe(hub)), (queue, _exit) => Effect.Effect.zipRight(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
+      subscriberCounts.contents[topicName] = n - 1 | 0;
+    }), Effect.Queue.shutdown(queue))), queue => Effect.Stream.fromQueue(queue));
+  };
   let publishEvent = async (topicName, service, meta, json) => {
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
@@ -120,6 +138,7 @@ function Impl(C) {
   return {
     publishEvent: publishEvent,
     subscribeToEvents: subscribeToEvents,
+    subscribeToEventStream: subscribeToEventStream,
     dispatchCommand: dispatchCommand,
     registerCommandHandler: registerCommandHandler,
     registerQueryDb: registerQueryDb,
@@ -166,6 +185,24 @@ function Make($star) {
     subscriberCounts.contents[topicName] = n + 1 | 0;
     let drainLoop = Effect.Effect.scoped(Effect.Effect.flatMap(Effect.PubSub.subscribe(hub), queue => Effect.Stream.runForEach(Effect.Stream.fromQueue(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), msg.done_))));
     Effect.Effect.runFork(drainLoop);
+  };
+  let subscribeToEventStream = topicName => {
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = makeHub();
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    return Effect.Effect.map(Effect.Effect.acquireRelease(Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+      subscriberCounts.contents[topicName] = n + 1 | 0;
+    }), () => Effect.PubSub.subscribe(hub)), (queue, _exit) => Effect.Effect.zipRight(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
+      subscriberCounts.contents[topicName] = n - 1 | 0;
+    }), Effect.Queue.shutdown(queue))), queue => Effect.Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
     let hub = eventHubs.contents[topicName];
@@ -240,6 +277,7 @@ function Make($star) {
   return {
     publishEvent: publishEvent,
     subscribeToEvents: subscribeToEvents,
+    subscribeToEventStream: subscribeToEventStream,
     dispatchCommand: dispatchCommand,
     registerCommandHandler: registerCommandHandler,
     registerQueryDb: registerQueryDb,
@@ -287,6 +325,24 @@ function MakeBounded(C) {
     subscriberCounts.contents[topicName] = n + 1 | 0;
     let drainLoop = Effect.Effect.scoped(Effect.Effect.flatMap(Effect.PubSub.subscribe(hub), queue => Effect.Stream.runForEach(Effect.Stream.fromQueue(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), msg.done_))));
     Effect.Effect.runFork(drainLoop);
+  };
+  let subscribeToEventStream = topicName => {
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = makeHub();
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    return Effect.Effect.map(Effect.Effect.acquireRelease(Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+      subscriberCounts.contents[topicName] = n + 1 | 0;
+    }), () => Effect.PubSub.subscribe(hub)), (queue, _exit) => Effect.Effect.zipRight(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
+      subscriberCounts.contents[topicName] = n - 1 | 0;
+    }), Effect.Queue.shutdown(queue))), queue => Effect.Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
     let hub = eventHubs.contents[topicName];
@@ -358,6 +414,7 @@ function MakeBounded(C) {
   return {
     publishEvent: publishEvent,
     subscribeToEvents: subscribeToEvents,
+    subscribeToEventStream: subscribeToEventStream,
     dispatchCommand: dispatchCommand,
     registerCommandHandler: registerCommandHandler,
     registerQueryDb: registerQueryDb,

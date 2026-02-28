@@ -52,6 +52,16 @@ module type T = {
   let publishEvent: (string, string, ReventlessCore.Message.meta, JSON.t) => promise<unit>
   let subscribeToEvents: (string, (string, ReventlessCore.Message.meta, JSON.t) => promise<unit>) => unit
 
+  /**
+   * Stream-based alternative to subscribeToEvents.
+   * Returns a scoped Effect that yields a Stream<queuedEvent> for the topic.
+   * The subscriber count is incremented on scope open and decremented on scope close.
+   * Callers MUST run msg.done_ after processing each message to unblock publishEvent.
+   *
+   * Use subscribeToEvents for simple fire-and-forget subscriptions.
+   */
+  let subscribeToEventStream: string => Effect.t<Stream.t<queuedEvent, unit, unit>, unit, unit>
+
   // Command dispatch: CommandTopic → aggregate command handler
   // Dispatches a single encoded command JSON {reference, commandJson}
   let dispatchCommand: (string, JSON.t) => promise<unit>
@@ -134,6 +144,34 @@ module Impl = (C: BusConfig): T => {
       )
     )
     let _ = Effect.runFork(drainLoop)
+  }
+
+  let subscribeToEventStream = topicName => {
+    let hub = switch eventHubs.contents->Dict.get(topicName) {
+    | Some(h) => h
+    | None =>
+      let h: PubSub.t<queuedEvent> = makeHub()
+      eventHubs.contents->Dict.set(topicName, h)
+      h
+    }
+    // Acquire: increment subscriber count + subscribe to hub.
+    // Release: decrement subscriber count + shut down the per-subscriber queue.
+    // PubSub.subscribe's own scope management also removes the subscriber from the hub
+    // when the outer Effect.scoped closes.
+    Effect.acquireRelease(
+      Effect.sync(() => {
+        let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(0)
+        subscriberCounts.contents->Dict.set(topicName, n + 1)
+      })
+      ->Effect.flatMap(_ => PubSub.subscribe(hub)),
+      (queue, _exit) =>
+        Effect.sync(() => {
+          let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(1)
+          subscriberCounts.contents->Dict.set(topicName, n - 1)
+        })
+        ->Effect.zipRight(Queue.shutdown(queue)),
+    )
+    ->Effect.map(queue => Stream.fromQueue(queue))
   }
 
   let publishEvent = async (topicName, service, meta, json) => {

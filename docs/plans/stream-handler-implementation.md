@@ -1,6 +1,6 @@
 # Plan: Stream-Based Handler Implementation (Phases J–P)
 
-**Status:** Phases J–K complete; Phase L pending; Phases M–P planned
+**Status:** Phases J–K–L complete; Phases M–P planned
 
 **Created:** 2026-02-28
 
@@ -351,12 +351,14 @@ let connect = (~name as _, ~channelSpecs, ~runtime, ~opts as _) => {
 }
 ```
 
-### Files to change (Phase L)
+### Files changed — Phase L (complete)
 
 | File | Change |
 |------|--------|
-| `reventless-in-memory/src/adapter/InMemory_Bus.res` | Add `subscribeToEventStream` to `T` and implement in `Impl` |
-| `reventless-in-memory/src/adapter/EventCollector/EventCollectorChannel_InMemory.res` | Update `connect` to use `subscribeToEventStream` with explicit `done_` |
+| `reventless-in-memory/src/adapter/InMemory_Bus.res` | Added `subscribeToEventStream` to `T` and implemented in `Impl` |
+| `reventless-in-memory/src/adapter/EventCollector/EventCollectorChannel_InMemory.res` | Updated `connect` to use `subscribeToEventStream` with explicit `done_` |
+
+**Note on `Scope.t`** (open question 2): No `Scope.res` binding exists in `rescript-effect`. The return type of `subscribeToEventStream` uses `unit` for the requirements parameter `'r` in the module type signature. Since callers always wrap with `Effect.scoped` (which satisfies the runtime Scope requirement), this is safe in practice. The implementation's unconstrained `'r` unifies with `unit` at the module boundary.
 
 ---
 
