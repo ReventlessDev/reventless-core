@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** In progress — Phases A–E complete, next steps pending
+**Status:** In progress — Phases A–E complete, Phases F–G planned
 **Created:** 2026-02-28
 **Revised:** 2026-02-28
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
@@ -174,6 +174,115 @@ from storage.
 
 ---
 
+### 1.4 The 2-microtick timing guarantee in `InMemory_Bus`
+
+This section explains a design constraint that Phases F and G must preserve (or knowingly
+change). It describes how JavaScript's microtask queue works, why `InMemory_Bus` is built around
+a 2-tick delivery model, and what breaks if extra ticks are introduced.
+
+#### Background: JavaScript microtasks and `await`
+
+JavaScript's event loop processes work in two layers:
+
+- **Macrotasks** (setTimeout, I/O callbacks, etc.) — run one at a time, interleaved with the UI
+  or other I/O.
+- **Microtasks** (Promise continuations, queueMicrotask) — drain completely between each
+  macrotask. Every `await` of an already-resolved Promise takes exactly one microtask tick to
+  resume the continuation.
+
+The key rule: **`await Promise.resolve()` always suspends for exactly one microtask tick.**
+When you write:
+
+```javascript
+await Promise.resolve()  // tick 1
+await Promise.resolve()  // tick 2
+```
+
+you are explicitly yielding control to the microtask queue twice. Any Promise that was resolved
+during the previous tick will have its `.then` callbacks executed before your continuation runs.
+
+#### How `InMemory_Bus.publishEvent` achieves 2-tick delivery
+
+`publishEvent` is designed so that by the time the caller's second `await` returns, every
+subscriber has finished processing the event. The mechanism has two parts:
+
+**Part 1 — synchronous fan-out (tick 0):**
+
+```rescript
+// For each subscriber: create a Deferred signal and offer {event, signal} to
+// their Queue — both are synchronous Effect values run via Effect.runSync.
+let signal = Deferred.make()->Effect.runSync           // 0 ticks
+let _ = Queue.offer(sub.queue, {…, signal})->Effect.runSync  // 0 ticks
+```
+
+After this loop, every subscriber's Queue has the message. The subscriber drain fibers are not
+running yet — they are suspended on `Queue.take` in the Effect scheduler, waiting for their turn.
+
+**Part 2 — signal-based synchronisation (ticks 1–2):**
+
+```rescript
+// Start waiting for all subscribers to complete
+let _ = await signalPromises->Promise.all   // starts N Effect.runPromise calls
+```
+
+`Promise.all` begins. Each `Deferred.await_(...)->Effect.runPromise` call starts a fiber in the
+Effect runtime that is waiting for its Deferred to be resolved.
+
+**Tick 1:** The Effect scheduler gets control. The drain fibers wake up, each processes their
+message (calls the subscriber callback), then executes `Deferred.succeed(signal, ())`. This
+resolves the Deferred, which resolves the corresponding `Effect.runPromise` Promise.
+
+**Tick 2:** The resolved Promises in `Promise.all` are processed. `Promise.all` itself resolves.
+`publishEvent` returns.
+
+The full timeline:
+
+```
+caller:      publishEvent(…)
+             ↳ Effect.runSync(Queue.offer) × N   [sync, 0 ticks]
+             ↳ Promise.all([Deferred.await_…])   [starts waiting]
+tick 1:      Effect scheduler: drain fibers run
+             ↳ handler(service, meta, json)       [subscriber callback]
+             ↳ Deferred.succeed(signal, ())       [resolves signal Promise]
+tick 2:      Promise.all resolves
+             ↳ publishEvent returns
+```
+
+#### Why tests rely on this
+
+Integration tests in `reventless-in-memory` frequently do:
+
+```rescript
+// Dispatch a command — this eventually publishes an event via publishEvent
+let _ = await ops.dispatchCommand(…)
+// Allow event to propagate to subscribers (read models, side effects, etc.)
+let _ = await Promise.resolve()   // tick 1: drain fiber processes event
+let _ = await Promise.resolve()   // tick 2: publishEvent resolves; caller continues
+// Now assert the read model was updated
+expect(readModel.count)->toBe(1)
+```
+
+The two `await Promise.resolve()` calls are the **test synchronisation primitive** for
+`InMemory_Bus` event delivery. They appear throughout the test suite via helper functions such as
+`TestRunner.resolve` and `Output.apply`-based awaiting. If event delivery required more than 2
+ticks, these assertions would run before the subscriber callback has finished, producing false
+negatives (the read model appears empty even though the event was in-flight).
+
+#### What "preserving the guarantee" means for Phases F and G
+
+| Change | Tick impact | Action required |
+|---|---|---|
+| Phase F: `PubSub.publish` (unbounded) via `Effect.runSync` | 0 extra ticks | No test changes |
+| Phase F: `done_` Effect via `Effect.zipRight` in drain fiber | 0 extra ticks | No test changes |
+| Phase G: `PubSub.publish` (bounded) via `Effect.runPromise` | +1 tick (3 total) | Tests using `~capacity` must await 3 ticks |
+| Hypothetical: `PubSub.publish` (unbounded) via `Effect.runPromise` | +1 tick (3 total) | Would break all existing tests |
+
+The constraint is: **for default (unbounded) mode, `publishEvent` must still complete in 2
+microtask ticks.** Phase F achieves this by keeping `PubSub.publish` on an unbounded hub as a
+synchronous `Effect.runSync` call, exactly matching the current `Queue.offer` approach.
+
+---
+
 ## Section 2: Stream Binding Requirements
 
 No `Stream.res` exists yet in `rescript/rescript-effect/src/`. Create it as part of Phase A.
@@ -302,7 +411,9 @@ Phase A — Stream.res bindings + smoke tests
   ├─> Phase B — EventLog.replayStream + Aggregate_Callback + tests
   ├─> Phase C — QueryDb scan stream + limit tests
   ├─> Phase D — DcbEventLog.readStream + StateChangeSlice_Callback + tests
-  └─> Phase E — CSV/Node.js streams + tests
+  ├─> Phase E — CSV/Node.js streams + tests
+  └─> Phase F — InMemory_Bus fan-out via PubSub + Stream
+        └─> Phase G — Bounded PubSub backpressure
 ```
 
 ---
@@ -1194,27 +1305,498 @@ describe("CsvStream.parseRows", () => {
 
 ---
 
-## Section 4: Use Cases Not Yet Phased
+## Section 4: Phases F and G
 
-The following use cases were identified but deliberately left out of the phased plan. They require
-a design decision before implementation.
+---
 
-### Use Case 4 — InMemory_Bus Fan-out via Stream (Evaluate before implementing)
+### Phase F — InMemory_Bus Fan-out via PubSub + Stream
 
-The current `InMemory_Bus` drain loop is already a manual `Stream.fromQueue` pattern. Replacing
-it with a PubSub-based stream would be an architectural improvement but changes delivery timing
-guarantees. The current design is carefully tuned for 2-microtick resolution in tests. Before
-implementing, measure whether the 2-tick resolution is preserved with the new approach.
+**Goal:** Replace the per-subscriber `Queue` array in `InMemory_Bus` with a per-topic `PubSub.t`
+hub. The PubSub hub handles subscriber fan-out automatically, eliminating the manual
+`dict<string, array<subscriber>>` registry and making event delivery more idiomatic for Effect.
+The drain loop, which is currently a manual `Queue.take → handler → Deferred.succeed → forever`
+chain, becomes a `Stream.fromQueue → Stream.runForEach` pipeline scoped to a PubSub subscription.
 
-### Use Case 6 — Bounded Queue Backpressure (Evaluate before implementing)
+**Priority:** Low — affects test infrastructure only; no production path is involved.
 
-Replacing `Queue.unbounded` with `Queue.bounded(n)` per subscriber provides natural backpressure
-but requires switching from `Effect.runSync` (synchronous offer) to an async offer path, which
-may change the 2-microtick test guarantees. Defer to a dedicated backpressure-focused pass.
+**Dependency:** Phase A (Stream bindings, already complete). No other phase dependency.
+
+#### F.1 Structural Analysis
+
+**Current shape of `InMemory_Bus.Make`:**
+
+```rescript
+// State
+let eventSubscribers: ref<dict<string, array<subscriber>>> = ref(Dict.make())
+// where subscriber = { queue: Queue.t<queuedEvent> }
+// and queuedEvent = { service, meta, json, signal: Deferred.t<unit, unit> }
+
+// subscribeToEvents — one Queue + one drain fiber per subscriber
+let queue = Queue.unbounded()->Effect.runSync
+let drainLoop =
+  Queue.take(queue)
+  ->Effect.flatMap(msg =>
+    Effect.promise(() => handler(msg.service, msg.meta, msg.json))
+    ->Effect.zipRight(Deferred.succeed(msg.signal, ())->Effect.map(_ => ()))
+  )
+  ->Effect.forever
+let _ = Effect.runFork(drainLoop)
+
+// publishEvent — iterate subscriber array; one Deferred per subscriber-message pair
+let signalPromises = subscribers->Array.map(sub => {
+  let signal = Deferred.make()->Effect.runSync
+  let _ = Queue.offer(sub.queue, {service, meta, json, signal})->Effect.runSync
+  Deferred.await_(signal)->Effect.runPromise
+})
+let _ = await signalPromises->Promise.all
+```
+
+**After Phase F:**
+
+```rescript
+// State
+let eventHubs: ref<dict<string, PubSub.t<queuedEvent>>> = ref(Dict.make())
+// where queuedEvent = { service, meta, json, done_: Effect.t<unit, unit, unit> }
+
+// subscribeToEvents — subscribe to hub, consume with Stream.fromQueue inside a scope
+let drainLoop = Effect.scoped(
+  PubSub.subscribe(hub)
+  ->Effect.flatMap(queue =>
+    Stream.fromQueue(queue)
+    ->Stream.runForEach(msg =>
+      Effect.promise(() => handler(msg.service, msg.meta, msg.json))
+      ->Effect.zipRight(msg.done_)
+    )
+  )
+)
+let _ = Effect.runFork(drainLoop)
+
+// publishEvent — publish once to hub; PubSub fans out to all subscriber queues
+let _ = PubSub.publish(hub, {service, meta, json, done_})->Effect.runSync
+await Deferred.await_(allDone)->Effect.runPromise
+```
+
+**What changes:** The manual `array<subscriber>` registry is replaced by a single PubSub hub per
+topic. The drain loop is more idiomatic: `Stream.fromQueue → Stream.runForEach` within
+`Effect.scoped(PubSub.subscribe(...))`. `reset()` calls `PubSub.shutdown` per hub instead of
+`Queue.shutdown` per subscriber.
+
+**What stays the same:** The `queuedEvent` structure still carries a completion signal so
+`publishEvent` can await all subscribers. The 2-microtick timing guarantee is preserved (see §F.2).
+
+#### F.2 Completion Signal Design
+
+PubSub delivers the **same message value** to every subscriber — one `queuedEvent` object is
+fanned out to all N subscriber Queues. The current protocol places a per-subscriber `Deferred` in
+the message, but with shared delivery each subscriber would compete to resolve the same Deferred.
+
+**Solution — countdown Effect:**
+
+Replace the per-subscriber `signal: Deferred` with a shared `done_: Effect.t<unit, unit, unit>`
+built by the publisher. `done_` atomically decrements a `ref<int>` counter; when it reaches zero,
+it succeeds an `allDone: Deferred` that the publisher is awaiting.
+
+```rescript
+// Publisher constructs per-publish-call state:
+let allDone: Deferred.t<unit, unit> = Deferred.make()->Effect.runSync
+let remaining = ref(n)   // n = PubSub.size(hub)->Effect.runSync
+
+// done_ is an Effect run by each subscriber after processing:
+let done_ =
+  Effect.sync(() => { remaining := remaining.contents - 1 })
+  ->Effect.flatMap(_ =>
+    if remaining.contents == 0 { Deferred.succeed(allDone, ()) }
+    else { Effect.succeed(false) }
+  )
+
+// Publish once — PubSub fans the same {service, meta, json, done_} to all N subscribers
+let _ = PubSub.publish(hub, {service, meta, json, done_})->Effect.runSync
+
+// Await completion — resolves when the last subscriber calls done_
+let _ = await Deferred.await_(allDone)->Effect.runPromise
+```
+
+`done_` runs **inside the drain fiber's Effect chain** (via `Effect.zipRight(msg.done_)`) — no
+nested `Effect.runSync`. `Deferred.succeed` is called in the same Effect runtime as
+`Deferred.await_`, so fibers communicate correctly. Since Node.js is single-threaded and Effect
+fibers run cooperatively, decrementing `remaining` is race-free.
+
+**Timing trace** (confirming the 2-tick guarantee is preserved):
+
+| Step | Ticks |
+|------|-------|
+| `Effect.runSync(PubSub.publish(...))` — routes message to all N subscriber Queues synchronously | 0 |
+| `Effect.runPromise(Deferred.await_(allDone))` — starts awaiting | 0 |
+| Drain fibers wake, each runs `handler → done_`; last one succeeds `allDone` | tick 1 |
+| `Deferred.await_` promise resolves; publisher continues | tick 2 |
+
+→ 2 ticks, same as current. `PubSub.publish` on an unbounded hub is synchronous (equivalent to
+iterating subscriber queues), so no extra scheduling hops are introduced.
+
+**Timing test:** Add a dedicated test to lock in this guarantee before and after the migration
+(see §F.4).
+
+#### F.3 Implementation
+
+**Step 1 — Change `queuedEvent` type**
+
+```rescript
+// BEFORE
+type queuedEvent = {
+  service: string,
+  meta: ReventlessCore.Message.meta,
+  json: JSON.t,
+  signal: Deferred.t<unit, unit>,
+}
+
+// AFTER
+type queuedEvent = {
+  service: string,
+  meta: ReventlessCore.Message.meta,
+  json: JSON.t,
+  done_: Effect.t<unit, unit, unit>,   // run by each subscriber after handler returns
+}
+```
+
+**Step 2 — Replace `eventSubscribers` with `eventHubs`**
+
+```rescript
+// REMOVE
+let eventSubscribers: ref<dict<string, array<subscriber>>> = ref(Dict.make())
+
+// ADD
+let eventHubs: ref<dict<string, PubSub.t<queuedEvent>>> = ref(Dict.make())
+```
+
+The `subscriber` type is no longer needed and can be deleted.
+
+**Step 3 — Rewrite `subscribeToEvents`**
+
+```rescript
+let subscribeToEvents = (topicName, handler) => {
+  let hub = switch eventHubs.contents->Dict.get(topicName) {
+  | Some(h) => h
+  | None =>
+    let h: PubSub.t<queuedEvent> = PubSub.unbounded()->Effect.runSync
+    eventHubs.contents->Dict.set(topicName, h)
+    h
+  }
+  let drainLoop = Effect.scoped(
+    PubSub.subscribe(hub)
+    ->Effect.flatMap(queue =>
+      Stream.fromQueue(queue)
+      ->Stream.runForEach(msg =>
+        Effect.promise(() => handler(msg.service, msg.meta, msg.json))
+        ->Effect.zipRight(msg.done_)
+      )
+    )
+  )
+  let _ = Effect.runFork(drainLoop)
+}
+```
+
+**Step 4 — Rewrite `publishEvent`**
+
+```rescript
+let publishEvent = async (topicName, service, meta, json) => {
+  switch eventHubs.contents->Dict.get(topicName) {
+  | None => ()
+  | Some(hub) =>
+    let n = PubSub.size(hub)->Effect.runSync
+    if n == 0 { () } else {
+      let allDone: Deferred.t<unit, unit> = Deferred.make()->Effect.runSync
+      let remaining = ref(n)
+      let done_ =
+        Effect.sync(() => { remaining := remaining.contents - 1 })
+        ->Effect.flatMap(_ =>
+          if remaining.contents == 0 { Deferred.succeed(allDone, ()) }
+          else { Effect.succeed(false) }
+        )
+      let _ = PubSub.publish(hub, {service, meta, json, done_})->Effect.runSync
+      let _ = await Deferred.await_(allDone)->Effect.runPromise
+    }
+  }
+}
+```
+
+**Step 5 — Update `reset`**
+
+```rescript
+let reset = () => {
+  let shutdownAll =
+    eventHubs.contents
+    ->Dict.valuesToArray
+    ->Array.map(hub => PubSub.shutdown(hub))
+    ->Effect.all({"concurrency": "unbounded"})
+    ->Effect.map(_ => ())
+  let _ = Effect.runSync(shutdownAll)
+  eventHubs := Dict.make()
+  commandHandlers := Dict.make()
+  queryDbRegistry := Dict.make()
+  queryDbScanRegistry := Dict.make()
+  queryDbStreamRegistry := Dict.make()
+}
+```
+
+`PubSub.shutdown` interrupts all `Stream.fromQueue` consumers (their underlying Queue take is
+interrupted), causing `Stream.runForEach` to complete and `Effect.scoped` to close the
+subscription — the same clean shutdown that `Queue.shutdown` provides today.
+
+#### F.4 Tests
+
+**Timing regression test** — add to `InMemoryBusTest.res` (or a new `InMemoryBusPubSubTest.res`):
+
+```rescript
+describe("publishEvent timing (PubSub variant)", () => {
+  testPromise("resolves after exactly 2 microtask ticks", async () => {
+    module TestBus = InMemory_Bus.Make()
+    let delivered = ref(false)
+    TestBus.subscribeToEvents("T", async (_, _, _) => delivered := true)
+    // Synchronous: publish but do not await
+    let pubPromise = TestBus.publishEvent("T", "svc", defaultMeta, JSON.parseExn("{}"))
+    // Not yet delivered — drain fiber hasn't run
+    expect(delivered.contents)->toBe(false)
+    // After 1 tick: drain fiber runs; delivered becomes true
+    let _ = await Promise.resolve()
+    // After 2 ticks: Deferred.await_ resolves; pubPromise completes
+    let _ = await Promise.resolve()
+    let _ = await pubPromise
+    expect(delivered.contents)->toBe(true)
+  })
+
+  testPromise("fans out to all subscribers", async () => {
+    module TestBus = InMemory_Bus.Make()
+    let count = ref(0)
+    TestBus.subscribeToEvents("T", async (_, _, _) => count := count.contents + 1)
+    TestBus.subscribeToEvents("T", async (_, _, _) => count := count.contents + 1)
+    TestBus.subscribeToEvents("T", async (_, _, _) => count := count.contents + 1)
+    let _ = await TestBus.publishEvent("T", "svc", defaultMeta, JSON.parseExn("{}"))
+    expect(count.contents)->toBe(3)
+  })
+})
+```
+
+All existing `InMemory_Bus`-dependent tests in `reventless-in-memory` must pass without
+modification — the external contract of `publishEvent` and `subscribeToEvents` is unchanged.
+
+#### F.5 Acceptance criteria
+
+- All existing `reventless-in-memory` tests pass unchanged
+- Timing regression test passes (2-tick guarantee confirmed)
+- Fan-out test passes
+- `reset()` properly interrupts all drain fibers (no zombie fibers after reset)
+- Zero new warnings
+
+---
+
+### Phase G — Bounded PubSub Backpressure
+
+**Goal:** Add an optional `~capacity` parameter to `InMemory_Bus.Make` so that each topic's PubSub
+hub can be bounded. A bounded hub exerts backpressure: `publishEvent` suspends when any
+subscriber's internal queue is full, preventing unbounded memory growth when a slow subscriber
+falls behind. This makes the in-memory adapter more faithful to bounded SQS queues in production.
+
+**Priority:** Low — optional enhancement. Does not affect existing code paths when `~capacity` is
+not set.
+
+**Dependency:** Phase F must be complete. Bounded backpressure requires `PubSub.bounded` instead
+of `PubSub.unbounded`, and the publish path must be fully async — both of which Phase F establishes.
+
+#### G.1 Structural Analysis
+
+After Phase F, hub creation uses `PubSub.unbounded()->Effect.runSync`. For Phase G, it becomes
+`PubSub.bounded(capacity)->Effect.runSync` when a capacity is provided. The structural impact is
+in two places:
+
+**Hub creation** — inside `subscribeToEvents` or a lazy initialiser:
+
+```rescript
+// BEFORE (Phase F)
+let h: PubSub.t<queuedEvent> = PubSub.unbounded()->Effect.runSync
+
+// AFTER (Phase G, when ~capacity is set)
+let h: PubSub.t<queuedEvent> = PubSub.bounded(capacity)->Effect.runSync
+```
+
+**Publish path** — `PubSub.publish` on a bounded hub suspends the calling fiber when any
+subscriber's queue is full. The Phase F publish uses `Effect.runSync(PubSub.publish(...))`. This
+would throw for a bounded hub at capacity (runSync cannot suspend). The publish must become async:
+
+```rescript
+// BEFORE (Phase F): synchronous, works only for unbounded
+let _ = PubSub.publish(hub, {service, meta, json, done_})->Effect.runSync
+
+// AFTER (Phase G, bounded mode): async, suspends until space is available
+let _ = await PubSub.publish(hub, {service, meta, json, done_})->Effect.runPromise
+```
+
+**Timing impact for bounded mode:** Using `Effect.runPromise` for publish adds one microtask tick
+even when the queue has space (runPromise is always async). Total: 3 ticks instead of 2.
+
+```
+tick 0: start Effect.runPromise(PubSub.publish(...))
+tick 1: publish completes; drain fiber runs; Deferred.succeed called
+tick 2: Deferred.await_ promise resolves
+→ total: 3 ticks for bounded mode
+```
+
+Existing tests use `InMemory_Bus.Make()` (default = unbounded, 2 ticks). New bounded-mode tests
+use `InMemory_Bus.Make(~capacity=n)` and explicitly await 3 ticks. No existing tests change.
+
+#### G.2 Implementation
+
+**Step 1 — Add `~capacity` parameter to `Make` and its type**
+
+The `module type T` does not expose `~capacity` (it is a construction-time concern). Only `Make`
+changes:
+
+```rescript
+// BEFORE
+module Make = (): T => { ... }
+
+// AFTER
+module Make = (~capacity: option<int>=?, ()): T => { ... }
+```
+
+All existing `InMemory_Bus.Make()` call sites are unaffected (the argument is optional with
+default `None`).
+
+**Step 2 — Parameterise hub creation**
+
+Move hub creation to a helper inside `Make` that uses the captured `~capacity`:
+
+```rescript
+let makeHub = (): PubSub.t<queuedEvent> =>
+  switch capacity {
+  | None => PubSub.unbounded()->Effect.runSync
+  | Some(n) => PubSub.bounded(n)->Effect.runSync
+  }
+```
+
+Call `makeHub()` in `subscribeToEvents` where the hub is initialised.
+
+**Step 3 — Make publish path conditional on bounded mode**
+
+To preserve the 2-tick guarantee for unbounded (default) mode while correctly suspending for
+bounded mode, dispatch on `capacity`:
+
+```rescript
+// Inside publishEvent:
+let publishAndWait = switch capacity {
+| None =>
+  // Unbounded: synchronous offer, 2-tick path (same as Phase F)
+  Effect.sync(() => { let _ = PubSub.publish(hub, msg)->Effect.runSync })
+  ->Effect.zipRight(Deferred.await_(allDone))
+| Some(_) =>
+  // Bounded: async offer, may suspend if subscriber is slow, 3-tick path
+  PubSub.publish(hub, msg)
+  ->Effect.flatMap(_ => Deferred.await_(allDone))
+}
+let _ = await publishAndWait->Effect.runPromise
+```
+
+Note: both branches are now under a single `Effect.runPromise`. For the unbounded branch, the
+`Effect.sync` runs synchronously inside `runPromise` so timing is effectively the same as before.
+
+#### G.3 Tests
+
+**File to modify:** `InMemoryBusPubSubTest.res` (new file from Phase F) or a new
+`InMemoryBusBoundedTest.res`.
+
+```rescript
+describe("bounded InMemory_Bus (capacity=2)", () => {
+  testPromise("publishEvent suspends when subscriber queue is full", async () => {
+    // Subscriber never processes — it just blocks.
+    // With capacity=2, after 2 unprocessed messages publishEvent suspends.
+    module TestBus = InMemory_Bus.Make(~capacity=2)
+    let processedCount = ref(0)
+    // Subscriber: resolve its handler promise only after an external signal
+    let (gate, openGate) = Promise.pending()
+    TestBus.subscribeToEvents("T", async (_, _, _) => {
+      let _ = await gate
+      processedCount := processedCount.contents + 1
+    })
+    // Publish 2 messages — both fit in the bounded queue (capacity=2)
+    let p1 = TestBus.publishEvent("T", "s", meta, json)
+    let p2 = TestBus.publishEvent("T", "s", meta, json)
+    // Third publish MUST suspend (queue is full; subscriber is blocked on gate)
+    let p3Started = ref(false)
+    let p3 = TestBus.publishEvent("T", "s", meta, json)->Promise.thenResolve(_ => {
+      p3Started := ref(true); ()
+    })
+    // Let event loop tick — p3 should NOT have started (still suspended)
+    let _ = await Promise.resolve()
+    expect(p3Started.contents)->toBe(false)
+    // Open the gate — subscriber processes; p3 can now publish
+    openGate()
+    let _ = await p1
+    let _ = await p2
+    let _ = await p3
+    expect(processedCount.contents)->toBe(3)
+  })
+
+  testPromise("publishEvent timing is 3 ticks in bounded mode", async () => {
+    module TestBus = InMemory_Bus.Make(~capacity=10)
+    let delivered = ref(false)
+    TestBus.subscribeToEvents("T", async (_, _, _) => delivered := true)
+    let pubPromise = TestBus.publishEvent("T", "s", meta, json)
+    // Not delivered synchronously
+    expect(delivered.contents)->toBe(false)
+    let _ = await Promise.resolve()
+    let _ = await Promise.resolve()
+    let _ = await Promise.resolve()
+    let _ = await pubPromise
+    expect(delivered.contents)->toBe(true)
+  })
+})
+```
+
+Note: `Promise.pending()` is not in RescriptCore — use an `Effect.Deferred`-based gate or a
+simple `ref<option<unit => unit>>` callback. Adjust to whatever pattern the codebase uses.
+
+#### G.4 Acceptance criteria
+
+- `InMemory_Bus.Make()` (no `~capacity`) behaves identically to Phase F — all existing tests pass
+- `InMemory_Bus.Make(~capacity=n)` provides backpressure — publisher suspends when any subscriber
+  queue is full
+- Bounded-mode timing test passes (3 ticks)
+- Backpressure suspension test passes
+- Zero new warnings
 
 ---
 
 ## Section 5: Known Constraints and Risks
+
+### `PubSub.publish` on unbounded hub must use `Effect.runSync` (Phase F)
+
+`PubSub.unbounded()` routes items synchronously to all subscriber Queues. Using
+`Effect.runSync(PubSub.publish(...))` is correct and avoids an extra microtask hop that would
+break the 2-tick timing guarantee. **Do not change to `Effect.runPromise` for the unbounded
+path.** Only bounded mode (Phase G) needs `Effect.runPromise` for publish.
+
+### `done_` Effect must run inside the drain fiber chain, not via `Effect.runSync` (Phase F)
+
+`done_` (the countdown Effect in each `queuedEvent`) calls `Deferred.succeed(allDone, ())` when
+`remaining` reaches zero. This `Deferred.succeed` must execute within the **same Effect runtime**
+as the `Deferred.await_` in the publisher (both are in the default runtime started by
+`Effect.runFork`/`Effect.runPromise`). If `done_` were called via `Effect.runSync` from a raw
+JS callback, it would use a **separate runtime** and the `Deferred.await_` fiber would never be
+notified. Always compose `done_` with `Effect.zipRight` inside the drain fiber's effect chain.
+
+### 2-tick guarantee is unbounded-mode only (Phases F and G)
+
+The guarantee that `publishEvent` resolves in exactly 2 microtask ticks applies only when
+`InMemory_Bus.Make()` is called without `~capacity` (unbounded mode). In bounded mode
+(`~capacity=n`), `Effect.runPromise` is used for publish, adding one tick — tests using bounded
+mode must await 3 ticks. Existing tests are unaffected because they all use the default
+(unbounded) `Make()`.
+
+### `remaining` ref in countdown is safe only in single-threaded JS (Phase F)
+
+The `remaining := remaining.contents - 1` mutation inside `done_` is safe because Node.js is
+single-threaded and Effect fibers run cooperatively. Concurrent decrements are impossible within
+a single tick. This would NOT be safe in a multi-threaded runtime (JVM/native Effect). If the
+code is ever ported, replace `ref<int>` with `SynchronizedRef` or an atomic countdown latch.
 
 ### ReScript type inference with three type parameters
 
