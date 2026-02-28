@@ -10,6 +10,7 @@ module type T = {
   let read: DcbEventLog.read<Spec.event>
   let append: DcbEventLog.append<Spec.event>
   let readStream: DcbEventLog.readStream<Spec.event>
+  let appendStream: DcbEventLog.appendStream<Spec.event>
 }
 
 module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
@@ -80,4 +81,15 @@ module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Sp
   let readStream: DcbEventLog.readStream<Spec.event> = (~query, ~after=?) =>
     Ops.storage.readStream(~query, ~after?)
     ->Stream.map(raw => decodeEvent(raw))
+
+  // Streaming append — collects the stream into an array, then makes a single
+  // storage.append call to preserve atomicity of the condition check.
+  // Does not publish to EventTopic (use case: migration / bulk seeding).
+  let appendStream: DcbEventLog.appendStream<Spec.event> = (stream, ~condition=?) =>
+    stream
+    ->Stream.map(event => encodeEvent(event))
+    ->Stream.runCollect
+    ->Effect.flatMap(rawEvents =>
+      Effect.promise(() => Ops.storage.append(rawEvents, ~condition?))
+    )
 }

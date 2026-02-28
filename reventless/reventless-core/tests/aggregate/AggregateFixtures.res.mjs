@@ -168,10 +168,15 @@ let eventLog_replay = mock.replayFn;
 
 let eventLog_replayStream = mock.replayStreamFn;
 
+function eventLog_appendStream(_startingSeqNr, _id, stream) {
+  return Effect.Stream.runDrain(stream);
+}
+
 let eventLog = {
   append: eventLog_append,
   replay: eventLog_replay,
-  replayStream: eventLog_replayStream
+  replayStream: eventLog_replayStream,
+  appendStream: eventLog_appendStream
 };
 
 let TestOps = {

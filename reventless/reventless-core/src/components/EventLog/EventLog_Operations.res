@@ -14,6 +14,7 @@ module type T = {
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
   let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>
+  let appendStream: EventLog.appendStream<Spec.Id.t, Spec.event>
 }
 
 // Retry schedule for transient storage errors.
@@ -138,5 +139,22 @@ module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
     Ops.storage.replayStream(id->Spec.Id.toString)
     ->Stream.mapEffect(json =>
       Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
+    )
+
+  // Streaming append — encodes each Spec.event to the {type, data} storage format
+  // and writes sequentially via the storage adapter.
+  // Accepts Spec.event items (symmetric with replayStream) to enable direct
+  // replayStream → appendStream pipelines without an intermediate mapping step.
+  let appendStream = (startingSeqNr, id, stream) =>
+    Ops.storage.appendStream(
+      startingSeqNr,
+      id->Spec.Id.toString,
+      stream->Stream.map(event => {
+        let json = event->Message.encode(Spec.eventSchema)
+        let (eventType, data) = json->Message.splitMessage
+        [("type", JSON.String(eventType)), ("data", JSON.Object(data))]
+        ->Dict.fromArray
+        ->JSON.Encode.object
+      }),
     )
 }

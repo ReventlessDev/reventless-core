@@ -45,3 +45,25 @@ let replayStream = table =>
     })
     ->Stream.fromEffect
     ->Stream.flatMap(arr => Stream.fromIterable(arr))
+
+// Appends each stream item sequentially via the existing per-item append.
+// Node.js is single-threaded so a plain ref is safe for the seqNr counter.
+let appendStream = table =>
+  (startingSeqNr, id, stream) => {
+    let seqNrRef = ref(startingSeqNr)
+    stream->Stream.runForEach(json =>
+      Effect.tryPromise({
+        "try": () => append(table)(seqNrRef.contents, id, [json]),
+        "catch": (err: unknown) =>
+          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB appendStream error"),
+      })
+      ->Effect.flatMap(result =>
+        switch result {
+        | Ok() =>
+          seqNrRef := seqNrRef.contents + 1
+          Effect.succeed(())
+        | Error(msg) => Effect.fail(msg)
+        }
+      )
+    )
+  }

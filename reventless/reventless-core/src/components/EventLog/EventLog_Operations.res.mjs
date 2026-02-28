@@ -120,11 +120,26 @@ function Make(Spec) {
       return eventsJson.map(json => decodeEvent(id$1, json));
     };
     let replayStream = id => Effect.Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id)), json => Effect.Effect.sync(() => decodeEvent(Spec.Id.toString(id), json)));
+    let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Effect.Stream.map(stream, event => {
+      let json = Message$ReventlessCore.encode(event, Spec.eventSchema);
+      let match = Message$ReventlessCore.splitMessage(json);
+      return Object.fromEntries([
+        [
+          "type",
+          match[0]
+        ],
+        [
+          "data",
+          match[1]
+        ]
+      ]);
+    }));
     return {
       Spec: Spec,
       append: append,
       replay: replay,
-      replayStream: replayStream
+      replayStream: replayStream,
+      appendStream: appendStream
     };
   };
 }

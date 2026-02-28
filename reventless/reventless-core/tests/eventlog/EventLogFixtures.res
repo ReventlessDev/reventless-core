@@ -43,6 +43,13 @@ let mockStorage: EventLog_Adapter.operations = {
   },
   replayStream: id =>
     storedEvents.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
+  appendStream: (_startingSeqNr, id, stream) =>
+    stream->Stream.runForEach(json =>
+      Effect.sync(() => {
+        let existing = storedEvents.contents->Dict.get(id)->Option.getOr([])
+        storedEvents.contents->Dict.set(id, existing->Array.concat([json]))
+      })
+    ),
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -19,12 +19,35 @@ function make(param, param$1) {
   })));
   let replay = id => Effect.Effect.runPromise(Effect.Effect.map(Effect.STM.commit(Effect.TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], [])));
   let replayStream = id => Effect.Stream.flatMap(Effect.Stream.fromEffect(Effect.Effect.map(Effect.STM.commit(Effect.TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], []))), arr => Effect.Stream.fromIterable(arr));
+  let appendStream = (startingSeqNr, id, stream) => {
+    let seqNrRef = {
+      contents: startingSeqNr
+    };
+    return Effect.Stream.runForEach(stream, json => Effect.Effect.flatMap(Effect.STM.commit(Effect.TRef.modify(eventsRef, events => {
+      let existing = Stdlib_Option.getOr(events[id], []);
+      events[id] = existing.concat([json]);
+      return [
+        {
+          TAG: "Ok",
+          _0: undefined
+        },
+        events
+      ];
+    })), result => {
+      if (result.TAG !== "Ok") {
+        return Effect.Effect.fail(result._0);
+      }
+      seqNrRef.contents = seqNrRef.contents + 1 | 0;
+      return Effect.Effect.succeed();
+    }));
+  };
   return {
     resources: [],
     operations: Pulumi.output({
       append: append,
       replay: replay,
-      replayStream: replayStream
+      replayStream: replayStream,
+      appendStream: appendStream
     })
   };
 }

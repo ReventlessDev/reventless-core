@@ -30,12 +30,21 @@ let make = (~name as _="mock-event-log", ~opts as _: Pulumi.CustomResourceOption
   let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
     events.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable
 
+  let appendStream: ReventlessCore.EventLog.appendStream<string, JSON.t> = (_startingSeqNr, id, stream) =>
+    stream->Stream.runForEach(json =>
+      Effect.sync(() => {
+        let existing = events.contents->Dict.get(id)->Option.getOr([])
+        events.contents->Dict.set(id, existing->Array.concat([json]))
+      })
+    )
+
   let storage: ReventlessCore.EventLog_Adapter.storage = {
     resources: [],
     operations: Pulumi.Output.make({
       ReventlessCore.EventLog_Adapter.append,
       replay,
       replayStream,
+      appendStream,
     }),
   }
 

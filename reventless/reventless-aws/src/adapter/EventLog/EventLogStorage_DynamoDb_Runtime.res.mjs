@@ -63,10 +63,29 @@ function replayStream(table) {
   })), arr => Effect.Stream.fromIterable(arr));
 }
 
+function appendStream(table) {
+  return (startingSeqNr, id, stream) => {
+    let seqNrRef = {
+      contents: startingSeqNr
+    };
+    return Effect.Stream.runForEach(stream, json => Effect.Effect.flatMap(Effect.Effect.tryPromise({
+      try: () => append(table)(seqNrRef.contents, id, [json]),
+      catch: err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "DynamoDB appendStream error")
+    }), result => {
+      if (result.TAG !== "Ok") {
+        return Effect.Effect.fail(result._0);
+      }
+      seqNrRef.contents = seqNrRef.contents + 1 | 0;
+      return Effect.Effect.succeed();
+    }));
+  };
+}
+
 export {
   append,
   tryReplay,
   replay,
   replayStream,
+  appendStream,
 }
 /* effect Not a pure module */

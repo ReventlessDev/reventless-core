@@ -32,12 +32,35 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name as _, ~opts as _
     ->Stream.fromEffect
     ->Stream.flatMap(arr => Stream.fromIterable(arr))
 
+  // Appends each stream item sequentially to storage.
+  // Node.js is single-threaded so a plain ref is safe for the seqNr counter.
+  let appendStream: ReventlessCore.EventLog.appendStream<string, JSON.t> = (startingSeqNr, id, stream) => {
+    let seqNrRef = ref(startingSeqNr)
+    stream->Stream.runForEach(json =>
+      Stm.TRef.modify(eventsRef, events => {
+        let existing = events->Dict.get(id)->Option.getOr([])
+        events->Dict.set(id, existing->Array.concat([json]))
+        (Ok(), events)
+      })
+      ->Stm.commit
+      ->Effect.flatMap(result =>
+        switch result {
+        | Ok() =>
+          seqNrRef := seqNrRef.contents + 1
+          Effect.succeed(())
+        | Error(msg) => Effect.fail(msg)
+        }
+      )
+    )
+  }
+
   {
     resources: [],
     operations: Pulumi.Output.make({
       ReventlessCore.EventLog_Adapter.append,
       replay,
       replayStream,
+      appendStream,
     }),
   }
 }

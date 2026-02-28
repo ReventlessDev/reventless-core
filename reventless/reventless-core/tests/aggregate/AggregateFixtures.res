@@ -139,6 +139,7 @@ module TestOps = {
       ) => promise<result<unit, string>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: string => Stream.t<AggSpec.event, string, unit>,
+      appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<unit, string, unit>,
     }
     type component = Component.t<OuterEventLog.t, OuterEventLog.outputs, operations>
     // Never called — satisfies module type only
@@ -148,6 +149,7 @@ module TestOps = {
     append: mock.appendFn,
     replay: mock.replayFn,
     replayStream: mock.replayStreamFn,
+    appendStream: (_startingSeqNr, _id, stream) => stream->Stream.runDrain,
   }
 }
 

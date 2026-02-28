@@ -72,10 +72,18 @@ function mockStorage_replayStream(id) {
   return Effect.Stream.fromIterable(Stdlib_Option.getOr(storedEvents.contents[id], []));
 }
 
+function mockStorage_appendStream(_startingSeqNr, id, stream) {
+  return Effect.Stream.runForEach(stream, json => Effect.Effect.sync(() => {
+    let existing = Stdlib_Option.getOr(storedEvents.contents[id], []);
+    storedEvents.contents[id] = existing.concat([json]);
+  }));
+}
+
 let mockStorage = {
   append: mockStorage_append,
   replay: mockStorage_replay,
-  replayStream: mockStorage_replayStream
+  replayStream: mockStorage_replayStream,
+  appendStream: mockStorage_appendStream
 };
 
 let capturedPublishes = {

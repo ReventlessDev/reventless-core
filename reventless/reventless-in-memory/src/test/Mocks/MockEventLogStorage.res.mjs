@@ -32,11 +32,16 @@ function make($staropt$star, $staropt$star$1) {
   };
   let replay = async id => Stdlib_Option.getOr(events.contents[id], []);
   let replayStream = id => Effect.Stream.fromIterable(Stdlib_Option.getOr(events.contents[id], []));
+  let appendStream = (_startingSeqNr, id, stream) => Effect.Stream.runForEach(stream, json => Effect.Effect.sync(() => {
+    let existing = Stdlib_Option.getOr(events.contents[id], []);
+    events.contents[id] = existing.concat([json]);
+  }));
   let storage_resources = [];
   let storage_operations = Pulumi.output({
     append: append,
     replay: replay,
-    replayStream: replayStream
+    replayStream: replayStream,
+    appendStream: appendStream
   });
   let storage = {
     resources: storage_resources,

@@ -9,6 +9,7 @@ module Make = (
     append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
     replay: EventLog.replay<Spec.Id.t, Spec.event>,
     replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>,
+    appendStream: EventLog.appendStream<Spec.Id.t, Spec.event>,
   }
   type component = Component.t<EventLog.t, EventLog.outputs, operations>
 
@@ -42,6 +43,7 @@ module Make = (
           append: Ops.append,
           replay: Ops.replay,
           replayStream: Ops.replayStream,
+          appendStream: Ops.appendStream,
         }
       }),
     )

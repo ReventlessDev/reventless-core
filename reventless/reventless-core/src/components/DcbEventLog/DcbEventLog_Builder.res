@@ -70,6 +70,7 @@ module Make = (
           read: Ops.read,
           append: Ops.append,
           readStream: Ops.readStream,
+          appendStream: Ops.appendStream,
         }
         ops
       }),
