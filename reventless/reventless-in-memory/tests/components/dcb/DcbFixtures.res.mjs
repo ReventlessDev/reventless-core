@@ -8,6 +8,7 @@ import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Me
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "../../../src/components/DcbEventLog_Builder.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "../../../src/components/StateChangeSlice_Builder.res.mjs";
 
@@ -128,21 +129,35 @@ let publishJsonsOutput = Pulumi.output(publishJsons);
 
 let _addItemSlice = AddItemMaker.make(eventLog, publishJsonsOutput, undefined);
 
-let testMeta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
-
 async function dispatch(commandJson, id) {
   return await publishJsons([{
       id: id,
-      meta: testMeta,
+      meta: TestFixtures$ReventlessInMemory.testMeta,
       commandJson: commandJson
     }]);
+}
+
+function tagQuery(id) {
+  return [{
+      tags: [{
+          key: "id",
+          value: id
+        }]
+    }];
+}
+
+function typeQuery(eventType) {
+  return [{
+      eventTypes: [eventType]
+    }];
+}
+
+function addItemJson(id, name) {
+  return S.reverseConvertToJsonOrThrow({
+    TAG: "AddItem",
+    id: id,
+    name: name
+  }, commandSchema);
 }
 
 export {
@@ -157,7 +172,9 @@ export {
   publishJsons,
   publishJsonsOutput,
   _addItemSlice,
-  testMeta,
   dispatch,
+  tagQuery,
+  typeQuery,
+  addItemJson,
 }
 /* eventSchema Not a pure module */

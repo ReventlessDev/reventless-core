@@ -1,6 +1,8 @@
 // E2E test fixtures for DcbEventLog + StateChangeSlice.
 // Contains specs, bus setup, component wiring, and shared test helpers.
 
+open TestFixtures
+
 // ─────────────────────────────────────────────────────────────
 // Minimal DcbEventLog spec
 // ─────────────────────────────────────────────────────────────
@@ -115,14 +117,18 @@ let _addItemSlice = AddItemMaker.make(~dcbEventLog=eventLog, ~publishJsons=publi
 // Test helpers
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: Reventless.Message.meta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}
-
 let dispatch = async (commandJson, id) =>
   await publishJsons([{Reventless.Message.id, meta: testMeta, commandJson}])
+
+let tagQuery = (id: string): Reventless.DcbTag.query => [
+  {tags: [{Reventless.DcbTag.key: "id", value: id}]},
+]
+
+let typeQuery = (eventType: string): Reventless.DcbTag.query => [
+  {eventTypes: [eventType]},
+]
+
+let addItemJson = (id, name) =>
+  AddItemSpec.AddItem({id, name})->S.reverseConvertToJsonOrThrow(
+    AddItemSpec.commandSchema,
+  )

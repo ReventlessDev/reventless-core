@@ -2,53 +2,10 @@
 // Verifies that makeHandler returns a callable handler and connect wires the interval.
 // Adapter-level timer tests are in adapter/HeartbeatRunnerTest.res.
 
+open TestFixtures
 open AsyncTest
 open AsyncTest.Expect
 open HeartbeatFixtures
-
-// ─────────────────────────────────────────────────────────────
-// Fake timer bindings
-// ─────────────────────────────────────────────────────────────
-
-type jestObj
-@module("@jest/globals") external jest: jestObj = "jest"
-@send external useFakeTimers: jestObj => unit = "useFakeTimers"
-@send external useRealTimers: jestObj => unit = "useRealTimers"
-@send external advanceTimersByTime: (jestObj, int) => unit = "advanceTimersByTime"
-
-let _ = beforeAll(() => {
-  jest->useFakeTimers
-})
-
-let _ = afterAll(() => {
-  HeartbeatRunner_InMemory.reset()
-  jest->useRealTimers
-})
-
-// ─────────────────────────────────────────────────────────────
-// Resolve makeHandler Output once for all tests.
-// Count is per-describe block using module-level ref.
-// ─────────────────────────────────────────────────────────────
-
-let capturedCount: ref<int> = ref(0)
-let mockPublish: Reventless.CommandTopic.publishJsons = async cmds => {
-  capturedCount := capturedCount.contents + cmds->Array.length
-}
-
-// resolvedHandler populated in beforeAllAsync before tests run.
-// makeHandler returns eventHandler<unit, 'ctx, unit> = (unit, ctx) => promise<unit>.
-// The runtime handlerRef expects (JSON.t, unit) => promise<unit> — same in JS, safe to cast.
-let resolvedHandler: ref<option<(unit, unit) => promise<unit>>> = ref(None)
-
-let _ = beforeAllAsync(async () => {
-  let h =
-    await HeartbeatMaker.makeHandler(
-      ~id="hb-id-1",
-      ~timeout=1,
-      ~publishToCorePluginExtensionPoint=mockPublish,
-    )->TestRunner.resolve
-  resolvedHandler := Some(h)
-})
 
 describe("Heartbeat_Builder.Make:", () => {
   let _ = beforeEach(() => {

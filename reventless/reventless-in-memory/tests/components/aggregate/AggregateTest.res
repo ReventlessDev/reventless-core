@@ -1,6 +1,7 @@
 // E2E test for reventless-in-memory package.
 // Verifies the full aggregate command → event flow using the in-memory bus.
 
+open TestFixtures
 open AsyncTest
 open AsyncTest.Expect
 open AggregateFixtures

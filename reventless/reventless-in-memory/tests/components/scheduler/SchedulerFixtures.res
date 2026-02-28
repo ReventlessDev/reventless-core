@@ -1,6 +1,9 @@
 // Fixtures for Scheduler component integration tests.
 // Uses ScheduledPublisher_InMemory + Scheduler_Builder to verify schedule lifecycle.
 
+open TestFixtures
+open AsyncTest
+
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()
 
@@ -29,3 +32,23 @@ let makeTopicResource = (name: string): Reventless.Adapter.resolvedResource => {
   info: "",
   service: "InMemory",
 }
+
+let _ = beforeAll(() => {
+  jest->useFakeTimers
+})
+
+let _ = afterAll(() => {
+  SP.reset()
+  jest->useRealTimers
+})
+
+// ─────────────────────────────────────────────────────────────
+// Resolve scheduler operations once for all tests
+// ─────────────────────────────────────────────────────────────
+
+let schedulerOps: ref<option<Reventless.Scheduler.operations>> = ref(None)
+
+let _ = beforeAllAsync(async () => {
+  let ops = await scheduler->ReventlessCore.Component.operations->TestRunner.resolve
+  schedulerOps := Some(ops)
+})

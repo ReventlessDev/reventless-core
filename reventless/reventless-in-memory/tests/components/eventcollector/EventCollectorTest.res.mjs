@@ -2,6 +2,7 @@
 
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as EventCollectorFixtures$ReventlessInMemory from "./EventCollectorFixtures.res.mjs";
 
 describe("EventCollector (in-memory)", () => {
@@ -27,7 +28,7 @@ describe("EventCollector (in-memory)", () => {
         "type",
         "TestEvent"
       ]]);
-    await EventCollectorFixtures$ReventlessInMemory.Bus.publishEvent(EventCollectorFixtures$ReventlessInMemory.topicName, "test", EventCollectorFixtures$ReventlessInMemory.testMeta, testEvent);
+    await EventCollectorFixtures$ReventlessInMemory.Bus.publishEvent(EventCollectorFixtures$ReventlessInMemory.topicName, "test", TestFixtures$ReventlessInMemory.testMeta, testEvent);
     expect(received.contents).toBe(1);
   });
 });

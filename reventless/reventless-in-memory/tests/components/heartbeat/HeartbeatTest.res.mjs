@@ -2,43 +2,16 @@
 
 import * as Effect from "effect";
 import * as Globals from "@jest/globals";
-import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as HeartbeatFixtures$ReventlessInMemory from "./HeartbeatFixtures.res.mjs";
 import * as HeartbeatRunner_InMemory$ReventlessInMemory from "../../../src/adapter/Heartbeat/HeartbeatRunner_InMemory.res.mjs";
 
-beforeAll(() => {
-  Globals.jest.useFakeTimers();
-});
-
-afterAll(() => {
-  HeartbeatRunner_InMemory$ReventlessInMemory.reset();
-  Globals.jest.useRealTimers();
-});
-
-let capturedCount = {
-  contents: 0
-};
-
-async function mockPublish(cmds) {
-  capturedCount.contents = capturedCount.contents + cmds.length | 0;
-}
-
-let resolvedHandler = {
-  contents: undefined
-};
-
-beforeAll(async () => {
-  let h = await TestRunner$ReventlessInMemory.resolve(HeartbeatFixtures$ReventlessInMemory.HeartbeatMaker.makeHandler("hb-id-1", 1, mockPublish));
-  resolvedHandler.contents = h;
-});
-
 describe("Heartbeat_Builder.Make:", () => {
   beforeEach(() => {
-    capturedCount.contents = 0;
+    HeartbeatFixtures$ReventlessInMemory.capturedCount.contents = 0;
   });
   describe("makeHandler + connect:", () => {
     test("handler fires once after 1-minute interval", async () => {
-      let handler = resolvedHandler.contents;
+      let handler = HeartbeatFixtures$ReventlessInMemory.resolvedHandler.contents;
       let heartbeat = HeartbeatFixtures$ReventlessInMemory.HeartbeatMaker.make("hb-test-1", undefined);
       let handlerDeferred = Effect.Effect.runSync(Effect.Deferred.make());
       Effect.Effect.runSync(Effect.Deferred.succeed(handlerDeferred, handler));
@@ -54,11 +27,11 @@ describe("Heartbeat_Builder.Make:", () => {
       HeartbeatFixtures$ReventlessInMemory.HeartbeatMaker.connect(runtime, undefined, 1, heartbeat);
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
-      expect(capturedCount.contents).toBe(1);
+      expect(HeartbeatFixtures$ReventlessInMemory.capturedCount.contents).toBe(1);
       return HeartbeatRunner_InMemory$ReventlessInMemory.reset();
     });
     test("handler fires twice after two interval advances", async () => {
-      let handler = resolvedHandler.contents;
+      let handler = HeartbeatFixtures$ReventlessInMemory.resolvedHandler.contents;
       let heartbeat = HeartbeatFixtures$ReventlessInMemory.HeartbeatMaker.make("hb-test-2", undefined);
       let handlerDeferred = Effect.Effect.runSync(Effect.Deferred.make());
       Effect.Effect.runSync(Effect.Deferred.succeed(handlerDeferred, handler));
@@ -76,7 +49,7 @@ describe("Heartbeat_Builder.Make:", () => {
       await Promise.resolve();
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
-      expect(capturedCount.contents).toBe(2);
+      expect(HeartbeatFixtures$ReventlessInMemory.capturedCount.contents).toBe(2);
       return HeartbeatRunner_InMemory$ReventlessInMemory.reset();
     });
   });
@@ -88,9 +61,4 @@ describe("Heartbeat_Builder.Make:", () => {
   });
 });
 
-export {
-  capturedCount,
-  mockPublish,
-  resolvedHandler,
-}
 /*  Not a pure module */

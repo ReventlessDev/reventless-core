@@ -1,5 +1,6 @@
 // Integration tests for CommandTopic_Builder with in-memory channel.
 
+open TestFixtures
 open AsyncTest
 open AsyncTest.Expect
 open CommandTopicFixtures

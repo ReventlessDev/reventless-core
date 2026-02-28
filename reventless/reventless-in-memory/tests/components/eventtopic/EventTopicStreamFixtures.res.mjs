@@ -4,7 +4,6 @@ import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
-import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as EventTopic_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventTopic/EventTopic_Builder.res.mjs";
 import * as EventTopicPublisher_InMemory$ReventlessInMemory from "../../../src/adapter/EventTopic/EventTopicPublisher_InMemory.res.mjs";
 
@@ -19,25 +18,25 @@ let eventSchema = S.union([
   }))
 ]);
 
-let ItemEventTopicSpec = {
+let ItemStreamSpec = {
   Id: undefined,
-  name: "TestItemEventTopic",
+  name: "StreamEvtItem",
   eventSchema: eventSchema
 };
 
-let Bus = InMemory_Bus$ReventlessInMemory.Make({});
-
-let capturedEventCount = {
-  contents: 0
-};
-
-Bus.subscribeToEvents("TestItemEventTopicEventTopic", async (param, param$1, param$2) => {
-  capturedEventCount.contents = capturedEventCount.contents + 1 | 0;
-});
+let StreamEvtBus = InMemory_Bus$ReventlessInMemory.Make({});
 
 TestRunner$ReventlessInMemory.setup();
 
-let EventTopicMaker = EventTopic_Builder$ReventlessCore.Make({
+let received = {
+  contents: 0
+};
+
+StreamEvtBus.subscribeToEvents("StreamEvtTopicEventTopic", async (param, param$1, param$2) => {
+  received.contents = received.contents + 1 | 0;
+});
+
+let StreamEvtTopicMaker = EventTopic_Builder$ReventlessCore.Make({
   Id: {
     schema: Id$Reventless.StringPure.schema,
     make: prim => prim,
@@ -46,29 +45,15 @@ let EventTopicMaker = EventTopic_Builder$ReventlessCore.Make({
     cmp: Id$Reventless.StringPure.cmp
   },
   eventSchema: eventSchema
-})(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus));
+})(EventTopicPublisher_InMemory$ReventlessInMemory.Make(StreamEvtBus));
 
-let eventTopic = EventTopicMaker.make("TestItemEventTopic", [], undefined);
-
-function makeEvent$p(id, event) {
-  return {
-    id: id,
-    meta: TestFixtures$ReventlessInMemory.testMeta,
-    event: event
-  };
-}
-
-function reset() {
-  capturedEventCount.contents = 0;
-}
+let evtTopic = StreamEvtTopicMaker.make("StreamEvtTopic", [], undefined);
 
 export {
-  ItemEventTopicSpec,
-  Bus,
-  capturedEventCount,
-  EventTopicMaker,
-  eventTopic,
-  makeEvent$p,
-  reset,
+  ItemStreamSpec,
+  StreamEvtBus,
+  received,
+  StreamEvtTopicMaker,
+  evtTopic,
 }
 /* eventSchema Not a pure module */

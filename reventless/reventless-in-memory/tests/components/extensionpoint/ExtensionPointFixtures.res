@@ -1,6 +1,8 @@
 // Fixtures for ExtensionPoint integration tests.
 // Verifies that dispatching a command to the EP channel calls publishToAggregates.
 
+open TestFixtures
+
 S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
@@ -110,29 +112,6 @@ let mockPublishFn: Reventless.CommandTopic.publishJsons = async cmds => {
   capturedCmds := capturedCmds.contents->Array.concat(cmds)
 }
 
-let mockQueryEngine: Reventless.QueryEngine.operations = {
-  scan: async (~readModelName as _, ~filterConfigs as _, ~limit as _) => [],
-  query: async (
-    ~readModelName as _,
-    ~key as _=?,
-    ~id as _,
-    ~subIdConfig as _=?,
-    ~filterConfigs as _=?,
-    ~ascending as _=?,
-    ~limit as _=?,
-  ) => [],
-}
-
-let mockScheduler: Reventless.Scheduler.operations = {
-  createSchedule: async (_, _) => (),
-  deleteSchedule: async (_, _) => (),
-}
-
-let mockResourceNaming: Reventless.ResourceNaming.operations = {
-  validateName: n => n,
-  urnName: n => n,
-}
-
 // ─────────────────────────────────────────────────────────────
 // Build ExtensionPoint component
 // ─────────────────────────────────────────────────────────────
@@ -150,14 +129,7 @@ let ep = TestEP.make(
 // Test meta + helpers
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: Reventless.Message.meta = {
-  service: "TestEP",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}
+let testMeta = makeTestMeta(~service="TestEP")
 
 let resetMocks = () => {
   capturedCmds := []

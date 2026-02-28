@@ -8,6 +8,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as ReadModel_Builder$ReventlessInMemory from "../../../src/components/ReadModel_Builder.res.mjs";
 
 let name = "TestItemReadModel";
@@ -119,14 +120,7 @@ let ItemReadModel = ReadModelMaker.Make({
 
 let rm = ItemReadModel.make(undefined, undefined, allEventTopics, undefined);
 
-let testMeta = {
-  service: "TestItemEventTopic",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
+let testMeta = TestFixtures$ReventlessInMemory.makeTestMeta("TestItemEventTopic");
 
 async function publishItemCreated(id, name) {
   let eventJson = Object.fromEntries([

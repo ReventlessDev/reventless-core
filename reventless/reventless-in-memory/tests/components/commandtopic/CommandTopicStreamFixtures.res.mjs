@@ -2,8 +2,10 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Builder.res.mjs";
 import * as CommandTopicChannel_InMemory$ReventlessInMemory from "../../../src/adapter/CommandTopic/CommandTopicChannel_InMemory.res.mjs";
 
@@ -27,31 +29,52 @@ let errorSchema = S.literal("AlreadyExists");
 
 let ItemSpec = {
   Id: undefined,
-  name: "TestCommandTopicItem",
+  name: "StreamCmdItem",
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema
 };
 
-let Bus = InMemory_Bus$ReventlessInMemory.Make({});
+let StreamBus = InMemory_Bus$ReventlessInMemory.Make({});
 
 TestRunner$ReventlessInMemory.setup();
 
-let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(StreamBus);
 
-let CommandTopicMaker = CommandTopic_Builder$ReventlessCore.Make({
+let StreamCmdTopicMaker = CommandTopic_Builder$ReventlessCore.Make({
   Id: Id$Reventless.$$String,
   commandSchema: commandSchema
 })({
   make: $$let.make
 });
 
-let cmdTopic = CommandTopicMaker.make("TestCommandTopic", undefined);
+let cmdTopic = StreamCmdTopicMaker.make("StreamCmdTopic", undefined);
+
+let captured = {
+  contents: []
+};
+
+StreamBus.registerCommandHandler("StreamCmdTopicCmdTopic", async (body, _ctx) => {
+  captured.contents = captured.contents.concat([body]);
+});
+
+function makeJson(id) {
+  return {
+    id: id,
+    meta: TestFixtures$ReventlessInMemory.testMeta,
+    commandJson: Message$ReventlessCore.encode({
+      TAG: "CreateItem",
+      name: id
+    }, commandSchema)
+  };
+}
 
 export {
   ItemSpec,
-  Bus,
-  CommandTopicMaker,
+  StreamBus,
+  StreamCmdTopicMaker,
   cmdTopic,
+  captured,
+  makeJson,
 }
 /* commandSchema Not a pure module */

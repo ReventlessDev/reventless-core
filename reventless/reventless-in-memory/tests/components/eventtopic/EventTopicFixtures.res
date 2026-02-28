@@ -1,5 +1,7 @@
 // Integration test fixtures for EventTopic builder (in-memory).
 
+open TestFixtures
+
 module ItemEventTopicSpec = {
   module Id = Reventless.Id.StringPure
   let name = "TestItemEventTopic"
@@ -33,19 +35,6 @@ module EventTopicMaker = ReventlessCore.EventTopic_Builder.Make(
 )
 
 let eventTopic = EventTopicMaker.make(~name="TestItemEventTopic", ~storageResources=[])
-
-// ─────────────────────────────────────────────────────────────
-// Test metadata
-// ─────────────────────────────────────────────────────────────
-
-let testMeta: Reventless.Message.meta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}
 
 let makeEvent' = (id, event) => ({
   Reventless.Message.id,

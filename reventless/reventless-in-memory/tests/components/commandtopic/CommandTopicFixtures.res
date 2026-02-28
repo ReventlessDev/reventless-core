@@ -33,15 +33,3 @@ module CommandTopicMaker = ReventlessCore.CommandTopic_Builder.Make(
 
 let cmdTopic = CommandTopicMaker.make(~name="TestCommandTopic")
 
-// ─────────────────────────────────────────────────────────────
-// Test metadata
-// ─────────────────────────────────────────────────────────────
-
-let testMeta: Reventless.Message.meta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}

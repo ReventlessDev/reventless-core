@@ -6,10 +6,6 @@ open AsyncTest
 open AsyncTest.Expect
 open DcbFixtures
 
-let tagQuery = (id: string): Reventless.DcbTag.query => [
-  {tags: [{Reventless.DcbTag.key: "id", value: id}]},
-]
-
 describe("DcbEventLog.appendStream (in-memory adapter)", () => {
   let _ = beforeAllAsync(async () => {
     let _ = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve

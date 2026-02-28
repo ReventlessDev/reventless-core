@@ -66,29 +66,6 @@ module OneBucketSpec = {
 
 let mockPublishToAggregates: dict<Reventless.CommandTopic.publishJsons> = Dict.make()
 
-let mockScheduler: Reventless.Scheduler.operations = {
-  createSchedule: async (_, _) => (),
-  deleteSchedule: async (_, _) => (),
-}
-
-let mockQueryEngine: Reventless.QueryEngine.operations = {
-  scan: async (~readModelName as _, ~filterConfigs as _, ~limit as _) => [],
-  query: async (
-    ~readModelName as _,
-    ~key as _=?,
-    ~id as _,
-    ~subIdConfig as _=?,
-    ~filterConfigs as _=?,
-    ~ascending as _=?,
-    ~limit as _=?,
-  ) => [],
-}
-
-let mockResourceNaming: Reventless.ResourceNaming.operations = {
-  validateName: n => n,
-  urnName: n => n,
-}
-
 let mockQueryBucketName: Reventless.Task.queryBucketName = (~taskName as _, ~bucketName as _=?) =>
   "in-memory-bucket"
 

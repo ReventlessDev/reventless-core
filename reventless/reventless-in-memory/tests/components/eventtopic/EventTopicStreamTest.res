@@ -1,50 +1,10 @@
 // Tests for EventTopic.publishJsonStream (Phase I of effect-stream-integration plan).
 // Verifies that a Stream<publishJsonStreamItem> drives publishing without collecting into an array.
 
+open TestFixtures
 open AsyncTest
 open AsyncTest.Expect
-
-// ─────────────────────────────────────────────────────────────
-// Spec, Bus, and Component (module-level, one Pulumi setup)
-// ─────────────────────────────────────────────────────────────
-
-module ItemStreamSpec = {
-  module Id = Reventless.Id.StringPure
-  let name = "StreamEvtItem"
-
-  @schema
-  type event = | ItemPublished({name: string}) | ItemRemoved({id: string})
-}
-
-module StreamEvtBus = InMemory_Bus.Make()
-
-let _ = TestRunner.setup()
-
-// Topic name = make name ++ "EventTopic" = "StreamEvtTopic" ++ "EventTopic"
-let received: ref<int> = ref(0)
-let _ = StreamEvtBus.subscribeToEvents("StreamEvtTopicEventTopic", async (_, _, _) => {
-  received := received.contents + 1
-})
-
-module StreamEvtTopicMaker = ReventlessCore.EventTopic_Builder.Make(
-  ItemStreamSpec,
-  EventTopicPublisher_InMemory.Make(StreamEvtBus),
-)
-
-let evtTopic = StreamEvtTopicMaker.make(~name="StreamEvtTopic", ~storageResources=[])
-
-let testMeta: Reventless.Message.meta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-002",
-  correlationId: "corr-002",
-}
-
-// ─────────────────────────────────────────────────────────────
-// Tests
-// ─────────────────────────────────────────────────────────────
+open EventTopicStreamFixtures
 
 describe("EventTopic.publishJsonStream", () => {
   let _ = beforeAllAsync(async () => {

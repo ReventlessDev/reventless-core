@@ -2,6 +2,7 @@
 // Builds a ReadModel from a manually constructed allEventTopics and publishes
 // events directly via the bus to verify projection into the QueryDb.
 
+open TestFixtures
 open Reventless
 open Reventless.Projection
 
@@ -101,14 +102,7 @@ let rm = ItemReadModel.make(~api=(), ~apiRole=(), ~allEventTopics)
 
 // meta.service MUST match Mapping.sourceName ("TestItemEventTopic") for
 // ReadModel_Callback to route the event to the correct mapping.
-let testMeta: Message.meta = {
-  service: "TestItemEventTopic",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}
+let testMeta = makeTestMeta(~service="TestItemEventTopic")
 
 // Publish a typed event to the bus topic.
 // The event JSON must be {id, meta, event} format for Message.decodeEvent' to parse.

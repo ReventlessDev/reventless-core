@@ -3,6 +3,7 @@
 // callback chain is wired through the in-memory adapter.
 // Low-level handler extraction is covered in adapter/TaskBucketTest.res.
 
+open TestFixtures
 open AsyncTest
 open AsyncTest.Expect
 open TaskFixtures

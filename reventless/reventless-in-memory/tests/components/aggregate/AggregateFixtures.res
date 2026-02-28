@@ -80,15 +80,3 @@ module ItemAgg = ItemAggregateMaker.Make(
 
 let agg = ItemAgg.make(~api=())
 
-// ─────────────────────────────────────────────────────────────
-// Test metadata
-// ─────────────────────────────────────────────────────────────
-
-let testMeta: Reventless.Message.meta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}

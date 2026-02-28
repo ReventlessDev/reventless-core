@@ -5,15 +5,6 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as DcbFixtures$ReventlessInMemory from "./DcbFixtures.res.mjs";
 
-function tagQuery(id) {
-  return [{
-      tags: [{
-          key: "id",
-          value: id
-        }]
-    }];
-}
-
 describe("DcbEventLog.appendStream (in-memory adapter)", () => {
   beforeAll(async () => {
     await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessInMemory.eventLog));
@@ -39,12 +30,7 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
     let isOk;
     isOk = result.TAG === "Ok";
     expect(isOk).toBe(true);
-    let read = await ops.read([{
-        tags: [{
-            key: "id",
-            value: "as-w1"
-          }]
-      }], undefined);
+    let read = await ops.read(DcbFixtures$ReventlessInMemory.tagQuery("as-w1"), undefined);
     expect(read.events.length).toBe(2);
   });
   test("appendStream on empty stream succeeds", async () => {
@@ -61,24 +47,11 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
         id: "as-src",
         name: "Source"
       }], undefined);
-    let srcStream = Effect.Stream.map(ops.readStream([{
-        tags: [{
-            key: "id",
-            value: "as-src"
-          }]
-      }], undefined), se => se.event);
+    let srcStream = Effect.Stream.map(ops.readStream(DcbFixtures$ReventlessInMemory.tagQuery("as-src"), undefined), se => se.event);
     await Effect.Effect.runPromise(ops.appendStream(srcStream, undefined));
-    let dst = await ops.read([{
-        tags: [{
-            key: "id",
-            value: "as-src"
-          }]
-      }], undefined);
+    let dst = await ops.read(DcbFixtures$ReventlessInMemory.tagQuery("as-src"), undefined);
     expect(dst.events.length).toBe(2);
   });
 });
 
-export {
-  tagQuery,
-}
 /*  Not a pure module */
