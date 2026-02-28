@@ -175,6 +175,35 @@ external forever: t<'a, 'e, 'r> => t<'b, 'e, 'r> = "forever"
 @module("effect") @scope("Effect")
 external provide: (t<'a, 'e, 'r>, 'layer) => t<'a, 'e, unit> = "provide"
 
+// Read a service value from the context and map it to a result.
+// The 'r channel of the returned effect is set to 'service (the tag's phantom type),
+// requiring that service to be provided before the effect can run.
+//
+// Example:
+//   let logInfo = (msg: string): Effect.t<unit, unit, Logger.t> =>
+//     Effect.serviceWith(Logger.tag, logger => logger.info(msg)->Effect.flatMap(identity))
+//   (For a unit-returning service method use serviceWithEffect instead — see below)
+@module("effect") @scope("Effect")
+external serviceWith: (Context.tag<'service>, 'service => 'b) => t<'b, 'e, 'service> =
+  "serviceWith"
+
+// Like serviceWith but the mapping function returns an Effect.
+// Avoids an extra flatMap at the call site when the service method is itself effectful.
+// R = 'service (same as serviceWith).
+@module("effect") @scope("Effect")
+external serviceWithEffect: (
+  Context.tag<'service>,
+  'service => t<'a, 'e, 'service>,
+) => t<'a, 'e, 'service> = "serviceWithEffect"
+
+// Satisfy a single service requirement by supplying a concrete implementation.
+// Reduces 'r to unit — all requirements are treated as satisfied (ReScript cannot
+// express partial requirement removal without row types).
+// Place at the outermost handler boundary, after all service uses are composed.
+@module("effect") @scope("Effect")
+external provideService: (t<'a, 'e, 'r>, Context.tag<'service>, 'service) => t<'a, 'e, unit> =
+  "provideService"
+
 // ─── Fiber control ───────────────────────────────────────────────────────
 
 // Yield control to the Effect scheduler — allows other fibers to run before continuing.
