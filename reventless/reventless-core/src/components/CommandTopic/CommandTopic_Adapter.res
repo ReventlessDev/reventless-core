@@ -9,6 +9,7 @@ and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {
   parts: 'channelParts,
   resources: array<Reventless.Adapter.resource>,
   publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+  publishJsonsStream: Pulumi.Output.t<Reventless.CommandTopic.publishJsonsStream>,
   handleChannelEvent: CommandTopic.jsonCommandsHandler => Pulumi.Output.t<
     Runtime.eventHandler<'callbackEvent, 'context, unit>,
   >,

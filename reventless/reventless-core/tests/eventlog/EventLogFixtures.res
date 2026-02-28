@@ -67,7 +67,11 @@ module MockEventTopic: EventTopic.T
     type event = ItemEventLogSpec.event
   }
   type publish = EventTopic.publish<Spec.Id.t, Spec.event>
-  type operations = {publish: publish, publishJson: EventTopic.publishJson}
+  type operations = {
+    publish: publish,
+    publishJson: EventTopic.publishJson,
+    publishJsonStream: Reventless.EventTopic.publishJsonStream,
+  }
   type component = Component.t<EventTopic.t, EventTopic.outputs, operations>
   let make = (~name as _, ~storageResources as _, ~opts as _=?): component => Obj.magic(0)
 }
@@ -77,6 +81,7 @@ let mockEventTopicOps: MockEventTopic.operations = {
     capturedPublishes := capturedPublishes.contents->Array.concat(events)
   },
   publishJson: async (_service, _meta, _json) => (),
+  publishJsonStream: _stream => Effect.succeed(()),
 }
 
 // ─────────────────────────────────────────────────────────────

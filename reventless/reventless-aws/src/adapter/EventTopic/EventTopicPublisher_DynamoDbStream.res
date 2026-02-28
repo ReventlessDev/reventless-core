@@ -20,5 +20,6 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (
       ->ReventlessCore.Adapter.outputToResource,
     ],
     publishJson: Pulumi.Output.make((_, _, _) => Promise.resolve()), // ignore
+    publishJsonStream: Pulumi.Output.make(_stream => Effect.succeed(())), // ignore
   }
 }

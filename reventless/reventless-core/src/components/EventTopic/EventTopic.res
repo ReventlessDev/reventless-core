@@ -7,6 +7,7 @@ type t
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => promise<unit>
 type publishJson = Reventless.EventTopic.publishJson
+type publishJsonStream = Reventless.EventTopic.publishJsonStream
 
 exception NotPublishedToPublisher(exn)
 
@@ -14,7 +15,11 @@ module type T = {
   module Spec: Reventless.EventTopic.T
 
   type publish = publish<Spec.Id.t, Spec.event>
-  type operations = {publish: publish, publishJson: publishJson}
+  type operations = {
+    publish: publish,
+    publishJson: publishJson,
+    publishJsonStream: Reventless.EventTopic.publishJsonStream,
+  }
   type component = Component.t<t, outputs, operations>
 
   let make: (

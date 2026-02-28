@@ -11,12 +11,26 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageRes
     ~opts,
   )
 
+  let runtimeTopicOutput = topic->Util_SNS.toRuntimeTopicOutput
+
   {
     resources: [topic->Util_SNS_FIFO.toResource],
-    publishJson: topic
-    ->Util_SNS.toRuntimeTopicOutput
-    ->Pulumi.Output.apply(runtimeTopic =>
+    publishJson: runtimeTopicOutput->Pulumi.Output.apply(runtimeTopic =>
       EventTopicPublisher_SNS_Runtime.publishFifo(runtimeTopic, ...)
     ),
+    publishJsonStream: runtimeTopicOutput->Pulumi.Output.apply(runtimeTopic => {
+      let publishJson = EventTopicPublisher_SNS_Runtime.publishFifo(runtimeTopic, ...)
+      stream =>
+        stream->Stream.runCollect->Effect.flatMap(items =>
+          Effect.promise(() =>
+            items
+            ->Array.map(({Reventless.EventTopic.service, meta, json}) =>
+              publishJson(service, meta, json)
+            )
+            ->Promise.all
+            ->Promise.thenResolve(_ => ())
+          )
+        )
+    }),
   }
 }

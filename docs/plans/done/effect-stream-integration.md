@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** Phases A–H complete; I planned
+**Status:** Phases A–I complete
 
 **Created:** 2026-02-28
 

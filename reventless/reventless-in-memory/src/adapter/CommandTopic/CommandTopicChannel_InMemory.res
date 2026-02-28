@@ -53,6 +53,11 @@ module Make = (Bus: InMemory_Bus.T) => {
         ->Promise.all
     }
 
+    let publishJsonsStream: Reventless.CommandTopic.publishJsonsStream = stream =>
+      stream->Stream.runCollect->Effect.flatMap(jsons =>
+        Effect.promise(() => publishJsons(jsons))
+      )
+
     let handleChannelEvent = (
       handleCmds: ReventlessCore.CommandTopic.jsonCommandsHandler,
     ): Pulumi.Output.t<ReventlessCore.Runtime.eventHandler<callbackEvent, 'context, unit>> =>
@@ -82,6 +87,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       parts: {name: name},
       resources: [],
       publishJsons: publishJsons->Pulumi.Output.make,
+      publishJsonsStream: publishJsonsStream->Pulumi.Output.make,
       handleChannelEvent,
       connect,
     }

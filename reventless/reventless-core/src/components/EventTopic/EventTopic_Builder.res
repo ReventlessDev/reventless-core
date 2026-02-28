@@ -4,7 +4,11 @@ module Make = (Spec: Reventless.EventTopic.T, Publisher: EventTopic_Adapter.Publ
   module Spec = Spec
 
   type publish = EventTopic.publish<Spec.Id.t, Spec.event>
-  type operations = {publish: publish, publishJson: EventTopic.publishJson}
+  type operations = {
+    publish: publish,
+    publishJson: EventTopic.publishJson,
+    publishJsonStream: EventTopic.publishJsonStream,
+  }
 
   type component = Component.t<EventTopic.t, EventTopic.outputs, operations>
 
@@ -18,7 +22,9 @@ module Make = (Spec: Reventless.EventTopic.T, Publisher: EventTopic_Adapter.Publ
     )
 
     self->Component.setOperations(
-      publisher.publishJson->Pulumi.Output.apply(publishJson => {
+      (publisher.publishJson, publisher.publishJsonStream)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((publishJson, publishJsonStream)) => {
         module Operations = EventTopic_Operations.Make(
           Spec,
           {
@@ -28,6 +34,7 @@ module Make = (Spec: Reventless.EventTopic.T, Publisher: EventTopic_Adapter.Publ
         {
           publishJson,
           publish: Operations.publish,
+          publishJsonStream: publishJsonStream,
         }
       }),
     )

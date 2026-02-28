@@ -112,9 +112,14 @@ async function mockEventTopicOps_publishJson(_service, _meta, _json) {
   
 }
 
+function mockEventTopicOps_publishJsonStream(_stream) {
+  return Effect.Effect.succeed();
+}
+
 let mockEventTopicOps = {
   publish: mockEventTopicOps_publish,
-  publishJson: mockEventTopicOps_publishJson
+  publishJson: mockEventTopicOps_publishJson,
+  publishJsonStream: mockEventTopicOps_publishJsonStream
 };
 
 let testMeta = {

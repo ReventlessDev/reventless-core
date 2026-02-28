@@ -62,7 +62,8 @@ function Make(Spec) {
       let commandTopic = createCommandTopic(eventLog, name, opts);
       let commandGenerator = createCommandGenerator(commandTopic, api, name, opts);
       Component$ReventlessCore.setOperations(extra, Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => ({
-        publishJsons: param.publishJsons
+        publishJsons: param.publishJsons,
+        publishJsonsStream: param.publishJsonsStream
       }))));
       let aggOutputs_name = Spec.name;
       let aggOutputs_commandGenerator = Component$ReventlessCore.wrappedOutputs(commandGenerator);
