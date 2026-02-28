@@ -364,44 +364,42 @@ These tests live in `rescript-effect` because they verify Effect bindings only �
 adapter code, no in-memory bus, no fixtures. The same principle applies to any future binding
 tests for `Queue`, `Deferred`, `Schedule`, etc.
 
-Note: `rescript-effect` does not depend on `@glennsl/rescript-jest` or `AsyncTest`. Use
-`@jest/globals` directly (the same ESM import pattern as `DiagnosticTest.mjs` already in the
-repo). Since the tests are written in ReScript, bind Jest's `test`, `describe`, `expect`, etc.
-via `@module("@jest/globals")` externals — the same approach used throughout `reventless-in-memory`.
+Also create the shared test helper module (prerequisite for all binding tests in this package —
+see `docs/plans/rescript-effect-binding-tests.md` Section 1 for the full `AsyncTest.res` content).
+This follows the established monorepo pattern from `reventless-core/tests/AsyncTest.res`: bind
+directly to Jest globals via `@val external` rather than using `@glennsl/rescript-jest`'s broken
+`testPromise` (which discards the returned Promise).
+
+**File to create:** `rescript/rescript-effect/tests/AsyncTest.res` — see binding tests plan
+Section 1 for the full content.
 
 ```rescript
 // StreamTest.res — in rescript/rescript-effect/tests/
-// Bindings for Jest globals (same pattern as other test files in this monorepo)
-@module("@jest/globals") external describe: (string, unit => unit) => unit = "describe"
-@val external test: (string, unit => promise<unit>) => unit = "test"
-type expectResult
-@module("@jest/globals") external expect: 'a => expectResult = "expect"
-@send external toEqual: (expectResult, 'a) => unit = "toEqual"
-@send external toBe: (expectResult, 'a) => unit = "toBe"
-@send external toBeUndefined: expectResult => unit = "toBeUndefined"
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Stream bindings", () => {
   describe("construction", () => {
-    test("fromIterable emits all items in order", async () => {
+    testPromise("fromIterable emits all items in order", async () => {
       let result = await Stream.fromIterable([1, 2, 3])
         ->Stream.runCollect
         ->Effect.runPromise
       expect(result)->toEqual([1, 2, 3])
     })
 
-    test("empty stream yields no items", async () => {
+    testPromise("empty stream yields no items", async () => {
       let result = await Stream.empty->Stream.runCollect->Effect.runPromise
       expect(result)->toEqual([])
     })
 
-    test("fromEffect wraps a single value", async () => {
+    testPromise("fromEffect wraps a single value", async () => {
       let result = await Stream.fromEffect(Effect.succeed("hello"))
         ->Stream.runCollect
         ->Effect.runPromise
       expect(result)->toEqual(["hello"])
     })
 
-    test("fromQueue emits items until shutdown", async () => {
+    testPromise("fromQueue emits items until shutdown", async () => {
       let queue = Queue.unbounded()->Effect.runSync
       let _ = Queue.offer(queue, 10)->Effect.runSync
       let _ = Queue.offer(queue, 20)->Effect.runSync
@@ -410,7 +408,7 @@ describe("Stream bindings", () => {
       expect(result)->toEqual([10, 20])
     })
 
-    test("paginateEffect pages through chunks until None", async () => {
+    testPromise("paginateEffect pages through chunks until None", async () => {
       // Three pages: [1,2], [3,4], [5]
       let result = await Stream.paginateEffect(0, cursor =>
         Effect.sync(() => {
@@ -427,7 +425,7 @@ describe("Stream bindings", () => {
   })
 
   describe("transformation", () => {
-    test("map transforms each item", async () => {
+    testPromise("map transforms each item", async () => {
       let result = await Stream.fromIterable([1, 2, 3])
         ->Stream.map(n => n * 2)
         ->Stream.runCollect
@@ -435,7 +433,7 @@ describe("Stream bindings", () => {
       expect(result)->toEqual([2, 4, 6])
     })
 
-    test("filter removes items not matching predicate", async () => {
+    testPromise("filter removes items not matching predicate", async () => {
       let result = await Stream.fromIterable([1, 2, 3, 4, 5])
         ->Stream.filter(n => mod(n, 2) == 0)
         ->Stream.runCollect
@@ -443,7 +441,7 @@ describe("Stream bindings", () => {
       expect(result)->toEqual([2, 4])
     })
 
-    test("take limits to first N items", async () => {
+    testPromise("take limits to first N items", async () => {
       let result = await Stream.fromIterable([1, 2, 3, 4, 5])
         ->Stream.take(3)
         ->Stream.runCollect
@@ -453,14 +451,14 @@ describe("Stream bindings", () => {
   })
 
   describe("terminal runners", () => {
-    test("runFold accumulates state across all items", async () => {
+    testPromise("runFold accumulates state across all items", async () => {
       let sum = await Stream.fromIterable([1, 2, 3, 4])
         ->Stream.runFold(0, (acc, n) => acc + n)
         ->Effect.runPromise
       expect(sum)->toBe(10)
     })
 
-    test("runFold can accumulate a tuple", async () => {
+    testPromise("runFold can accumulate a tuple", async () => {
       // Same pattern used in Aggregate_Callback for (state, count)
       let (last, count) = await Stream.fromIterable(["a", "b", "c"])
         ->Stream.runFold(("", 0), ((_, n), s) => (s, n + 1))
@@ -469,14 +467,14 @@ describe("Stream bindings", () => {
       expect(count)->toBe(3)
     })
 
-    test("runHead returns Some for non-empty stream", async () => {
+    testPromise("runHead returns Some for non-empty stream", async () => {
       let head = await Stream.fromIterable([42, 1, 2])
         ->Stream.runHead
         ->Effect.runPromise
       expect(head)->toEqual(Some(42))
     })
 
-    test("runHead returns None for empty stream", async () => {
+    testPromise("runHead returns None for empty stream", async () => {
       let head = await Stream.empty->Stream.runHead->Effect.runPromise
       expect(head)->toEqual(None)
     })

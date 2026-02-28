@@ -33,50 +33,62 @@ the stream integration plan — do not duplicate it here.
 
 ---
 
-## Section 1: Shared Test Helper Module
+## Section 1: Test Helper Module
 
-**File to create:** `rescript/rescript-effect/tests/JestBindings.res`
+**File to create:** `rescript/rescript-effect/tests/AsyncTest.res`
 
-All test files open this module to avoid repeating Jest externals. It must contain only
-`@module("@jest/globals")` / `@send` / `@get` declarations — no logic.
+Tests follow the same pattern as the rest of the monorepo: a thin `AsyncTest.res` that binds
+directly to Jest globals with `@val external`. This is the established workaround for
+`@glennsl/rescript-jest`'s `testPromise` — which wraps the callback in `() => { affirm(callback()); }`,
+discarding the returned Promise so Jest treats async tests as synchronous. See
+`reventless-core/tests/AsyncTest.res` for the precedent and explanation.
+
+**npm devDependencies needed** (added to `package.json` in Phase A of the stream plan):
+`jest`, `@jest/globals`, `jest-environment-node`.
+`@glennsl/rescript-jest` is NOT required — `AsyncTest.res` uses only `@val external` bindings that
+Jest injects as globals (even in ESM mode with `--experimental-vm-modules`).
 
 ```rescript
-// JestBindings.res — shared Jest externals for rescript-effect tests.
-// Open this at the top of every test file: open JestBindings
+// AsyncTest.res — Jest bindings for rescript-effect tests.
+// Binds directly to Jest globals via @val external (no npm package import needed).
+// testPromise is the correct async test binding — rescript-jest's testPromise discards
+// the returned Promise. See reventless-core/tests/AsyncTest.res for details.
 
-@module("@jest/globals") external describe: (string, unit => unit) => unit = "describe"
+@val external describe: (string, unit => unit) => unit = "describe"
+// Async test — callback returns a Promise; Jest awaits it before starting the next test
+@val external testPromise: (string, unit => promise<unit>) => unit = "test"
+// Sync test — callback returns unit
+@val external test: (string, unit => unit) => unit = "test"
 
-// Async test — callback returns a promise; Jest awaits it
-@module("@jest/globals") external test: (string, unit => promise<unit>) => unit = "test"
-
-// Sync test — callback returns unit; use for purely synchronous assertions
-@module("@jest/globals") external testSync: (string, unit => unit) => unit = "test"
-
-@module("@jest/globals") external beforeAll: (unit => promise<unit>) => unit = "beforeAll"
-@module("@jest/globals") external beforeAllSync: (unit => unit) => unit = "beforeAll"
-@module("@jest/globals") external beforeEach: (unit => unit) => unit = "beforeEach"
-@module("@jest/globals") external afterAll: (unit => unit) => unit = "afterAll"
+@val external beforeAll: (unit => unit) => unit = "beforeAll"
+@val external beforeAllAsync: (unit => promise<unit>) => unit = "beforeAll"
+@val external beforeEach: (unit => unit) => unit = "beforeEach"
+@val external afterAll: (unit => unit) => unit = "afterAll"
 
 type expectResult
-@module("@jest/globals") external expect: 'a => expectResult = "expect"
 
-// Positive matchers
-@send external toBe: (expectResult, 'a) => unit = "toBe"
-@send external toEqual: (expectResult, 'a) => unit = "toEqual"
-@send external toBeTruthy: expectResult => unit = "toBeTruthy"
-@send external toBeFalsy: expectResult => unit = "toBeFalsy"
-@send external toBeGreaterThan: (expectResult, int) => unit = "toBeGreaterThan"
-@send external toHaveLength: (expectResult, int) => unit = "toHaveLength"
-@send external toContain: (expectResult, 'a) => unit = "toContain"
-
-// Negation — chain with any matcher: expect(x)->not_->toBe(y)
-@get external not_: expectResult => expectResult = "not"
+module Expect = {
+  @val external expect: 'a => expectResult = "expect"
+  @send external toBe: (expectResult, 'a) => unit = "toBe"
+  @send external toEqual: (expectResult, 'a) => unit = "toEqual"
+  @send external toBeTruthy: expectResult => unit = "toBeTruthy"
+  @send external toBeFalsy: expectResult => unit = "toBeFalsy"
+  @send external toHaveLength: (expectResult, int) => unit = "toHaveLength"
+  @send external toContain: (expectResult, 'a) => unit = "toContain"
+  @send external toBeGreaterThan: (expectResult, int) => unit = "toBeGreaterThan"
+}
 ```
 
-**Note on `testSync` vs `test`:** Both bind to the JS `test` function. `testSync` has type
-`(string, unit => unit) => unit` for synchronous tests; `test` has type
-`(string, unit => promise<unit>) => unit` for async tests. ReScript selects the right one by the
-type of the callback.
+**Usage in every test file:**
+
+```rescript
+open AsyncTest
+open AsyncTest.Expect
+```
+
+**Note on `testPromise` vs `test`:** Both bind to the JS `test` function — ReScript selects by
+callback return type. `test` is for `unit => unit` (sync); `testPromise` is for
+`unit => promise<unit>` (async).
 
 ---
 
@@ -93,30 +105,31 @@ Bindings not covered here (covered in dedicated files):
 `acquireRelease`, `scoped`, `provide`, `repeat` (Schedule tests).
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Effect — construction", () => {
-  testSync("succeed runSync returns value", () => {
+  test("succeed runSync returns value", () => {
     let v = Effect.succeed(42)->Effect.runSync
     expect(v)->toBe(42)
   })
 
-  testSync("fail runSyncExit isFailure", () => {
+  test("fail runSyncExit isFailure", () => {
     let exit = Effect.fail("boom")->Effect.runSyncExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
 
-  testSync("sync wraps a computation", () => {
+  test("sync wraps a computation", () => {
     let v = Effect.sync(() => 1 + 1)->Effect.runSync
     expect(v)->toBe(2)
   })
 
-  test("promise wraps a Promise", async () => {
+  testPromise("promise wraps a Promise", async () => {
     let v = await Effect.promise(() => Promise.resolve("hello"))->Effect.runPromise
     expect(v)->toBe("hello")
   })
 
-  test("tryPromise succeeds when no throw", async () => {
+  testPromise("tryPromise succeeds when no throw", async () => {
     let exit = await Effect.tryPromise({
       "try": () => Promise.resolve(99),
       "catch": _err => "caught",
@@ -124,7 +137,7 @@ describe("Effect — construction", () => {
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
-  test("tryPromise catches thrown errors", async () => {
+  testPromise("tryPromise catches thrown errors", async () => {
     let exit = await Effect.tryPromise({
       "try": () => Promise.reject(JsError.make("oops")),
       "catch": _err => "caught",
@@ -134,19 +147,19 @@ describe("Effect — construction", () => {
 })
 
 describe("Effect — transformation", () => {
-  testSync("map transforms the success value", () => {
+  test("map transforms the success value", () => {
     let v = Effect.succeed(3)->Effect.map(n => n * 2)->Effect.runSync
     expect(v)->toBe(6)
   })
 
-  testSync("flatMap chains effects", () => {
+  test("flatMap chains effects", () => {
     let v = Effect.succeed(5)
       ->Effect.flatMap(n => Effect.succeed(n + 1))
       ->Effect.runSync
     expect(v)->toBe(6)
   })
 
-  testSync("tap runs side effect and passes value through", () => {
+  test("tap runs side effect and passes value through", () => {
     let sideEffect = ref(0)
     let v = Effect.succeed(10)
       ->Effect.tap(n => Effect.sync(() => { sideEffect := n }))
@@ -155,55 +168,55 @@ describe("Effect — transformation", () => {
     expect(sideEffect.contents)->toBe(10)
   })
 
-  testSync("zipRight returns the second value", () => {
+  test("zipRight returns the second value", () => {
     let v = Effect.succeed("a")->Effect.zipRight(Effect.succeed("b"))->Effect.runSync
     expect(v)->toBe("b")
   })
 
-  testSync("zipLeft returns the first value", () => {
+  test("zipLeft returns the first value", () => {
     let v = Effect.succeed("a")->Effect.zipLeft(Effect.succeed("b"))->Effect.runSync
     expect(v)->toBe("a")
   })
 })
 
 describe("Effect — error handling", () => {
-  testSync("catchAll recovers from failure", () => {
+  test("catchAll recovers from failure", () => {
     let v = Effect.fail("err")
       ->Effect.catchAll(_e => Effect.succeed("recovered"))
       ->Effect.runSync
     expect(v)->toBe("recovered")
   })
 
-  testSync("option converts success to Some", () => {
+  test("option converts success to Some", () => {
     let v = Effect.succeed(7)->Effect.option->Effect.runSync
     expect(v)->toEqual(Some(7))
   })
 
-  testSync("option converts failure to None", () => {
+  test("option converts failure to None", () => {
     let v = Effect.fail("err")->Effect.option->Effect.runSync
     expect(v)->toEqual(None)
   })
 })
 
 describe("Effect — running", () => {
-  testSync("runSyncExit success exit isSuccess", () => {
+  test("runSyncExit success exit isSuccess", () => {
     let exit = Effect.succeed("ok")->Effect.runSyncExit
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
-  test("runPromiseExit success exit isSuccess", async () => {
+  testPromise("runPromiseExit success exit isSuccess", async () => {
     let exit = await Effect.succeed("ok")->Effect.runPromiseExit
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
-  test("runPromiseExit failure exit isFailure", async () => {
+  testPromise("runPromiseExit failure exit isFailure", async () => {
     let exit = await Effect.fail("err")->Effect.runPromiseExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
 })
 
 describe("Effect — concurrency", () => {
-  test("all runs effects concurrently and collects results", async () => {
+  testPromise("all runs effects concurrently and collects results", async () => {
     let results = await Effect.all(
       [Effect.succeed(1), Effect.succeed(2), Effect.succeed(3)],
       {"concurrency": "unbounded"},
@@ -211,7 +224,7 @@ describe("Effect — concurrency", () => {
     expect(results)->toEqual([1, 2, 3])
   })
 
-  test("fork + Fiber.join completes the forked effect", async () => {
+  testPromise("fork + Fiber.join completes the forked effect", async () => {
     let result = await Effect.succeed(99)
       ->Effect.fork
       ->Effect.flatMap(fiber => Fiber.join(fiber))
@@ -219,13 +232,13 @@ describe("Effect — concurrency", () => {
     expect(result)->toBe(99)
   })
 
-  test("runFork starts a background fiber", async () => {
+  testPromise("runFork starts a background fiber", async () => {
     let fiber = Effect.succeed(42)->Effect.runFork
     let result = await Fiber.join(fiber)->Effect.runPromise
     expect(result)->toBe(42)
   })
 
-  test("yieldNow resolves without error", async () => {
+  testPromise("yieldNow resolves without error", async () => {
     let _ = await Effect.yieldNow()->Effect.runPromise
     expect(true)->toBe(true)
   })
@@ -240,24 +253,25 @@ Covers all 14 bindings: `unbounded`, `bounded`, `sliding`, `dropping`, `offer`, 
 `take`, `takeAll`, `takeUpTo`, `size`, `isEmpty`, `isFull`, `shutdown`, `isShutdown`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Queue", () => {
   describe("constructors", () => {
-    test("unbounded queue accepts offers without blocking", async () => {
+    testPromise("unbounded queue accepts offers without blocking", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let accepted = await Queue.offer(q, 1)->Effect.runPromise
       expect(accepted)->toBe(true)
     })
 
-    test("bounded queue reports isFull when at capacity", async () => {
+    testPromise("bounded queue reports isFull when at capacity", async () => {
       let q = Queue.bounded(1)->Effect.runSync
       let _ = await Queue.offer(q, "x")->Effect.runPromise
       let full = await Queue.isFull(q)->Effect.runPromise
       expect(full)->toBe(true)
     })
 
-    test("sliding queue drops oldest item when full", async () => {
+    testPromise("sliding queue drops oldest item when full", async () => {
       let q = Queue.sliding(2)->Effect.runSync
       let _ = await Queue.offerAll(q, [1, 2, 3])->Effect.runPromise
       let items = await Queue.takeAll(q)->Effect.runPromise
@@ -266,7 +280,7 @@ describe("Queue", () => {
       expect(items)->toContain(3)
     })
 
-    test("dropping queue drops new item when full", async () => {
+    testPromise("dropping queue drops new item when full", async () => {
       let q = Queue.dropping(2)->Effect.runSync
       let _ = await Queue.offerAll(q, [1, 2, 3])->Effect.runPromise
       let items = await Queue.takeAll(q)->Effect.runPromise
@@ -277,21 +291,21 @@ describe("Queue", () => {
   })
 
   describe("offer / take round-trip", () => {
-    test("offer then take returns the same item", async () => {
+    testPromise("offer then take returns the same item", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let _ = await Queue.offer(q, "hello")->Effect.runPromise
       let v = await Queue.take(q)->Effect.runPromise
       expect(v)->toBe("hello")
     })
 
-    test("offerAll then takeAll returns all items", async () => {
+    testPromise("offerAll then takeAll returns all items", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let _ = await Queue.offerAll(q, [10, 20, 30])->Effect.runPromise
       let items = await Queue.takeAll(q)->Effect.runPromise
       expect(items)->toEqual([10, 20, 30])
     })
 
-    test("takeUpTo returns at most N items", async () => {
+    testPromise("takeUpTo returns at most N items", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let _ = await Queue.offerAll(q, [1, 2, 3, 4, 5])->Effect.runPromise
       let items = await Queue.takeUpTo(q, 3)->Effect.runPromise
@@ -300,7 +314,7 @@ describe("Queue", () => {
   })
 
   describe("inspection", () => {
-    test("size reflects number of items", async () => {
+    testPromise("size reflects number of items", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let _ = await Queue.offer(q, "a")->Effect.runPromise
       let _ = await Queue.offer(q, "b")->Effect.runPromise
@@ -308,13 +322,13 @@ describe("Queue", () => {
       expect(n)->toBe(2)
     })
 
-    test("isEmpty is true for empty queue", async () => {
+    testPromise("isEmpty is true for empty queue", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let empty = await Queue.isEmpty(q)->Effect.runPromise
       expect(empty)->toBe(true)
     })
 
-    test("isEmpty is false after offer", async () => {
+    testPromise("isEmpty is false after offer", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let _ = await Queue.offer(q, 1)->Effect.runPromise
       let empty = await Queue.isEmpty(q)->Effect.runPromise
@@ -323,7 +337,7 @@ describe("Queue", () => {
   })
 
   describe("lifecycle", () => {
-    test("shutdown + isShutdown", async () => {
+    testPromise("shutdown + isShutdown", async () => {
       let q = Queue.unbounded()->Effect.runSync
       let _ = await Queue.shutdown(q)->Effect.runPromise
       let shut = await Queue.isShutdown(q)->Effect.runPromise
@@ -340,30 +354,31 @@ describe("Queue", () => {
 Covers: `make`, `await_`, `succeed`, `fail`, `completeWith`, `isDone`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Deferred", () => {
-  test("make + succeed + await_ delivers the value", async () => {
+  testPromise("make + succeed + await_ delivers the value", async () => {
     let d = Deferred.make()->Effect.runSync
     let _ = await Deferred.succeed(d, 42)->Effect.runPromise
     let v = await Deferred.await_(d)->Effect.runPromise
     expect(v)->toBe(42)
   })
 
-  test("isDone is false before completion", async () => {
+  testPromise("isDone is false before completion", async () => {
     let d = Deferred.make()->Effect.runSync
     let done_ = await Deferred.isDone(d)->Effect.runPromise
     expect(done_)->toBe(false)
   })
 
-  test("isDone is true after succeed", async () => {
+  testPromise("isDone is true after succeed", async () => {
     let d = Deferred.make()->Effect.runSync
     let _ = await Deferred.succeed(d, "x")->Effect.runPromise
     let done_ = await Deferred.isDone(d)->Effect.runPromise
     expect(done_)->toBe(true)
   })
 
-  test("succeed is idempotent — second call returns false", async () => {
+  testPromise("succeed is idempotent — second call returns false", async () => {
     let d = Deferred.make()->Effect.runSync
     let first = await Deferred.succeed(d, 1)->Effect.runPromise
     let second = await Deferred.succeed(d, 2)->Effect.runPromise
@@ -371,14 +386,14 @@ describe("Deferred", () => {
     expect(second)->toBe(false)
   })
 
-  test("fail completes with error — await_ fails", async () => {
+  testPromise("fail completes with error — await_ fails", async () => {
     let d: Deferred.t<int, string> = Deferred.make()->Effect.runSync
     let _ = await Deferred.fail(d, "oops")->Effect.runPromise
     let exit = await Deferred.await_(d)->Effect.runPromiseExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
 
-  test("completeWith completes with the result of an effect", async () => {
+  testPromise("completeWith completes with the result of an effect", async () => {
     let d = Deferred.make()->Effect.runSync
     let _ = await Deferred.completeWith(d, Effect.succeed(99))->Effect.runPromise
     let v = await Deferred.await_(d)->Effect.runPromise
@@ -394,10 +409,11 @@ describe("Deferred", () => {
 Covers: `makeLatch` (in Effect), `await_`, `open_`, `close`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Latch", () => {
-  test("makeLatch(false) starts closed — open_ releases awaiting fiber", async () => {
+  testPromise("makeLatch(false) starts closed — open_ releases awaiting fiber", async () => {
     let latch = Effect.makeLatch(false)->Effect.runSync
     // Fork a fiber that awaits the latch
     let fiber = latch->Latch.await_->Effect.fork->Effect.runSync
@@ -407,13 +423,13 @@ describe("Latch", () => {
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
-  test("makeLatch(true) starts open — await_ passes through immediately", async () => {
+  testPromise("makeLatch(true) starts open — await_ passes through immediately", async () => {
     let latch = Effect.makeLatch(true)->Effect.runSync
     let _ = await latch->Latch.await_->Effect.runPromise
     expect(true)->toBe(true)  // reached without blocking
   })
 
-  test("close then open — latch can be cycled", async () => {
+  testPromise("close then open — latch can be cycled", async () => {
     let latch = Effect.makeLatch(true)->Effect.runSync
     let _ = await latch->Latch.close->Effect.runPromise
     // Now closed — re-open
@@ -434,33 +450,34 @@ constructors produce a truthy value (non-null, non-undefined) and can be consume
 via `TestClock.adjust` without error.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 // Duration constructors produce opaque values — verify they are truthy (not null/undefined)
 // and passable to Effect.sleep without type errors at runtime.
 describe("Duration — constructors", () => {
-  testSync("millis returns a truthy Duration.t", () => {
+  test("millis returns a truthy Duration.t", () => {
     let d = Duration.millis(100)
     expect(d->Obj.magic)->toBeTruthy
   })
 
-  testSync("seconds returns a truthy Duration.t", () => {
+  test("seconds returns a truthy Duration.t", () => {
     expect(Duration.seconds(1)->Obj.magic)->toBeTruthy
   })
 
-  testSync("minutes returns a truthy Duration.t", () => {
+  test("minutes returns a truthy Duration.t", () => {
     expect(Duration.minutes(1)->Obj.magic)->toBeTruthy
   })
 
-  testSync("hours returns a truthy Duration.t", () => {
+  test("hours returns a truthy Duration.t", () => {
     expect(Duration.hours(1)->Obj.magic)->toBeTruthy
   })
 
-  testSync("days returns a truthy Duration.t", () => {
+  test("days returns a truthy Duration.t", () => {
     expect(Duration.days(1)->Obj.magic)->toBeTruthy
   })
 
-  test("millis Duration can be used with Effect.sleep via TestClock", async () => {
+  testPromise("millis Duration can be used with Effect.sleep via TestClock", async () => {
     // Verify the Duration.t produced by millis is accepted by Effect.sleep at runtime.
     let program = Effect.sleep(Duration.millis(500))
       ->Effect.provide(TestContext.testContext)
@@ -482,63 +499,64 @@ Covers: `succeed`, `fail`, `die`, `isSuccess`, `isFailure`, `toOption`, `causeOp
 `flatMap`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Exit", () => {
   describe("constructors + predicates", () => {
-    testSync("succeed isSuccess = true, isFailure = false", () => {
+    test("succeed isSuccess = true, isFailure = false", () => {
       let e = Exit.succeed(1)
       expect(e->Exit.isSuccess)->toBe(true)
       expect(e->Exit.isFailure)->toBe(false)
     })
 
-    testSync("fail isSuccess = false, isFailure = true", () => {
+    test("fail isSuccess = false, isFailure = true", () => {
       let e = Exit.fail("err")
       expect(e->Exit.isSuccess)->toBe(false)
       expect(e->Exit.isFailure)->toBe(true)
     })
 
-    testSync("die (defect) isFailure = true", () => {
+    test("die (defect) isFailure = true", () => {
       let e = Exit.die(JsError.make("defect"))
       expect(e->Exit.isFailure)->toBe(true)
     })
   })
 
   describe("extraction", () => {
-    testSync("toOption on success returns Some(value)", () => {
+    test("toOption on success returns Some(value)", () => {
       let e = Exit.succeed(42)
       expect(e->Exit.toOption)->toEqual(Some(42))
     })
 
-    testSync("toOption on failure returns None", () => {
+    test("toOption on failure returns None", () => {
       let e = Exit.fail("err")
       expect(e->Exit.toOption)->toEqual(None)
     })
 
-    testSync("causeOption on failure returns Some(cause)", () => {
+    test("causeOption on failure returns Some(cause)", () => {
       let e = Exit.fail("err")
       let causeOpt = e->Exit.causeOption
       expect(causeOpt->Option.isSome)->toBe(true)
     })
 
-    testSync("causeOption on success returns None", () => {
+    test("causeOption on success returns None", () => {
       let e = Exit.succeed(1)
       expect(e->Exit.causeOption)->toEqual(None)
     })
   })
 
   describe("transformation", () => {
-    testSync("map on success transforms value", () => {
+    test("map on success transforms value", () => {
       let e = Exit.succeed(3)->Exit.map(n => n * 2)
       expect(e->Exit.toOption)->toEqual(Some(6))
     })
 
-    testSync("map on failure is a no-op", () => {
+    test("map on failure is a no-op", () => {
       let e = Exit.fail("err")->Exit.map(n => n * 2)
       expect(e->Exit.isFailure)->toBe(true)
     })
 
-    testSync("flatMap on success chains exits", () => {
+    test("flatMap on success chains exits", () => {
       let e = Exit.succeed(5)->Exit.flatMap(n => Exit.succeed(n + 1))
       expect(e->Exit.toOption)->toEqual(Some(6))
     })
@@ -554,53 +572,54 @@ Covers: `fail`, `die`, `parallel`, `sequential`, `isEmpty`, `isFail`, `isDie`, `
 `failures`, `defects`, `pretty`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Cause", () => {
   describe("constructors + predicates", () => {
-    testSync("fail isFail = true, isDie = false", () => {
+    test("fail isFail = true, isDie = false", () => {
       let c = Cause.fail("err")
       expect(c->Cause.isFail)->toBe(true)
       expect(c->Cause.isDie)->toBe(false)
     })
 
-    testSync("die isDie = true, isFail = false", () => {
+    test("die isDie = true, isFail = false", () => {
       let c = Cause.die(JsError.make("defect"))
       expect(c->Cause.isDie)->toBe(true)
       expect(c->Cause.isFail)->toBe(false)
     })
 
-    testSync("isInterrupted is false for fail cause", () => {
+    test("isInterrupted is false for fail cause", () => {
       let c = Cause.fail("err")
       expect(c->Cause.isInterrupted)->toBe(false)
     })
 
-    testSync("isEmpty is false for non-empty cause", () => {
+    test("isEmpty is false for non-empty cause", () => {
       let c = Cause.fail("err")
       expect(c->Cause.isEmpty)->toBe(false)
     })
   })
 
   describe("extraction", () => {
-    testSync("failures extracts typed errors from fail cause", () => {
+    test("failures extracts typed errors from fail cause", () => {
       let c = Cause.fail("my-error")
       let errs = c->Cause.failures
       expect(errs)->toEqual(["my-error"])
     })
 
-    testSync("failures extracts from parallel cause — both preserved", () => {
+    test("failures extracts from parallel cause — both preserved", () => {
       let c = Cause.parallel(Cause.fail("left"), Cause.fail("right"))
       let errs = c->Cause.failures
       expect(errs)->toHaveLength(2)
     })
 
-    testSync("defects extracts exceptions from die cause", () => {
+    test("defects extracts exceptions from die cause", () => {
       let c = Cause.die("surprise")
       let defs = c->Cause.defects
       expect(defs)->toHaveLength(1)
     })
 
-    testSync("pretty returns a non-empty string", () => {
+    test("pretty returns a non-empty string", () => {
       let c = Cause.fail("err")
       let s = c->Cause.pretty
       expect(s->String.length)->toBeGreaterThan(0)
@@ -608,12 +627,12 @@ describe("Cause", () => {
   })
 
   describe("composition", () => {
-    testSync("parallel preserves both causes", () => {
+    test("parallel preserves both causes", () => {
       let c = Cause.parallel(Cause.fail("a"), Cause.fail("b"))
       expect(c->Cause.failures)->toHaveLength(2)
     })
 
-    testSync("sequential preserves both causes", () => {
+    test("sequential preserves both causes", () => {
       let c = Cause.sequential(Cause.fail("first"), Cause.fail("second"))
       expect(c->Cause.failures)->toHaveLength(2)
     })
@@ -628,23 +647,24 @@ describe("Cause", () => {
 Covers: `join`, `interrupt`, `joinAll`, `collectAll`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Fiber", () => {
-  test("join waits for fiber and returns its result", async () => {
+  testPromise("join waits for fiber and returns its result", async () => {
     let fiber = Effect.succeed(123)->Effect.runFork
     let v = await Fiber.join(fiber)->Effect.runPromise
     expect(v)->toBe(123)
   })
 
-  test("interrupt terminates fiber and returns Exit", async () => {
+  testPromise("interrupt terminates fiber and returns Exit", async () => {
     // Fork a never-completing effect and interrupt it
     let fiber = Effect.never->Effect.runFork
     let exit = await Fiber.interrupt(fiber)->Effect.runPromise
     expect(exit->Exit.isFailure)->toBe(true)  // interrupted = failure
   })
 
-  test("joinAll collects results from multiple fibers", async () => {
+  testPromise("joinAll collects results from multiple fibers", async () => {
     let fiber1 = Effect.succeed(1)->Effect.runFork
     let fiber2 = Effect.succeed(2)->Effect.runFork
     let fiber3 = Effect.succeed(3)->Effect.runFork
@@ -652,7 +672,7 @@ describe("Fiber", () => {
     expect(results)->toEqual([1, 2, 3])
   })
 
-  test("collectAll returns Exit for each fiber without failing", async () => {
+  testPromise("collectAll returns Exit for each fiber without failing", async () => {
     let fiber1 = Effect.succeed(1)->Effect.runFork
     let fiber2 = Effect.fail("err")->Effect.runFork
     let exits = await Fiber.collectAll([fiber1, fiber2])->Effect.runPromise
@@ -672,11 +692,12 @@ Covers: `recurs`, `once`, `exponential`, `fixed`, `spaced`, `elapsed`, `forever`
 (exponential, fixed, spaced, elapsed) are controlled via `TestClock` to avoid wall-clock delays.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Schedule", () => {
   describe("recurs — count-based repetition", () => {
-    test("recurs(3) repeats an effect 3 additional times (4 total executions)", async () => {
+    testPromise("recurs(3) repeats an effect 3 additional times (4 total executions)", async () => {
       let count = ref(0)
       let _ = await Effect.sync(() => { count := count.contents + 1 })
         ->Effect.repeat(Schedule.recurs(3))
@@ -684,7 +705,7 @@ describe("Schedule", () => {
       expect(count.contents)->toBe(4)  // initial + 3 repeats
     })
 
-    test("recurs(0) does not repeat (1 total execution)", async () => {
+    testPromise("recurs(0) does not repeat (1 total execution)", async () => {
       let count = ref(0)
       let _ = await Effect.sync(() => { count := count.contents + 1 })
         ->Effect.repeat(Schedule.recurs(0))
@@ -694,7 +715,7 @@ describe("Schedule", () => {
   })
 
   describe("once", () => {
-    test("once repeats exactly once (2 total executions)", async () => {
+    testPromise("once repeats exactly once (2 total executions)", async () => {
       let count = ref(0)
       let _ = await Effect.sync(() => { count := count.contents + 1 })
         ->Effect.repeat(Schedule.once)
@@ -704,7 +725,7 @@ describe("Schedule", () => {
   })
 
   describe("whileInput — conditional retry", () => {
-    test("whileInput stops when predicate returns false", async () => {
+    testPromise("whileInput stops when predicate returns false", async () => {
       let count = ref(0)
       // Retry on "transient" errors only; fail permanently on "fatal"
       let schedule = Schedule.recurs(5)->Schedule.whileInput(err => err == "transient")
@@ -730,7 +751,7 @@ describe("Schedule", () => {
   })
 
   describe("intersect — stop when either stops", () => {
-    test("intersect(recurs(2), recurs(4)) stops after 2 repeats", async () => {
+    testPromise("intersect(recurs(2), recurs(4)) stops after 2 repeats", async () => {
       let count = ref(0)
       let _ = await Effect.sync(() => { count := count.contents + 1 })
         ->Effect.repeat(Schedule.intersect(Schedule.recurs(2), Schedule.recurs(4)))
@@ -740,7 +761,7 @@ describe("Schedule", () => {
   })
 
   describe("union — stop when both stop", () => {
-    test("union(recurs(2), recurs(4)) stops after 4 repeats", async () => {
+    testPromise("union(recurs(2), recurs(4)) stops after 4 repeats", async () => {
       let count = ref(0)
       let _ = await Effect.sync(() => { count := count.contents + 1 })
         ->Effect.repeat(Schedule.union(Schedule.recurs(2), Schedule.recurs(4)))
@@ -750,7 +771,7 @@ describe("Schedule", () => {
   })
 
   describe("timing-based schedules — require TestClock", () => {
-    test("fixed(100ms) repeats after each 100ms interval", async () => {
+    testPromise("fixed(100ms) repeats after each 100ms interval", async () => {
       let count = ref(0)
       let program = Effect.sync(() => { count := count.contents + 1 })
         ->Effect.repeat(Schedule.intersect(Schedule.fixed(Duration.millis(100)), Schedule.recurs(3)))
@@ -764,7 +785,7 @@ describe("Schedule", () => {
       expect(count.contents)->toBe(4)
     })
 
-    test("exponential starts with the base delay", async () => {
+    testPromise("exponential starts with the base delay", async () => {
       // Just verify the schedule can be composed and run without error
       let count = ref(0)
       let schedule = Schedule.exponential(Duration.millis(100))
@@ -791,30 +812,31 @@ Covers: `TRef.make`, `TRef.get`, `TRef.set`, `TRef.update`, `TRef.getAndUpdate`,
 `STM.succeed`, `STM.fail`, `STM.map`, `STM.flatMap`, `STM.zipRight`, `STM.commit`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Stm.TRef", () => {
-  test("make + get returns the initial value", async () => {
+  testPromise("make + get returns the initial value", async () => {
     let ref = Stm.TRef.make(10)->Stm.commit->Effect.runSync
     let v = Stm.TRef.get(ref)->Stm.commit->Effect.runSync
     expect(v)->toBe(10)
   })
 
-  test("set + get reflects the new value", async () => {
+  testPromise("set + get reflects the new value", async () => {
     let ref = Stm.TRef.make(0)->Stm.commit->Effect.runSync
     let _ = Stm.TRef.set(ref, 99)->Stm.commit->Effect.runSync
     let v = Stm.TRef.get(ref)->Stm.commit->Effect.runSync
     expect(v)->toBe(99)
   })
 
-  test("update applies a function to the value", async () => {
+  testPromise("update applies a function to the value", async () => {
     let ref = Stm.TRef.make(5)->Stm.commit->Effect.runSync
     let _ = Stm.TRef.update(ref, n => n * 2)->Stm.commit->Effect.runSync
     let v = Stm.TRef.get(ref)->Stm.commit->Effect.runSync
     expect(v)->toBe(10)
   })
 
-  test("getAndUpdate returns the old value", async () => {
+  testPromise("getAndUpdate returns the old value", async () => {
     let ref = Stm.TRef.make(3)->Stm.commit->Effect.runSync
     let old = Stm.TRef.getAndUpdate(ref, n => n + 1)->Stm.commit->Effect.runSync
     let new_ = Stm.TRef.get(ref)->Stm.commit->Effect.runSync
@@ -822,7 +844,7 @@ describe("Stm.TRef", () => {
     expect(new_)->toBe(4)
   })
 
-  test("modify returns computed result and updates the ref", async () => {
+  testPromise("modify returns computed result and updates the ref", async () => {
     let ref = Stm.TRef.make(7)->Stm.commit->Effect.runSync
     let result = Stm.TRef.modify(ref, n => (n * 10, n + 1))->Stm.commit->Effect.runSync
     let new_ = Stm.TRef.get(ref)->Stm.commit->Effect.runSync
@@ -832,17 +854,17 @@ describe("Stm.TRef", () => {
 })
 
 describe("Stm — STM operations", () => {
-  testSync("succeed + commit produces the value", () => {
+  test("succeed + commit produces the value", () => {
     let v = Stm.succeed(42)->Stm.commit->Effect.runSync
     expect(v)->toBe(42)
   })
 
-  testSync("map transforms the value", () => {
+  test("map transforms the value", () => {
     let v = Stm.succeed(3)->Stm.map(n => n * 2)->Stm.commit->Effect.runSync
     expect(v)->toBe(6)
   })
 
-  testSync("flatMap chains transactions", () => {
+  test("flatMap chains transactions", () => {
     let v = Stm.succeed(4)
       ->Stm.flatMap(n => Stm.succeed(n + 1))
       ->Stm.commit
@@ -850,7 +872,7 @@ describe("Stm — STM operations", () => {
     expect(v)->toBe(5)
   })
 
-  testSync("zipRight returns the second value", () => {
+  test("zipRight returns the second value", () => {
     let v = Stm.succeed("a")
       ->Stm.zipRight(Stm.succeed("b"))
       ->Stm.commit
@@ -858,7 +880,7 @@ describe("Stm — STM operations", () => {
     expect(v)->toBe("b")
   })
 
-  testSync("fail + commit + runSyncExit is a failure", () => {
+  test("fail + commit + runSyncExit is a failure", () => {
     let exit = Stm.fail("oops")->Stm.commit->Effect.runSyncExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
@@ -873,10 +895,11 @@ Covers: `unbounded`, `bounded`, `sliding`, `dropping`, `publish`, `publishAll`, 
 `size`, `shutdown`, `isShutdown`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("PubSub", () => {
-  test("unbounded pubsub: publish + subscribe + Queue.take delivers message", async () => {
+  testPromise("unbounded pubsub: publish + subscribe + Queue.take delivers message", async () => {
     let ps = PubSub.unbounded()->Effect.runSync
     // Subscribe before publishing
     let queue = await PubSub.subscribe(ps)->Effect.scoped->Effect.runPromise
@@ -885,7 +908,7 @@ describe("PubSub", () => {
     expect(v)->toBe("hello")
   })
 
-  test("size reflects subscriber count", async () => {
+  testPromise("size reflects subscriber count", async () => {
     let ps = PubSub.unbounded()->Effect.runSync
     let _q1 = await PubSub.subscribe(ps)->Effect.scoped->Effect.runPromise
     let _q2 = await PubSub.subscribe(ps)->Effect.scoped->Effect.runPromise
@@ -895,7 +918,7 @@ describe("PubSub", () => {
     expect(n)->toBeGreaterThan(-1)
   })
 
-  test("publishAll delivers all items to subscriber", async () => {
+  testPromise("publishAll delivers all items to subscriber", async () => {
     let ps = PubSub.unbounded()->Effect.runSync
     let queue = await PubSub.subscribe(ps)->Effect.scoped->Effect.runPromise
     let _ = await PubSub.publishAll(ps, [1, 2, 3])->Effect.runPromise
@@ -903,13 +926,13 @@ describe("PubSub", () => {
     expect(items)->toEqual([1, 2, 3])
   })
 
-  test("bounded constructor creates a PubSub.t without error", async () => {
+  testPromise("bounded constructor creates a PubSub.t without error", async () => {
     let ps = PubSub.bounded(10)->Effect.runSync
     let accepted = await PubSub.publish(ps, "x")->Effect.runPromise
     expect(accepted)->toBe(true)
   })
 
-  test("shutdown + isShutdown", async () => {
+  testPromise("shutdown + isShutdown", async () => {
     let ps = PubSub.unbounded()->Effect.runSync
     let _ = await PubSub.shutdown(ps)->Effect.runPromise
     let shut = await PubSub.isShutdown(ps)->Effect.runPromise
@@ -925,30 +948,31 @@ describe("PubSub", () => {
 Covers: `make`, `get`, `set`, `update`, `getAndUpdate`, `updateAndGet`, `modify`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("Ref", () => {
-  test("make + get returns the initial value", async () => {
+  testPromise("make + get returns the initial value", async () => {
     let r = Ref.make(0)->Effect.runSync
     let v = await Ref.get(r)->Effect.runPromise
     expect(v)->toBe(0)
   })
 
-  test("set + get reflects the new value", async () => {
+  testPromise("set + get reflects the new value", async () => {
     let r = Ref.make(0)->Effect.runSync
     let _ = await Ref.set(r, 42)->Effect.runPromise
     let v = await Ref.get(r)->Effect.runPromise
     expect(v)->toBe(42)
   })
 
-  test("update applies a pure function", async () => {
+  testPromise("update applies a pure function", async () => {
     let r = Ref.make(10)->Effect.runSync
     let _ = await Ref.update(r, n => n + 5)->Effect.runPromise
     let v = await Ref.get(r)->Effect.runPromise
     expect(v)->toBe(15)
   })
 
-  test("getAndUpdate returns the old value", async () => {
+  testPromise("getAndUpdate returns the old value", async () => {
     let r = Ref.make(3)->Effect.runSync
     let old = await Ref.getAndUpdate(r, n => n * 2)->Effect.runPromise
     let new_ = await Ref.get(r)->Effect.runPromise
@@ -956,13 +980,13 @@ describe("Ref", () => {
     expect(new_)->toBe(6)
   })
 
-  test("updateAndGet returns the new value", async () => {
+  testPromise("updateAndGet returns the new value", async () => {
     let r = Ref.make(5)->Effect.runSync
     let new_ = await Ref.updateAndGet(r, n => n - 1)->Effect.runPromise
     expect(new_)->toBe(4)
   })
 
-  test("modify returns computed result and updates the ref", async () => {
+  testPromise("modify returns computed result and updates the ref", async () => {
     let r = Ref.make(7)->Effect.runSync
     let result = await Ref.modify(r, n => (n * 10, n + 1))->Effect.runPromise
     let new_ = await Ref.get(r)->Effect.runPromise
@@ -979,30 +1003,31 @@ describe("Ref", () => {
 Covers: `make`, `get`, `set`, `update`, `updateEffect`, `modifyEffect`.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("SynchronizedRef", () => {
-  test("make + get returns the initial value", async () => {
+  testPromise("make + get returns the initial value", async () => {
     let r = SynchronizedRef.make(0)->Effect.runSync
     let v = await SynchronizedRef.get(r)->Effect.runPromise
     expect(v)->toBe(0)
   })
 
-  test("set + get reflects the new value", async () => {
+  testPromise("set + get reflects the new value", async () => {
     let r = SynchronizedRef.make(0)->Effect.runSync
     let _ = await SynchronizedRef.set(r, 99)->Effect.runPromise
     let v = await SynchronizedRef.get(r)->Effect.runPromise
     expect(v)->toBe(99)
   })
 
-  test("update applies a pure function atomically", async () => {
+  testPromise("update applies a pure function atomically", async () => {
     let r = SynchronizedRef.make(10)->Effect.runSync
     let _ = await SynchronizedRef.update(r, n => n * 3)->Effect.runPromise
     let v = await SynchronizedRef.get(r)->Effect.runPromise
     expect(v)->toBe(30)
   })
 
-  test("updateEffect updates with an async computation", async () => {
+  testPromise("updateEffect updates with an async computation", async () => {
     let r = SynchronizedRef.make(5)->Effect.runSync
     let _ = await SynchronizedRef.updateEffect(r, n =>
       Effect.promise(() => Promise.resolve(n + 10))
@@ -1011,7 +1036,7 @@ describe("SynchronizedRef", () => {
     expect(v)->toBe(15)
   })
 
-  test("modifyEffect returns result and updates atomically", async () => {
+  testPromise("modifyEffect returns result and updates atomically", async () => {
     let r = SynchronizedRef.make(4)->Effect.runSync
     let result = await SynchronizedRef.modifyEffect(r, n =>
       Effect.promise(() => Promise.resolve((n * 100, n + 1)))
@@ -1032,17 +1057,18 @@ Covers: `TestClock.adjust`, `TestClock.currentTimeMillis`, `TestContext.testCont
 binding pair.
 
 ```rescript
-open JestBindings
+open AsyncTest
+open AsyncTest.Expect
 
 describe("TestClock + TestContext", () => {
-  test("currentTimeMillis starts at 0", async () => {
+  testPromise("currentTimeMillis starts at 0", async () => {
     let t = await TestClock.currentTimeMillis
       ->Effect.provide(TestContext.testContext)
       ->Effect.runPromise
     expect(t)->toBe(0)
   })
 
-  test("adjust advances the virtual clock", async () => {
+  testPromise("adjust advances the virtual clock", async () => {
     let program = TestClock.adjust(Duration.millis(1000))
       ->Effect.zipRight(TestClock.currentTimeMillis)
       ->Effect.provide(TestContext.testContext)
@@ -1050,7 +1076,7 @@ describe("TestClock + TestContext", () => {
     expect(t)->toBe(1000)
   })
 
-  test("Effect.sleep resolves after TestClock.adjust by the matching duration", async () => {
+  testPromise("Effect.sleep resolves after TestClock.adjust by the matching duration", async () => {
     let program = Effect.sleep(Duration.millis(500))
       ->Effect.provide(TestContext.testContext)
     let fiber = program->Effect.runFork
@@ -1061,7 +1087,7 @@ describe("TestClock + TestContext", () => {
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
-  test("Effect.sleep does not resolve before clock is advanced", async () => {
+  testPromise("Effect.sleep does not resolve before clock is advanced", async () => {
     let completed = ref(false)
     let program = Effect.sleep(Duration.millis(1000))
       ->Effect.tap(_ => Effect.sync(() => { completed := true }))
@@ -1075,7 +1101,7 @@ describe("TestClock + TestContext", () => {
     expect(completed.contents)->toBe(false)
   })
 
-  test("multiple adjusts accumulate", async () => {
+  testPromise("multiple adjusts accumulate", async () => {
     let program = TestClock.adjust(Duration.millis(300))
       ->Effect.zipRight(TestClock.adjust(Duration.millis(200)))
       ->Effect.zipRight(TestClock.currentTimeMillis)
@@ -1090,10 +1116,10 @@ describe("TestClock + TestContext", () => {
 
 ## Section 3: Implementation Order
 
-All test files are independent of each other. The only shared prerequisite is `JestBindings.res`.
+All test files are independent of each other. The only shared prerequisite is `AsyncTest.res`.
 Suggested implementation order — simplest/most foundational first:
 
-1. `JestBindings.res` — shared helpers (prerequisite for all others)
+1. `AsyncTest.res` — shared helpers (prerequisite for all others)
 2. `DurationTest.res` — trivial constructors, no async complexity
 3. `ExitTest.res` — purely synchronous, foundational type
 4. `CauseTest.res` — purely synchronous, foundational type
