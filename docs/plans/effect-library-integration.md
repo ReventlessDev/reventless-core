@@ -1028,8 +1028,10 @@ The clearest near-term path is writing thin ReScript bindings for Effect core pr
   - Fix: use `Effect.runSync` for synchronous operations (`Deferred.make`, `Queue.offer`) + native `Promise.all` for signal awaiting → **2 scheduling hops**, matching the 2 `await Promise.resolve()` ticks in test helpers
   - `Queue.shutdown` is a pure synchronous Effect value — can be collected into an array and run via `Effect.all->Effect.runSync`
 
-**Phase 5 — Streaming and future (evaluate when ready):**
-- [ ] Evaluate `Stream`-based `EventLog.replay` for large aggregate support
+**Phase 5 — Streaming (separate plan):**
+- Stream integration has been broken out into a dedicated plan: `docs/plans/effect-stream-integration.md`
+- That plan covers 6 use cases (EventLog.replay, DcbEventLog.read, QueryDb scan, Bus fan-out, CSV/Task,
+  bounded backpressure) with phased implementation steps and full test coverage.
 - [ ] Evaluate `Effect.Schema` migration (assess scope vs. benefit)
 - [ ] Track `@effect/workflow` and `@effect/cluster` maturity for future architectural decisions
 
