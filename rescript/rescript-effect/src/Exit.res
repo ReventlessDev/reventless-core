@@ -27,9 +27,10 @@ external isFailure: t<'a, 'e> => bool = "isFailure"
 
 // ─── Extraction ────────────────────────────────────────────────────────────
 
-// Extract the success value — returns None if failure
+// Extract the success value or compute a default from the Cause.
+// Use this instead of toOption (which does not exist in Effect v3).
 @module("effect") @scope("Exit")
-external toOption: t<'a, 'e> => option<'a> = "toOption"
+external getOrElse: (t<'a, 'e>, Cause.t<'e> => 'a) => 'a = "getOrElse"
 
 // Extract the Cause from a failure exit (undefined if success)
 @module("effect") @scope("Exit")

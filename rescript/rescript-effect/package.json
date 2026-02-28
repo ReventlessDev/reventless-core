@@ -8,12 +8,28 @@
     "start": "rescript build -w",
     "clean": "rescript clean",
     "rebuild": "npm run clean && npm run build -- -with-deps",
-    "test": "echo \"No tests for rescript-effect bindings.\""
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
+    "dev": "jest --watchAll"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "testPathIgnorePatterns": [
+      "AsyncTest.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ]
   },
   "dependencies": {
     "effect": "^3.17.0"
   },
   "devDependencies": {
+    "jest": "^29.0.0",
+    "@jest/globals": "^29.0.0",
+    "jest-environment-node": "^29.0.0",
     "rescript": "^12.1.0"
   },
   "peerDependencies": {

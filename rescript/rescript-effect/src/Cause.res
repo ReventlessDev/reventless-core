@@ -29,8 +29,9 @@ external sequential: (t<'e>, t<'e>) => t<'e> = "sequential"
 @module("effect") @scope("Cause")
 external isEmpty: t<'e> => bool = "isEmpty"
 
+// Note: Effect v3 exports this as `isFailType` (exact Fail tag check)
 @module("effect") @scope("Cause")
-external isFail: t<'e> => bool = "isFail"
+external isFail: t<'e> => bool = "isFailType"
 
 @module("effect") @scope("Cause")
 external isDie: t<'e> => bool = "isDie"

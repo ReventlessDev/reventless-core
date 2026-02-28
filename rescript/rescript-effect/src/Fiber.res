@@ -20,6 +20,12 @@ external interrupt: t<'a, 'e> => Effect.t<Exit.t<'a, 'e>, 'e2, 'r> = "interrupt"
 @module("effect") @scope("Fiber")
 external joinAll: array<t<'a, 'e>> => Effect.t<array<'a>, 'e, 'r> = "joinAll"
 
-// Collect Exit from all fibers without failing — never throws
+// Collect Exit from all fibers without failing — never throws.
+// Note: Effect v3 exports this as `awaitAll` (not `collectAll`).
 @module("effect") @scope("Fiber")
-external collectAll: array<t<'a, 'e>> => Effect.t<array<Exit.t<'a, 'e>>, 'e2, 'r> = "collectAll"
+external collectAll: array<t<'a, 'e>> => Effect.t<array<Exit.t<'a, 'e>>, 'e2, 'r> = "awaitAll"
+
+// Non-blocking poll — returns Effect Option (None if still running, Some(exit) if done).
+// Note: returns Effect's Option type {_id:"Option", _tag:"None"|"Some"}, not ReScript option.
+@module("effect") @scope("Fiber")
+external poll: t<'a, 'e> => Effect.t<option<Exit.t<'a, 'e>>, 'e2, 'r> = "poll"
