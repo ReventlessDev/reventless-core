@@ -74,8 +74,10 @@ module type T = {
 // Internal module type for bus configuration.
 // capacity=None → unbounded hub (synchronous fan-out, no backpressure, 2-tick delivery).
 // capacity=Some(n) → bounded hub (async publish with backpressure, 3-tick delivery).
+// logger — used for runtime diagnostics; defaults to Logger.consoleLogger in Make/MakeBounded.
 module type BusConfig = {
   let capacity: option<int>
+  let logger: Logger.t
 }
 
 // Full implementation parameterised by BusConfig.
@@ -186,7 +188,10 @@ module Impl = (C: BusConfig): T => {
   let dispatchCommand = async (channelName, json) => {
     switch commandHandlers.contents->Dict.get(channelName) {
     | Some(handler) => await handler(json, ())
-    | None => Console.log2("InMemory_Bus: no command handler for channel", channelName)
+    | None =>
+      let _ =
+        C.logger.warn("InMemory_Bus: no command handler for channel: " ++ channelName)
+        ->Effect.runSync
     }
   }
 
@@ -224,7 +229,10 @@ module Impl = (C: BusConfig): T => {
 // Backward-compatible unbounded bus (2-tick delivery guarantee).
 // All existing InMemory_Bus.Make() call sites work without modification.
 module Make = (): T => {
-  include Impl({let capacity: option<int> = None})
+  include Impl({
+    let capacity: option<int> = None
+    let logger = Logger.consoleLogger
+  })
 }
 
 // Bounded bus (Phase G): each subscriber queue has a fixed capacity.
@@ -232,5 +240,8 @@ module Make = (): T => {
 // Resolves in 3 microtask ticks (1 more than unbounded).
 // Usage: module TestBus = InMemory_Bus.MakeBounded({let capacity = 2})
 module MakeBounded = (C: {let capacity: int}): T => {
-  include Impl({let capacity: option<int> = Some(C.capacity)})
+  include Impl({
+    let capacity: option<int> = Some(C.capacity)
+    let logger = Logger.consoleLogger
+  })
 }

@@ -1,6 +1,6 @@
 # Effect Context & Layer Integration Plan
 
-**Status:** Phases A–E complete; Phase F pending
+**Status:** Complete (all phases A–F done)
 
 **Created:** 2026-02-28
 
@@ -356,3 +356,337 @@ practice (the constraint is opt-in).
 | F | Wire Logger into framework Effects | — | `InMemory_Bus.res`, adapters |
 
 Phases A–E can be done in order in a single sitting. Phase F is a separate, wider refactor.
+
+---
+
+## Full-Framework Logger & Context Migration — Analysis
+
+This section analyses what it would take to extend the Logger and RequestContext services
+throughout the entire Reventless stack: every logging call site, every Effect pipeline, and
+every Lambda handler boundary. It categorises the existing Console.log landscape, identifies
+the architectural obstacles, and proposes concrete follow-on phases.
+
+---
+
+### Audit of Existing Console.log / Console.warn / Console.error Calls
+
+An audit of `reventless-core` and `reventless-in-memory` (excluding test files and the
+unrelated `Projection.res` optimiser) reveals four distinct categories of logging call sites.
+Each category requires a different migration strategy.
+
+#### Category 1 — Deploy-time (inside `Pulumi.Output.apply` callbacks)
+
+```
+AggregateRuntime_Builder_Common.res:134   Console.log2("***** forCommandGenerator … set handler for", infos)
+AggregateRuntime_Builder_Common.res:164   Console.log ("***** forCommandTopic … set handler for ${urn}")
+AggregateRuntime_Builder_Common.res:203   Console.log2("***** forEventCollector … set handler for", urns)
+EventCollectorRuntime_Builder_Single.res:135  Console.log2("***** forEventCollector … set handler for", urns)
+EventCollectorRuntime_Builder_Single.res:65   Console.log ("validateParent: parent ${name} type: ${type}")
+Adapter.res:63                            Console.log2("resource:", r)
+```
+
+**Context:** These callbacks execute synchronously during Pulumi stack construction (deploy
+time), not at Lambda invocation time. `Pulumi.Output.apply` callbacks are plain JS callbacks —
+they are not Effect fibers and cannot `await` or use `runPromise`.
+
+**Migration options:**
+- The Effect Logger service **cannot** be used here.
+- `OutputLogger.res` (already in `reventless-core`) is the deploy-time equivalent and is the
+  right abstraction. Thread it through the `Make` functor parameters.
+- Alternatively, leave these as `Console.log` — they are developer-facing diagnostics visible
+  only when `pulumi up` runs, not in CloudWatch or test output.
+
+**Verdict:** Thread a deploy-time logger (plain `Logger.t` value or `OutputLogger`) through the
+runtime builder functors. See Phase G below.
+
+---
+
+#### Category 2 — Lambda handler dispatch (inside `async (event, context) =>` functions)
+
+```
+AggregateRuntime_Builder_Common.res:40    Console.log2("----- found handler for CommandGenerator", info)
+AggregateRuntime_Builder_Common.res:43    Console.log2("no handler found:", info)
+AggregateRuntime_Builder_Common.res:53    Console.log2("----- found handler for CommandTopic", urn)
+AggregateRuntime_Builder_Common.res:59    Console.log2("----- found ${count} handler(s) for EventCollector", urn)
+AggregateRuntime_Builder_Common.res:61    Console.log2("no handler found:", urn)
+EventCollectorRuntime_Builder_Single.res:47   Console.log2("----- found ${count} handler(s) for EventCollector", urn)
+EventCollectorRuntime_Builder_Single.res:49   Console.log2("no handler found:", urn)
+```
+
+**Context:** These are inside `aggregateHandler` / `eventCollectorHandler` — the router
+functions that run on every Lambda invocation and dispatch to the registered component handler.
+They are typed `async (event, context) => promise<string>`, not Effect pipelines.
+
+**Migration options:**
+1. **Thread `Logger.t` through the functor** — Add `logger: Logger.t` to the `Make` functor
+   parameters of `AggregateRuntime_Builder_Common` and `EventCollectorRuntime_Builder_Single`.
+   The async handler closes over `logger` and calls `logger.info(...)->Effect.runSync`.
+   All callers (`AggregateRuntime_Builder_Single`, `_PerAggregate`, `_Micro`) pass the logger
+   down from their own `Make` arguments.
+
+2. **Convert handlers to Effect** — Change `aggregateHandler` to return
+   `Effect.t<string, 'e, Logger.t>`, satisfy at the Lambda entry point with
+   `->Effect.provideService(Logger.tag, Logger.consoleLogger)->Effect.runPromise`.
+   This requires changing `Runtime.eventHandler` type and all adapter implementations.
+   Significant cascade change; not recommended until the async handlers are already Effect-based
+   for other reasons.
+
+**Verdict:** Option 1 is the right near-term path. See Phase H below.
+
+---
+
+#### Category 3 — In-memory bus (async `dispatchCommand`)
+
+```
+InMemory_Bus.res:189   Console.log2("InMemory_Bus: no command handler for channel", channelName)
+```
+
+**Status:** Migrated in Phase F. `BusConfig` now carries `logger: Logger.t`; `Make` and
+`MakeBounded` default to `Logger.consoleLogger`.
+
+---
+
+#### Category 4 — Projection optimiser (synchronous, pure functions)
+
+```
+Projection.res: ~12 Console.warn / Console.log calls inside optimise/reduce logic
+```
+
+**Context:** `Projection.res` is a pure synchronous module that optimises event-sourced state
+projections at read-model build time. Its warnings describe internal merge decisions
+("optimizing Delete after Create, therefore ignoring the Create"). They are developer-facing
+diagnostics, not application-level logs.
+
+**Migration options:**
+- Converting `Projection` functions to return `Effect.t` just to carry `Logger.t` would cascade
+  into all callers (`ReadModel_Builder`, `StateChangeSlice_Builder`, `EventMapper_Builder`, …).
+- These are not runtime/Lambda logs — they surface during test runs or local dev, not in
+  CloudWatch.
+
+**Verdict:** Leave as `Console.warn` for now. If `Projection` is ever refactored to be
+Effect-based for other reasons, migrate then.
+
+---
+
+#### Category 5 — GraphQL server startup (Node.js callback)
+
+```
+GraphQL_Server.res:59   Console.log("[GraphQL] Listening on http://localhost:…/graphql")
+```
+
+**Context:** Inside the Node.js `server.listen(port, callback)` callback. Not Effect-based,
+not a Lambda handler. Development-only (the in-memory platform starts a local GraphQL server
+for interactive testing).
+
+**Verdict:** Could pass `logger.info(...)` directly once `GraphQL_Server.start()` accepts a
+`~logger` parameter; low priority.
+
+---
+
+### Architectural Obstacles
+
+#### 1. `'r` cannot express union types
+
+Effect's TypeScript generics use `R1 | R2` to accumulate requirements. ReScript has no row
+types. When an Effect pipeline needs both `Logger.t` and `RequestContext.t`, the `'r`
+type parameter can only hold one type at a time.
+
+**Workaround:** Call `Effect.provideService` twice at the handler boundary:
+```rescript
+effect
+->Effect.provideService(Logger.tag, Logger.consoleLogger)
+->Effect.provideService(RequestContext.tag, {correlationId: event.meta.correlationId})
+->Effect.runPromise
+```
+Each call reduces `'r` to `unit`. This works but loses compile-time enforcement that both
+services are always provided (since `runPromise` accepts any `'r` anyway — see Background
+section). For a two-service pipeline, this is acceptable.
+
+#### 2. Deploy-time callbacks are synchronous
+
+`Pulumi.Output.apply` callbacks cannot use `Effect.runPromise` (they are synchronous) and
+cannot propagate Effect `'r` requirements. A plain `Logger.t` value threaded through the
+functor is the only option.
+
+#### 3. Module type signature changes ripple widely
+
+Adding `logger: Logger.t` to `AggregateRuntime_Builder_Common.Make` means every caller
+(`AggregateRuntime_Builder_Single`, `_PerAggregate`, `_Micro`) must thread the value. Those
+callers are instantiated by `PluginRuntime_Builder`, which is called from user plugin code.
+The ripple touches user-facing APIs. The change must be backwards-compatible (default to
+`Logger.consoleLogger`) to avoid breaking existing plugin code.
+
+#### 4. `Runtime.eventHandler` is typed `async`, not Effect
+
+```rescript
+type eventHandler<'event, 'ctx, 'result> = ('event, 'ctx) => promise<'result>
+```
+
+Converting this to `Effect.t<'result, 'e, 'r>` would require:
+- Changing `Runtime.Environment` module type
+- Updating all AWS adapter implementations (`AggregateRuntime_Builder_Single`, the Micro/PerAggregate variants, EventCollectorRuntime builders)
+- Updating `reventless-aws` Lambda handler entry points
+
+This is a major breaking refactor. It would make Logger propagation via `'r` elegant but the
+cost is high. Recommended only as a long-term goal.
+
+#### 5. `RequestContext` is per-invocation, not per-process
+
+`Logger.t` is process-scoped (same implementation for all Lambda calls). `RequestContext.t` is
+invocation-scoped (different correlationId per call). This means:
+- Logger: safe to thread through functor parameters (set once at construction)
+- RequestContext: must be injected at the top of each Lambda invocation handler, not in functor
+  parameters. The only clean path is through the Effect `'r` channel or as an explicit
+  parameter to the handler itself.
+
+---
+
+### Follow-On Phases
+
+#### Phase G — Logger configurable at Platform level
+
+**Scope:** Allow tests to opt in to `Logger.silent` to suppress log noise from the framework's
+own dispatch logging (e.g., "InMemory_Bus: no command handler").
+
+**What to add:**
+- `Platform.MakeWithConfig` functor: `(Config: {let logger: Logger.t}): Reventless.Platform.T`
+- `InMemory_Bus.MakeWithLogger` functor: `(Config: {let logger: Logger.t}): T`
+  (wraps `Impl` with `capacity = None` and the supplied logger)
+- Keep `Platform.Make()` and `InMemory_Bus.Make()` unchanged (default to `consoleLogger`)
+
+**Files touched:** `Platform.res`, `InMemory_Bus.res`
+
+**Call-site impact:** Zero — existing `Platform.Make()` sites are unchanged.
+
+---
+
+#### Phase H — Logger in runtime builder functors
+
+**Scope:** Replace all Category 2 Console.log calls (Lambda handler dispatch routing logs)
+with `logger.info / logger.warn` calls.
+
+**What to change:**
+- Add `logger: Logger.t` to `AggregateRuntime_Builder_Common.Make` functor
+  (extra module parameter, or as a named module `(Log: {let logger: Logger.t})`)
+- Add same to `EventCollectorRuntime_Builder_Single.Make`
+- Thread through `AggregateRuntime_Builder_Single`, `_PerAggregate`, `_Micro`,
+  `EventCollectorRuntime_Builder_PerEventCollector`
+- Thread through `PluginRuntime_Builder` up to the application handler entry point
+- Default to `Logger.consoleLogger` everywhere so no existing call sites break
+
+**Files touched (runtime builder chain):**
+```
+AggregateRuntime_Builder_Common.res
+AggregateRuntime_Builder_Single.res
+AggregateRuntime_Builder_PerAggregate.res
+AggregateRuntime_Builder_Micro.res
+EventCollectorRuntime_Builder_Single.res
+EventCollectorRuntime_Builder_PerEventCollector.res
+PluginRuntime_Builder.res
+PluginRuntime_Builder_Single.res
+PluginRuntime_Builder_Micro.res
+```
+
+**Category 1 (deploy-time)** can be migrated in the same commit by passing the same logger
+into the `Pulumi.Output.apply` closures via closure capture. No extra abstraction needed.
+
+**AWS adapter entry point:** The Lambda handler (in `reventless-aws`) calls
+`PluginRuntime_Builder.handler(...)`. This is where the Logger implementation is chosen:
+`Logger.consoleLogger` for production (writes to CloudWatch), `Logger.silent` for tests.
+
+---
+
+#### Phase I — Logger in Effect pipelines (`'r` propagation)
+
+**Scope:** Effect-returning operations in components (CommandTopic, EventTopic, Stream variants)
+gain `Logger.t` in `'r`. Callers add `provideService` at the handler boundary.
+
+**What to change:**
+- `CommandTopic_Operations.publishJsons`, `publishJsonsStream`, `publishJsonStream` gain
+  `Logger.t` in `'r` by using `Effect.serviceWithEffect(Logger.tag, ...)` internally for any
+  diagnostic logging they emit.
+- Same for EventTopic publisher operations.
+- At Lambda handler entry points and in-memory test runners: add
+  `->Effect.provideService(Logger.tag, Logger.consoleLogger)` before `runPromise`.
+
+**Note:** Since `runPromise` accepts any `'r`, this phase is purely opt-in and non-breaking.
+Existing callers that don't add `provideService` still compile and run — they just use whatever
+Logger implementation was already in context (or none, since the default is the live Effect
+context which has no Logger injected, meaning the requirement goes unsatisfied silently).
+
+---
+
+#### Phase J — `RequestContext` propagation through Effect pipelines
+
+**Scope:** Effects that need per-invocation data (correlationId, future tenantId) declare
+`RequestContext.t` in `'r` instead of accepting those values as function arguments.
+
+**What to change:**
+- Any Effect-returning function that currently takes `~correlationId: string` as a parameter is
+  changed to use `Effect.serviceWith(RequestContext.tag, ctx => ctx.correlationId)` instead.
+- Lambda handler entry point extracts the correlationId from the event and provides it:
+  ```rescript
+  effect
+  ->Effect.provideService(RequestContext.tag, {correlationId: event.meta.correlationId})
+  ->Effect.provideService(Logger.tag, Logger.consoleLogger)
+  ->Effect.runPromise
+  ```
+- In-memory test runners provide a test context:
+  ```rescript
+  ->Effect.provideService(RequestContext.tag, RequestContext.test())
+  ->Effect.provideService(Logger.tag, Logger.silent)
+  ->Effect.runPromise
+  ```
+
+**Prerequisite:** Phase I (Logger in Effect pipelines) should be stable first, as both services
+are provided together at the same handler boundary.
+
+---
+
+### Migration Order & Priority
+
+| Phase | What | Effort | Value | Prerequisite |
+|-------|------|--------|-------|-------------|
+| G | Platform-level Logger config | XS | Medium | Phase F |
+| H | Logger in runtime builder functors | M | High | Phase G |
+| I | Logger in Effect pipelines (`'r`) | S | Medium | Phases A–F |
+| J | RequestContext in Effect pipelines | S | High | Phase I |
+
+**Recommended order:** G → H (these address all Category 1 and 2 Console.log calls) → I → J.
+
+Phases I and J are the purest application of the Effect service pattern but have the smallest
+immediate impact because the pipeline-internal logging (Category 2) is more frequent and more
+visible than the per-operation pipeline logs.
+
+Phase H provides the highest return on investment: it replaces all remaining framework-level
+Console.log calls with structured logging that can be silenced in tests and enriched in
+production (e.g., prefixed with correlationId via a `withPrefix` wrapper on `Logger.t`).
+
+---
+
+### Long-Term Goal: Effect-Based Runtime Handlers
+
+The cleanest eventual architecture replaces `Runtime.eventHandler`:
+```rescript
+// Current
+type eventHandler<'event, 'ctx, 'result> = ('event, 'ctx) => promise<'result>
+
+// Future
+type effectHandler<'event, 'ctx, 'result, 'r> =
+  ('event, 'ctx) => Effect.t<'result, 'e, 'r>
+```
+
+With this change, `'r` flows naturally from the component handler all the way to the Lambda
+entry point, where a single `provideService` chain satisfies all requirements in one place. The
+Lambda entry point becomes:
+
+```rescript
+handler(event, context)
+->Effect.provideService(Logger.tag, Logger.consoleLogger)
+->Effect.provideService(RequestContext.tag, {correlationId: event.meta.correlationId})
+->Effect.runPromise
+```
+
+This requires updating `Runtime.Environment`, all AWS adapter implementations, and all
+existing handler registrations. It is a **major breaking refactor** and is listed here as a
+long-term goal only. Phases G–J achieve most of the practical benefit at a fraction of the cost.
