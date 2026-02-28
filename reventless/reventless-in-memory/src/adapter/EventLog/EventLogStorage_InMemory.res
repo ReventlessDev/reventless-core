@@ -23,11 +23,21 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name as _, ~opts as _
     ->Effect.map(events => events->Dict.get(id)->Option.getOr([]))
     ->Effect.runPromise
 
+  // The in-memory array is already resident; expose it as a stream for API uniformity.
+  // The real performance gain from streaming comes from the DynamoDB adapter.
+  let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
+    Stm.TRef.get(eventsRef)
+    ->Stm.commit
+    ->Effect.map(events => events->Dict.get(id)->Option.getOr([]))
+    ->Stream.fromEffect
+    ->Stream.flatMap(arr => Stream.fromIterable(arr))
+
   {
     resources: [],
     operations: Pulumi.Output.make({
       ReventlessCore.EventLog_Adapter.append,
       replay,
+      replayStream,
     }),
   }
 }

@@ -33,3 +33,15 @@ let rec tryReplay = async (~retry=0, tableName, id) =>
 let replay = table => {
   async id => await tryReplay(table.name, id)
 }
+
+// Wraps the existing replay (with its own retry logic) as a lazy stream.
+// Full pagination will be added when queryByIdPage is implemented.
+let replayStream = table =>
+  id =>
+    Effect.tryPromise({
+      "try": () => tryReplay(table.name, id),
+      "catch": (err: unknown) =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB replay error"),
+    })
+    ->Stream.fromEffect
+    ->Stream.flatMap(arr => Stream.fromIterable(arr))

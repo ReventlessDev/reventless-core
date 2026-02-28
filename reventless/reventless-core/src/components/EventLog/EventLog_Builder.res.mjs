@@ -33,7 +33,8 @@ function Make(Spec) {
         });
         return {
           append: Ops.append,
-          replay: Ops.replay
+          replay: Ops.replay,
+          replayStream: Ops.replayStream
         };
       }));
       let outputs_resources = storage.resources;

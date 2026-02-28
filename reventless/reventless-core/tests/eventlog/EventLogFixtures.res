@@ -41,6 +41,8 @@ let mockStorage: EventLog_Adapter.operations = {
   replay: async id => {
     storedEvents.contents->Dict.get(id)->Option.getOr([])
   },
+  replayStream: id =>
+    storedEvents.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
 }
 
 // ─────────────────────────────────────────────────────────────

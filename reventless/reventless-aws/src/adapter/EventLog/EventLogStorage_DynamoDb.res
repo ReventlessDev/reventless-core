@@ -17,6 +17,7 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
         ...
       ),
       replay: EventLogStorage_DynamoDb_Runtime.replay(runtimeTable, ...),
+      replayStream: EventLogStorage_DynamoDb_Runtime.replayStream(runtimeTable, ...),
     }),
   }
 }

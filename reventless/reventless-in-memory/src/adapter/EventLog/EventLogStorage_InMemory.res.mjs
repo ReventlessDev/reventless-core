@@ -18,11 +18,13 @@ function make(param, param$1) {
     ];
   })));
   let replay = id => Effect.Effect.runPromise(Effect.Effect.map(Effect.STM.commit(Effect.TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], [])));
+  let replayStream = id => Effect.Stream.flatMap(Effect.Stream.fromEffect(Effect.Effect.map(Effect.STM.commit(Effect.TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], []))), arr => Effect.Stream.fromIterable(arr));
   return {
     resources: [],
     operations: Pulumi.output({
       append: append,
-      replay: replay
+      replay: replay,
+      replayStream: replayStream
     })
   };
 }

@@ -85,43 +85,46 @@ function Make(Spec) {
         _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + idStr + `): ` + failMsg
       };
     };
+    let decodeEvent = (id, json) => {
+      try {
+        return Message$ReventlessCore.decode(Stdlib_Option.getOrThrow(Stdlib_Option.map(Stdlib_JSON.Decode.object(json), dict => {
+          let match = dict["type"];
+          let match$1 = dict["data"];
+          if (typeof match === "string") {
+            if (match$1 !== undefined) {
+              if (typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1)) {
+                return Message$ReventlessCore.combineMessage(match, match$1);
+              } else {
+                return Stdlib_JsError.throwWithMessage("event type or data incorrect");
+              }
+            } else {
+              return Message$ReventlessCore.combineMessage(match, {});
+            }
+          } else {
+            return Stdlib_JsError.throwWithMessage("event type or data incorrect");
+          }
+        }), undefined), Spec.eventSchema);
+      } catch (raw_e) {
+        let e = Primitive_exceptions.internalToException(raw_e);
+        if (e.RE_EXN_ID === "JsExn") {
+          let eventStr = JSON.stringify(json);
+          let message = Util_Error$ReventlessCore.message(undefined, e._1);
+          return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id + `: Couldn't decode ` + eventStr + `: ` + message);
+        }
+        throw e;
+      }
+    };
     let replay = async id => {
       let eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
       let id$1 = Spec.Id.toString(id);
-      return eventsJson.map(json => {
-        try {
-          return Message$ReventlessCore.decode(Stdlib_Option.getOrThrow(Stdlib_Option.map(Stdlib_JSON.Decode.object(json), dict => {
-            let match = dict["type"];
-            let match$1 = dict["data"];
-            if (typeof match === "string") {
-              if (match$1 !== undefined) {
-                if (typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1)) {
-                  return Message$ReventlessCore.combineMessage(match, match$1);
-                } else {
-                  return Stdlib_JsError.throwWithMessage("event type or data incorrect");
-                }
-              } else {
-                return Message$ReventlessCore.combineMessage(match, {});
-              }
-            } else {
-              return Stdlib_JsError.throwWithMessage("event type or data incorrect");
-            }
-          }), undefined), Spec.eventSchema);
-        } catch (raw_e) {
-          let e = Primitive_exceptions.internalToException(raw_e);
-          if (e.RE_EXN_ID === "JsExn") {
-            let eventStr = JSON.stringify(json);
-            let message = Util_Error$ReventlessCore.message(undefined, e._1);
-            return Stdlib_JsError.throwWithMessage(`EventLog.replay: Error: id:` + id$1 + `: Couldn't decode ` + eventStr + `: ` + message);
-          }
-          throw e;
-        }
-      });
+      return eventsJson.map(json => decodeEvent(id$1, json));
     };
+    let replayStream = id => Effect.Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id)), json => Effect.Effect.sync(() => decodeEvent(Spec.Id.toString(id), json)));
     return {
       Spec: Spec,
       append: append,
-      replay: replay
+      replay: replay,
+      replayStream: replayStream
     };
   };
 }

@@ -1,6 +1,7 @@
 type operations = {
   append: EventLog.append<string, JSON.t>,
   replay: EventLog.replay<string, JSON.t>,
+  replayStream: string => Stream.t<JSON.t, string, unit>,
 }
 type storage = {
   resources: array<Reventless.Adapter.resource>,

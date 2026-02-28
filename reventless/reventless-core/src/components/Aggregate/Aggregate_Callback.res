@@ -68,7 +68,11 @@ module Make = (
     let results = await topicItems
     ->groupTopicItemsById
     ->Array.map(async ((id, topicItemsForId)) => {
-      let history = await Ops.eventLog.replay(id)
+      // Single-pass stream fold: produces both (initialState, sequenceNr) from the event log.
+      // sequenceNr replaces history->Array.length as the optimistic concurrency token for append.
+      let (initialState, sequenceNr) = await Ops.eventLog.replayStream(id)
+        ->Stream.runFold((None, 0), ((st, n), ev) => (apply'(st, ev), n + 1))
+        ->Effect.runPromise
       let processCommand = async (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
         let runBehavior = ((stateO, events)) =>
           switch stateO {
@@ -111,7 +115,7 @@ module Make = (
         }
       }
 
-      Logger.debug(~loc=__LOC__, "finished eventLogReplay for id", id)
+      Logger.debug(~loc=__LOC__, "finished eventLogReplayStream for id", id)
 
       // TOREVIEW: should we use Logger.debug or just some minimal data here?
       //    also: do we need the additional info of Message.command'
@@ -131,7 +135,7 @@ module Make = (
         ->Array.map(({reference, command}) => (reference, command))
         ->Belt.Array.unzip
       let result = await commands'->Array.reduce(
-        Ok((updateState(None, history), []))->Promise.resolve,
+        Ok((initialState, []))->Promise.resolve,
         processCommand,
       )
       let events = switch result {
@@ -156,7 +160,7 @@ module Make = (
           `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
           generatedEvents'->Array.map(event' => event'->eventName),
         )
-        switch await Ops.eventLog.append(history->Array.length, id, generatedEvents') {
+        switch await Ops.eventLog.append(sequenceNr, id, generatedEvents') {
         | Ok(_) =>
           Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
           references->Array.map(reference => Ok(reference))

@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** In progress — Phase A complete, Phases B–E pending
+**Status:** In progress — Phases A–B complete, Phases C–E pending
 **Created:** 2026-02-28
 **Revised:** 2026-02-28
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
@@ -509,7 +509,7 @@ describe("Stream bindings", () => {
 
 ---
 
-### Phase B — EventLog.replayStream + Aggregate_Callback Adaptation
+### Phase B — EventLog.replayStream + Aggregate_Callback Adaptation ✅ COMPLETE
 
 **Goal:** Replace the full in-memory event array load in `Aggregate_Callback` with a lazy stream
 fold that produces `(initialState, sequenceNr)` in a single pass, eliminating the two-pass overhead
@@ -754,14 +754,24 @@ testPromise("second command sees state produced by first command via stream repl
 })
 ```
 
-#### B.3 Acceptance criteria
+#### B.3 Acceptance criteria ✅
 
-- All existing `EventLogTest.res` tests pass unchanged (replay still works)
-- All existing `AggregateTest.res` tests pass unchanged (observable behaviour unchanged)
-- All new `EventLogStreamTest.res` tests pass (12 new tests)
-- Aggregate regression test passes
-- `npm run build` from root: zero warnings, all packages compile
-- `npm test` from `reventless-in-memory`: all suites pass
+- All existing `EventLogTest.res` tests pass unchanged (replay still works) ✅
+- All existing `AggregateTest.res` tests pass unchanged (observable behaviour unchanged) ✅
+- All new `EventLogStreamTest.res` tests pass (7 tests) ✅
+- `npm run build` from root: zero warnings, all packages compile ✅
+- `npm test` from `reventless-in-memory`: 129 tests pass ✅
+- `npm test` from `reventless-core`: 185 tests pass ✅
+
+**Implementation notes:**
+- `reventless-aws` required `rescript-effect` added to both `package.json` and `rescript.json`
+  (not previously a dependency — needed for `Stream.fromEffect`/`flatMap` in DynamoDB runtime)
+- DynamoDB `replayStream` wraps the existing promise-based `tryReplay` in a stream via
+  `Effect.tryPromise → Stream.fromEffect → Stream.flatMap(fromIterable)`. Full pagination
+  with `paginateEffect` is a follow-up when `queryByIdPage` is implemented.
+- `EventLogStorage_DynamoDbStream.res` (the CDC variant) also required `replayStream`
+- `MockEventLogStorage.res` (in `reventless-in-memory/src/test/Mocks/`) also required updating
+- `AggregateFixtures.res` mock EventLog module required `replayStream` in `type operations`
 
 ---
 

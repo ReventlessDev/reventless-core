@@ -13,6 +13,7 @@ module type T = {
   module Spec: Reventless.EventLog.T
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
+  let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>
 }
 
 // Retry schedule for transient storage errors.
@@ -130,4 +131,12 @@ module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
     let eventsJson = await Ops.storage.replay(id->Spec.Id.toString)
     eventsJson->decodeEvents(id->Spec.Id.toString)
   }
+
+  // Lazy streaming replay — wraps decodeEvent in Effect.sync so thrown exceptions
+  // surface through the stream's error channel rather than as unhandled exceptions.
+  let replayStream = id =>
+    Ops.storage.replayStream(id->Spec.Id.toString)
+    ->Stream.mapEffect(json =>
+      Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
+    )
 }
