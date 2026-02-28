@@ -1,6 +1,6 @@
 # Effect Stream Integration Plan
 
-**Status:** Complete — all phases A–G done
+**Status:** Phases A–G complete; H and I planned
 
 **Created:** 2026-02-28
 
@@ -8,7 +8,7 @@
 
 **Depends on:** `docs/plans/effect-library-integration.md` phases 0–4 (complete)
 
-**Summary:** Six use cases where Effect `Stream` improves memory safety, correctness, or composability in the Reventless codebase. Each phase bundles its implementation and tests together. Includes a structural analysis of how `Aggregate_Callback` and other callback modules must adapt for lazy fold.
+**Summary:** Stream-based improvements across the Reventless codebase. Phases A–G covered `Stream` bindings, lazy replay, paginated scans, CSV ingestion, and PubSub fan-out. Phases H and I extend the write path: `appendStream` lets a `Stream<event>` drive EventLog and DcbEventLog appends without materialising the entire sequence in memory; `publishJsonsStream` / `publishJsonStream` let a `Stream<commandJson>` or `Stream<eventJson>` drive CommandTopic and EventTopic publishing, composing naturally with the read-side streams from earlier phases.
 
 ---
 
@@ -411,11 +411,16 @@ dependency. Phase A (bindings) is the prerequisite for all others.
 ```
 Phase A — Stream.res bindings + smoke tests
   ├─> Phase B — EventLog.replayStream + Aggregate_Callback + tests
+  │     └─> Phase H — EventLog.appendStream + DcbEventLog.appendStream + tests
   ├─> Phase C — QueryDb scan stream + limit tests
   ├─> Phase D — DcbEventLog.readStream + StateChangeSlice_Callback + tests
+  │     └─> Phase H (also depends on D for DcbEventLog side)
   ├─> Phase E — CSV/Node.js streams + tests
   └─> Phase F — InMemory_Bus fan-out via PubSub + Stream
         └─> Phase G — Bounded PubSub backpressure
+
+Phase H — EventLog.appendStream + DcbEventLog.appendStream
+  └─> Phase I — CommandTopic.publishJsonsStream + EventTopic.publishJsonStream + Aggregate facade
 ```
 
 ---
@@ -1804,6 +1809,693 @@ simple `ref<option<unit => unit>>` callback. Adjust to whatever pattern the code
 
 ---
 
+## Section 4b: Phases H and I
+
+---
+
+### Phase H — EventLog.appendStream + DcbEventLog.appendStream
+
+**Goal:** Add `appendStream` to both EventLog and DcbEventLog so that a `Stream.t<event>` can drive
+appends without materialising the entire sequence in memory. Primary use cases: event migration,
+bulk seeding, and composing a read-side `replayStream` on one log directly into a write-side
+`appendStream` on another.
+
+**Priority:** Medium — enables streaming pipelines across event stores with bounded memory.
+
+**Dependency:** Phase B (EventLog.replayStream) and Phase D (DcbEventLog.readStream) must be
+complete so the new operations are symmetric with their read counterparts.
+
+#### H.1 Structural Analysis
+
+##### EventLog appendStream
+
+The existing `append` signature is:
+
+```rescript
+type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, string>>
+```
+
+The `int` is the optimistic concurrency token (sequenceNr). For streaming appends, the caller
+supplies the *starting* sequenceNr; the operation increments it for every event emitted by the
+stream, making a separate storage call per event. Storage errors terminate the stream via the
+Effect error channel.
+
+New type:
+
+```rescript
+type appendStream<'id, 'event> = (int, 'id, Stream.t<'event, string, unit>) => Effect.t<unit, string, unit>
+```
+
+The error channel carries the first storage error message. On success the Effect produces `unit`.
+
+**Why the error lives in the channel (not a `result`):**
+The existing `append` returns `result<unit, string>` wrapped in a promise. For the stream variant,
+errors are already routed through the stream's own `'e` channel — wrapping them in an additional
+`Result` layer would require callers to handle both levels. Using the channel directly is more
+idiomatic and consistent with `replayStream` (whose errors also propagate via the channel).
+
+**Mutable seqNr inside `Stream.runForEach`:**
+Because Node.js is single-threaded and Effect fibers run cooperatively, a plain `ref<int>` is safe
+for the sequenceNr counter — the same argument as the `remaining` countdown in Phase F.
+
+```rescript
+// EventLog_Operations.res — appendStream inside Make(...)
+let appendStream = (startingSeqNr, id, stream) => {
+  let seqNrRef = ref(startingSeqNr)
+  stream->Stream.runForEach(event =>
+    Effect.promise(() => Ops.storage.append(seqNrRef.contents, id, [event]))
+    ->Effect.flatMap(result => switch result {
+    | Ok() =>
+      seqNrRef := seqNrRef.contents + 1
+      Effect.succeed(())
+    | Error(msg) => Effect.fail(msg)
+    })
+  )
+}
+```
+
+`Stream.runForEach` returns `Effect.t<unit, 'e, 'r>` — the error type `'e` matches `string`, so
+the function type resolves cleanly without extra annotation.
+
+##### DcbEventLog appendStream
+
+The existing `append` signature is:
+
+```rescript
+type append<'event> = (array<rawStoredEvent>, ~condition: appendCondition=?) =>
+  promise<result<sequencePosition, string>>
+```
+
+The `~condition` is a single optimistic concurrency check applied atomically to the whole batch.
+For streaming, we collect the stream into one array and make a single append call. This preserves
+the atomicity of the condition check — essential for correctness. The cost is that the full batch
+must fit in memory; however, for the typical use case (replicating a bounded decision-model event
+set) this is acceptable. If truly unbounded batches are needed, a future phase can add chunked
+appends with cursor-tracking.
+
+New type in `DcbEventLog.res` / `Reventless.DcbEventLog`:
+
+```rescript
+type appendStream<'event> =
+  (Stream.t<'event, string, unit>, ~condition: appendCondition=?) =>
+    Effect.t<result<sequencePosition, string>, string, unit>
+```
+
+The outer effect error channel carries stream-level errors (e.g., decode failures upstream); the
+inner `result` carries the storage-level OCC failure (consistent with the existing `append`).
+
+```rescript
+// DcbEventLog_Operations.res — appendStream inside Make(...)
+let appendStream = (~condition=?, stream) =>
+  stream
+  ->Stream.runCollect                                          // collect stream to array
+  ->Effect.flatMap(events =>
+    Effect.promise(() => Ops.storage.append(events->Array.map(encodeEvent), ~condition?))
+  )
+```
+
+`Stream.runCollect` returns `Effect.t<array<'event>, 'e, 'r>`. The flatMap chains the async
+storage call. The result of `Effect.promise(storage.append(...))` is
+`Effect.t<result<sequencePosition, string>, never, unit>` which the outer flatMap resolves
+correctly.
+
+##### What does NOT change
+
+- The existing `append` (array-based, synchronous batch) on both EventLog and DcbEventLog is
+  unchanged. `appendStream` is an additive operation.
+- `Aggregate_Callback.handleCommands` is unchanged — it still uses the array-based `append`.
+- `StateChangeSlice_Callback.handleSingleCommand` is unchanged.
+
+#### H.2 Implementation Steps
+
+**Step 1 — Add types to EventLog.res**
+
+```rescript
+// EventLog.res — additions
+type appendStream<'id, 'event> = (int, 'id, Stream.t<'event, string, unit>) => Effect.t<unit, string, unit>
+```
+
+**Step 2 — Add to EventLog_Adapter.operations**
+
+```rescript
+// EventLog_Adapter.res — extend operations record
+type operations = {
+  append: EventLog.append<string, JSON.t>,
+  replay: EventLog.replay<string, JSON.t>,
+  replayStream: string => Stream.t<JSON.t, string, unit>,
+  appendStream: EventLog.appendStream<string, JSON.t>,   // NEW
+}
+```
+
+The storage adapter gets the raw `appendStream` first; `EventLog_Operations.Make` wraps it with
+the event-encoding layer (same pattern as `replayStream` → `mapEffect(decodeEvent)`).
+
+**Step 3 — Implement in EventLogStorage_InMemory.res**
+
+```rescript
+// EventLogStorage_InMemory.res — appendStream on the storage operations record
+let appendStream: EventLog.appendStream<string, JSON.t> = (startingSeqNr, id, stream) => {
+  let seqNrRef = ref(startingSeqNr)
+  stream->Stream.runForEach(json =>
+    Stm.TRef.modify(eventsRef, events => {
+      let existing = events->Dict.get(id)->Option.getOr([])
+      events->Dict.set(id, existing->Array.concat([json]))
+      (Ok(), events)
+    })
+    ->Stm.commit
+    ->Effect.flatMap(result => switch result {
+    | Ok() =>
+      seqNrRef := seqNrRef.contents + 1
+      Effect.succeed(())
+    | Error(msg) => Effect.fail(msg)
+    })
+  )
+}
+```
+
+Note: the in-memory storage ignores `startingSeqNr` for the actual write (in-memory does not
+enforce OCC), but it is kept in the signature for API uniformity with DynamoDB.
+
+**Step 4 — Implement in EventLog_Operations.Make**
+
+```rescript
+// EventLog_Operations.res — appendStream inside Make(...)
+let appendStream = (startingSeqNr, id, stream) =>
+  Ops.storage.appendStream(
+    startingSeqNr,
+    id->Spec.Id.toString,
+    stream->Stream.map(event => event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)),
+  )
+```
+
+Events are encoded to JSON before being passed to the storage adapter — the inverse of the
+`decodeEvent` call in `replayStream`.
+
+**Step 5 — Add types to Reventless.DcbEventLog and DcbEventLog.res**
+
+```rescript
+// reventless-spec/src/components/DcbEventLog.res — additions
+type appendStream<'event> =
+  (Stream.t<'event, string, unit>, ~condition: appendCondition=?) =>
+    Effect.t<result<sequencePosition, string>, string, unit>
+
+// reventless-core DcbEventLog.res mirrors the spec type:
+type appendStream<'event> = Reventless.DcbEventLog.appendStream<'event>
+```
+
+**Step 6 — Add to DcbEventLog_Adapter.operations**
+
+```rescript
+// DcbEventLog_Adapter.res — extend operations record
+type operations = {
+  read: ...,
+  append: ...,
+  readStream: ...,
+  appendStream: (array<rawStoredEvent>, ~condition: appendCondition=?) =>
+    promise<result<sequencePosition, string>>,  // same as append — storage collects first
+}
+```
+
+The storage-level `appendStream` is identical to `append` because the collection happens one
+layer up in `DcbEventLog_Operations`. The adapter signature does not need to change:
+`DcbEventLog_Operations.appendStream` calls `Ops.storage.append` (not a new storage method).
+
+**Step 7 — Implement in DcbEventLog_Operations.Make**
+
+```rescript
+// DcbEventLog_Operations.res — appendStream inside Make(...)
+let appendStream = (~condition=?, stream) =>
+  stream
+  ->Stream.map(event => encodeEvent(event))
+  ->Stream.runCollect
+  ->Effect.flatMap(rawEvents =>
+    Effect.promise(() => Ops.storage.append(rawEvents, ~condition?))
+  )
+```
+
+`encodeEvent` is the existing per-event encoder (already used in `append`). `Stream.runCollect`
+is already bound from Phase A. No new bindings required.
+
+**Step 8 — Propagate to mock and DynamoDB adapters**
+
+- `MockEventLogStorage.res` — add `appendStream` field with a stub implementation
+- `EventLogStorage_DynamoDB.res` / `EventLogStorage_DynamoDbStream.res` — add `appendStream`
+  using the same sequential-per-event pattern as the in-memory adapter (full DynamoDB-native
+  batch writing is a follow-up)
+- `DcbEventLogStorage_DynamoDb.res` — no change needed (`appendStream` at the operations layer
+  calls the existing `storage.append`)
+
+#### H.3 Tests
+
+**File to create:** `reventless/reventless-in-memory/tests/components/eventlog/EventLogAppendStreamTest.res`
+
+```rescript
+open AsyncTest
+open AsyncTest.Expect
+
+describe("EventLog.appendStream", () => {
+  describe("basic append", () => {
+    testPromise("appendStream writes all events to storage", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let stream = Stream.fromIterable([makeEvent("e1"), makeEvent("e2"), makeEvent("e3")])
+      let _ = await ops.appendStream(0, itemId, stream)->Effect.runPromise
+      let replayed = await ops.replay(itemId)
+      expect(replayed->Array.length)->toBe(3)
+    })
+
+    testPromise("appendStream on empty stream writes nothing", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.appendStream(0, itemId, Stream.empty)->Effect.runPromise
+      let replayed = await ops.replay(itemId)
+      expect(replayed->Array.length)->toBe(0)
+    })
+
+    testPromise("appendStream preserves event order", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let stream = Stream.fromIterable([makeEvent("first"), makeEvent("second")])
+      let _ = await ops.appendStream(0, itemId, stream)->Effect.runPromise
+      let replayed = await ops.replay(itemId)
+      expect(replayed->Array.length)->toBe(2)
+      // Verify order preserved — first event maps to first replay entry
+    })
+
+    testPromise("appendStream after array append continues from correct sequenceNr", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append(0, itemId, [makeEvent("initial")])
+      // Now appendStream from seqNr 1
+      let stream = Stream.fromIterable([makeEvent("streamed")])
+      let _ = await ops.appendStream(1, itemId, stream)->Effect.runPromise
+      let replayed = await ops.replay(itemId)
+      expect(replayed->Array.length)->toBe(2)
+    })
+  })
+
+  describe("replayStream → appendStream pipeline", () => {
+    testPromise("can copy events from one aggregate to another via streams", async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append(0, "source-id", [makeEvent("a"), makeEvent("b")])
+      // Stream from source and append to destination
+      let sourceStream = ops.replayStream("source-id")
+      let _ = await ops.appendStream(0, "dest-id", sourceStream)->Effect.runPromise
+      let destEvents = await ops.replay("dest-id")
+      expect(destEvents->Array.length)->toBe(2)
+    })
+  })
+})
+```
+
+**File to create:** `reventless/reventless-in-memory/tests/components/dcbeventlog/DcbEventLogAppendStreamTest.res`
+
+```rescript
+open AsyncTest
+open AsyncTest.Expect
+
+describe("DcbEventLog.appendStream", () => {
+  testPromise("appendStream writes all events from stream", async () => {
+    module TestDcb = DcbEventLogStorage_InMemory.Make({})
+    let stream = Stream.fromIterable([
+      makeRawEvent("e1", tagOf("x")),
+      makeRawEvent("e2", tagOf("x")),
+    ])
+    let result = await TestDcb.ops.appendStream(stream, ())->Effect.runPromise
+    expect(result)->not->toEqual(Error(_))
+    let read = await TestDcb.ops.read(~query=tagQuery("x"))
+    expect(read.events->Array.length)->toBe(2)
+  })
+
+  testPromise("appendStream on empty stream succeeds with a position", async () => {
+    module TestDcb = DcbEventLogStorage_InMemory.Make({})
+    let result = await TestDcb.ops.appendStream(Stream.empty, ())->Effect.runPromise
+    // Empty batch append — behaviour matches empty array append
+    expect(result)->not->toEqual(Error(_))
+  })
+
+  testPromise("readStream → appendStream pipeline copies events", async () => {
+    module SrcDcb = DcbEventLogStorage_InMemory.Make({})
+    module DstDcb = DcbEventLogStorage_InMemory.Make({})
+    let _ = await SrcDcb.ops.append([makeRawEvent("ev", tagOf("y"))], ())
+    let srcStream = SrcDcb.ops.readStream(~query=tagQuery("y"))
+    let _ = await DstDcb.ops.appendStream(srcStream, ())->Effect.runPromise
+    let dst = await DstDcb.ops.read(~query=tagQuery("y"))
+    expect(dst.events->Array.length)->toBe(1)
+  })
+})
+```
+
+#### H.4 Acceptance criteria
+
+- All existing EventLog and DcbEventLog tests pass unchanged
+- `EventLogAppendStreamTest.res` passes (5 tests)
+- `DcbEventLogAppendStreamTest.res` passes (3 tests)
+- `replayStream → appendStream` pipeline test demonstrates end-to-end streaming copy
+- Zero new compiler warnings
+- All mock and DynamoDB adapter stubs compile
+
+---
+
+### Phase I — CommandTopic.publishJsonsStream + EventTopic.publishJsonStream + Aggregate Facade
+
+**Goal:** Add streaming publish operations to CommandTopic and EventTopic so that a
+`Stream.t<commandJson>` or `Stream.t<eventItem>` can drive publishing without first collecting
+all items into an array. The Aggregate operations facade exposes the CommandTopic stream variant
+automatically. Together with Phase H's `appendStream`, these operations close the write-side
+streaming loop: read events from a stream → process → publish commands or events → stream the
+appends.
+
+**Priority:** Low — primarily useful for bulk command dispatch and high-throughput event fan-out.
+Individual publish calls can always be wrapped in `Stream.runForEach` by the caller; the stream
+operations are ergonomic wrappers that also make the intent explicit.
+
+**Dependency:** Phase H must be complete (establishes the write-side streaming pattern and confirms
+that Effect's `runForEach`-based implementation is sound for this codebase).
+
+#### I.1 Structural Analysis
+
+##### CommandTopic publishJsonsStream
+
+Current signature:
+
+```rescript
+// ReventlessSpec CommandTopic.res
+type publishJsons = array<Message.commandJson> => promise<unit>
+```
+
+New type:
+
+```rescript
+type publishJsonsStream = Stream.t<Message.commandJson, string, unit> => Effect.t<unit, string, unit>
+```
+
+Relationship: `publishJsonsStream` is the stream counterpart to `publishJsons`. A caller that has
+a `Stream.t<commandJson>` can publish each command as it is produced, without collecting into an
+array. Errors (e.g., dispatch failures) propagate through the Effect error channel.
+
+Implementation is `Stream.runForEach` wrapping the existing per-item dispatch:
+
+```rescript
+// CommandTopicChannel_InMemory.Make — publishJsonsStream
+let publishJsonsStream: CommandTopic.publishJsonsStream = stream =>
+  stream->Stream.runForEach(cmdJson =>
+    Effect.promise(() => Bus.dispatchCommand(name, encodeMessage(cmdJson)))
+  )
+```
+
+For the AWS adapter (`CommandTopicChannel_Sqs.res`), the same pattern holds with `sqs.sendMessage`
+wrapped in `Effect.tryPromise`.
+
+##### EventTopic publishJsonStream
+
+Current signature:
+
+```rescript
+// ReventlessSpec EventTopic.res
+type publishJson = (string, Message.meta, JSON.t) => promise<unit>
+```
+
+For the stream variant, each item carries the service name, meta, and JSON payload — three fields
+that are generated independently per event (unlike CommandTopic where all items share the same
+topic channel). Using a record type makes the stream item self-contained:
+
+```rescript
+// ReventlessSpec EventTopic.res — new record type and stream type
+type publishJsonStreamItem = {
+  service: string,
+  meta: Message.meta,
+  json: JSON.t,
+}
+type publishJsonStream = Stream.t<publishJsonStreamItem, string, unit> => Effect.t<unit, string, unit>
+```
+
+Implementation:
+
+```rescript
+// EventTopicPublisher_InMemory.Make — publishJsonStream
+let publishJsonStream: EventTopic.publishJsonStream = stream =>
+  stream->Stream.runForEach(({service, meta, json}) =>
+    Effect.promise(() => Bus.publishEvent(name, service, meta, json))
+  )
+```
+
+For the AWS adapter (`EventTopicPublisher_Sns.res`), the same pattern with `sns.publish` wrapped
+in `Effect.tryPromise`.
+
+##### Aggregate operations facade
+
+`Aggregate_Builder.Make` constructs an `operations` record that includes the CommandTopic
+operations. Adding `publishJsonsStream` to `CommandTopic.operations` makes it automatically
+available on the aggregate's command dispatch surface:
+
+```rescript
+// CommandTopic.res — operations record (core, not spec)
+type operations = {
+  publish: publish,
+  publishJsons: publishJsons,
+  publishJsonsStream: publishJsonsStream,   // NEW
+}
+```
+
+No change to `Aggregate_Callback.handleCommands` is required — the stream variant is an
+additional entry point, not a replacement.
+
+##### DcbEventLog publishToEventTopicStream (internal)
+
+`DcbEventLog_Operations` has a private `publishToEventTopic` that maps over an array and calls
+`publishJson` for each event. With the EventTopic stream operation available, the internal
+`publishToEventTopicStream` becomes:
+
+```rescript
+// DcbEventLog_Operations.res — new private helper (replaces array-based publishToEventTopic for
+// streaming callers; the existing array-based function is kept for Aggregate_Callback)
+let publishToEventTopicStream = (stream: Stream.t<Spec.event, string, unit>) =>
+  stream->Stream.runForEach(event =>
+    Effect.promise(() => {
+      let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
+      let meta = Message.generateMeta(~service=name)
+      Ops.publishJson(name, meta, json)
+    })
+  )
+```
+
+This is an internal optimisation. The external API (`appendStream` from Phase H) already calls
+the existing `publishToEventTopic`; exposing `publishJsonStream` on the EventTopic operations
+gives callers the option to stream their own event sequences to the EventTopic independently of
+the DcbEventLog append path.
+
+#### I.2 Implementation Steps
+
+**Step 1 — Add types to ReventlessSpec CommandTopic.res**
+
+```rescript
+// CommandTopic.res (spec) — additions
+type publishJsonsStream = Stream.t<Message.commandJson, string, unit> => Effect.t<unit, string, unit>
+```
+
+**Step 2 — Add types to ReventlessSpec EventTopic.res**
+
+```rescript
+// EventTopic.res (spec) — additions
+type publishJsonStreamItem = {
+  service: string,
+  meta: Message.meta,
+  json: JSON.t,
+}
+type publishJsonStream = Stream.t<publishJsonStreamItem, string, unit> => Effect.t<unit, string, unit>
+```
+
+**Step 3 — Extend CommandTopic.operations in reventless-core**
+
+```rescript
+// reventless-core CommandTopic.res — extend operations record
+type operations = {
+  publish: publish,
+  publishJsons: publishJsons,
+  publishJsonsStream: Reventless.CommandTopic.publishJsonsStream,   // NEW
+}
+```
+
+**Step 4 — Extend EventTopic.operations in reventless-core**
+
+```rescript
+// reventless-core EventTopic.res — extend operations record
+type operations = {
+  publish: publish,
+  publishJson: publishJson,
+  publishJsonStream: Reventless.EventTopic.publishJsonStream,   // NEW
+}
+```
+
+**Step 5 — Implement in CommandTopicChannel_InMemory.Make**
+
+```rescript
+// CommandTopicChannel_InMemory.res — inside Make(Bus)
+let publishJsonsStream: Reventless.CommandTopic.publishJsonsStream = stream =>
+  stream->Stream.runForEach(cmdJson =>
+    Effect.promise(() => Bus.dispatchCommand(name, encodeMessage(cmdJson)))
+  )
+
+// Add to the channel's publishJsonsStream field in the returned operations record
+```
+
+**Step 6 — Implement in EventTopicPublisher_InMemory.Make**
+
+```rescript
+// EventTopicPublisher_InMemory.res — inside Make(Bus)
+let publishJsonStream: Reventless.EventTopic.publishJsonStream = stream =>
+  stream->Stream.runForEach(({service, meta, json}) =>
+    Effect.promise(() => Bus.publishEvent(name, service, meta, json))
+  )
+
+// Add to the publisher's publishJsonStream field in the returned operations record
+```
+
+**Step 7 — Propagate to AWS adapters**
+
+- `CommandTopicChannel_Sqs.res` — add `publishJsonsStream` using `Effect.tryPromise` around
+  `sqs.sendMessage`, same pattern as `publishJsons` but wrapped in `runForEach`
+- `EventTopicPublisher_Sns.res` — add `publishJsonStream` using `Effect.tryPromise` around
+  `sns.publish`
+- Mock stubs in test fixtures need the new fields (empty `Effect.succeed(())` stubs acceptable)
+
+**Step 8 — Expose `publishJsonsStream` on Aggregate_Builder operations**
+
+The aggregate operations record is constructed in `Aggregate_Builder.Make`. The CommandTopic
+operations are already threaded through; once `publishJsonsStream` is in `CommandTopic.operations`
+it is automatically available. Verify the operations record type in `Aggregate.res` includes the
+new field (or is structurally open enough to accept it without explicit annotation change).
+
+#### I.3 Tests
+
+**File to create:** `reventless/reventless-in-memory/tests/components/commandtopic/CommandTopicStreamTest.res`
+
+```rescript
+open AsyncTest
+open AsyncTest.Expect
+
+describe("CommandTopic.publishJsonsStream", () => {
+  testPromise("streams 3 commands to the bus in order", async () => {
+    module TestBus = InMemory_Bus.Make()
+    // Register a handler to capture dispatched commands
+    let captured = ref([])
+    TestBus.registerCommandHandler("TestCmd", async body => {
+      captured := captured.contents->Array.concat([body])
+    })
+    let cmdTopic = CommandTopicChannel_InMemory.Make(TestBus).make(
+      ~name="TestCmd", ~opts=Pulumi.CustomResourceOptions.make()
+    )
+    let ops = await cmdTopic.publishJsonsStream->TestRunner.resolve
+    let stream = Stream.fromIterable([
+      makeCommandJson("cmd-1"),
+      makeCommandJson("cmd-2"),
+      makeCommandJson("cmd-3"),
+    ])
+    let _ = await ops(stream)->Effect.runPromise
+    // Allow dispatch to settle
+    let _ = await Promise.resolve()
+    expect(captured.contents->Array.length)->toBe(3)
+  })
+
+  testPromise("empty stream dispatches nothing", async () => {
+    module TestBus = InMemory_Bus.Make()
+    let dispatched = ref(0)
+    TestBus.registerCommandHandler("TestCmd", async _ => {
+      dispatched := dispatched.contents + 1
+    })
+    let ops = ... // same as above
+    let _ = await ops(Stream.empty)->Effect.runPromise
+    let _ = await Promise.resolve()
+    expect(dispatched.contents)->toBe(0)
+  })
+})
+```
+
+**File to create:** `reventless/reventless-in-memory/tests/components/eventtopic/EventTopicStreamTest.res`
+
+```rescript
+open AsyncTest
+open AsyncTest.Expect
+
+describe("EventTopic.publishJsonStream", () => {
+  testPromise("streams 2 events to all subscribers", async () => {
+    module TestBus = InMemory_Bus.Make()
+    let received = ref([])
+    TestBus.subscribeToEvents("TestEventTopic", async (_, _, json) => {
+      received := received.contents->Array.concat([json])
+    })
+    let publisher = EventTopicPublisher_InMemory.Make(TestBus).make(
+      ~name="TestEventTopic", ~storageResources=[], ~opts=Pulumi.CustomResourceOptions.make()
+    )
+    let ops = await publisher.publishJsonStream->TestRunner.resolve
+    let stream = Stream.fromIterable([
+      {service: "svc", meta: makeMeta(), json: JSON.parseExn("{\"type\":\"A\"}")},
+      {service: "svc", meta: makeMeta(), json: JSON.parseExn("{\"type\":\"B\"}")},
+    ])
+    let _ = await ops(stream)->Effect.runPromise
+    let _ = await Promise.resolve()
+    let _ = await Promise.resolve()
+    expect(received.contents->Array.length)->toBe(2)
+  })
+
+  testPromise("publishJsonStream composes with replayStream → appendStream pipeline", async () => {
+    // Demonstrates the full write-side stream loop:
+    // replayStream → decode → stream to EventTopic
+    // Validates that stream operations compose end-to-end without forced materialisation.
+    let eventStream = Stream.fromIterable([
+      {service: "svc", meta: makeMeta(), json: JSON.parseExn("{\"ev\":1}")},
+      {service: "svc", meta: makeMeta(), json: JSON.parseExn("{\"ev\":2}")},
+    ])
+    let received = ref(0)
+    TestBus.subscribeToEvents("TestEventTopic", async (_, _, _) => {
+      received := received.contents + 1
+    })
+    let _ = await publishJsonStreamOps(eventStream)->Effect.runPromise
+    let _ = await Promise.resolve()
+    let _ = await Promise.resolve()
+    expect(received.contents)->toBe(2)
+  })
+})
+```
+
+**Integration smoke test** — add to `AggregateTest.res`:
+
+```rescript
+testPromise("aggregate.commandTopic.publishJsonsStream dispatches via stream", async () => {
+  // Stream a command instead of calling publishJsons directly
+  let cmdStream = Stream.fromIterable([encodeCreate("item-stream", "Streamed")])
+  let _ = await ops.commandTopic.publishJsonsStream(cmdStream)->Effect.runPromise
+  let _ = await Promise.resolve()
+  let _ = await Promise.resolve()
+  // Verify event was produced (command was processed)
+  let replayed = await eventLogOps.replayStream("item-stream")
+    ->Stream.runFold(0, (n, _) => n + 1)
+    ->Effect.runPromise
+  expect(replayed)->toBe(1)
+})
+```
+
+#### I.4 Acceptance criteria
+
+- All existing CommandTopic, EventTopic, and Aggregate tests pass unchanged
+- `CommandTopicStreamTest.res` passes (2 tests)
+- `EventTopicStreamTest.res` passes (2 tests)
+- Aggregate integration smoke test passes (1 test)
+- `reventless-spec` compiles with the new `publishJsonsStream` / `publishJsonStreamItem` /
+  `publishJsonStream` types
+- All AWS adapter stubs compile (even if the DynamoDB implementation is a stub)
+- Zero new compiler warnings
+
+**Implementation notes (to fill in after implementation):**
+
+- If `reventless-spec` does not yet import `Stream` (it needed to be added in Phase D for
+  DcbEventLog), verify the dependency is present in both `package.json` and `rescript.json`.
+- `publishJsonStreamItem` introduces the only new record type in this phase. If it causes
+  ambiguity with existing record types in the same scope, add a module namespace:
+  `EventTopic.StreamItem` rather than a top-level type.
+- The `publishJsonsStream` on the AWS CommandTopic channel should batch commands where possible
+  (SQS `sendMessageBatch` accepts up to 10 messages). This is a follow-up optimisation; the
+  initial implementation sends one message per stream item for correctness.
+
+---
+
 ## Section 5: Known Constraints and Risks
 
 ### `PubSub.publish` on unbounded hub must use `Effect.runSync` (Phase F)
@@ -1900,3 +2592,56 @@ The existing `decodeEvent` function throws `JsError` on malformed events. Inside
 uncaught exceptions escape Effect's error channel. Wrap in `Effect.sync(() => decodeEvent(...))`
 so that thrown exceptions become stream failures (routed through the `'e` channel) rather than
 unhandled JS exceptions. This enables `Stream.catchAll` recovery if needed.
+
+### `appendStream` mutable seqNr ref is safe only in single-threaded JS (Phase H)
+
+`EventLog_Operations.appendStream` uses a `ref<int>` to track the sequenceNr across stream items
+inside `Stream.runForEach`. This is safe because Node.js is single-threaded and Effect fibers run
+cooperatively — the same argument as the `remaining` countdown ref in Phase F. If this code is
+ever ported to a multi-threaded Effect runtime (JVM/native), replace `ref<int>` with
+`SynchronizedRef` or an STM-based counter.
+
+### DcbEventLog.appendStream collects the full stream before writing (Phase H)
+
+`DcbEventLog_Operations.appendStream` calls `Stream.runCollect` before passing the batch to
+`storage.append`. This means the entire event sequence is held in memory before the write — the
+same as the array-based `append`. The benefit is that the caller's *production* of events can be
+a stream (e.g., decoded from a CSV or from `replayStream` on another log) without the caller
+needing to materialise it themselves. True chunk-by-chunk DcbEventLog writes would break the
+atomicity of the `~condition` check and require a more complex protocol — deferred to a future
+phase.
+
+### `appendStream` error channel vs. `result` return (Phase H)
+
+`EventLog.appendStream` routes storage errors through the Effect error channel (`Effect.fail`)
+rather than returning `result<unit, string>`. This is intentional: the error channel is the
+natural fit when errors are non-recoverable within the stream pipeline (any storage failure aborts
+the append loop). Callers that want a `result` can use `Effect.either` to convert:
+
+```rescript
+eventLog.appendStream(seqNr, id, stream)
+->Effect.either
+->Effect.runPromise
+// yields promise<Either<string, unit>> which can be matched against Left(err)/Right(())
+```
+
+`DcbEventLog.appendStream` keeps the inner `result<sequencePosition, string>` for parity with the
+existing `append` return type and because its error (OCC failure) is a business-level outcome that
+callers frequently need to pattern-match.
+
+### `publishJsonStream` timing (Phase I)
+
+`EventTopic.publishJsonStream` calls `Bus.publishEvent` inside `Stream.runForEach`. Each item in
+the stream goes through the same 2-tick delivery path as a direct `publishEvent` call, but items
+are processed sequentially (one item's publish must fully settle before the next begins — because
+`runForEach` awaits each Effect before moving to the next). For large streams this means N×2
+ticks total. Tests using `publishJsonStream` must await enough ticks (2 per item) or simply await
+the returned Effect (which resolves only after all items are delivered).
+
+### Aggregate.commandTopic.publishJsonsStream error handling (Phase I)
+
+The current `publishJsons` (array-based) silently ignores individual dispatch failures (no error
+is propagated to the caller). `publishJsonsStream` routes errors through the Effect error channel
+— if a single item dispatch fails, the stream terminates and the caller receives the error. This
+is a deliberately stricter contract. Callers that want best-effort delivery (ignore failures) can
+use `Stream.catchAll(\_ => Stream.empty)` before passing the stream to `publishJsonsStream`.
