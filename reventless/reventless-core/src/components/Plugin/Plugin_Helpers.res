@@ -526,7 +526,7 @@ module MakeEventCollectorHelper = (
       })
       let handler = PluginEventCollector.makeHandler(
         ~eventCollector,
-        ~eventsHandler=Callback.handleJsonEvents,
+        ~eventsHandler=EventCollector.fromArrayHandler(Callback.handleJsonEvents),
       )
       eventCollector->PluginRuntimeBuilder.forPluginEventCollector(
         ~handler,

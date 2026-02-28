@@ -60,7 +60,7 @@ module MakeEventCollectorHelper = (
       })
       let handler = CoreEventCollector.makeHandler(
         ~eventCollector,
-        ~eventsHandler=Callback.handleJsonEvents,
+        ~eventsHandler=EventCollector.fromArrayHandler(Callback.handleJsonEvents),
       )
       eventCollector->CoreRuntimeBuilder.forPluginEventCollector(~handler, ~eventTopics, ~resources)
     })

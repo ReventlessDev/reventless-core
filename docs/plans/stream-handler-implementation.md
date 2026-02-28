@@ -1,6 +1,6 @@
 # Plan: Stream-Based Handler Implementation (Phases J–L)
 
-**Status:** Phase J complete; Phases K–L pending
+**Status:** Phases J–K complete; Phase L pending
 
 **Created:** 2026-02-28
 
@@ -230,14 +230,24 @@ let makeStreamHandler = (
 }
 ```
 
-### Files to change (Phase K)
+### Files changed (Phase K) — complete
 
 | File | Change |
 |------|--------|
-| `reventless-core/src/components/EventCollector/EventCollector.res` | Change `jsonEventsHandler` type; add `fromArrayHandler` bridge |
-| `reventless-core/src/components/EventCollector/EventCollector_Builder.res` | Add `makeStreamHandler`; update `makeHandler` to bridge to Effect.runPromise |
-| `reventless-in-memory/src/adapter/EventCollector/EventCollectorChannel_InMemory.res` | Update `handleChannelEvent` to use `Stream.fromIterable` + `Effect.runPromise` |
-| `reventless-aws/src/adapter/EventCollector/EventCollectorChannel_*.res` | Update `handleChannelEvent` similarly (wrap SQS batch in stream) |
+| `rescript-effect/src/Effect.res` | Added `trySync` binding (`Effect.try` in JS) |
+| `reventless-core/src/components/EventCollector/EventCollector.res` | Changed `jsonEventsHandler` type; added `fromArrayHandler` bridge |
+| `reventless-core/src/components/EventCollector/EventCollector_Builder.res` | Added standalone `makeStreamHandler` (outside `Make` functor) |
+| `reventless-core/src/components/SideEffectHandler/SideEffectHandler_Callback.res` | Renamed array impl to `eventsHandlerImpl`; wrapped with `fromArrayHandler` |
+| `reventless-core/src/components/EventMapper/EventMapper_Callback.res` | `CounterHandler.handleCounterEvents` type → `Counter.counterEventsHandler`; wrapped `handleJsonEvents` with `fromArrayHandler` |
+| `reventless-core/src/components/ReadModel/ReadModel_Builder.res` | Wrapped `Callback.eventsHandler` with `fromArrayHandler` at call site |
+| `reventless-core/src/components/StateViewSlice/StateViewSlice_Builder.res` | Renamed local impl; wrapped with `fromArrayHandler` |
+| `reventless-core/src/core/Core/Core_Helpers.res` | Wrapped `Callback.handleJsonEvents` with `fromArrayHandler` at call site |
+| `reventless-core/src/components/Plugin/Plugin_Helpers.res` | Wrapped `Callback.handleJsonEvents` with `fromArrayHandler` at call site |
+| `reventless-core/tests/sideeffecthandler/SideEffectHandlerCallbackTest.res` | Updated `eventsHandler` calls to use `Stream.fromIterable` + `Effect.runPromise` |
+| `reventless-core/tests/eventmapper/EventMapperCallbackTest.res` | Updated `handleJsonEvents` calls similarly |
+| `reventless-in-memory/src/adapter/EventCollector/EventCollectorChannel_InMemory.res` | Updated `handleChannelEvent` to use `Stream.fromIterable` + `Effect.runPromise` |
+| `reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res` | Updated `handleDynamoDbOrSqsEvent` and `handleDynamoDbEvent` |
+| `reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res` | Updated `handleStreamEvent` type annotation and call |
 
 ---
 

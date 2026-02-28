@@ -9,7 +9,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
     testPromise("execute called with decoded id and event", async () => {
       let event = TestSource.SomethingHappened({value: "hello"})
       let eventJson = makeEventJson("entity-1", event)
-      await TestHandler.eventsHandler([eventJson])
+      await TestHandler.eventsHandler(Stream.fromIterable([eventJson]))->Effect.runPromise
       let call = capturedExecuteCalls.contents->Array.getUnsafe(0)
       expect((call.id, call.event))->toEqual(("entity-1", event))
     })
@@ -19,7 +19,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
     testPromise("execute not called, no error", async () => {
       let event = TestSource.SomethingHappened({value: "ignored"})
       let eventJson = makeEventJson(~service="UnknownService", "entity-1", event)
-      await TestHandler.eventsHandler([eventJson])
+      await TestHandler.eventsHandler(Stream.fromIterable([eventJson]))->Effect.runPromise
       expect(capturedExecuteCalls.contents->Array.length)->toBe(0)
     })
   })
@@ -27,7 +27,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
   describe("event with malformed JSON", () => {
     testPromise("caught gracefully — does not throw, execute not called", async () => {
       let invalidJson = JSON.Encode.string("not-an-object")
-      await TestHandler.eventsHandler([invalidJson])
+      await TestHandler.eventsHandler(Stream.fromIterable([invalidJson]))->Effect.runPromise
       expect(capturedExecuteCalls.contents->Array.length)->toBe(0)
     })
   })
@@ -39,7 +39,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
       let event = TestSource.SomethingHappened({value: "v"})
       let event1 = makeEventJson("entity-1", event)
       let event2 = makeEventJson("entity-2", event)
-      await TestHandler.eventsHandler([event1, event2])
+      await TestHandler.eventsHandler(Stream.fromIterable([event1, event2]))->Effect.runPromise
       // entity-2 should still be captured (first event threw)
       expect(capturedExecuteCalls.contents->Array.length)->toBe(1)
       expect((capturedExecuteCalls.contents->Array.getUnsafe(0)).id)->toBe("entity-2")
@@ -50,7 +50,7 @@ describe("SideEffectHandler_Callback.eventsHandler:", () => {
     testPromise("each handled independently", async () => {
       let event = TestSource.SomethingHappened({value: "v"})
       let events = ["entity-1", "entity-2", "entity-3"]->Array.map(id => makeEventJson(id, event))
-      await TestHandler.eventsHandler(events)
+      await TestHandler.eventsHandler(Stream.fromIterable(events))->Effect.runPromise
       expect(capturedExecuteCalls.contents->Array.length)->toBe(3)
     })
   })

@@ -24,27 +24,25 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) =>
       }
     )
 
-    switch await handleEvents(jsons) {
-    | _ =>
-      let entries =
-        records
-        ->Array.filter(record =>
-          switch record.eventSource {
-          | "aws:sqs" => true
-          | _ => false
-          }
-        )
-        ->Array.mapWithIndex((
-          record,
-          idx,
-        ): AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry => {
-          id: idx->Int.toString,
-          receiptHandle: (record->PulumiAws.SQS.Queue.asRecord).receiptHandle,
-        })
-      switch entries {
-      | [] => ()
-      | entries => await Util.SQS_Runtime.deleteMessages(entries, queue)
-      }
+    let _ = await (Stream.fromIterable(jsons)->handleEvents->Effect.runPromise)
+    let entries =
+      records
+      ->Array.filter(record =>
+        switch record.eventSource {
+        | "aws:sqs" => true
+        | _ => false
+        }
+      )
+      ->Array.mapWithIndex((
+        record,
+        idx,
+      ): AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry => {
+        id: idx->Int.toString,
+        receiptHandle: (record->PulumiAws.SQS.Queue.asRecord).receiptHandle,
+      })
+    switch entries {
+    | [] => ()
+    | entries => await Util.SQS_Runtime.deleteMessages(entries, queue)
     }
   }
 
@@ -73,7 +71,7 @@ let handleDynamoDbEvent = handleEvents =>
       }
     )
 
-    await handleEvents(jsons)
+    await (Stream.fromIterable(jsons)->handleEvents->Effect.runPromise)
   }
 
 let enqueueEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, _id, messageBody) => {

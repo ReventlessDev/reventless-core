@@ -95,6 +95,22 @@ external tryPromise: {
   "catch": unknown => 'e,
 } => t<'a, 'e, 'r> = "tryPromise"
 
+/**
+Wraps a synchronous computation that may throw into a typed `Effect`.
+
+The `"catch"` function maps the caught exception (typed as `unknown`) to a typed error.
+
+**Example**
+```rescript
+Effect.trySync({"try": () => JSON.parseOrThrow(input), "catch": _exn => "parse error"})
+```
+*/
+@module("effect") @scope("Effect")
+external trySync: {
+  "try": unit => 'a,
+  "catch": unknown => 'e,
+} => t<'a, 'e, 'r> = "try"
+
 /** An `Effect` that never succeeds or fails — it suspends the current fiber forever. */
 @module("effect") @scope("Effect")
 external never: t<'a, 'e, 'r> = "never"

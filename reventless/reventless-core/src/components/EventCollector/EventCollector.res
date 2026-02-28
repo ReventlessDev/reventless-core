@@ -7,7 +7,18 @@ type outputs = Reventless.EventCollector.outputs
 type operations = {enqueueEvent: enqueueEvent}
 type component = Component.t<t, outputs, operations>
 
-type jsonEventsHandler = array<JSON.t> => promise<unit>
+/** Stream-based internal handler type. All events in a batch arrive as a single Stream. */
+type jsonEventsHandler = Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>
+
+/**
+ * Backward-compatibility bridge: wraps an array-based handler as a `jsonEventsHandler`.
+ * Collects the stream into an array, then awaits the legacy promise handler.
+ */
+let fromArrayHandler: (array<JSON.t> => promise<unit>) => jsonEventsHandler =
+  arrayHandler => stream =>
+    stream
+    ->Stream.runCollect
+    ->Effect.flatMap(arr => Effect.promise(() => arrayHandler(arr)))
 
 module type T = {
   type callbackEvent

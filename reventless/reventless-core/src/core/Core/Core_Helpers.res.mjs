@@ -4,6 +4,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as QueryDb$ReventlessCore from "../../components/QueryDb/QueryDb.res.mjs";
 import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 import * as Core_Callback$ReventlessCore from "./Core_Callback.res.mjs";
+import * as EventCollector$ReventlessCore from "../../components/EventCollector/EventCollector.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../../components/Plugin/Plugin_Helpers.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../../components/EventCollector/EventCollector_Builder.res.mjs";
 
@@ -38,7 +39,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           pluginDefinition: fakePluginDefinition,
           outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
         });
-        let handler = CoreEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
+        let handler = CoreEventCollector.makeHandler(eventCollector, EventCollector$ReventlessCore.fromArrayHandler(Callback.handleJsonEvents));
         CoreRuntimeBuilder.forPluginEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
       });
     };

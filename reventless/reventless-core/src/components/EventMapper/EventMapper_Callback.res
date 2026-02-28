@@ -8,7 +8,8 @@ module type CounterHandler = {
     promise<array<ReventlessCore.Message.commandJson>>,
     array<ReventlessCore.Counter.action>,
   )>
-  let handleCounterEvents: EventCollector.jsonEventsHandler
+  // array-based: used directly as Counter.counterEventsHandler (not routed via EventCollector)
+  let handleCounterEvents: Counter.counterEventsHandler
 }
 
 module MakeCounterHandler = (
@@ -199,7 +200,7 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       }
     }
 
-  let handleJsonEvents = async eventsJson' => {
+  let handleJsonEventsImpl = async (eventsJson': array<JSON.t>) => {
     let (publisherEntries, counterActions) = await Ops.commonEventsHandler(eventsJson')
     let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
       switch x {
@@ -233,4 +234,5 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
 
     await Ops.publishJsons(await publisherEntries)
   }
+  let handleJsonEvents = EventCollector.fromArrayHandler(handleJsonEventsImpl)
 }

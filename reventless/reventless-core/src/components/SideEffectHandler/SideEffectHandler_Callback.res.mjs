@@ -8,6 +8,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
+import * as EventCollector$ReventlessCore from "../EventCollector/EventCollector.res.mjs";
 
 function Make(Spec) {
   let findSideEffect = (sideEffects, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
@@ -34,7 +35,7 @@ function Make(Spec) {
     }
     console.log("SideEffects.map: Invalid JSON object");
   });
-  let eventsHandler = eventsJson$p => Util_Promise$ReventlessCore.toUnit(Promise.all(eventsJson$p.map(async eventJson$p => {
+  let eventsHandlerImpl = eventsJson$p => Util_Promise$ReventlessCore.toUnit(Promise.all(eventsJson$p.map(async eventJson$p => {
     let match = findSideEffect(Spec.sideEffects, eventJson$p);
     if (match === undefined) {
       return;
@@ -64,6 +65,7 @@ function Make(Spec) {
       return;
     }
   })));
+  let eventsHandler = EventCollector$ReventlessCore.fromArrayHandler(eventsHandlerImpl);
   return {
     eventsHandler: eventsHandler
   };

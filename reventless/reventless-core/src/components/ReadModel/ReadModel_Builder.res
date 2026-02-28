@@ -81,7 +81,7 @@ module Make = (
         )
         let handler = SpecificEventCollector.makeHandler(
           ~eventCollector,
-          ~eventsHandler=Callback.eventsHandler,
+          ~eventsHandler=EventCollector.fromArrayHandler(Callback.eventsHandler),
         )
         let resources = (queryDb->Component.outputs).resources
 

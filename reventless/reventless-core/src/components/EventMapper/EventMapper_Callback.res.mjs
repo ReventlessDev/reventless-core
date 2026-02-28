@@ -11,6 +11,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
+import * as EventCollector$ReventlessCore from "../EventCollector/EventCollector.res.mjs";
 
 function MakeCounterHandler(Target) {
   return Mappings => (Ops => {
@@ -188,7 +189,7 @@ function MakeEventCollectorHandler(Ops) {
       return await doCount(countItems);
     }
   };
-  let handleJsonEvents = async eventsJson$p => {
+  let handleJsonEventsImpl = async eventsJson$p => {
     let match = await Ops.commonEventsHandler(eventsJson$p);
     let match$1 = Belt_Array.partition(match[1], x => x.TAG === "Count");
     let addToCounterTargetActions = match$1[1];
@@ -209,6 +210,7 @@ function MakeEventCollectorHandler(Ops) {
     })));
     return await Ops.publishJsons(await match[0]);
   };
+  let handleJsonEvents = EventCollector$ReventlessCore.fromArrayHandler(handleJsonEventsImpl);
   return {
     handleJsonEvents: handleJsonEvents
   };

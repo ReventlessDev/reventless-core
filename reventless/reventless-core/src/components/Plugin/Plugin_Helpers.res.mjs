@@ -19,6 +19,7 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Plugin$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Plugin.res.mjs";
 import * as Util_QueryDb$ReventlessCore from "../../util/Util_QueryDb.res.mjs";
 import * as ExportMeta$ReventlessInterop from "@reventlessdev/reventless-interop/src/ExportMeta.res.mjs";
+import * as EventCollector$ReventlessCore from "../EventCollector/EventCollector.res.mjs";
 import * as EventMapper$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/EventMapper.res.mjs";
 import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
 import * as Util_StackRefs$ReventlessCore from "../../util/Util_StackRefs.res.mjs";
@@ -317,7 +318,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
           incomingExtensionEventHandlers: incomingExtensionEventHandlers
         });
-        let handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
+        let handler = PluginEventCollector.makeHandler(eventCollector, EventCollector$ReventlessCore.fromArrayHandler(Callback.handleJsonEvents));
         PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[5], undefined, undefined, eventCollector);
         Component$ReventlessCore.outputs(eventCollector).resources[0].urn.apply(urn => {
           pluginDefinition.eventCollector = urn;

@@ -1,5 +1,5 @@
 let handleStreamEvent: (
-  array<JSON.t> => promise<unit>,
+  ReventlessCore.EventCollector.jsonEventsHandler,
   PulumiAws.DynamoDb.Stream.event,
   _,
 ) => promise<unit> = async (handleEvents, streamEvent, _) => {
@@ -20,7 +20,7 @@ let handleStreamEvent: (
     }
   )
 
-  try await handleEvents(jsons) catch {
+  try await (Stream.fromIterable(jsons)->handleEvents->Effect.runPromise) catch {
   | err => Console.log2("handleStreamEvent error:", err)
   }
 }

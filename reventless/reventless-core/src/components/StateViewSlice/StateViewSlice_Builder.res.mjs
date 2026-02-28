@@ -10,6 +10,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Projection$ReventlessCore from "../../Projection.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as EventCollector$ReventlessCore from "../EventCollector/EventCollector.res.mjs";
 import * as StateViewSlice$ReventlessCore from "./StateViewSlice.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
@@ -55,7 +56,7 @@ function Make(RuntimeEnvironment) {
         let eventCollector = Component$ReventlessCore.operations(queryDb).apply(queryDbOps => {
           let projectionOps = toProjectionOps(queryDbOps);
           let ec = SpecificEventCollector.make(Spec.name, allEventTopics, opts);
-          let jsonEventsHandler = async jsons => {
+          let jsonEventsHandlerImpl = async jsons => {
             let events = Stdlib_Array.filterMap(jsons, json => {
               try {
                 return Primitive_option.some(S.parseJsonOrThrow(json, Spec.DcbEventLogSpec.eventSchema));
@@ -68,6 +69,7 @@ function Make(RuntimeEnvironment) {
             let actions = events.flatMap(event => Spec.project(undefined, event));
             return await Projection$ReventlessCore.handleActions(actions, projectionOps, undefined);
           };
+          let jsonEventsHandler = EventCollector$ReventlessCore.fromArrayHandler(jsonEventsHandlerImpl);
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;
           EventCollectorRuntimeBuilder.forEventCollector(handler, allEventTopics, resources, undefined, undefined, ec);

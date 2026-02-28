@@ -32,7 +32,7 @@ module Make = (Spec: Spec): T => {
       }
     })
 
-  let eventsHandler = eventsJson' => {
+  let eventsHandlerImpl = (eventsJson': array<JSON.t>) => {
     eventsJson'
     ->Array.map(async eventJson' =>
       switch Spec.sideEffects->findSideEffect(eventJson') {
@@ -72,4 +72,5 @@ module Make = (Spec: Spec): T => {
     ->Promise.all
     ->Util.Promise.toUnit
   }
+  let eventsHandler = EventCollector.fromArrayHandler(eventsHandlerImpl)
 }

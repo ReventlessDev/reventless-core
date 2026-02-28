@@ -64,7 +64,7 @@ module Make = (
 
           let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics=allEventTopics, ~opts)
 
-          let jsonEventsHandler: EventCollector.jsonEventsHandler = async jsons => {
+          let jsonEventsHandlerImpl = async (jsons: array<JSON.t>) => {
             let events = jsons->Array.filterMap(json =>
               try Some(json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema))
               catch {
@@ -76,6 +76,7 @@ module Make = (
             let actions = events->Array.flatMap(event => Spec.project(None, event))
             await Projection.handleActions(actions, projectionOps, None)
           }
+          let jsonEventsHandler = EventCollector.fromArrayHandler(jsonEventsHandlerImpl)
 
           let handler = SpecificEventCollector.makeHandler(
             ~eventCollector=ec,
