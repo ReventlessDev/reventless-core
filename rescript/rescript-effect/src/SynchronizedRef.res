@@ -1,33 +1,55 @@
-// ReScript bindings for Effect SynchronizedRef
-//
-// SynchronizedRef<A> is like Ref, but provides updateEffect — an atomic,
-// effectful update. No other fiber can read or write the ref between the
-// read and write steps of the update. Use this instead of Ref when the
-// new value depends on an async computation (e.g. loading from storage).
+/**
+ReScript bindings for `SynchronizedRef<A>` — a `Ref` with atomic effectful updates.
 
+Like `Ref`, `SynchronizedRef` is a concurrent-safe mutable variable. Unlike `Ref`,
+`updateEffect` and `modifyEffect` serialise effectful update functions: no other
+fiber can observe the ref in the intermediate state between the read and the write.
+
+**When to use `SynchronizedRef` over `Ref`:**
+Use `SynchronizedRef` when the new value depends on an async computation
+(e.g. fetching from a database or calling an external service).
+*/
 type t<'a>
 
-// Create a new SynchronizedRef with an initial value
+/** Creates a new `SynchronizedRef` initialised with `value`. */
 @module("effect") @scope("SynchronizedRef")
 external make: 'a => Effect.t<t<'a>, 'e, 'r> = "make"
 
-// Read the current value
+/** Reads and returns the current value. */
 @module("effect") @scope("SynchronizedRef")
 external get: t<'a> => Effect.t<'a, 'e, 'r> = "get"
 
-// Replace the value
+/** Replaces the current value with `newValue`. */
 @module("effect") @scope("SynchronizedRef")
 external set: (t<'a>, 'a) => Effect.t<unit, 'e, 'r> = "set"
 
-// Apply a pure function atomically
+/** Atomically applies a pure function to update the value. */
 @module("effect") @scope("SynchronizedRef")
 external update: (t<'a>, 'a => 'a) => Effect.t<unit, 'e, 'r> = "update"
 
-// Run an effectful function atomically — no other fiber can observe
-// the ref in the intermediate state between read and write.
+/**
+Atomically applies an effectful function to update the value.
+
+No other fiber can read or write the ref between the read and write steps.
+The effect is run while the ref is "locked" — all other `updateEffect` calls
+for this ref will wait until the current one completes.
+
+**Example**
+```rescript
+// Load current state from DB and update — atomically
+ref->SynchronizedRef.updateEffect(current =>
+  loadFromDb(current.id)->Effect.map(fresh => {...fresh, count: fresh.count + 1})
+)
+```
+*/
 @module("effect") @scope("SynchronizedRef")
 external updateEffect: (t<'a>, 'a => Effect.t<'a, 'e, 'r>) => Effect.t<unit, 'e, 'r> = "updateEffect"
 
-// Effectful update that also produces a result value
+/**
+Atomically applies an effectful function that produces both a result and a new value.
+
+Combines the atomicity guarantee of `updateEffect` with the result-returning
+semantics of `Ref.modify`.
+*/
 @module("effect") @scope("SynchronizedRef")
 external modifyEffect: (t<'a>, 'a => Effect.t<('b, 'a), 'e, 'r>) => Effect.t<'b, 'e, 'r> = "modifyEffect"

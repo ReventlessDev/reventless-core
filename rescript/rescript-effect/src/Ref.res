@@ -1,35 +1,49 @@
-// ReScript bindings for Effect Ref
-//
-// Ref<A> is a concurrent-safe mutable variable. Reads and writes are
-// atomic via compare-and-swap (CAS). For effectful updates that must
-// be transactional, use SynchronizedRef instead.
+/**
+ReScript bindings for `Ref<A>` — a concurrent-safe mutable variable.
 
+All read/write operations are atomic via compare-and-swap (CAS), making `Ref`
+safe to use from multiple concurrent fibers without additional locking.
+
+For updates that depend on an async computation (e.g. loading from a database),
+use `SynchronizedRef` instead — it serialises effectful updates atomically.
+*/
 type t<'a>
 
-// Create a new Ref with an initial value
+/** Creates a new `Ref` initialised with `value`. */
 @module("effect") @scope("Ref")
 external make: 'a => Effect.t<t<'a>, 'e, 'r> = "make"
 
-// Read the current value
+/** Reads and returns the current value. */
 @module("effect") @scope("Ref")
 external get: t<'a> => Effect.t<'a, 'e, 'r> = "get"
 
-// Replace the value
+/** Replaces the current value with `newValue`. */
 @module("effect") @scope("Ref")
 external set: (t<'a>, 'a) => Effect.t<unit, 'e, 'r> = "set"
 
-// Apply a pure function to update the value
+/** Atomically applies a pure function to the current value and stores the result. */
 @module("effect") @scope("Ref")
 external update: (t<'a>, 'a => 'a) => Effect.t<unit, 'e, 'r> = "update"
 
-// Update and return the old value
+/** Atomically applies `f` to the current value, stores the new value, and returns the **old** value. */
 @module("effect") @scope("Ref")
 external getAndUpdate: (t<'a>, 'a => 'a) => Effect.t<'a, 'e, 'r> = "getAndUpdate"
 
-// Update and return the new value
+/** Atomically applies `f` to the current value, stores the new value, and returns the **new** value. */
 @module("effect") @scope("Ref")
 external updateAndGet: (t<'a>, 'a => 'a) => Effect.t<'a, 'e, 'r> = "updateAndGet"
 
-// Compute a result while updating the value in one atomic step
+/**
+Atomically applies `f` to the current value, producing a result `'b` and a new value `'a` in one step.
+
+**Example**
+```rescript
+// Atomically dequeue the head element
+ref->Ref.modify(list => switch list {
+  | [] => (None, [])
+  | [head, ...tail] => (Some(head), tail)
+})
+```
+*/
 @module("effect") @scope("Ref")
 external modify: (t<'a>, 'a => ('b, 'a)) => Effect.t<'b, 'e, 'r> = "modify"

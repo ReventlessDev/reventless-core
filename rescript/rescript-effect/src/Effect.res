@@ -1,13 +1,24 @@
-// ReScript bindings for Effect core
-//
-// Effect<A, E, R> — the three-channel type:
-//   'a = success value
-//   'e = typed error channel (expected, recoverable failures)
-//   'r = requirements channel (dependencies needed to run — use unit for none)
-//
-// Effects are lazy and referentially transparent. They describe a computation
-// but do not execute until run via runPromise / runSync.
-//
+/**
+ReScript bindings for `Effect<A, E, R>` — the core type of the Effect library.
+
+The three type parameters represent:
+- `'a` — the success value
+- `'e` — typed expected errors (recoverable failures)
+- `'r` — requirements / dependencies (use `unit` for none)
+
+Effects are **lazy and referentially transparent**: they describe a computation
+without executing it. Run with `Effect.runPromise` (async) or `Effect.runSync`
+(sync, throws on failure).
+
+**Quick start**
+```rescript
+Effect.succeed(42)
+->Effect.map(n => n * 2)
+->Effect.runSync
+// 84
+```
+*/
+
 // ─── Forward-declared abstract types ─────────────────────────────────────
 // Defined here to break circular dependencies. Each has a corresponding
 // module that re-exports as a transparent type alias:
@@ -16,223 +27,440 @@
 //   Semaphore    → abstract, accessible via Effect.semaphore
 //   Schedule.res → type t<'o,'i,'r> = Effect.schedule<'o,'i,'r>
 
+/** Opaque fiber handle — see `Fiber` module for join, interrupt, and collect operations. */
 type fiber<'a, 'e>
+
+/** Opaque latch handle — see `Latch` module. Create via `Effect.makeLatch`. */
 type latch
+
+/** Opaque semaphore handle — use via `Effect.withPermits`. Create via `Effect.makeSemaphore`. */
 type semaphore
+
+/** Opaque schedule handle — see `Schedule` module for built-in schedules and combinators. */
 type schedule<'out, 'in_, 'r>
 
 // ─── Core type ────────────────────────────────────────────────────────────
 
+/** The core Effect type: `t<'a, 'e, 'r>` where `'a` is the success value, `'e` is the typed error, and `'r` is the requirements channel. */
 type t<'a, 'e, 'r>
 
 // ─── Construction ────────────────────────────────────────────────────────
 
-// An effect that always succeeds with the given value
+/** Creates an `Effect` that always succeeds with `value`. Lifts a pure value into the Effect world. */
 @module("effect") @scope("Effect")
 external succeed: 'a => t<'a, 'e, 'r> = "succeed"
 
-// An effect that always fails with the given typed error
+/** Creates an `Effect` that always fails with the given typed error in the `'e` channel. */
 @module("effect") @scope("Effect")
 external fail: 'e => t<'a, 'e, 'r> = "fail"
 
-// Wrap a synchronous computation. Thrown exceptions become defects (not
-// typed errors — they bypass the 'e channel).
+/**
+Wraps a synchronous computation in an `Effect`.
+
+Exceptions thrown by `f` become *defects* — they bypass the typed `'e` channel and
+are not catchable with `catchAll`. Use `tryPromise` (with a synchronous promise) if
+you need to catch synchronous exceptions as typed errors.
+*/
 @module("effect") @scope("Effect")
 external sync: (unit => 'a) => t<'a, 'e, 'r> = "sync"
 
-// Wrap a Promise. Thrown exceptions become defects.
+/**
+Wraps a `Promise`-returning thunk in an `Effect`.
+
+Rejected promises become *defects* — they bypass the typed `'e` channel.
+Use `tryPromise` if you want to map exceptions to typed errors.
+*/
 @module("effect") @scope("Effect")
 external promise: (unit => promise<'a>) => t<'a, 'e, 'r> = "promise"
 
-// Wrap a Promise, mapping thrown exceptions to typed errors.
+/**
+Wraps a `Promise`-returning thunk, mapping thrown exceptions to typed errors.
+
+- `"try"`: the thunk that produces the `Promise`.
+- `"catch"`: maps the caught `unknown` exception to a value of type `'e`.
+
+**Example**
+```rescript
+Effect.tryPromise({
+  "try": () => fetch("/api/data")->Promise.then(r => r->Response.json),
+  "catch": exn => NetworkError(exn->JsExn.fromException->Option.flatMap(JsExn.message)),
+})
+```
+
+> **Note** Exceptions thrown inside the `"catch"` mapper itself become defects.
+*/
 @module("effect") @scope("Effect")
 external tryPromise: {
   "try": unit => promise<'a>,
   "catch": unknown => 'e,
 } => t<'a, 'e, 'r> = "tryPromise"
 
-// An effect that never succeeds or fails (blocks forever)
+/** An `Effect` that never succeeds or fails — it suspends the current fiber forever. */
 @module("effect") @scope("Effect")
 external never: t<'a, 'e, 'r> = "never"
 
 // ─── Transformation ──────────────────────────────────────────────────────
 
+/** Transforms the success value with a pure function, leaving errors unchanged. */
 @module("effect") @scope("Effect")
 external map: (t<'a, 'e, 'r>, 'a => 'b) => t<'b, 'e, 'r> = "map"
 
+/**
+Chains `Effect`s — runs the first and passes its success value to `f`,
+which returns the next `Effect` to run.
+
+**Example**
+```rescript
+fetchUser(id)->Effect.flatMap(user => saveUser(user))
+```
+*/
 @module("effect") @scope("Effect")
 external flatMap: (t<'a, 'e, 'r>, 'a => t<'b, 'e, 'r>) => t<'b, 'e, 'r> = "flatMap"
 
-// Execute a side-effecting effect for its result, return the original value
+/**
+Runs `f` for its side effect on each success value, then passes the original value
+through unchanged. Useful for logging or metrics without altering the pipeline.
+*/
 @module("effect") @scope("Effect")
 external tap: (t<'a, 'e, 'r>, 'a => t<'b, 'e, 'r>) => t<'a, 'e, 'r> = "tap"
 
-// Sequence two effects, discarding the first's result
+/** Sequences two `Effect`s and returns the result of the second, discarding the first's value. */
 @module("effect") @scope("Effect")
 external zipRight: (t<'a, 'e, 'r>, t<'b, 'e, 'r>) => t<'b, 'e, 'r> = "zipRight"
 
-// Sequence two effects, discarding the second's result
+/** Sequences two `Effect`s and returns the result of the first, discarding the second's value. */
 @module("effect") @scope("Effect")
 external zipLeft: (t<'a, 'e, 'r>, t<'b, 'e, 'r>) => t<'a, 'e, 'r> = "zipLeft"
 
 // ─── Error handling ──────────────────────────────────────────────────────
 
-// Recover from any typed error
+/**
+Recovers from any typed error by running `f` to produce a new `Effect`.
+
+Only catches errors in the `'e` channel; defects (unexpected exceptions) are
+not caught and propagate as unrecoverable failures.
+*/
 @module("effect") @scope("Effect")
 external catchAll: (t<'a, 'e, 'r>, 'e => t<'a, 'e2, 'r>) => t<'a, 'e2, 'r> = "catchAll"
 
-// Recover from a specific tagged error by its _tag field value
+/**
+Recovers from a specific tagged error variant identified by its `_tag` field.
+
+Leaves all other error variants in the `'e` channel unhandled.
+
+**Example**
+```rescript
+effect->Effect.catchTag("StaleState", ({id}) => retryWithFreshState(id))
+```
+*/
 @module("effect") @scope("Effect")
 external catchTag: (t<'a, 'e, 'r>, string, 'e => t<'a, 'e2, 'r>) => t<'a, 'e2, 'r> = "catchTag"
 
-// Wrap in result — effect never fails; errors are Right(error), success is Left(value)
-// Note: Effect uses Either<E, A> but result<'a, 'e> is structurally compatible
+/**
+Converts success to `Ok` and typed errors to `Error` — the resulting `Effect`
+always succeeds with a `result<'a, 'e>`.
+
+> **Note** Effect uses `Either<E, A>` internally, but `result<'a, 'e>` is
+structurally compatible with `{_tag: "Left"/"Right"}`.
+*/
 @module("effect") @scope("Effect")
 external either: t<'a, 'e, 'r> => t<result<'a, 'e>, 'e2, 'r> = "either"
 
-// Wrap in option — maps success to Some, failure to None
+/**
+Converts the `Effect` to always succeed with `option<'a>`:
+`Some(value)` on success, `None` on typed error.
+
+Defects still propagate as failures.
+*/
 @module("effect") @scope("Effect")
 external option: t<'a, 'e, 'r> => t<option<'a>, 'e2, 'r> = "option"
 
 // ─── Retry / repeat ──────────────────────────────────────────────────────
 
-// Retry on failure using a Schedule. The schedule receives the error value.
+/**
+Retries a failing `Effect` according to the given `Schedule`.
+
+The `Schedule` receives each failure value and decides whether — and after
+how long — to retry. When the `Schedule` stops, the most recent failure is returned.
+
+**Example**
+```rescript
+// Up to 5 retries with exponential backoff and jitter
+Effect.tryPromise(~catch=classifyError, fetchData)
+->Effect.retry(
+  Schedule.exponential(Duration.millis(200))
+  ->Schedule.jittered
+  ->Schedule.recurs(5),
+)
+```
+
+> **Note** `Schedule.recurs(n)` adds n retries — total attempts = n + 1.
+*/
 @module("effect") @scope("Effect")
 external retry: (t<'a, 'e, 'r>, schedule<'out, 'e, 'r>) => t<'a, 'e, 'r> = "retry"
 
-// Repeat on success using a Schedule. The schedule receives the success value.
+/**
+Repeats a successful `Effect` according to the given `Schedule`.
+
+The `Schedule` receives each success value and decides whether — and after
+how long — to run again. The final output of the `Schedule` is returned.
+*/
 @module("effect") @scope("Effect")
 external repeat: (t<'a, 'e, 'r>, schedule<'out, 'a, 'r>) => t<'out, 'e, 'r> = "repeat"
 
 // ─── Concurrency ─────────────────────────────────────────────────────────
 
-// Fork into a new fiber — runs concurrently with the current fiber
+/**
+Forks the `Effect` into a new fiber that runs concurrently with the calling fiber.
+
+The forked fiber is a *daemon* — it is not automatically interrupted when the
+parent scope ends. Use `forkScoped` to tie the fiber's lifetime to the current scope.
+*/
 @module("effect") @scope("Effect")
 external fork: t<'a, 'e, 'r> => t<fiber<'a, 'e>, 'e2, 'r> = "fork"
 
-// Fork, tying the fiber's lifetime to the current scope
+/**
+Forks the `Effect` into a new fiber, tying its lifetime to the current scope.
+
+When the enclosing scope closes (e.g. when `Effect.scoped` finishes), the fiber
+is automatically interrupted and its finalizers are run.
+*/
 @module("effect") @scope("Effect")
 external forkScoped: t<'a, 'e, 'r> => t<fiber<'a, 'e>, 'e2, 'r> = "forkScoped"
 
-// Run all effects concurrently. concurrency: "unbounded" | "inherit" | number-as-string
+/**
+Runs all effects concurrently and collects their results into an array.
+
+The `concurrency` option controls the maximum number of simultaneously running fibers:
+- `"unbounded"` — all effects start immediately
+- `"inherit"` — respects the ambient concurrency limit
+- `"1"` (or any numeric string) — sequential
+
+**Example**
+```rescript
+Effect.all(handlers->Array.map(h => h(event)), {"concurrency": "unbounded"})
+```
+*/
 @module("effect") @scope("Effect")
 external all: (array<t<'a, 'e, 'r>>, {. "concurrency": string}) => t<array<'a>, 'e, 'r> = "all"
 
-// Race two effects — first to succeed wins, loser is interrupted
+/**
+Races two effects — the first to succeed wins and its value is returned.
+The losing effect is interrupted immediately.
+*/
 @module("effect") @scope("Effect")
 external race: (t<'a, 'e, 'r>, t<'a, 'e, 'r>) => t<'a, 'e, 'r> = "race"
 
 // ─── Resource management ─────────────────────────────────────────────────
 
-// Acquire a resource and guarantee its release even on failure/interruption.
-// The release function receives the exit status of the use.
+/**
+Acquires a resource and guarantees its release even on failure or interruption.
+
+The `release` function receives the `Exit` status of the use, so it can
+distinguish clean completion from failure when releasing.
+
+**Example**
+```rescript
+Effect.acquireRelease(
+  openConnection(),
+  (conn, _exit) => closeConnection(conn),
+)
+```
+*/
 @module("effect") @scope("Effect")
 external acquireRelease: (t<'a, 'e, 'r>, ('a, Exit.t<'b, 'e2>) => t<unit, 'e3, 'r>) => t<'a, 'e, 'r> = "acquireRelease"
 
-// Open a new Scope and run the effect within it; finalizers run on scope close
+/**
+Opens a new `Scope` and runs the `Effect` within it.
+
+All finalizers registered via `acquireRelease` or `forkScoped` inside the
+scope are run when `scoped` completes (success, failure, or interruption).
+*/
 @module("effect") @scope("Effect")
 external scoped: t<'a, 'e, 'r> => t<'a, 'e, 'r2> = "scoped"
 
 // ─── Synchronization primitives ──────────────────────────────────────────
 
-// Create a Latch (binary gate). Pass true to start open, false to start closed.
+/**
+Creates a `Latch` — a binary synchronization gate.
+
+Pass `true` to start open (fibers pass through immediately),
+`false` to start closed (fibers block until `latch.open_` is called).
+
+See the `Latch` module for `await_`, `open_`, and `close` operations.
+*/
 @module("effect") @scope("Effect")
 external makeLatch: bool => t<latch, 'e, 'r> = "makeLatch"
 
-// Create a Semaphore with N permits (generalized mutex)
+/**
+Creates a `Semaphore` with `n` permits — a generalized mutex.
+
+Use `Effect.withPermits(sem, n, effect)` to run `effect` while holding `n` permits.
+Fibers that request more permits than available will block until permits are released.
+*/
 @module("effect") @scope("Effect")
 external makeSemaphore: int => t<semaphore, 'e, 'r> = "makeSemaphore"
 
-// Run an effect holding N permits from the semaphore
+/** Runs `effect` while holding `n` permits from `semaphore`. Blocks if insufficient permits are available. */
 @module("effect") @scope("Effect")
 external withPermits: (semaphore, int, t<'a, 'e, 'r>) => t<'a, 'e, 'r> = "withPermits"
 
 // ─── Timing ──────────────────────────────────────────────────────────────
 
-// Sleep for the given duration (respects TestClock in tests)
+/**
+Suspends the current fiber for the given `Duration`.
+
+In tests, use `TestClock.adjust` to advance virtual time instead of waiting
+for real time to pass.
+*/
 @module("effect") @scope("Effect")
 external sleep: Duration.t => t<unit, 'e, 'r> = "sleep"
 
-// Abort if the effect does not complete within the given duration
+/**
+Aborts the `Effect` if it does not complete within `duration`.
+
+Returns `Some(value)` if the effect completes in time, `None` if it times out.
+The timed-out effect is interrupted.
+*/
 @module("effect") @scope("Effect")
 external timeout: (t<'a, 'e, 'r>, Duration.t) => t<option<'a>, 'e, 'r> = "timeout"
 
 // ─── Repetition ──────────────────────────────────────────────────────────
 
-// Repeat an effect forever (until it fails or is interrupted).
-// Useful for drain loops: the effect runs, then immediately runs again.
-// When the underlying resource (e.g. a Queue) is shut down, Queue.take fails
-// with interruption and this propagates out, ending the loop cleanly.
+/**
+Repeats the `Effect` forever — runs, then immediately runs again, indefinitely.
+
+Useful for drain loops: combine with `Queue.take` to process items as they arrive.
+When the underlying resource (e.g. a `Queue`) is shut down, the interruption
+propagates out and ends the loop cleanly.
+
+**Example**
+```rescript
+Queue.take(q)
+->Effect.flatMap(processItem)
+->Effect.forever
+->Effect.fork
+```
+*/
 @module("effect") @scope("Effect")
 external forever: t<'a, 'e, 'r> => t<'b, 'e, 'r> = "forever"
 
 // ─── Dependency injection ─────────────────────────────────────────────────
 
-// Provide a Layer to satisfy an Effect's requirements ('r channel).
-// After providing a layer that covers all requirements, the returned Effect
-// has unit requirements and can be run with runPromise / runSync.
-// The 'layer type is polymorphic — pass any TestContext.layer or custom Layer.
+/**
+Provides a `Layer` to satisfy an `Effect`'s requirements (`'r` channel).
+
+After providing a layer that covers all requirements, the returned `Effect`
+has `unit` requirements and can be run with `runPromise` or `runSync`.
+The `'layer` type is polymorphic — pass any `TestContext.layer` or custom `Layer`.
+*/
 @module("effect") @scope("Effect")
 external provide: (t<'a, 'e, 'r>, 'layer) => t<'a, 'e, unit> = "provide"
 
-// Read a service value from the context and map it to a result.
-// The 'r channel of the returned effect is set to 'service (the tag's phantom type),
-// requiring that service to be provided before the effect can run.
-//
-// Example:
-//   let logInfo = (msg: string): Effect.t<unit, unit, Logger.t> =>
-//     Effect.serviceWith(Logger.tag, logger => logger.info(msg)->Effect.flatMap(identity))
-//   (For a unit-returning service method use serviceWithEffect instead — see below)
+/**
+Reads a service from the context and maps it to a pure value.
+
+The `'r` channel of the returned effect is set to `'service` (the tag's phantom type),
+requiring that service to be provided before the effect can run.
+
+**Example**
+```rescript
+let logInfo = (msg: string) =>
+  Effect.serviceWith(Logger.tag, logger => logger.info(msg))
+```
+*/
 @module("effect") @scope("Effect")
 external serviceWith: (Context.tag<'service>, 'service => 'b) => t<'b, 'e, 'service> =
   "serviceWith"
 
-// Like serviceWith but the mapping function returns an Effect.
-// Avoids an extra flatMap at the call site when the service method is itself effectful.
-// R = 'service (same as serviceWith).
+/**
+Like `serviceWith`, but the mapping function returns an `Effect`.
+
+Avoids an extra `flatMap` at the call site when the service method is itself effectful.
+
+**Example**
+```rescript
+let logInfo = (msg: string) =>
+  Effect.serviceWithEffect(Logger.tag, logger => logger.info(msg))
+```
+*/
 @module("effect") @scope("Effect")
 external serviceWithEffect: (
   Context.tag<'service>,
   'service => t<'a, 'e, 'service>,
 ) => t<'a, 'e, 'service> = "serviceWithEffect"
 
-// Satisfy a single service requirement by supplying a concrete implementation.
-// Reduces 'r to unit — all requirements are treated as satisfied (ReScript cannot
-// express partial requirement removal without row types).
-// Place at the outermost handler boundary, after all service uses are composed.
+/**
+Satisfies a single service requirement by supplying a concrete implementation.
+
+Reduces `'r` to `unit` — all requirements are treated as satisfied.
+Place at the outermost handler boundary, after all service uses are composed.
+
+**Example**
+```rescript
+myEffect
+->Effect.provideService(Logger.tag, Logger.consoleLogger)
+->Effect.runPromise
+```
+*/
 @module("effect") @scope("Effect")
 external provideService: (t<'a, 'e, 'r>, Context.tag<'service>, 'service) => t<'a, 'e, unit> =
   "provideService"
 
 // ─── Fiber control ───────────────────────────────────────────────────────
 
-// Yield control to the Effect scheduler — allows other fibers to run before continuing.
-// Useful when testing concurrent effects or when you need to ensure a forked fiber
-// has had a chance to start.
+/**
+Yields control to the Effect scheduler, allowing other fibers to run before continuing.
+
+Useful in tests to ensure a forked fiber has had a chance to start, or when
+implementing cooperative multitasking in a tight computation loop.
+*/
 @module("effect") @scope("Effect")
 external yieldNow: unit => t<unit, 'e, 'r> = "yieldNow"
 
 // ─── Running effects ─────────────────────────────────────────────────────
 
-// Run to Promise. Rejects on typed errors and defects.
+/**
+Runs the `Effect` to completion, returning a `Promise`.
+
+The `Promise` resolves with the success value, or rejects on typed errors and defects.
+This is the main entry point for running effects at the application boundary.
+*/
 @module("effect") @scope("Effect")
 external runPromise: t<'a, 'e, 'r> => promise<'a> = "runPromise"
 
-// Run to Promise, always resolving with an Exit (never rejects).
+/**
+Runs the `Effect` to completion, always resolving the `Promise` with an `Exit`.
+
+Unlike `runPromise`, never rejects — failures are encoded in the `Exit` value.
+Useful when you need to inspect whether the effect succeeded or failed.
+*/
 @module("effect") @scope("Effect")
 external runPromiseExit: t<'a, 'e, 'r> => promise<Exit.t<'a, 'e>> = "runPromiseExit"
 
-// Run synchronously. Throws if the effect is async.
+/**
+Runs the `Effect` synchronously and returns the success value.
+
+Throws if the effect performs any asynchronous operations (e.g. `Promise`, `sleep`).
+Use for purely synchronous effects where async is not needed.
+*/
 @module("effect") @scope("Effect")
 external runSync: t<'a, 'e, 'r> => 'a = "runSync"
 
-// Run synchronously, returning an Exit instead of throwing.
+/**
+Runs the `Effect` synchronously, returning an `Exit` instead of throwing.
+
+Throws if the effect performs any asynchronous operations.
+*/
 @module("effect") @scope("Effect")
 external runSyncExit: t<'a, 'e, 'r> => Exit.t<'a, 'e> = "runSyncExit"
 
-// Start an effect in a new background fiber using the default runtime.
-// Returns the RuntimeFiber immediately — the effect runs concurrently.
-// The fiber is a daemon (not tied to any scope); it runs until completion,
-// failure, or Queue.shutdown interrupts it.
+/**
+Starts the `Effect` in a new background fiber using the default runtime.
+
+Returns the `RuntimeFiber` immediately — the effect runs concurrently.
+The fiber is a *daemon* (not tied to any scope); it runs until completion,
+failure, or interruption (e.g. when `Queue.shutdown` is called).
+*/
 @module("effect") @scope("Effect")
 external runFork: t<'a, 'e, 'r> => fiber<'a, 'e> = "runFork"

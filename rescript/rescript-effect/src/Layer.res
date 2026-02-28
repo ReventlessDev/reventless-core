@@ -1,48 +1,66 @@
-// ReScript bindings for Effect Layer
-//
-// A Layer is a blueprint for constructing a service. It separates
-// service *construction* (possibly effectful, possibly requiring other services)
-// from service *use* (the Effect pipeline that consumes it).
-//
-// Layer.t<'out, 'e, 'in_>:
-//   'out  — the service type this layer provides (matches tag<'out>)
-//   'e    — errors that may occur during layer construction
-//   'in_  — services this layer itself requires to be built (unit = none)
-//
-// Typical use:
-//   let loggerLive: Layer.t<Logger.t, unit, unit> =
-//     Layer.succeed_(Logger.tag, { info: msg => Effect.sync(() => Console.log(msg)) })
-//
-//   let result = myEffect->Effect.provide(loggerLive)->Effect.runPromise
+/**
+ReScript bindings for `Layer<Out, E, In>` — a blueprint for constructing a service.
 
+Layers separate service *construction* (possibly effectful, possibly requiring
+other services) from service *use* (the `Effect` pipeline that consumes it).
+
+The three type parameters:
+- `'out`  — the service type this layer provides (matches `Context.tag<'out>`)
+- `'e`    — errors that may occur during layer construction
+- `'in_`  — services this layer itself requires (`unit` = no dependencies)
+
+**Example**
+```rescript
+let loggerLive: Layer.t<Logger.t, unit, unit> =
+  Layer.succeed_(Logger.tag, Logger.consoleLogger)
+
+myEffect
+->Effect.provide(loggerLive)
+->Effect.runPromise
+```
+*/
 type t<'out, 'e, 'in_>
 
 // ─── Construction ────────────────────────────────────────────────────────
 
-// Provide a service implementation directly (no construction effects, no dependencies).
-// JS name is "succeed"; ReScript name succeed_ avoids shadowing Effect.succeed and
-// sidesteps "effect" as a future OCaml keyword.
+/**
+Creates a `Layer` from a concrete service implementation.
+
+No construction effects, no dependencies — the simplest way to provide a service.
+
+> **Note** The JS name is `succeed`; this binding uses `succeed_` to avoid
+shadowing `Effect.succeed` and to sidestep `effect` as a future OCaml keyword.
+*/
 @module("effect") @scope("Layer")
 external succeed_: (Context.tag<'a>, 'a) => t<'a, 'e, unit> = "succeed"
 
-// Lift an Effect that produces a service implementation into a Layer.
-// The Effect may be async (e.g. open a DB connection) and may require services of its own.
-// JS name is "effect"; ReScript name effect_ avoids the OCaml 5 "effect" keyword.
+/**
+Creates a `Layer` from an `Effect` that constructs the service.
+
+Use when service construction is async (e.g. opening a DB connection) or
+requires other services as inputs.
+
+> **Note** The JS name is `effect`; this binding uses `effect_` to avoid the
+`effect` OCaml 5 keyword.
+*/
 @module("effect") @scope("Layer")
 external effect_: (Context.tag<'a>, Effect.t<'a, 'e, 'r>) => t<'a, 'e, 'r> = "effect"
 
-// ─── Providing layers to effects ──────────────────────────────────────────
-// Note: Effect.provide already accepts a Layer (its 'layer parameter is polymorphic).
-// These bindings are for composing layers before providing them.
+// ─── Composing layers ─────────────────────────────────────────────────────
 
-// Chain two layers: inner satisfies some of outer's requirements.
-// Layer.provide(outer, inner) — inner feeds into outer.
-// The combined layer requires whatever outer still needs after inner is applied.
+/**
+Chains two layers: `inner` satisfies some of `outer`'s requirements.
+
+`Layer.provide(outer, inner)` — `inner` feeds into `outer`. The combined
+layer requires whatever `outer` still needs after `inner` is applied.
+
+> **Note** `Effect.provide` already accepts a `Layer` directly. Use `Layer.provide`
+only when *composing layers together* before supplying them to an effect.
+*/
 @module("effect") @scope("Layer")
 external provide: (t<'a, 'e, 'r>, t<'r, 'e, 'r2>) => t<'a, 'e, 'r2> = "provide"
 
-// ─── Merge (advanced — deferred) ─────────────────────────────────────────
-// Layer.merge combines two layers side-by-side into one that provides both services.
-// In TypeScript: Layer<A | B, E, RIn1 | RIn2>.
-// ReScript has no type-level union/intersection for row types, so merge is not bound here.
-// Workaround: call Effect.provideService twice, once per service, instead of merging layers.
+// ─── Merge (not bound) ────────────────────────────────────────────────────
+// Layer.merge combines two layers side-by-side. ReScript has no type-level
+// union/intersection for row types, so merge is not bound here.
+// Workaround: call Effect.provideService twice, once per service.

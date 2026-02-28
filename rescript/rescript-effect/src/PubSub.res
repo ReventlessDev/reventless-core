@@ -1,59 +1,91 @@
-// ReScript bindings for Effect PubSub
-//
-// PubSub<A> is a broadcast hub. Each subscriber receives their own Queue
-// with a view of every published message. When no subscribers are present,
-// published messages are dropped.
-//
-// Use PubSub to replace InMemory_Bus — it provides per-subscriber backpressure
-// and makes tests production-realistic (slow consumers block fast publishers).
+/**
+ReScript bindings for `PubSub<A>` — a broadcast hub where each subscriber
+receives a private `Queue` with a view of every published message.
 
+When no subscribers are present, published messages are dropped.
+When all subscriber queues are full (bounded), `publish` suspends the publisher.
+
+**Typical pattern**
+```rescript
+let hub = PubSub.bounded(100)->Effect.runSync
+
+// Subscriber
+PubSub.subscribe(hub)
+->Effect.flatMap(q => Queue.take(q)->Effect.forever)
+->Effect.scoped
+->Effect.fork
+->Effect.runPromise
+
+// Publisher
+PubSub.publish(hub, event)->Effect.runPromise
+```
+*/
 type t<'a>
 
 // ─── Constructors ────────────────────────────────────────────────────────
 
-// Bounded — publish blocks when all subscribers' queues are full
+/** Creates a bounded `PubSub` — `publish` suspends when all subscriber queues are full. */
 @module("effect") @scope("PubSub")
 external bounded: int => Effect.t<t<'a>, 'e, 'r> = "bounded"
 
-// Unbounded — publish never blocks
+/** Creates an unbounded `PubSub` — `publish` never suspends. May grow without limit. */
 @module("effect") @scope("PubSub")
 external unbounded: unit => Effect.t<t<'a>, 'e, 'r> = "unbounded"
 
-// Sliding — new items overwrite the oldest in each subscriber's queue when full
+/** Creates a `PubSub` with a *sliding* strategy — new messages overwrite the oldest in each subscriber's queue when full. */
 @module("effect") @scope("PubSub")
 external sliding: int => Effect.t<t<'a>, 'e, 'r> = "sliding"
 
-// Dropping — new items are dropped when any subscriber's queue is full
+/** Creates a `PubSub` with a *dropping* strategy — new messages are silently dropped when any subscriber's queue is full. */
 @module("effect") @scope("PubSub")
 external dropping: int => Effect.t<t<'a>, 'e, 'r> = "dropping"
 
 // ─── Publishing ──────────────────────────────────────────────────────────
 
-// Publish a single item to all subscribers
+/**
+Publishes a single message to all current subscribers.
+
+Returns `true` if the message was delivered to at least one subscriber.
+Suspends if bounded and any subscriber's queue is full.
+*/
 @module("effect") @scope("PubSub")
 external publish: (t<'a>, 'a) => Effect.t<bool, 'e, 'r> = "publish"
 
-// Publish all items atomically
+/** Publishes all messages atomically to all current subscribers. */
 @module("effect") @scope("PubSub")
 external publishAll: (t<'a>, array<'a>) => Effect.t<bool, 'e, 'r> = "publishAll"
 
 // ─── Subscribing ─────────────────────────────────────────────────────────
 
-// Subscribe — returns a scoped Queue. The subscription is automatically
-// removed when the enclosing Scope closes (use Effect.scoped to manage).
+/**
+Subscribes to the `PubSub`, returning a scoped `Queue`.
+
+The subscription is automatically removed when the enclosing `Scope` closes.
+Use `Effect.scoped` to manage the scope:
+
+**Example**
+```rescript
+PubSub.subscribe(hub)
+->Effect.flatMap(q => Queue.take(q))
+->Effect.scoped
+->Effect.runPromise
+```
+*/
 @module("effect") @scope("PubSub")
 external subscribe: t<'a> => Effect.t<Queue.t<'a>, 'e, 'r> = "subscribe"
 
 // ─── Inspection ──────────────────────────────────────────────────────────
 
-// Number of active subscribers
+/** Returns the number of active subscribers. */
 @module("effect") @scope("PubSub")
 external size: t<'a> => Effect.t<int, 'e, 'r> = "size"
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────
 
+/** Shuts down the `PubSub`. All subscriber queues are shut down and pending publishes fail. */
 @module("effect") @scope("PubSub")
 external shutdown: t<'a> => Effect.t<unit, 'e, 'r> = "shutdown"
 
+/** Returns `true` if the `PubSub` has been shut down. */
 @module("effect") @scope("PubSub")
 external isShutdown: t<'a> => Effect.t<bool, 'e, 'r> = "isShutdown"

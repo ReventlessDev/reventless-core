@@ -1,72 +1,89 @@
-// ReScript bindings for Effect Queue
-//
-// Queue<A> is a concurrent, bounded or unbounded FIFO queue.
-// Bounded queues provide backpressure — offer blocks when full,
-// take blocks when empty. Both blocking operations suspend the
-// calling fiber (no thread wasted).
+/**
+ReScript bindings for `Queue<A>` — a concurrent, bounded or unbounded FIFO queue.
 
+Bounded queues provide *backpressure* — `offer` suspends the calling fiber when
+the queue is full, and `take` suspends when it is empty. No threads are blocked;
+suspended fibers resume when capacity or items become available.
+
+**Quick start**
+```rescript
+let q = Queue.bounded(10)->Effect.runSync
+q->Queue.offer("hello")->Effect.runPromise
+q->Queue.take->Effect.runPromise // "hello"
+```
+*/
 type t<'a>
 
 // ─── Constructors ────────────────────────────────────────────────────────
 
-// Bounded queue with backpressure — offer blocks when capacity is reached
+/** Creates a bounded queue with backpressure. `offer` suspends when `capacity` is reached. */
 @module("effect") @scope("Queue")
 external bounded: int => Effect.t<t<'a>, 'e, 'r> = "bounded"
 
-// Unbounded queue — offer never blocks (may grow without limit)
+/** Creates an unbounded queue — `offer` never suspends. May grow without limit. */
 @module("effect") @scope("Queue")
 external unbounded: unit => Effect.t<t<'a>, 'e, 'r> = "unbounded"
 
-// Bounded with sliding strategy — new items overwrite oldest when full
+/** Creates a bounded queue with a *sliding* strategy — new items overwrite the oldest when full. */
 @module("effect") @scope("Queue")
 external sliding: int => Effect.t<t<'a>, 'e, 'r> = "sliding"
 
-// Bounded with dropping strategy — new items are dropped when full
+/** Creates a bounded queue with a *dropping* strategy — new items are silently dropped when full. */
 @module("effect") @scope("Queue")
 external dropping: int => Effect.t<t<'a>, 'e, 'r> = "dropping"
 
 // ─── Operations ──────────────────────────────────────────────────────────
 
-// Offer an item — blocks if bounded and full (returns true when enqueued)
+/**
+Enqueues a single item. For bounded queues, suspends the fiber until space is available.
+
+Returns `true` when the item is successfully enqueued.
+*/
 @module("effect") @scope("Queue")
 external offer: (t<'a>, 'a) => Effect.t<bool, 'e, 'r> = "offer"
 
-// Offer all items atomically
+/** Enqueues all items atomically. Suspends if the queue is bounded and does not have enough space. */
 @module("effect") @scope("Queue")
 external offerAll: (t<'a>, array<'a>) => Effect.t<bool, 'e, 'r> = "offerAll"
 
-// Take one item — blocks if the queue is empty
+/** Dequeues and returns the next item. Suspends the fiber until an item is available. */
 @module("effect") @scope("Queue")
 external take: t<'a> => Effect.t<'a, 'e, 'r> = "take"
 
-// Take all available items without blocking (returns empty array if empty)
+/** Dequeues all currently available items without suspending. Returns an empty array if the queue is empty. */
 @module("effect") @scope("Queue")
 external takeAll: t<'a> => Effect.t<array<'a>, 'e, 'r> = "takeAll"
 
-// Take up to N items without blocking
+/** Dequeues up to `n` items without suspending. */
 @module("effect") @scope("Queue")
 external takeUpTo: (t<'a>, int) => Effect.t<array<'a>, 'e, 'r> = "takeUpTo"
 
 // ─── Inspection ──────────────────────────────────────────────────────────
 
-// Current number of items in the queue
+/** Returns the current number of items in the queue (non-suspending). */
 @module("effect") @scope("Queue")
 external size: t<'a> => Effect.t<int, 'e, 'r> = "size"
 
-// Whether the queue is empty (non-blocking)
+/** Returns `true` if the queue currently has no items (non-suspending). */
 @module("effect") @scope("Queue")
 external isEmpty: t<'a> => Effect.t<bool, 'e, 'r> = "isEmpty"
 
-// Whether the queue is full (non-blocking, always false for unbounded)
+/** Returns `true` if the queue is at capacity (non-suspending). Always `false` for unbounded queues. */
 @module("effect") @scope("Queue")
 external isFull: t<'a> => Effect.t<bool, 'e, 'r> = "isFull"
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────
 
-// Shut down the queue — pending offers/takes fail, future offers/takes fail immediately
+/**
+Shuts down the queue.
+
+All pending `offer` and `take` operations fail immediately.
+Future `offer` and `take` calls also fail immediately.
+This propagates interruption through any `Stream.fromQueue` or `Effect.forever` drain loop.
+*/
 @module("effect") @scope("Queue")
 external shutdown: t<'a> => Effect.t<unit, 'e, 'r> = "shutdown"
 
-// Whether the queue has been shut down
+/** Returns `true` if the queue has been shut down. */
 @module("effect") @scope("Queue")
 external isShutdown: t<'a> => Effect.t<bool, 'e, 'r> = "isShutdown"
