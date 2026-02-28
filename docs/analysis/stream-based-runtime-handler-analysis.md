@@ -1,10 +1,12 @@
 # Stream-Based Runtime Handler Analysis
 
-**Status:** Analysis (not yet started)
+**Status:** Analysis complete — implementation plan at `docs/plans/stream-handler-implementation.md`
 
 **Created:** 2026-02-28
 
-**Depends on:** Phases A–G of `docs/plans/effect-stream-integration.md` (complete)
+**Revised:** 2026-02-28
+
+**Depends on:** Phases A–I of `docs/plans/done/effect-stream-integration.md` (complete)
 
 **Summary:** Analysis of whether replacing the callback-based `Runtime.eventHandler` with a
 stream-based interface makes sense. Covers feasibility, advantages, consequences, and a
@@ -326,11 +328,11 @@ let collectNEvents = (bus, topicName, n) => {
 
 ## Decision
 
-Do not replace the `Runtime.eventHandler` callback interface. The callback model is correct at
-the Lambda boundary, correct for small live batches, and already internally replaced by streams
-where it matters (fan-out, replay, paginated scans). Proceed with:
+Do not replace the `Runtime.eventHandler` callback interface at the Lambda boundary (L1).
+For L2 and L3, full stream-based implementation proceeds per
+`docs/plans/stream-handler-implementation.md`:
 
-- [ ] **Phase I (optional):** Streaming fold inside `StateChangeSlice_Builder` for large DCB
-  decision models (internal change, no user-facing API change)
-- [ ] **Phase J (optional):** `collectNEvents` test utility in `reventless-in-memory`
-- [ ] **No action on L1 or L2 live handlers**
+- [x] **Phase I:** Streaming fold inside `StateChangeSlice_Callback` via `dcbEventLog.readStream→Stream.runFold` — **complete** (confirmed in `StateChangeSlice_Callback.res:30`)
+- [x] **Phase J:** `collectNEvents` test utility in `reventless-in-memory` — **complete** (`TestRunner.res` + `CollectNEventsTest.res`, 5 tests passing)
+- [ ] **Phase K:** L2 full — change internal `jsonEventsHandler` to `Stream.t<JSON.t>→Effect.t<unit>`; add `makeStreamHandler` in `EventCollector_Builder` — see plan
+- [ ] **Phase L:** L3 full — add `subscribeToEventStream` to `InMemory_Bus.T`; update `EventCollectorChannel_InMemory.connect` to use stream with explicit `done_` — see plan
