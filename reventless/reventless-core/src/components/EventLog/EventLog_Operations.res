@@ -1,7 +1,3 @@
-// Used to extract the Cause from a failed Exit without pattern-matching
-// on Effect's internal variant representation.
-type exitCausePayload<'e> = {cause: Cause.t<'e>}
-
 module type Ops = {
   module Spec: Reventless.EventLog.T
   module EventTopic: EventTopic.T with module Spec.Id = Spec.Id and type Spec.event = Spec.event
@@ -96,10 +92,10 @@ module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
       await publishToEventTopic(id, events')
     } else {
       // Retry exhausted — extract the final error message from the Cause
-      let failMsg = {
-        let payload: exitCausePayload<string> = exit->Obj.magic
-        payload.cause->Cause.failures->Array.get(0)->Option.getOr("storage error")
-      }
+      let failMsg = exit->Exit.match(
+        ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("storage error"),
+        ~onSuccess=_ => "storage error", // unreachable: we are in the isFailure branch
+      )
       Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${failMsg}`)
     }
   }
