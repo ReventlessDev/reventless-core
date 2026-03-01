@@ -455,7 +455,7 @@ function executeQueryItemStream(table, queryItem, after) {
 
 function readStream(table) {
   return (query, after) => Effect$1.Stream.flatMap(Effect$1.Stream.fromEffect(Effect$1.Effect.map(Effect$1.Effect.all(query.map(queryItem => Stream.runCollect(executeQueryItemStream(table, queryItem, after))), {
-    concurrency: "unbounded"
+    concurrency: 3
   }), results => {
     let allItems = results.flat();
     let allEvents = allItems.map(fromItem);

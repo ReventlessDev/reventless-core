@@ -538,7 +538,12 @@ let readStream = (table: runtimeTable) =>
       executeQueryItemStream(table, queryItem, ~after?)
       ->Stream.runCollect
     )
-    ->Effect.all({"concurrency": "unbounded"})
+    // NOTE: multi-queryItem readStream is eagerly collected — all sub-query pages are fetched
+    // into memory before the first element is emitted. This is required because deduplication
+    // and global position-sort need the full result set from every sub-stream. See
+    // docs/plans/stream-usage-improvements.md Phase A for the lazy-merge alternative (Option 2).
+    // Concurrency is bounded to avoid saturating the DynamoDB connection pool.
+    ->Effect.all({"concurrency": 3})
     ->Effect.map(results => {
       let allItems = results->Array.flat
       let allEvents = allItems->Array.map(fromItem)

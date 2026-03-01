@@ -41,33 +41,136 @@ Consequences:
 - All sub-query results land in RAM simultaneously before any result is returned.
 - Unbounded `Effect.all` concurrency fires all DynamoDB sub-queries at once.
 
+### Key fact: sub-streams are already position-ordered
+
+The DcbEventLog DynamoDB table GSIs all use `rangeKey: "position"`. DynamoDB returns items within
+a GSI query in ascending range-key order by default. This means:
+- `queryBySingleTagStream` → items arrive in position order ✓
+- `queryByCompositeTagsStream` → items arrive in position order ✓
+- `scanWithFilterStream` (full scan, no tags) → DynamoDB makes **no ordering guarantee** ✗
+
+This distinction is central to the A2 decision.
+
 ### Solution
 
 Two sub-tasks:
 
 **A1 — Bound concurrency.** Change `Effect.all({"concurrency": "unbounded"})` to
-`Effect.all({"concurrency": 3})` (or make it configurable). This is a one-line fix with no
-architecture change, safe to ship immediately.
+`Effect.all({"concurrency": 3})`. This is a one-line fix with no architecture change, safe to
+ship immediately.
 
-**A2 — Remove inner `runCollect`.** This requires deciding on merge semantics:
+**A2 — Remove inner `runCollect`.** This requires deciding on merge semantics for
+multi-queryItem queries. The two options differ in implementation complexity, memory behaviour,
+and the semantics of the public `readStream` API.
 
-- **Option 1 (simpler):** Accept that multi-queryItem `readStream` is still fully eager — document
-  it clearly with a comment. Remove the misleading outer `Stream.fromEffect + flatMap` wrapper
-  and expose the eagerness explicitly in the type (e.g., return
-  `Effect.t<array<...>, string, unit>` for the multi-item case). Callers like
-  `StateChangeSlice_Callback` that do `readStream(~query)->Stream.runFold(...)` would need a small
-  adaptation.
+---
 
-- **Option 2 (correct but harder):** Interleave sub-streams by sequence number using
-  `Stream.mergeAllUnbounded` (if order across tags is not required) or a heap-based merge-sort
-  stream. This preserves true laziness but requires a non-trivial merge implementation.
+#### Option 1: Keep eager collection — add clarity
 
-**Recommended**: Ship A1 now. Evaluate A2 as a follow-up once the DCB query model is stable.
+**What changes:** Only A1 (bounded concurrency). The `runCollect` stays. Add a doc comment
+explaining the eager behaviour and why it exists.
+
+**What does NOT change:** `readStream` continues to collect all DynamoDB pages for all sub-queries
+into memory before emitting the first element.
+
+**Consequences:**
+- **Memory:** For a query matching N tags, each with P DynamoDB pages of K events: all N×P×K
+  events land in RAM simultaneously. For a large catalog with tens of thousands of events per tag,
+  this can easily reach hundreds of MB.
+- **Latency to first element:** Caller receives no elements until all sub-queries are fully
+  fetched and sorted. DynamoDB pages are fetched in parallel (bounded by A1), but all must
+  complete before any result is returned.
+- **Backpressure:** `Stream.take(n)` downstream does NOT short-circuit DynamoDB fetching — the
+  full result set is always loaded regardless of how many items the caller actually consumes.
+  `StateChangeSlice_Callback` calls `Stream.runFold` (consumes all), so backpressure is irrelevant
+  today, but it makes `readStream` semantically deceptive as a `Stream.t`.
+- **Correctness for scan queries:** The scan case (`scanWithFilterStream`) returns unordered
+  items, which is why they must be collected and globally sorted before emission. There is no
+  way to lazily merge an unordered scan.
+- **Complexity:** Zero — no code change beyond A1 and a comment.
+
+**When to choose:** Current query patterns do not involve large event sets, or the added latency
+and memory use are acceptable. Useful as an interim step while Option 2 is designed.
+
+---
+
+#### Option 2: Lazy position-ordered merge (true streaming)
+
+**What changes:** Replace `runCollect + Effect.all + in-memory sort` with a streaming merge that
+emits elements in position order without collecting any sub-stream upfront.
+
+**How it works:**
+
+For **tag-based queries** (single-tag and composite-tag GSIs), each sub-stream is already
+sorted by position. We can merge N sorted streams into one sorted stream using a k-way merge:
+maintain one "head" element per sub-stream (fetched lazily), always emit the one with the smallest
+position, advance only that sub-stream. Deduplication becomes a simple "skip if same position as
+previous" check since duplicates will be adjacent after position-order merge.
+
+For **scan-based queries** (no tags), items arrive in unspecified order. A lazy merge-sort is
+impossible — a full table scan must be collected before any globally-sorted result can be emitted.
+The implementation would handle this case by falling back to the current eager strategy.
+
+**Concrete API sketch:**
+
+```rescript
+// A new helper for k-way sorted merge
+let mergeSortedStreams: (
+  array<Stream.t<rawSequencedEvent, string, unit>>,
+  (rawSequencedEvent, rawSequencedEvent) => int  // comparator
+) => Stream.t<rawSequencedEvent, string, unit>
+
+let readStream = table => (~query, ~after=?) => {
+  let streams = query->Array.map(qi => executeQueryItemStream(table, qi, ~after?))
+  switch streams {
+  | [single] => single->Stream.map(fromItem)
+  | _ =>
+    let hasScan = query->Array.some(qi => qi.tags == None)
+    if hasScan then
+      // Scan sub-queries cannot be lazily merged — fall back to eager collect
+      streams->collectAndMergeEagerly(~concurrency=3)
+    else
+      // All sub-streams are position-sorted GSI queries — merge lazily
+      mergeSortedStreams(streams, (a, b) => String.compare(a.position, b.position))
+      ->Stream.map(fromItem)
+      ->deduplicate    // skip consecutive events with the same position
+  }
+}
+```
+
+The `mergeSortedStreams` implementation requires holding one buffered element per sub-stream in
+an Effect `Ref`. There is no built-in in rescript-effect for this — it requires ~30–50 lines of
+custom Effect logic.
+
+**Consequences:**
+- **Memory:** O(n_consumed + k) where k is the number of sub-streams. For a `Stream.take(100)`
+  across 3 tags, only ~100 events need to be in RAM at once regardless of total event count.
+- **Latency to first element:** The first element is emitted as soon as the first DynamoDB pages
+  from all sub-streams have returned (one concurrent DynamoDB request per sub-stream). No waiting
+  for later pages.
+- **Backpressure:** `Stream.take(n)` genuinely short-circuits DynamoDB fetching. Once n elements
+  are consumed, remaining DynamoDB pages are never requested.
+- **Scan queries:** Still eager (unavoidable). If a multi-queryItem call mixes tag-based and
+  scan-based queryItems, the entire call falls back to eager.
+- **Complexity:** Medium. Requires implementing a k-way merge (~40 lines). The fallback path
+  for scan queries must be tested separately.
+- **Risk:** The k-way merge logic must correctly handle sub-stream exhaustion (when one tag has
+  fewer events than another) and stream errors.
+
+**When to choose:** Event logs are large (thousands of events per tag), callers may consume
+partial results via `Stream.take`, or memory efficiency is a concern.
+
+---
+
+**Recommended path:** Implement A1 now. Implement A2 Option 2 when there is a concrete need
+(large event sets observed in production, or `Stream.take` is used in callers). Option 1 is only
+useful as a documentation fix — the code is already effectively Option 1 minus the clarifying
+comment.
 
 ### Acceptance criteria
-- `Effect.all` in `readStream` is bounded.
-- (A2) If pursued: a `Stream.take(5)` on a 2-tag query does not trigger full DynamoDB pagination
-  for either tag (verified by a test with a mock that counts `executeQueryItem` calls).
+- `Effect.all` in `readStream` is bounded (A1).
+- (A2 Option 2) A `Stream.take(5)` on a 2-tag query issues at most 2 DynamoDB requests total
+  (one initial page per sub-stream), verified with a mock that counts requests.
 
 ---
 
