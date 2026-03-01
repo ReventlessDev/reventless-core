@@ -27,6 +27,7 @@
     "clean": "rescript clean",
     "format": "rescript format",
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --silent",
+    "test:ci": "NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --silent --maxWorkers=2",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --watchAll --silent",
     "test:watch:fail": "ONLY_FAILURES=1 NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --watchAll --silent",
     "dev": "concurrently --names rs,jest --prefix-colors cyan,yellow \"rescript watch\" \"NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --watchAll --silent\"",
