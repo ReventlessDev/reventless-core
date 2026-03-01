@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-spec",
-  "version": "3.0.0-alpha.1",
+  "version": "3.0.0-alpha.2",
   "description": "Specifications for Reventless",
   "license": "MIT",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@reventlessdev/rescript-effect": "*",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.3",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.4",
     "jsonschema2graphql": "1.1.1",
     "sury": "^11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"

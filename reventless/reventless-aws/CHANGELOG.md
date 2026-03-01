@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.5...@reventlessdev/reventless-aws@3.0.0-alpha.6) (2026-03-01)
+
+* feat(reventless-spec)!: swap namespaces — spec→Reventless, core→ReventlessCore ([0fcf24e](https://github.com/ReventlessDev/reventless-core/commit/0fcf24e3fc1dcc88e9ee741dc99eb7bd726f9fd7))
+* feat(reventless-core)!: rename package from @reventlessdev/reventless to @reventlessdev/reventless-core ([5e93146](https://github.com/ReventlessDev/reventless-core/commit/5e9314692b5b5d60beee187564ba94bc9fd46c05))
+### Features
+
+* **rescript-effect:** Effect library bindings + stream-based framework handlers ([#30](https://github.com/ReventlessDev/reventless-core/issues/30)) ([f2ca5cf](https://github.com/ReventlessDev/reventless-core/commit/f2ca5cf3d56d66a9f4ab56b543d7bf82e48448dd))
+* **reventless-aws:** implement AWS StateViewSlice_Builder with DynamoDB/AppSync adapters ([04cc0f3](https://github.com/ReventlessDev/reventless-core/commit/04cc0f351ec4d8d18ec6eae8a7b81783ed9ecb83))
+
+### BREAKING CHANGES
+
+* ReventlessSpec namespace renamed to Reventless; the reventless-core
+package namespace renamed from Reventless to ReventlessCore.
+All usages of ReventlessSpec.* must be updated to Reventless.*;
+all usages of Reventless.* (core) in dependent packages must be updated to ReventlessCore.*
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+* package renamed for consistency with sibling packages
+and the repository name. ReScript namespace "Reventless" is unchanged —
+no source code updates required.
+
+- git mv reventless/reventless → reventless/reventless-core
+- package.json and rescript.json name updated to @reventlessdev/reventless-core
+- reventless-aws and reventless-in-memory dependency references updated
+- Root package.json and rescript.json renamed to "reventless-monorepo" to
+  avoid name collision that caused ReScript to skip building the sub-package
+- Updated recompiled .res.mjs output files with new relative import paths
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+
 # [3.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.4...@reventlessdev/reventless-aws@3.0.0-alpha.5) (2026-02-18)
 
 ### Bug Fixes

@@ -1,0 +1,11 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+# 1.0.0-alpha.1 (2026-03-01)
+
+### Features
+
+* **in-memory:** implement P0 GraphQL server for mutations and queries ([2627cdc](https://github.com/ReventlessDev/reventless-core/commit/2627cdc147b2deeb160e9642750bf26da8f95108))
+* **rescript:** add rescript-graphql-yoga bindings package ([8e7532a](https://github.com/ReventlessDev/reventless-core/commit/8e7532a6c77a83cddf35873e52fb2d52c05d942e))

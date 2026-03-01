@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-in-memory",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "In-memory platform for Reventless (for testing without AWS)",
   "license": "MIT",
   "scripts": {
@@ -26,11 +26,11 @@
     }
   },
   "dependencies": {
-    "@reventlessdev/reventless-core": "*",
-    "@reventlessdev/reventless-spec": "*",
     "@reventlessdev/rescript-effect": "*",
     "@reventlessdev/rescript-graphql-yoga": "*",
     "@reventlessdev/rescript-pulumi-pulumi": "*",
+    "@reventlessdev/reventless-core": "*",
+    "@reventlessdev/reventless-spec": "*",
     "graphql": "^16.0.0",
     "graphql-yoga": "^5.0.0"
   },

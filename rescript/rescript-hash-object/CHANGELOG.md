@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.2-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-hash-object@1.1.2-alpha.3...@reventlessdev/rescript-hash-object@1.1.2-alpha.4) (2026-03-01)
+
+**Note:** Version bump only for package @reventlessdev/rescript-hash-object
+
+
+
+
+
 ## [1.1.2-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-hash-object@1.1.2-alpha.2...@reventlessdev/rescript-hash-object@1.1.2-alpha.3) (2026-02-14)
 
 **Note:** Version bump only for package @reventlessdev/rescript-hash-object
