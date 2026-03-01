@@ -6,7 +6,7 @@ import * as Pulumi from "@pulumi/pulumi";
 
 function Make(Bus) {
   let make = (name, param, param$1) => {
-    let publishJsonStream = stream => Effect.Effect.flatMap(Stream.runCollect(stream), items => Effect.Effect.promise(() => Promise.all(items.map(param => {
+    let publishJsonStream = stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), items => Effect.Effect.promise(() => Promise.all(items.map(param => {
       let service = param.service;
       let meta = param.meta;
       let json = param.json;

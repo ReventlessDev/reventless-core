@@ -54,7 +54,9 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
 
     let publishJsonsStream: Reventless.CommandTopic.publishJsonsStream = stream =>
-      stream->Stream.runCollect->Effect.flatMap(jsons =>
+      stream
+      ->Stream.grouped(10)
+      ->Stream.runForEach(jsons =>
         Effect.promise(() => publishJsons(jsons))
       )
 

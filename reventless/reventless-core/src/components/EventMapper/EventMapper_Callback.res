@@ -159,12 +159,9 @@ module MakeCounterHandler = (
   }
 
   let handleCounterEvents: Counter.jsonEventsHandler = stream =>
-    stream
-    ->Stream.runCollect
-    ->Effect.flatMap(chunk =>
+    stream->Stream.runForEach(eventJson' =>
       Effect.promise(async () => {
-        let eventsJson' = chunk
-        let (publisherEntries, countActions) = await commonEventsHandler(eventsJson')
+        let (publisherEntries, countActions) = await commonEventsHandler([eventJson'])
         if countActions->Array.length > 0 {
           Console.log(
             "EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!",
@@ -206,12 +203,9 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
     }
 
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
-    stream
-    ->Stream.runCollect
-    ->Effect.flatMap(chunk =>
+    stream->Stream.runForEach(eventJson' =>
       Effect.promise(async () => {
-        let eventsJson' = chunk
-        let (publisherEntries, counterActions) = await Ops.commonEventsHandler(eventsJson')
+        let (publisherEntries, counterActions) = await Ops.commonEventsHandler([eventJson'])
         let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
           switch x {
           | Counter.Count(_) => true

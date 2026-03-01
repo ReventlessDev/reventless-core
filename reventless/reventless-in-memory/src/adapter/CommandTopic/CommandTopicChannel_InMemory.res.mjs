@@ -37,7 +37,7 @@ function Make(Bus) {
     let publishJsons = async jsons => {
       await Promise.all(jsons.map(async cmdJson => await Bus.dispatchCommand(name, encodeMessage(cmdJson))));
     };
-    let publishJsonsStream = stream => Effect.Effect.flatMap(Stream.runCollect(stream), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
+    let publishJsonsStream = stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
     let handleChannelEvent = handleCmds => Pulumi.output((fullBody, _ctx) => {
       let reference = decodeId(fullBody);
       let item = {

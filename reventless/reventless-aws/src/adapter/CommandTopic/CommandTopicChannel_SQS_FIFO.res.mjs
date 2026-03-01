@@ -36,7 +36,7 @@ function make(name, opts) {
     publishJsons: runtimeQueueOutput.apply(runtimeQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS_FIFO")),
     publishJsonsStream: runtimeQueueOutput.apply(runtimeQueue => {
       let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS_FIFO");
-      return stream => Effect.Effect.flatMap(Stream.runCollect(stream), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
+      return stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
     }),
     handleChannelEvent: handleCommands => runtimeQueueOutput.apply(runtimeQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(runtimeQueue, handleCommands)),
     connect: CommandTopicChannel_SQS$ReventlessAws.connect

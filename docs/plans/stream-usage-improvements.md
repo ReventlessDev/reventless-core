@@ -484,7 +484,7 @@ once all callers are migrated to the util's stream-based equivalents.
 | A — DcbEventLog readStream fan-out | High | Done (A1 + A2, commit fd750b35) |
 | B — EventLog / QueryDb lazy pagination | High | Done |
 | C — CsvStream true lazy streaming | Medium | Done |
-| D — Publisher adapters stream batching | Low | Not started |
-| E — EventMapper runCollect → runForEach | Low | Not started |
-| F — CommandTopic O(n²) fold | Trivial | Not started |
+| D — Publisher adapters stream batching | Low | Done |
+| E — EventMapper runCollect → runForEach | Low | Done |
+| F — CommandTopic O(n²) fold | Trivial | Done |
 | G — Replace queryRecursive/scanRecursive in DocumentClient | Medium | Done |

@@ -20,7 +20,7 @@ function make(name, param, opts) {
     resources: [Util_SNS_FIFO$ReventlessAws.toResource(topic)],
     publishJson: runtimeTopicOutput.apply(runtimeTopic => ((extra, extra$1, extra$2) => EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(runtimeTopic, extra, extra$1, extra$2))),
     publishJsonStream: runtimeTopicOutput.apply(runtimeTopic => {
-      return stream => Effect.Effect.flatMap(Stream.runCollect(stream), items => Effect.Effect.promise(() => Promise.all(items.map(param => {
+      return stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), items => Effect.Effect.promise(() => Promise.all(items.map(param => {
         let extra = param.service;
         let extra$1 = param.meta;
         let extra$2 = param.json;

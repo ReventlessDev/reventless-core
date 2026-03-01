@@ -55,7 +55,8 @@ module Make = (Spec: Reventless.CommandTopic.T, Channel: CommandTopic_Adapter.Ch
         allResults
       })
     })
-    ->Stream.runFold([], (acc, results) => acc->Array.concat(results))
+    ->Stream.runCollect
+    ->Effect.map(Array.flat)
 
   let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}

@@ -21,7 +21,9 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageRes
     publishJsonStream: runtimeTopicOutput->Pulumi.Output.apply(runtimeTopic => {
       let publishJson = EventTopicPublisher_SNS_Runtime.publishFifo(runtimeTopic, ...)
       stream =>
-        stream->Stream.runCollect->Effect.flatMap(items =>
+        stream
+        ->Stream.grouped(10)
+        ->Stream.runForEach(items =>
           Effect.promise(() =>
             items
             ->Array.map(({Reventless.EventTopic.service, meta, json}) =>

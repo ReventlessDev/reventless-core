@@ -43,7 +43,9 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
       let publishJsons =
         runtimeQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO, ...)
       stream =>
-        stream->Stream.runCollect->Effect.flatMap(jsons =>
+        stream
+        ->Stream.grouped(10)
+        ->Stream.runForEach(jsons =>
           Effect.promise(() => publishJsons(jsons))
         )
     }),
