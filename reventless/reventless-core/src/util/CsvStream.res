@@ -2,35 +2,38 @@
 // Bridges FastCSV's callback-based API to an Effect Stream.
 // Rows are emitted as CSV.row (= dict<string>) using the header row as keys.
 //
-// Implementation: collects all rows via a Promise bridge, then emits them as a
-// stream via Stream.fromEffect → Stream.flatMap(fromIterable). This satisfies
-// the functional contract for Task file-processing callbacks with moderate file sizes.
-// For true per-row lazy streaming (file-read interruption on Stream.take), a
-// Queue bridge or Channel wrapper would be needed.
+// Implementation: each onData callback offers its row into an unbounded Queue;
+// Stream.fromQueue drains the queue lazily. This lets callers start processing
+// rows as they arrive rather than waiting for the entire file to be loaded.
 //
-// See docs/plans/effect-stream-integration.md Phase E for design context.
+// Note: Stream.take(n) short-circuits queue consumption, but the underlying
+// CSV parser runs at full speed and continues reading in the background.
+// Effect.runSyncExit is used inside the onData/onEnd/onError callbacks so that
+// a shut-down queue (e.g. after stream interruption) never throws.
 
 // Parse a CSV file, emitting one row per stream item.
 // The first row is treated as column headers (not emitted as data).
 // CSV parse errors are propagated through the stream's error channel.
-let parseRows = (~path: string): Stream.t<CSV.row, string, unit> => {
-  Effect.promise(() =>
-    Promise.make((resolve, _reject) => {
-      let rows: ref<array<CSV.row>> = ref([])
-      let _ = CSV.parseFile(~path, ~options={headers: CSV.Options.Bool(true)})
-        ->CSV.onData(row => rows := rows.contents->Array.concat([row]))
-        ->CSV.onEnd(_ => resolve(Ok(rows.contents)))
-        ->CSV.onError(err =>
-          resolve(Error(err->JsExn.message->Option.getOr("CSV parse error")))
-        )
-    })
-  )
-  ->Effect.flatMap(result =>
-    switch result {
-    | Ok(rows) => Effect.succeed(rows)
-    | Error(msg) => Effect.fail(msg)
-    }
-  )
+let parseRows = (~path: string): Stream.t<CSV.row, string, unit> =>
+  Queue.unbounded()
+  ->Effect.flatMap(queue => {
+    let _ = CSV.parseFile(~path, ~options={headers: CSV.Options.Bool(true)})
+      ->CSV.onData(row => Queue.offer(queue, Ok(row))->Effect.runSyncExit->ignore)
+      ->CSV.onEnd(_ => Queue.shutdown(queue)->Effect.runSyncExit->ignore)
+      ->CSV.onError(err => {
+        let msg = err->JsExn.message->Option.getOr("CSV parse error")
+        Queue.offer(queue, Error(msg))->Effect.runSyncExit->ignore
+        Queue.shutdown(queue)->Effect.runSyncExit->ignore
+      })
+    Effect.succeed(queue)
+  })
   ->Stream.fromEffect
-  ->Stream.flatMap(rows => Stream.fromIterable(rows))
-}
+  ->Stream.flatMap(queue =>
+    Stream.fromQueue(queue)
+    ->Stream.mapEffect(item =>
+      switch item {
+      | Ok(row) => Effect.succeed(row)
+      | Error(msg) => Effect.fail(msg)
+      }
+    )
+  )

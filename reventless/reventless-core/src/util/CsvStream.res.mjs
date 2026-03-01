@@ -6,28 +6,32 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 function parseRows(path) {
-  return Effect.Stream.flatMap(Effect.Stream.fromEffect(Effect.Effect.flatMap(Effect.Effect.promise(() => new Promise((resolve, _reject) => {
-    let rows = {
-      contents: []
-    };
+  return Effect.Stream.flatMap(Effect.Stream.fromEffect(Effect.Effect.flatMap(Effect.Queue.unbounded(), queue => {
     FastCsv.parseFile(path, {
       headers: true
     }).on("data", row => {
-      rows.contents = rows.contents.concat([row]);
-    }).on("end", param => resolve({
-      TAG: "Ok",
-      _0: rows.contents
-    })).on("error", err => resolve({
-      TAG: "Error",
-      _0: Stdlib_Option.getOr(Stdlib_JsExn.message(err), "CSV parse error")
-    }));
-  })), result => {
-    if (result.TAG === "Ok") {
-      return Effect.Effect.succeed(result._0);
+      Effect.Effect.runSyncExit(Effect.Queue.offer(queue, {
+        TAG: "Ok",
+        _0: row
+      }));
+    }).on("end", param => {
+      Effect.Effect.runSyncExit(Effect.Queue.shutdown(queue));
+    }).on("error", err => {
+      let msg = Stdlib_Option.getOr(Stdlib_JsExn.message(err), "CSV parse error");
+      Effect.Effect.runSyncExit(Effect.Queue.offer(queue, {
+        TAG: "Error",
+        _0: msg
+      }));
+      Effect.Effect.runSyncExit(Effect.Queue.shutdown(queue));
+    });
+    return Effect.Effect.succeed(queue);
+  })), queue => Effect.Stream.mapEffect(Effect.Stream.fromQueue(queue), item => {
+    if (item.TAG === "Ok") {
+      return Effect.Effect.succeed(item._0);
     } else {
-      return Effect.Effect.fail(result._0);
+      return Effect.Effect.fail(item._0);
     }
-  })), rows => Effect.Stream.fromIterable(rows));
+  }));
 }
 
 export {
