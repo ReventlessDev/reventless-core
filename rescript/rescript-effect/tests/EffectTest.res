@@ -123,6 +123,31 @@ describe("Effect — error handling", () => {
   })
 })
 
+describe("Effect — resource management", () => {
+  testPromise("ensuring runs finalizer on success", async () => {
+    let ran = ref(false)
+    let _ = await Effect.succeed(1)
+      ->Effect.ensuring(Effect.sync(() => { ran := true }))
+      ->Effect.runPromise
+    expect(ran.contents)->toBe(true)
+  })
+
+  testPromise("ensuring runs finalizer on failure", async () => {
+    let ran = ref(false)
+    let _ = await Effect.fail("err")
+      ->Effect.ensuring(Effect.sync(() => { ran := true }))
+      ->Effect.runPromiseExit
+    expect(ran.contents)->toBe(true)
+  })
+
+  testPromise("ensuring preserves the original result", async () => {
+    let result = await Effect.succeed(42)
+      ->Effect.ensuring(Effect.succeed(()))
+      ->Effect.runPromise
+    expect(result)->toBe(42)
+  })
+})
+
 describe("Effect — running", () => {
   test("runSyncExit success exit isSuccess", () => {
     let exit = Effect.succeed("ok")->Effect.runSyncExit

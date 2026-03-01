@@ -278,6 +278,22 @@ external race: (t<'a, 'e, 'r>, t<'a, 'e, 'r>) => t<'a, 'e, 'r> = "race"
 // ─── Resource management ─────────────────────────────────────────────────
 
 /**
+Registers a finalizer that always runs after `effect` completes — whether by
+success, failure, or interruption.
+
+Unlike `acquireRelease`, the finalizer receives no outcome value. Use when you
+need unconditional cleanup without inspecting the exit status.
+
+**Example**
+```rescript
+Stream.runForEach(stream, item => Queue.offer(queue, item)->Effect.map(_ => ()))
+->Effect.ensuring(Queue.offer(queue, None)->Effect.map(_ => ()))
+```
+*/
+@module("effect") @scope("Effect")
+external ensuring: (t<'a, 'e, 'r>, t<unit, 'e2, 'r>) => t<'a, 'e, 'r> = "ensuring"
+
+/**
 Acquires a resource and guarantees its release even on failure or interruption.
 
 The `release` function receives the `Exit` status of the use, so it can
