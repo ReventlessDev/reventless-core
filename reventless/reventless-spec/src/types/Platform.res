@@ -16,7 +16,32 @@
 //   module Platform = ReventlessAws.Platform.Make(Config)
 //   module App = MyPlugin.Make(Platform)
 
+/**
+Abstract factory interface for creating Reventless components without coupling
+application code to a specific infrastructure provider.
+
+Inject a `Platform.T` module (e.g. `ReventlessAws.Platform.Make(Config)`) at
+the composition root, and use its nested `Make` functors everywhere else.
+
+@example
+```rescript
+// CatalogPlugin.res — depends only on reventless-spec
+module Make = (Platform: Platform.T) => {
+  module CategoryAggregate = Platform.Aggregate.Make(
+    Category,
+    CategoryBehavior,
+    NoEventMappings.Make(Category),
+  )
+  module CategoryReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoryMappings)
+}
+
+// index.res — the only file that imports reventless-aws
+module Platform = ReventlessAws.Platform.Make(AwsConfig)
+module App = CatalogPlugin.Make(Platform)
+```
+*/
 module type T = {
+  /** Factory for event-sourced aggregate components. */
   module Aggregate: {
     module Make: (
       Spec: Aggregate.Spec,
@@ -25,6 +50,7 @@ module type T = {
     ) => Aggregate.T
   }
 
+  /** Factory for read model (query-side projection) components. */
   module ReadModel: {
     module Make: (
       Spec: ReadModel.Spec,
@@ -32,6 +58,7 @@ module type T = {
     ) => ReadModel.T with module Spec = Spec
   }
 
+  /** Factory for extension point components. */
   module ExtensionPoint: {
     module Make: (
       Spec: ExtensionPointMapping.Spec,
@@ -39,24 +66,29 @@ module type T = {
     ) => ExtensionPoint.T
   }
 
+  /** Factory for task (background job / S3 trigger) components. */
   module Task: {
     module Make: (Spec: Task.Spec) => Task.T with module Spec = Spec
   }
 
+  /** Ready-to-use counter component (no Make required). */
   module Counter: Counter.T
 
+  /** Factory for DCB write-side state-change slice components. */
   module StateChangeSlice: {
     module Make: (Spec: StateChangeSlice.Spec) => StateChangeSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec
   }
 
+  /** Factory for DCB read-side state-view slice components. */
   module StateViewSlice: {
     module Make: (Spec: StateViewSlice.Spec) => StateViewSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec
   }
 
+  /** Factory for DCB event log components. */
   module DcbEventLog: {
     module Make: (Spec: DcbEventLog.Spec) => DcbEventLog.T
       with module Spec = Spec

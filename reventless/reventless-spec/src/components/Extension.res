@@ -1,3 +1,10 @@
+/**
+Deploy-time outputs produced when an `Extension` is provisioned.
+
+- `name` — the extension's logical name
+- `extensionPointName` — the extension point this extension connects to
+- `aggregateNames` — names of aggregates wired through this extension
+*/
 type outputs = {
   name: string,
   extensionPointName: string,
@@ -8,6 +15,15 @@ type outputs = {
 // would create a circular dependency: Extension → Plugin → Extension).
 // The spec-level T uses abstract `type operations` to avoid the cycle.
 
+/**
+Module type for a provisioned extension component.
+
+An `Extension` connects a host plugin's extension point to one or more aggregates,
+translating commands and events in both directions via `ExtensionMapping.Impl`.
+
+`operations` is left abstract at the spec level to avoid a circular dependency.
+The concrete type is defined in the `reventless` package.
+*/
 module type T = {
   type operations
   type component
