@@ -225,6 +225,83 @@ function deduplicateByPosition(events) {
   });
 }
 
+function initSlot(stream) {
+  return Effect$1.Effect.flatMap(Effect$1.Queue.bounded(1), queue => {
+    let producer = Effect$1.Effect.catchAll(Effect$1.Effect.ensuring(Effect$1.Stream.runForEach(stream, event => Effect$1.Effect.map(Effect$1.Queue.offer(queue, event), param => {})), Effect$1.Effect.map(Effect$1.Queue.offer(queue, undefined), param => {})), param => Effect$1.Effect.succeed());
+    return Effect$1.Effect.flatMap(Effect$1.Effect.fork(producer), param => Effect$1.Effect.map(Effect$1.Queue.take(queue), head => ({
+      queue: queue,
+      head: head
+    })));
+  });
+}
+
+function findMinSlotIdx(slots) {
+  return Stdlib_Array.reduceWithIndex(slots, undefined, (minOpt, slot, idx) => {
+    let match = slot.head;
+    if (match === undefined) {
+      return minOpt;
+    }
+    if (minOpt === undefined) {
+      return idx;
+    }
+    let minSlot = slots[minOpt];
+    let minHead = minSlot.head;
+    if (minHead !== undefined && Primitive_string.compare(match.position, minHead.position) >= 0) {
+      return minOpt;
+    } else {
+      return idx;
+    }
+  });
+}
+
+function dedupByPosition(stream) {
+  let lastPos = {
+    contents: undefined
+  };
+  return Effect$1.Stream.filter(stream, event => {
+    let pos = lastPos.contents;
+    if (pos !== undefined && pos === event.position) {
+      return false;
+    } else {
+      lastPos.contents = event.position;
+      return true;
+    }
+  });
+}
+
+function mergeSortedEvents(streams) {
+  return Effect$1.Stream.flatMap(Effect$1.Stream.fromEffect(Effect$1.Effect.all(streams.map(initSlot), {
+    concurrency: "unbounded"
+  })), initialSlots => Stream.paginateEffect(initialSlots, slots => {
+    let idx = findMinSlotIdx(slots);
+    if (idx === undefined) {
+      return Effect$1.Effect.succeed([
+        [],
+        undefined
+      ]);
+    }
+    let slot = slots[idx];
+    let emitEvent = Stdlib_Option.getOrThrow(slot.head, undefined);
+    return Effect$1.Effect.map(Effect$1.Queue.take(slot.queue), nextHead => {
+      let newSlots = slots.map((s, i) => {
+        if (i === idx) {
+          return {
+            queue: s.queue,
+            head: nextHead
+          };
+        } else {
+          return s;
+        }
+      });
+      let hasActive = newSlots.some(s => Stdlib_Option.isSome(s.head));
+      return [
+        [emitEvent],
+        hasActive ? newSlots : undefined
+      ];
+    });
+  }));
+}
+
 function read(table) {
   return async (query, after) => {
     let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, queryItem, after)));
@@ -454,14 +531,28 @@ function executeQueryItemStream(table, queryItem, after) {
 }
 
 function readStream(table) {
-  return (query, after) => Effect$1.Stream.flatMap(Effect$1.Stream.fromEffect(Effect$1.Effect.map(Effect$1.Effect.all(query.map(queryItem => Stream.runCollect(executeQueryItemStream(table, queryItem, after))), {
-    concurrency: 3
-  }), results => {
-    let allItems = results.flat();
-    let allEvents = allItems.map(fromItem);
-    let deduped = deduplicateByPosition(allEvents);
-    return deduped.toSorted((a, b) => Primitive_string.compare(a.position, b.position));
-  })), events => Effect$1.Stream.fromIterable(events));
+  return (query, after) => {
+    let streams = query.map(qi => executeQueryItemStream(table, qi, after));
+    let match = streams.length;
+    if (match === 0) {
+      return Effect$1.Stream.empty;
+    }
+    if (match === 1) {
+      return Effect$1.Stream.map(streams[0], fromItem);
+    }
+    let hasScan = query.some(qi => qi.tags === undefined);
+    if (hasScan) {
+      return Effect$1.Stream.flatMap(Effect$1.Stream.fromEffect(Effect$1.Effect.map(Effect$1.Effect.all(streams.map(Stream.runCollect), {
+        concurrency: 3
+      }), results => {
+        let allItems = results.flat().map(fromItem);
+        let deduped = deduplicateByPosition(allItems);
+        return deduped.toSorted((a, b) => Primitive_string.compare(a.position, b.position));
+      })), events => Effect$1.Stream.fromIterable(events));
+    } else {
+      return dedupByPosition(mergeSortedEvents(streams.map(s => Effect$1.Stream.map(s, fromItem))));
+    }
+  };
 }
 
 export {
@@ -476,6 +567,10 @@ export {
   scanWithFilter,
   executeQueryItem,
   deduplicateByPosition,
+  initSlot,
+  findMinSlotIdx,
+  dedupByPosition,
+  mergeSortedEvents,
   read,
   writeEventsWithPosition,
   append,
