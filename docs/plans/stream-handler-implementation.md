@@ -1,6 +1,6 @@
 # Plan: Stream-Based Handler Implementation (Phases J–P)
 
-**Status:** Phases J–K–L–M–N–O complete; Phases P–Q planned
+**Status:** Phases J–K–L–M–N–O–P complete; Phase Q planned
 
 **Created:** 2026-02-28
 
@@ -996,12 +996,15 @@ Confirm or add `Stream.paginateEffect` binding in `rescript-effect/src/Stream.re
 ) => Stream.t<'a, 'err, 'r> = "paginateEffect"
 ```
 
-### Files changed — Phase P
+### Files changed — Phase P (complete)
 
 | File | Change |
 |------|--------|
-| `rescript-effect/src/Stream.res` | Add `paginateEffect` binding (if missing) |
-| `reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res` | Add `*Stream` variants for all three query helpers; update `readStream` to use them |
+| `rescript-effect/src/Stream.res` | Already present — `paginateEffect` was implemented as a ReScript wrapper over `paginateChunkEffect` |
+| `reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res` | Added `queryBySingleTagStream`, `queryByCompositeTagsStream`, `scanWithFilterStream`, `executeQueryItemStream`, `readStream` |
+| `reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res` | Replaced inline `readStream` with `DcbEventLogStorage_DynamoDb_Runtime.readStream(runtimeTable)` |
+
+**Implementation note:** `Stream.paginateEffect` already flattens each page's array into individual stream elements — no extra `Stream.flatMap(Stream.fromIterable)` is needed after it. The `*Stream` functions return `Stream.t<JSON.t, string, unit>` directly. The `readStream` function collects all query-item streams in parallel via `Effect.all`, then merges, deduplicates, and sorts before re-streaming.
 
 ---
 

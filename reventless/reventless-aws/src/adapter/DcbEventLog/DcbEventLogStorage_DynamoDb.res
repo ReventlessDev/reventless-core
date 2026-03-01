@@ -47,19 +47,10 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~o
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
       let readFn = DcbEventLogStorage_DynamoDb_Runtime.read(runtimeTable)
-      let readStream = (~query, ~after=?) =>
-        Effect.tryPromise({
-          "try": () => readFn(~query, ~after?),
-          "catch": (err: unknown) =>
-            (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DcbEventLog read error"),
-        })
-        ->Effect.map(result => result.events)
-        ->Stream.fromEffect
-        ->Stream.flatMap(arr => Stream.fromIterable(arr))
       {
         ReventlessCore.DcbEventLog_Adapter.read: readFn,
         append: DcbEventLogStorage_DynamoDb_Runtime.append(runtimeTable),
-        readStream,
+        readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(runtimeTable),
       }
     }),
   }

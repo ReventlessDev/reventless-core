@@ -359,3 +359,191 @@ let append = (table: runtimeTable) =>
       }
     }
   }
+
+// --- Stream Query Operations (lazy pagination via Stream.paginateEffect) ---
+
+let queryBySingleTagStream = (
+  table: runtimeTable,
+  tagKey: string,
+  tagValue: string,
+  ~after: option<string>=?,
+) => {
+  let indexName = tagToAttributeName(tagKey)
+  let expressionAttributeValues = Dict.fromArray([(":val", tagValue->JSON.Encode.string)])
+  let (filterExpression, expressionAttributeNames) = switch after {
+  | None => (None, None)
+  | Some(afterPos) => {
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+    }
+  }
+  let baseParams: QueryCommand.input = {
+    tableName: table.name,
+    indexName: indexName,
+    keyConditionExpression: `${indexName} = :val`,
+    expressionAttributeValues: expressionAttributeValues,
+    ?filterExpression,
+    ?expressionAttributeNames,
+  }
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise({
+      "try": () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        QueryCommand.send(params->QueryCommand.make)
+      },
+      "catch": err =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryBySingleTagStream error"),
+    })
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+}
+
+let queryByCompositeTagsStream = (
+  table: runtimeTable,
+  tags: array<Reventless.DcbTag.tag>,
+  ~after: option<string>=?,
+) => {
+  let composite = compositeTagKey(tags)
+  let expressionAttributeValues = Dict.fromArray([
+    (":composite", composite->JSON.Encode.string),
+  ])
+  let (filterExpression, expressionAttributeNames) = switch after {
+  | None => (None, None)
+  | Some(afterPos) => {
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+    }
+  }
+  let baseParams: QueryCommand.input = {
+    tableName: table.name,
+    indexName: "tag_composite",
+    keyConditionExpression: "tag_composite = :composite",
+    expressionAttributeValues: expressionAttributeValues,
+    ?filterExpression,
+    ?expressionAttributeNames,
+  }
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise({
+      "try": () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        QueryCommand.send(params->QueryCommand.make)
+      },
+      "catch": err =>
+        (err->Obj.magic: JsExn.t)
+        ->JsExn.message
+        ->Option.getOr("queryByCompositeTagsStream error"),
+    })
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+}
+
+let scanWithFilterStream = (
+  table: runtimeTable,
+  ~eventTypes: option<array<string>>=?,
+  ~after: option<string>=?,
+) => {
+  let expressionAttributeValues = Dict.make()
+  let expressionAttributeNames = Dict.make()
+  let filterParts = []
+
+  switch eventTypes {
+  | None => ()
+  | Some(types) => {
+      let typeConditions = types->Array.mapWithIndex((typ, idx) => {
+        let placeholder = `:type${idx->Int.toString}`
+        expressionAttributeValues->Dict.set(placeholder, typ->JSON.Encode.string)
+        `eventType = ${placeholder}`
+      })
+      filterParts->Array.push(`(${typeConditions->Array.join(" OR ")})`)
+    }
+  }
+
+  switch after {
+  | None => ()
+  | Some(afterPos) => {
+      expressionAttributeNames->Dict.set("#pos", "position")
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      filterParts->Array.push("#pos > :after")
+    }
+  }
+
+  let filterExpression = if filterParts->Array.length > 0 {
+    Some(filterParts->Array.join(" AND "))
+  } else {
+    None
+  }
+
+  let hasAttributeValues = expressionAttributeValues->Dict.keysToArray->Array.length > 0
+  let hasAttributeNames = expressionAttributeNames->Dict.keysToArray->Array.length > 0
+
+  let baseParams: ScanCommand.input = {
+    tableName: table.name,
+    ?filterExpression,
+    expressionAttributeValues: ?(hasAttributeValues ? Some(expressionAttributeValues) : None),
+    expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
+  }
+
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise({
+      "try": () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        ScanCommand.send(ScanCommand.make(params))
+      },
+      "catch": err =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("scanWithFilterStream error"),
+    })
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+}
+
+let executeQueryItemStream = (
+  table: runtimeTable,
+  queryItem: Reventless.DcbTag.queryItem,
+  ~after: option<string>=?,
+) =>
+  switch queryItem.tags {
+  | Some([tag]) =>
+    queryBySingleTagStream(table, tag.key, tag.value, ~after?)
+  | Some(tags) =>
+    queryByCompositeTagsStream(table, tags, ~after?)
+  | None =>
+    switch queryItem.eventTypes {
+    | Some(eventTypes) => scanWithFilterStream(table, ~eventTypes, ~after?)
+    | None => scanWithFilterStream(table, ~after?)
+    }
+  }
+
+let readStream = (table: runtimeTable) =>
+  (~query: Reventless.DcbTag.query, ~after=?) =>
+    query
+    ->Array.map(queryItem =>
+      executeQueryItemStream(table, queryItem, ~after?)
+      ->Stream.runCollect
+    )
+    ->Effect.all({"concurrency": "unbounded"})
+    ->Effect.map(results => {
+      let allItems = results->Array.flat
+      let allEvents = allItems->Array.map(fromItem)
+      let deduped = deduplicateByPosition(allEvents)
+      deduped->Array.toSorted((a, b) => String.compare(a.position, b.position))
+    })
+    ->Stream.fromEffect
+    ->Stream.flatMap(events => Stream.fromIterable(events))
