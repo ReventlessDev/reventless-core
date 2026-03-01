@@ -9,20 +9,20 @@ describe("QueryDb (in-memory)", () => {
     let _ = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
   })
 
-  testPromise("load returns empty array for unknown id", async () => {
+  testPromise("loadStream returns empty for unknown id", async () => {
     let ops = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
-    let result = await ops.load("unknown-id")
-    expect(result)->toEqual(Ok([]))
+    let result = await ops.loadStream("unknown-id")->Stream.runCollect->Effect.runPromise
+    expect(result)->toEqual([])
   })
 
-  testPromise("save and load round-trip", async () => {
+  testPromise("save and loadStream round-trip", async () => {
     let ops = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
     let state: ItemQueryDbSpec.state = {name: "Widget", count: 5}
     let _ = await ops.save("item-1", state, Init, None)
-    let result = await ops.load("item-1")
+    let result = await ops.loadStream("item-1")->Stream.runCollect->Effect.runPromise
     switch result {
-    | Ok([s]) => expect((s.name, s.count))->toEqual(("Widget", 5))
-    | _ => expect("Expected Ok([state])")->toEqual("but got different result")
+    | [s] => expect((s.name, s.count))->toEqual(("Widget", 5))
+    | _ => expect("Expected [state]")->toEqual("but got different result")
     }
   })
 
@@ -30,10 +30,10 @@ describe("QueryDb (in-memory)", () => {
     let ops = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
     let _ = await ops.save("item-2", {name: "Old", count: 1}, Init, None)
     let _ = await ops.save("item-2", {name: "New", count: 2}, Overwrite, None)
-    let result = await ops.load("item-2")
+    let result = await ops.loadStream("item-2")->Stream.runCollect->Effect.runPromise
     switch result {
-    | Ok([s]) => expect(s.name)->toBe("New")
-    | _ => expect("Expected Ok([state])")->toEqual("but got different result")
+    | [s] => expect(s.name)->toBe("New")
+    | _ => expect("Expected [state]")->toEqual("but got different result")
     }
   })
 
@@ -44,17 +44,17 @@ describe("QueryDb (in-memory)", () => {
       ("batch-2", ({name: "Beta", count: 2}: ItemQueryDbSpec.state), None),
     ]
     let _ = await ops.saveBatch(batch)
-    let r1 = await ops.load("batch-1")
-    let r2 = await ops.load("batch-2")
-    expect((r1->Result.isOk, r2->Result.isOk))->toEqual((true, true))
+    let r1 = await ops.loadStream("batch-1")->Stream.runCollect->Effect.runPromise
+    let r2 = await ops.loadStream("batch-2")->Stream.runCollect->Effect.runPromise
+    expect((r1->Array.length > 0, r2->Array.length > 0))->toEqual((true, true))
   })
 
   testPromise("delete removes state", async () => {
     let ops = await queryDb->ReventlessCore.Component.operations->TestRunner.resolve
     let _ = await ops.save("item-del", {name: "ToDelete", count: 0}, Init, None)
     let _ = await ops.delete("item-del", None)
-    let result = await ops.load("item-del")
-    expect(result)->toEqual(Ok([]))
+    let result = await ops.loadStream("item-del")->Stream.runCollect->Effect.runPromise
+    expect(result)->toEqual([])
   })
 
   testPromise("loadStream emits saved states", async () => {

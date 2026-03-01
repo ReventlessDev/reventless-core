@@ -3,7 +3,6 @@
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as QueryDbFixtures$ReventlessInMemory from "./QueryDbFixtures.res.mjs";
@@ -12,38 +11,30 @@ describe("QueryDb (in-memory)", () => {
   beforeAll(async () => {
     await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessInMemory.queryDb));
   });
-  test("load returns empty array for unknown id", async () => {
+  test("loadStream returns empty for unknown id", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessInMemory.queryDb));
-    let result = await ops.load("unknown-id");
-    expect(result).toEqual({
-      TAG: "Ok",
-      _0: []
-    });
+    let result = await Effect.Effect.runPromise(Stream.runCollect(ops.loadStream("unknown-id")));
+    expect(result).toEqual([]);
   });
-  test("save and load round-trip", async () => {
+  test("save and loadStream round-trip", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessInMemory.queryDb));
     await ops.save("item-1", {
       name: "Widget",
       count: 5
     }, "Init", undefined);
-    let result = await ops.load("item-1");
-    if (result.TAG === "Ok") {
-      let match = result._0;
-      if (match.length !== 1) {
-        expect("Expected Ok([state])").toEqual("but got different result");
-        return;
-      }
-      let s = match[0];
-      expect([
-        s.name,
-        s.count
-      ]).toEqual([
-        "Widget",
-        5
-      ]);
+    let result = await Effect.Effect.runPromise(Stream.runCollect(ops.loadStream("item-1")));
+    if (result.length !== 1) {
+      expect("Expected [state]").toEqual("but got different result");
       return;
     }
-    expect("Expected Ok([state])").toEqual("but got different result");
+    let s = result[0];
+    expect([
+      s.name,
+      s.count
+    ]).toEqual([
+      "Widget",
+      5
+    ]);
   });
   test("save overwrites previous state", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessInMemory.queryDb));
@@ -55,18 +46,13 @@ describe("QueryDb (in-memory)", () => {
       name: "New",
       count: 2
     }, "Overwrite", undefined);
-    let result = await ops.load("item-2");
-    if (result.TAG === "Ok") {
-      let match = result._0;
-      if (match.length !== 1) {
-        expect("Expected Ok([state])").toEqual("but got different result");
-        return;
-      }
-      let s = match[0];
-      expect(s.name).toBe("New");
+    let result = await Effect.Effect.runPromise(Stream.runCollect(ops.loadStream("item-2")));
+    if (result.length !== 1) {
+      expect("Expected [state]").toEqual("but got different result");
       return;
     }
-    expect("Expected Ok([state])").toEqual("but got different result");
+    let s = result[0];
+    expect(s.name).toBe("New");
   });
   test("saveBatch saves multiple states", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessInMemory.queryDb));
@@ -89,11 +75,11 @@ describe("QueryDb (in-memory)", () => {
       ]
     ];
     await ops.saveBatch(batch);
-    let r1 = await ops.load("batch-1");
-    let r2 = await ops.load("batch-2");
+    let r1 = await Effect.Effect.runPromise(Stream.runCollect(ops.loadStream("batch-1")));
+    let r2 = await Effect.Effect.runPromise(Stream.runCollect(ops.loadStream("batch-2")));
     expect([
-      Stdlib_Result.isOk(r1),
-      Stdlib_Result.isOk(r2)
+      r1.length !== 0,
+      r2.length !== 0
     ]).toEqual([
       true,
       true
@@ -106,11 +92,8 @@ describe("QueryDb (in-memory)", () => {
       count: 0
     }, "Init", undefined);
     await ops.delete("item-del", undefined);
-    let result = await ops.load("item-del");
-    expect(result).toEqual({
-      TAG: "Ok",
-      _0: []
-    });
+    let result = await Effect.Effect.runPromise(Stream.runCollect(ops.loadStream("item-del")));
+    expect(result).toEqual([]);
   });
   test("loadStream emits saved states", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessInMemory.queryDb));

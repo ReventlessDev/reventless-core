@@ -128,10 +128,11 @@ let loadState = async id => {
   switch Bus.getQueryDb("TestItemReadModelQueryDB") {
   | None => []
   | Some(ops) =>
-    switch await ops.load(id) {
-    | Error(_) => []
-    | Ok(states) =>
-      states->Array.map(json => json->S.parseJsonOrThrow(ItemReadModelSpec.stateSchema))
-    }
+    let states =
+      await ops.loadStream(id)
+      ->Stream.runCollect
+      ->Effect.catchAll(_ => Effect.succeed([]))
+      ->Effect.runPromise
+    states->Array.map(json => json->S.parseJsonOrThrow(ItemReadModelSpec.stateSchema))
   }
 }

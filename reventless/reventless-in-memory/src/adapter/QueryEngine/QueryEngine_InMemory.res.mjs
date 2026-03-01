@@ -32,14 +32,15 @@ function Make(Bus) {
         return [];
       }
     },
-    query: async (readModelName, key, id, param, param$1, param$2, param$3) => {
+    query: async (readModelName, key, id, param, param$1, param$2, limit) => {
       let keyStr = key !== undefined ? key : valueToString(id);
       let ops = Bus.getQueryDb(readModelName);
-      if (ops !== undefined) {
-        return await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(keyStr)), param => Effect.Effect.succeed([])));
-      } else {
+      if (ops === undefined) {
         return [];
       }
+      let stream = ops.loadStream(keyStr);
+      let bounded = limit !== undefined ? Effect.Stream.take(stream, limit) : stream;
+      return await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(bounded), param => Effect.Effect.succeed([])));
     }
   });
   return {

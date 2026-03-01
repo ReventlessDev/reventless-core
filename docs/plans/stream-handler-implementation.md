@@ -1,6 +1,6 @@
 # Plan: Stream-Based Handler Implementation (Phases J–P)
 
-**Status:** Phases J–K–L–M–N–O–P–Q complete
+**Status:** Phases J–K–L–M–N–O–P–Q–R–S–T–V complete
 
 **Created:** 2026-02-28
 
@@ -1244,7 +1244,7 @@ Both use `take(2)` — enough to distinguish the three cases (0, 1, or 2+):
 
 | File | Change |
 |------|--------|
-| `reventless-core/src/Projection.res` | `loadAll` → `loadAtMost(n, id)`; `Update`/`UpdateWithDefault` use `n=2`; `UpdateMultiState` uses `n=Int.maxInt` |
+| `reventless-core/src/Projection.res` | `loadAll` → `loadAtMost(n, id)` + `loadAll` (unbounded); `Update`/`UpdateWithDefault` use `loadAtMost(2, id)`; `UpdateMultiState` keeps `loadAll` |
 
 ---
 

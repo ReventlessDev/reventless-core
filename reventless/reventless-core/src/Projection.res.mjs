@@ -89,6 +89,13 @@ async function handleAction(action, operations, subIdConfig) {
   let saveBatch = operations.saveBatch;
   let save = operations.save;
   let loadStream = operations.loadStream;
+  let loadAtMost = (n, id) => Effect.Effect.runPromise(Effect.Effect.catchAll(Effect.Effect.map(Stream.runCollect(Effect.Stream.take(loadStream(id), n)), states => ({
+    TAG: "Ok",
+    _0: states
+  })), e => Effect.Effect.succeed({
+    TAG: "Error",
+    _0: e
+  })));
   let loadAll = id => Effect.Effect.runPromise(Effect.Effect.catchAll(Effect.Effect.map(Stream.runCollect(loadStream(id)), states => ({
     TAG: "Ok",
     _0: states
@@ -121,7 +128,7 @@ async function handleAction(action, operations, subIdConfig) {
       return await saveBatch(batch);
     case "Update" :
       let id$1 = action._0;
-      let states = await loadAll(id$1);
+      let states = await loadAtMost(2, id$1);
       if (states.TAG !== "Ok") {
         return {
           TAG: "Error",
@@ -154,7 +161,7 @@ async function handleAction(action, operations, subIdConfig) {
       let $$default = action._1;
       let id$2 = action._0;
       console.log(`UpdateWithDefault(` + id$2 + `, loading ...`);
-      let states$2 = await loadAll(id$2);
+      let states$2 = await loadAtMost(2, id$2);
       if (states$2.TAG === "Ok") {
         let states$3 = states$2._0;
         let len$1 = states$3.length;
@@ -565,7 +572,7 @@ async function handleActions(actions, operations, subIdConfig) {
     }), async (p, action) => {
       let err = await p;
       if (err.TAG !== "Ok") {
-        Logger$ReventlessCore.error("File \"Projection.res\", line 360, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$Reventless.storageErrorSchema)));
+        Logger$ReventlessCore.error("File \"Projection.res\", line 367, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$Reventless.storageErrorSchema)));
       }
       return await handleAction(action, operations, subIdConfig);
     });

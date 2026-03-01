@@ -22,6 +22,10 @@ function Make(Bus) {
     let everyName = "every" + name;
     let everySdl = `  ` + everyName + `: [String]`;
     let everyResolver = async (_root, _args) => {
+      let makeStream = Bus.getQueryDbStream(name);
+      if (makeStream !== undefined) {
+        return await Effect.Effect.runPromise(Stream.runCollect(makeStream()));
+      }
       let scanAll = Bus.getQueryDbScan(name);
       if (scanAll !== undefined) {
         return scanAll();

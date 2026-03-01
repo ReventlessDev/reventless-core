@@ -45,9 +45,16 @@ module Make = (Bus: InMemory_Bus.T) => {
     let everyName = "every" ++ name
     let everySdl = `  ${everyName}: [String]`
     let everyResolver: GraphQL_Server.resolverFn = async (_root, _args) => {
-      switch Bus.getQueryDbScan(name) {
-      | Some(scanAll) => scanAll()->JSON.Encode.array
-      | None => []->JSON.Encode.array
+      switch Bus.getQueryDbStream(name) {
+      | Some(makeStream) =>
+        let items = await makeStream()->Stream.runCollect->Effect.runPromise
+        items->JSON.Encode.array
+      | None =>
+        // Backward compat: fall back to array scan if no stream registered
+        switch Bus.getQueryDbScan(name) {
+        | Some(scanAll) => scanAll()->JSON.Encode.array
+        | None => []->JSON.Encode.array
+        }
       }
     }
 

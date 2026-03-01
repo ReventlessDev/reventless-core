@@ -33,7 +33,7 @@ module Make = (Bus: InMemory_Bus.T) => {
         ~subIdConfig as _=?,
         ~filterConfigs as _=?,
         ~ascending as _=?,
-        ~limit as _=?,
+        ~limit=?,
       ) => {
         let keyStr = switch key {
         | Some(k) => k
@@ -41,7 +41,12 @@ module Make = (Bus: InMemory_Bus.T) => {
         }
         switch Bus.getQueryDb(readModelName) {
         | Some(ops) =>
-          await ops.loadStream(keyStr)
+          let stream = ops.loadStream(keyStr)
+          let bounded = switch limit {
+          | Some(n) => stream->Stream.take(n)
+          | None => stream
+          }
+          await bounded
           ->Stream.runCollect
           ->Effect.catchAll(_ => Effect.succeed([]))
           ->Effect.runPromise

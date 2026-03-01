@@ -1,5 +1,5 @@
 // Unit tests for QueryDbStorage_InMemory.
-// Covers save, load, saveBatch, count, delete, deleteBatch, and scan registration.
+// Covers save, loadStream, saveBatch, count, delete, deleteBatch, and scan registration.
 
 open AsyncTest
 open AsyncTest.Expect
@@ -10,23 +10,31 @@ let opts: Pulumi.CustomResourceOptions.t = {}
 
 describe("QueryDbStorage_InMemory", () => {
   describe("save and load", () => {
-    testPromise("save stores state; load retrieves it by id", async () => {
+    testPromise("save stores state; loadStream retrieves it by id", async () => {
       module TestBus = InMemory_Bus.Make()
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="rm1", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("id1", JSON.Encode.string("value1"), ReventlessCore.QueryDb.Any, None)
-      let items = (await ops.load("id1"))->Result.getOr([])
+      let items =
+        await ops.loadStream("id1")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
       expect(items->Array.length)->toBe(1)
       expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("value1"))
     })
 
-    testPromise("load returns empty array for unknown id", async () => {
+    testPromise("loadStream returns empty for unknown id", async () => {
       module TestBus = InMemory_Bus.Make()
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="rm2", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
-      let items = (await ops.load("unknown"))->Result.getOr([])
+      let items =
+        await ops.loadStream("unknown")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
       expect(items->Array.length)->toBe(0)
     })
 
@@ -37,14 +45,29 @@ describe("QueryDbStorage_InMemory", () => {
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("id1", JSON.Encode.string("old"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.save("id1", JSON.Encode.string("new"), ReventlessCore.QueryDb.Any, None)
-      let items = (await ops.load("id1"))->Result.getOr([])
+      let items =
+        await ops.loadStream("id1")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
       expect(items->Array.length)->toBe(1)
       expect(items->Array.getUnsafe(0))->toEqual(JSON.Encode.string("new"))
+    })
+
+    testPromise("load delegates to loadStream (backward-compat)", async () => {
+      module TestBus = InMemory_Bus.Make()
+      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      let s = Storage.make(~name="load-compat", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let ops = await s.operations->TestRunner.resolve
+      let _ = await ops.save("compat-id", JSON.Encode.string("compat-val"), ReventlessCore.QueryDb.Any, None)
+      let streamed = await ops.loadStream("compat-id")->Stream.runCollect->Effect.runPromise
+      let loaded = await ops.load("compat-id")
+      expect(loaded)->toEqual(Ok(streamed))
     })
   })
 
   describe("saveBatch", () => {
-    testPromise("stores multiple items; each loadable by id", async () => {
+    testPromise("stores multiple items; loadStream retrieves each by id", async () => {
       module TestBus = InMemory_Bus.Make()
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="rm4", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
@@ -53,8 +76,16 @@ describe("QueryDbStorage_InMemory", () => {
         ("a", JSON.Encode.string("val-a"), None),
         ("b", JSON.Encode.string("val-b"), None),
       ])
-      let itemsA = (await ops.load("a"))->Result.getOr([])
-      let itemsB = (await ops.load("b"))->Result.getOr([])
+      let itemsA =
+        await ops.loadStream("a")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
+      let itemsB =
+        await ops.loadStream("b")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
       expect(itemsA->Array.getUnsafe(0))->toEqual(JSON.Encode.string("val-a"))
       expect(itemsB->Array.getUnsafe(0))->toEqual(JSON.Encode.string("val-b"))
     })
@@ -72,14 +103,18 @@ describe("QueryDbStorage_InMemory", () => {
   })
 
   describe("delete", () => {
-    testPromise("removes item; subsequent load returns empty", async () => {
+    testPromise("removes item; loadStream returns empty", async () => {
       module TestBus = InMemory_Bus.Make()
       module Storage = QueryDbStorage_InMemory.Make(TestBus)
       let s = Storage.make(~name="rm6", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("del-id", JSON.Encode.string("v"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.delete("del-id", None)
-      let items = (await ops.load("del-id"))->Result.getOr([])
+      let items =
+        await ops.loadStream("del-id")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
       expect(items->Array.length)->toBe(0)
     })
 
@@ -93,8 +128,16 @@ describe("QueryDbStorage_InMemory", () => {
         ("y", JSON.Encode.string("vy"), None),
       ])
       let _ = await ops.deleteBatch([("x", None), ("y", None)])
-      let rx = (await ops.load("x"))->Result.getOr([])
-      let ry = (await ops.load("y"))->Result.getOr([])
+      let rx =
+        await ops.loadStream("x")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
+      let ry =
+        await ops.loadStream("y")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
       expect(rx->Array.length)->toBe(0)
       expect(ry->Array.length)->toBe(0)
     })

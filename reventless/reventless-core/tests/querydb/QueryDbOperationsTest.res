@@ -12,18 +12,18 @@ module Ops = QueryDb_Operations.Make(
 let _ = beforeEach(() => reset())
 
 describe("QueryDb_Operations:", () => {
-  describe("load", () => {
-    testPromise("returns empty array for unknown id", async () => {
-      let result = await Ops.load("unknown-id")
-      expect(result)->toEqual(Ok([]))
+  describe("loadStream", () => {
+    testPromise("returns empty stream for unknown id", async () => {
+      let result = await Ops.loadStream("unknown-id")->Stream.runCollect->Effect.runPromise
+      expect(result)->toEqual([])
     })
 
     testPromise("decodes saved state back to typed state", async () => {
       let state: ItemQueryDbSpec.state = {name: "Widget", count: 5}
       let _ = await Ops.save("item-1", state, Init, None)
-      let result = await Ops.load("item-1")
+      let result = await Ops.loadStream("item-1")->Stream.runCollect->Effect.runPromise
       switch result {
-      | Ok([s]) => expect((s.name, s.count))->toEqual(("Widget", 5))
+      | [s] => expect((s.name, s.count))->toEqual(("Widget", 5))
       | _ => expect("unexpected result")->toEqual("Ok([state])")
       }
     })
@@ -31,9 +31,9 @@ describe("QueryDb_Operations:", () => {
     testPromise("returns updated state after overwrite", async () => {
       let _ = await Ops.save("item-1", {name: "Widget", count: 1}, Init, None)
       let _ = await Ops.save("item-1", {name: "Widget Updated", count: 2}, Overwrite, None)
-      let result = await Ops.load("item-1")
+      let result = await Ops.loadStream("item-1")->Stream.runCollect->Effect.runPromise
       switch result {
-      | Ok([s]) => expect(s.name)->toBe("Widget Updated")
+      | [s] => expect(s.name)->toBe("Widget Updated")
       | _ => expect("unexpected result")->toEqual("Ok([state])")
       }
     })
@@ -72,9 +72,9 @@ describe("QueryDb_Operations:", () => {
         ("item-2", ({name: "B", count: 2}: ItemQueryDbSpec.state), None),
       ]
       let _ = await Ops.saveBatch(batch)
-      let r1 = await Ops.load("item-1")
-      let r2 = await Ops.load("item-2")
-      expect((r1->Result.isOk, r2->Result.isOk))->toEqual((true, true))
+      let r1 = await Ops.loadStream("item-1")->Stream.runCollect->Effect.runPromise
+      let r2 = await Ops.loadStream("item-2")->Stream.runCollect->Effect.runPromise
+      expect((r1->Array.length > 0, r2->Array.length > 0))->toEqual((true, true))
     })
 
     testPromise("returns Error when storage fails", async () => {
@@ -88,8 +88,8 @@ describe("QueryDb_Operations:", () => {
     testPromise("removes state from storage", async () => {
       let _ = await Ops.save("item-1", {name: "Widget", count: 1}, Init, None)
       let _ = await Ops.delete("item-1", None)
-      let result = await Ops.load("item-1")
-      expect(result)->toEqual(Ok([]))
+      let result = await Ops.loadStream("item-1")->Stream.runCollect->Effect.runPromise
+      expect(result)->toEqual([])
     })
   })
 })

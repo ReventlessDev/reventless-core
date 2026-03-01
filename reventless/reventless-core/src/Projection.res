@@ -65,6 +65,13 @@ let handleAction = async (
   {QueryDb.loadStream, save, saveBatch, delete, deleteBatch} as operations,
   subIdConfig,
 ) => {
+  let loadAtMost = (n, id) =>
+    loadStream(id)
+    ->Stream.take(n)
+    ->Stream.runCollect
+    ->Effect.map(states => Ok(states))
+    ->Effect.catchAll(e => Effect.succeed(Error(e)))
+    ->Effect.runPromise
   let loadAll = id =>
     loadStream(id)
     ->Stream.runCollect
@@ -114,7 +121,7 @@ let handleAction = async (
     await saveBatch(batch)
 
   | Update(id, update) =>
-    switch await loadAll(id) {
+    switch await loadAtMost(2, id) {
     | Ok(states) =>
       switch states {
       | [] =>
@@ -132,7 +139,7 @@ let handleAction = async (
     }
   | UpdateWithDefault(id, default, update) =>
     Console.log(`UpdateWithDefault(${id}, loading ...`)
-    switch await loadAll(id) {
+    switch await loadAtMost(2, id) {
     | Ok(states) =>
       switch states {
       | [] =>
