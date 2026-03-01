@@ -88,7 +88,53 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
     }
   }
 
-let queryById = (table, id) => queryById(table.name, id)
+// Streams all items matching a QueryCommand, fetching one DynamoDB page at a time.
+let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =>
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=err => (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryStream error"),
+      () => {
+        let p = switch cursor {
+        | None => params
+        | Some(key) => {...params, exclusiveStartKey: key}
+        }
+        QueryCommand.send(p->QueryCommand.make)
+      },
+    )
+    ->Effect.map(res => (
+      res.items->Option.getOr([]),
+      res.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+
+// Streams all items matching a ScanCommand, fetching one DynamoDB page at a time.
+let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, string, unit> =>
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=err => (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("scanStream error"),
+      () => {
+        let p = switch cursor {
+        | None => params
+        | Some(key) => {...params, exclusiveStartKey: key}
+        }
+        ScanCommand.send(ScanCommand.make(p))
+      },
+    )
+    ->Effect.map(res => (
+      res.items->Option.getOr([]),
+      res.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+
+// Convenience wrapper: streams all events for a given id.
+// Returns the stream directly — callers decide how to consume it.
+let queryById = (table, id): Stream.t<JSON.t, string, unit> =>
+  queryStream({
+    tableName: table.name,
+    consistentRead: true,
+    keyConditionExpression: "id=:id",
+    expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
+  })
 
 let keysFromResource: Reventless.Adapter.resource => (string, option<string>) = resource =>
   switch resource.info->Pulumi.Output.get->String.split(",") {

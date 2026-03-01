@@ -37,7 +37,7 @@ let loadStream = table =>
 
 let load = table =>
   async id =>
-    switch await Util_DynamoDb_Runtime.queryById(table, id) {
+    switch await Util_DynamoDb_Runtime.queryById(table, id)->Stream.runCollect->Effect.runPromise {
     | arr => arr->Ok
     | exception JsExn(e) =>
       let errorMsg = e->ReventlessCore.Util.Error.message

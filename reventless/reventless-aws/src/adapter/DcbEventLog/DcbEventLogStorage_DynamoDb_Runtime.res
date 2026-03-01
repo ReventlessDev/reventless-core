@@ -140,8 +140,7 @@ let queryBySingleTag = async (
     ?expressionAttributeNames,
   }
 
-  let result = await queryRecursive(~params=queryParams)
-  result.items->Option.getOr([])
+  await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
 }
 
 let queryByCompositeTags = async (
@@ -174,8 +173,7 @@ let queryByCompositeTags = async (
     ?expressionAttributeNames,
   }
 
-  let result = await queryRecursive(~params=queryParams)
-  result.items->Option.getOr([])
+  await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
 }
 
 let scanWithFilter = async (
@@ -227,8 +225,7 @@ let scanWithFilter = async (
     expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
   }
 
-  let result = await scanRecursive(~params=scanParams)
-  result.items->Option.getOr([])
+  await scanStream(scanParams)->Stream.runCollect->Effect.runPromise
 }
 
 // --- Query Item Execution ---

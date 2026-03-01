@@ -379,14 +379,20 @@ Or, if the stream already emits arrays, use `Effect.map(Array.flat)` after `runC
 
 ## Phase G — Replace `queryRecursive` / `scanRecursive` with streaming in `DynamoDb_DocumentClient.res` (MEDIUM IMPACT)
 
-**File:** `rescript-aws-sdk/src/DynamoDb_DocumentClient.res`
+**Files:**
+- `rescript-aws-sdk/src/DynamoDb_DocumentClient.res`
+- `reventless-aws/src/util/Util_DynamoDb_Runtime.res`
+- `reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res`
+- `reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res`
+- `reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res`
+- `reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res`
 
 ### Problem
 
-`queryRecursive` and `scanRecursive` are both eager recursive accumulators — they loop over
-DynamoDB pages and concatenate results into a single `QueryCommand.output` before returning.
-All callers receive the complete accumulated response in one promise, with no ability to
-short-circuit pagination:
+`queryRecursive` and `scanRecursive` in `DynamoDb_DocumentClient.res` are eager recursive
+accumulators — they loop over DynamoDB pages and concatenate results into memory before
+returning. `queryById` calls `queryRecursive` internally and is likewise fully eager. All
+callers receive the complete result in one promise with no ability to short-circuit pagination:
 
 ```rescript
 let rec queryRecursive = async (~allResults, ~params) => {
@@ -398,61 +404,64 @@ let rec queryRecursive = async (~allResults, ~params) => {
 }
 ```
 
-### Callers (all currently eager)
-
-- `DynamoDb_DocumentClient.queryById` — used by `Util_DynamoDb_Runtime.queryById`
-  → `EventLogStorage_DynamoDb_Runtime.replay` / `tryReplay`
-  → `QueryDbStorage_DynamoDb_Runtime.load`
-- `DcbEventLogStorage_DynamoDb_Runtime` lines 143, 177 — non-stream `executeQueryItem` / `read`
-- `DcbEventLogStorage_DynamoDb_Runtime` line 230 — non-stream scan in `executeQueryItem`
-- `QueryEngine_DynamoDb.res` lines 102, 133 — query and scan helpers
-
-### Note
-
-Phase B already eliminated `queryRecursive` usage from `replayStream` and `loadStream` by
-switching those stream paths to `Stream.paginateEffect` directly. The remaining callers are
-all non-stream (promise-based) and legitimately need a full result. They are less urgent.
-
 ### Solution
 
-**G1 — Add `queryStream` and `scanStream` helpers to `DynamoDb_DocumentClient.res`.**
-Implement streaming variants using `Stream.paginateEffect`:
+**G1 — Add `queryStream` and `scanStream` to `Util_DynamoDb_Runtime.res`** (in `reventless-aws`,
+which has `rescript-effect` as a dependency — `rescript-aws-sdk` does not).
+These are generic streaming helpers built on `Stream.paginateEffect`:
 
 ```rescript
+// Util_DynamoDb_Runtime.res
 let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =>
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
       ~catch=err => (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryStream error"),
-      () => {
-        let p = switch cursor {
+      () => QueryCommand.send((switch cursor {
         | None => params
         | Some(key) => {...params, exclusiveStartKey: key}
-        }
-        QueryCommand.send(p->QueryCommand.make)
-      },
+      })->QueryCommand.make),
     )
-    ->Effect.map(res => (
-      res.items->Option.getOr([])
-        ->Array.map(js => js->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow),
-      res.lastEvaluatedKey->Option.map(key => Some(key)),
-    ))
+    ->Effect.map(res => (res.items->Option.getOr([]), res.lastEvaluatedKey->Option.map(Some)))
   )
 
 let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, string, unit> =>
   // same pattern using ScanCommand
 ```
 
-**G2 — Migrate non-stream callers** to `stream->Stream.runCollect->Effect.runPromise` where
-appropriate, or leave them on the recursive versions if the call sites are entirely promise-based
-and the result sets are known to be small. Candidates for migration:
-- `DcbEventLogStorage_DynamoDb_Runtime.executeQueryItem` (the eager `read` path)
-- `QueryEngine_DynamoDb` query/scan helpers
+**G2 — Add `queryById` to `Util_DynamoDb_Runtime.res`** as a convenience wrapper around
+`queryStream` that pre-fills the `id=:id` query params. It returns the stream directly —
+**it does not materialize the stream** — leaving the caller in control of consumption:
 
-**G3 — Delete `queryRecursive` and `scanRecursive`** once all callers are migrated.
+```rescript
+let queryById = (table, id): Stream.t<JSON.t, string, unit> =>
+  queryStream({
+    tableName: table.name,
+    consistentRead: true,
+    keyConditionExpression: "id=:id",
+    expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
+  })
+```
+
+**G3 — Migrate all callers of the recursive functions** to use the stream helpers, collecting
+eagerly where a full result is still required:
+
+- `DcbEventLogStorage.queryBySingleTag` / `queryByCompositeTags` / `scanWithFilter`:
+  replace `queryRecursive` / `scanRecursive` with `queryStream` / `scanStream` + `Stream.runCollect->Effect.runPromise`
+- `QueryEngine.queryByTableName` / `scanByTableName`: same
+- `EventLogStorage.tryReplay`: replace `DocumentClient.queryById` with
+  `queryById(table, id)->Stream.runCollect->Effect.runPromise`; update exception
+  handler from `JsExn` to generic `_` (Effect errors are not JsExn)
+- `QueryDbStorage.load`: same pattern via `Util_DynamoDb_Runtime.queryById`
+- `EventLogStorage.replayStream`: simplify to `queryStream({...})` directly
+  (same logic as the Phase-B paginateEffect implementation, but one line)
+
+**G4 — Delete `queryRecursive`, `scanRecursive`, and `queryById` from `DynamoDb_DocumentClient.res`**
+once all callers are migrated to the util's stream-based equivalents.
 
 ### Acceptance criteria
-- No `queryRecursive` or `scanRecursive` in the codebase.
-- `queryById` is implemented as `queryStream(params)->Stream.runCollect->Effect.map(chunk => chunk->Chunk.toArray)`.
+- No `queryRecursive`, `scanRecursive`, or `queryById` in `DynamoDb_DocumentClient.res`.
+- `Util_DynamoDb_Runtime.queryById` returns `Stream.t<JSON.t, string, unit>`.
+- Callers that need all items do `queryById(...)->Stream.runCollect->Effect.runPromise`.
 
 ---
 
@@ -478,4 +487,4 @@ and the result sets are known to be small. Candidates for migration:
 | D — Publisher adapters stream batching | Low | Not started |
 | E — EventMapper runCollect → runForEach | Low | Not started |
 | F — CommandTopic O(n²) fold | Trivial | Not started |
-| G — Replace queryRecursive/scanRecursive in DocumentClient | Medium | Not started |
+| G — Replace queryRecursive/scanRecursive in DocumentClient | Medium | Done |

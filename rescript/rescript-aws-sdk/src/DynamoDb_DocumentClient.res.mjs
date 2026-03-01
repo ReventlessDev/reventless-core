@@ -292,56 +292,6 @@ let QueryCommand = {
   send: send$5
 };
 
-async function queryRecursive(allResultsOpt, params) {
-  let allResults = allResultsOpt !== undefined ? allResultsOpt : ({
-      $metadata: {
-        attempts: 0,
-        cfId: "init",
-        extendedRequestId: "init",
-        httpStatusCode: 0,
-        requestId: "init",
-        totalRetryDelay: 0
-      },
-      Count: 0,
-      Items: [],
-      ScannedCount: 0
-    });
-  let command = new LibDynamodb.QueryCommand(params);
-  let res = await client().send(command);
-  let newrecord = {...res};
-  newrecord.ScannedCount = Stdlib_Option.getOr(allResults.ScannedCount, 0) + Stdlib_Option.getOr(res.ScannedCount, 0) | 0;
-  newrecord.Items = Stdlib_Option.getOr(allResults.Items, []).concat(Stdlib_Option.getOr(res.Items, []));
-  newrecord.Count = Stdlib_Option.getOr(allResults.Count, 0) + Stdlib_Option.getOr(res.Count, 0) | 0;
-  newrecord.$metadata = {
-    attempts: allResults.$metadata.attempts + res.$metadata.attempts | 0,
-    cfId: res.$metadata.cfId,
-    extendedRequestId: res.$metadata.extendedRequestId,
-    httpStatusCode: res.$metadata.httpStatusCode,
-    requestId: res.$metadata.requestId,
-    totalRetryDelay: res.$metadata.totalRetryDelay + res.$metadata.totalRetryDelay | 0
-  };
-  let lastEvaluatedKey = res.LastEvaluatedKey;
-  if (lastEvaluatedKey === undefined) {
-    return newrecord;
-  }
-  let newrecord$1 = {...params};
-  newrecord$1.ExclusiveStartKey = lastEvaluatedKey;
-  return await queryRecursive(newrecord, newrecord$1);
-}
-
-async function queryById(tableName, id) {
-  let result = await queryRecursive(undefined, {
-    TableName: tableName,
-    ConsistentRead: true,
-    ExpressionAttributeValues: Object.fromEntries([[
-        ":id",
-        id
-      ]]),
-    KeyConditionExpression: "id=:id"
-  });
-  return Stdlib_Option.getOr(result.Items, []).map(js => JSON.parse(Stdlib_Option.getOr(JSON.stringify(js), "")));
-}
-
 let Raw$7 = {};
 
 function send$6(command) {
@@ -352,43 +302,6 @@ let ScanCommand = {
   Raw: Raw$7,
   send: send$6
 };
-
-async function scanRecursive(allResultsOpt, params) {
-  let allResults = allResultsOpt !== undefined ? allResultsOpt : ({
-      $metadata: {
-        attempts: 0,
-        cfId: "init",
-        extendedRequestId: "init",
-        httpStatusCode: 0,
-        requestId: "init",
-        totalRetryDelay: 0
-      },
-      Count: 0,
-      Items: [],
-      ScannedCount: 0
-    });
-  let command = new LibDynamodb.ScanCommand(params);
-  let res = await client().send(command);
-  let newrecord = {...res};
-  newrecord.ScannedCount = Stdlib_Option.getOr(allResults.ScannedCount, 0) + Stdlib_Option.getOr(res.ScannedCount, 0) | 0;
-  newrecord.Items = Stdlib_Option.getOr(allResults.Items, []).concat(Stdlib_Option.getOr(res.Items, []));
-  newrecord.Count = Stdlib_Option.getOr(allResults.Count, 0) + Stdlib_Option.getOr(res.Count, 0) | 0;
-  newrecord.$metadata = {
-    attempts: allResults.$metadata.attempts + res.$metadata.attempts | 0,
-    cfId: res.$metadata.cfId,
-    extendedRequestId: res.$metadata.extendedRequestId,
-    httpStatusCode: res.$metadata.httpStatusCode,
-    requestId: res.$metadata.requestId,
-    totalRetryDelay: res.$metadata.totalRetryDelay + res.$metadata.totalRetryDelay | 0
-  };
-  let lastEvaluatedKey = res.LastEvaluatedKey;
-  if (lastEvaluatedKey === undefined) {
-    return newrecord;
-  }
-  let newrecord$1 = {...params};
-  newrecord$1.ExclusiveStartKey = lastEvaluatedKey;
-  return await scanRecursive(newrecord, newrecord$1);
-}
 
 export {
   Raw,
@@ -407,9 +320,6 @@ export {
   $$delete,
   TransactWriteCommand,
   QueryCommand,
-  queryRecursive,
-  queryById,
   ScanCommand,
-  scanRecursive,
 }
 /* Stdlib_JsExn Not a pure module */

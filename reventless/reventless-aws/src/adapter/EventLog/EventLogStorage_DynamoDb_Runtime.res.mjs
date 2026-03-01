@@ -7,10 +7,8 @@ import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Util_Promise$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
-import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
 function append(table) {
@@ -39,56 +37,33 @@ function append(table) {
   };
 }
 
-async function tryReplay(retryOpt, tableName, id) {
+async function tryReplay(retryOpt, table, id) {
   let retry = retryOpt !== undefined ? retryOpt : 0;
   try {
-    return await DynamoDb_DocumentClient$AwsSdk.queryById(tableName, id);
-  } catch (raw_e) {
-    let e = Primitive_exceptions.internalToException(raw_e);
-    if (e.RE_EXN_ID === "JsExn") {
-      Logger$ReventlessCore.warn("File \"EventLogStorage_DynamoDb_Runtime.res\", line 25, characters 11-18", undefined, undefined, `Couldn't replay events for id ` + id + `, retry:` + retry.toString(), e._1);
-      let timeout = (100 * retry | 0) + Stdlib_Math.Int.random(0, 100) | 0;
-      await Util_Promise$ReventlessCore.finishTimeout(timeout);
-      return await tryReplay(retry + 1 | 0, tableName, id);
-    }
-    throw e;
+    return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)));
+  } catch (raw_err) {
+    let err = Primitive_exceptions.internalToException(raw_err);
+    Logger$ReventlessCore.warn("File \"EventLogStorage_DynamoDb_Runtime.res\", line 23, characters 11-18", undefined, undefined, `Couldn't replay events for id ` + id + `, retry:` + retry.toString(), err);
+    let timeout = (100 * retry | 0) + Stdlib_Math.Int.random(0, 100) | 0;
+    await Util_Promise$ReventlessCore.finishTimeout(timeout);
+    return await tryReplay(retry + 1 | 0, table, id);
   }
 }
 
 function replay(table) {
-  return async id => await tryReplay(undefined, table.name, id);
+  return async id => await tryReplay(undefined, table, id);
 }
 
 function replayStream(table) {
-  return id => {
-    let baseParams_TableName = table.name;
-    let baseParams_ConsistentRead = true;
-    let baseParams_ExpressionAttributeValues = Object.fromEntries([[
+  return id => Util_DynamoDb_Runtime$ReventlessAws.queryStream({
+    TableName: table.name,
+    ConsistentRead: true,
+    ExpressionAttributeValues: Object.fromEntries([[
         ":id",
         id
-      ]]);
-    let baseParams_KeyConditionExpression = "id=:id";
-    let baseParams = {
-      TableName: baseParams_TableName,
-      ConsistentRead: baseParams_ConsistentRead,
-      ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
-      KeyConditionExpression: baseParams_KeyConditionExpression
-    };
-    return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "DynamoDB replay error"), () => {
-      let params;
-      if (cursor !== undefined) {
-        let newrecord = {...baseParams};
-        newrecord.ExclusiveStartKey = cursor;
-        params = newrecord;
-      } else {
-        params = baseParams;
-      }
-      return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
-    }), result => [
-      Stdlib_Option.getOr(result.Items, []).map(js => JSON.parse(Stdlib_Option.getOr(JSON.stringify(js), ""))),
-      Stdlib_Option.map(result.LastEvaluatedKey, key => key)
-    ]));
-  };
+      ]]),
+    KeyConditionExpression: "id=:id"
+  });
 }
 
 function appendStream(table) {
@@ -106,10 +81,7 @@ function appendStream(table) {
   };
 }
 
-let DC;
-
 export {
-  DC,
   append,
   tryReplay,
   replay,

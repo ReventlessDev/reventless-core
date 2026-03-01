@@ -52,7 +52,7 @@ function load(table) {
   return async id => {
     let arr;
     try {
-      arr = await Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id);
+      arr = await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)));
     } catch (raw_e) {
       let e = Primitive_exceptions.internalToException(raw_e);
       if (e.RE_EXN_ID === "JsExn") {

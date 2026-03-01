@@ -125,8 +125,7 @@ async function queryBySingleTag(table, tagKey, tagValue, after) {
     IndexName: queryParams_IndexName,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
-  let result = await DynamoDb_DocumentClient$AwsSdk.queryRecursive(undefined, queryParams);
-  return Stdlib_Option.getOr(result.Items, []);
+  return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
 async function queryByCompositeTags(table, tags, after) {
@@ -159,8 +158,7 @@ async function queryByCompositeTags(table, tags, after) {
     IndexName: queryParams_IndexName,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
-  let result = await DynamoDb_DocumentClient$AwsSdk.queryRecursive(undefined, queryParams);
-  return Stdlib_Option.getOr(result.Items, []);
+  return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
 async function scanWithFilter(table, eventTypes, after) {
@@ -192,8 +190,7 @@ async function scanWithFilter(table, eventTypes, after) {
     ExpressionAttributeValues: scanParams_ExpressionAttributeValues,
     FilterExpression: filterExpression
   };
-  let result = await DynamoDb_DocumentClient$AwsSdk.scanRecursive(undefined, scanParams);
-  return Stdlib_Option.getOr(result.Items, []);
+  return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
 }
 
 async function executeQueryItem(table, queryItem, after) {

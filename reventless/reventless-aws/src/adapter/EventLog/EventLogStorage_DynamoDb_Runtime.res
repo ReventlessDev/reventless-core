@@ -1,7 +1,5 @@
 open Util_DynamoDb_Runtime
 
-module DC = AwsSdk.DynamoDb.DocumentClient
-
 let append = table =>
   async (_sequenceNr, _id, jsons) => {
     let result =
@@ -18,54 +16,34 @@ let append = table =>
     }
   }
 
-let rec tryReplay = async (~retry=0, tableName, id) =>
-  switch await AwsSdk.DynamoDb.DocumentClient.queryById(tableName, id) {
-  | exception JsExn(e) =>
+let rec tryReplay = async (~retry=0, table, id) =>
+  switch await queryById(table, id)->Stream.runCollect->Effect.runPromise {
+  | exception err =>
     ReventlessCore.Logger.warn(
       ~loc=__LOC__,
       `Couldn't replay events for id ${id}, retry:${retry->Int.toString}`,
-      e,
+      err,
     )
     let timeout = 100 * retry + Math.Int.random(0, 100)
     await ReventlessCore.Util.Promise.finishTimeout(timeout)
-    await tableName->tryReplay(~retry=retry + 1, id)
+    await tryReplay(~retry=retry + 1, table, id)
   | history => history
   }
 
 let replay = table => {
-  async id => await tryReplay(table.name, id)
+  async id => await tryReplay(table, id)
 }
 
 // True lazy pagination: each DynamoDB page is fetched on demand.
 // Stream.take(n) short-circuits pagination once n events are consumed.
 let replayStream = table =>
-  id => {
-    let baseParams: DC.QueryCommand.input = {
+  id =>
+    queryStream({
       tableName: table.name,
       consistentRead: true,
       keyConditionExpression: "id=:id",
       expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
-    }
-    Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-      Effect.tryPromise(
-        ~catch=(err: unknown) =>
-          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB replay error"),
-        () => {
-          let params = switch cursor {
-          | None => baseParams
-          | Some(key) => {...baseParams, exclusiveStartKey: key}
-          }
-          DC.QueryCommand.send(params->DC.QueryCommand.make)
-        },
-      )
-      ->Effect.map(result => (
-        result.items
-        ->Option.getOr([])
-        ->Array.map(js => js->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow),
-        result.lastEvaluatedKey->Option.map(key => Some(key)),
-      ))
-    )
-  }
+    })
 
 // Appends each stream item sequentially via the existing per-item append.
 // Node.js is single-threaded so a plain ref is safe for the seqNr counter.
@@ -77,12 +55,11 @@ let appendStream = table =>
         ~catch=(err: unknown) =>
           (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB appendStream error"),
         () => append(table)(seqNrRef.contents, id, [json]),
-      )
-      ->Effect.flatMap(result =>
+      )->Effect.flatMap(result =>
         switch result {
         | Ok() =>
           seqNrRef := seqNrRef.contents + 1
-          Effect.succeed(())
+          Effect.succeed()
         | Error(msg) => Effect.fail(msg)
         }
       )
