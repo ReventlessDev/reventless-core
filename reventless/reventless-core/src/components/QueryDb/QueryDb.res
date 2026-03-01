@@ -12,6 +12,7 @@ type saveMode =
   | Any
 
 type load<'id, 'state> = 'id => promise<result<array<'state>, Reventless.QueryDb.storageError>>
+type loadStream<'id, 'state> = 'id => Stream.t<'state, Reventless.QueryDb.storageError, unit>
 type save<'id, 'state> = (
   'id,
   'state,
@@ -32,6 +33,7 @@ type deleteBatch<'id> = array<('id, option<(string, string)>)> => promise<
 
 type operations<'id, 'state> = {
   load: load<'id, 'state>,
+  loadStream: loadStream<'id, 'state>,
   save: save<'id, 'state>,
   saveBatch: saveBatch<'id, 'state>,
   count: count<'id>,

@@ -2,6 +2,18 @@ open AwsSdk.DynamoDb.DocumentClient
 open Util_DynamoDb_Runtime
 open Belt.Result
 
+let loadStream = table =>
+  id =>
+    Effect.tryPromise({
+      "try": () => Util_DynamoDb_Runtime.queryById(table, id),
+      "catch": err =>
+        Reventless.QueryDb.NotLoadedFromStorage(
+          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB loadStream error"),
+        ),
+    })
+    ->Stream.fromEffect
+    ->Stream.flatMap(items => Stream.fromIterable(items))
+
 let load = table =>
   async id =>
     switch await Util_DynamoDb_Runtime.queryById(table, id) {

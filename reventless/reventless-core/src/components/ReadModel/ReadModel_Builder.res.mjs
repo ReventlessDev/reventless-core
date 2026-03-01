@@ -26,9 +26,11 @@ function Make(Spec) {
         let count = param.count;
         let saveBatch = param.saveBatch;
         let save = param.save;
+        let loadStream = param.loadStream;
         let load = param.load;
         return {
           load: id => load(Spec.Id.makeFromString(id)),
+          loadStream: id => loadStream(Spec.Id.makeFromString(id)),
           save: (id, state, saveMode, ttl) => save(Spec.Id.makeFromString(id), state, saveMode, ttl),
           saveBatch: batch => saveBatch(batch.map(param => [
             Spec.Id.makeFromString(param[0]),

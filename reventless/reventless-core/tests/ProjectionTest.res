@@ -158,6 +158,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     ->Array.map(event' => event'->Projection.map)
     ->handleActions({
       load: load(store, ...),
+      loadStream: id => store->states(id)->Stream.fromIterable,
       save: save(store, ...),
       saveBatch: saveBatch(store, ...),
       count: async (_, _, _) => Ok(0),

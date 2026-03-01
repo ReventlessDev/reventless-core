@@ -24,6 +24,7 @@ let failNextWrite = ref(false)
 
 let mockJsonOps: QueryDb.operations<string, JSON.t> = {
   load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
+  loadStream: id => store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
   save: async (id, state, _saveMode, _ttl) => {
     if failNextWrite.contents {
       failNextWrite := false

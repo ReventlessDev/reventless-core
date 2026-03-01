@@ -16,6 +16,15 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       )
     }
 
+  let loadStream = id =>
+    Ops.jsonOps.loadStream(id->ReadModelSpec.Id.toString)
+    ->Stream.mapEffect(json =>
+      switch decode(id, json) {
+      | Ok(s) => Effect.succeed(s)
+      | Error(e) => Effect.fail(e)
+      }
+    )
+
   let load = async id =>
     switch await Ops.jsonOps.load(id->ReadModelSpec.Id.toString) {
     | result =>

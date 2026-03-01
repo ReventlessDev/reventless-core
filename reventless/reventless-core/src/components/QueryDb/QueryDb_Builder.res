@@ -36,6 +36,7 @@ module Make = (
         )
         {
           QueryDb.load: Operations.load,
+          loadStream: Operations.loadStream,
           save: Operations.save,
           saveBatch: Operations.saveBatch,
           count: Operations.count,

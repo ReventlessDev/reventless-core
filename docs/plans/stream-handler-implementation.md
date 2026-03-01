@@ -1,6 +1,6 @@
 # Plan: Stream-Based Handler Implementation (Phases J–P)
 
-**Status:** Phases J–K–L–M–N complete; Phases O–P planned
+**Status:** Phases J–K–L–M–N–O complete; Phases P–Q planned
 
 **Created:** 2026-02-28
 
@@ -817,7 +817,14 @@ handleChannelCommand: handleJsonCommands =>
 in-memory adapters. This provides lazy consumption of read-model state without materialising
 the whole array — important for large read models.
 
-No existing callers are broken: `loadStream` is a new optional-style addition.
+No existing callers are broken: `loadStream` is a new field added alongside `load`.
+
+**Framework-wide availability:** Because `QueryDb.operations` is a required record type, adding
+`loadStream` means it is wired up and available throughout the entire framework — in every builder
+(`QueryDb_Builder`, `ReadModel_Builder`, `StateViewSlice_Builder`), every adapter (DynamoDB,
+InMemory), and every mock/test fixture. Callers at any level of the stack (read model handlers,
+user application code, extension points) can access `ops.loadStream(id)` directly. It is not a
+test-only feature; the tests merely happen to be the first explicit callers.
 
 ### O.1 — Add loadStream type and field
 
@@ -918,15 +925,24 @@ let loadStream = id =>
   )
 ```
 
-### Files changed — Phase O
+### Files changed — Phase O (complete)
 
 | File | Change |
 |------|--------|
 | `reventless-core/src/components/QueryDb/QueryDb.res` | Add `loadStream` type + field in `operations` |
-| `reventless-core/src/components/QueryDb/QueryDb_Operations.res` | Implement `loadStream` |
-| `reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res` | Implement `loadStream` |
-| `reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res` | Implement `loadStream` |
-| `reventless-core/tests/querydb/QueryDbTest.res` | Add `loadStream` test |
+| `reventless-core/src/components/QueryDb/QueryDb_Operations.res` | Implement `loadStream` (delegates to `Ops.jsonOps.loadStream`) |
+| `reventless-core/src/components/QueryDb/QueryDb_Builder.res` | Add `loadStream: Operations.loadStream` to ops record |
+| `reventless-core/src/components/ReadModel/ReadModel_Builder.res` | Add `loadStream` to `toProjectionOperations` destructure + record |
+| `reventless-core/src/components/StateViewSlice/StateViewSlice_Builder.res` | Add `loadStream` to `toProjectionOps` |
+| `reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res` | Implement `loadStream` via `Stream.fromEffect` |
+| `reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb.res` | Add `loadStream: runtimeTable->loadStream` to ops record |
+| `reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDbStream.res` | Add `loadStream: runtimeTable->loadStream` to ops record |
+| `reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res` | Implement `loadStream` via `Stream.fromIterable`; add to ops record |
+| `reventless-in-memory/src/test/Mocks/MockQueryDbStorage.res` | Add `loadStream` to ops record |
+| `reventless-in-memory/src/test/ProjectionTest.res` | Add `loadStream` stub to inline ops record |
+| `reventless-core/tests/querydb/QueryDbFixtures.res` | Add `loadStream` to mock ops |
+| `reventless-core/tests/ProjectionTest.res` | Add `loadStream` stub to inline ops record |
+| `reventless-in-memory/tests/components/querydb/QueryDbTest.res` | Add 2 `loadStream` tests |
 
 ---
 
@@ -989,6 +1005,116 @@ Confirm or add `Stream.paginateEffect` binding in `rescript-effect/src/Stream.re
 
 ---
 
+---
+
+## Phase Q — Migrate Framework `load` Call Sites to `loadStream`
+
+**Scope:** Replace every internal framework call to `QueryDb.operations.load` with the
+stream-based `loadStream`, making `loadStream` the canonical read path inside the framework.
+The `load` field is kept on the type for backward compatibility with user code but is no longer
+called by any framework module.
+
+**Precondition:** Phase O complete (all adapters implement `loadStream`).
+
+There are three kinds of call sites, each requiring a slightly different migration pattern.
+
+---
+
+### Q.1 — Projection.res (3 call sites)
+
+**File:** `reventless-core/src/Projection.res`
+
+`handleAction` currently destructures `{QueryDb.load: load, save, ...}` and calls
+`await load(id)` in three action branches, expecting `result<array<state>, storageError>`.
+
+The migration replaces the destructuring with `loadStream` and uses a local helper
+`loadAll` that runs the stream and converts the Effect error channel back to `Result`:
+
+```rescript
+// New helper inside handleAction (or at module top)
+let loadAll = id =>
+  loadStream(id)
+  ->Stream.runCollect
+  ->Effect.map(Ok(_))
+  ->Effect.catchAll(e => Effect.succeed(Error(e)))
+  ->Effect.runPromise
+
+// Destructuring change
+let handleAction = async (
+  action,
+  {QueryDb.loadStream, save, saveBatch, delete, deleteBatch} as operations,
+  subIdConfig,
+) =>
+```
+
+Each `switch await load(id)` call site becomes `switch await loadAll(id)` — semantics
+unchanged, but the load now goes through the stream path.
+
+The three affected branches:
+- `Update(id, update)` — expects exactly 0 or 1 states, errors on multiple
+- `UpdateWithDefault(id, default, update)` — same, creates default on empty
+- `UpdateMultiState(id, update)` — expects 0..N states with subIdConfig
+
+---
+
+### Q.2 — QueryEngine_InMemory.res (1 call site)
+
+**File:** `reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res`
+
+Current:
+```rescript
+switch Bus.getQueryDb(readModelName) {
+| Some(ops) => (await ops.load(keyStr))->Result.getOr([])
+| None => []
+}
+```
+
+New — uses `loadStream` directly via Effect, discarding errors the same way:
+```rescript
+switch Bus.getQueryDb(readModelName) {
+| Some(ops) =>
+  await ops.loadStream(keyStr)
+  ->Stream.runCollect
+  ->Effect.orElse(_ => Effect.succeed([]))
+  ->Effect.runPromise
+| None => []
+}
+```
+
+---
+
+### Q.3 — QueryDbResolvers_GraphQL.res (2 call sites)
+
+**File:** `reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res`
+
+Both `byIdResolver` and the `byIdListResolvers` resolver contain the same pattern:
+
+Current:
+```rescript
+let items = (await ops.load(id))->Result.mapOr([], v => v)
+```
+
+New:
+```rescript
+let items =
+  await ops.loadStream(id)
+  ->Stream.runCollect
+  ->Effect.orElse(_ => Effect.succeed([]))
+  ->Effect.runPromise
+```
+
+---
+
+### Files changed — Phase Q
+
+| File | Change |
+|------|--------|
+| `reventless-core/src/Projection.res` | Replace destructured `load` with `loadStream`; add `loadAll` helper; update 3 call sites |
+| `reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res` | Replace `ops.load` with `ops.loadStream` + `Effect.orElse` |
+| `reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res` | Replace `ops.load` with `ops.loadStream` + `Effect.orElse` at 2 call sites |
+
+---
+
 ## Revised Execution Order
 
 ```
@@ -1000,11 +1126,12 @@ Phase J  →  Phase K  →  Phase L
                             ↓
                         Phase O  (QueryDb loadStream)
                             ↓
-                        Phase P  (optional: DcbEventLog lazy pagination)
+                    Phase P (optional)   Phase Q (migrate load → loadStream)
 ```
 
 Phases M, N, O are independent of each other once L is done; they can be implemented in
 parallel or in any order within the L → M/N/O dependency boundary.
+Phase Q depends on O and can run in parallel with P.
 
 ---
 

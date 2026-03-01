@@ -20,6 +20,7 @@ function Make(Bus) {
       TAG: "Ok",
       _0: Stdlib_Option.getOr(store.contents[id], [])
     });
+    let loadStream = id => Effect.Stream.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
     let save = async (id, state, _saveMode, _ttl) => {
       store.contents[id] = [state];
       syncAll();
@@ -60,6 +61,7 @@ function Make(Bus) {
     };
     let ops = {
       load: load,
+      loadStream: loadStream,
       save: save,
       saveBatch: saveBatch,
       count: count,

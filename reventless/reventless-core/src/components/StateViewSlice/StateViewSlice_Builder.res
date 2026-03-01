@@ -35,6 +35,7 @@ module Make = (
 
     let toProjectionOps = (ops: SpecificQueryDb.operations): QueryDb.operations<string, Spec.state> => {
       load: id => ops.load(id->Reventless.Id.String.makeFromString),
+      loadStream: id => ops.loadStream(id->Reventless.Id.String.makeFromString),
       save: (id, s, sm, ttl) => ops.save(id->Reventless.Id.String.makeFromString, s, sm, ttl),
       saveBatch: batch =>
         ops.saveBatch(

@@ -27,6 +27,7 @@ function Make(RuntimeEnvironment) {
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let toProjectionOps = ops => ({
         load: id => ops.load(Id$Reventless.$$String.makeFromString(id)),
+        loadStream: id => ops.loadStream(Id$Reventless.$$String.makeFromString(id)),
         save: (id, s, sm, ttl) => ops.save(Id$Reventless.$$String.makeFromString(id), s, sm, ttl),
         saveBatch: batch => ops.saveBatch(batch.map(param => [
           Id$Reventless.$$String.makeFromString(param[0]),

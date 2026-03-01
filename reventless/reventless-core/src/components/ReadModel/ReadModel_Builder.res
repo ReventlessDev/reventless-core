@@ -39,6 +39,7 @@ module Make = (
 
     let toProjectionOperations: SpecificQueryDb.operations => projectionOperations = ({
       load,
+      loadStream,
       save,
       saveBatch,
       count,
@@ -46,6 +47,7 @@ module Make = (
       deleteBatch,
     }) => {
       load: id => load(id->Spec.Id.makeFromString),
+      loadStream: id => loadStream(id->Spec.Id.makeFromString),
       save: (id, state, saveMode, ttl) => save(id->Spec.Id.makeFromString, state, saveMode, ttl),
       saveBatch: batch =>
         saveBatch(batch->Array.map(((id, state, ttl)) => (id->Spec.Id.makeFromString, state, ttl))),
