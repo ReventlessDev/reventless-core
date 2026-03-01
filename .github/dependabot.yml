@@ -8,7 +8,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Vienna"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 0
     auto-merge: true
     merge-method: squash
     assignees:
@@ -68,7 +68,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Vienna"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     assignees:
       - "reventless-team"
     commit-message:
@@ -86,7 +86,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Europe/Vienna"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0
     assignees:
       - "reventless-team"
     commit-message:
