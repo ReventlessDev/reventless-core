@@ -9,8 +9,6 @@ updates:
       time: "09:00"
       timezone: "Europe/Vienna"
     open-pull-requests-limit: 0
-    auto-merge: true
-    merge-method: squash
     assignees:
       - "reventless-team"
     commit-message:
