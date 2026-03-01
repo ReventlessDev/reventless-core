@@ -149,6 +149,57 @@ describe("Effect — concurrency", () => {
     expect(results)->toEqual([1, 2, 3])
   })
 
+  testPromise("all with integer concurrency collects all results", async () => {
+    let effects = [1, 2, 3, 4, 5]->Array.map(n => Effect.succeed(n * 10))
+    let results = await Effect.all(effects, {"concurrency": 3})->Effect.runPromise
+    expect(results)->toEqual([10, 20, 30, 40, 50])
+  })
+
+  testPromise("all with integer concurrency 1 runs effects sequentially", async () => {
+    // With concurrency 1 the effects execute one at a time. Each effect appends its
+    // index to a shared array and reads the current length — the reads must be monotonic.
+    let log: ref<array<int>> = ref([])
+    let effects = [0, 1, 2, 3]->Array.map(i =>
+      Effect.promise(async () => {
+        log := log.contents->Array.concat([i])
+        log.contents->Array.length
+      })
+    )
+    let lengths = await Effect.all(effects, {"concurrency": 1})->Effect.runPromise
+    // Each length should be strictly greater than the previous — no overlap
+    let isMonotonic = lengths->Array.reduceWithIndex(true, (ok, len, idx) =>
+      ok && (idx == 0 || len > lengths->Array.getUnsafe(idx - 1))
+    )
+    expect(isMonotonic)->toBe(true)
+  })
+
+  testPromise("all with inherit concurrency collects results", async () => {
+    let results = await Effect.all(
+      [Effect.succeed("a"), Effect.succeed("b")],
+      {"concurrency": "inherit"},
+    )->Effect.runPromise
+    expect(results)->toEqual(["a", "b"])
+  })
+
+  testPromise("all with integer concurrency limits peak concurrent fibers", async () => {
+    // Tracks peak concurrency: each effect increments a counter, waits a microtask,
+    // then decrements. With concurrency 2 and 6 effects, peak must be at most 2.
+    let active = ref(0)
+    let peak = ref(0)
+    let effects = Array.make(~length=6, ())->Array.map(_ =>
+      Effect.promise(async () => {
+        active := active.contents + 1
+        if active.contents > peak.contents {
+          peak := active.contents
+        }
+        let _ = await Promise.resolve()
+        active := active.contents - 1
+      })
+    )
+    let _ = await Effect.all(effects, {"concurrency": 2})->Effect.runPromise
+    expect(peak.contents <= 2)->toBe(true)
+  })
+
   testPromise("fork + Fiber.join completes the forked effect", async () => {
     let result = await Effect.succeed(99)
       ->Effect.fork

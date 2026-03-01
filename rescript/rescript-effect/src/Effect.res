@@ -257,15 +257,16 @@ Runs all effects concurrently and collects their results into an array.
 The `concurrency` option controls the maximum number of simultaneously running fibers:
 - `"unbounded"` — all effects start immediately
 - `"inherit"` — respects the ambient concurrency limit
-- `"1"` (or any numeric string) — sequential
+- an `int` — maximum number of concurrent fibers (e.g. `{"concurrency": 3}`)
 
 **Example**
 ```rescript
 Effect.all(handlers->Array.map(h => h(event)), {"concurrency": "unbounded"})
+Effect.all(effects, {"concurrency": 3})  // at most 3 concurrent
 ```
 */
 @module("effect") @scope("Effect")
-external all: (array<t<'a, 'e, 'r>>, {. "concurrency": string}) => t<array<'a>, 'e, 'r> = "all"
+external all: (array<t<'a, 'e, 'r>>, {. "concurrency": 'concurrency}) => t<array<'a>, 'e, 'r> = "all"
 
 /**
 Races two effects — the first to succeed wins and its value is returned.

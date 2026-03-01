@@ -2,6 +2,7 @@
 
 import * as Effect from "../src/Effect.res.mjs";
 import * as Effect$1 from "effect";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 
 describe("Effect — construction", () => {
   test("succeed runSync returns value", () => {
@@ -127,6 +128,86 @@ describe("Effect — concurrency", () => {
       2,
       3
     ]);
+  });
+  test("all with integer concurrency collects all results", async () => {
+    let effects = [
+      1,
+      2,
+      3,
+      4,
+      5
+    ].map(n => Effect$1.Effect.succeed(n * 10 | 0));
+    let results = await Effect$1.Effect.runPromise(Effect$1.Effect.all(effects, {
+      concurrency: 3
+    }));
+    expect(results).toEqual([
+      10,
+      20,
+      30,
+      40,
+      50
+    ]);
+  });
+  test("all with integer concurrency 1 runs effects sequentially", async () => {
+    let log = {
+      contents: []
+    };
+    let effects = [
+      0,
+      1,
+      2,
+      3
+    ].map(i => Effect$1.Effect.promise(async () => {
+      log.contents = log.contents.concat([i]);
+      return log.contents.length;
+    }));
+    let lengths = await Effect$1.Effect.runPromise(Effect$1.Effect.all(effects, {
+      concurrency: 1
+    }));
+    let isMonotonic = Stdlib_Array.reduceWithIndex(lengths, true, (ok, len, idx) => {
+      if (ok) {
+        if (idx === 0) {
+          return true;
+        } else {
+          return len > lengths[idx - 1 | 0];
+        }
+      } else {
+        return false;
+      }
+    });
+    expect(isMonotonic).toBe(true);
+  });
+  test("all with inherit concurrency collects results", async () => {
+    let results = await Effect$1.Effect.runPromise(Effect$1.Effect.all([
+      Effect$1.Effect.succeed("a"),
+      Effect$1.Effect.succeed("b")
+    ], {
+      concurrency: "inherit"
+    }));
+    expect(results).toEqual([
+      "a",
+      "b"
+    ]);
+  });
+  test("all with integer concurrency limits peak concurrent fibers", async () => {
+    let active = {
+      contents: 0
+    };
+    let peak = {
+      contents: 0
+    };
+    let effects = Stdlib_Array.make(6, undefined).map(() => Effect$1.Effect.promise(async () => {
+      active.contents = active.contents + 1 | 0;
+      if (active.contents > peak.contents) {
+        peak.contents = active.contents;
+      }
+      await Promise.resolve();
+      active.contents = active.contents - 1 | 0;
+    }));
+    await Effect$1.Effect.runPromise(Effect$1.Effect.all(effects, {
+      concurrency: 2
+    }));
+    expect(peak.contents <= 2).toBe(true);
   });
   test("fork + Fiber.join completes the forked effect", async () => {
     let result = await Effect$1.Effect.runPromise(Effect$1.Effect.flatMap(Effect$1.Effect.fork(Effect$1.Effect.succeed(99)), fiber => Effect$1.Fiber.join(fiber)));
