@@ -1420,20 +1420,15 @@ Same pattern as V.5.
 
 ---
 
-## Phase U — UpdateMultiState: stream-based update function (future, breaking)
+## Phase U — UpdateMultiState: stream-based update function
 
-**Scope:** Change the `UpdateMultiState` action variant's `update` function type from
-`array<state> => array<state>` to `Stream.t<state,...> => Stream.t<state,...>`. This is the
-only remaining place where `Projection.handleAction` must fully materialise all states into
-an array (because the user-provided `update` function receives and returns an array).
+**Status: Moved to Backlog** → `docs/plans/Backlog/update-multi-state-stream-api.md`
 
-**This is a breaking API change** for any code that constructs `UpdateMultiState` actions.
-It requires:
-1. Changing `Projection.action` in `reventless-spec`
-2. Updating `applyChanges` to use stream-based diff computation (fold into sets from stream)
-3. Updating all callers (`ReadModel_Callback`, `StateViewSlice_Callback`, user code)
-
-Mark as a future phase — plan details when the scope is clearer.
+Phase R already uses `loadStream->runCollect` internally for `UpdateMultiState`.
+`applyChanges` materializes both before/after arrays to compute a set diff, so a
+streaming update function would be collected immediately and provides no real benefit.
+Stream type parameters would also bleed into the public `action` variant type.
+Deferred until a concrete use case emerges.
 
 ---
 
