@@ -40,7 +40,11 @@ module Make = (Bus: InMemory_Bus.T) => {
         | None => id->valueToString
         }
         switch Bus.getQueryDb(readModelName) {
-        | Some(ops) => (await ops.load(keyStr))->Result.getOr([])
+        | Some(ops) =>
+          await ops.loadStream(keyStr)
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
         | None => []
         }
       },

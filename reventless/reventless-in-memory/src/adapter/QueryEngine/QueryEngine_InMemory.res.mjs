@@ -2,7 +2,6 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
-import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Pulumi from "@pulumi/pulumi";
 
 function Make(Bus) {
@@ -37,7 +36,7 @@ function Make(Bus) {
       let keyStr = key !== undefined ? key : valueToString(id);
       let ops = Bus.getQueryDb(readModelName);
       if (ops !== undefined) {
-        return Stdlib_Result.getOr(await ops.load(keyStr), []);
+        return await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(keyStr)), param => Effect.Effect.succeed([])));
       } else {
         return [];
       }

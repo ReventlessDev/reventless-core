@@ -1,6 +1,6 @@
 # Plan: Stream-Based Handler Implementation (Phases J–P)
 
-**Status:** Phases J–K–L–M–N–O–P complete; Phase Q planned
+**Status:** Phases J–K–L–M–N–O–P–Q complete
 
 **Created:** 2026-02-28
 
@@ -1113,12 +1113,331 @@ let items =
 | File | Change |
 |------|--------|
 | `reventless-core/src/Projection.res` | Replace destructured `load` with `loadStream`; add `loadAll` helper; update 3 call sites |
-| `reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res` | Replace `ops.load` with `ops.loadStream` + `Effect.orElse` |
-| `reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res` | Replace `ops.load` with `ops.loadStream` + `Effect.orElse` at 2 call sites |
+| `reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res` | Replace `ops.load` with `ops.loadStream` + `Effect.catchAll` |
+| `reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res` | Replace `ops.load` with `ops.loadStream` + `Effect.catchAll` at 2 call sites |
+
+**Implementation note:** `Effect.orElse` is not bound in `rescript-effect` — `Effect.catchAll` is
+used instead (`Effect.catchAll(_ => Effect.succeed([]))` is equivalent to `Effect.orElse`).
 
 ---
 
-## Revised Execution Order
+## Analysis: Remaining stream-to-array materializations after Phase Q
+
+After Phase Q, the framework no longer calls `ops.load` anywhere internally. However, the new
+`loadStream` call sites still materialise the full stream into an array before processing it.
+The following pattern persists in several places:
+
+```
+loadStream(id) -> Stream.runCollect -> array -> process array
+```
+
+### Where this still occurs (non-test framework code)
+
+| Location | Pattern | Can it be eliminated? |
+|----------|---------|----------------------|
+| `Projection.handleAction` — `Update` | `loadAll(id)` → full collect → switch `[]`, `[s]`, `_` | **Yes** — only needs 0 or 1 items; `take(2)` bounds it |
+| `Projection.handleAction` — `UpdateWithDefault` | same as Update | **Yes** — only needs 0 or 1 items; `take(2)` bounds it |
+| `Projection.handleAction` — `UpdateMultiState` | `loadAll(id)` → full collect → `update(states)` | **Partially** — `update: array<state> => array<state>` requires full materialisation; changing the type is a large API change (see Phase U) |
+| `QueryEngine_InMemory.query` | `loadStream->runCollect` | **Yes** — `limit` param is currently silently ignored; stream + `take(limit)` fixes both |
+| `QueryDbResolvers_GraphQL.byIdResolver` | `loadStream->runCollect` | **No** — all items needed for the JSON response; materialisation is inherent |
+| `QueryDbResolvers_GraphQL.byIdListResolver` | same | **No** — same reason |
+| `QueryDbResolvers_GraphQL.everyResolver` | `Bus.getQueryDbScan(name)` (array-based) | **Yes** — `Bus.getQueryDbStream` already exists; use it consistently |
+
+### Pattern: `applyChanges` in Projection
+
+`applyChanges` receives `beforeStates: array<state>` and `afterStates: array<state>` and uses
+`Belt.Set.String` for diff computation. The `afterStates` is `beforeStates->update` where
+`update: array<state> => array<state>`. Eliminating the array here requires changing the
+`UpdateMultiState` action variant's update function type — a user-facing API change beyond
+the scope of these incremental phases.
+
+### Test fixtures still use `ops.load` (should migrate)
+
+All test files that call `ops.load` should migrate to `ops.loadStream` — see Phase V.
+`loadStream` is the canonical read path; `ops.load` is a backward-compat wrapper kept for
+*user code* that hasn't migrated. Within the framework's own test suite there is no reason
+to keep `ops.load` calls:
+
+- Tests using `loadStream` exercise the canonical path and catch bugs the `load` wrapper
+  would silently hide (e.g. a broken `take`, wrong error channel, Chunk conversion).
+- Once `load` is a thin wrapper over `loadStream`, `load` tests are redundant. A single
+  dedicated test confirming the wrapper still returns correct results is sufficient.
+
+Affected test files:
+
+| File | `ops.load` calls |
+|------|-----------------|
+| `reventless-in-memory/tests/adapter/QueryDbStorageTest.res` | 8 |
+| `reventless-core/tests/querydb/QueryDbOperationsTest.res` | 6 |
+| `reventless-in-memory/tests/components/querydb/QueryDbTest.res` | 6 |
+| `reventless-in-memory/tests/components/readmodel/ReadModelFixtures.res` | 1 |
+| `reventless-in-memory/tests/components/stateviewslice/StateViewSliceFixtures.res` | 1 |
+
+### Patterns that stay as `load` (no migration)
+
+- `StateViewSlice_Builder.toProjectionOps.load` — forwarding function; stays as long as the
+  `load` field exists on `QueryDb.operations` for user backward compat.
+- `QueryDb_Operations.res` — implementation of the `load` field itself; not a call site.
+
+---
+
+## Phase R — Projection: Bounded stream reads for single-state actions
+
+**Scope:** Replace the unbounded `loadAll` helper with a `loadAtMost(n, id)` helper that
+applies `Stream.take(n)` before collecting. For `Update` and `UpdateWithDefault`, which
+expect exactly 0 or 1 states, use `take(2)` — this stops the DynamoDB/storage fetch after
+at most 2 items, even if thousands exist due to data corruption. `UpdateMultiState` keeps
+the full collect.
+
+**Precondition:** Phase Q complete.
+
+### R.1 — Replace `loadAll` with `loadAtMost`
+
+**File:** `reventless-core/src/Projection.res`
+
+```rescript
+// Remove the current unbounded loadAll and replace with:
+let loadAtMost = (n, id) =>
+  loadStream(id)
+  ->Stream.take(n)
+  ->Stream.runCollect
+  ->Effect.map(states => Ok(states))
+  ->Effect.catchAll(e => Effect.succeed(Error(e)))
+  ->Effect.runPromise
+```
+
+### R.2 — Update Update and UpdateWithDefault call sites
+
+Both use `take(2)` — enough to distinguish the three cases (0, 1, or 2+):
+
+```rescript
+| Update(id, update) =>
+  switch await loadAtMost(2, id) {
+  | Ok([]) => ...
+  | Ok([oldState]) => ...
+  | Ok(_) => ...   // 2 items = multiple
+  | Error(err) => ...
+  }
+
+| UpdateWithDefault(id, default, update) =>
+  switch await loadAtMost(2, id) {
+  | Ok([]) => ...
+  | Ok([oldState]) => ...
+  | Ok(_) => ...
+  | Error(err) => ...
+  }
+```
+
+### R.3 — UpdateMultiState keeps full collect
+
+`UpdateMultiState` passes `beforeStates` to `update(beforeStates)` and then to
+`applyChanges`. It needs all states. Keep the full collect but use `loadAtMost` with
+`Int.maxInt` (or just `Stream.runCollect` directly without a bound):
+
+```rescript
+| UpdateMultiState(id, update) =>
+  switch (await loadAtMost(Int.maxInt, id), subIdConfig) {
+  // or inline: loadStream(id)->Stream.runCollect->Effect.map(Ok)->...
+```
+
+### Files changed — Phase R
+
+| File | Change |
+|------|--------|
+| `reventless-core/src/Projection.res` | `loadAll` → `loadAtMost(n, id)`; `Update`/`UpdateWithDefault` use `n=2`; `UpdateMultiState` uses `n=Int.maxInt` |
+
+---
+
+## Phase S — QueryEngine_InMemory: Apply limit lazily via stream
+
+**Scope:** The `query` function in `QueryEngine_InMemory.res` currently marks `~limit` as
+unused (`~limit as _=?`). This silently ignores the caller's requested page size. Fix by
+using `Stream.take(limit)` on the load stream, so at most `limit` states are fetched from
+storage.
+
+**Precondition:** Phase Q complete (provides `ops.loadStream`).
+
+### S.1 — Wire limit into the stream
+
+**File:** `reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res`
+
+```rescript
+query: async (
+  ~readModelName,
+  ~key=?,
+  ~id,
+  ~subIdConfig as _=?,
+  ~filterConfigs as _=?,
+  ~ascending as _=?,
+  ~limit=?,          // changed from ~limit as _=?
+) => {
+  let keyStr = switch key {
+  | Some(k) => k
+  | None => id->valueToString
+  }
+  switch Bus.getQueryDb(readModelName) {
+  | Some(ops) =>
+    let stream = ops.loadStream(keyStr)
+    let bounded = switch limit {
+    | Some(n) => stream->Stream.take(n)
+    | None => stream
+    }
+    await bounded
+    ->Stream.runCollect
+    ->Effect.catchAll(_ => Effect.succeed([]))
+    ->Effect.runPromise
+  | None => []
+  }
+},
+```
+
+### Files changed — Phase S
+
+| File | Change |
+|------|--------|
+| `reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res` | `~limit as _=?` → `~limit=?`; apply via `Stream.take` before `runCollect` |
+
+---
+
+## Phase T — QueryDbResolvers_GraphQL: Use stream for everyResolver
+
+**Scope:** The `everyResolver` in `QueryDbResolvers_GraphQL.res` uses `Bus.getQueryDbScan`
+(the old array-based scan API). `Bus.getQueryDbStream` already exists and is the preferred
+path (consistent with `QueryEngine_InMemory.scan`). Switch `everyResolver` to use it with a
+fallback to the legacy scan for backward compatibility.
+
+**Precondition:** Phase Q complete.
+
+### T.1 — Switch everyResolver to stream API
+
+**File:** `reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res`
+
+```rescript
+let everyResolver: GraphQL_Server.resolverFn = async (_root, _args) => {
+  switch Bus.getQueryDbStream(name) {
+  | Some(makeStream) =>
+    let items = await makeStream()->Stream.runCollect->Effect.runPromise
+    items->JSON.Encode.array
+  | None =>
+    // Backward compat: fall back to array scan if no stream registered
+    switch Bus.getQueryDbScan(name) {
+    | Some(scanAll) => scanAll()->JSON.Encode.array
+    | None => []->JSON.Encode.array
+    }
+  }
+}
+```
+
+### Files changed — Phase T
+
+| File | Change |
+|------|--------|
+| `reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res` | `everyResolver` uses `Bus.getQueryDbStream` with fallback to `getQueryDbScan` |
+
+---
+
+## Phase V — Migrate test fixtures from `load` to `loadStream`
+
+**Scope:** Replace every `ops.load` call in the framework's own test suite with
+`ops.loadStream`. After this phase, `ops.load` is only tested by a single backward-compat
+regression test per adapter; all functional coverage moves to the stream path.
+
+**Precondition:** Phases R, S, T complete (so all framework internals already use
+`loadStream`; tests then follow the same pattern).
+
+### V.1 — Conversion pattern
+
+Every call of the form:
+```rescript
+let items = (await ops.load(id))->Result.getOr([])
+```
+becomes:
+```rescript
+let items =
+  await ops.loadStream(id)
+  ->Stream.runCollect
+  ->Effect.catchAll(_ => Effect.succeed([]))
+  ->Effect.runPromise
+```
+
+And fixture helpers that pattern-match on a single state:
+```rescript
+// Before
+switch await ops.load(id) {
+| Ok([state]) => state
+| _ => failwith("unexpected")
+}
+
+// After
+let states = await ops.loadStream(id)->Stream.runCollect->Effect.runPromise
+switch states {
+| [state] => state
+| _ => failwith("unexpected")
+}
+```
+
+### V.2 — QueryDbStorageTest.res (8 call sites)
+
+**File:** `reventless-in-memory/tests/adapter/QueryDbStorageTest.res`
+
+Replace all `ops.load` verification calls with `loadStream->runCollect`. Add one dedicated
+backward-compat test: `"load delegates to loadStream"` — confirms `ops.load(id)` still
+returns `Ok(items)` equal to what `loadStream` produces.
+
+### V.3 — QueryDbOperationsTest.res (6 call sites)
+
+**File:** `reventless-core/tests/querydb/QueryDbOperationsTest.res`
+
+Replace `Ops.load` calls with `Ops.loadStream->runCollect`.
+
+### V.4 — QueryDbTest.res (6 call sites)
+
+**File:** `reventless-in-memory/tests/components/querydb/QueryDbTest.res`
+
+Replace `ops.load` calls with `ops.loadStream->runCollect`.
+
+### V.5 — ReadModelFixtures.res (1 call site)
+
+**File:** `reventless-in-memory/tests/components/readmodel/ReadModelFixtures.res`
+
+Replace the fixture helper's `switch await ops.load(id)` with stream equivalent.
+
+### V.6 — StateViewSliceFixtures.res (1 call site)
+
+**File:** `reventless-in-memory/tests/components/stateviewslice/StateViewSliceFixtures.res`
+
+Same pattern as V.5.
+
+### Files changed — Phase V
+
+| File | Change |
+|------|--------|
+| `reventless-in-memory/tests/adapter/QueryDbStorageTest.res` | 8 `ops.load` → `loadStream`; add 1 backward-compat test for `load` |
+| `reventless-core/tests/querydb/QueryDbOperationsTest.res` | 6 `Ops.load` → `loadStream` |
+| `reventless-in-memory/tests/components/querydb/QueryDbTest.res` | 6 `ops.load` → `loadStream` |
+| `reventless-in-memory/tests/components/readmodel/ReadModelFixtures.res` | 1 fixture helper → stream |
+| `reventless-in-memory/tests/components/stateviewslice/StateViewSliceFixtures.res` | 1 fixture helper → stream |
+
+---
+
+## Phase U — UpdateMultiState: stream-based update function (future, breaking)
+
+**Scope:** Change the `UpdateMultiState` action variant's `update` function type from
+`array<state> => array<state>` to `Stream.t<state,...> => Stream.t<state,...>`. This is the
+only remaining place where `Projection.handleAction` must fully materialise all states into
+an array (because the user-provided `update` function receives and returns an array).
+
+**This is a breaking API change** for any code that constructs `UpdateMultiState` actions.
+It requires:
+1. Changing `Projection.action` in `reventless-spec`
+2. Updating `applyChanges` to use stream-based diff computation (fold into sets from stream)
+3. Updating all callers (`ReadModel_Callback`, `StateViewSlice_Callback`, user code)
+
+Mark as a future phase — plan details when the scope is clearer.
+
+---
+
+## Revised Execution Order (Phases J–V)
 
 ```
 Phase J  →  Phase K  →  Phase L
@@ -1130,11 +1449,20 @@ Phase J  →  Phase K  →  Phase L
                         Phase O  (QueryDb loadStream)
                             ↓
                     Phase P (optional)   Phase Q (migrate load → loadStream)
+                                             ↓
+                                   ┌─────────┼────────┐
+                                Phase R   Phase S   Phase T
+                               (bounded  (query    (every
+                                reads)    limit)    stream)
+                                   └─────────┴────────┘
+                                             ↓
+                                         Phase V
+                                      (test migration)
 ```
 
-Phases M, N, O are independent of each other once L is done; they can be implemented in
-parallel or in any order within the L → M/N/O dependency boundary.
 Phase Q depends on O and can run in parallel with P.
+Phases R, S, T are independent of each other; all three depend on Q.
+Phase V follows R, S, T so test patterns are consistent with the finished framework code.
 
 ---
 

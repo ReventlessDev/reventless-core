@@ -31,7 +31,11 @@ module Make = (Bus: InMemory_Bus.T) => {
       let id = (args->Obj.magic: dict<string>)->Dict.get("id")->Option.getOr("")
       switch Bus.getQueryDb(name) {
       | Some(ops) =>
-        let items = (await ops.load(id))->Result.mapOr([], v => v)
+        let items =
+          await ops.loadStream(id)
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
         items->JSON.Encode.array
       | None => []->JSON.Encode.array
       }
@@ -58,7 +62,11 @@ module Make = (Bus: InMemory_Bus.T) => {
         let id = (args->Obj.magic: dict<string>)->Dict.get("id")->Option.getOr("")
         switch Bus.getQueryDb(name) {
         | Some(ops) =>
-          let items = (await ops.load(id))->Result.mapOr([], v => v)
+          let items =
+            await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
           items->JSON.Encode.array
         | None => []->JSON.Encode.array
         }
