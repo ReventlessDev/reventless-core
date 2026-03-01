@@ -3,6 +3,7 @@
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as CommandTopicFixtures$ReventlessInMemory from "./CommandTopicFixtures.res.mjs";
 
 describe("CommandTopic (in-memory)", () => {
@@ -19,7 +20,7 @@ describe("CommandTopic (in-memory)", () => {
     try {
       await ops.publishJsons([{
           id: "item-1",
-          meta: CommandTopicFixtures$ReventlessInMemory.testMeta,
+          meta: TestFixtures$ReventlessInMemory.testMeta,
           commandJson: commandJson
         }]);
     } catch (exn) {
@@ -51,7 +52,7 @@ describe("CommandTopic (in-memory)", () => {
     }, CommandTopicFixtures$ReventlessInMemory.ItemSpec.commandSchema);
     await ops.publishJsons([{
         id: "item-99",
-        meta: CommandTopicFixtures$ReventlessInMemory.testMeta,
+        meta: TestFixtures$ReventlessInMemory.testMeta,
         commandJson: commandJson
       }]);
     expect(received.contents).toBe(true);

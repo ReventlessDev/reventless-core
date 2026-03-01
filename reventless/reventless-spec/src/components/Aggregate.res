@@ -23,7 +23,10 @@ and outputs = {
   addEventMapper: addEventMapper,
 }
 type allOutputs = dict<outputs>
-type operations = {publishJsons: CommandTopic.publishJsons}
+type operations = {
+  publishJsons: CommandTopic.publishJsons,
+  publishJsonsStream: CommandTopic.publishJsonsStream,
+}
 
 module type T = {
   module Spec: Spec

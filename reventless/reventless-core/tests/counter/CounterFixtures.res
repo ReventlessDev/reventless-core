@@ -20,12 +20,16 @@ let mockCountsDbCount: QueryDb.count<string> = async (id, field, delta) => {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Mock counterEventsHandler — captures batches of event JSONs
+// Mock jsonEventsHandler — captures batches of event JSONs
 // ─────────────────────────────────────────────────────────────
 
-let mockCounterEventsHandler: Counter.counterEventsHandler = async events => {
-  capturedEventBatches := capturedEventBatches.contents->Array.concat([events])
-}
+let mockJsonEventsHandler: Counter.jsonEventsHandler = stream =>
+  stream
+  ->Stream.runCollect
+  ->Effect.map(chunk => {
+    capturedEventBatches :=
+      capturedEventBatches.contents->Array.concat([chunk])
+  })
 
 // ─────────────────────────────────────────────────────────────
 // Counter_Callback spec and handler under test
@@ -34,7 +38,7 @@ let mockCounterEventsHandler: Counter.counterEventsHandler = async events => {
 module TestCounterSpec: Counter_Callback.Spec = {
   let name = "TestCounter"
   let countsDbCount = mockCountsDbCount
-  let counterEventsHandler = mockCounterEventsHandler
+  let jsonEventsHandler = mockJsonEventsHandler
 }
 
 module TestCounterHandler = Counter_Callback.Make(TestCounterSpec)

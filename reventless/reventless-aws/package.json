@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@reventlessdev/rescript-aws-sdk": "^2.1.3-alpha.3",
+    "@reventlessdev/rescript-effect": "*",
     "@reventlessdev/rescript-pulumi-aws": "^2.3.1-alpha.4",
     "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.3",
     "@reventlessdev/rescript-uuid": "^1.0.2-alpha.3",

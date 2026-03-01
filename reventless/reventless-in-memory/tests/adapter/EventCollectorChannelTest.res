@@ -15,6 +15,25 @@ let testMeta: Reventless.Message.meta = {
   correlationId: "",
 }
 
+// ─────────────────────────────────────────────────────────────
+// Helper: build a minimal runtime with a completed handler Deferred
+// ─────────────────────────────────────────────────────────────
+
+let makeRuntime = (
+  handler: RuntimeEnvironment_InMemory.handler,
+): ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> => {
+  let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+    Deferred.make()->Effect.runSync
+  Deferred.succeed(handlerDeferred, handler)->Effect.runSync->ignore
+  {
+    parts: {
+      handlerDeferred,
+      subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+    },
+    resources: [],
+  }
+}
+
 describe("EventCollectorChannel_InMemory", () => {
   describe("make", () => {
     testPromise("collects all event topic resources as channel resources", async () => {
@@ -41,22 +60,14 @@ describe("EventCollectorChannel_InMemory", () => {
   })
 
   describe("connect", () => {
-    testPromise("subscribes to event topic; published events reach handlerRef", async () => {
+    testPromise("subscribes to event topic; published events reach the handler", async () => {
       module TestBus = InMemory_Bus.Make()
       module TestPublisher = EventTopicPublisher_InMemory.Make(TestBus)
       module TestCollector = EventCollectorChannel_InMemory.Make(TestBus)
       let received: ref<int> = ref(0)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      handlerRef :=
-        Some(
-          async (_, _ctx) => {
-            received := received.contents + 1
-          },
-        )
-      let runtime: ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
-        parts: {handlerRef: handlerRef},
-        resources: [],
-      }
+      let runtime = makeRuntime(async (_, _ctx) => {
+        received := received.contents + 1
+      })
       let pub = TestPublisher.make(~name="eventA", ~storageResources=[], ~opts={})
       let eventTopics = Dict.fromArray([
         ("eventA", {Reventless.EventTopic.resources: pub.resources}),
@@ -73,31 +84,21 @@ describe("EventCollectorChannel_InMemory", () => {
         ~runtime,
         ~opts={},
       )
-      // Output.apply is async (2 microtask ticks). Await the resource name so its
-      // apply callback (Bus.subscribeToEvents) has run before we publish.
-      let resource0 = pub.resources->Array.getUnsafe(0)
-      let _ = await resource0.name->TestRunner.resolve
+      // Await the subscriptionLatch — opens after Output.apply fires and subscription registers
+      await runtime.parts.subscriptionLatch->Latch.await_->Effect.runPromise
       let publishFn = await pub.publishJson->TestRunner.resolve
       await publishFn("svc", testMeta, JSON.Null)
       expect(received.contents)->toBe(1)
     })
 
-    testPromise("multiple event topics all deliver to the same handlerRef", async () => {
+    testPromise("multiple event topics all deliver to the same handler", async () => {
       module TestBus = InMemory_Bus.Make()
       module TestPublisher = EventTopicPublisher_InMemory.Make(TestBus)
       module TestCollector = EventCollectorChannel_InMemory.Make(TestBus)
       let received: ref<int> = ref(0)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-      handlerRef :=
-        Some(
-          async (_, _) => {
-            received := received.contents + 1
-          },
-        )
-      let runtime: ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
-        parts: {handlerRef: handlerRef},
-        resources: [],
-      }
+      let runtime = makeRuntime(async (_, _) => {
+        received := received.contents + 1
+      })
       let pub1 = TestPublisher.make(~name="topicX", ~storageResources=[], ~opts={})
       let pub2 = TestPublisher.make(~name="topicY", ~storageResources=[], ~opts={})
       let eventTopics = Dict.fromArray([
@@ -116,6 +117,7 @@ describe("EventCollectorChannel_InMemory", () => {
         ~runtime,
         ~opts={},
       )
+      // Wait for both subscriptions via the publish functions (each Output resolves per-topic)
       let pub1Fn = await pub1.publishJson->TestRunner.resolve
       let pub2Fn = await pub2.publishJson->TestRunner.resolve
       await pub1Fn("svc", testMeta, JSON.Null)
@@ -123,13 +125,18 @@ describe("EventCollectorChannel_InMemory", () => {
       expect(received.contents)->toBe(2)
     })
 
-    testPromise("unset handlerRef does not crash on event delivery", async () => {
+    testPromise("unresolved Deferred does not crash on event delivery", async () => {
       module TestBus = InMemory_Bus.Make()
       module TestPublisher = EventTopicPublisher_InMemory.Make(TestBus)
       module TestCollector = EventCollectorChannel_InMemory.Make(TestBus)
-      let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
+      // Deferred left incomplete — bus callback starts a pending Effect (no crash)
+      let handlerDeferred: Deferred.t<RuntimeEnvironment_InMemory.handler, unit> =
+        Deferred.make()->Effect.runSync
       let runtime: ReventlessCore.Runtime.environment<RuntimeEnvironment_InMemory.parts> = {
-        parts: {handlerRef: handlerRef},
+        parts: {
+          handlerDeferred,
+          subscriptionLatch: Effect.makeLatch(false)->Effect.runSync,
+        },
         resources: [],
       }
       let pub = TestPublisher.make(~name="noHandlerTopic", ~storageResources=[], ~opts={})
@@ -148,9 +155,13 @@ describe("EventCollectorChannel_InMemory", () => {
         ~runtime,
         ~opts={},
       )
+      await runtime.parts.subscriptionLatch->Latch.await_->Effect.runPromise
       let publishFn = await pub.publishJson->TestRunner.resolve
-      await publishFn("svc", testMeta, JSON.Null)
+      // Fire-and-forget — the Deferred.await_ will stay pending
+      publishFn("svc", testMeta, JSON.Null)->ignore
       expect(true)->toBe(true)
+      // Complete the Deferred to avoid open handle
+      Deferred.succeed(handlerDeferred, async (_, _) => ())->Effect.runSync->ignore
     })
   })
 })

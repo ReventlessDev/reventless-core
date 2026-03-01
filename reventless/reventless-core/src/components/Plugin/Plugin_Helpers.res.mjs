@@ -81,25 +81,25 @@ function getStorageResources(allQueryDbs, pluginName, queryDbName) {
   }
 }
 
-function getIncomingEventHandler(eventHandlers) {
-  return eventHandlers.incoming;
+function getIncomingJsonEventsHandler(jsonEventsHandlers) {
+  return jsonEventsHandlers.incoming;
 }
 
-function getOutgoingEventHandler(eventHandlers) {
-  return eventHandlers.outgoing;
+function getOutgoingJsonEventsHandler(jsonEventsHandlers) {
+  return jsonEventsHandlers.outgoing;
 }
 
-function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEventHandler) {
+function serviceNameToJsonEventsHandlers(outputs, getServiceNames, handlers, getEventHandler) {
   let dict = {};
   Belt_Array.zip(outputs, handlers).forEach(param => {
     let outputs = param[0];
-    Stdlib_Option.forEach(getEventHandler(param[1]), eventHandler => {
+    Stdlib_Option.forEach(getEventHandler(param[1]), jsonEventsHandler => {
       getServiceNames(outputs).forEach(serviceName => {
-        let eventHandlers = dict[serviceName];
-        if (eventHandlers !== undefined) {
-          dict[serviceName] = eventHandlers.concat([eventHandler]);
+        let jsonEventsHandlers = dict[serviceName];
+        if (jsonEventsHandlers !== undefined) {
+          dict[serviceName] = jsonEventsHandlers.concat([jsonEventsHandler]);
         } else {
-          dict[serviceName] = [eventHandler];
+          dict[serviceName] = [jsonEventsHandler];
         }
       });
     });
@@ -203,7 +203,7 @@ function createExtensionPoints(extensionPoints, aggregateResources, publishToAgg
     let extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts);
     return [
       SpecificExtensionPoint.outputs(extensionPoint),
-      Component$ReventlessCore.operations(extensionPoint).apply(param => param.outgoingEventHandler)
+      Component$ReventlessCore.operations(extensionPoint).apply(param => param.outgoingJsonEventsHandler)
     ];
   }));
 }
@@ -214,8 +214,8 @@ function createExtensions(extensions, publishToCorePluginExtensionPoint, publish
     return [
       SpecificExtension.outputs(extension),
       Component$ReventlessCore.operations(extension).apply(param => ({
-        outgoing: param.outgoingEventHandler,
-        incoming: param.incomingEventHandler
+        outgoing: param.outgoingJsonEventsHandler,
+        incoming: param.incomingJsonEventsHandler
       }))
     ];
   }));
@@ -253,7 +253,7 @@ function createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, 
     });
     let connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     let connectPluginExtensionOutputs = Component$ReventlessCore.outputs(connectPluginExtension);
-    let connectPluginExtensionIncomingEventHandler = Component$ReventlessCore.operations(connectPluginExtension).apply(param => param.incomingEventHandler);
+    let connectPluginExtensionIncomingEventHandler = Component$ReventlessCore.operations(connectPluginExtension).apply(param => param.incomingJsonEventsHandler);
     return [
       connectPluginExtensionOutputs,
       connectPluginExtensionIncomingEventHandler
@@ -302,14 +302,14 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
       ]).apply(param => {
         let extensionsHandlers = param[2];
         let pluginDefinition = param[0];
-        let outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, outputs => outputs.aggregateNames, param[3].map(extensionPointsHandler => ({
+        let outgoingExtensionPointEventHandlers = serviceNameToJsonEventsHandlers(extensionPointsOutputs, outputs => outputs.aggregateNames, param[3].map(extensionPointsHandler => ({
           outgoing: extensionPointsHandler
-        })), getOutgoingEventHandler);
-        let incomingConnectExtensionEventHandlers = serviceNameToEventHandlers([param[4]], outputs => [outputs.extensionPointName], [{
+        })), getOutgoingJsonEventsHandler);
+        let incomingConnectExtensionEventHandlers = serviceNameToJsonEventsHandlers([param[4]], outputs => [outputs.extensionPointName], [{
             incoming: param[1]
-          }], getIncomingEventHandler);
-        let outgoingExtensionEventHandlers = serviceNameToEventHandlers(extensionsOutputs, outputs => outputs.aggregateNames, extensionsHandlers, getOutgoingEventHandler);
-        let incomingExtensionEventHandlers = serviceNameToEventHandlers(extensionsOutputs, outputs => [outputs.extensionPointName], extensionsHandlers, getIncomingEventHandler);
+          }], getIncomingJsonEventsHandler);
+        let outgoingExtensionEventHandlers = serviceNameToJsonEventsHandlers(extensionsOutputs, outputs => outputs.aggregateNames, extensionsHandlers, getOutgoingJsonEventsHandler);
+        let incomingExtensionEventHandlers = serviceNameToJsonEventsHandlers(extensionsOutputs, outputs => [outputs.extensionPointName], extensionsHandlers, getIncomingJsonEventsHandler);
         let Callback = Plugin_Callback$ReventlessCore.Make({
           pluginDefinition: pluginDefinition,
           incomingConnectExtensionEventHandlers: incomingConnectExtensionEventHandlers,
@@ -419,9 +419,9 @@ function getInteropMeta() {
 export {
   getRemoteStorageResources,
   getStorageResources,
-  getIncomingEventHandler,
-  getOutgoingEventHandler,
-  serviceNameToEventHandlers,
+  getIncomingJsonEventsHandler,
+  getOutgoingJsonEventsHandler,
+  serviceNameToJsonEventsHandlers,
   addEventMapperFns,
   aggregateResources,
   publishToAggregates,

@@ -31,6 +31,9 @@ module Make = (Bus: InMemory_Bus.T) => {
     let load: QueryDb.load<string, JSON.t> = async id =>
       Ok(store.contents->Dict.get(id)->Option.getOr([]))
 
+    let loadStream: QueryDb.loadStream<string, JSON.t> = id =>
+      store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable
+
     let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, _ttl) => {
       if failNextWrites.contents > 0 {
         failNextWrites := failNextWrites.contents - 1
@@ -73,6 +76,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     let ops: QueryDb_Adapter.operations = {
       load,
+      loadStream,
       save,
       saveBatch,
       count,

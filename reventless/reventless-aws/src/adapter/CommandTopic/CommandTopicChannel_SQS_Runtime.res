@@ -1,4 +1,4 @@
-let handleQueueEvent = (queue, handleCommands) =>
+let handleQueueEvent = (queue, handleJsonCommands: ReventlessCore.CommandTopic.jsonCommandsHandler) =>
   async (event: PulumiAws.SQS.Queue.event, _) => {
     let records = event.records
     let jsons = records->Array.filterMap(record => {
@@ -23,7 +23,7 @@ let handleQueueEvent = (queue, handleCommands) =>
         command,
       })
 
-    switch await handleCommands(topicItems) {
+    switch await (Stream.fromIterable(topicItems)->handleJsonCommands->Effect.runPromise) {
     | exception JsExn(err) =>
       Console.log3(__MODULE__ ++ ".handleQueueEvent error:", err, err->JSON.stringifyAny)
       JsError.throwWithMessage(

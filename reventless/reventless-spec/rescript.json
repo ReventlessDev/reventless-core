@@ -15,7 +15,8 @@
   ],
   "dependencies": [
     "sury",
-    "@reventlessdev/rescript-pulumi-pulumi"
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/rescript-effect"
   ],
   "compiler-flags": [
   ]

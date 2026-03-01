@@ -1,6 +1,6 @@
 # Effect Library Integration Analysis
 
-**Status:** Backlog
+**Status:** Phases 0–4 complete; Phase 5 (streaming/future) in backlog
 **Created:** 2026-02-27
 **Summary:** Analysis of the [Effect TypeScript library](https://effect.website/) features and how they could improve the Reventless architecture. Covers typed errors, retry/scheduling, resource management, concurrency, streaming, schema versioning, and future distributed systems patterns.
 
@@ -944,33 +944,96 @@ Before each binding file is considered complete:
 
 The clearest near-term path is writing thin ReScript bindings for Effect core primitives and applying them to the in-memory adapter and EventLog operations first — measurable improvements with contained scope before considering the deeper Stream or Schema migration.
 
-**Phase 0 — Create `rescript-effect` package:**
-0. Scaffold `rescript/rescript-effect/` with `package.json`, `rescript.json`
-1. Implement `Duration.res`, `Effect.res`, `Exit.res`, `Cause.res` (foundational)
-2. Implement `Schedule.res`, `Fiber.res` (needed for retry and concurrency)
-3. Implement `Deferred.res`, `Ref.res`, `SynchronizedRef.res`, `Latch.res` (synchronization)
-4. Add `@reventlessdev/rescript-effect` to root `rescript.json` dependencies and run `npm install`
+**Phase 0 — Create `rescript-effect` package: ✅ COMPLETE**
+- [x] Scaffold `rescript/rescript-effect/` with `package.json`, `rescript.json`, `.gitignore`
+- [x] Implement `Duration.res`, `Effect.res`, `Exit.res`, `Cause.res` (foundational)
+- [x] Implement `Schedule.res`, `Fiber.res` (retry and concurrency)
+- [x] Implement `Deferred.res`, `Ref.res`, `SynchronizedRef.res`, `Latch.res` (synchronization)
+- [x] Implement `Queue.res`, `PubSub.res`, `Stm.res` (Phase 2 primitives, included upfront)
+- [x] Add to root `rescript.json` and run `npm install`
+- [x] Full clean build: 13 modules, zero warnings
+- **Implementation notes:**
+  - `await` is a reserved keyword in ReScript — bound as `await_` in `Deferred.res` and `Latch.res`
+  - Circular deps broken via abstract forward-declared types in `Effect.res`: `fiber<'a,'e>`, `latch`, `semaphore`, `schedule<'out,'in_,'r>`; dependent modules use transparent type aliases (e.g. `type t<'a,'e> = Effect.fiber<'a,'e>`)
+  - `Latch` properties (`await`, `open`, `close`) use `@get` (not `@send`) — they are getter properties in Effect, not callable methods
+  - `Stm.TRef` nested module uses local `type stm<'a,'e,'r> = t<'a,'e,'r>` alias to avoid self-referencing `Stm` by name inside the same file
+  - `rebuild` script uses `-with-deps` which is invalid in ReScript v12; use `npx rescript clean && npx rescript build` instead
 
-**Phase 1 — In-memory adapter improvements:**
-5. Replace `handlerRef: ref<option<handler>>` with `Deferred` in `RuntimeEnvironment_InMemory`
-6. Fix `EventCollectorChannel_InMemory` subscription race with `Latch`
-7. Replace `setInterval` in `HeartbeatRunner_InMemory` with `Schedule`-based repeat
+**Phase 1 — In-memory adapter improvements: ✅ COMPLETE**
+- [x] Replace `handlerRef: ref<option<handler>>` with `Deferred` in `RuntimeEnvironment_InMemory`
+- [x] Fix `EventCollectorChannel_InMemory` subscription race with `Latch` (subscriptionLatch opens after subscription registers; `Latch.await_` replaces `await resource.name->TestRunner.resolve` in single-topic tests)
+- [x] `HeartbeatRunner_InMemory` and `CommandTopicChannel_InMemory` updated to use `Deferred.await_` (no more `None` check / warning log)
+- **Implementation notes:**
+  - `parts` type: `{handlerDeferred: Deferred.t<handler, unit>, subscriptionLatch: Latch.t}`
+  - Creation (`Deferred.make`, `Effect.makeLatch`) via `Effect.runSync` (purely synchronous)
+  - Completion (`Deferred.succeed`, `Latch.open_`) via `Effect.runPromise` (fiber wake-ups are async-safe)
+  - setInterval replacement with Schedule deferred to Phase 3 (requires TestClock infrastructure)
+  - 353 modules compiled, zero warnings; 129/129 tests pass
 
-**Phase 2 — Core framework:**
-8. Apply typed errors (`Effect<A,E,R>`) to `EventLog_Operations` — fix the FIXME
-9. Apply typed errors to `QueryDb_Operations` — eliminate silent decode failures
-10. Add `Schedule` + `retry` to `EventLog.append` for DynamoDB throttle handling
-11. Implement `Queue.res`, `PubSub.res`, `Stm.res`
-12. Replace `InMemory_Bus` with `PubSub` for backpressure-realistic testing
-13. Apply STM to `EventLogStorage_InMemory` for atomic append + publish
+**Phase 2 — Core framework: ✅ COMPLETE**
+- [x] Fix `EventLog_Operations` — remove FIXME and all throw/re-throw patterns; `publishToEventTopic` now returns `result<unit, string>`; `append` switches on storage result and returns `Error` on failure — never throws
+- [x] Fix `QueryDb_Operations` — `decode` returns `result<state, storageError>` (was `[state]` / `[]`); `load` sequences decode results via `Result.flatMap` accumulator; `save`/`saveBatch` propagate encode errors instead of `Console.log` + silent skip
+- [x] Apply STM to `EventLogStorage_InMemory` — `ref<dict<...>>` replaced with `Stm.TRef`; `append` uses `Stm.TRef.modify->Stm.commit->Effect.runPromise`; `replay` uses `Stm.TRef.get->Stm.commit->Effect.runPromise`
+- **Deferred:** Replace `InMemory_Bus` with `PubSub` / Effect Queue — requires refactoring all consumers from callback model to Queue.take model. Deferred to Phase 3: with the callback model, `publishEvent` awaits all subscribers synchronously; switching to Queue makes delivery asynchronous, which breaks existing tests that rely on immediate propagation. Requires `@effect/vitest` + `TestClock` to manage timing deterministically.
+- **Build:** 353 modules, zero warnings; 129/129 tests pass
 
-**Phase 3 — Test infrastructure:**
-14. Migrate test files to `@effect/vitest` + `TestClock`
+**Phase 2.5 — Namespace fix + retry: ✅ COMPLETE**
+- [x] Rename `reventless-core/src/util/Schedule.res` → `ScheduleOps.res` — frees the bare `Schedule` name for rescript-effect
+- [x] Update 4 callers inside reventless-core: `ExtensionPoint_Operations.res`, `ExtensionPoint_Callback.res`, `SideEffectHandler_Builder.res`, `PluginExtensionPoint_Plugin.res` (`Schedule.*` → `ScheduleOps.*`)
+- [x] Add `@reventlessdev/rescript-effect` to `reventless-core` `rescript.json` + `package.json`
+- [x] Add `Effect.retry` to `EventLog_Operations.res`:
+  - `isTransient` predicate (ThrottlingException, ProvisionedThroughputExceededException, ServiceUnavailable, RequestLimitExceeded, InternalServerError)
+  - `storageRetrySchedule`: `exponential(100ms) -> jittered -> intersect(recurs(5)) -> whileInput(isTransient)`
+  - `append` wraps storage call in `Effect.tryPromise -> flatMap (Ok→succeed / Error→fail) -> retry(schedule)`, runs with `Effect.runPromiseExit`, branches on `Exit.isSuccess`
+  - `exitCausePayload<'e>` type at module scope for safe cause extraction via `Obj.magic`
+- **Implementation notes:**
+  - `Schedule.recurs(5)` creates a standalone schedule (not a modifier) — compose via `Schedule.intersect(expBackoff, recurs(5))`, not pipe
+  - Top-level schedule value needs explicit type annotation `Schedule.t<(Duration.t, int), string, unit>` to resolve value restriction weak type variable
+  - `Exit.toOption` returns Effect's tagged Option (not ReScript option) — use `Exit.isSuccess` + `Obj.magic` cast to `exitCausePayload` for safe branching and cause extraction
+  - `Effect.either` also returns Effect's Either, not ReScript result — do not use for bridging
+  - **Build:** 615 modules, zero warnings; 172/172 reventless-core + 129/129 reventless-in-memory tests pass
 
-**Phase 4 — Streaming and future (evaluate when Phases 1–3 are complete):**
-15. Evaluate `Stream`-based `EventLog.replay` for large aggregate support
-16. Evaluate `Effect.Schema` migration (assess scope vs. benefit)
-17. Track `@effect/workflow` and `@effect/cluster` maturity for future architectural decisions
+**Phase 3 — Test infrastructure: ✅ COMPLETE**
+- [x] Add `TestClock.res` bindings: `adjust(duration)`, `currentTimeMillis` (both at `@module("effect") @scope("TestClock")`)
+- [x] Add `TestContext.res` bindings: abstract `layer` type, `testContext` Layer value (`@scope("TestContext") external testContext = "TestContext"`)
+- [x] Add `Effect.provide` and `Effect.yieldNow` to `Effect.res`
+- [x] Add `AsyncTest.testPromiseWithTimeout` for tests requiring custom Jest timeouts
+- [x] Extend `EventLogFixtures` with counter-based mocks: `failNextAppendsWithTransient: ref<int>`, `appendCallCount: ref<int>`
+- [x] Write `EventLogRetryTest.res` — 13 tests verifying retry behavior:
+  - `isTransient` predicate (7 tests): ThrottlingException, ProvisionedThroughputExceededException, ServiceUnavailable, RequestLimitExceeded, InternalServerError are transient; ValidationException and generic failures are not
+  - Permanent failure (2 tests): returns Error immediately, no publish, exactly 1 storage call
+  - Transient failure retry (3 tests): 1 failure → 2 calls → Ok; events stored+published; 2 failures → 3 calls → Ok
+  - Retry exhaustion (1 test): 6 transient failures exhaust 5 retries → Error, no publish, exactly 6 storage calls (12s timeout)
+- **Deferred:** Replace `InMemory_Bus` event delivery with Effect Queue — `Ops.append` runs Effect internally via `Effect.runPromiseExit` (creates its own runtime), so `Effect.provide(TestContext)` from outside cannot inject TestClock into those retry sleeps. Queue replacement requires refactoring `append` to expose an Effect (rather than a promise) or using a different concurrency approach. Deferred to Phase 4.
+- **Build:** 196 modules, zero warnings; 185/185 tests pass (13 new retry tests)
+- **Implementation notes:**
+  - `TC.adjust` is a function, `TC.currentTimeMillis` is a value (Effect object) — bind accordingly
+  - `TestContext.TestContext` (capital T) is the Layer; `testContext` is the binding name in ReScript
+  - `Effect.provide` is typed as `('layer) => t<'a, 'e, unit>` — polymorphic layer type, unit requirements after providing
+  - `Effect.yieldNow` is a function `(unit) => Effect.t<unit,'e,'r>` in Effect v3 (takes options? object — bind as unit)
+  - Retry exhaustion test takes ~3100ms (real time, no TestClock) — 12s timeout gives 2× headroom above jitter ceiling
+  - Using TestClock for retry delays requires `append` to return `Effect.t` instead of `promise` — architectural change deferred
+
+**Phase 4 — InMemory_Bus Queue + Deferred delivery: ✅ COMPLETE**
+- [x] Replace callback-based fan-out in `InMemory_Bus` with Effect Queue + Deferred completion signals
+  - Each subscriber gets an `Queue.unbounded<queuedEvent>` and a drain fiber started via `Effect.runFork`
+  - Drain loop: `Queue.take -> Effect.promise(callback) -> Deferred.succeed(signal)` wrapped in `Effect.forever`
+  - `publishEvent`: synchronously create signal Deferred + offer to queue via `Effect.runSync` for each subscriber, then `Promise.all` the signal awaits
+  - `reset`: `Queue.shutdown` all subscriber queues (interrupts drain fibers cleanly), clear all registries
+- [x] Fix 6 failing scheduler tests caused by async delivery timing
+- **Build:** 363 modules, zero warnings; 129/129 tests pass (26 test suites)
+- **Implementation notes:**
+  - `Effect.all({concurrency: "unbounded"})` internally uses `forEachConcurrentDiscard` which creates a `processingFiber` + child fibers via `scheduleTask` — **4 scheduling hops** before drain callback runs
+  - Effect's `MixedScheduler` uses `Promise.resolve(void 0).then()` for fiber scheduling (NOT `queueMicrotask`) — so `doNotFake: ['queueMicrotask']` has no effect on Effect fiber scheduling
+  - Fix: use `Effect.runSync` for synchronous operations (`Deferred.make`, `Queue.offer`) + native `Promise.all` for signal awaiting → **2 scheduling hops**, matching the 2 `await Promise.resolve()` ticks in test helpers
+  - `Queue.shutdown` is a pure synchronous Effect value — can be collected into an array and run via `Effect.all->Effect.runSync`
+
+**Phase 5 — Streaming (separate plan):**
+- Stream integration has been broken out into a dedicated plan: `docs/plans/effect-stream-integration.md`
+- That plan covers 6 use cases (EventLog.replay, DcbEventLog.read, QueryDb scan, Bus fan-out, CSV/Task,
+  bounded backpressure) with phased implementation steps and full test coverage.
+- [ ] Evaluate `Effect.Schema` migration (assess scope vs. benefit)
+- [ ] Track `@effect/workflow` and `@effect/cluster` maturity for future architectural decisions
 
 ---
 

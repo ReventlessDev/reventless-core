@@ -18,7 +18,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
             CmdSourceSpec.eventSchema,
           ),
         )
-      await TestCounterHandler.handleCounterEvents([eventJson])
+      await TestCounterHandler.handleCounterEvents(Stream.fromIterable([eventJson]))->Effect.runPromise
       // publishJsons should have been called with 1 command
       expect(capturedCmds.contents->Array.length)->toBe(1)
     })
@@ -34,7 +34,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
             CmdSourceSpec.eventSchema,
           ),
         )
-      await TestCounterHandler.handleCounterEvents([eventJson])
+      await TestCounterHandler.handleCounterEvents(Stream.fromIterable([eventJson]))->Effect.runPromise
       expect(capturedCmds.contents->Array.length)->toBe(0)
     })
   })
@@ -42,7 +42,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
   describe("invalid event JSON", () => {
     testPromise("skipped gracefully — no throw, no publish", async () => {
       let invalidJson = JSON.Encode.string("not-an-object")
-      await TestCounterHandler.handleCounterEvents([invalidJson])
+      await TestCounterHandler.handleCounterEvents(Stream.fromIterable([invalidJson]))->Effect.runPromise
       expect(capturedCmds.contents->Array.length)->toBe(0)
     })
   })
@@ -62,7 +62,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
       }
       mockCommonHandler :=
         async _ => (Promise.resolve([]), [Counter.Count(countItem)])
-      await TestECHandler.handleJsonEvents([JSON.Encode.null])
+      await TestECHandler.handleJsonEvents(Stream.fromIterable([JSON.Encode.null]))->Effect.runPromise
       expect(capturedCountItems.contents)->toEqual([countItem])
     })
   })
@@ -76,7 +76,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
       }
       mockCommonHandler :=
         async _ => (Promise.resolve([]), [Counter.AddToCounterTarget(target)])
-      await TestECHandler.handleJsonEvents([JSON.Encode.null])
+      await TestECHandler.handleJsonEvents(Stream.fromIterable([JSON.Encode.null]))->Effect.runPromise
       expect(capturedCounterTargets.contents)->toEqual([target])
     })
   })
@@ -89,7 +89,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
         commandJson: JSON.Encode.string("DoSomething"),
       }
       mockCommonHandler := async _ => (Promise.resolve([cmd]), [])
-      await TestECHandler.handleJsonEvents([JSON.Encode.null])
+      await TestECHandler.handleJsonEvents(Stream.fromIterable([JSON.Encode.null]))->Effect.runPromise
       expect(capturedCmds.contents->Array.length)->toBe(1)
     })
   })
@@ -108,7 +108,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
       }
       mockCommonHandler :=
         async _ => (Promise.resolve([cmd]), [Counter.Count(countItem)])
-      await TestECHandler.handleJsonEvents([JSON.Encode.null])
+      await TestECHandler.handleJsonEvents(Stream.fromIterable([JSON.Encode.null]))->Effect.runPromise
       expect((
         capturedCmds.contents->Array.length,
         capturedCountItems.contents->Array.length,
@@ -127,7 +127,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
       mockCountFailUntil := 1
       mockCommonHandler :=
         async _ => (Promise.resolve([]), [Counter.Count(countItem)])
-      await TestECHandler.handleJsonEvents([JSON.Encode.null])
+      await TestECHandler.handleJsonEvents(Stream.fromIterable([JSON.Encode.null]))->Effect.runPromise
       // count was called at least twice (1 failure + 1 success)
       expect(mockCountCallCount.contents >= 2)->toBe(true)
     })

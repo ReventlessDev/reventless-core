@@ -40,7 +40,7 @@ function Make(RuntimeEnvironment) {
         let EventCollectorHelper = Core_Helpers$ReventlessCore.MakeEventCollectorHelper(RuntimeEnvironment)(EventCollectorChannel)(CoreRuntimeBuilder);
         let match$1 = EventCollectorHelper.make(name, eventTopics, opts);
         let eventCollector = match$1[0];
-        Output$Pulumi.flatMap(Pulumi.all(match[1]), extensionPointsOutgoingEventHandlers => EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingEventHandlers));
+        Output$Pulumi.flatMap(Pulumi.all(match[1]), extensionPointsOutgoingJsonEventsHandlers => EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers));
         return [
           aggregatesOutputs,
           extensionPointsOutputs,

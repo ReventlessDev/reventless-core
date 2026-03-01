@@ -1,6 +1,8 @@
 // Fixtures for SideEffectHandler integration tests.
 // Publishes an event to the bus and verifies the side effect execute function is called.
 
+open TestFixtures
+
 S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
@@ -85,33 +87,6 @@ let allEventTopics: Reventless.EventTopic.allOutputs = Dict.fromArray([
 ])
 
 // ─────────────────────────────────────────────────────────────
-// Mock infrastructure
-// ─────────────────────────────────────────────────────────────
-
-let mockQueryEngine: Reventless.QueryEngine.operations = {
-  scan: async (~readModelName as _, ~filterConfigs as _, ~limit as _) => [],
-  query: async (
-    ~readModelName as _,
-    ~key as _=?,
-    ~id as _,
-    ~subIdConfig as _=?,
-    ~filterConfigs as _=?,
-    ~ascending as _=?,
-    ~limit as _=?,
-  ) => [],
-}
-
-let mockScheduler: Reventless.Scheduler.operations = {
-  createSchedule: async (_, _) => (),
-  deleteSchedule: async (_, _) => (),
-}
-
-let mockResourceNaming: Reventless.ResourceNaming.operations = {
-  validateName: n => n,
-  urnName: n => n,
-}
-
-// ─────────────────────────────────────────────────────────────
 // Build SideEffectHandler component
 // ─────────────────────────────────────────────────────────────
 
@@ -131,14 +106,7 @@ let seh = SEHBuilder.make(
 // Test meta
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: Reventless.Message.meta = {
-  service: "TestSEHSource",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}
+let testMeta = makeTestMeta(~service="TestSEHSource")
 
 // ─────────────────────────────────────────────────────────────
 // Publish helper — emits {id, meta, event} to the bus topic

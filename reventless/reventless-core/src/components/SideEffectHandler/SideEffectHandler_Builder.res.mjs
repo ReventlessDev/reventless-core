@@ -4,9 +4,9 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
-import * as Schedule$ReventlessCore from "../../util/Schedule.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
+import * as ScheduleOps$ReventlessCore from "../../util/ScheduleOps.res.mjs";
 import * as CommandTopic$ReventlessCore from "../CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as SideEffectHandler$ReventlessCore from "./SideEffectHandler.res.mjs";
@@ -29,7 +29,7 @@ function Make(RuntimeEnvironment) {
           sideEffects: sideEffects,
           queryEngine: queryEngine
         });
-        let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
+        let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         allCommandTopics.apply(allCommandTopics => {
           let commandTopics = Stdlib_Option.getOr(Stdlib_Option.map(targets, targets => Object.values(CommandTopic$ReventlessCore.filter(allCommandTopics, new Set(targets)))), []);
           let resources = commandTopics.flatMap(commandTopic => commandTopic.resources);
@@ -42,8 +42,8 @@ function Make(RuntimeEnvironment) {
           let eventCollectorResources = param[1];
           return {
             enqueueEvent: param[0].enqueueEvent,
-            createSchedule: Schedule$ReventlessCore.create(scheduler, eventCollectorResources, resourceNaming),
-            deleteSchedule: Schedule$ReventlessCore.$$delete(scheduler, eventCollectorResources, resourceNaming)
+            createSchedule: ScheduleOps$ReventlessCore.create(scheduler, eventCollectorResources, resourceNaming),
+            deleteSchedule: ScheduleOps$ReventlessCore.$$delete(scheduler, eventCollectorResources, resourceNaming)
           };
         }));
         return Component$ReventlessCore.setOutputs(extra, {

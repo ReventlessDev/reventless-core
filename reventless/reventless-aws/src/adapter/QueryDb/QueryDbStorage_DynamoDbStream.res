@@ -30,6 +30,7 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
       ReventlessCore.QueryDb.load: runtimeTable->load,
+      loadStream: runtimeTable->loadStream,
       save: runtimeTable->save,
       saveBatch: runtimeTable->saveBatch,
       count: runtimeTable->count,

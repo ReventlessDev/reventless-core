@@ -131,10 +131,12 @@ async function publishJsons(cmdJsons) {
     ]);
     let handlers = CommandTopic$ReventlessInMemory.getHandlers(typeName);
     await Promise.all(handlers.map(async entry => {
-      await entry.handler([{
-          command: fullBody,
-          reference: cmdJson.id
-        }]);
+      let item_reference = cmdJson.id;
+      let item = {
+        command: fullBody,
+        reference: item_reference
+      };
+      await CommandTopic$ReventlessInMemory.callHandlerWithArray(entry.handler, [item]);
     }));
   }));
 }

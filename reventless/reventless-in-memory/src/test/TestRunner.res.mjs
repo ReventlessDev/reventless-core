@@ -30,11 +30,42 @@ function resetHeartbeatRunner() {
   HeartbeatRunner_InMemory$ReventlessInMemory.reset();
 }
 
+function collectNEvents(subscribeToEvents, topicName, n) {
+  if (n <= 0) {
+    return Promise.resolve([]);
+  }
+  let collected = {
+    contents: []
+  };
+  let resolve = {
+    contents: undefined
+  };
+  let p = new Promise((res, param) => {
+    resolve.contents = res;
+  });
+  subscribeToEvents(topicName, async (service, meta, json) => {
+    collected.contents.push({
+      service: service,
+      meta: meta,
+      json: json
+    });
+    if (collected.contents.length < n) {
+      return;
+    }
+    let f = resolve.contents;
+    if (f !== undefined) {
+      return f(collected.contents);
+    }
+  });
+  return p;
+}
+
 export {
   setup,
   resolve,
   stopGraphQLServer,
   resetGraphQLServer,
   resetHeartbeatRunner,
+  collectNEvents,
 }
 /* @pulumi/pulumi Not a pure module */

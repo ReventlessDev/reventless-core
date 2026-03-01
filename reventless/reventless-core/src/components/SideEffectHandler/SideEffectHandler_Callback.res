@@ -4,7 +4,7 @@ module type Spec = {
 }
 
 module type T = {
-  let eventsHandler: EventCollector.jsonEventsHandler
+  let handleJsonEvents: EventCollector.jsonEventsHandler
 }
 
 module Make = (Spec: Spec): T => {
@@ -32,44 +32,42 @@ module Make = (Spec: Spec): T => {
       }
     })
 
-  let eventsHandler = eventsJson' => {
-    eventsJson'
-    ->Array.map(async eventJson' =>
+  let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
+    stream
+    ->Stream.mapEffect(eventJson' =>
       switch Spec.sideEffects->findSideEffect(eventJson') {
       | Some((eventObj, eventMeta, sideEffect)) =>
-        module SideEffect = unpack(sideEffect)
-        let sourceName = SideEffect.Source.name
-        eventJson'->Logger.logJsonEvent(
-          `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
-        )
-        try {
-          let idDecoded =
-            eventObj
-            ->Dict.get("id")
-            ->Option.map(id => id->Message.decode(SideEffect.Source.Id.schema))
-          let eventDecoded =
-            eventObj
-            ->Dict.get("event")
-            ->Option.map(json => json->Message.decode(SideEffect.Source.eventSchema))
-          switch (idDecoded, eventDecoded) {
-          | (Some(eventId), Some(event)) =>
-            try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
-            | err => Console.log2("SideEffect: Error while processing:", err)
+        Effect.promise(async () => {
+          module SideEffect = unpack(sideEffect)
+          let sourceName = SideEffect.Source.name
+          eventJson'->Logger.logJsonEvent(
+            `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
+          )
+          try {
+            let idDecoded =
+              eventObj
+              ->Dict.get("id")
+              ->Option.map(id => id->Message.decode(SideEffect.Source.Id.schema))
+            let eventDecoded =
+              eventObj
+              ->Dict.get("event")
+              ->Option.map(json => json->Message.decode(SideEffect.Source.eventSchema))
+            switch (idDecoded, eventDecoded) {
+            | (Some(eventId), Some(event)) =>
+              try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
+              | err => Console.log2("SideEffect: Error while processing:", err)
+              }
+            | (None, _)
+            | (_, None) =>
+              Console.log2("SideEffectHandler.eventHandler: Invalid event", eventJson')
             }
-
-          | (None, _)
-          | (_, None) =>
-            Console.log2("SideEffectHandler.eventHandler: Invalid event", eventJson')
+          } catch {
+          | err =>
+            Console.log3("SideEffectHandler.eventHandler: Couldn't decode event:", eventJson', err)
           }
-        } catch {
-        | err =>
-          Console.log3("SideEffectHandler.eventHandler: Couldn't decode event:", eventJson', err)
-        }
-
-      | None => ()
+        })
+      | None => Effect.succeed(())
       }
     )
-    ->Promise.all
-    ->Util.Promise.toUnit
-  }
+    ->Stream.runDrain
 }

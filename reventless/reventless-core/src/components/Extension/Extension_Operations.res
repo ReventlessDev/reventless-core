@@ -14,8 +14,8 @@ module type Ops = {
 }
 
 module type T = {
-  let incomingEventHandler: Extension.eventHandler
-  let outgoingEventHandler: Extension.eventHandler
+  let incomingJsonEventsHandler: Extension.jsonEventsHandler
+  let outgoingJsonEventsHandler: Extension.jsonEventsHandler
 }
 
 module Make = (
@@ -132,7 +132,7 @@ module Make = (
     | AbstractCall(handler) => handler->handle
     }
 
-  let incomingEventHandler = async (eventJson', pluginDef) => {
+  let incomingJsonEventsHandler = async (eventJson', pluginDef) => {
     switch eventJson'->Message.decodeEvent'(
       Reventless.Id.StringPure.schema,
       MappingSpec.eventSchema,
@@ -167,7 +167,7 @@ module Make = (
     }
   }
 
-  let outgoingEventHandler = (eventJson', pluginDef) => {
+  let outgoingJsonEventsHandler = (eventJson', pluginDef) => {
     let commandActions = mapOutgoingEvent(eventJson', pluginDef)
     commandActions
     ->Array.map(applyOutgoingCommandAction)

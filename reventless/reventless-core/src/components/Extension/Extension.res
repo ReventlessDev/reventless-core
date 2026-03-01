@@ -3,8 +3,8 @@ let componentType = ComponentType.Extension
 type outputs = Reventless.Extension.outputs
 type t
 
-type eventHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
-type operations = {incomingEventHandler: eventHandler, outgoingEventHandler: eventHandler}
+type jsonEventsHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
+type operations = {incomingJsonEventsHandler: jsonEventsHandler, outgoingJsonEventsHandler: jsonEventsHandler}
 type component = Component.t<t, outputs, operations>
 
 module type T = {

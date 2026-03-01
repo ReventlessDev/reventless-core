@@ -31,8 +31,8 @@ module Make = (
     ->Array.map((module(Mapping: Mappings.Mapping)) =>
       Mapping.mapIncomingCommands(
         topicItems,
-        Schedule.create(~scheduler, ~channelResources=queue, ~resourceNaming),
-        Schedule.delete(~scheduler, ~channelResources=queue, ~resourceNaming),
+        ScheduleOps.create(~scheduler, ~channelResources=queue, ~resourceNaming),
+        ScheduleOps.delete(~scheduler, ~channelResources=queue, ~resourceNaming),
         queryEngine,
       )
     )

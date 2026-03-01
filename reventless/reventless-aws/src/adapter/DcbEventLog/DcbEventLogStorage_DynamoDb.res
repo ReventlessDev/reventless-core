@@ -46,8 +46,12 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~o
     operations: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
-      ReventlessCore.DcbEventLog_Adapter.read: DcbEventLogStorage_DynamoDb_Runtime.read(runtimeTable),
-      append: DcbEventLogStorage_DynamoDb_Runtime.append(runtimeTable),
+      let readFn = DcbEventLogStorage_DynamoDb_Runtime.read(runtimeTable)
+      {
+        ReventlessCore.DcbEventLog_Adapter.read: readFn,
+        append: DcbEventLogStorage_DynamoDb_Runtime.append(runtimeTable),
+        readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(runtimeTable),
+      }
     }),
   }
 }

@@ -22,6 +22,7 @@ function Make(Spec) {
         });
         return {
           load: Operations.load,
+          loadStream: Operations.loadStream,
           save: Operations.save,
           saveBatch: Operations.saveBatch,
           count: Operations.count,

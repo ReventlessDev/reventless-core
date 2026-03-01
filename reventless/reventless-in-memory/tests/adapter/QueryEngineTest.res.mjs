@@ -87,6 +87,59 @@ describe("QueryEngine_InMemory", () => {
       expect(items.length).toBe(0);
     });
   });
+  describe("scan with ~limit", () => {
+    test("~limit=2 on a 5-item QueryDb returns exactly 2 items", async () => {
+      let TestBus = InMemory_Bus$ReventlessInMemory.Make({});
+      let Storage = QueryDbStorage_InMemory$ReventlessInMemory.Make(TestBus);
+      let QE = QueryEngine_InMemory$ReventlessInMemory.Make(TestBus);
+      let s = Storage.make("items", [], undefined, undefined, undefined, undefined, opts);
+      let ops = await TestRunner$ReventlessInMemory.resolve(s.operations);
+      await ops.save("k1", "a", "Any", undefined);
+      await ops.save("k2", "b", "Any", undefined);
+      await ops.save("k3", "c", "Any", undefined);
+      await ops.save("k4", "d", "Any", undefined);
+      await ops.save("k5", "e", "Any", undefined);
+      let engine = await TestRunner$ReventlessInMemory.resolve(QE.make({}));
+      let result = await engine.scan("items", [], 2);
+      expect(result.length).toBe(2);
+    });
+    test("~limit larger than total returns all items (no padding)", async () => {
+      let TestBus = InMemory_Bus$ReventlessInMemory.Make({});
+      let Storage = QueryDbStorage_InMemory$ReventlessInMemory.Make(TestBus);
+      let QE = QueryEngine_InMemory$ReventlessInMemory.Make(TestBus);
+      let s = Storage.make("things", [], undefined, undefined, undefined, undefined, opts);
+      let ops = await TestRunner$ReventlessInMemory.resolve(s.operations);
+      await ops.save("t1", "x", "Any", undefined);
+      await ops.save("t2", "y", "Any", undefined);
+      let engine = await TestRunner$ReventlessInMemory.resolve(QE.make({}));
+      let result = await engine.scan("things", [], 100);
+      expect(result.length).toBe(2);
+    });
+    test("~limit=0 returns empty array", async () => {
+      let TestBus = InMemory_Bus$ReventlessInMemory.Make({});
+      let Storage = QueryDbStorage_InMemory$ReventlessInMemory.Make(TestBus);
+      let QE = QueryEngine_InMemory$ReventlessInMemory.Make(TestBus);
+      let s = Storage.make("stuff", [], undefined, undefined, undefined, undefined, opts);
+      let ops = await TestRunner$ReventlessInMemory.resolve(s.operations);
+      await ops.save("s1", "z", "Any", undefined);
+      let engine = await TestRunner$ReventlessInMemory.resolve(QE.make({}));
+      let result = await engine.scan("stuff", [], 0);
+      expect(result.length).toBe(0);
+    });
+    test("~limit=3 on a 3-item QueryDb returns all 3 items", async () => {
+      let TestBus = InMemory_Bus$ReventlessInMemory.Make({});
+      let Storage = QueryDbStorage_InMemory$ReventlessInMemory.Make(TestBus);
+      let QE = QueryEngine_InMemory$ReventlessInMemory.Make(TestBus);
+      let s = Storage.make("widgets", [], undefined, undefined, undefined, undefined, opts);
+      let ops = await TestRunner$ReventlessInMemory.resolve(s.operations);
+      await ops.save("w1", "p", "Any", undefined);
+      await ops.save("w2", "q", "Any", undefined);
+      await ops.save("w3", "r", "Any", undefined);
+      let engine = await TestRunner$ReventlessInMemory.resolve(QE.make({}));
+      let result = await engine.scan("widgets", [], 3);
+      expect(result.length).toBe(3);
+    });
+  });
 });
 
 export {

@@ -8,21 +8,29 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (
   module Callback = StateChangeSlice_Callback.Make(Spec)
 
   let makeJsonHandler = (dcbEventLogOps: DcbEventLog.operations<dcbEvent>) => {
-    let handler: CommandTopic.jsonCommandsHandler = async items => {
-      let decodedItems = items->Array.filterMap(({
-        Reventless.CommandTopic.reference: reference,
-        command: json,
-      }) => {
-        switch json->Message.decodeCommand'(Reventless.Id.String.schema, Spec.commandSchema) {
-        | command' => Some({Reventless.CommandTopic.reference, command: command'})
-        | exception err =>
-          let commandStr = json->JSON.stringify
-          Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
-          None
+    let handler: CommandTopic.jsonCommandsHandler = stream =>
+      stream
+      ->Stream.mapEffect(({Reventless.CommandTopic.reference: reference, command: json}) =>
+        Effect.sync(() =>
+          switch json->Message.decodeCommand'(Reventless.Id.String.schema, Spec.commandSchema) {
+          | command' => Some({Reventless.CommandTopic.reference, command: command'})
+          | exception err =>
+            let commandStr = json->JSON.stringify
+            Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
+            None
+          }
+        )
+      )
+      ->Stream.flatMap(opt =>
+        switch opt {
+        | Some(v) => Stream.fromIterable([v])
+        | None => Stream.empty
         }
-      })
-      await Callback.handleCommands(dcbEventLogOps, decodedItems)
-    }
+      )
+      ->Stream.runCollect
+      ->Effect.flatMap(decodedItems =>
+        Effect.promise(() => Callback.handleCommands(dcbEventLogOps, decodedItems))
+      )
     handler
   }
 

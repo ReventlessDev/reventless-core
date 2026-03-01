@@ -49,45 +49,6 @@ let OneBucketSpec = {
 
 let mockPublishToAggregates = {};
 
-async function mockScheduler_createSchedule(param, param$1) {
-  
-}
-
-async function mockScheduler_deleteSchedule(param, param$1) {
-  
-}
-
-let mockScheduler = {
-  createSchedule: mockScheduler_createSchedule,
-  deleteSchedule: mockScheduler_deleteSchedule
-};
-
-async function mockQueryEngine_scan(param, param$1, param$2) {
-  return [];
-}
-
-async function mockQueryEngine_query(param, param$1, param$2, param$3, param$4, param$5, param$6) {
-  return [];
-}
-
-let mockQueryEngine = {
-  scan: mockQueryEngine_scan,
-  query: mockQueryEngine_query
-};
-
-function mockResourceNaming_validateName(n) {
-  return n;
-}
-
-function mockResourceNaming_urnName(n) {
-  return n;
-}
-
-let mockResourceNaming = {
-  validateName: mockResourceNaming_validateName,
-  urnName: mockResourceNaming_urnName
-};
-
 function mockQueryBucketName(param, param$1) {
   return "in-memory-bucket";
 }
@@ -107,9 +68,6 @@ export {
   capturedEvents,
   OneBucketSpec,
   mockPublishToAggregates,
-  mockScheduler,
-  mockQueryEngine,
-  mockResourceNaming,
   mockQueryBucketName,
   NoBucketsMaker,
   OneBucketMaker,

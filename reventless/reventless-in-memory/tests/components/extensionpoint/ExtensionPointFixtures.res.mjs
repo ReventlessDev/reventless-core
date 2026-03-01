@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as ExtensionPointMapping$ReventlessCore from "@reventlessdev/reventless-core/src/ExtensionPointMapping.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "../../../src/components/ExtensionPoint_Builder.res.mjs";
 
@@ -109,65 +110,19 @@ async function mockPublishFn(cmds) {
   capturedCmds.contents = capturedCmds.contents.concat(cmds);
 }
 
-async function mockQueryEngine_scan(param, param$1, param$2) {
-  return [];
-}
-
-async function mockQueryEngine_query(param, param$1, param$2, param$3, param$4, param$5, param$6) {
-  return [];
-}
-
-let mockQueryEngine = {
-  scan: mockQueryEngine_scan,
-  query: mockQueryEngine_query
-};
-
-async function mockScheduler_createSchedule(param, param$1) {
-  
-}
-
-async function mockScheduler_deleteSchedule(param, param$1) {
-  
-}
-
-let mockScheduler = {
-  createSchedule: mockScheduler_createSchedule,
-  deleteSchedule: mockScheduler_deleteSchedule
-};
-
-function mockResourceNaming_validateName(n) {
-  return n;
-}
-
-function mockResourceNaming_urnName(n) {
-  return n;
-}
-
-let mockResourceNaming = {
-  validateName: mockResourceNaming_validateName,
-  urnName: mockResourceNaming_urnName
-};
-
 let ep = TestEP.make(Object.fromEntries([[
     "TargetAgg",
     []
   ]]), Object.fromEntries([[
     "TargetAgg",
     mockPublishFn
-  ]]), mockScheduler, mockQueryEngine, mockResourceNaming, undefined);
+  ]]), TestFixtures$ReventlessInMemory.mockScheduler, TestFixtures$ReventlessInMemory.mockQueryEngine, TestFixtures$ReventlessInMemory.mockResourceNaming, undefined);
+
+let testMeta = TestFixtures$ReventlessInMemory.makeTestMeta("TestEP");
 
 function resetMocks() {
   capturedCmds.contents = [];
 }
-
-let testMeta = {
-  service: "TestEP",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
 
 export {
   Bus,
@@ -180,9 +135,6 @@ export {
   TestEP,
   capturedCmds,
   mockPublishFn,
-  mockQueryEngine,
-  mockScheduler,
-  mockResourceNaming,
   ep,
   testMeta,
   resetMocks,

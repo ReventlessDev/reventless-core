@@ -9,7 +9,25 @@ module type T = {
   module Spec: Reventless.EventLog.T
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
+  let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>
+  let appendStream: EventLog.appendStream<Spec.Id.t, Spec.event>
 }
+
+// Retry schedule for transient storage errors.
+// Exponential backoff: 100ms, ~200ms, ~400ms, ~800ms, ~1600ms — max 5 retries.
+// Only retries on recognised transient error messages; permanent errors propagate immediately.
+let isTransient = (msg: string) =>
+  msg->String.includes("ThrottlingException") ||
+  msg->String.includes("ProvisionedThroughputExceededException") ||
+  msg->String.includes("ServiceUnavailable") ||
+  msg->String.includes("RequestLimitExceeded") ||
+  msg->String.includes("InternalServerError")
+
+let storageRetrySchedule: Schedule.t<(Duration.t, int), string, unit> =
+  Schedule.exponential(Duration.millis(100))
+  ->Schedule.jittered
+  ->Schedule.intersect(Schedule.recurs(5))
+  ->Schedule.whileInput(isTransient)
 
 module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
@@ -35,46 +53,50 @@ module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
 
   let encodeEvents' = (events', id) => events'->Array.map(event => encodeEvent'(id, event))
 
-  let storageAppendErrorHandler = (id, err) => {
-    let errMsg =
-      `EventLog: Error: Couldn't append for ${Spec.name}(${id->Spec.Id.toString}):` ++
-      err->Util.Error.message
-    Console.log(errMsg)
-    errMsg->Error
-  }
-
+  // Returns result<unit, string> — never throws. Publish failures are surfaced as Error.
   let publishToEventTopic = async (id, events') => {
-    try await Ops.eventTopic.publish(events') catch {
+    try {
+      let _ = await Ops.eventTopic.publish(events')
+      Ok()
+    } catch {
     | JsExn(err) =>
-      let msg = `EventLog.appendFn(${id->Spec.Id.toString}): EventTopic.publish Error: `
-      Console.log2(msg, err)
-      JsError.throwWithMessage(msg ++ err->JsExn.message->Option.getOr("no error message given"))
+      let msg =
+        `EventLog.append(${id->Spec.Id.toString}): EventTopic.publish Error: ` ++
+        err->JsExn.message->Option.getOr("no error message given")
+      Error(msg)
     }
   }
 
-  let catchErrorHandler = exn => {
-    Console.log2("EventLog.append: Error:", exn)
-    throw(exn)
-  }
-
-  // FIXME: append is supposed to return result<unit, string/*errorMessage*/>, but at the same moment, we throw errors
-  //        We should use result everywhere instead of throwing errors / exceptions
-  let append = async (
-    sequenceNr: int,
-    id: 'specId,
-    events': array<ReventlessCore.Message.event'<'specId, 'specEvent>>,
-  ) => {
-    try {
-      let eventsJson = events'->encodeEvents'(id)
-
-      switch await Ops.storage.append(sequenceNr, id->Spec.Id.toString, eventsJson) {
-      | appendResult =>
-        await publishToEventTopic(id, events')
-        appendResult
-      | exception JsExn(e) => storageAppendErrorHandler(id, e)
-      }
-    } catch {
-    | exn => catchErrorHandler(exn)
+  // append returns result<unit, string> — never throws.
+  // Storage errors are retried with exponential backoff (up to 5 times for transient errors).
+  // After exhausting retries, or on permanent errors, returns Error.
+  let append = async (sequenceNr, id, events') => {
+    let eventsJson = events'->encodeEvents'(id)
+    let idStr = id->Spec.Id.toString
+    // Build an Effect that fails with a string on storage error (enabling retry)
+    let storageEffect =
+      Effect.tryPromise(
+        ~catch=(err: unknown) =>
+          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("storage error"),
+        () => Ops.storage.append(sequenceNr, idStr, eventsJson),
+      )
+      ->Effect.flatMap(result =>
+        switch result {
+        | Ok(_) => Effect.succeed(())
+        | Error(msg) => Effect.fail(msg)
+        }
+      )
+      ->Effect.retry(storageRetrySchedule)
+    let exit = await storageEffect->Effect.runPromiseExit
+    if exit->Exit.isSuccess {
+      await publishToEventTopic(id, events')
+    } else {
+      // Retry exhausted — extract the final error message from the Cause
+      let failMsg = exit->Exit.match(
+        ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("storage error"),
+        ~onSuccess=_ => "storage error", // unreachable: we are in the isFailure branch
+      )
+      Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${failMsg}`)
     }
   }
 
@@ -106,4 +128,29 @@ module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
     let eventsJson = await Ops.storage.replay(id->Spec.Id.toString)
     eventsJson->decodeEvents(id->Spec.Id.toString)
   }
+
+  // Lazy streaming replay — wraps decodeEvent in Effect.sync so thrown exceptions
+  // surface through the stream's error channel rather than as unhandled exceptions.
+  let replayStream = id =>
+    Ops.storage.replayStream(id->Spec.Id.toString)
+    ->Stream.mapEffect(json =>
+      Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
+    )
+
+  // Streaming append — encodes each Spec.event to the {type, data} storage format
+  // and writes sequentially via the storage adapter.
+  // Accepts Spec.event items (symmetric with replayStream) to enable direct
+  // replayStream → appendStream pipelines without an intermediate mapping step.
+  let appendStream = (startingSeqNr, id, stream) =>
+    Ops.storage.appendStream(
+      startingSeqNr,
+      id->Spec.Id.toString,
+      stream->Stream.map(event => {
+        let json = event->Message.encode(Spec.eventSchema)
+        let (eventType, data) = json->Message.splitMessage
+        [("type", JSON.String(eventType)), ("data", JSON.Object(data))]
+        ->Dict.fromArray
+        ->JSON.Encode.object
+      }),
+    )
 }

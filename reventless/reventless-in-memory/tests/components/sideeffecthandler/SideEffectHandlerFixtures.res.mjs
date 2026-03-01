@@ -6,6 +6,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector_Builder.res.mjs";
 import * as SideEffectHandler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/SideEffectHandler/SideEffectHandler_Builder.res.mjs";
 import * as RuntimeEnvironment_InMemory$ReventlessInMemory from "../../../src/adapter/Runtime/RuntimeEnvironment_InMemory.res.mjs";
@@ -90,45 +91,6 @@ let allEventTopics = Object.fromEntries([[
     }
   ]]);
 
-async function mockQueryEngine_scan(param, param$1, param$2) {
-  return [];
-}
-
-async function mockQueryEngine_query(param, param$1, param$2, param$3, param$4, param$5, param$6) {
-  return [];
-}
-
-let mockQueryEngine = {
-  scan: mockQueryEngine_scan,
-  query: mockQueryEngine_query
-};
-
-async function mockScheduler_createSchedule(param, param$1) {
-  
-}
-
-async function mockScheduler_deleteSchedule(param, param$1) {
-  
-}
-
-let mockScheduler = {
-  createSchedule: mockScheduler_createSchedule,
-  deleteSchedule: mockScheduler_deleteSchedule
-};
-
-function mockResourceNaming_validateName(n) {
-  return n;
-}
-
-function mockResourceNaming_urnName(n) {
-  return n;
-}
-
-let mockResourceNaming = {
-  validateName: mockResourceNaming_validateName,
-  urnName: mockResourceNaming_urnName
-};
-
 let sideEffects = [{
     Source: {
       name: name,
@@ -144,16 +106,9 @@ let sideEffects = [{
     execute: execute
   }];
 
-let seh = SEHBuilder.make("TestSEH", sideEffects, allEventTopics, Pulumi.output({}), undefined, mockQueryEngine, mockScheduler, mockResourceNaming, undefined, undefined, undefined);
+let seh = SEHBuilder.make("TestSEH", sideEffects, allEventTopics, Pulumi.output({}), undefined, TestFixtures$ReventlessInMemory.mockQueryEngine, TestFixtures$ReventlessInMemory.mockScheduler, TestFixtures$ReventlessInMemory.mockResourceNaming, undefined, undefined, undefined);
 
-let testMeta = {
-  service: "TestSEHSource",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
+let testMeta = TestFixtures$ReventlessInMemory.makeTestMeta("TestSEHSource");
 
 async function publishOrderPlaced(id, orderId) {
   let eventJson = Object.fromEntries([
@@ -192,9 +147,6 @@ export {
   topicName,
   topicResource,
   allEventTopics,
-  mockQueryEngine,
-  mockScheduler,
-  mockResourceNaming,
   sideEffects,
   seh,
   testMeta,

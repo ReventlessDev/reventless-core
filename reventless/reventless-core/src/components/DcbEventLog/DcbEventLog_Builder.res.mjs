@@ -41,7 +41,9 @@ function Make(Spec) {
         });
         return {
           read: Ops.read,
-          append: Ops.append
+          append: Ops.append,
+          readStream: Ops.readStream,
+          appendStream: Ops.appendStream
         };
       }));
       let outputs_resources = storage.resources;

@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
+import * as Effect from "effect";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Belt_Option from "@rescript/runtime/lib/es6/Belt_Option.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
@@ -55,6 +56,7 @@ function Make(Projection) {
         TAG: "Ok",
         _0: states(store, extra)
       }),
+      loadStream: id => Effect.Stream.fromIterable(states(store, id)),
       save: (extra, extra$1, extra$2, extra$3) => {
         let match = states(store, extra);
         let exit = 0;

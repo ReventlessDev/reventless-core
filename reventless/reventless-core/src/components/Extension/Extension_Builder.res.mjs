@@ -19,11 +19,11 @@ function Make(Spec) {
         publishToReadModels: publishToReadModels,
         queryEngine: queryEngine
       });
-      let operations_incomingEventHandler = Operations.incomingEventHandler;
-      let operations_outgoingEventHandler = Operations.outgoingEventHandler;
+      let operations_incomingJsonEventsHandler = Operations.incomingJsonEventsHandler;
+      let operations_outgoingJsonEventsHandler = Operations.outgoingJsonEventsHandler;
       let operations = {
-        incomingEventHandler: operations_incomingEventHandler,
-        outgoingEventHandler: operations_outgoingEventHandler
+        incomingJsonEventsHandler: operations_incomingJsonEventsHandler,
+        outgoingJsonEventsHandler: operations_outgoingJsonEventsHandler
       };
       Component$ReventlessCore.setOperations(extra, Pulumi.output(operations));
       let extOutputs_extensionPointName = Spec.name;

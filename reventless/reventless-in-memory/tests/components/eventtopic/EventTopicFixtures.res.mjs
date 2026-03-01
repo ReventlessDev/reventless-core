@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as EventTopic_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventTopic/EventTopic_Builder.res.mjs";
 import * as EventTopicPublisher_InMemory$ReventlessInMemory from "../../../src/adapter/EventTopic/EventTopicPublisher_InMemory.res.mjs";
 
@@ -49,19 +50,10 @@ let EventTopicMaker = EventTopic_Builder$ReventlessCore.Make({
 
 let eventTopic = EventTopicMaker.make("TestItemEventTopic", [], undefined);
 
-let testMeta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
-
 function makeEvent$p(id, event) {
   return {
     id: id,
-    meta: testMeta,
+    meta: TestFixtures$ReventlessInMemory.testMeta,
     event: event
   };
 }
@@ -76,7 +68,6 @@ export {
   capturedEventCount,
   EventTopicMaker,
   eventTopic,
-  testMeta,
   makeEvent$p,
   reset,
 }

@@ -62,9 +62,22 @@ let statesToString: array<'a> => string = states =>
 
 let handleAction = async (
   action,
-  {QueryDb.load: load, save, saveBatch, delete, deleteBatch} as operations,
+  {QueryDb.loadStream, save, saveBatch, delete, deleteBatch} as operations,
   subIdConfig,
-) =>
+) => {
+  let loadAtMost = (n, id) =>
+    loadStream(id)
+    ->Stream.take(n)
+    ->Stream.runCollect
+    ->Effect.map(states => Ok(states))
+    ->Effect.catchAll(e => Effect.succeed(Error(e)))
+    ->Effect.runPromise
+  let loadAll = id =>
+    loadStream(id)
+    ->Stream.runCollect
+    ->Effect.map(states => Ok(states))
+    ->Effect.catchAll(e => Effect.succeed(Error(e)))
+    ->Effect.runPromise
   switch action {
   | Ignore =>
     logAction("Ignore")
@@ -108,7 +121,7 @@ let handleAction = async (
     await saveBatch(batch)
 
   | Update(id, update) =>
-    switch await load(id) {
+    switch await loadAtMost(2, id) {
     | Ok(states) =>
       switch states {
       | [] =>
@@ -126,7 +139,7 @@ let handleAction = async (
     }
   | UpdateWithDefault(id, default, update) =>
     Console.log(`UpdateWithDefault(${id}, loading ...`)
-    switch await load(id) {
+    switch await loadAtMost(2, id) {
     | Ok(states) =>
       switch states {
       | [] =>
@@ -149,7 +162,7 @@ let handleAction = async (
       Error(err)
     }
   | UpdateMultiState(id, update) =>
-    switch (await load(id), subIdConfig) {
+    switch (await loadAll(id), subIdConfig) {
     | (Ok(states), Some(subIdConfig)) =>
       let beforeStates = states
       let afterStates = beforeStates->update
@@ -176,6 +189,7 @@ let handleAction = async (
     logAction("Error: Action not yet supported !")
     Ok()
   }
+}
 
 let actionsWithId = action =>
   switch action {

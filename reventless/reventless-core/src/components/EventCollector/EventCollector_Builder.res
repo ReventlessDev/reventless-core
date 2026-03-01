@@ -1,3 +1,24 @@
+/**
+ * Build a handler from a stream-aware, schema-decoded handler.
+ * Each incoming JSON event is decoded via `schema`; decode errors become Effect failures.
+ * Use this when writing handlers that want to consume a typed `Stream.t<'event>` directly.
+ */
+let makeStreamHandler = (
+  ~eventCollector: EventCollector.component,
+  ~schema: S.t<'event>,
+  ~jsonEventsHandler: Stream.t<'event, string, unit> => Effect.t<unit, string, unit>,
+) => {
+  let jsonHandler: EventCollector.jsonEventsHandler = stream =>
+    stream
+    ->Stream.mapEffect(json =>
+      Effect.trySync(~catch=_exn => "decode error", () => json->S.parseOrThrow(schema))
+    )
+    ->jsonEventsHandler
+
+  let channel: EventCollector_Adapter.channel<_, _, _> = eventCollector->EventCollector_Adapter.channel
+  channel.handleChannelEvent(jsonHandler)
+}
+
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
   Channel: EventCollector_Adapter.Channel with type runtimeParts = RuntimeEnvironment.parts,
@@ -54,10 +75,10 @@ module Make = (
 
   let makeHandler = (
     ~eventCollector: EventCollector.component,
-    ~eventsHandler: EventCollector.jsonEventsHandler,
+    ~jsonEventsHandler: EventCollector.jsonEventsHandler,
   ) => {
     let channel = eventCollector->EventCollector_Adapter.channel
-    channel.handleChannelEvent(eventsHandler)
+    channel.handleChannelEvent(jsonEventsHandler)
   }
 
   let make = (~name, ~eventTopics, ~opts): EventCollector.component =>

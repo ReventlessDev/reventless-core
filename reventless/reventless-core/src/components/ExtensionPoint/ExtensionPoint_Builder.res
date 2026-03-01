@@ -53,7 +53,7 @@ module Make = (
     let commandTopicResources =
       (commandTopic->CommandTopic_Adapter.channel).resources->Adapter.resourcesToResolvedOutput
 
-    let (commandTopic, eventTopic, outgoingEventHandler) =
+    let (commandTopic, eventTopic, outgoingJsonEventsHandler) =
       commandTopicResources
       ->Pulumi.Output.flatMap(commandTopicResources => {
         module ExtensionPointCallback = ExtensionPoint_Callback.Make(
@@ -96,14 +96,14 @@ module Make = (
             },
           )
 
-          (commandTopic, eventTopic, Ops.outgoingEventHandler)
+          (commandTopic, eventTopic, Ops.outgoingJsonEventsHandler)
         })
       })
       ->Pulumi.Output.unzip3
 
     self->Component.setOperations(
-      outgoingEventHandler->Pulumi.Output.apply(outgoingEventHandler =>
-        ({outgoingEventHandler: outgoingEventHandler}: ExtensionPoint.operations)
+      outgoingJsonEventsHandler->Pulumi.Output.apply(outgoingJsonEventsHandler =>
+        ({outgoingJsonEventsHandler: outgoingJsonEventsHandler}: ExtensionPoint.operations)
       ),
     )
 

@@ -69,6 +69,7 @@ module TestBehavior = {
 type mockEL = {
   appendFn: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, string>>,
   replayFn: string => promise<array<AggSpec.event>>,
+  replayStreamFn: string => Stream.t<AggSpec.event, string, unit>,
   getAll: unit => array<Message.event'<string, AggSpec.event>>,
   failNextAppend: ref<bool>,
   reset: unit => unit,
@@ -92,9 +93,16 @@ let makeMockEL = (): mockEL => {
     ->Array.filter(e => e.id == id)
     ->Array.map(e => e.event)
 
+  let replayStreamFn = id =>
+    storedRef.contents
+    ->Array.filter(e => e.id == id)
+    ->Array.map(e => e.event)
+    ->Stream.fromIterable
+
   {
     appendFn,
     replayFn,
+    replayStreamFn,
     getAll: () => storedRef.contents,
     failNextAppend: failRef,
     reset: () => {
@@ -130,6 +138,8 @@ module TestOps = {
         array<Message.event'<string, AggSpec.event>>,
       ) => promise<result<unit, string>>,
       replay: string => promise<array<AggSpec.event>>,
+      replayStream: string => Stream.t<AggSpec.event, string, unit>,
+      appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<unit, string, unit>,
     }
     type component = Component.t<OuterEventLog.t, OuterEventLog.outputs, operations>
     // Never called — satisfies module type only
@@ -138,6 +148,8 @@ module TestOps = {
   let eventLog: EventLog.operations = {
     append: mock.appendFn,
     replay: mock.replayFn,
+    replayStream: mock.replayStreamFn,
+    appendStream: (_startingSeqNr, _id, stream) => stream->Stream.runDrain,
   }
 }
 

@@ -44,7 +44,7 @@ module Make = (
       (module(Counter: Counter.T)) => {
         let counter = Counter.make(
           ~name,
-          ~counterEventsHandler=CounterHandler.handleCounterEvents,
+          ~jsonEventsHandler=CounterHandler.handleCounterEvents,
           ~opts,
         )
         let counterComp: Component.t<
@@ -81,7 +81,7 @@ module Make = (
         })
         let handler = SpecificEventCollector.makeHandler(
           ~eventCollector,
-          ~eventsHandler=EventCollectorHandler.handleJsonEvents,
+          ~jsonEventsHandler=EventCollectorHandler.handleJsonEvents,
         )
         eventCollector->AggregateRuntimeBuilder.forEventCollector(
           ~handler,

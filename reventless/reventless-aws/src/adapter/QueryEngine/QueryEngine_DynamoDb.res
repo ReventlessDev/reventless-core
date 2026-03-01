@@ -99,11 +99,8 @@ let queryByTableName = async (
     }
   }
   ReventlessCore.Logger.debug(~loc=__LOC__, "queryByTableName params:", params)
-  switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params) {
-  | result =>
-    result.items
-    ->Option.getOr([])
-    ->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
+  switch await Util_DynamoDb_Runtime.queryStream(params)->Stream.runCollect->Effect.runPromise {
+  | items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
   | exception err =>
     ReventlessCore.Logger.error(~loc=__LOC__, "Error:", err)
     []
@@ -130,13 +127,10 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     limit,
   }
   ReventlessCore.Logger.debug(~loc=__LOC__, "scanByTableName params:", params)
-  switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params) {
-  | result =>
-    result.items
-    ->Option.getOr([])
-    ->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
-  | exception JsExn(e) =>
-    ReventlessCore.Logger.error(~loc=__LOC__, "Error:", e)
+  switch await Util_DynamoDb_Runtime.scanStream(params)->Stream.runCollect->Effect.runPromise {
+  | items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
+  | exception err =>
+    ReventlessCore.Logger.error(~loc=__LOC__, "Error:", err)
     []
   }
 }

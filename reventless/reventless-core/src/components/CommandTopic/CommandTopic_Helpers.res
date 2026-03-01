@@ -1,7 +1,16 @@
 // Re-export from spec so ReventlessCore.CommandTopic.topicItem === Reventless.CommandTopic.topicItem
 type topicItem<'command> = Reventless.CommandTopic.topicItem<'command>
 
-type jsonCommandsHandler = array<topicItem<JSON.t>> => promise<array<result<string, string>>>
+type jsonCommandsHandler =
+  Stream.t<topicItem<JSON.t>, string, unit> => Effect.t<array<result<string, string>>, string, unit>
+
+// Convenience helper for test code that needs to call a stream handler with an array
+// (for use in packages that don't have rescript-effect as a direct dependency)
+let callHandlerWithArray: (
+  jsonCommandsHandler,
+  array<topicItem<JSON.t>>,
+) => promise<array<result<string, string>>> = (handler, items) =>
+  handler(Stream.fromIterable(items))->Effect.runPromise
 
 // Helper to extract type names from a schema (for variant types)
 // For a variant type like `type command = CreateItem({...}) | UpdateItem({...})`,

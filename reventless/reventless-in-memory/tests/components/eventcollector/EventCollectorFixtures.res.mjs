@@ -50,15 +50,6 @@ let EventCollectorMaker = EventCollector_Builder$ReventlessCore.Make({
 
 let eventCollector = EventCollectorMaker.make("TestEC", allEventTopics, {});
 
-let testMeta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
-
 export {
   Bus,
   topicName,
@@ -67,6 +58,5 @@ export {
   capturedEvents,
   EventCollectorMaker,
   eventCollector,
-  testMeta,
 }
 /* Bus Not a pure module */

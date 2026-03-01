@@ -3,22 +3,38 @@ module type Ops = {
 }
 
 module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
+  // Returns result<state, storageError> — decode errors are surfaced rather than silently dropped.
   let decode = (id, stateJson) =>
     switch stateJson->Message.decode(ReadModelSpec.stateSchema) {
-    | state => [state]
+    | state => Ok(state)
     | exception err =>
-      Console.log(
-        `QueryDb: Error: Couldn't decode state for ${id->ReadModelSpec.Id.toString}: ${err
-          ->JSON.stringifyAny
-          ->Option.getOrThrow}`,
+      let errStr = err->JSON.stringifyAny->Option.getOr("unknown error")
+      Error(
+        Reventless.QueryDb.NotLoadedFromStorage(
+          `QueryDb: Error: Couldn't decode state for ${id->ReadModelSpec.Id.toString}: ${errStr}`,
+        ),
       )
-      []
     }
+
+  let loadStream = id =>
+    Ops.jsonOps.loadStream(id->ReadModelSpec.Id.toString)
+    ->Stream.mapEffect(json =>
+      switch decode(id, json) {
+      | Ok(s) => Effect.succeed(s)
+      | Error(e) => Effect.fail(e)
+      }
+    )
 
   let load = async id =>
     switch await Ops.jsonOps.load(id->ReadModelSpec.Id.toString) {
     | result =>
-      result->Result.map(states => states->Array.map(state => decode(id, state))->Array.flat)
+      result->Result.flatMap(states =>
+        states->Array.reduce(Ok([]), (acc, state) =>
+          acc->Result.flatMap(arr =>
+            decode(id, state)->Result.map(s => arr->Array.concat([s]))
+          )
+        )
+      )
     }
 
   let save = async (id, state, saveMode, ttl) =>
@@ -28,23 +44,30 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       let json = JSON.Encode.object(dict)
       await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
-      Console.log2("QueryDB.saveState: Error: Couldn't decodeObject:", state->JSON.stringifyAny)
-      Error(Reventless.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
+      Error(Reventless.QueryDb.NotSavedToStorage("Couldn't encode state as JSON object"))
     }
 
   let saveBatch = async states => {
-    let batch = states->Array.filterMap(((id, state, ttl)) =>
-      switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
-      | Some(dict) =>
-        dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
-        let json = JSON.Encode.object(dict)
-        Some((id->ReadModelSpec.Id.toString, json, ttl))
-      | None =>
-        Console.log2("QueryDB.saveStates: Error: Couldn't decodeObject:", state->JSON.stringifyAny)
-        None
-      }
+    let batchResult = states->Array.reduce(Ok([]), (acc, (id, state, ttl)) =>
+      acc->Result.flatMap(batch =>
+        switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
+        | Some(dict) =>
+          dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
+          let json = JSON.Encode.object(dict)
+          Ok(batch->Array.concat([(id->ReadModelSpec.Id.toString, json, ttl)]))
+        | None =>
+          Error(
+            Reventless.QueryDb.NotSavedToStorage(
+              `Couldn't encode state for ${id->ReadModelSpec.Id.toString}`,
+            ),
+          )
+        }
+      )
     )
-    await Ops.jsonOps.saveBatch(batch)
+    switch batchResult {
+    | Ok(batch) => await Ops.jsonOps.saveBatch(batch)
+    | Error(e) => Error(e)
+    }
   }
 
   let count = async (id, fieldName, inc) =>

@@ -20,7 +20,9 @@ function make(name, opts) {
     resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
     operations: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(runtimeTable => ({
       append: EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(runtimeTable),
-      replay: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(runtimeTable)
+      replay: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(runtimeTable),
+      replayStream: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replayStream(runtimeTable),
+      appendStream: EventLogStorage_DynamoDb_Runtime$ReventlessAws.appendStream(runtimeTable)
     }))
   };
 }

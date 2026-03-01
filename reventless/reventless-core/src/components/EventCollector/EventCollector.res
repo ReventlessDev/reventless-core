@@ -7,7 +7,8 @@ type outputs = Reventless.EventCollector.outputs
 type operations = {enqueueEvent: enqueueEvent}
 type component = Component.t<t, outputs, operations>
 
-type jsonEventsHandler = array<JSON.t> => promise<unit>
+/** Stream-based internal handler type. All events in a batch arrive as a single Stream. */
+type jsonEventsHandler = Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>
 
 module type T = {
   type callbackEvent
@@ -22,7 +23,7 @@ module type T = {
 
   let makeHandler: (
     ~eventCollector: component,
-    ~eventsHandler: jsonEventsHandler,
+    ~jsonEventsHandler: jsonEventsHandler,
   ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
 
   let make: (

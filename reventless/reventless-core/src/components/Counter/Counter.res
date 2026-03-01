@@ -6,7 +6,7 @@ type counterTargetRef = Reventless.Counter.counterTargetRef
 type count = Reventless.Counter.count
 type addToCounterTarget = Reventless.Counter.addToCounterTarget
 
-type counterEventsHandler = array<JSON.t> => promise<unit>
+type jsonEventsHandler = Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>
 
 type t
 type outputs = Reventless.Counter.outputs

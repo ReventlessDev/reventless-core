@@ -28,6 +28,7 @@
   "dependencies": {
     "@reventlessdev/reventless-core": "*",
     "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/rescript-effect": "*",
     "@reventlessdev/rescript-graphql-yoga": "*",
     "@reventlessdev/rescript-pulumi-pulumi": "*",
     "graphql": "^16.0.0",

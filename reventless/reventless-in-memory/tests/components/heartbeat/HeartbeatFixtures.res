@@ -1,6 +1,9 @@
 // Fixtures for Heartbeat component integration tests.
 // Uses HeartbeatRunner_InMemory and fake timers to verify the handler fires on schedule.
 
+open TestFixtures
+open AsyncTest
+
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()
 
@@ -9,3 +12,37 @@ let _ = TestRunner.setup()
 // ─────────────────────────────────────────────────────────────
 
 module HeartbeatMaker = ReventlessCore.Heartbeat_Builder.Make(HeartbeatRunner_InMemory)
+
+let _ = beforeAll(() => {
+  jest->useFakeTimers
+})
+
+let _ = afterAll(() => {
+  HeartbeatRunner_InMemory.reset()
+  jest->useRealTimers
+})
+
+// ─────────────────────────────────────────────────────────────
+// Shared state — reset in beforeEach inside describe
+// ─────────────────────────────────────────────────────────────
+
+let capturedCount: ref<int> = ref(0)
+
+let mockPublish: Reventless.CommandTopic.publishJsons = async cmds => {
+  capturedCount := capturedCount.contents + cmds->Array.length
+}
+
+// resolvedHandler populated in beforeAllAsync before tests run.
+// makeHandler returns eventHandler<unit, 'ctx, unit> = (unit, ctx) => promise<unit>.
+// The runtime handlerRef expects (JSON.t, unit) => promise<unit> — same in JS, safe to cast.
+let resolvedHandler: ref<option<(unit, unit) => promise<unit>>> = ref(None)
+
+let _ = beforeAllAsync(async () => {
+  let h =
+    await HeartbeatMaker.makeHandler(
+      ~id="hb-id-1",
+      ~timeout=1,
+      ~publishToCorePluginExtensionPoint=mockPublish,
+    )->TestRunner.resolve
+  resolvedHandler := Some(h)
+})

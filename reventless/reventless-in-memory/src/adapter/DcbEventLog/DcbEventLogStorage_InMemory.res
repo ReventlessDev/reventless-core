@@ -78,8 +78,14 @@ let make: DcbEventLog_Adapter.storageMaker = (~name as _, ~indexes as _, ~opts a
     }
   }
 
+  let readStream = (~query, ~after=?) =>
+    Effect.promise(() => read(~query, ~after?))
+    ->Effect.map(result => result.events)
+    ->Stream.fromEffect
+    ->Stream.flatMap(arr => Stream.fromIterable(arr))
+
   {
     resources: [],
-    operations: Pulumi.Output.make({DcbEventLog_Adapter.read, append}),
+    operations: Pulumi.Output.make({DcbEventLog_Adapter.read, append, readStream}),
   }
 }

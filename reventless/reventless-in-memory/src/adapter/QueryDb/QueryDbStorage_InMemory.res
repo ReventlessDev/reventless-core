@@ -27,6 +27,9 @@ module Make = (Bus: InMemory_Bus.T) => {
     let load: QueryDb.load<string, JSON.t> = async id =>
       Ok(store.contents->Dict.get(id)->Option.getOr([]))
 
+    let loadStream: QueryDb.loadStream<string, JSON.t> = id =>
+      store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable
+
     let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, _ttl) => {
       store.contents->Dict.set(id, [state])
       syncAll()
@@ -59,6 +62,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     let ops: QueryDb_Adapter.operations = {
       load,
+      loadStream,
       save,
       saveBatch,
       count,
@@ -68,6 +72,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     Bus.registerQueryDb(name, ops)
     Bus.registerQueryDbScan(name, () => allItems.contents)
+    Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
 
     {
       resources: [],

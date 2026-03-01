@@ -15,7 +15,7 @@ let _ = TestRunner.setup()
 
 // ─────────────────────────────────────────────────────────────
 // Build Counter
-// counterEventsHandler fires when a count reaches zero;
+// jsonEventsHandler fires when a count reaches zero;
 // capture events for assertion.
 // ─────────────────────────────────────────────────────────────
 
@@ -25,9 +25,12 @@ let counterEvents: ref<array<JSON.t>> = ref([])
 
 let counter = CounterMaker.make(
   ~name="TestCounter",
-  ~counterEventsHandler=async events => {
-    counterEvents := counterEvents.contents->Array.concat(events)
-  },
+  ~jsonEventsHandler=stream =>
+    stream
+    ->Stream.runCollect
+    ->Effect.map(chunk => {
+      counterEvents := counterEvents.contents->Array.concat(chunk)
+    }),
 )
 
 // ─────────────────────────────────────────────────────────────

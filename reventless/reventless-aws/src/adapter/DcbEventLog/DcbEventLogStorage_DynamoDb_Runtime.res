@@ -140,8 +140,7 @@ let queryBySingleTag = async (
     ?expressionAttributeNames,
   }
 
-  let result = await queryRecursive(~params=queryParams)
-  result.items->Option.getOr([])
+  await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
 }
 
 let queryByCompositeTags = async (
@@ -174,8 +173,7 @@ let queryByCompositeTags = async (
     ?expressionAttributeNames,
   }
 
-  let result = await queryRecursive(~params=queryParams)
-  result.items->Option.getOr([])
+  await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
 }
 
 let scanWithFilter = async (
@@ -227,8 +225,7 @@ let scanWithFilter = async (
     expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
   }
 
-  let result = await scanRecursive(~params=scanParams)
-  result.items->Option.getOr([])
+  await scanStream(scanParams)->Stream.runCollect->Effect.runPromise
 }
 
 // --- Query Item Execution ---
@@ -272,6 +269,107 @@ let deduplicateByPosition = (
     }
   })
 }
+
+// --- K-way Merge (lazy, position-ordered) ---
+//
+// Used by readStream when all queryItems are tag-based (GSI queries). Each
+// GSI sub-stream returns items in ascending `position` order (rangeKey = "position"),
+// so an N-way merge-sort produces a globally-sorted output stream without
+// materialising any sub-stream upfront.
+//
+// Each sub-stream is driven by a dedicated fiber pumping into a bounded Queue(1).
+// The merge loop advances only the sub-stream with the current minimum position,
+// so DynamoDB pages are fetched lazily — Stream.take(n) short-circuits pagination.
+
+type mergeSlot = {
+  queue: Queue.t<option<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent>>,
+  head: option<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent>,
+}
+
+// Wraps a sub-stream in a Queue(1) producer fiber and pulls the first element.
+let initSlot = (
+  stream: Stream.t<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent, string, unit>,
+): Effect.t<mergeSlot, string, unit> =>
+  Queue.bounded(1)->Effect.flatMap(queue => {
+    let producer =
+      stream
+      ->Stream.runForEach(event =>
+        Queue.offer(queue, Some(event))->Effect.map(_ => ())
+      )
+      // Always push the None sentinel so the merge loop can detect exhaustion,
+      // even if the stream fails (stream error is suppressed to prevent an
+      // unhandled-fiber-failure warning).
+      ->Effect.ensuring(Queue.offer(queue, None)->Effect.map(_ => ()))
+      ->Effect.catchAll(_ => Effect.succeed(()))
+    Effect.fork(producer)->Effect.flatMap(_ =>
+      Queue.take(queue)->Effect.map(head => {queue, head})
+    )
+  })
+
+// Returns the index of the slot with the smallest position, or None if all exhausted.
+let findMinSlotIdx = (slots: array<mergeSlot>) =>
+  slots->Array.reduceWithIndex(None, (minOpt, slot, idx) =>
+    switch (minOpt, slot.head) {
+    | (_, None) => minOpt
+    | (None, Some(_)) => Some(idx)
+    | (Some(minIdx), Some(head)) =>
+      let minSlot = slots->Array.getUnsafe(minIdx)
+      switch minSlot.head {
+      | None => Some(idx)
+      | Some(minHead) =>
+        String.compare(head.position, minHead.position) < 0. ? Some(idx) : minOpt
+      }
+    }
+  )
+
+// Drops adjacent events with the same position (safe because the merged stream
+// is already position-ordered — duplicates are always consecutive).
+let dedupByPosition = (
+  stream: Stream.t<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent, string, unit>,
+) => {
+  let lastPos: ref<option<string>> = ref(None)
+  stream->Stream.filter(event =>
+    switch lastPos.contents {
+    | Some(pos) when pos == event.position => false
+    | _ =>
+      lastPos := Some(event.position)
+      true
+    }
+  )
+}
+
+// Merges N position-sorted streams into one position-sorted stream.
+// Requires that every input stream emits events in ascending position order.
+let mergeSortedEvents = (
+  streams: array<Stream.t<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent, string, unit>>,
+): Stream.t<ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent, string, unit> =>
+  streams
+  ->Array.map(initSlot)
+  ->Effect.all({"concurrency": "unbounded"})
+  ->Stream.fromEffect
+  ->Stream.flatMap(initialSlots =>
+    Stream.paginateEffect(initialSlots, slots =>
+      switch findMinSlotIdx(slots) {
+      | None =>
+        // All sub-streams exhausted — terminate with an empty page.
+        Effect.succeed(([], None))
+      | Some(idx) =>
+        let slot = slots->Array.getUnsafe(idx)
+        let emitEvent = slot.head->Option.getOrThrow
+        Queue.take(slot.queue)->Effect.map(nextHead => {
+          let newSlots = slots->Array.mapWithIndex((s, i) =>
+            if i == idx {
+              {...s, head: nextHead}
+            } else {
+              s
+            }
+          )
+          let hasActive = newSlots->Array.some(s => s.head->Option.isSome)
+          ([emitEvent], hasActive ? Some(newSlots) : None)
+        })
+      }
+    )
+  )
 
 // --- Main Operations ---
 
@@ -356,6 +454,208 @@ let append = (table: runtimeTable) =>
           | Error(msg) => Error(msg)
           }
         }
+      }
+    }
+  }
+
+// --- Stream Query Operations (lazy pagination via Stream.paginateEffect) ---
+
+let queryBySingleTagStream = (
+  table: runtimeTable,
+  tagKey: string,
+  tagValue: string,
+  ~after: option<string>=?,
+) => {
+  let indexName = tagToAttributeName(tagKey)
+  let expressionAttributeValues = Dict.fromArray([(":val", tagValue->JSON.Encode.string)])
+  let (filterExpression, expressionAttributeNames) = switch after {
+  | None => (None, None)
+  | Some(afterPos) => {
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+    }
+  }
+  let baseParams: QueryCommand.input = {
+    tableName: table.name,
+    indexName: indexName,
+    keyConditionExpression: `${indexName} = :val`,
+    expressionAttributeValues: expressionAttributeValues,
+    ?filterExpression,
+    ?expressionAttributeNames,
+  }
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=err =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryBySingleTagStream error"),
+      () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        QueryCommand.send(params->QueryCommand.make)
+      },
+    )
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+}
+
+let queryByCompositeTagsStream = (
+  table: runtimeTable,
+  tags: array<Reventless.DcbTag.tag>,
+  ~after: option<string>=?,
+) => {
+  let composite = compositeTagKey(tags)
+  let expressionAttributeValues = Dict.fromArray([
+    (":composite", composite->JSON.Encode.string),
+  ])
+  let (filterExpression, expressionAttributeNames) = switch after {
+  | None => (None, None)
+  | Some(afterPos) => {
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+    }
+  }
+  let baseParams: QueryCommand.input = {
+    tableName: table.name,
+    indexName: "tag_composite",
+    keyConditionExpression: "tag_composite = :composite",
+    expressionAttributeValues: expressionAttributeValues,
+    ?filterExpression,
+    ?expressionAttributeNames,
+  }
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=err =>
+        (err->Obj.magic: JsExn.t)
+        ->JsExn.message
+        ->Option.getOr("queryByCompositeTagsStream error"),
+      () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        QueryCommand.send(params->QueryCommand.make)
+      },
+    )
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+}
+
+let scanWithFilterStream = (
+  table: runtimeTable,
+  ~eventTypes: option<array<string>>=?,
+  ~after: option<string>=?,
+) => {
+  let expressionAttributeValues = Dict.make()
+  let expressionAttributeNames = Dict.make()
+  let filterParts = []
+
+  switch eventTypes {
+  | None => ()
+  | Some(types) => {
+      let typeConditions = types->Array.mapWithIndex((typ, idx) => {
+        let placeholder = `:type${idx->Int.toString}`
+        expressionAttributeValues->Dict.set(placeholder, typ->JSON.Encode.string)
+        `eventType = ${placeholder}`
+      })
+      filterParts->Array.push(`(${typeConditions->Array.join(" OR ")})`)
+    }
+  }
+
+  switch after {
+  | None => ()
+  | Some(afterPos) => {
+      expressionAttributeNames->Dict.set("#pos", "position")
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      filterParts->Array.push("#pos > :after")
+    }
+  }
+
+  let filterExpression = if filterParts->Array.length > 0 {
+    Some(filterParts->Array.join(" AND "))
+  } else {
+    None
+  }
+
+  let hasAttributeValues = expressionAttributeValues->Dict.keysToArray->Array.length > 0
+  let hasAttributeNames = expressionAttributeNames->Dict.keysToArray->Array.length > 0
+
+  let baseParams: ScanCommand.input = {
+    tableName: table.name,
+    ?filterExpression,
+    expressionAttributeValues: ?(hasAttributeValues ? Some(expressionAttributeValues) : None),
+    expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
+  }
+
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=err =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("scanWithFilterStream error"),
+      () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        ScanCommand.send(ScanCommand.make(params))
+      },
+    )
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+}
+
+let executeQueryItemStream = (
+  table: runtimeTable,
+  queryItem: Reventless.DcbTag.queryItem,
+  ~after: option<string>=?,
+) =>
+  switch queryItem.tags {
+  | Some([tag]) =>
+    queryBySingleTagStream(table, tag.key, tag.value, ~after?)
+  | Some(tags) =>
+    queryByCompositeTagsStream(table, tags, ~after?)
+  | None =>
+    switch queryItem.eventTypes {
+    | Some(eventTypes) => scanWithFilterStream(table, ~eventTypes, ~after?)
+    | None => scanWithFilterStream(table, ~after?)
+    }
+  }
+
+let readStream = (table: runtimeTable) =>
+  (~query: Reventless.DcbTag.query, ~after=?) => {
+    let streams = query->Array.map(qi => executeQueryItemStream(table, qi, ~after?))
+    switch streams->Array.length {
+    | 0 => Stream.empty
+    | 1 => (streams->Array.getUnsafe(0))->Stream.map(fromItem)
+    | _ =>
+      // Scan sub-queries (tags = None) return items in unspecified order, so
+      // a lazy k-way merge is not possible. Fall back to eager collect + sort.
+      let hasScan = query->Array.some(qi => qi.tags == None)
+      if hasScan {
+        streams
+        ->Array.map(s => s->Stream.runCollect)
+        ->Effect.all({"concurrency": 3})
+        ->Effect.map(results => {
+          let allItems = results->Array.flat->Array.map(fromItem)
+          let deduped = deduplicateByPosition(allItems)
+          deduped->Array.toSorted((a, b) => String.compare(a.position, b.position))
+        })
+        ->Stream.fromEffect
+        ->Stream.flatMap(events => Stream.fromIterable(events))
+      } else {
+        // All sub-streams are tag-based GSI queries — items arrive in position
+        // order (rangeKey = "position"). Merge lazily: DynamoDB pages are only
+        // fetched as the consumer requests more elements.
+        mergeSortedEvents(streams->Array.map(s => s->Stream.map(fromItem)))
+        ->dedupByPosition
       }
     }
   }

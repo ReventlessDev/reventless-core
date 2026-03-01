@@ -18,12 +18,20 @@ module ItemEventLogSpec = {
 
 let storedEvents: ref<dict<array<JSON.t>>> = ref(Dict.make())
 let failNextAppend = ref(false)
+// Inject N transient failures: each call decrements the counter and returns ThrottlingException
+let failNextAppendsWithTransient: ref<int> = ref(0)
+// Total number of storage.append calls (including retried attempts)
+let appendCallCount: ref<int> = ref(0)
 
 let mockStorage: EventLog_Adapter.operations = {
   append: async (_seqNr, id, jsons) => {
+    appendCallCount := appendCallCount.contents + 1
     if failNextAppend.contents {
       failNextAppend := false
       Error("mock storage failure")
+    } else if failNextAppendsWithTransient.contents > 0 {
+      failNextAppendsWithTransient := failNextAppendsWithTransient.contents - 1
+      Error("ThrottlingException: Rate exceeded")
     } else {
       let existing = storedEvents.contents->Dict.get(id)->Option.getOr([])
       storedEvents.contents->Dict.set(id, existing->Array.concat(jsons))
@@ -33,6 +41,15 @@ let mockStorage: EventLog_Adapter.operations = {
   replay: async id => {
     storedEvents.contents->Dict.get(id)->Option.getOr([])
   },
+  replayStream: id =>
+    storedEvents.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
+  appendStream: (_startingSeqNr, id, stream) =>
+    stream->Stream.runForEach(json =>
+      Effect.sync(() => {
+        let existing = storedEvents.contents->Dict.get(id)->Option.getOr([])
+        storedEvents.contents->Dict.set(id, existing->Array.concat([json]))
+      })
+    ),
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -50,7 +67,11 @@ module MockEventTopic: EventTopic.T
     type event = ItemEventLogSpec.event
   }
   type publish = EventTopic.publish<Spec.Id.t, Spec.event>
-  type operations = {publish: publish, publishJson: EventTopic.publishJson}
+  type operations = {
+    publish: publish,
+    publishJson: EventTopic.publishJson,
+    publishJsonStream: Reventless.EventTopic.publishJsonStream,
+  }
   type component = Component.t<EventTopic.t, EventTopic.outputs, operations>
   let make = (~name as _, ~storageResources as _, ~opts as _=?): component => Obj.magic(0)
 }
@@ -60,6 +81,7 @@ let mockEventTopicOps: MockEventTopic.operations = {
     capturedPublishes := capturedPublishes.contents->Array.concat(events)
   },
   publishJson: async (_service, _meta, _json) => (),
+  publishJsonStream: _stream => Effect.succeed(()),
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -84,5 +106,7 @@ let makeEvent' = (id, event) => {
 let reset = () => {
   storedEvents := Dict.make()
   failNextAppend := false
+  failNextAppendsWithTransient := 0
+  appendCallCount := 0
   capturedPublishes := []
 }

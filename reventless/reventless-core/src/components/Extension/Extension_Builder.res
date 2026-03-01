@@ -26,8 +26,8 @@ module Make = (
       },
     )
     let operations: Extension.operations = {
-      incomingEventHandler: Operations.incomingEventHandler,
-      outgoingEventHandler: Operations.outgoingEventHandler,
+      incomingJsonEventsHandler: Operations.incomingJsonEventsHandler,
+      outgoingJsonEventsHandler: Operations.outgoingJsonEventsHandler,
     }
 
     self->Component.setOperations(operations->Pulumi.Output.make)

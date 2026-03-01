@@ -114,7 +114,7 @@ function Make(MappingSpec) {
           return handle(action._0);
       }
     };
-    let incomingEventHandler = async (eventJson$p, pluginDef) => {
+    let incomingJsonEventsHandler = async (eventJson$p, pluginDef) => {
       let event$p;
       try {
         event$p = Message$ReventlessCore.decodeEvent$p(eventJson$p, Id$Reventless.StringPure.schema, MappingSpec.eventSchema);
@@ -132,13 +132,13 @@ function Make(MappingSpec) {
         return;
       }
     };
-    let outgoingEventHandler = (eventJson$p, pluginDef) => {
+    let outgoingJsonEventsHandler = (eventJson$p, pluginDef) => {
       let commandActions = mapOutgoingEvent(eventJson$p, pluginDef);
       return Util_Promise$ReventlessCore.toUnit(Promise.all(commandActions.map(applyOutgoingCommandAction)));
     };
     return {
-      incomingEventHandler: incomingEventHandler,
-      outgoingEventHandler: outgoingEventHandler
+      incomingJsonEventsHandler: incomingJsonEventsHandler,
+      outgoingJsonEventsHandler: outgoingJsonEventsHandler
     };
   });
 }

@@ -125,8 +125,8 @@ module Make = (
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
         commandTopic
         ->Component.operations
-        ->Pulumi.Output.apply(({publishJsons}) => {
-          let ops: Aggregate.operations = {publishJsons: publishJsons}
+        ->Pulumi.Output.apply(({publishJsons, publishJsonsStream}) => {
+          let ops: Aggregate.operations = {publishJsons, publishJsonsStream}
           ops
         })
       ),

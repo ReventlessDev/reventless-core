@@ -12,6 +12,7 @@ include CommandTopic_Helpers
 
 type publish<'id, 'command> = Message.command'<'id, 'command> => promise<unit>
 type publishJsons = Reventless.CommandTopic.publishJsons
+type publishJsonsStream = Reventless.CommandTopic.publishJsonsStream
 
 type commandsHandler<'command> = array<topicItem<'command>> => promise<
   array<result<string, string>>,
@@ -26,6 +27,7 @@ module type T = {
   type operations = {
     publish: publish,
     publishJsons: publishJsons,
+    publishJsonsStream: Reventless.CommandTopic.publishJsonsStream,
   }
   type component = component<operations>
 

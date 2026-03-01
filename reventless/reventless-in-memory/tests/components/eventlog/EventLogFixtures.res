@@ -1,5 +1,7 @@
 // Integration test fixtures for EventLog builder (in-memory).
 
+open TestFixtures
+
 // ─────────────────────────────────────────────────────────────
 // Test event spec
 // ─────────────────────────────────────────────────────────────
@@ -38,19 +40,6 @@ module EventLogMaker = ReventlessCore.EventLog_Builder.Make(
 )
 
 let eventLog = EventLogMaker.make(~name="TestItemEventLog")
-
-// ─────────────────────────────────────────────────────────────
-// Test metadata
-// ─────────────────────────────────────────────────────────────
-
-let testMeta: Reventless.Message.meta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001",
-}
 
 let makeEvent' = (id, event) => ({
   Reventless.Message.id,

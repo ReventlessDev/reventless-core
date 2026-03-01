@@ -31,7 +31,7 @@ module MakeEventCollectorHelper = (
     ~eventCollector: EventCollector.component,
     ~eventTopics: EventTopic.allOutputs,
     ~extensionPointsOutputs: array<ExtensionPoint.outputs>,
-    ~extensionPointsOutgoingEventHandlers,
+    ~extensionPointsOutgoingJsonEventsHandlers,
   ) => {
     let resources =
       extensionPointsOutputs
@@ -56,11 +56,11 @@ module MakeEventCollectorHelper = (
 
       module Callback = Core_Callback.Make({
         let pluginDefinition = fakePluginDefinition
-        let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
+        let outgoingExtensionPointJsonEventsHandlers = extensionPointsOutgoingJsonEventsHandlers
       })
       let handler = CoreEventCollector.makeHandler(
         ~eventCollector,
-        ~eventsHandler=Callback.handleJsonEvents,
+        ~jsonEventsHandler=Callback.handleJsonEvents,
       )
       eventCollector->CoreRuntimeBuilder.forPluginEventCollector(~handler, ~eventTopics, ~resources)
     })

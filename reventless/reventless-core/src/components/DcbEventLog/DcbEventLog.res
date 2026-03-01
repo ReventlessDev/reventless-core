@@ -9,6 +9,8 @@ type sequencedEvent<'event> = Reventless.DcbEventLog.sequencedEvent<'event>
 type readResult<'event> = Reventless.DcbEventLog.readResult<'event>
 type read<'event> = Reventless.DcbEventLog.read<'event>
 type append<'event> = Reventless.DcbEventLog.append<'event>
+type readStream<'event> = Reventless.DcbEventLog.readStream<'event>
+type appendStream<'event> = Reventless.DcbEventLog.appendStream<'event>
 type operations<'event> = Reventless.DcbEventLog.operations<'event>
 
 module type T = {

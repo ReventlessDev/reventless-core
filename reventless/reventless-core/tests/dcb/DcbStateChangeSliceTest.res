@@ -15,6 +15,8 @@ module EventLogOps = DcbEventLog_Operations.Make(DcbFixtures.TestEventLogSpec, T
 let testDcbEventLog: DcbEventLog.operations<DcbFixtures.TestEventLogSpec.event> = {
   read: EventLogOps.read,
   append: EventLogOps.append,
+  readStream: EventLogOps.readStream,
+  appendStream: EventLogOps.appendStream,
 }
 
 module TestHandler = StateChangeSlice_Callback.Make(DcbFixtures.TestCommandSpec)

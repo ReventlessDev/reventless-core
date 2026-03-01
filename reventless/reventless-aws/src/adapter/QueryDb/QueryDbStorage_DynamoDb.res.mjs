@@ -80,6 +80,7 @@ function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     operations: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(runtimeTable => ({
       load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(runtimeTable),
+      loadStream: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.loadStream(runtimeTable),
       save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(runtimeTable),
       saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(runtimeTable),
       count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(runtimeTable),

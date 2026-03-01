@@ -1,0 +1,41 @@
+{
+  "name": "@reventlessdev/rescript-effect",
+  "version": "0.1.0-alpha.0",
+  "description": "ReScript bindings for the Effect TypeScript library",
+  "license": "MIT",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
+    "dev": "jest --watchAll"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "testPathIgnorePatterns": [
+      "AsyncTest.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ]
+  },
+  "dependencies": {
+    "effect": "^3.17.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "@jest/globals": "^29.0.0",
+    "jest-environment-node": "^29.0.0",
+    "rescript": "^12.1.0"
+  },
+  "peerDependencies": {
+    "rescript": "^12.1.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

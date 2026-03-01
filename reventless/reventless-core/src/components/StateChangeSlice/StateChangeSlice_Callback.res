@@ -26,12 +26,12 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
     ]
 
     let rec attempt = async (~retries) => {
-      let readResult = await dcbEventLog.read(~query)
-
-      let decisionModel =
-        readResult.events
-        ->Array.map(se => se.event)
-        ->Array.reduce(Spec.initialDecisionModel, Spec.reduce)
+      let (decisionModel, headPosition) = await dcbEventLog.readStream(~query)
+        ->Stream.runFold(
+          (Spec.initialDecisionModel, None),
+          ((dm, _pos), se) => (Spec.reduce(dm, se.event), Some(se.position)),
+        )
+        ->Effect.runPromise
 
       switch Spec.decide(decisionModel, command'.command) {
       | Ok(newEvents) if newEvents->Array.length == 0 =>
@@ -40,7 +40,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
       | Ok(newEvents) =>
         let condition: Reventless.DcbTag.appendCondition = {
           query,
-          after: ?readResult.headPosition,
+          after: ?headPosition,
         }
         switch await dcbEventLog.append(newEvents, ~condition) {
         | Ok(_position) =>

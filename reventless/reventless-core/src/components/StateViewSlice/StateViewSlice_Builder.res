@@ -35,6 +35,7 @@ module Make = (
 
     let toProjectionOps = (ops: SpecificQueryDb.operations): QueryDb.operations<string, Spec.state> => {
       load: id => ops.load(id->Reventless.Id.String.makeFromString),
+      loadStream: id => ops.loadStream(id->Reventless.Id.String.makeFromString),
       save: (id, s, sm, ttl) => ops.save(id->Reventless.Id.String.makeFromString, s, sm, ttl),
       saveBatch: batch =>
         ops.saveBatch(
@@ -64,22 +65,29 @@ module Make = (
 
           let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics=allEventTopics, ~opts)
 
-          let jsonEventsHandler: EventCollector.jsonEventsHandler = async jsons => {
-            let events = jsons->Array.filterMap(json =>
-              try Some(json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema))
-              catch {
-              | exn =>
-                Console.log2("StateViewSlice: Failed to decode event:", exn)
-                None
-              }
+          let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
+            stream
+            ->Stream.mapEffect(json =>
+              Effect.sync(() =>
+                try Spec.project(None, json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema))
+                catch {
+                | exn =>
+                  Console.log2("StateViewSlice: Failed to decode event:", exn)
+                  []
+                }
+              )
             )
-            let actions = events->Array.flatMap(event => Spec.project(None, event))
-            await Projection.handleActions(actions, projectionOps, None)
-          }
+            ->Stream.flatMap(actions => Stream.fromIterable(actions))
+            ->Stream.runForEach(action =>
+              Effect.promise(() =>
+                Projection.handleAction(action, projectionOps, None)
+              )
+              ->Effect.map(_ => ())
+            )
 
           let handler = SpecificEventCollector.makeHandler(
             ~eventCollector=ec,
-            ~eventsHandler=jsonEventsHandler,
+            ~jsonEventsHandler,
           )
           let resources = (queryDb->Component.outputs).resources
           ec->EventCollectorRuntimeBuilder.forEventCollector(

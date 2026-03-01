@@ -53,6 +53,13 @@ module Make = (Bus: InMemory_Bus.T) => {
         ->Promise.all
     }
 
+    let publishJsonsStream: Reventless.CommandTopic.publishJsonsStream = stream =>
+      stream
+      ->Stream.grouped(10)
+      ->Stream.runForEach(jsons =>
+        Effect.promise(() => publishJsons(jsons))
+      )
+
     let handleChannelEvent = (
       handleCmds: ReventlessCore.CommandTopic.jsonCommandsHandler,
     ): Pulumi.Output.t<ReventlessCore.Runtime.eventHandler<callbackEvent, 'context, unit>> =>
@@ -60,7 +67,10 @@ module Make = (Bus: InMemory_Bus.T) => {
         (fullBody: JSON.t, _ctx) => {
           // Pass the full body as `command` — that's what handleJsonCommands decodes
           let reference = decodeId(fullBody)
-          handleCmds([{command: fullBody, reference}])->Promise.thenResolve(_ => ())
+          let item: Reventless.CommandTopic.topicItem<JSON.t> = {command: fullBody, reference}
+          handleCmds(Stream.fromIterable([item]))
+          ->Effect.runPromise
+          ->Promise.thenResolve(_ => ())
         }
       )->Pulumi.Output.make
 
@@ -70,14 +80,11 @@ module Make = (Bus: InMemory_Bus.T) => {
       channelParts,
       runtimeParts,
     > = (~name as _, ~channel, ~runtime, ~resources as _, ~opts as _) => {
-      Bus.registerCommandHandler(channel.parts.name, (json, ctx) =>
-        switch runtime.parts.handlerRef.contents {
-        | Some(h) => h(json, ctx)
-        | None =>
-          Console.log2("InMemory CommandTopic: handler not registered for", channel.parts.name)
-          Promise.resolve()
-        }
-      )
+      Bus.registerCommandHandler(channel.parts.name, async (json, ctx) => {
+        let handler =
+          await runtime.parts.handlerDeferred->Deferred.await_->Effect.runPromise
+        await handler(json, ctx)
+      })
       []
     }
 
@@ -85,6 +92,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       parts: {name: name},
       resources: [],
       publishJsons: publishJsons->Pulumi.Output.make,
+      publishJsonsStream: publishJsonsStream->Pulumi.Output.make,
       handleChannelEvent,
       connect,
     }

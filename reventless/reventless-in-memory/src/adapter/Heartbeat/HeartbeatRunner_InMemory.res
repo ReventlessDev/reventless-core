@@ -3,6 +3,10 @@
 // Instead of creating a CloudWatch Event Rule (as in AWS), sets up a setInterval
 // that fires the heartbeat handler directly at the configured timeout interval.
 //
+// Awaits the handler Deferred on each tick — no None check, no warning log.
+// After the first tick the Deferred is already completed, so subsequent await_
+// calls return immediately.
+//
 // Usage: pass HeartbeatRunner_InMemory to Plugin_Builder.Make as the HeartbeatRunner
 // parameter when building a plugin in test/local mode.
 //
@@ -26,16 +30,19 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   ~runtime,
   ~opts as _,
 ) => {
-  let handlerRef = runtime.parts.handlerRef
+  let handlerDeferred = runtime.parts.handlerDeferred
   let intervalMs = timeout * 60 * 1000
   let handle = setIntervalJs(
     () => {
-      switch handlerRef.contents {
-      | Some(handler) =>
-        // Heartbeat callback ignores both arguments; Obj.magic converts unit to JSON.t.
-        handler(Obj.magic(()), ())->ignore
-      | None => ()
-      }
+      // Await the handler Deferred on each tick. Since the Deferred is completed
+      // during make() setup, this resolves immediately after the first tick.
+      handlerDeferred
+      ->Deferred.await_
+      ->Effect.flatMap(handler =>
+        Effect.promise(() => handler(Obj.magic(()), ()))
+      )
+      ->Effect.runPromise
+      ->ignore
     },
     intervalMs,
   )

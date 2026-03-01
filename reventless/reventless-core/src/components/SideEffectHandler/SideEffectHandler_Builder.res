@@ -35,7 +35,7 @@ module Make = (
     })
     let handler = SpecificEventCollector.makeHandler(
       ~eventCollector,
-      ~eventsHandler=Callback.eventsHandler,
+      ~jsonEventsHandler=Callback.handleJsonEvents,
     )
 
     let _ = allCommandTopics->Pulumi.Output.apply(allCommandTopics => {
@@ -64,12 +64,12 @@ module Make = (
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply((({enqueueEvent}, eventCollectorResources)) => {
         SideEffectHandler.enqueueEvent,
-        createSchedule: Schedule.create(
+        createSchedule: ScheduleOps.create(
           ~scheduler,
           ~channelResources=eventCollectorResources,
           ~resourceNaming,
         ),
-        deleteSchedule: Schedule.delete(
+        deleteSchedule: ScheduleOps.delete(
           ~scheduler,
           ~channelResources=eventCollectorResources,
           ~resourceNaming,

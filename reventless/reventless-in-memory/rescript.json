@@ -20,6 +20,7 @@
   "dependencies": [
     "sury",
     "@glennsl/rescript-jest",
+    "@reventlessdev/rescript-effect",
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/rescript-graphql-yoga",
     "@reventlessdev/reventless-spec",

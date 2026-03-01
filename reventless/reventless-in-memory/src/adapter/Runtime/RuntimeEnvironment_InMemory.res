@@ -1,10 +1,17 @@
 // In-memory runtime environment.
-// Instead of creating Lambda functions, stores the handler in a ref so it can be
-// invoked directly (synchronously in Pulumi mock mode during tests).
+// Instead of creating Lambda functions, stores the handler in a Deferred so consumers
+// block until the handler is registered — eliminating the ref<option> race condition.
+//
+// subscriptionLatch is opened by EventCollectorChannel.connect once subscriptions are
+// registered. Callers can await it before publishing to guarantee delivery.
 
 type event = JSON.t
 type context = unit
-type parts = {handlerRef: ref<option<(JSON.t, unit) => promise<unit>>>}
+type handler = (JSON.t, unit) => promise<unit>
+type parts = {
+  handlerDeferred: Deferred.t<handler, unit>,
+  subscriptionLatch: Latch.t,
+}
 
 // Coerce a polymorphic handler to return promise<unit> so we can call it from the bus.
 // The return value is discarded — we only await for side effects.
@@ -18,12 +25,14 @@ let make = (
   ~timeout as _=30,
   ~opts as _=?,
 ): ReventlessCore.Runtime.environment<parts> => {
-  let handlerRef: ref<option<(JSON.t, unit) => promise<unit>>> = ref(None)
-  // In Pulumi mock mode, Output.apply is synchronous — handlerRef is set immediately.
+  let handlerDeferred = Deferred.make()->Effect.runSync
+  let subscriptionLatch = Effect.makeLatch(false)->Effect.runSync
+  // In Pulumi mock mode, Output.apply resolves in ~2 microtask ticks.
+  // Use runPromise (not runSync) so fiber wake-ups are properly scheduled.
   let _ = handler->Pulumi.Output.apply(h => {
-    handlerRef := Some(h->asUnitHandler)
+    Deferred.succeed(handlerDeferred, h->asUnitHandler)->Effect.runPromise->ignore
   })
-  {parts: {handlerRef: handlerRef}, resources: []}
+  {parts: {handlerDeferred, subscriptionLatch}, resources: []}
 }
 
 let groupBySource = (event: JSON.t) => {

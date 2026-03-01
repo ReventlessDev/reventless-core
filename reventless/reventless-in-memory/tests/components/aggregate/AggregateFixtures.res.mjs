@@ -95,15 +95,6 @@ let ItemAgg = ItemAggregateMaker.Make({
 
 let agg = ItemAgg.make(undefined, undefined);
 
-let testMeta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
-
 export {
   ItemSpec,
   ItemBehavior,
@@ -112,6 +103,5 @@ export {
   ItemAggregateMaker,
   ItemAgg,
   agg,
-  testMeta,
 }
 /* commandSchema Not a pure module */

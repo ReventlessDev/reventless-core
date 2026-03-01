@@ -9,7 +9,7 @@ module Make = (
   type component = Counter.component
 
   let construct = (
-    ~counterEventsHandler: Counter.counterEventsHandler,
+    ~jsonEventsHandler: Counter.jsonEventsHandler,
     ~ttl: option<int>,
     self,
     name,
@@ -63,7 +63,7 @@ module Make = (
         module Callback = Counter_Callback.Make({
           let name = name
           let countsDbCount = count
-          let counterEventsHandler = counterEventsHandler
+          let jsonEventsHandler = jsonEventsHandler
         })
 
         Handler.make(
@@ -102,11 +102,11 @@ module Make = (
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec
 
-  let make = (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?) =>
+  let make = (~name, ~jsonEventsHandler, ~ttl=oneWeek, ~opts=?) =>
     Component.make(
       ~componentType=Counter.componentType->ComponentType.toString,
       ~name=name->ComponentType.name(Counter.componentType),
-      ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl), ...),
+      ~construct=construct(~jsonEventsHandler, ~ttl=Some(ttl), ...),
       ~opts,
     )
 }

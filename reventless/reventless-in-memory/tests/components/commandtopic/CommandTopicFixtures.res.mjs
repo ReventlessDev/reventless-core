@@ -48,20 +48,10 @@ let CommandTopicMaker = CommandTopic_Builder$ReventlessCore.Make({
 
 let cmdTopic = CommandTopicMaker.make("TestCommandTopic", undefined);
 
-let testMeta = {
-  service: "test",
-  time: "2024-01-01T00:00:00.000Z",
-  ip: "127.0.0.1",
-  user: "testuser",
-  msgId: "msg-001",
-  correlationId: "corr-001"
-};
-
 export {
   ItemSpec,
   Bus,
   CommandTopicMaker,
   cmdTopic,
-  testMeta,
 }
 /* commandSchema Not a pure module */

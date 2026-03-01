@@ -15,10 +15,16 @@ module Make = (Bus: InMemory_Bus.T) => {
 
   let make: ReventlessCore.QueryDb_Adapter.queryEngineMaker = _allQueryDbs =>
     Pulumi.Output.make({
-      QueryEngine.scan: async (~readModelName, ~filterConfigs as _, ~limit as _) =>
-        switch Bus.getQueryDbScan(readModelName) {
-        | Some(scanAll) => scanAll()
-        | None => []
+      QueryEngine.scan: async (~readModelName, ~filterConfigs as _, ~limit) =>
+        switch Bus.getQueryDbStream(readModelName) {
+        | Some(makeStream) =>
+          await makeStream()->Stream.take(limit)->Stream.runCollect->Effect.runPromise
+        | None =>
+          // Backward compat: fall back to array scan if no stream registered
+          switch Bus.getQueryDbScan(readModelName) {
+          | Some(scanAll) => scanAll()
+          | None => []
+          }
         },
       query: async (
         ~readModelName,
@@ -27,14 +33,23 @@ module Make = (Bus: InMemory_Bus.T) => {
         ~subIdConfig as _=?,
         ~filterConfigs as _=?,
         ~ascending as _=?,
-        ~limit as _=?,
+        ~limit=?,
       ) => {
         let keyStr = switch key {
         | Some(k) => k
         | None => id->valueToString
         }
         switch Bus.getQueryDb(readModelName) {
-        | Some(ops) => (await ops.load(keyStr))->Result.getOr([])
+        | Some(ops) =>
+          let stream = ops.loadStream(keyStr)
+          let bounded = switch limit {
+          | Some(n) => stream->Stream.take(n)
+          | None => stream
+          }
+          await bounded
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
         | None => []
         }
       },

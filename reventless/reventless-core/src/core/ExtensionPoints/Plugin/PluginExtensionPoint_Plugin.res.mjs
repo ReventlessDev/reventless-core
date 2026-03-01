@@ -4,9 +4,9 @@ import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../../Message.res.mjs";
-import * as Schedule$ReventlessCore from "../../../util/Schedule.res.mjs";
 import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src/Compat.res.mjs";
 import * as PluginSpec$ReventlessCore from "../../Aggregates/Plugin/PluginSpec.res.mjs";
+import * as ScheduleOps$ReventlessCore from "../../../util/ScheduleOps.res.mjs";
 import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-interop/src/protocol/CompatMatrix.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "../../ReadModels/Plugin/PluginReadModelSpec.res.mjs";
 import * as ExtensionPointMapping$ReventlessCore from "../../../ExtensionPointMapping.res.mjs";
@@ -77,7 +77,7 @@ function Make(Spec) {
         let id = directive._0;
         return await createSchedule({
           name: Spec.environment + ("-" + id),
-          rate: Schedule$ReventlessCore.minutesFromNow(directive._1),
+          rate: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
           payload: JSON.stringify(Message$ReventlessCore.encodeCommand$p({
             id: id,
             meta: Message$ReventlessCore.generateMeta("Core.Plugin", undefined, "Scheduler"),

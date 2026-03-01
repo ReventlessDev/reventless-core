@@ -1,6 +1,9 @@
 // In-memory EventCollector channel.
 // connect subscribes to all event topics in the bus using the resource name as topic key.
-// Each published event is delivered directly to the runtime handler.
+// Each published event awaits the handler Deferred before delivery — eliminating the race
+// where consumers see None and silently drop events.
+// The runtime's subscriptionLatch is opened after each subscription is registered so
+// callers can await it to know subscriptions are ready before publishing.
 
 module Make = (Bus: InMemory_Bus.T) => {
   type callbackEvent = JSON.t
@@ -23,7 +26,9 @@ module Make = (Bus: InMemory_Bus.T) => {
       resources: eventTopicResources,
       enqueueEvent: ((_, _, _) => Promise.resolve())->Pulumi.Output.make,
       handleChannelEvent: (handleEvents: ReventlessCore.EventCollector.jsonEventsHandler) =>
-        ((json: JSON.t, _ctx) => handleEvents([json]))->Pulumi.Output.make,
+        ((json: JSON.t, _ctx) =>
+          handleEvents(Stream.fromIterable([json]))->Effect.runPromise
+        )->Pulumi.Output.make,
     }
   }
 
@@ -44,13 +49,26 @@ module Make = (Bus: InMemory_Bus.T) => {
         topicOutputs.resources->Array.forEach(resource => {
           // resource.name is the bus topic key set by EventTopicPublisher_InMemory
           let _ = resource.name->Pulumi.Output.apply(topicName => {
-            Bus.subscribeToEvents(topicName, async (_service, _meta, json) => {
-              switch runtime.parts.handlerRef.contents {
-              | Some(handler) => await handler(json, ())
-              | None =>
-                Console.log2("InMemory EventCollector: handler not yet registered for", topicName)
-              }
-            })
+            // Stream-based drain: subscribeToEventStream returns a scoped Effect that
+            // yields Stream<queuedEvent>. done_ is run explicitly after each handler call
+            // to unblock publishEvent.
+            let drainEffect = Effect.scoped(
+              Bus.subscribeToEventStream(topicName)
+              ->Effect.flatMap(stream =>
+                stream->Stream.runForEach(msg =>
+                  Effect.promise(async () => {
+                    let handler =
+                      await runtime.parts.handlerDeferred->Deferred.await_->Effect.runPromise
+                    await handler(msg.json, ())
+                  })
+                  ->Effect.zipRight(msg.done_)
+                )
+              ),
+            )
+            let _ = Effect.runFork(drainEffect)
+            // Signal that this topic's subscription is registered.
+            // Latch.open_ is idempotent — calling it for multiple topics is safe.
+            runtime.parts.subscriptionLatch->Latch.open_->Effect.runPromise->ignore
           })
         })
       })

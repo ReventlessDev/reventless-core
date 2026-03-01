@@ -3,6 +3,7 @@
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as AggregateFixtures$ReventlessInMemory from "./AggregateFixtures.res.mjs";
 import * as EventLogStorage_InMemory$ReventlessInMemory from "../../../src/adapter/EventLog/EventLogStorage_InMemory.res.mjs";
 
@@ -18,7 +19,7 @@ describe("InMemory_Bus", () => {
     TestBus.subscribeToEvents("t1", async (param, param$1, param$2) => {
       count.contents = count.contents + 1 | 0;
     });
-    await TestBus.publishEvent("t1", "InMemory", AggregateFixtures$ReventlessInMemory.testMeta, null);
+    await TestBus.publishEvent("t1", "InMemory", TestFixtures$ReventlessInMemory.testMeta, null);
     expect(count.contents).toBe(2);
   });
   test("dispatches commands to registered handler", async () => {
@@ -92,7 +93,7 @@ describe("Aggregate E2E", () => {
     }, AggregateFixtures$ReventlessInMemory.ItemSpec.commandSchema);
     await ops.publishJsons([{
         id: "item-1",
-        meta: AggregateFixtures$ReventlessInMemory.testMeta,
+        meta: TestFixtures$ReventlessInMemory.testMeta,
         commandJson: commandJson
       }]);
     expect(AggregateFixtures$ReventlessInMemory.capturedEventCount.contents).toBe(1);
@@ -105,7 +106,7 @@ describe("Aggregate E2E", () => {
     }, AggregateFixtures$ReventlessInMemory.ItemSpec.commandSchema);
     await ops.publishJsons([{
         id: "item-1",
-        meta: AggregateFixtures$ReventlessInMemory.testMeta,
+        meta: TestFixtures$ReventlessInMemory.testMeta,
         commandJson: commandJson
       }]);
     expect(AggregateFixtures$ReventlessInMemory.capturedEventCount.contents).toBe(0);
@@ -118,7 +119,7 @@ describe("Aggregate E2E", () => {
     }, AggregateFixtures$ReventlessInMemory.ItemSpec.commandSchema);
     await ops.publishJsons([{
         id: "item-2",
-        meta: AggregateFixtures$ReventlessInMemory.testMeta,
+        meta: TestFixtures$ReventlessInMemory.testMeta,
         commandJson: commandJson
       }]);
     expect(AggregateFixtures$ReventlessInMemory.capturedEventCount.contents).toBe(1);

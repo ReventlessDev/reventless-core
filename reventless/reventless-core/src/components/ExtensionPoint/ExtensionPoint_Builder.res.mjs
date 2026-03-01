@@ -62,12 +62,12 @@ function Make(Spec) {
           return [
             commandTopic,
             eventTopic,
-            Ops.outgoingEventHandler
+            Ops.outgoingJsonEventsHandler
           ];
         });
       }));
-      Component$ReventlessCore.setOperations(extra, match[2].apply(outgoingEventHandler => ({
-        outgoingEventHandler: outgoingEventHandler
+      Component$ReventlessCore.setOperations(extra, match[2].apply(outgoingJsonEventsHandler => ({
+        outgoingJsonEventsHandler: outgoingJsonEventsHandler
       })));
       let epOutputs_commandTopic = match[0].apply(Component$ReventlessCore.outputs);
       let epOutputs_eventTopic = match[1].apply(Component$ReventlessCore.outputs);

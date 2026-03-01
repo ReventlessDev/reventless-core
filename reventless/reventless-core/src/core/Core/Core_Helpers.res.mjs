@@ -22,7 +22,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         eventCollectorOutputs
       ];
     };
-    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingEventHandlers) => {
+    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers) => {
       let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat());
       return resources.apply(resources => {
         let fakePluginDefinition = {
@@ -36,7 +36,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         };
         let Callback = Core_Callback$ReventlessCore.Make({
           pluginDefinition: fakePluginDefinition,
-          outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
+          outgoingExtensionPointJsonEventsHandlers: extensionPointsOutgoingJsonEventsHandlers
         });
         let handler = CoreEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         CoreRuntimeBuilder.forPluginEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
