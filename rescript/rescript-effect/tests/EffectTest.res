@@ -23,19 +23,47 @@ describe("Effect — construction", () => {
   })
 
   testPromise("tryPromise succeeds when no throw", async () => {
-    let exit = await Effect.tryPromise({
-      "try": () => Promise.resolve(99),
-      "catch": _err => "caught",
-    })->Effect.runPromiseExit
+    let exit = await Effect.tryPromise(~catch=_err => "caught", () => Promise.resolve(99))
+      ->Effect.runPromiseExit
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
   testPromise("tryPromise catches thrown errors", async () => {
-    let exit = await Effect.tryPromise({
-      "try": () => Promise.reject(JsError.make("oops")->Obj.magic),
-      "catch": _err => "caught",
-    })->Effect.runPromiseExit
+    let exit =
+      await Effect.tryPromise(
+        ~catch=_err => "caught",
+        () => Promise.reject(JsError.make("oops")->Obj.magic),
+      )->Effect.runPromiseExit
     expect(exit->Exit.isFailure)->toBe(true)
+  })
+
+  test("trySync succeeds when no throw", () => {
+    let exit = Effect.trySync(~catch=_exn => "caught", () => 42)->Effect.runSyncExit
+    expect(exit->Exit.isSuccess)->toBe(true)
+  })
+
+  test("trySync returns computed value", () => {
+    let v = Effect.trySync(~catch=_exn => "caught", () => 1 + 1)->Effect.runSync
+    expect(v)->toBe(2)
+  })
+
+  test("trySync catches thrown exceptions", () => {
+    let exit =
+      Effect.trySync(~catch=_exn => "caught", () => JSON.parseOrThrow("not json"))
+      ->Effect.runSyncExit
+    expect(exit->Exit.isFailure)->toBe(true)
+  })
+
+  test("trySync maps caught exception to typed error catchable via catchAll", () => {
+    let caught = ref("")
+    Effect.trySync(~catch=_exn => "parse failed", () => JSON.parseOrThrow("not json"))
+    ->Effect.catchAll(msg => {
+      caught := msg
+      Effect.succeed(JSON.Encode.null)
+    })
+    ->Effect.runSync
+    ->ignore
+    expect(caught.contents)->toBe("parse failed")
   })
 })
 

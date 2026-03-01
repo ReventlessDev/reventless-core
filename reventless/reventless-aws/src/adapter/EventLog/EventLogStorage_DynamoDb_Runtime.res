@@ -38,11 +38,11 @@ let replay = table => {
 // Full pagination will be added when queryByIdPage is implemented.
 let replayStream = table =>
   id =>
-    Effect.tryPromise({
-      "try": () => tryReplay(table.name, id),
-      "catch": (err: unknown) =>
+    Effect.tryPromise(
+      ~catch=(err: unknown) =>
         (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB replay error"),
-    })
+      () => tryReplay(table.name, id),
+    )
     ->Stream.fromEffect
     ->Stream.flatMap(arr => Stream.fromIterable(arr))
 
@@ -52,11 +52,11 @@ let appendStream = table =>
   (startingSeqNr, id, stream) => {
     let seqNrRef = ref(startingSeqNr)
     stream->Stream.runForEach(json =>
-      Effect.tryPromise({
-        "try": () => append(table)(seqNrRef.contents, id, [json]),
-        "catch": (err: unknown) =>
+      Effect.tryPromise(
+        ~catch=(err: unknown) =>
           (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB appendStream error"),
-      })
+        () => append(table)(seqNrRef.contents, id, [json]),
+      )
       ->Effect.flatMap(result =>
         switch result {
         | Ok() =>

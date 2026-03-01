@@ -73,43 +73,50 @@ Use `tryPromise` if you want to map exceptions to typed errors.
 @module("effect") @scope("Effect")
 external promise: (unit => promise<'a>) => t<'a, 'e, 'r> = "promise"
 
-/**
-Wraps a `Promise`-returning thunk, mapping thrown exceptions to typed errors.
-
-- `"try"`: the thunk that produces the `Promise`.
-- `"catch"`: maps the caught `unknown` exception to a value of type `'e`.
-
-**Example**
-```rescript
-Effect.tryPromise({
-  "try": () => fetch("/api/data")->Promise.then(r => r->Response.json),
-  "catch": exn => NetworkError(exn->JsExn.fromException->Option.flatMap(JsExn.message)),
-})
-```
-
-> **Note** Exceptions thrown inside the `"catch"` mapper itself become defects.
-*/
 @module("effect") @scope("Effect")
-external tryPromise: {
+external _tryPromiseRaw: {
   "try": unit => promise<'a>,
   "catch": unknown => 'e,
 } => t<'a, 'e, 'r> = "tryPromise"
 
 /**
-Wraps a synchronous computation that may throw into a typed `Effect`.
+Wraps a `Promise`-returning thunk, mapping thrown exceptions to typed errors.
 
-The `"catch"` function maps the caught exception (typed as `unknown`) to a typed error.
+- `~catch`: maps the caught `unknown` exception to a value of type `'e`.
+- `f`: the thunk that produces the `Promise`.
 
 **Example**
 ```rescript
-Effect.trySync({"try": () => JSON.parseOrThrow(input), "catch": _exn => "parse error"})
+Effect.tryPromise(
+  ~catch=exn => NetworkError(exn->JsExn.fromException->Option.flatMap(JsExn.message)),
+  () => fetch("/api/data")->Promise.then(r => r->Response.json),
+)
 ```
+
+> **Note** Exceptions thrown inside the `~catch` mapper itself become defects.
 */
+let tryPromise = (~catch as onError: unknown => 'e, f: unit => promise<'a>): t<'a, 'e, 'r> =>
+  _tryPromiseRaw({"try": f, "catch": onError})
+
 @module("effect") @scope("Effect")
-external trySync: {
+external _trySyncRaw: {
   "try": unit => 'a,
   "catch": unknown => 'e,
 } => t<'a, 'e, 'r> = "try"
+
+/**
+Wraps a synchronous computation that may throw into a typed `Effect`.
+
+- `~catch`: maps the caught exception (typed as `unknown`) to a typed error.
+- `f`: the synchronous computation.
+
+**Example**
+```rescript
+Effect.trySync(~catch=_exn => "parse error", () => JSON.parseOrThrow(input))
+```
+*/
+let trySync = (~catch as onError: unknown => 'e, f: unit => 'a): t<'a, 'e, 'r> =>
+  _trySyncRaw({"try": f, "catch": onError})
 
 /** An `Effect` that never succeeds or fails — it suspends the current fiber forever. */
 @module("effect") @scope("Effect")

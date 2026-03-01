@@ -4,13 +4,13 @@ open Belt.Result
 
 let loadStream = table =>
   id =>
-    Effect.tryPromise({
-      "try": () => Util_DynamoDb_Runtime.queryById(table, id),
-      "catch": err =>
+    Effect.tryPromise(
+      ~catch=err =>
         Reventless.QueryDb.NotLoadedFromStorage(
           (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB loadStream error"),
         ),
-    })
+      () => Util_DynamoDb_Runtime.queryById(table, id),
+    )
     ->Stream.fromEffect
     ->Stream.flatMap(items => Stream.fromIterable(items))
 

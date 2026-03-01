@@ -386,17 +386,17 @@ let queryBySingleTagStream = (
     ?expressionAttributeNames,
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise({
-      "try": () => {
+    Effect.tryPromise(
+      ~catch=err =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryBySingleTagStream error"),
+      () => {
         let params = switch cursor {
         | None => baseParams
         | Some(key) => {...baseParams, exclusiveStartKey: key}
         }
         QueryCommand.send(params->QueryCommand.make)
       },
-      "catch": err =>
-        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryBySingleTagStream error"),
-    })
+    )
     ->Effect.map(result => (
       result.items->Option.getOr([]),
       result.lastEvaluatedKey->Option.map(key => Some(key)),
@@ -429,19 +429,19 @@ let queryByCompositeTagsStream = (
     ?expressionAttributeNames,
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise({
-      "try": () => {
+    Effect.tryPromise(
+      ~catch=err =>
+        (err->Obj.magic: JsExn.t)
+        ->JsExn.message
+        ->Option.getOr("queryByCompositeTagsStream error"),
+      () => {
         let params = switch cursor {
         | None => baseParams
         | Some(key) => {...baseParams, exclusiveStartKey: key}
         }
         QueryCommand.send(params->QueryCommand.make)
       },
-      "catch": err =>
-        (err->Obj.magic: JsExn.t)
-        ->JsExn.message
-        ->Option.getOr("queryByCompositeTagsStream error"),
-    })
+    )
     ->Effect.map(result => (
       result.items->Option.getOr([]),
       result.lastEvaluatedKey->Option.map(key => Some(key)),
@@ -496,17 +496,17 @@ let scanWithFilterStream = (
   }
 
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise({
-      "try": () => {
+    Effect.tryPromise(
+      ~catch=err =>
+        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("scanWithFilterStream error"),
+      () => {
         let params = switch cursor {
         | None => baseParams
         | Some(key) => {...baseParams, exclusiveStartKey: key}
         }
         ScanCommand.send(ScanCommand.make(params))
       },
-      "catch": err =>
-        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("scanWithFilterStream error"),
-    })
+    )
     ->Effect.map(result => (
       result.items->Option.getOr([]),
       result.lastEvaluatedKey->Option.map(key => Some(key)),
