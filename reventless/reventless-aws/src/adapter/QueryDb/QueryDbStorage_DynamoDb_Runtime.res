@@ -2,17 +2,38 @@ open AwsSdk.DynamoDb.DocumentClient
 open Util_DynamoDb_Runtime
 open Belt.Result
 
+// True lazy pagination: each DynamoDB page is fetched on demand.
+// Stream.take(n) short-circuits pagination once n items are consumed.
 let loadStream = table =>
-  id =>
-    Effect.tryPromise(
-      ~catch=err =>
-        Reventless.QueryDb.NotLoadedFromStorage(
-          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB loadStream error"),
-        ),
-      () => Util_DynamoDb_Runtime.queryById(table, id),
+  id => {
+    let baseParams: QueryCommand.input = {
+      tableName: table.name,
+      consistentRead: true,
+      keyConditionExpression: "id=:id",
+      expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
+    }
+    Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+      Effect.tryPromise(
+        ~catch=err =>
+          Reventless.QueryDb.NotLoadedFromStorage(
+            (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB loadStream error"),
+          ),
+        () => {
+          let params = switch cursor {
+          | None => baseParams
+          | Some(key) => {...baseParams, exclusiveStartKey: key}
+          }
+          QueryCommand.send(params->QueryCommand.make)
+        },
+      )
+      ->Effect.map(result => (
+        result.items
+        ->Option.getOr([])
+        ->Array.map(js => js->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow),
+        result.lastEvaluatedKey->Option.map(key => Some(key)),
+      ))
     )
-    ->Stream.fromEffect
-    ->Stream.flatMap(items => Stream.fromIterable(items))
+  }
 
 let load = table =>
   async id =>

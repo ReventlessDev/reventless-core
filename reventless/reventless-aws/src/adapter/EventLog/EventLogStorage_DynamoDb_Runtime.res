@@ -1,5 +1,7 @@
 open Util_DynamoDb_Runtime
 
+module DC = AwsSdk.DynamoDb.DocumentClient
+
 let append = table =>
   async (_sequenceNr, _id, jsons) => {
     let result =
@@ -34,17 +36,36 @@ let replay = table => {
   async id => await tryReplay(table.name, id)
 }
 
-// Wraps the existing replay (with its own retry logic) as a lazy stream.
-// Full pagination will be added when queryByIdPage is implemented.
+// True lazy pagination: each DynamoDB page is fetched on demand.
+// Stream.take(n) short-circuits pagination once n events are consumed.
 let replayStream = table =>
-  id =>
-    Effect.tryPromise(
-      ~catch=(err: unknown) =>
-        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB replay error"),
-      () => tryReplay(table.name, id),
+  id => {
+    let baseParams: DC.QueryCommand.input = {
+      tableName: table.name,
+      consistentRead: true,
+      keyConditionExpression: "id=:id",
+      expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
+    }
+    Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+      Effect.tryPromise(
+        ~catch=(err: unknown) =>
+          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB replay error"),
+        () => {
+          let params = switch cursor {
+          | None => baseParams
+          | Some(key) => {...baseParams, exclusiveStartKey: key}
+          }
+          DC.QueryCommand.send(params->DC.QueryCommand.make)
+        },
+      )
+      ->Effect.map(result => (
+        result.items
+        ->Option.getOr([])
+        ->Array.map(js => js->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow),
+        result.lastEvaluatedKey->Option.map(key => Some(key)),
+      ))
     )
-    ->Stream.fromEffect
-    ->Stream.flatMap(arr => Stream.fromIterable(arr))
+  }
 
 // Appends each stream item sequentially via the existing per-item append.
 // Node.js is single-threaded so a plain ref is safe for the seqNr counter.

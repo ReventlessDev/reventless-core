@@ -377,6 +377,85 @@ Or, if the stream already emits arrays, use `Effect.map(Array.flat)` after `runC
 
 ---
 
+## Phase G — Replace `queryRecursive` / `scanRecursive` with streaming in `DynamoDb_DocumentClient.res` (MEDIUM IMPACT)
+
+**File:** `rescript-aws-sdk/src/DynamoDb_DocumentClient.res`
+
+### Problem
+
+`queryRecursive` and `scanRecursive` are both eager recursive accumulators — they loop over
+DynamoDB pages and concatenate results into a single `QueryCommand.output` before returning.
+All callers receive the complete accumulated response in one promise, with no ability to
+short-circuit pagination:
+
+```rescript
+let rec queryRecursive = async (~allResults, ~params) => {
+  let (allResults, lastEvaluatedKey) = await QueryCommand.send(params->QueryCommand.make)
+  switch lastEvaluatedKey {
+  | None => allResults                         // ← all pages now in memory
+  | Some(key) => await queryRecursive(...)     // ← recurse for next page
+  }
+}
+```
+
+### Callers (all currently eager)
+
+- `DynamoDb_DocumentClient.queryById` — used by `Util_DynamoDb_Runtime.queryById`
+  → `EventLogStorage_DynamoDb_Runtime.replay` / `tryReplay`
+  → `QueryDbStorage_DynamoDb_Runtime.load`
+- `DcbEventLogStorage_DynamoDb_Runtime` lines 143, 177 — non-stream `executeQueryItem` / `read`
+- `DcbEventLogStorage_DynamoDb_Runtime` line 230 — non-stream scan in `executeQueryItem`
+- `QueryEngine_DynamoDb.res` lines 102, 133 — query and scan helpers
+
+### Note
+
+Phase B already eliminated `queryRecursive` usage from `replayStream` and `loadStream` by
+switching those stream paths to `Stream.paginateEffect` directly. The remaining callers are
+all non-stream (promise-based) and legitimately need a full result. They are less urgent.
+
+### Solution
+
+**G1 — Add `queryStream` and `scanStream` helpers to `DynamoDb_DocumentClient.res`.**
+Implement streaming variants using `Stream.paginateEffect`:
+
+```rescript
+let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =>
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=err => (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryStream error"),
+      () => {
+        let p = switch cursor {
+        | None => params
+        | Some(key) => {...params, exclusiveStartKey: key}
+        }
+        QueryCommand.send(p->QueryCommand.make)
+      },
+    )
+    ->Effect.map(res => (
+      res.items->Option.getOr([])
+        ->Array.map(js => js->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow),
+      res.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+
+let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, string, unit> =>
+  // same pattern using ScanCommand
+```
+
+**G2 — Migrate non-stream callers** to `stream->Stream.runCollect->Effect.runPromise` where
+appropriate, or leave them on the recursive versions if the call sites are entirely promise-based
+and the result sets are known to be small. Candidates for migration:
+- `DcbEventLogStorage_DynamoDb_Runtime.executeQueryItem` (the eager `read` path)
+- `QueryEngine_DynamoDb` query/scan helpers
+
+**G3 — Delete `queryRecursive` and `scanRecursive`** once all callers are migrated.
+
+### Acceptance criteria
+- No `queryRecursive` or `scanRecursive` in the codebase.
+- `queryById` is implemented as `queryStream(params)->Stream.runCollect->Effect.map(chunk => chunk->Chunk.toArray)`.
+
+---
+
 ## Deferred / Out of Scope
 
 - **`StateChangeSlice_Builder` / `CommandTopic_Callback` `runCollect`**: These collect decoded
@@ -393,9 +472,10 @@ Or, if the stream already emits arrays, use `Effect.map(Array.flat)` after `runC
 
 | Phase | Priority | Status |
 |---|---|---|
-| A — DcbEventLog readStream fan-out | High | Not started |
-| B — EventLog / QueryDb lazy pagination | High | Not started |
+| A — DcbEventLog readStream fan-out | High | Done (A1 + A2, commit fd750b35) |
+| B — EventLog / QueryDb lazy pagination | High | Done |
 | C — CsvStream true lazy streaming | Medium | Not started |
 | D — Publisher adapters stream batching | Low | Not started |
 | E — EventMapper runCollect → runForEach | Low | Not started |
 | F — CommandTopic O(n²) fold | Trivial | Not started |
+| G — Replace queryRecursive/scanRecursive in DocumentClient | Medium | Not started |
