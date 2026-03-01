@@ -112,6 +112,10 @@ external flatMap: (t<'a, 'e, 'r>, 'a => t<'b, 'e, 'r>) => t<'b, 'e, 'r> = "flatM
 @module("effect") @scope("Stream")
 external filter: (t<'a, 'e, 'r>, 'a => bool) => t<'a, 'e, 'r> = "filter"
 
+// Internal binding — grouped returns Effect Chunks; the grouped wrapper below converts to arrays.
+@module("effect") @scope("Stream")
+external groupedRaw: (t<'a, 'e, 'r>, int) => t<'chunk, 'e, 'r> = "grouped"
+
 /**
 Takes the first `n` elements then terminates the stream.
 
@@ -132,6 +136,24 @@ external tap: (t<'a, 'e, 'r>, 'a => Effect.t<unit, 'e, 'r>) => t<'a, 'e, 'r> = "
 external runCollectRaw: t<'a, 'e, 'r> => Effect.t<'chunk, 'e, 'r> = "runCollect"
 
 @val external arrayFrom: 'chunk => array<'a> = "Array.from"
+
+/**
+Groups consecutive stream elements into arrays of at most `n` elements.
+
+The last array may have fewer than `n` elements if the stream ends before
+a full group is assembled.
+
+**Example**
+```rescript
+Stream.fromIterable([1, 2, 3, 4, 5])
+->Stream.grouped(2)
+->Stream.runCollect
+->Effect.runPromise
+// resolves to [[1, 2], [3, 4], [5]]
+```
+*/
+let grouped = (stream: t<'a, 'e, 'r>, n: int): t<array<'a>, 'e, 'r> =>
+  stream->groupedRaw(n)->map(arrayFrom)
 
 /**
 Collects all stream elements into a plain JS array.

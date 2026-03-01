@@ -104,6 +104,64 @@ describe("Stream bindings", () => {
         expect(result)->toEqual([1, 2, 3])
       },
     )
+
+    testPromise(
+      "mapEffect transforms each element with an Effect",
+      async () => {
+        let result = await Stream.fromIterable([1, 2, 3])
+        ->Stream.mapEffect(n => Effect.succeed(n * 10))
+        ->Stream.runCollect
+        ->Effect.runPromise
+        expect(result)->toEqual([10, 20, 30])
+      },
+    )
+
+    testPromise(
+      "mapEffect fails the stream when an Effect fails",
+      async () => {
+        let result = try {
+          let _ = await Stream.fromIterable([1, 2, 3])
+          ->Stream.mapEffect(n => n == 2 ? Effect.fail("boom") : Effect.succeed(n))
+          ->Stream.runCollect
+          ->Effect.runPromise
+          "no-error"
+        } catch {
+        | _ => "errored"
+        }
+        expect(result)->toBe("errored")
+      },
+    )
+
+    testPromise(
+      "grouped splits stream into arrays of n",
+      async () => {
+        let result = await Stream.fromIterable([1, 2, 3, 4, 5])
+        ->Stream.grouped(2)
+        ->Stream.runCollect
+        ->Effect.runPromise
+        expect(result)->toEqual([[1, 2], [3, 4], [5]])
+      },
+    )
+
+    testPromise(
+      "grouped last chunk is smaller when stream length is not a multiple of n",
+      async () => {
+        let result = await Stream.fromIterable([1, 2, 3])
+        ->Stream.grouped(2)
+        ->Stream.runCollect
+        ->Effect.runPromise
+        expect(result)->toEqual([[1, 2], [3]])
+      },
+    )
+
+    testPromise(
+      "grouped on empty stream yields no groups",
+      async () => {
+        let result: array<array<int>> =
+          await Stream.empty->Stream.grouped(3)->Stream.runCollect->Effect.runPromise
+        expect(result)->toEqual([])
+      },
+    )
   })
 
   describe("terminal runners", () => {
@@ -114,6 +172,17 @@ describe("Stream bindings", () => {
         ->Stream.runFold(0, (acc, n) => acc + n)
         ->Effect.runPromise
         expect(sum)->toBe(10)
+      },
+    )
+
+    testPromise(
+      "runForEach runs side effect for each element",
+      async () => {
+        let total = ref(0)
+        let _ = await Stream.fromIterable([1, 2, 3])
+        ->Stream.runForEach(n => Effect.sync(() => {total := total.contents + n}))
+        ->Effect.runPromise
+        expect(total.contents)->toBe(6)
       },
     )
 

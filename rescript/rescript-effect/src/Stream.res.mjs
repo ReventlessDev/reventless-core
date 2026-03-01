@@ -9,6 +9,10 @@ function paginateEffect(initial, f) {
   ]));
 }
 
+function grouped(stream, n) {
+  return Effect.Stream.map(Effect.Stream.grouped(stream, n), prim => Array.from(prim));
+}
+
 function runCollect(stream) {
   return Effect.Effect.map(Effect.Stream.runCollect(stream), prim => Array.from(prim));
 }
@@ -19,6 +23,7 @@ function runHead(stream) {
 
 export {
   paginateEffect,
+  grouped,
   runCollect,
   runHead,
 }

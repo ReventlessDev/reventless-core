@@ -102,6 +102,76 @@ describe("Stream bindings", () => {
         3
       ]);
     });
+    test("mapEffect transforms each element with an Effect", async () => {
+      let result = await Effect.Effect.runPromise(Stream.runCollect(Effect.Stream.mapEffect(Effect.Stream.fromIterable([
+        1,
+        2,
+        3
+      ]), n => Effect.Effect.succeed(n * 10 | 0))));
+      expect(result).toEqual([
+        10,
+        20,
+        30
+      ]);
+    });
+    test("mapEffect fails the stream when an Effect fails", async () => {
+      let result;
+      try {
+        await Effect.Effect.runPromise(Stream.runCollect(Effect.Stream.mapEffect(Effect.Stream.fromIterable([
+          1,
+          2,
+          3
+        ]), n => {
+          if (n === 2) {
+            return Effect.Effect.fail("boom");
+          } else {
+            return Effect.Effect.succeed(n);
+          }
+        })));
+        result = "no-error";
+      } catch (exn) {
+        result = "errored";
+      }
+      expect(result).toBe("errored");
+    });
+    test("grouped splits stream into arrays of n", async () => {
+      let result = await Effect.Effect.runPromise(Stream.runCollect(Stream.grouped(Effect.Stream.fromIterable([
+        1,
+        2,
+        3,
+        4,
+        5
+      ]), 2)));
+      expect(result).toEqual([
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [5]
+      ]);
+    });
+    test("grouped last chunk is smaller when stream length is not a multiple of n", async () => {
+      let result = await Effect.Effect.runPromise(Stream.runCollect(Stream.grouped(Effect.Stream.fromIterable([
+        1,
+        2,
+        3
+      ]), 2)));
+      expect(result).toEqual([
+        [
+          1,
+          2
+        ],
+        [3]
+      ]);
+    });
+    test("grouped on empty stream yields no groups", async () => {
+      let result = await Effect.Effect.runPromise(Stream.runCollect(Stream.grouped(Effect.Stream.empty, 3)));
+      expect(result).toEqual([]);
+    });
   });
   describe("terminal runners", () => {
     test("runFold accumulates state across all items", async () => {
@@ -112,6 +182,19 @@ describe("Stream bindings", () => {
         4
       ]), 0, (acc, n) => acc + n | 0));
       expect(sum).toBe(10);
+    });
+    test("runForEach runs side effect for each element", async () => {
+      let total = {
+        contents: 0
+      };
+      await Effect.Effect.runPromise(Effect.Stream.runForEach(Effect.Stream.fromIterable([
+        1,
+        2,
+        3
+      ]), n => Effect.Effect.sync(() => {
+        total.contents = total.contents + n | 0;
+      })));
+      expect(total.contents).toBe(6);
     });
     test("runFold can accumulate a tuple", async () => {
       let match = await Effect.Effect.runPromise(Effect.Stream.runFold(Effect.Stream.fromIterable([
