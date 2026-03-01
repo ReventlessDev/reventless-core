@@ -40,7 +40,7 @@ jobs:
           cat audit-results.json
 
       - name: Upload audit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: npm-audit-results
           path: audit-results.json
@@ -142,7 +142,7 @@ jobs:
           npx license-checker --csv > license-report.csv
 
       - name: Upload license reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: license-reports
           path: |
