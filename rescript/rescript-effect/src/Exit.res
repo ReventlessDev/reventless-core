@@ -69,3 +69,24 @@ external map: (t<'a, 'e>, 'a => 'b) => t<'b, 'e> = "map"
 /** Chains `Exit`s — applies `f` to the success value, which returns the next `Exit`. */
 @module("effect") @scope("Exit")
 external flatMap: (t<'a, 'e>, 'a => t<'b, 'e>) => t<'b, 'e> = "flatMap"
+
+// ─── Pattern matching ───────────────────────────────────────────────────────
+
+@module("effect") @scope("Exit")
+external _matchRaw: (t<'a, 'e>, {"onFailure": Cause.t<'e> => 'b, "onSuccess": 'a => 'b}) => 'b =
+  "match"
+
+/**
+Pattern-matches an `Exit`, running `onFailure` for a failed exit or `onSuccess` for a
+successful one.
+
+**Example**
+```rescript
+exit->Exit.match(
+  ~onFailure=cause => "failed: " ++ cause->Cause.pretty,
+  ~onSuccess=value => "succeeded: " ++ value->Int.toString,
+)
+```
+*/
+let match = (exit, ~onFailure, ~onSuccess) =>
+  _matchRaw(exit, {"onFailure": onFailure, "onSuccess": onSuccess})

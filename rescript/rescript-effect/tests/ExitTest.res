@@ -50,6 +50,20 @@ describe("Exit", () => {
     })
   })
 
+  describe("match", () => {
+    test("match on failure invokes onFailure", () => {
+      let e = Exit.fail("err")
+      let result = e->Exit.match(~onFailure=_cause => "failed", ~onSuccess=_ => "succeeded")
+      expect(result)->toBe("failed")
+    })
+
+    test("match on success invokes onSuccess", () => {
+      let e = Exit.succeed(42)
+      let result = e->Exit.match(~onFailure=_cause => -1, ~onSuccess=n => n * 2)
+      expect(result)->toBe(84)
+    })
+  })
+
   describe("transformation", () => {
     test("map on success transforms value", () => {
       let e = Exit.succeed(3)->Exit.map(n => n * 2)
