@@ -69,7 +69,7 @@ describe("OrderBehavior:", () => {
       () =>
         givenEvents([
           OrderPlaced({orderId: "ord-1", customerId: "cust-1", productIds: ["prod-1"]}),
-          OrderCancelled({orderId: "ord-1"}),
+          OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}),
         ])
         ->whenCmd(ShipOrder({orderId: "ord-1"}))
         ->thenError(OrderAlreadyCancelled),
@@ -82,7 +82,7 @@ describe("OrderBehavior:", () => {
       () =>
         givenEvents([OrderPlaced({orderId: "ord-1", customerId: "cust-1", productIds: ["prod-1"]})])
         ->whenCmd(CancelOrder({orderId: "ord-1"}))
-        ->thenEvent(OrderCancelled({orderId: "ord-1"})),
+        ->thenEvent(OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})),
     )
 
     test(
@@ -90,7 +90,7 @@ describe("OrderBehavior:", () => {
       () =>
         givenEvents([
           OrderPlaced({orderId: "ord-1", customerId: "cust-1", productIds: ["prod-1"]}),
-          OrderCancelled({orderId: "ord-1"}),
+          OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}),
         ])
         ->whenCmd(CancelOrder({orderId: "ord-1"}))
         ->thenNoEvent,

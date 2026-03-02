@@ -1,5 +1,6 @@
 // Ordering plugin — platform-agnostic composition root.
-// Wires the Customer and Order aggregates and their read models.
+// Wires the Customer and Order aggregates and their read models,
+// the OrdersExtensionPoint (outbound), and the ProductsExtension (inbound).
 
 open Reventless
 
@@ -31,4 +32,46 @@ module Make = (Platform: Platform.T) => {
   }
 
   module OrderReadModel = Platform.ReadModel.Make(OrdersReadModel, OrderMappings)
+
+  // Catalog product shadow — driven by Catalog's ProductsExtensionPoint
+  module CatalogProductAggregate = Platform.Aggregate.Make(
+    CatalogProduct,
+    CatalogProductBehavior,
+    NoEventMappings.Make(CatalogProduct),
+  )
+
+  module AvailableProductsMappings: Projection.Mappings with module Target := AvailableProductsReadModel = {
+    module AvailableProductsMappings = Projection.Mappings.Make(AvailableProductsReadModel)
+    module type Mapping = AvailableProductsMappings.Mapping
+    let mappings = AvailableProductsProjections.mappings
+  }
+
+  module AvailableProductsReadModelMaker = Platform.ReadModel.Make(
+    AvailableProductsReadModel,
+    AvailableProductsMappings,
+  )
+
+  // Build the Products extension (subscribing to Catalog's EP)
+  module ProductsExtensionMaker = ReventlessCore.Extension_Builder.Make(
+    ProductsExtensionPointSpec,
+    ProductsExtension.Mappings,
+  )
+
+  // Compile the Orders extension point mapping, then build the EP component
+  module OrdersEPMappingT = ReventlessCore.ExtensionPointMapping.Make(
+    OrdersExtensionPointSpec,
+    OrdersExtensionPointMapping,
+  )
+  module OrdersEPMappings = {
+    module Spec = OrdersExtensionPointSpec
+    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+    let mappings: array<module(Mapping)> = [module(OrdersEPMappingT)]
+  }
+  module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(
+    OrdersExtensionPointSpec,
+    OrdersEPMappings,
+  )
+
+  // extensionPoints = [module(OrdersExtensionPointMaker)]
+  // extensions     = [module(ProductsExtensionMaker)]
 }

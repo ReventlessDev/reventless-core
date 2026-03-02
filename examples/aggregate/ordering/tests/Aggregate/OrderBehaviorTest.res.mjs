@@ -102,7 +102,8 @@ describe("OrderBehavior:", () => {
       },
       {
         TAG: "OrderCancelled",
-        orderId: "ord-1"
+        orderId: "ord-1",
+        productIds: ["prod-1"]
       }
     ]), {
       TAG: "ShipOrder",
@@ -120,7 +121,8 @@ describe("OrderBehavior:", () => {
       orderId: "ord-1"
     }), {
       TAG: "OrderCancelled",
-      orderId: "ord-1"
+      orderId: "ord-1",
+      productIds: ["prod-1"]
     }));
     test("on cancelled order is idempotent (produces no events)", () => thenNoEvent(whenCmd(givenEvents([
       {
@@ -131,7 +133,8 @@ describe("OrderBehavior:", () => {
       },
       {
         TAG: "OrderCancelled",
-        orderId: "ord-1"
+        orderId: "ord-1",
+        productIds: ["prod-1"]
       }
     ]), {
       TAG: "CancelOrder",

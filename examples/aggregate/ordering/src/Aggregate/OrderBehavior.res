@@ -49,7 +49,7 @@ let execute = (state, command, context, errorHandler) =>
   switch (state, command) {
   | (Placed(_), PlaceOrder(_)) => errorHandler(OrderAlreadyPlaced, command, context)
   | (Placed(_), ShipOrder({orderId: oid})) => [OrderShipped({orderId: oid})]
-  | (Placed(_), CancelOrder({orderId: oid})) => [OrderCancelled({orderId: oid})]
+  | (Placed({productIds}), CancelOrder({orderId})) => [OrderCancelled({orderId, productIds})]
   | (Shipped, PlaceOrder(_)) => errorHandler(OrderAlreadyShipped, command, context)
   | (Shipped, ShipOrder(_)) => [] // idempotent
   | (Shipped, CancelOrder(_)) => errorHandler(OrderAlreadyShipped, command, context)

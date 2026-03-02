@@ -16,7 +16,7 @@ type command =
 type event =
   | OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
   | OrderShipped({orderId: string})
-  | OrderCancelled({orderId: string})
+  | OrderCancelled({orderId: string, productIds: array<string>})
 
 @schema
 type error =

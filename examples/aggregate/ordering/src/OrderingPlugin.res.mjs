@@ -3,14 +3,24 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
+import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
+import * as ExtensionPointMapping$ReventlessCore from "@reventlessdev/reventless-core/src/ExtensionPointMapping.res.mjs";
 import * as Order$ReventlessdevExampleAggregateOrdering from "./Aggregate/Order.res.mjs";
 import * as Customer$ReventlessdevExampleAggregateOrdering from "./Aggregate/Customer.res.mjs";
 import * as OrderBehavior$ReventlessdevExampleAggregateOrdering from "./Aggregate/OrderBehavior.res.mjs";
+import * as CatalogProduct$ReventlessdevExampleAggregateOrdering from "./Aggregate/CatalogProduct.res.mjs";
 import * as OrdersReadModel$ReventlessdevExampleAggregateOrdering from "./ReadModel/OrdersReadModel.res.mjs";
 import * as CustomerBehavior$ReventlessdevExampleAggregateOrdering from "./Aggregate/CustomerBehavior.res.mjs";
 import * as OrdersProjections$ReventlessdevExampleAggregateOrdering from "./ReadModel/OrdersProjections.res.mjs";
+import * as ProductsExtension$ReventlessdevExampleAggregateOrdering from "./Extension/ProductsExtension.res.mjs";
 import * as CustomersReadModel$ReventlessdevExampleAggregateOrdering from "./ReadModel/CustomersReadModel.res.mjs";
 import * as CustomersProjections$ReventlessdevExampleAggregateOrdering from "./ReadModel/CustomersProjections.res.mjs";
+import * as CatalogProductBehavior$ReventlessdevExampleAggregateOrdering from "./Aggregate/CatalogProductBehavior.res.mjs";
+import * as OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering from "./ExtensionPoint/OrdersExtensionPointSpec.res.mjs";
+import * as AvailableProductsReadModel$ReventlessdevExampleAggregateOrdering from "./ReadModel/AvailableProductsReadModel.res.mjs";
+import * as ProductsExtensionPointSpec$ReventlessdevExampleAggregateOrdering from "./Extension/ProductsExtensionPointSpec.res.mjs";
+import * as OrdersExtensionPointMapping$ReventlessdevExampleAggregateOrdering from "./ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
+import * as AvailableProductsProjections$ReventlessdevExampleAggregateOrdering from "./ReadModel/AvailableProductsProjections.res.mjs";
 
 function Make(Platform) {
   let CustomerAggregate = Platform.Aggregate.Make({
@@ -79,13 +89,76 @@ function Make(Platform) {
     config: OrdersReadModel$ReventlessdevExampleAggregateOrdering.config,
     subIdConfig: undefined
   })(OrderMappings);
+  let CatalogProductAggregate = Platform.Aggregate.Make({
+    Id: Id$Reventless.$$String,
+    name: CatalogProduct$ReventlessdevExampleAggregateOrdering.name,
+    commandSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.commandSchema,
+    eventSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.eventSchema,
+    errorSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.errorSchema
+  })({
+    resolverConfig: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
+    init: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.init,
+    apply: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.apply,
+    create: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.create,
+    execute: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.execute
+  })(NoEventMappings$Reventless.Make({
+    name: CatalogProduct$ReventlessdevExampleAggregateOrdering.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.commandSchema
+  }));
+  Projection$Reventless.Mappings.Make({
+    Id: Id$Reventless.$$String,
+    name: AvailableProductsReadModel$ReventlessdevExampleAggregateOrdering.name,
+    stateSchema: AvailableProductsReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
+    subIdConfig: undefined
+  });
+  let AvailableProductsMappings = {
+    mappings: AvailableProductsProjections$ReventlessdevExampleAggregateOrdering.mappings
+  };
+  let AvailableProductsReadModelMaker = Platform.ReadModel.Make({
+    Id: Id$Reventless.$$String,
+    name: AvailableProductsReadModel$ReventlessdevExampleAggregateOrdering.name,
+    stateSchema: AvailableProductsReadModel$ReventlessdevExampleAggregateOrdering.stateSchema,
+    config: AvailableProductsReadModel$ReventlessdevExampleAggregateOrdering.config,
+    subIdConfig: undefined
+  })(AvailableProductsMappings);
+  let ProductsExtensionMaker = Extension_Builder$ReventlessCore.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
+    name: ProductsExtension$ReventlessdevExampleAggregateOrdering.Mappings.name,
+    mappings: ProductsExtension$ReventlessdevExampleAggregateOrdering.Mappings.mappings
+  });
+  let OrdersEPMappingT = ExtensionPointMapping$ReventlessCore.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
+    Aggregate: {
+      Id: Id$Reventless.$$String,
+      name: Order$ReventlessdevExampleAggregateOrdering.name,
+      commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema,
+      eventSchema: Order$ReventlessdevExampleAggregateOrdering.eventSchema,
+      errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema
+    },
+    mapIncomingCommand: OrdersExtensionPointMapping$ReventlessdevExampleAggregateOrdering.mapIncomingCommand,
+    mapOutgoingEvent: OrdersExtensionPointMapping$ReventlessdevExampleAggregateOrdering.mapOutgoingEvent
+  });
+  let mappings = [OrdersEPMappingT];
+  let OrdersEPMappings = {
+    Spec: undefined,
+    mappings: mappings
+  };
+  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
+    mappings: mappings
+  });
   return {
     CustomerAggregate: CustomerAggregate,
     OrderAggregate: OrderAggregate,
     CustomerMappings: CustomerMappings,
     CustomerReadModel: CustomerReadModel,
     OrderMappings: OrderMappings,
-    OrderReadModel: OrderReadModel
+    OrderReadModel: OrderReadModel,
+    CatalogProductAggregate: CatalogProductAggregate,
+    AvailableProductsMappings: AvailableProductsMappings,
+    AvailableProductsReadModelMaker: AvailableProductsReadModelMaker,
+    ProductsExtensionMaker: ProductsExtensionMaker,
+    OrdersEPMappingT: OrdersEPMappingT,
+    OrdersEPMappings: OrdersEPMappings,
+    OrdersExtensionPointMaker: OrdersExtensionPointMaker
   };
 }
 

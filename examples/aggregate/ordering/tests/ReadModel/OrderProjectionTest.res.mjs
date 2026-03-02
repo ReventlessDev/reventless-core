@@ -54,7 +54,8 @@ describe("OrderProjection:", () => {
       productIds: ["prod-1"]
     }]), {
     TAG: "OrderCancelled",
-    orderId: "ord-1"
+    orderId: "ord-1",
+    productIds: ["prod-1"]
   }), {
     orderId: "ord-1",
     customerId: "cust-1",

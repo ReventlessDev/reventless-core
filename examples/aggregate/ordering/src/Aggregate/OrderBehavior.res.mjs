@@ -103,7 +103,8 @@ function execute(state, command, context, errorHandler) {
       case "CancelOrder" :
         return [{
             TAG: "OrderCancelled",
-            orderId: command.orderId
+            orderId: command.orderId,
+            productIds: state.productIds
           }];
     }
   }

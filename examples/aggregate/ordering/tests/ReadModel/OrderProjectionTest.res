@@ -38,7 +38,7 @@ describe("OrderProjection:", () => {
     givenEvents([
       Order.OrderPlaced({orderId: "ord-1", customerId: "cust-1", productIds: ["prod-1"]}),
     ])
-    ->whenEvent(Order.OrderCancelled({orderId: "ord-1"}))
+    ->whenEvent(Order.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}))
     ->thenState({
       OrdersReadModel.orderId: "ord-1",
       customerId: "cust-1",

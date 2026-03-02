@@ -3,14 +3,24 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
+import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
+import * as ExtensionPointMapping$ReventlessCore from "@reventlessdev/reventless-core/src/ExtensionPointMapping.res.mjs";
 import * as Product$ReventlessdevExampleAggregateCatalog from "./Aggregate/Product.res.mjs";
 import * as Category$ReventlessdevExampleAggregateCatalog from "./Aggregate/Category.res.mjs";
+import * as ProductDemand$ReventlessdevExampleAggregateCatalog from "./Aggregate/ProductDemand.res.mjs";
+import * as OrdersExtension$ReventlessdevExampleAggregateCatalog from "./Extension/OrdersExtension.res.mjs";
 import * as ProductBehavior$ReventlessdevExampleAggregateCatalog from "./Aggregate/ProductBehavior.res.mjs";
 import * as CategoryBehavior$ReventlessdevExampleAggregateCatalog from "./Aggregate/CategoryBehavior.res.mjs";
 import * as ProductsReadModel$ReventlessdevExampleAggregateCatalog from "./ReadModel/ProductsReadModel.res.mjs";
 import * as CategoriesReadModel$ReventlessdevExampleAggregateCatalog from "./ReadModel/CategoriesReadModel.res.mjs";
 import * as ProductsProjections$ReventlessdevExampleAggregateCatalog from "./ReadModel/ProductsProjections.res.mjs";
 import * as CategoriesProjections$ReventlessdevExampleAggregateCatalog from "./ReadModel/CategoriesProjections.res.mjs";
+import * as ProductDemandBehavior$ReventlessdevExampleAggregateCatalog from "./Aggregate/ProductDemandBehavior.res.mjs";
+import * as ProductDemandReadModel$ReventlessdevExampleAggregateCatalog from "./ReadModel/ProductDemandReadModel.res.mjs";
+import * as OrdersExtensionPointSpec$ReventlessdevExampleAggregateCatalog from "./Extension/OrdersExtensionPointSpec.res.mjs";
+import * as ProductDemandProjections$ReventlessdevExampleAggregateCatalog from "./ReadModel/ProductDemandProjections.res.mjs";
+import * as ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog from "./ExtensionPoint/ProductsExtensionPointSpec.res.mjs";
+import * as ProductsExtensionPointMapping$ReventlessdevExampleAggregateCatalog from "./ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
 
 function Make(Platform) {
   let ProductAggregate = Platform.Aggregate.Make({
@@ -79,13 +89,76 @@ function Make(Platform) {
     config: CategoriesReadModel$ReventlessdevExampleAggregateCatalog.config,
     subIdConfig: undefined
   })(CategoryMappings);
+  let ProductDemandAggregate = Platform.Aggregate.Make({
+    Id: Id$Reventless.$$String,
+    name: ProductDemand$ReventlessdevExampleAggregateCatalog.name,
+    commandSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.commandSchema,
+    eventSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.eventSchema,
+    errorSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.errorSchema
+  })({
+    resolverConfig: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.resolverConfig,
+    init: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.init,
+    apply: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.apply,
+    create: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.create,
+    execute: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.execute
+  })(NoEventMappings$Reventless.Make({
+    name: ProductDemand$ReventlessdevExampleAggregateCatalog.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.commandSchema
+  }));
+  Projection$Reventless.Mappings.Make({
+    Id: Id$Reventless.$$String,
+    name: ProductDemandReadModel$ReventlessdevExampleAggregateCatalog.name,
+    stateSchema: ProductDemandReadModel$ReventlessdevExampleAggregateCatalog.stateSchema,
+    subIdConfig: undefined
+  });
+  let ProductDemandMappings = {
+    mappings: ProductDemandProjections$ReventlessdevExampleAggregateCatalog.mappings
+  };
+  let ProductDemandReadModelMaker = Platform.ReadModel.Make({
+    Id: Id$Reventless.$$String,
+    name: ProductDemandReadModel$ReventlessdevExampleAggregateCatalog.name,
+    stateSchema: ProductDemandReadModel$ReventlessdevExampleAggregateCatalog.stateSchema,
+    config: ProductDemandReadModel$ReventlessdevExampleAggregateCatalog.config,
+    subIdConfig: undefined
+  })(ProductDemandMappings);
+  let ProductsEPMappingT = ExtensionPointMapping$ReventlessCore.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
+    Aggregate: {
+      Id: Id$Reventless.$$String,
+      name: Product$ReventlessdevExampleAggregateCatalog.name,
+      commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema,
+      eventSchema: Product$ReventlessdevExampleAggregateCatalog.eventSchema,
+      errorSchema: Product$ReventlessdevExampleAggregateCatalog.errorSchema
+    },
+    mapIncomingCommand: ProductsExtensionPointMapping$ReventlessdevExampleAggregateCatalog.mapIncomingCommand,
+    mapOutgoingEvent: ProductsExtensionPointMapping$ReventlessdevExampleAggregateCatalog.mapOutgoingEvent
+  });
+  let mappings = [ProductsEPMappingT];
+  let ProductsEPMappings = {
+    Spec: undefined,
+    mappings: mappings
+  };
+  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
+    mappings: mappings
+  });
+  let OrdersExtensionMaker = Extension_Builder$ReventlessCore.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
+    name: OrdersExtension$ReventlessdevExampleAggregateCatalog.Mappings.name,
+    mappings: OrdersExtension$ReventlessdevExampleAggregateCatalog.Mappings.mappings
+  });
   return {
     ProductAggregate: ProductAggregate,
     CategoryAggregate: CategoryAggregate,
     ProductMappings: ProductMappings,
     ProductReadModel: ProductReadModel,
     CategoryMappings: CategoryMappings,
-    CategoryReadModel: CategoryReadModel
+    CategoryReadModel: CategoryReadModel,
+    ProductDemandAggregate: ProductDemandAggregate,
+    ProductDemandMappings: ProductDemandMappings,
+    ProductDemandReadModelMaker: ProductDemandReadModelMaker,
+    ProductsEPMappingT: ProductsEPMappingT,
+    ProductsEPMappings: ProductsEPMappings,
+    ProductsExtensionPointMaker: ProductsExtensionPointMaker,
+    OrdersExtensionMaker: OrdersExtensionMaker
   };
 }
 

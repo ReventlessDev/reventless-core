@@ -32,7 +32,8 @@ let eventSchema = S.union([
   })),
   S.schema(s => ({
     TAG: "OrderCancelled",
-    orderId: s.m(S.string)
+    orderId: s.m(S.string),
+    productIds: s.m(S.array(S.string))
   }))
 ]);
 
