@@ -9,9 +9,9 @@ import * as Aggregate_Builder_Single$ReventlessAws from "../components/Aggregate
 let include = Aggregate_Builder_Single$ReventlessAws.Make({
   Id: Id$Reventless.$$String,
   name: PluginSpec$ReventlessCore.name,
-  commandSchema: PluginSpec$ReventlessCore.commandSchema,
   eventSchema: PluginSpec$ReventlessCore.eventSchema,
-  errorSchema: PluginSpec$ReventlessCore.errorSchema
+  errorSchema: PluginSpec$ReventlessCore.errorSchema,
+  commandSchema: PluginSpec$ReventlessCore.commandSchema
 })({
   resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
   init: PluginBehavior$ReventlessCore.init,

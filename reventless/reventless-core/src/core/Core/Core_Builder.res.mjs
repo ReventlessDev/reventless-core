@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Core$ReventlessCore from "./Core.res.mjs";
 import * as Cloner$ReventlessCore from "../../components/Cloner.res.mjs";
 import * as Aggregate$ReventlessCore from "../../components/Aggregate/Aggregate.res.mjs";
@@ -14,7 +15,7 @@ import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (CoreRuntimeBuilder => {
-    let construct = (version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, self, param) => {
+    let construct = (version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, apiComponent, self, param) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(self);
       let opts = {
         parent: opts_parent
@@ -49,19 +50,32 @@ function Make(RuntimeEnvironment) {
       }));
       let Cloner = Cloner$ReventlessCore.Make(ClonerRunner);
       let cloner = Cloner.make(api, opts);
-      return Component$ReventlessCore.setOutputs(self, {
+      let baseOutputs_eventCollector = match[2];
+      let baseOutputs_extensionPoints = match[1].apply(extensionPointsOutputs => Object.fromEntries(extensionPointsOutputs.map(ep => [
+        ep.name,
+        ep
+      ])));
+      let baseOutputs_aggregates = match[0];
+      let baseOutputs_cloner = Component$ReventlessCore.outputs(cloner);
+      let baseOutputs = {
         version: version,
-        eventCollector: match[2],
-        extensionPoints: match[1].apply(extensionPointsOutputs => Object.fromEntries(extensionPointsOutputs.map(ep => [
-          ep.name,
-          ep
-        ]))),
-        aggregates: match[0],
+        eventCollector: baseOutputs_eventCollector,
+        extensionPoints: baseOutputs_extensionPoints,
+        aggregates: baseOutputs_aggregates,
         readModels: readModelsOutputs,
-        cloner: Component$ReventlessCore.outputs(cloner)
-      });
+        cloner: baseOutputs_cloner
+      };
+      let outputs;
+      if (apiComponent !== undefined) {
+        let newrecord = {...baseOutputs};
+        newrecord.api = Primitive_option.some(Primitive_option.valFromOption(apiComponent));
+        outputs = newrecord;
+      } else {
+        outputs = baseOutputs;
+      }
+      return Component$ReventlessCore.setOutputs(self, outputs);
     };
-    let make = (version, extensionPoints, aggregates, readModels, scheduler, api, apiRole, resourceNaming) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Core$ReventlessCore.componentType), "Core", (extra, extra$1) => construct(version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, extra, extra$1), undefined);
+    let make = (version, extensionPoints, aggregates, readModels, scheduler, api, apiRole, resourceNaming, apiComponent) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Core$ReventlessCore.componentType), "Core", (extra, extra$1) => construct(version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, apiComponent, extra, extra$1), undefined);
     return {
       construct: construct,
       make: make

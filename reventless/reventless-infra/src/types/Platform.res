@@ -101,4 +101,11 @@ module type T = {
     module Make: (Spec: Reventless.DcbEventLog.Spec) => DcbEventLog.T
       with module Spec = Spec
   }
+
+  /** Factory for the API (GraphQL) component. */
+  module Api: {
+    module Make: (Config: {
+      let baseFragment: Api.schemaFragment
+    }) => Api.T
+  }
 }

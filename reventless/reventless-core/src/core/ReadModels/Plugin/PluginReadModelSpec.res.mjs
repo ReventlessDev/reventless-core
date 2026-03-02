@@ -20,7 +20,8 @@ let stateSchema = S.schema(s => ({
   extensionNames: s.m(S.array(S.string)),
   extensions: s.m(S.array(Plugin$Reventless.extensionDefinitionSchema)),
   status: s.m(statusSchema),
-  statusChange: s.m(Message$ReventlessCore.statusChangeSchema)
+  statusChange: s.m(Message$ReventlessCore.statusChangeSchema),
+  apiSchemaFragment: s.m(Plugin$Reventless.apiSchemaFragmentOptionSchema)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

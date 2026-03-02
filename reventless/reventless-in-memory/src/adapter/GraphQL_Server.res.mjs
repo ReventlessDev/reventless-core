@@ -3,6 +3,7 @@
 import * as Http from "http";
 import * as GraphqlYoga from "graphql-yoga";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 
 let mutationResolvers = {
   contents: {}
@@ -79,6 +80,31 @@ function stop() {
   }
 }
 
+function rebuildSchema(baseFragment, pluginFragments) {
+  stop();
+  let allFragments = [baseFragment].concat(pluginFragments);
+  let fragmentTypes = allFragments.flatMap(frag => GraphQL_Stitcher$ReventlessCore.decode(frag).types).join("\n\n");
+  let queriesMutationsSdl = buildSdl();
+  let fullSdl = fragmentTypes.length > 0 ? fragmentTypes + "\n\n" + queriesMutationsSdl : queriesMutationsSdl;
+  let resolvers = {};
+  resolvers["Query"] = queryResolvers.contents;
+  resolvers["Mutation"] = mutationResolvers.contents;
+  let schema = GraphqlYoga.createSchema({
+    typeDefs: fullSdl,
+    resolvers: resolvers
+  });
+  let yoga = GraphqlYoga.createYoga({
+    schema: schema,
+    graphiql: true,
+    logging: false
+  });
+  let server = Http.createServer(yoga);
+  server.listen(4000, () => {
+    console.log("[GraphQL] Rebuilt schema - http://localhost:4000/graphql");
+  });
+  activeServer.contents = Primitive_option.some(server);
+}
+
 function reset() {
   mutationResolvers.contents = {};
   queryResolvers.contents = {};
@@ -100,6 +126,7 @@ export {
   buildSdl,
   start,
   stop,
+  rebuildSchema,
   reset,
 }
 /* http Not a pure module */

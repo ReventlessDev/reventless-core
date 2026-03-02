@@ -47,6 +47,19 @@ type extensionProtocol = {
 }
 
 /**
+A GraphQL schema fragment contributed by a plugin.
+Encoded as JSON for transport; protocol identifies the schema format (e.g. "graphql").
+*/
+@schema
+type apiSchemaFragment = {encoded: string, protocol: string}
+
+// Sury's nullableAsOption creates T | undefined | null which fails jsonableValidation
+// inside union variant payloads. js_nullable creates T | null (no undefined) which is
+// JSON-safe and passes jsonableValidation in all contexts.
+@module("sury/src/Sury.res.mjs") external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
+let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
+
+/**
 The self-description of a deployed plugin, persisted in the plugin's event store.
 
 Used by the gateway to discover extension points, extensions, and protocol versions.
@@ -64,5 +77,9 @@ type pluginDefinition = {
   // Protocol version declarations for each extension point this plugin connects to.
   // Use [] when the plugin does not need version negotiation.
   extensionProtocols: array<extensionProtocol>,
+  // GraphQL schema fragment contributed by this plugin (optional, set at build time).
+  // Uses @s.matches(apiSchemaFragmentOptionSchema) — js_nullable creates T | null
+  // (not T | undefined | null), which passes sury's jsonableValidation inside union variants.
+  apiSchemaFragment: @s.matches(apiSchemaFragmentOptionSchema) option<apiSchemaFragment>,
 }
 

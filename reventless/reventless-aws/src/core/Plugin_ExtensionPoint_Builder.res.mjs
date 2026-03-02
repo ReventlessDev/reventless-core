@@ -20,7 +20,8 @@ let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
 
 let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
   runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
-  environment: environment
+  environment: environment,
+  updateApiSchema: undefined
 })({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,

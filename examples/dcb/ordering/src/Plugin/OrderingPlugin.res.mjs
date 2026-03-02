@@ -122,9 +122,9 @@ function Make(Platform) {
     Aggregate: {
       Id: Id$Reventless.$$String,
       name: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.Aggregate.name,
-      commandSchema: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.Aggregate.commandSchema,
       eventSchema: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.Aggregate.eventSchema,
-      errorSchema: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.Aggregate.errorSchema
+      errorSchema: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.Aggregate.errorSchema,
+      commandSchema: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.Aggregate.commandSchema
     },
     mapIncomingCommand: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$ReventlessdevExampleDcbOrdering.mapOutgoingEvent

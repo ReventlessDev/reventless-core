@@ -13,7 +13,8 @@ let pluginDefinition = {
       extensionPointName: "Core.Plugin"
     }],
   eventCollector: "eventCollector",
-  extensionProtocols: []
+  extensionProtocols: [],
+  apiSchemaFragment: undefined
 };
 
 let state_name = pluginDefinition.name;
@@ -39,7 +40,8 @@ let state = {
   extensionNames: state_extensionNames,
   extensions: state_extensions,
   status: "Connected",
-  statusChange: TestFixtures$ReventlessCore.statusChange
+  statusChange: TestFixtures$ReventlessCore.statusChange,
+  apiSchemaFragment: undefined
 };
 
 let extensionPointNames2 = ["Test.Test"];
@@ -55,7 +57,8 @@ let pluginDefinition2 = {
   })),
   extensions: [],
   eventCollector: "eventCollector",
-  extensionProtocols: []
+  extensionProtocols: [],
+  apiSchemaFragment: undefined
 };
 
 export {

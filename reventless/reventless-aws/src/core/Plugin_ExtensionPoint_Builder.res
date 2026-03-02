@@ -9,6 +9,7 @@ module Make: ReventlessCore.ExtensionPoint.T = ReventlessCore.PluginExtensionPoi
   {
     let runtimeOps = PluginRuntimeOperations.operations
     let environment = PulumiAws.Lambda.environment->Option.getOr("unknown")
+    let updateApiSchema = None
   },
   RuntimeEnvironment,
   CommandTopicChannel,

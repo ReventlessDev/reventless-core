@@ -47,4 +47,7 @@ module type Spec = {
   /** Business rule violation errors. Must carry `@schema`. */
   @schema
   type error
+
+  /** Sury schema for the command type — generated automatically by `@schema`. */
+  let commandSchema: S.t<command>
 }

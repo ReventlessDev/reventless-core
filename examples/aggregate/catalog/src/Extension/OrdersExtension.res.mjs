@@ -41,9 +41,9 @@ let DemandMappingT = ExtensionMapping$ReventlessInfra.Make(OrdersExtensionPointS
   Aggregate: {
     Id: Id$Reventless.$$String,
     name: ProductDemand$ReventlessdevExampleAggregateCatalog.name,
-    commandSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.commandSchema,
     eventSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.eventSchema,
-    errorSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.errorSchema
+    errorSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.errorSchema,
+    commandSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.commandSchema
   },
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined

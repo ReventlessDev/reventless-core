@@ -79,6 +79,16 @@ module Make = (): ReventlessInfra.Platform.T => {
     ): (ReventlessInfra.DcbEventLog.T with module Spec = Spec) => DcbEventLogMaker.Make(Spec)
   }
 
+  module Api = {
+    module Make = (
+      Config: {let baseFragment: ReventlessInfra.Api.schemaFragment},
+    ): ReventlessInfra.Api.T => {
+      module Builder = ReventlessCore.Api_Builder.Make(GraphQL_InMemory_Adapter)
+      let make = (~name, ~opts=?) =>
+        Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
+    }
+  }
+
   // Start the shared GraphQL server after all components are built.
   // In Pulumi mock mode, all Output.apply chains have fired synchronously by this point,
   // so all mutation and query resolvers are already registered in GraphQL_Server.

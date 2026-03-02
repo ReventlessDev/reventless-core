@@ -32,7 +32,8 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           extensionPoints: [],
           extensions: [],
           eventCollector: "NOT-SET",
-          extensionProtocols: []
+          extensionProtocols: [],
+          apiSchemaFragment: undefined
         };
         let Callback = Core_Callback$ReventlessCore.Make({
           pluginDefinition: fakePluginDefinition,

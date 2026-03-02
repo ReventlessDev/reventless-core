@@ -21,7 +21,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Connected (not detected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
     TAG: "Connected",
@@ -35,7 +36,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Disconnected", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
     "UnknownPluginDetected",
@@ -55,7 +57,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Disconnected (not connected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
     TAG: "Disconnected",
@@ -69,7 +72,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Deactivated", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
     "UnknownPluginDetected",
@@ -89,7 +93,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Inactive",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Deactivated (not connected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
     TAG: "Deactivated",
@@ -103,7 +108,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Inactive",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Activated", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
     "UnknownPluginDetected",
@@ -127,7 +133,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Activated (not deactivated before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
     TAG: "Activated",
@@ -141,7 +148,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Reconnected (after activated)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
     "UnknownPluginDetected",
@@ -169,7 +177,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
   PluginProjectionTest.test("Reconnected (not disconnected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
     TAG: "Reconnected",
@@ -183,7 +192,8 @@ PluginProjectionTest.describe("PluginProjection:", () => {
     extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
     extensions: PluginFixtures$ReventlessCore.state.extensions,
     status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange
+    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
+    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
   }));
 });
 

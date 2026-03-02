@@ -14,11 +14,7 @@ import * as CommandGenerator_Builder$ReventlessCore from "../CommandGenerator/Co
 
 function Make(Spec) {
   return Behavior => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => {
-    let SpecificEventLog = EventLog_Builder$ReventlessCore.Make({
-      Id: Spec.Id,
-      name: Spec.name,
-      eventSchema: Spec.eventSchema
-    })(EventLogStorage)(EventTopicPublisher);
+    let SpecificEventLog = EventLog_Builder$ReventlessCore.Make(Spec)(EventLogStorage)(EventTopicPublisher);
     let SpecificCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
       Id: Spec.Id,
       commandSchema: Spec.commandSchema

@@ -52,6 +52,7 @@ module MakeEventCollectorHelper = (
         extensions: [],
         eventCollector: "NOT-SET",
         extensionProtocols: [],
+        apiSchemaFragment: None,
       }
 
       module Callback = Core_Callback.Make({

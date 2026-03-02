@@ -21,6 +21,7 @@ module Make = (
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~api: ClonerRunner.api,
     ~apiRole: 'role,
+    ~apiComponent: option<ReventlessInfra.Api.component>,
     self,
     _,
   ) => {
@@ -93,7 +94,7 @@ module Make = (
     module Cloner = Cloner.Make(ClonerRunner)
     let cloner = Cloner.make(~api, ~opts)
 
-    self->Component.setOutputs({
+    let baseOutputs: Core.outputs = {
       Core.version,
       eventCollector: eventCollectorOutputs,
       extensionPoints: extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
@@ -102,7 +103,12 @@ module Make = (
       aggregates: aggregatesOutputs,
       readModels: readModelsOutputs,
       cloner: cloner->Component.outputs,
-    })
+    }
+    let outputs = switch apiComponent {
+    | Some(apiComp) => {...baseOutputs, api: apiComp}
+    | None => baseOutputs
+    }
+    self->Component.setOutputs(outputs)
   }
 
   let make = (
@@ -114,6 +120,7 @@ module Make = (
     ~api: ClonerRunner.api,
     ~apiRole: 'role,
     ~resourceNaming,
+    ~apiComponent: option<ReventlessInfra.Api.component>=?,
   ): Core.component =>
     Component.make(
       ~componentType=Core.componentType->ComponentType.toString,
@@ -127,6 +134,7 @@ module Make = (
         ~api,
         ~apiRole,
         ~resourceNaming,
+        ~apiComponent,
         ...
       ),
       ~opts=None,

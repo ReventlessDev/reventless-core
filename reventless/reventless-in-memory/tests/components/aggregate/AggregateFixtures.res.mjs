@@ -84,9 +84,9 @@ let ItemAggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
 let ItemAgg = ItemAggregateMaker.Make({
   Id: Id$Reventless.$$String,
   name: name,
-  commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  commandSchema: commandSchema
 })(ItemBehavior)(NoEventMappings$ReventlessInfra.Make({
   name: name,
   Id: Id$Reventless.$$String,

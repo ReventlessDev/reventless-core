@@ -51,9 +51,9 @@ let ProductMappingT = ExtensionMapping$ReventlessInfra.Make(ProductsExtensionPoi
   Aggregate: {
     Id: Id$Reventless.$$String,
     name: SyncCatalogProduct$ReventlessdevExampleDcbOrdering.name,
-    commandSchema: SyncCatalogProduct$ReventlessdevExampleDcbOrdering.commandSchema,
     eventSchema: S.unit,
-    errorSchema: S.unit
+    errorSchema: S.unit,
+    commandSchema: SyncCatalogProduct$ReventlessdevExampleDcbOrdering.commandSchema
   },
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined

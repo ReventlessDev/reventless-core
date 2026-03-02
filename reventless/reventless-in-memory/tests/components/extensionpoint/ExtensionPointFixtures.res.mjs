@@ -81,9 +81,9 @@ let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make(TestEPSpec)({
       cmp: Id$Reventless.StringPure.cmp
     },
     name: name,
-    commandSchema: commandSchema$1,
     eventSchema: eventSchema$1,
-    errorSchema: errorSchema
+    errorSchema: errorSchema,
+    commandSchema: commandSchema$1
   },
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: undefined

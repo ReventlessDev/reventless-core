@@ -14,6 +14,7 @@ module Make = (
     type api
     type role
   },
+  FragmentProvider: ReventlessInfra.Api_Adapter.Provider,
   RuntimeEnvironment: Runtime.Environment,
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
@@ -133,6 +134,58 @@ module Make = (
       }
     | None => (None, Dict.make(), Dict.make(), None)
     }
+
+    // Derive GraphQL schema fragment for this plugin
+    let pluralize = (n: string) => n->String.endsWith("s") ? n : n ++ "s"
+    let stripViewSuffix = (n: string) =>
+      n->String.endsWith("View") ? n->String.slice(~start=0, ~end=n->String.length - 4) : n
+
+    let mutationEntriesFromAggregates =
+      aggregates->Array.flatMap((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
+        let commandSchema: S.t<unknown> = M.Spec.commandSchema->Obj.magic
+        let constructorNames = Reventless.DcbTag.extractEventTypes(M.Spec.commandSchema)
+        let fieldNames = constructorNames->Array.map(cname => `${name}_${M.Spec.name}_${cname}`)
+        [{ReventlessInfra.Api.fieldNames, commandSchema}]
+      })
+
+    let mutationEntriesFromSlices = switch dcbSpec {
+    | Some(module(DcbSpec)) =>
+      DcbSpec.stateChangeSlices->Array.map((module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event)) =>
+        {ReventlessInfra.Api.fieldNames: [`${name}_${S.Spec.name}`], commandSchema: S.Spec.commandSchema->Obj.magic}
+      )
+    | None => []
+    }
+
+    let mutationEntries = Array.concat(mutationEntriesFromAggregates, mutationEntriesFromSlices)
+
+    let queryEntriesFromReadModels =
+      readModels->Array.map((module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role)) =>
+        {
+          ReventlessInfra.Api.singleFieldName: `${name}_${R.Spec.name}`,
+          listFieldName: Some(`${name}_${pluralize(R.Spec.name)}`),
+          returnTypeName: `${name}${R.Spec.name}`,
+          stateSchema: R.Spec.stateSchema->Obj.magic,
+          authorization: None,
+        }
+      )
+
+    let queryEntriesFromSlices = switch dcbSpec {
+    | Some(module(DcbSpec)) =>
+      DcbSpec.stateViewSlices->Array.map((module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event)) => {
+        let entity = V.Spec.name->stripViewSuffix
+        {
+          ReventlessInfra.Api.singleFieldName: `${name}_${entity}`,
+          listFieldName: None,
+          returnTypeName: `${name}${entity}`,
+          stateSchema: V.Spec.stateSchema->Obj.magic,
+          authorization: None,
+        }
+      })
+    | None => []
+    }
+
+    let queryEntries = Array.concat(queryEntriesFromReadModels, queryEntriesFromSlices)
+    let apiSchemaFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
 
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
@@ -262,6 +315,7 @@ module Make = (
             extensions: extensionsDefinitions,
             eventCollector: eventCollectorUrn,
             extensionProtocols: [],
+            apiSchemaFragment: Some(apiSchemaFragment),
           })
 
         let (

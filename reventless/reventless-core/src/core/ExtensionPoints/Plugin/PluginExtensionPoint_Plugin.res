@@ -6,6 +6,7 @@ module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
+  let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>>
 }
 
 module Make = (Spec: Spec) => {
@@ -81,7 +82,11 @@ module Make = (Spec: Spec) => {
     | DeleteDisconnectSchedule(id) => await deleteSchedule(id)
     | ForwardCommand({id, command, extensionPointName}) =>
       await forwardCommand(id, command, extensionPointName, queryEngine)
-    | _ => ()
+    | DoConnectPlugin(_) | DoDisconnectPlugin(_) =>
+      switch Spec.updateApiSchema {
+      | Some(fn) => await fn(queryEngine)
+      | None => ()
+      }
     }
 
   module Impl = {
@@ -135,10 +140,22 @@ module Make = (Spec: Spec) => {
         | Aggregate.UnknownPluginDetected => [
             PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
           ]
-        | Connected(pluginDefinition) => [PublishEvent(id, PluginConnected(pluginDefinition))]
-        | Reconnected(pluginDefinition) => [PublishEvent(id, PluginReconnected(pluginDefinition))]
-        | Disconnected(pluginDefinition) => [PublishEvent(id, PluginDisconnected(pluginDefinition))]
-        | Deactivated(pluginDefinition) => [PublishEvent(id, PluginDeactivated(pluginDefinition))]
+        | Connected(pluginDefinition) => [
+            PublishEvent(id, PluginConnected(pluginDefinition)),
+            Call(callHandler, DoConnectPlugin(pluginDefinition)),
+          ]
+        | Reconnected(pluginDefinition) => [
+            PublishEvent(id, PluginReconnected(pluginDefinition)),
+            Call(callHandler, DoConnectPlugin(pluginDefinition)),
+          ]
+        | Disconnected(pluginDefinition) => [
+            PublishEvent(id, PluginDisconnected(pluginDefinition)),
+            Call(callHandler, DoDisconnectPlugin(pluginDefinition)),
+          ]
+        | Deactivated(pluginDefinition) => [
+            PublishEvent(id, PluginDeactivated(pluginDefinition)),
+            Call(callHandler, DoDisconnectPlugin(pluginDefinition)),
+          ]
         | Activated(pluginDefinition) => [PublishEvent(id, PluginActivated(pluginDefinition))]
         | IncompatiblePluginDetected(pluginDefinition) => [
             PublishEvent(id, IncompatiblePlugin(pluginDefinition)),

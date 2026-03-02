@@ -99,9 +99,9 @@ let TestGenerator = CommandGenerator_Callback$ReventlessCore.Make(MockPublishSpe
     cmp: Id$Reventless.StringPure.cmp
   },
   name: name,
-  commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  commandSchema: commandSchema
 })({
   resolverConfig: resolverConfig,
   init: init,

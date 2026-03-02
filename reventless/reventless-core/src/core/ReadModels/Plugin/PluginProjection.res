@@ -21,40 +21,46 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
       switch event {
       | PluginSpec.UnknownPluginDetected
       | IncompatiblePluginDetected(_) => Reventless.Projection.Ignore
-      | Connected({name, version, eventCollector, extensionPoints, extensions}) =>
-        Set(
-          id,
-          {
-            PluginReadModelSpec.name,
-            version,
-            eventCollector,
-            extensionPoints,
-            extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
-            extensionNames: extensions->Util.extractExtensionNames,
-            extensions,
-            status: Connected,
-            statusChange,
-          },
-        )
-      | Reconnected({name, version, eventCollector, extensionPoints, extensions}) =>
+      | Connected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
+        let base: PluginReadModelSpec.state = {
+          name,
+          version,
+          eventCollector,
+          extensionPoints,
+          extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
+          extensionNames: extensions->Util.extractExtensionNames,
+          extensions,
+          status: Connected,
+          statusChange,
+          apiSchemaFragment: None,
+        }
+        let state = switch pluginDef.apiSchemaFragment {
+        | Some(frag) => {...base, apiSchemaFragment: Some(frag)}
+        | None => base
+        }
+        Set(id, state)
+      | Reconnected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
+        let applyFrag = (s: PluginReadModelSpec.state) =>
+          switch pluginDef.apiSchemaFragment {
+          | Some(frag) => {...s, apiSchemaFragment: Some(frag)}
+          | None => s
+          }
+        let defaultState = applyFrag({
+          name,
+          version,
+          eventCollector,
+          extensionPoints,
+          extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
+          extensionNames: extensions->Util.extractExtensionNames,
+          extensions,
+          status: Connected,
+          statusChange,
+          apiSchemaFragment: None,
+        })
         UpdateWithDefault(
           id,
-          {
-            PluginReadModelSpec.name,
-            version,
-            eventCollector,
-            extensionPoints,
-            extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
-            extensionNames: extensions->Util.extractExtensionNames,
-            extensions,
-            status: Connected,
-            statusChange,
-          },
-          state => {
-            ...state,
-            status: Connected,
-            statusChange,
-          },
+          defaultState,
+          state => applyFrag({...state, status: Connected, statusChange}),
         )
       | Disconnected({name, version, eventCollector, extensionPoints, extensions})
       | Activated({name, version, eventCollector, extensionPoints, extensions}) =>
@@ -70,6 +76,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             extensions,
             status: Disconnected,
             statusChange,
+            apiSchemaFragment: None,
           },
           state => {
             ...state,
@@ -90,6 +97,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             extensions,
             status: Inactive,
             statusChange,
+            apiSchemaFragment: None,
           },
           state => {
             ...state,

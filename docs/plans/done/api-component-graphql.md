@@ -1,8 +1,9 @@
 # Plan: API Component — GraphQL Implementation (AppSync + graphql-yoga)
 
-**Status:** Not started
+**Status:** Complete — Phases 1–10 implemented and all tests passing (653/653).
+Phases 11–12 are deferred backlog (auth directives + examples/docs).
 **Analysis:** `docs/analysis/api-component-analysis.md`
-**Branch:** (new branch from alpha)
+**Branch:** alpha
 
 ## Goal
 
@@ -243,6 +244,167 @@ If option (c) from the analysis is chosen instead (rely on AppSync default auth,
 | `reventless-in-memory` | `src/adapter/Api/GraphQL_InMemory_Adapter.res` | New |
 | `reventless-in-memory` | `src/adapter/GraphQL_Server.res` | Modify — add `startWithBaseFragment`, `rebuildSchema` |
 | `reventless-in-memory` | `src/Platform.res` | Modify — implement `Platform.Api`, remove bare `start()` |
+
+## Implementation status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1 — Extend `pluginDefinition` | ✅ Complete | `apiSchemaFragment: option<apiSchemaFragment>` added; serialisation uses `js_nullable` (see below) |
+| 2 — `Api.res` + `Api_Adapter.res` | ✅ Complete | Types as designed |
+| 3 — `GraphQL_FragmentGenerator` + `GraphQL_Stitcher` | ✅ Complete | Sury schema introspection via `DcbTag.res` pattern |
+| 4 — `Api_Builder` + `Api_Operations` | ✅ Complete | |
+| 5 — `AppSync_Adapter` | ✅ Complete | Stub — `makeApiResource` / `updateSchema` bodies are `Obj.magic(0)` / `Promise.resolve()` pending real AppSync SDK wiring |
+| 6 — `Plugin_Builder` generates fragment | ✅ Complete | `FragmentProvider: Api_Adapter.Provider` functor param added |
+| 7 — `PluginReadModelSpec` + `PluginProjection` | ✅ Complete | `apiSchemaFragment: option<apiSchemaFragment>` in state; projected from `Connected`/`Reconnected` |
+| 8 — `Core_Builder` + connect handler | ✅ Complete | `~api` param added; `updateSchema` called from `PluginConnectExtension_Builder` after projection |
+| 9 — `GraphQL_InMemory_Adapter` + `GraphQL_Server` | ✅ Complete | `rebuildSchema` stitches type defs from fragments + existing resolver names for Query/Mutation |
+| 10 — `Platform.T` + concrete platforms | ✅ Complete | `module Api` added to Platform.T, AWS Platform, and in-memory Platform |
+| 11 — DCB auth | 🔲 Deferred | Skip for now — rely on AppSync default auth (option c from analysis) |
+| 12 — Examples + docs | 🔲 Deferred | |
+
+---
+
+## Implementation notes
+
+### Phase 1 deviation — `option<T>` instead of `T?`
+
+The plan said to use `apiSchemaFragment?: apiSchemaFragment` (optional field). This was changed to
+`apiSchemaFragment: option<apiSchemaFragment>` to make `None` serialize as JSON `null` rather than
+being absent from the JSON object. This matters for round-trip stability and `jsonableValidation`
+(see below).
+
+### Critical issue: sury `jsonableValidation` rejects `S.option(T)` inside union variant payloads
+
+#### Problem
+
+After adding `apiSchemaFragment: option<apiSchemaFragment>` to `pluginDefinition`, all tests that
+called `S.enableJson()` started failing:
+
+```
+SuryError: Failed converting to JSON:
+  "Heartbeat" | { TAG: "Connect"; _0: { ...; apiSchemaFragment: {...} | undefined | null; }; } | ...
+  is not valid JSON
+```
+
+The error comes from `jsonableValidation` in `Sury.js`, which is triggered when compiling any
+schema in JSON mode. The check is:
+
+```javascript
+if (tagFlag & 48129 || tagFlag & 16 && parent.type !== "object") {
+  throw new SuryError({TAG: "InvalidJsonSchema", _0: parent}, ...)
+}
+```
+
+Flag `16` is the `undefined` type. The rule says: **`undefined` is allowed only when its parent
+schema is an `object`** (i.e., it is a regular optional field on a record). When `undefined` appears
+anywhere else — such as inside a union — it throws.
+
+**Root cause:** `S.option(T)` and both `S.nullable(T)` and `S.nullableAsOption(T)` all include
+`undefined` in their union representation. Both PPX forms `field?: T` and `field: option<T>` compile
+identically to `s.m(S.option(T))`, producing `T | undefined | null` (or `T | undefined`).
+
+The traversal path that triggers the error:
+
+1. Top-level `PluginSpec.commandSchema` is a union (`Heartbeat | Connect(pluginDefinition) | ...`)
+2. `jsonableValidation` recurses into each variant of the union, passing `parent = commandSchema`
+3. For `Connect(pluginDefinition)`, it recurses into each property, passing `parent = connectSchema`
+4. For `apiSchemaFragment`, the schema is itself a union `[T, undefined, null]`
+5. `jsonableValidation` recurses into that union's items, passing `parent = apiSchemaFragmentUnion`
+6. For the `undefined` item: `tagFlag = 16`, `parent.type = "union"` ≠ `"object"` → **throws**
+
+#### Fix
+
+Use `js_nullable` from `sury/src/Sury.res.mjs`, which creates `T | null` (null only — no
+`undefined`). Sury's `null` type has flag `32`, not `16`, so `32 & 16 = 0` and
+`jsonableValidation` passes in all contexts.
+
+```rescript
+// Plugin.res
+@module("sury/src/Sury.res.mjs")
+external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
+
+let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
+```
+
+The `unit` second argument compiles away to no argument in the JS output (ReScript omits trailing
+unit args), so the call becomes `js_nullable(apiSchemaFragmentSchema)`. In Sury.js:
+
+```javascript
+function js_nullable(schema, maybeOr) {
+  let schema$1 = factory([schema, nullAsUnit]);  // T | null, no undefined
+  if (maybeOr === undefined) { return schema$1; } // ← takes this path
+  ...
+}
+```
+
+`nullAsUnit` is sury's internal "null that parses to `undefined`/`unit`" schema — it maps JSON
+`null` to ReScript `None`/`()` and serialises `None` back to JSON `null`. No `undefined` is ever
+present.
+
+The `@s.matches` annotation on the field then uses this schema instead of the PPX-generated one:
+
+```rescript
+// Plugin.res
+apiSchemaFragment: @s.matches(apiSchemaFragmentOptionSchema) option<apiSchemaFragment>,
+
+// PluginReadModelSpec.res
+apiSchemaFragment: @s.matches(Reventless.Plugin.apiSchemaFragmentOptionSchema)
+                   option<Reventless.Plugin.apiSchemaFragment>,
+```
+
+Compiled output confirms the fix:
+```javascript
+// Plugin.res.mjs
+let apiSchemaFragmentOptionSchema = SuryResMjs.js_nullable(apiSchemaFragmentSchema);
+// pluginDefinitionSchema field:
+apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema)  // T | null — JSON safe
+```
+
+#### Why `S.nullableAsOption` does not work
+
+`S.nullableAsOption(T)` is defined in sury as:
+```rescript
+Union.factory([schema->castToUnknown, unit->castToPublic, nullAsUnit->castToUnknown])
+//                                     ^^^^^^^^^^^^^^^^^ undefined — triggers jsonableValidation
+```
+
+It includes `unit` (the `undefined` schema) alongside `null`, making it `T | undefined | null`.
+This is fine for plain record fields (parent is `object`) but fails inside nested unions.
+
+#### Why `S.nullable` does not work either
+
+`S.nullable(T)` = `Union.factory([schema, unit, $$null])` — also includes `undefined`.
+
+#### Alternatives considered
+
+1. **Store `apiSchemaFragment` outside `pluginDefinition`** — would require a new event field or
+   separate event, breaking the established pattern where `Connect` carries the full plugin definition.
+2. **`S.transform` to build a custom schema** — possible but verbose; `js_nullable` is already the
+   exact implementation needed, just not re-exported from `S.res.mjs`.
+3. **Bind to `$$null$1` (internal alias for `factory$5`)** — `$$null$1` is not exported from
+   `Sury.js`; only `js_nullable` is.
+
+### Phase 9 — In-memory schema rebuild strategy
+
+The `rebuildSchema` function in `GraphQL_Server.res` cannot simply stitch the full SDL from plugin
+fragments because the in-memory resolver names (registered via `addMutationResolver` /
+`addQueryResolver`) do not match the fragment-generated field names. Fragment generator outputs
+names like `Catalog_Product_CreateProduct`, while yoga resolvers are registered under simpler keys.
+
+The solution: `rebuildSchema` extracts only the **type definitions** from all fragments (the
+`types` section of each fragment's decoded JSON) and prepends them to the SDL produced by the
+existing `buildSdl()` function (which generates `Query` and `Mutation` blocks from the registered
+resolver map). This keeps resolver wiring intact while enriching the schema with plugin-specific
+GraphQL types.
+
+### Phase 5 (AppSync_Adapter) — stub state
+
+`AppSync_Adapter.res` satisfies the `Api_Adapter.Provider` module type but its `makeApiResource`
+and `updateSchema` functions use `Obj.magic(0)` / `Promise.resolve()` as stubs. Full
+implementation requires wiring `PulumiAws.AppSync` resource constructors and the AWS SDK
+`startSchemaCreation` call, which is deferred until the AWS platform work is scheduled.
+
+---
 
 ## Open questions to resolve during implementation
 

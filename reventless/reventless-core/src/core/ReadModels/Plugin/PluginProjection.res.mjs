@@ -28,50 +28,95 @@ function map(param) {
     at: statusChange_at,
     by: statusChange_by
   };
+  let name;
+  let version;
+  let extensionPoints;
+  let extensions;
+  let eventCollector;
   if (typeof event !== "object") {
     return "Ignore";
   }
   switch (event.TAG) {
     case "Connected" :
-      let match$1 = event._0;
-      let extensions = match$1.extensions;
-      let extensionPoints = match$1.extensionPoints;
-      let eventCollector = match$1.eventCollector;
+      let pluginDef = event._0;
+      let extensions$1 = pluginDef.extensions;
+      let extensionPoints$1 = pluginDef.extensionPoints;
+      let version$1 = pluginDef.version;
+      let name$1 = pluginDef.name;
+      let eventCollector$1 = pluginDef.eventCollector;
+      let base_extensionPointNames = extensionPoints$1.map(extensionPoint => extensionPoint.name);
+      let base_extensionNames = extensions$1.map(extension => extension.extensionPointName);
+      let base = {
+        name: name$1,
+        version: version$1,
+        eventCollector: eventCollector$1,
+        extensionPoints: extensionPoints$1,
+        extensionPointNames: base_extensionPointNames,
+        extensionNames: base_extensionNames,
+        extensions: extensions$1,
+        status: "Connected",
+        statusChange: statusChange,
+        apiSchemaFragment: undefined
+      };
+      let frag = pluginDef.apiSchemaFragment;
+      let state = frag !== undefined ? ({
+          name: name$1,
+          version: version$1,
+          eventCollector: eventCollector$1,
+          extensionPoints: extensionPoints$1,
+          extensionPointNames: base_extensionPointNames,
+          extensionNames: base_extensionNames,
+          extensions: extensions$1,
+          status: "Connected",
+          statusChange: statusChange,
+          apiSchemaFragment: frag
+        }) : base;
       return {
         TAG: "Set",
         _0: id,
-        _1: {
-          name: match$1.name,
-          version: match$1.version,
-          eventCollector: eventCollector,
-          extensionPoints: extensionPoints,
-          extensionPointNames: extensionPoints.map(extensionPoint => extensionPoint.name),
-          extensionNames: extensions.map(extension => extension.extensionPointName),
-          extensions: extensions,
-          status: "Connected",
-          statusChange: statusChange
-        }
+        _1: state
       };
     case "Reconnected" :
-      let match$2 = event._0;
-      let extensions$1 = match$2.extensions;
-      let extensionPoints$1 = match$2.extensionPoints;
-      let eventCollector$1 = match$2.eventCollector;
+      let pluginDef$1 = event._0;
+      let extensions$2 = pluginDef$1.extensions;
+      let extensionPoints$2 = pluginDef$1.extensionPoints;
+      let eventCollector$2 = pluginDef$1.eventCollector;
+      let applyFrag = s => {
+        let frag = pluginDef$1.apiSchemaFragment;
+        if (frag !== undefined) {
+          return {
+            name: s.name,
+            version: s.version,
+            eventCollector: s.eventCollector,
+            extensionPoints: s.extensionPoints,
+            extensionPointNames: s.extensionPointNames,
+            extensionNames: s.extensionNames,
+            extensions: s.extensions,
+            status: s.status,
+            statusChange: s.statusChange,
+            apiSchemaFragment: frag
+          };
+        } else {
+          return s;
+        }
+      };
+      let defaultState = applyFrag({
+        name: pluginDef$1.name,
+        version: pluginDef$1.version,
+        eventCollector: eventCollector$2,
+        extensionPoints: extensionPoints$2,
+        extensionPointNames: extensionPoints$2.map(extensionPoint => extensionPoint.name),
+        extensionNames: extensions$2.map(extension => extension.extensionPointName),
+        extensions: extensions$2,
+        status: "Connected",
+        statusChange: statusChange,
+        apiSchemaFragment: undefined
+      });
       return {
         TAG: "UpdateWithDefault",
         _0: id,
-        _1: {
-          name: match$2.name,
-          version: match$2.version,
-          eventCollector: eventCollector$1,
-          extensionPoints: extensionPoints$1,
-          extensionPointNames: extensionPoints$1.map(extensionPoint => extensionPoint.name),
-          extensionNames: extensions$1.map(extension => extension.extensionPointName),
-          extensions: extensions$1,
-          status: "Connected",
-          statusChange: statusChange
-        },
-        _2: state => ({
+        _1: defaultState,
+        _2: state => applyFrag({
           name: state.name,
           version: state.version,
           eventCollector: state.eventCollector,
@@ -80,30 +125,47 @@ function map(param) {
           extensionNames: state.extensionNames,
           extensions: state.extensions,
           status: "Connected",
-          statusChange: statusChange
+          statusChange: statusChange,
+          apiSchemaFragment: state.apiSchemaFragment
         })
       };
     case "Disconnected" :
+      let match$1 = event._0;
+      let eventCollector$3 = match$1.eventCollector;
+      name = match$1.name;
+      version = match$1.version;
+      extensionPoints = match$1.extensionPoints;
+      extensions = match$1.extensions;
+      eventCollector = eventCollector$3;
+      break;
     case "Activated" :
+      let match$2 = event._0;
+      let eventCollector$4 = match$2.eventCollector;
+      name = match$2.name;
+      version = match$2.version;
+      extensionPoints = match$2.extensionPoints;
+      extensions = match$2.extensions;
+      eventCollector = eventCollector$4;
       break;
     case "Deactivated" :
       let match$3 = event._0;
-      let extensions$2 = match$3.extensions;
-      let extensionPoints$2 = match$3.extensionPoints;
-      let eventCollector$2 = match$3.eventCollector;
+      let extensions$3 = match$3.extensions;
+      let extensionPoints$3 = match$3.extensionPoints;
+      let eventCollector$5 = match$3.eventCollector;
       return {
         TAG: "UpdateWithDefault",
         _0: id,
         _1: {
           name: match$3.name,
           version: match$3.version,
-          eventCollector: eventCollector$2,
-          extensionPoints: extensionPoints$2,
-          extensionPointNames: extensionPoints$2.map(extensionPoint => extensionPoint.name),
-          extensionNames: extensions$2.map(extension => extension.extensionPointName),
-          extensions: extensions$2,
+          eventCollector: eventCollector$5,
+          extensionPoints: extensionPoints$3,
+          extensionPointNames: extensionPoints$3.map(extensionPoint => extensionPoint.name),
+          extensionNames: extensions$3.map(extension => extension.extensionPointName),
+          extensions: extensions$3,
           status: "Inactive",
-          statusChange: statusChange
+          statusChange: statusChange,
+          apiSchemaFragment: undefined
         },
         _2: state => ({
           name: state.name,
@@ -114,29 +176,27 @@ function map(param) {
           extensionNames: state.extensionNames,
           extensions: state.extensions,
           status: "Inactive",
-          statusChange: statusChange
+          statusChange: statusChange,
+          apiSchemaFragment: state.apiSchemaFragment
         })
       };
     case "IncompatiblePluginDetected" :
       return "Ignore";
   }
-  let match$4 = event._0;
-  let extensions$3 = match$4.extensions;
-  let extensionPoints$3 = match$4.extensionPoints;
-  let eventCollector$3 = match$4.eventCollector;
   return {
     TAG: "UpdateWithDefault",
     _0: id,
     _1: {
-      name: match$4.name,
-      version: match$4.version,
-      eventCollector: eventCollector$3,
-      extensionPoints: extensionPoints$3,
-      extensionPointNames: extensionPoints$3.map(extensionPoint => extensionPoint.name),
-      extensionNames: extensions$3.map(extension => extension.extensionPointName),
-      extensions: extensions$3,
+      name: name,
+      version: version,
+      eventCollector: eventCollector,
+      extensionPoints: extensionPoints,
+      extensionPointNames: extensionPoints.map(extensionPoint => extensionPoint.name),
+      extensionNames: extensions.map(extension => extension.extensionPointName),
+      extensions: extensions,
       status: "Disconnected",
-      statusChange: statusChange
+      statusChange: statusChange,
+      apiSchemaFragment: undefined
     },
     _2: state => ({
       name: state.name,
@@ -147,7 +207,8 @@ function map(param) {
       extensionNames: state.extensionNames,
       extensions: state.extensions,
       status: "Disconnected",
-      statusChange: statusChange
+      statusChange: statusChange,
+      apiSchemaFragment: state.apiSchemaFragment
     })
   };
 }

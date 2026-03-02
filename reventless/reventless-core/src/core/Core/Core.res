@@ -7,6 +7,7 @@ type outputs = {
   aggregates: Pulumi.Output.t<dict<Aggregate.outputs>>,
   readModels: dict<ReadModel.outputs>,
   cloner: Cloner.outputs,
+  api?: ReventlessInfra.Api.component,
 }
 
 type t

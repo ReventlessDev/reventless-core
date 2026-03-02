@@ -25,9 +25,9 @@ function Make(Platform) {
   let CustomerAggregate = Platform.Aggregate.Make({
     Id: Id$Reventless.$$String,
     name: Customer$ReventlessdevExampleAggregateOrdering.name,
-    commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema,
     eventSchema: Customer$ReventlessdevExampleAggregateOrdering.eventSchema,
-    errorSchema: Customer$ReventlessdevExampleAggregateOrdering.errorSchema
+    errorSchema: Customer$ReventlessdevExampleAggregateOrdering.errorSchema,
+    commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema
   })({
     resolverConfig: CustomerBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
     init: CustomerBehavior$ReventlessdevExampleAggregateOrdering.init,
@@ -42,9 +42,9 @@ function Make(Platform) {
   let OrderAggregate = Platform.Aggregate.Make({
     Id: Id$Reventless.$$String,
     name: Order$ReventlessdevExampleAggregateOrdering.name,
-    commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema,
     eventSchema: Order$ReventlessdevExampleAggregateOrdering.eventSchema,
-    errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema
+    errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema,
+    commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema
   })({
     resolverConfig: OrderBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
     init: OrderBehavior$ReventlessdevExampleAggregateOrdering.init,
@@ -91,9 +91,9 @@ function Make(Platform) {
   let CatalogProductAggregate = Platform.Aggregate.Make({
     Id: Id$Reventless.$$String,
     name: CatalogProduct$ReventlessdevExampleAggregateOrdering.name,
-    commandSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.commandSchema,
     eventSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.eventSchema,
-    errorSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.errorSchema
+    errorSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.errorSchema,
+    commandSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.commandSchema
   })({
     resolverConfig: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
     init: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.init,
@@ -129,9 +129,9 @@ function Make(Platform) {
     Aggregate: {
       Id: Id$Reventless.$$String,
       name: Order$ReventlessdevExampleAggregateOrdering.name,
-      commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema,
       eventSchema: Order$ReventlessdevExampleAggregateOrdering.eventSchema,
-      errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema
+      errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema,
+      commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema
     },
     mapIncomingCommand: OrdersExtensionPointMapping$ReventlessdevExampleAggregateOrdering.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$ReventlessdevExampleAggregateOrdering.mapOutgoingEvent

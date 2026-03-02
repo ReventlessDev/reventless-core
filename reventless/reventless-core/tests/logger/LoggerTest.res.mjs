@@ -53,7 +53,8 @@ Jest.describe("Logger", () => {
                 extensionPointName: "testExtensionPoint"
               }],
             eventCollector: "testEventCollector",
-            extensionProtocols: []
+            extensionProtocols: [],
+            apiSchemaFragment: undefined
           }
         }
       ];
@@ -72,7 +73,7 @@ Jest.describe("Logger", () => {
         commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
       let expected1 = `1/2: Heartbeat(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":0}`;
-      let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[]}},"meta":` + metaStr + `,"id":1}`;
+      let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null}},"meta":` + metaStr + `,"id":1}`;
       return Jest.Expect.toEqual(Jest.Expect.expect(Logger$ReventlessCore.commandJsonsToLogMessages(arr)), [
         expected1,
         expected2

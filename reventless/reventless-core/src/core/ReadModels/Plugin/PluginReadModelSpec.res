@@ -17,6 +17,7 @@ type state = {
   extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
   statusChange: Message.statusChange,
+  apiSchemaFragment: @s.matches(Reventless.Plugin.apiSchemaFragmentOptionSchema) option<Reventless.Plugin.apiSchemaFragment>,
 }
 
 type queryResult = {

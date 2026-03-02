@@ -194,9 +194,9 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
     cmp: Id$Reventless.StringPure.cmp
   },
   name: name,
-  commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  commandSchema: commandSchema
 })({
   resolverConfig: resolverConfig,
   init: init,
@@ -213,9 +213,9 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
       cmp: Id$Reventless.StringPure.cmp
     },
     name: name,
-    commandSchema: commandSchema,
     eventSchema: eventSchema,
-    errorSchema: errorSchema
+    errorSchema: errorSchema,
+    commandSchema: commandSchema
   },
   EventLog: {
     Spec: {

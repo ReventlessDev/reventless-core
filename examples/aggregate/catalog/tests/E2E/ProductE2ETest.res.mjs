@@ -26,9 +26,9 @@ let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
 let ProductAgg = AggregateMaker.Make({
   Id: Id$Reventless.$$String,
   name: Product$ReventlessdevExampleAggregateCatalog.name,
-  commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema,
   eventSchema: Product$ReventlessdevExampleAggregateCatalog.eventSchema,
-  errorSchema: Product$ReventlessdevExampleAggregateCatalog.errorSchema
+  errorSchema: Product$ReventlessdevExampleAggregateCatalog.errorSchema,
+  commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema
 })({
   resolverConfig: ProductBehavior$ReventlessdevExampleAggregateCatalog.resolverConfig,
   init: ProductBehavior$ReventlessdevExampleAggregateCatalog.init,

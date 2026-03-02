@@ -3,6 +3,7 @@ module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
+  let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>>
 }
 
 module Make = (

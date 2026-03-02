@@ -155,9 +155,9 @@ function Make(Spec) {
         cmp: $$let.cmp
       },
       name: ExtensionMapping$ReventlessInfra.NoAggregate.name,
-      commandSchema: ExtensionMapping$ReventlessInfra.NoAggregate.commandSchema,
       eventSchema: ExtensionMapping$ReventlessInfra.NoAggregate.eventSchema,
-      errorSchema: ExtensionMapping$ReventlessInfra.NoAggregate.errorSchema
+      errorSchema: ExtensionMapping$ReventlessInfra.NoAggregate.errorSchema,
+      commandSchema: ExtensionMapping$ReventlessInfra.NoAggregate.commandSchema
     },
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined

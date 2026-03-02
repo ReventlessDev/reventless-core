@@ -69,6 +69,37 @@ let stop = () =>
   | None => ()
   }
 
+// Rebuild the server schema by stitching plugin fragments with registered resolvers.
+// Extracts type definitions from all fragments, then uses buildSdl() for Query/Mutation
+// (which matches the registered resolver field names from CommandGenerator/QueryDb builders).
+// Stops the existing server and restarts with the new SDL.
+let rebuildSchema = (
+  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
+  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
+) => {
+  stop()
+  let allFragments = Array.concat([baseFragment], pluginFragments)
+  let fragmentTypes =
+    allFragments
+    ->Array.flatMap(frag => ReventlessCore.GraphQL_Stitcher.decode(frag).types)
+    ->Array.join("\n\n")
+  let queriesMutationsSdl = buildSdl()
+  let fullSdl =
+    fragmentTypes->String.length > 0
+      ? fragmentTypes ++ "\n\n" ++ queriesMutationsSdl
+      : queriesMutationsSdl
+  let resolvers = Dict.make()
+  resolvers->Dict.set("Query", queryResolvers.contents)
+  resolvers->Dict.set("Mutation", mutationResolvers.contents)
+  let schema = YG.createSchema({"typeDefs": fullSdl, "resolvers": resolvers})
+  let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": false})
+  let server = YG.createServer(yoga)
+  server->YG.listen(4000, () =>
+    Console.log("[GraphQL] Rebuilt schema - http://localhost:4000/graphql")
+  )
+  activeServer.contents = Some(server)
+}
+
 // Reset registry state (call between isolated test suites).
 let reset = () => {
   mutationResolvers.contents = Dict.make()

@@ -11,6 +11,7 @@ include ReventlessCore.Plugin_Builder.Make(
     type api = Types.AppSync.api
     type role = Types.AppSync.role
   },
+  AppSync_Adapter,
   RuntimeEnvironment,
   EventCollectorChannel,
   QueryEngine.DynamoDb,

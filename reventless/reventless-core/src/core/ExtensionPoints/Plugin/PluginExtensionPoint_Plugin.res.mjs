@@ -88,10 +88,14 @@ function Make(Spec) {
         return await deleteSchedule(directive._0);
       case "DoConnectPlugin" :
       case "DoDisconnectPlugin" :
-        return;
+        break;
       case "ForwardCommand" :
         let match = directive._0;
         return await forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
+    }
+    let fn = Spec.updateApiSchema;
+    if (fn !== undefined) {
+      return await fn(queryEngine);
     }
   };
   let mapIncomingCommand = (id, cmd, _meta) => {
@@ -170,32 +174,65 @@ function Make(Spec) {
     }
     switch (event.TAG) {
       case "Connected" :
-        return [{
+        let pluginDefinition = event._0;
+        return [
+          {
             TAG: "PublishEvent",
             _0: id,
             _1: {
               TAG: "PluginConnected",
-              _0: event._0
+              _0: pluginDefinition
             }
-          }];
+          },
+          {
+            TAG: "Call",
+            _0: callHandler,
+            _1: {
+              TAG: "DoConnectPlugin",
+              _0: pluginDefinition
+            }
+          }
+        ];
       case "Reconnected" :
-        return [{
+        let pluginDefinition$1 = event._0;
+        return [
+          {
             TAG: "PublishEvent",
             _0: id,
             _1: {
               TAG: "PluginReconnected",
-              _0: event._0
+              _0: pluginDefinition$1
             }
-          }];
+          },
+          {
+            TAG: "Call",
+            _0: callHandler,
+            _1: {
+              TAG: "DoConnectPlugin",
+              _0: pluginDefinition$1
+            }
+          }
+        ];
       case "Disconnected" :
-        return [{
+        let pluginDefinition$2 = event._0;
+        return [
+          {
             TAG: "PublishEvent",
             _0: id,
             _1: {
               TAG: "PluginDisconnected",
-              _0: event._0
+              _0: pluginDefinition$2
             }
-          }];
+          },
+          {
+            TAG: "Call",
+            _0: callHandler,
+            _1: {
+              TAG: "DoDisconnectPlugin",
+              _0: pluginDefinition$2
+            }
+          }
+        ];
       case "Activated" :
         return [{
             TAG: "PublishEvent",
@@ -206,14 +243,25 @@ function Make(Spec) {
             }
           }];
       case "Deactivated" :
-        return [{
+        let pluginDefinition$3 = event._0;
+        return [
+          {
             TAG: "PublishEvent",
             _0: id,
             _1: {
               TAG: "PluginDeactivated",
-              _0: event._0
+              _0: pluginDefinition$3
             }
-          }];
+          },
+          {
+            TAG: "Call",
+            _0: callHandler,
+            _1: {
+              TAG: "DoDisconnectPlugin",
+              _0: pluginDefinition$3
+            }
+          }
+        ];
       case "IncompatiblePluginDetected" :
         return [{
             TAG: "PublishEvent",
@@ -239,9 +287,9 @@ function Make(Spec) {
     Aggregate: {
       Id: Id$Reventless.$$String,
       name: PluginSpec$ReventlessCore.name,
-      commandSchema: PluginSpec$ReventlessCore.commandSchema,
       eventSchema: PluginSpec$ReventlessCore.eventSchema,
-      errorSchema: PluginSpec$ReventlessCore.errorSchema
+      errorSchema: PluginSpec$ReventlessCore.errorSchema,
+      commandSchema: PluginSpec$ReventlessCore.commandSchema
     },
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent

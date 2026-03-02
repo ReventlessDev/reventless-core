@@ -26,9 +26,9 @@ let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
 let OrderAgg = AggregateMaker.Make({
   Id: Id$Reventless.$$String,
   name: Order$ReventlessdevExampleAggregateOrdering.name,
-  commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema,
   eventSchema: Order$ReventlessdevExampleAggregateOrdering.eventSchema,
-  errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema
+  errorSchema: Order$ReventlessdevExampleAggregateOrdering.errorSchema,
+  commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema
 })({
   resolverConfig: OrderBehavior$ReventlessdevExampleAggregateOrdering.resolverConfig,
   init: OrderBehavior$ReventlessdevExampleAggregateOrdering.init,

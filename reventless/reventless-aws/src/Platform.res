@@ -65,4 +65,14 @@ module Make = (Api: {
       Spec: Reventless.DcbEventLog.Spec,
     ): (ReventlessInfra.DcbEventLog.T with module Spec = Spec) => DcbEventLog_Builder.Make(Spec)
   }
+
+  module Api = {
+    module Make = (
+      Config: {let baseFragment: ReventlessInfra.Api.schemaFragment},
+    ): ReventlessInfra.Api.T => {
+      module Builder = ReventlessCore.Api_Builder.Make(AppSync_Adapter)
+      let make = (~name, ~opts=?) =>
+        Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
+    }
+  }
 }

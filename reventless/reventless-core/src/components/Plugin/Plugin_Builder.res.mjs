@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Plugin$ReventlessCore from "./Plugin.res.mjs";
 import * as StackReference$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/StackReference.res.mjs";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
@@ -24,7 +25,7 @@ import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTop
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
-  return ApiSpec => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
+  return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
     let make = (name, version, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, api, apiRole, scheduler, dcbSpec, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
@@ -85,6 +86,53 @@ function Make(Spec) {
         let stateViewSlicesOutputs$1 = match[2];
         let stateChangeSlicesOutputs$1 = match[1];
         let dcbEventLogOutputs = match[0];
+        let pluralize = n => {
+          if (n.endsWith("s")) {
+            return n;
+          } else {
+            return n + "s";
+          }
+        };
+        let stripViewSuffix = n => {
+          if (n.endsWith("View")) {
+            return n.slice(0, n.length - 4 | 0);
+          } else {
+            return n;
+          }
+        };
+        let mutationEntriesFromAggregates = aggregates.flatMap(M => {
+          let commandSchema = M.Spec.commandSchema;
+          let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
+          let fieldNames = constructorNames.map(cname => extra$1 + `_` + M.Spec.name + `_` + cname);
+          return [{
+              fieldNames: fieldNames,
+              commandSchema: commandSchema
+            }];
+        });
+        let mutationEntriesFromSlices = dcbSpec !== undefined ? dcbSpec.stateChangeSlices.map(S => ({
+            fieldNames: [extra$1 + `_` + S.Spec.name],
+            commandSchema: S.Spec.commandSchema
+          })) : [];
+        let mutationEntries = mutationEntriesFromAggregates.concat(mutationEntriesFromSlices);
+        let queryEntriesFromReadModels = readModels.map(R => ({
+          singleFieldName: extra$1 + `_` + R.Spec.name,
+          listFieldName: extra$1 + `_` + pluralize(R.Spec.name),
+          returnTypeName: extra$1 + R.Spec.name,
+          stateSchema: R.Spec.stateSchema,
+          authorization: undefined
+        }));
+        let queryEntriesFromSlices = dcbSpec !== undefined ? dcbSpec.stateViewSlices.map(V => {
+            let entity = stripViewSuffix(V.Spec.name);
+            return {
+              singleFieldName: extra$1 + `_` + entity,
+              listFieldName: undefined,
+              returnTypeName: extra$1 + entity,
+              stateSchema: V.Spec.stateSchema,
+              authorization: undefined
+            };
+          }) : [];
+        let queryEntries = queryEntriesFromReadModels.concat(queryEntriesFromSlices);
+        let apiSchemaFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
@@ -135,7 +183,8 @@ function Make(Spec) {
             extensionPoints: param[0],
             extensions: extensionsDefinitions,
             eventCollector: param[1],
-            extensionProtocols: []
+            extensionProtocols: [],
+            apiSchemaFragment: apiSchemaFragment
           }));
           let match$3 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
           EventCollectorHelper.connect(match$2[0], eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, match$3[1], match$1[1], match[1], match$3[0]);
@@ -209,7 +258,7 @@ function Make(Spec) {
     return {
       make: make
     };
-  })))))))));
+  }))))))))));
 }
 
 let PluginExtensionPointSpec;

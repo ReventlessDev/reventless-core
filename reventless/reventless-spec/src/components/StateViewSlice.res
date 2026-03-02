@@ -44,6 +44,9 @@ module type Spec = {
   @schema
   type state
 
+  /** Sury schema for the state type — generated automatically by `@schema`. */
+  let stateSchema: S.t<state>
+
   /**
   Projects one DCB event into read model actions.
 
