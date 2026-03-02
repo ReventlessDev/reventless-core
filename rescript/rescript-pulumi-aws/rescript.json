@@ -1,6 +1,11 @@
 {
   "name": "@reventlessdev/rescript-pulumi-aws",
   "namespace": "PulumiAws",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs",
   "ppx-flags": [
         "sury-ppx/bin"
   ],

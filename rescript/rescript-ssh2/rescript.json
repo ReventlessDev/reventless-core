@@ -1,6 +1,11 @@
 {
   "name": "@reventlessdev/rescript-ssh2",
   "namespace": false,
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs",
   "ppx-flags": [],
   "warnings": {
     "error": "-44+101"

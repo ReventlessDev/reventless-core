@@ -12,6 +12,10 @@ coverage
 lerna-debug.log
 .playwright-mcp
 
+# Compiled example files in rescript bindings (unstable across root vs standalone builds)
+rescript/**/example/*.res.mjs
+rescript/**/examples/*.res.mjs
+
 # Auto Claude data directory
 .auto-claude/
 
