@@ -1,8 +1,7 @@
 // Re-export from spec so ReventlessCore.CommandTopic.topicItem === Reventless.CommandTopic.topicItem
 type topicItem<'command> = Reventless.CommandTopic.topicItem<'command>
 
-type jsonCommandsHandler =
-  Stream.t<topicItem<JSON.t>, string, unit> => Effect.t<array<result<string, string>>, string, unit>
+type jsonCommandsHandler = Reventless.CommandTopic.commandsHandler<JSON.t>
 
 // Convenience helper for test code that needs to call a stream handler with an array
 // (for use in packages that don't have rescript-effect as a direct dependency)

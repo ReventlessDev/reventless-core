@@ -51,3 +51,17 @@ type topicItem<'command> = {
   command: 'command,
   reference: string,
 }
+
+/**
+A handler that processes a stream of typed topic items and returns an Effect
+producing per-item results.
+
+`commandsHandler<JSON.t>` is the JSON-level variant used for routing;
+`commandsHandler<Message.command'<Id.t, command>>` is the decoded variant
+used by aggregate and slice callbacks.
+*/
+type commandsHandler<'command> = Stream.t<topicItem<'command>, string, unit> => Effect.t<
+  array<result<string, string>>,
+  string,
+  unit,
+>
