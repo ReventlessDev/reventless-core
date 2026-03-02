@@ -1,12 +1,12 @@
-open Reventless.Aggregate
+open ReventlessInfra.Aggregate
 
 let componentType = ComponentType.Aggregate
 
 type t
-type outputs = Reventless.Aggregate.outputs
-type addEventMapper = Reventless.Aggregate.addEventMapper
-type allOutputs = Reventless.Aggregate.allOutputs
-type operations = Reventless.Aggregate.operations
+type outputs = ReventlessInfra.Aggregate.outputs
+type addEventMapper = ReventlessInfra.Aggregate.addEventMapper
+type allOutputs = ReventlessInfra.Aggregate.allOutputs
+type operations = ReventlessInfra.Aggregate.operations
 type component = Component.t<t, outputs, operations>
 
 type name = string

@@ -15,7 +15,7 @@ module Make = (Bus: InMemory_Bus.T) => {
   module Make = (
     Spec: Reventless.Aggregate.Spec,
     Behavior: Reventless.Behavior.T with module Spec := Spec,
-    EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
+    EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
   ) => {
     include ReventlessCore.Aggregate_Builder.Make(
       Spec,
@@ -31,6 +31,6 @@ module Make = (Bus: InMemory_Bus.T) => {
     )
     // Re-shadow `operations` with explicit spec return type so callers without
     // reventless in scope can still access ops.publishJsons (transparent alias).
-    let operations: component => Pulumi.Output.t<Reventless.Aggregate.operations> = operations
+    let operations: component => Pulumi.Output.t<ReventlessInfra.Aggregate.operations> = operations
   }
 }

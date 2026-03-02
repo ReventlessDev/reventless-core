@@ -1,7 +1,7 @@
 // Ordering's extension subscribing to Catalog's ProductsExtensionPoint.
 // Routes ProductBecameAvailable / ProductPriceChanged events to CatalogProduct commands.
 
-open Reventless.ExtensionMapping
+open ReventlessInfra.ExtensionMapping
 
 module Spec = ProductsExtensionPointSpec
 

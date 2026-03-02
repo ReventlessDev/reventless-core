@@ -1,16 +1,16 @@
 let componentType = ComponentType.Counter
 
-type countItem = Reventless.Counter.countItem
-type counterTargetRef = Reventless.Counter.counterTargetRef
+type countItem = ReventlessInfra.Counter.countItem
+type counterTargetRef = ReventlessInfra.Counter.counterTargetRef
 
-type count = Reventless.Counter.count
-type addToCounterTarget = Reventless.Counter.addToCounterTarget
+type count = ReventlessInfra.Counter.count
+type addToCounterTarget = ReventlessInfra.Counter.addToCounterTarget
 
 type jsonEventsHandler = Stream.t<JSON.t, string, unit> => Effect.t<unit, string, unit>
 
 type t
-type outputs = Reventless.Counter.outputs
-type operations = Reventless.Counter.operations
+type outputs = ReventlessInfra.Counter.outputs
+type operations = ReventlessInfra.Counter.operations
 type component = Component.t<t, outputs, operations>
 
 type action =
@@ -27,7 +27,7 @@ module Source = {
   type event = counterEvent
 }
 
-module type T = Reventless.Counter.T
+module type T = ReventlessInfra.Counter.T
 
 let separator = "#"
 let makeId = ((counterId, reference)) => counterId ++ (separator ++ reference)

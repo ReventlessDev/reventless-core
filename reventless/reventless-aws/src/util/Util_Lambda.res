@@ -5,19 +5,19 @@ type runtimeParts = {
 
 let findResource = resources => resources->ReventlessCore.Util.Adapter.findResource(AWS.Lambda.service)
 
-let toResource: PulumiAws.Lambda.CallbackFunction.t => Reventless.Adapter.resource = ({
+let toResource: PulumiAws.Lambda.CallbackFunction.t => ReventlessInfra.Adapter.resource = ({
   id,
   name,
   arn,
 }) => {
-  Reventless.Adapter.service: name->Pulumi.Output.apply(_ => AWS.Lambda.service),
+  ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.Lambda.service),
   name,
   id,
   urn: arn,
   info: name->Pulumi.Output.apply(_ => ""),
 }
 
-let fromResource = ({id, name}: Reventless.Adapter.resource) => {
+let fromResource = ({id, name}: ReventlessInfra.Adapter.resource) => {
   name->Pulumi.Output.apply(name =>
     PulumiAws.Lambda.CallbackFunction.get(~name, ~id=id->Pulumi.Output.asInput)
   )

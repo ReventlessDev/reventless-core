@@ -1,5 +1,5 @@
-let toResource: PulumiAws.S3.Bucket.t => Reventless.Adapter.resource = ({id, arn}) => {
-  Reventless.Adapter.service: id->Pulumi.Output.apply(_ => AWS.S3.service),
+let toResource: PulumiAws.S3.Bucket.t => ReventlessInfra.Adapter.resource = ({id, arn}) => {
+  ReventlessInfra.Adapter.service: id->Pulumi.Output.apply(_ => AWS.S3.service),
   name: id,
   id,
   urn: arn,

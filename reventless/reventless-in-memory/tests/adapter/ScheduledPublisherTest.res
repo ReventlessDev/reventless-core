@@ -37,7 +37,7 @@ let _ = afterAll(() => {
 // Helper: create a topic resource with a known name
 // ─────────────────────────────────────────────────────────────
 
-let makeTopicResource = (topicName: string): Reventless.Adapter.resolvedResource => {
+let makeTopicResource = (topicName: string): ReventlessInfra.Adapter.resolvedResource => {
   name: topicName,
   id: topicName,
   urn: topicName,

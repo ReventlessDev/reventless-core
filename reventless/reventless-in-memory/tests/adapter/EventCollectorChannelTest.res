@@ -43,8 +43,8 @@ describe("EventCollectorChannel_InMemory", () => {
       let pubA = TestPublisher.make(~name="topicA", ~storageResources=[], ~opts={})
       let pubB = TestPublisher.make(~name="topicB", ~storageResources=[], ~opts={})
       let eventTopics = Dict.fromArray([
-        ("topicA", {Reventless.EventTopic.resources: pubA.resources}),
-        ("topicB", {Reventless.EventTopic.resources: pubB.resources}),
+        ("topicA", {ReventlessInfra.EventTopic.resources: pubA.resources}),
+        ("topicB", {ReventlessInfra.EventTopic.resources: pubB.resources}),
       ])
       let ch = TestCollector.make(~name="collector", ~eventTopics, ~opts={})
       // Each publisher returns 1 resource, so 2 total
@@ -70,7 +70,7 @@ describe("EventCollectorChannel_InMemory", () => {
       })
       let pub = TestPublisher.make(~name="eventA", ~storageResources=[], ~opts={})
       let eventTopics = Dict.fromArray([
-        ("eventA", {Reventless.EventTopic.resources: pub.resources}),
+        ("eventA", {ReventlessInfra.EventTopic.resources: pub.resources}),
       ])
       let ch = TestCollector.make(~name="collector", ~eventTopics, ~opts={})
       let channelSpec: ReventlessCore.EventCollector_Adapter.channelSpec<JSON.t, unit, unit> = {
@@ -102,8 +102,8 @@ describe("EventCollectorChannel_InMemory", () => {
       let pub1 = TestPublisher.make(~name="topicX", ~storageResources=[], ~opts={})
       let pub2 = TestPublisher.make(~name="topicY", ~storageResources=[], ~opts={})
       let eventTopics = Dict.fromArray([
-        ("topicX", {Reventless.EventTopic.resources: pub1.resources}),
-        ("topicY", {Reventless.EventTopic.resources: pub2.resources}),
+        ("topicX", {ReventlessInfra.EventTopic.resources: pub1.resources}),
+        ("topicY", {ReventlessInfra.EventTopic.resources: pub2.resources}),
       ])
       let ch = TestCollector.make(~name="collector", ~eventTopics, ~opts={})
       let channelSpec: ReventlessCore.EventCollector_Adapter.channelSpec<JSON.t, unit, unit> = {
@@ -141,7 +141,7 @@ describe("EventCollectorChannel_InMemory", () => {
       }
       let pub = TestPublisher.make(~name="noHandlerTopic", ~storageResources=[], ~opts={})
       let eventTopics = Dict.fromArray([
-        ("noHandlerTopic", {Reventless.EventTopic.resources: pub.resources}),
+        ("noHandlerTopic", {ReventlessInfra.EventTopic.resources: pub.resources}),
       ])
       let ch = TestCollector.make(~name="collector", ~eventTopics, ~opts={})
       let channelSpec: ReventlessCore.EventCollector_Adapter.channelSpec<JSON.t, unit, unit> = {

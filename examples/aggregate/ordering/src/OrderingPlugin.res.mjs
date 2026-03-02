@@ -2,8 +2,8 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
-import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
-import * as ExtensionPointMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionPointMapping.res.mjs";
+import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as Order$ReventlessdevExampleAggregateOrdering from "./Aggregate/Order.res.mjs";
 import * as Customer$ReventlessdevExampleAggregateOrdering from "./Aggregate/Customer.res.mjs";
 import * as OrderBehavior$ReventlessdevExampleAggregateOrdering from "./Aggregate/OrderBehavior.res.mjs";
@@ -34,7 +34,7 @@ function Make(Platform) {
     apply: CustomerBehavior$ReventlessdevExampleAggregateOrdering.apply,
     create: CustomerBehavior$ReventlessdevExampleAggregateOrdering.create,
     execute: CustomerBehavior$ReventlessdevExampleAggregateOrdering.execute
-  })(NoEventMappings$Reventless.Make({
+  })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$ReventlessdevExampleAggregateOrdering.name,
     Id: Id$Reventless.$$String,
     commandSchema: Customer$ReventlessdevExampleAggregateOrdering.commandSchema
@@ -51,7 +51,7 @@ function Make(Platform) {
     apply: OrderBehavior$ReventlessdevExampleAggregateOrdering.apply,
     create: OrderBehavior$ReventlessdevExampleAggregateOrdering.create,
     execute: OrderBehavior$ReventlessdevExampleAggregateOrdering.execute
-  })(NoEventMappings$Reventless.Make({
+  })(NoEventMappings$ReventlessInfra.Make({
     name: Order$ReventlessdevExampleAggregateOrdering.name,
     Id: Id$Reventless.$$String,
     commandSchema: Order$ReventlessdevExampleAggregateOrdering.commandSchema
@@ -100,7 +100,7 @@ function Make(Platform) {
     apply: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.apply,
     create: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.create,
     execute: CatalogProductBehavior$ReventlessdevExampleAggregateOrdering.execute
-  })(NoEventMappings$Reventless.Make({
+  })(NoEventMappings$ReventlessInfra.Make({
     name: CatalogProduct$ReventlessdevExampleAggregateOrdering.name,
     Id: Id$Reventless.$$String,
     commandSchema: CatalogProduct$ReventlessdevExampleAggregateOrdering.commandSchema
@@ -125,7 +125,7 @@ function Make(Platform) {
     name: ProductsExtension$ReventlessdevExampleAggregateOrdering.Mappings.name,
     mappings: ProductsExtension$ReventlessdevExampleAggregateOrdering.Mappings.mappings
   });
-  let OrdersEPMappingT = ExtensionPointMapping$Reventless.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
+  let OrdersEPMappingT = ExtensionPointMapping$ReventlessInfra.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
     Aggregate: {
       Id: Id$Reventless.$$String,
       name: Order$ReventlessdevExampleAggregateOrdering.name,

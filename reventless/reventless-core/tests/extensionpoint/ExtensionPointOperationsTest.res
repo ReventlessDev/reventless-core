@@ -57,7 +57,7 @@ module TestPublishMapping = {
   let mapOutgoingEvent = Some(
     (eventJson, _createSchedule, _deleteSchedule, _queryEngine) => {
       [
-        Reventless.ExtensionPointMapping.AbstractPublishEvent("ep-dest", outgoingMeta, eventJson),
+        ReventlessInfra.ExtensionPointMapping.AbstractPublishEvent("ep-dest", outgoingMeta, eventJson),
       ]
     },
   )
@@ -81,7 +81,7 @@ module TestCallMapping = {
   let mapOutgoingEvent = Some(
     (_eventJson, _createSchedule, _deleteSchedule, _queryEngine) => {
       [
-        Reventless.ExtensionPointMapping.AbstractCall(async () => {
+        ReventlessInfra.ExtensionPointMapping.AbstractCall(async () => {
           capturedCallCount := capturedCallCount.contents + 1
         }),
       ]
@@ -111,7 +111,7 @@ module TestAsyncMapping = {
         outgoingMeta,
         eventJson,
       ))
-      [Reventless.ExtensionPointMapping.AbstractPublishEventAsync(asyncResult)]
+      [ReventlessInfra.ExtensionPointMapping.AbstractPublishEventAsync(asyncResult)]
     },
   )
 }
@@ -122,7 +122,7 @@ module TestAsyncMapping = {
 
 module TestOpsMappings = {
   module Spec = OpsEPSpec
-  module type Mapping = Reventless.ExtensionPointMapping.T with module ExtensionPoint := OpsEPSpec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := OpsEPSpec
   let mappings: array<module(Mapping)> = [
     module(TestPublishMapping),
     module(TestCallMapping),
@@ -159,7 +159,7 @@ module TestOps = {
     ) => [],
   }
 
-  let resourceNaming: Reventless.ResourceNaming.operations = {
+  let resourceNaming: ReventlessInfra.ResourceNaming.operations = {
     validateName: n => n,
     urnName: n => n,
   }

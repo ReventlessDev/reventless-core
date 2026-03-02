@@ -32,7 +32,7 @@ type operations = {
 }
 
 type storage = {
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   operations: Pulumi.Output.t<operations>,
 }
 

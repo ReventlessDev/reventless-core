@@ -1,7 +1,7 @@
 // Maps internal CatalogEventLog events to the stable ProductsExtensionPoint public API.
 
 open Reventless
-open Reventless.ExtensionPointMapping
+open ReventlessInfra.ExtensionPointMapping
 
 module ExtensionPoint = ProductsExtensionPointSpec
 

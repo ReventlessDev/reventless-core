@@ -6,7 +6,7 @@ let subscribe = (
   ~lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
   ~targetName,
   ~sourceName,
-  ~source: Reventless.Adapter.resource,
+  ~source: ReventlessInfra.Adapter.resource,
   ~opts,
 ) =>
   EventSourceMapping.make(

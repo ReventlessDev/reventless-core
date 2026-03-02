@@ -1,5 +1,5 @@
 module Make = (
-  Spec: Reventless.ExtensionPointMapping.Spec,
+  Spec: ReventlessInfra.ExtensionPointMapping.Spec,
   Mappings: ExtensionPoint.Mappings with module Spec := Spec,
   RuntimeEnvironment: Runtime.Environment,
   CommandTopicChannel: CommandTopic_Adapter.Channel
@@ -35,7 +35,7 @@ module Make = (
     ~publishToAggregates,
     ~scheduler: Scheduler.operations,
     ~queryEngine: Reventless.QueryEngine.operations,
-    ~resourceNaming: Reventless.ResourceNaming.operations,
+    ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     self,
     name,
   ) => {

@@ -37,7 +37,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, _ttl) => {
       if failNextWrites.contents > 0 {
         failNextWrites := failNextWrites.contents - 1
-        Error(Reventless.QueryDb.NotSavedToStorage("mock write failure"))
+        Error(ReventlessInfra.QueryDb.NotSavedToStorage("mock write failure"))
       } else {
         store.contents->Dict.set(id, [state])
         syncAll()
@@ -48,7 +48,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     let saveBatch: QueryDb.saveBatch<string, JSON.t> = async batch => {
       if failNextWrites.contents > 0 {
         failNextWrites := failNextWrites.contents - 1
-        Error(Reventless.QueryDb.BatchNotFullyWrittenToStorage("mock write failure"))
+        Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage("mock write failure"))
       } else {
         batch->Array.forEach(((id, state, _ttl)) => {
           store.contents->Dict.set(id, [state])

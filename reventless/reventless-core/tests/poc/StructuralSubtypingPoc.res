@@ -128,7 +128,7 @@ let platformImplSatisfiesSpec = (module(P: Platform_Impl)): module(Platform_Spec
 // ============================================================================
 
 module type ReadModel_Subset = {
-  module Spec: Reventless.ReadModel.T
+  module Spec: ReventlessInfra.ReadModel.T
   type api
   type role
   let make: (
@@ -140,7 +140,7 @@ module type ReadModel_Subset = {
 }
 
 module type ReadModel_Superset = {
-  module Spec: Reventless.ReadModel.T
+  module Spec: ReventlessInfra.ReadModel.T
   type api
   type role
   let make: (

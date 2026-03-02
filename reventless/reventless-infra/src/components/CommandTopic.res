@@ -6,7 +6,7 @@ Module type for an aggregate's command topic specification.
 aggregate's command schema.
 */
 module type T = {
-  module Id: Id.T
+  module Id: Reventless.Id.T
 
   /** The command type published to this topic. Must carry `@schema` for serialization. */
   @schema
@@ -33,13 +33,13 @@ the aggregate ID, metadata, raw JSON payload, and optional delivery delay.
 await ops.publishJsons([{id: "cat-1", meta, commandJson: json}])
 ```
 */
-type publishJsons = array<Message.commandJson> => promise<unit>
+type publishJsons = array<Reventless.Message.commandJson> => promise<unit>
 
 /**
 Publishes a stream of serialized command envelopes as an `Effect.t`.
 Use this for high-throughput or streaming command pipelines.
 */
-type publishJsonsStream = Stream.t<Message.commandJson, string, unit> => Effect.t<unit, string, unit>
+type publishJsonsStream = Stream.t<Reventless.Message.commandJson, string, unit> => Effect.t<unit, string, unit>
 
 /**
 A command together with an idempotency reference string.
@@ -57,7 +57,7 @@ A handler that processes a stream of typed topic items and returns an Effect
 producing per-item results.
 
 `commandsHandler<JSON.t>` is the JSON-level variant used for routing;
-`commandsHandler<Message.command'<Id.t, command>>` is the decoded variant
+`commandsHandler<Reventless.Message.command'<Id.t, command>>` is the decoded variant
 used by aggregate and slice callbacks.
 */
 type commandsHandler<'command> = Stream.t<topicItem<'command>, string, unit> => Effect.t<

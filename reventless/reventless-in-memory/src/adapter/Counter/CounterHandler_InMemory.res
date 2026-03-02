@@ -17,7 +17,7 @@ let make: Counter_Adapter.handlerMaker = (
   ~counterHandler as _,
   ~opts as _,
 ) => {
-  addToCounterTarget: async ({Reventless.Counter.counterId, target, targetRef}) => {
+  addToCounterTarget: async ({ReventlessInfra.Counter.counterId, target, targetRef}) => {
     let refKey = counterId ++ ":" ++ targetRef
     switch targetRefStore.contents->Dict.get(refKey) {
     | Some(_) => () // Already counted this (counterId, targetRef) pair — skip

@@ -1,5 +1,5 @@
 module Make = (
-  Spec: Reventless.ExtensionMapping.Spec,
+  Spec: ReventlessInfra.ExtensionMapping.Spec,
   Mappings: Extension.Mappings with module Spec := Spec,
 ): Extension.T => {
   type operations = Extension.operations
@@ -35,7 +35,7 @@ module Make = (
       name,
       extensionPointName: Spec.name,
       aggregateNames: Mappings.mappings->Array.filterMap((module(Mapping)) =>
-        Mapping.aggregateName == Reventless.ExtensionMapping.NoAggregate.name ||
+        Mapping.aggregateName == ReventlessInfra.ExtensionMapping.NoAggregate.name ||
           Mapping.mapOutgoingEvent->Option.isNone
           ? None
           : Some(Mapping.aggregateName)

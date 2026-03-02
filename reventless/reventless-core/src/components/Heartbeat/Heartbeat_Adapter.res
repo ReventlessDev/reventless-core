@@ -1,4 +1,4 @@
-type runner = {resources: array<Reventless.Adapter.resource>}
+type runner = {resources: array<ReventlessInfra.Adapter.resource>}
 
 type runnerMaker<'runtimeParts> = (
   ~name: string,

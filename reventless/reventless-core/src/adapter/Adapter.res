@@ -1,8 +1,8 @@
-type resolvedResource = Reventless.Adapter.resolvedResource
+type resolvedResource = ReventlessInfra.Adapter.resolvedResource
 
 let outputToResource: Pulumi.Output.t<
-  Reventless.Adapter.resource,
-> => Reventless.Adapter.resource = resourceOutput => {
+  ReventlessInfra.Adapter.resource,
+> => ReventlessInfra.Adapter.resource = resourceOutput => {
   id: resourceOutput->Pulumi.Output.flatMap(r => r.id),
   name: resourceOutput->Pulumi.Output.flatMap(r => r.name),
   urn: resourceOutput->Pulumi.Output.flatMap(r => r.urn),
@@ -10,8 +10,8 @@ let outputToResource: Pulumi.Output.t<
   service: resourceOutput->Pulumi.Output.flatMap(r => r.service),
 }
 
-let resourcesOutputToResource: Pulumi.Output.t<array<Reventless.Adapter.resource>> => option<
-  Reventless.Adapter.resource,
+let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessInfra.Adapter.resource>> => option<
+  ReventlessInfra.Adapter.resource,
 > = resourcesOutput =>
   try {
     id: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).id),
@@ -25,7 +25,7 @@ let resourcesOutputToResource: Pulumi.Output.t<array<Reventless.Adapter.resource
 
 let resolvedToResource = (
   {id, name, urn, info, service}: resolvedResource,
-): Reventless.Adapter.resource => {
+): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
   urn: urn->Pulumi.Output.make,
@@ -38,7 +38,7 @@ let resolvedToResources = (resolved: array<resolvedResource>) =>
 
 let resolvedOutputToResource: Pulumi.Output.t<
   resolvedResource,
-> => Reventless.Adapter.resource = resolvedResource => {
+> => ReventlessInfra.Adapter.resource = resolvedResource => {
   service: resolvedResource->Pulumi.Output.apply(r => r.service),
   name: resolvedResource->Pulumi.Output.apply(r => r.name),
   id: resolvedResource->Pulumi.Output.apply(r => r.id),
@@ -46,7 +46,7 @@ let resolvedOutputToResource: Pulumi.Output.t<
   info: resolvedResource->Pulumi.Output.apply(r => r.info),
 }
 
-let resourceToResolvedOutput = (r: Reventless.Adapter.resource) =>
+let resourceToResolvedOutput = (r: ReventlessInfra.Adapter.resource) =>
   (r.name, r.id, r.urn, r.info, r.service)
   ->Pulumi.Output.all5
   ->Pulumi.Output.apply(((name, id, urn, info, service)) => {
@@ -54,7 +54,7 @@ let resourceToResolvedOutput = (r: Reventless.Adapter.resource) =>
     result
   })
 
-let resourcesToResolvedOutput = (resources: array<Reventless.Adapter.resource>) =>
+let resourcesToResolvedOutput = (resources: array<ReventlessInfra.Adapter.resource>) =>
   resources
   ->Array.map(resource => resource->resourceToResolvedOutput)
   ->Pulumi.Output.all
@@ -82,7 +82,7 @@ let fromInteropResolved = (
 
 let fromInteropResource = (
   {name, id, urn, info, service}: ReventlessInterop.Resource.t,
-): Reventless.Adapter.resource => {
+): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
   urn: urn->Pulumi.Output.make,
@@ -91,5 +91,5 @@ let fromInteropResource = (
 }
 
 let fromInteropResources = (rs: array<ReventlessInterop.Resource.t>): array<
-  Reventless.Adapter.resource,
+  ReventlessInfra.Adapter.resource,
 > => rs->Array.map(fromInteropResource)

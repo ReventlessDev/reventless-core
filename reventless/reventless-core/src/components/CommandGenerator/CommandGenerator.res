@@ -19,7 +19,7 @@ type eventHandler<'context> = Runtime.eventHandler<payload, 'context, string>
 type publishJsons = CommandTopic.publishJsons
 
 type t
-type outputs = Reventless.CommandGenerator.outputs
+type outputs = ReventlessInfra.CommandGenerator.outputs
 type component = Component.t<t, outputs, unit>
 
 module type T = {
@@ -27,7 +27,7 @@ module type T = {
   type runtimeParts
   let connect: (
     ~api: api,
-    ~resources: array<Reventless.Adapter.resource>,
+    ~resources: array<ReventlessInfra.Adapter.resource>,
     ~runtime: Runtime.environment<runtimeParts>,
     component,
   ) => unit

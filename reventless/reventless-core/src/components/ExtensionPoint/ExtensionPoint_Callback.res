@@ -1,6 +1,6 @@
 module type Mappings = {
-  module Spec: Reventless.ExtensionPointMapping.Spec
-  module type Mapping = Reventless.ExtensionPointMapping.T with module ExtensionPoint := Spec
+  module Spec: ReventlessInfra.ExtensionPointMapping.Spec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
   let mappings: array<module(Mapping)>
 }
 
@@ -9,11 +9,11 @@ module type Spec = {
   let commandTopicResources: array<Adapter.resolvedResource>
   let scheduler: Scheduler.operations
   let queryEngine: Reventless.QueryEngine.operations
-  let resourceNaming: Reventless.ResourceNaming.operations
+  let resourceNaming: ReventlessInfra.ResourceNaming.operations
 }
 
 module type T = {
-  module MappingSpec: Reventless.ExtensionPointMapping.Spec
+  module MappingSpec: ReventlessInfra.ExtensionPointMapping.Spec
   let handleIncomingCommands: CommandTopic.commandsHandler<
     Message.command'<Reventless.Id.String.t, MappingSpec.command>,
   >
@@ -21,7 +21,7 @@ module type T = {
 
 module Make = (
   Spec: Spec,
-  MappingSpec: Reventless.ExtensionPointMapping.Spec,
+  MappingSpec: ReventlessInfra.ExtensionPointMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
 ): (T with module MappingSpec = MappingSpec) => {
   module MappingSpec = MappingSpec
@@ -40,7 +40,7 @@ module Make = (
 
   let applyCommandAction = async action =>
     switch action {
-    | Reventless.ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
+    | ReventlessInfra.ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
       let result =
         Spec.publishToAggregates
         ->Dict.get(aggregateName)

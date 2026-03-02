@@ -8,9 +8,9 @@ type outputs = {resource: Adapter.resource}
 Creates a schedule in the underlying scheduling service (e.g. EventBridge Scheduler).
 
 - `array<Adapter.resolvedResource>` — resolved scheduler resources (ARNs, etc.)
-- `Schedule.schedule` — the schedule definition to create
+- `Reventless.Schedule.schedule` — the schedule definition to create
 */
-type createSchedule = (array<Adapter.resolvedResource>, Schedule.schedule) => promise<unit>
+type createSchedule = (array<Adapter.resolvedResource>, Reventless.Schedule.schedule) => promise<unit>
 
 /**
 Deletes a schedule by name from the underlying scheduling service.

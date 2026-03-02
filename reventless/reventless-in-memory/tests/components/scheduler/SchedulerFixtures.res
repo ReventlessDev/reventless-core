@@ -25,7 +25,7 @@ let scheduler = SchedulerMaker.make()
 // Helper: resolved Adapter.resolvedResource for a named bus topic
 // ─────────────────────────────────────────────────────────────
 
-let makeTopicResource = (name: string): Reventless.Adapter.resolvedResource => {
+let makeTopicResource = (name: string): ReventlessInfra.Adapter.resolvedResource => {
   name,
   id: name,
   urn: name,
@@ -46,7 +46,7 @@ let _ = afterAll(() => {
 // Resolve scheduler operations once for all tests
 // ─────────────────────────────────────────────────────────────
 
-let schedulerOps: ref<option<Reventless.Scheduler.operations>> = ref(None)
+let schedulerOps: ref<option<ReventlessInfra.Scheduler.operations>> = ref(None)
 
 let _ = beforeAllAsync(async () => {
   let ops = await scheduler->ReventlessCore.Component.operations->TestRunner.resolve

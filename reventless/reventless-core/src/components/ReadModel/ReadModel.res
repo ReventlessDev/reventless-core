@@ -1,8 +1,8 @@
 let componentType = ComponentType.ReadModel
 
 type t
-type outputs = Reventless.ReadModel.outputs
-type operations = Reventless.ReadModel.operations
+type outputs = ReventlessInfra.ReadModel.outputs
+type operations = ReventlessInfra.ReadModel.operations
 type component = Component.t<t, outputs, operations>
 
 module type T = {

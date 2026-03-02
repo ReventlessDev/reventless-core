@@ -22,7 +22,7 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageRes
         ->Stream.runForEach(items =>
           Effect.promise(() =>
             items
-            ->Array.map(({Reventless.EventTopic.service, meta, json}) =>
+            ->Array.map(({ReventlessInfra.EventTopic.service, meta, json}) =>
               publishJson(service, meta, json)
             )
             ->Promise.all

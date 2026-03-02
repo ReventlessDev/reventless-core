@@ -1,12 +1,12 @@
 // Platform module type — abstract factory interface for platform-agnostic component assembly.
 //
-// Lives in reventless-spec so application plugin assembly code can depend only on
-// reventless-spec. The concrete implementation in reventless-aws satisfies this type.
+// Lives in reventless-infra so application plugin assembly code can depend on
+// reventless-infra. The concrete implementation in reventless-aws satisfies this type.
 //
 // Usage pattern:
 //
-//   // app/MyPlugin.res — imports reventless-spec, NOT reventless or reventless-aws
-//   module Make = (Platform: Reventless.Platform.T) => {
+//   // app/MyPlugin.res — imports reventless-infra
+//   module Make = (Platform: ReventlessInfra.Platform.T) => {
 //     module MyAggregate = Platform.Aggregate.Make(MySpec, MyBehavior, MyMappings)
 //     module MyReadModel = Platform.ReadModel.Make(MyRmSpec, MyMappings)
 //     // ...
@@ -25,7 +25,7 @@ the composition root, and use its nested `Make` functors everywhere else.
 
 @example
 ```rescript
-// CatalogPlugin.res — depends only on reventless-spec
+// CatalogPlugin.res — depends on reventless-infra
 module Make = (Platform: Platform.T) => {
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
@@ -44,8 +44,8 @@ module type T = {
   /** Factory for event-sourced aggregate components. */
   module Aggregate: {
     module Make: (
-      Spec: Aggregate.Spec,
-      Behavior: Behavior.T with module Spec := Spec,
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: EventMapper.Mappings with module Target := Spec,
     ) => Aggregate.T
   }
@@ -53,8 +53,8 @@ module type T = {
   /** Factory for read model (query-side projection) components. */
   module ReadModel: {
     module Make: (
-      Spec: ReadModel.Spec,
-      Mappings: Projection.Mappings with module Target := Spec,
+      Spec: Reventless.ReadModel.Spec,
+      Mappings: Reventless.Projection.Mappings with module Target := Spec,
     ) => ReadModel.T with module Spec = Spec
   }
 
@@ -84,21 +84,21 @@ module type T = {
 
   /** Factory for DCB write-side state-change slice components. */
   module StateChangeSlice: {
-    module Make: (Spec: StateChangeSlice.Spec) => StateChangeSlice.T
+    module Make: (Spec: Reventless.StateChangeSlice.Spec) => StateChangeSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec
   }
 
   /** Factory for DCB read-side state-view slice components. */
   module StateViewSlice: {
-    module Make: (Spec: StateViewSlice.Spec) => StateViewSlice.T
+    module Make: (Spec: Reventless.StateViewSlice.Spec) => StateViewSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec
   }
 
   /** Factory for DCB event log components. */
   module DcbEventLog: {
-    module Make: (Spec: DcbEventLog.Spec) => DcbEventLog.T
+    module Make: (Spec: Reventless.DcbEventLog.Spec) => DcbEventLog.T
       with module Spec = Spec
   }
 }

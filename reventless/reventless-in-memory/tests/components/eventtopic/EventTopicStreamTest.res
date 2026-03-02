@@ -18,7 +18,7 @@ describe("EventTopic.publishJsonStream", () => {
   testPromise("streams 2 events to all subscribers", async () => {
     let ops = await evtTopic->ReventlessCore.Component.operations->TestRunner.resolve
     let stream = [
-      ({service: "svc", meta: testMeta, json: JSON.parseOrThrow("{\"ev\":1}")}: Reventless.EventTopic.publishJsonStreamItem),
+      ({service: "svc", meta: testMeta, json: JSON.parseOrThrow("{\"ev\":1}")}: ReventlessInfra.EventTopic.publishJsonStreamItem),
       {service: "svc", meta: testMeta, json: JSON.parseOrThrow("{\"ev\":2}")},
     ]->Stream.fromIterable
     let _ = await ops.publishJsonStream(stream)->Effect.runPromise

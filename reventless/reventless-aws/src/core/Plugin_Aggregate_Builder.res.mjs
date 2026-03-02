@@ -2,8 +2,8 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/core/Aggregates/Plugin/PluginSpec.res.mjs";
-import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/core/Aggregates/Plugin/PluginBehavior.res.mjs";
+import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "../components/Aggregate_Builder_Single.res.mjs";
 
 let include = Aggregate_Builder_Single$ReventlessAws.Make({
@@ -18,7 +18,7 @@ let include = Aggregate_Builder_Single$ReventlessAws.Make({
   apply: PluginBehavior$ReventlessCore.apply,
   create: PluginBehavior$ReventlessCore.create,
   execute: PluginBehavior$ReventlessCore.execute
-})(NoEventMappings$Reventless.Make({
+})(NoEventMappings$ReventlessInfra.Make({
   name: PluginSpec$ReventlessCore.name,
   Id: Id$Reventless.$$String,
   commandSchema: PluginSpec$ReventlessCore.commandSchema

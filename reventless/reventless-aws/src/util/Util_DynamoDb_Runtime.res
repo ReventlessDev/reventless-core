@@ -136,7 +136,7 @@ let queryById = (table, id): Stream.t<JSON.t, string, unit> =>
     expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
   })
 
-let keysFromResource: Reventless.Adapter.resource => (string, option<string>) = resource =>
+let keysFromResource: ReventlessInfra.Adapter.resource => (string, option<string>) = resource =>
   switch resource.info->Pulumi.Output.get->String.split(",") {
   | [] =>
     JsError.throwWithMessage("No id field given for table " ++ resource.name->Pulumi.Output.get)

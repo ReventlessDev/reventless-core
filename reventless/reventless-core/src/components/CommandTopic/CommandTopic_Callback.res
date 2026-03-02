@@ -1,5 +1,5 @@
 module type Ops = {
-  module Spec: Reventless.CommandTopic.T
+  module Spec: ReventlessInfra.CommandTopic.T
   let commandsHandler: CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 }
 
@@ -7,13 +7,13 @@ module type T = {
   let handleJsonCommands: CommandTopic.jsonCommandsHandler
 }
 
-module Make = (Spec: Reventless.CommandTopic.T, Ops: Ops with module Spec = Spec): T => {
+module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops with module Spec = Spec): T => {
   let handleJsonCommands: CommandTopic.jsonCommandsHandler = stream =>
     stream
-    ->Stream.mapEffect(({Reventless.CommandTopic.reference: reference, command: json}) =>
+    ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command: json}) =>
       Effect.sync(() =>
         switch json->Message.decodeCommand'(Spec.Id.schema, Spec.commandSchema) {
-        | command' => Some({Reventless.CommandTopic.reference, command: command'})
+        | command' => Some({ReventlessInfra.CommandTopic.reference, command: command'})
         | exception err =>
           let commandStr = json->JSON.stringify
           Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)

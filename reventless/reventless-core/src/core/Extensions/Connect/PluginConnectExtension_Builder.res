@@ -1,12 +1,12 @@
-module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
-module ExtensionMapping = Reventless.ExtensionMapping
+module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
+module ExtensionMapping = ReventlessInfra.ExtensionMapping
 
 module type Spec = {
   let pluginDefinition: Reventless.Plugin.pluginDefinition
   let extensionPointsOutputs: array<ReventlessInterop.ExtensionPoint.resolvedOutputs>
   let extensionsOutputs: array<Extension.outputs>
   let runtimeOps: PluginRuntimeOperations.operations
-  let resourceNaming: Reventless.ResourceNaming.operations
+  let resourceNaming: ReventlessInfra.ResourceNaming.operations
 }
 
 module Make = (Spec: Spec) => {
@@ -176,9 +176,9 @@ module Make = (Spec: Spec) => {
   module ConnectPluginMapping = ExtensionMapping.Make(
     PluginExtensionPointSpec,
     {
-      module Aggregate = Reventless.ExtensionMapping.NoAggregate
+      module Aggregate = ReventlessInfra.ExtensionMapping.NoAggregate
 
-      let mapIncomingEvent: Reventless.ExtensionMapping.mapIncomingEvent<
+      let mapIncomingEvent: ReventlessInfra.ExtensionMapping.mapIncomingEvent<
         PluginExtensionPointSpec.event,
         Aggregate.command,
         PluginExtensionPointSpec.command,

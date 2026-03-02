@@ -1,11 +1,11 @@
-// open Reventless.Adapter
+// open ReventlessInfra.Adapter
 // open ReventlessCore.Counter_Runtime
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
 let addToCounterTarget = async (
-  table: Reventless.Adapter.resource,
-  {Reventless.Counter.counterId: counterId, target, targetRef},
+  table: ReventlessInfra.Adapter.resource,
+  {ReventlessInfra.Counter.counterId: counterId, target, targetRef},
 ) => {
   Console.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
   let tableName = table.name->Pulumi.Output.get
@@ -50,8 +50,8 @@ type referencesView = {
 }
 
 let handleStreamEvent = (
-  ~referencesStream: Reventless.Adapter.resource,
-  ~countsStream: Reventless.Adapter.resource,
+  ~referencesStream: ReventlessInfra.Adapter.resource,
+  ~countsStream: ReventlessInfra.Adapter.resource,
   ~counterHandler: ReventlessCore.Counter_Callback.counterHandler,
   streamEvent: PulumiAws.DynamoDb.Stream.event,
   _,

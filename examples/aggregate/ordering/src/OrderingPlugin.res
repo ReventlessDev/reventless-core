@@ -4,17 +4,17 @@
 
 open Reventless
 
-module Make = (Platform: Platform.T) => {
+module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CustomerAggregate = Platform.Aggregate.Make(
     Customer,
     CustomerBehavior,
-    NoEventMappings.Make(Customer),
+    ReventlessInfra.NoEventMappings.Make(Customer),
   )
 
   module OrderAggregate = Platform.Aggregate.Make(
     Order,
     OrderBehavior,
-    NoEventMappings.Make(Order),
+    ReventlessInfra.NoEventMappings.Make(Order),
   )
 
   module CustomerMappings: Projection.Mappings with module Target := CustomersReadModel = {
@@ -37,7 +37,7 @@ module Make = (Platform: Platform.T) => {
   module CatalogProductAggregate = Platform.Aggregate.Make(
     CatalogProduct,
     CatalogProductBehavior,
-    NoEventMappings.Make(CatalogProduct),
+    ReventlessInfra.NoEventMappings.Make(CatalogProduct),
   )
 
   module AvailableProductsMappings: Projection.Mappings with module Target := AvailableProductsReadModel = {
@@ -58,13 +58,13 @@ module Make = (Platform: Platform.T) => {
   )
 
   // Compile the Orders extension point mapping, then build the EP component
-  module OrdersEPMappingT = ExtensionPointMapping.Make(
+  module OrdersEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
     OrdersExtensionPointSpec,
     OrdersExtensionPointMapping,
   )
   module OrdersEPMappings = {
     module Spec = OrdersExtensionPointSpec
-    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
     let mappings: array<module(Mapping)> = [module(OrdersEPMappingT)]
   }
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(

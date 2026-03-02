@@ -1,0 +1,29 @@
+{
+  "name": "@reventlessdev/reventless-infra",
+  "version": "3.0.0-alpha.0",
+  "description": "Infrastructure types for Reventless framework",
+  "license": "MIT",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps"
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-effect": "*",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.4",
+    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.0",
+    "@reventlessdev/reventless-spec": "^3.0.0-alpha.3",
+    "sury": "^11.0.0-alpha.4",
+    "sury-ppx": "^11.0.0-alpha.2"
+  },
+  "devDependencies": {
+    "rescript": "^12.1.0"
+  },
+  "peerDependencies": {
+    "rescript": "^12.1.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

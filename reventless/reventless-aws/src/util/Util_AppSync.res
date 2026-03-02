@@ -1,4 +1,4 @@
-let toResource: Types.AppSync.resolver => Reventless.Adapter.resource = ({
+let toResource: Types.AppSync.resolver => ReventlessInfra.Adapter.resource = ({
   id,
   arn,
   type_,

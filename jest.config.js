@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
   reporters: ["<rootDir>/jest.reporter.js"],
-projects: [
+  projects: [
     {
       displayName: "reventless-core",
       rootDir: "./reventless/reventless-core",

@@ -19,7 +19,7 @@ let handleQueueEvent = (queue, handleJsonCommands: ReventlessCore.CommandTopic.j
       ->Array.map(record => record.receiptHandle)
       ->Belt.Array.zip(jsons)
       ->Array.map(((reference, command)) => {
-        Reventless.CommandTopic.reference,
+        ReventlessInfra.CommandTopic.reference,
         command,
       })
 

@@ -14,7 +14,7 @@ type t = {
   storage: DcbEventLog_Adapter.storage,
   getEvents: unit => array<DcbEventLog_Adapter.rawSequencedEvent>,
   publishedEvents: ref<array<publishedEvent>>,
-  mockPublishJson: Reventless.EventTopic.publishJson,
+  mockPublishJson: ReventlessInfra.EventTopic.publishJson,
   failNextAppends: ref<int>,
   reset: unit => unit,
 }
@@ -101,7 +101,7 @@ let make = (~name="mock-dcb-log", ~indexes: array<string>=[], ~opts: Pulumi.Cust
     }
   }
 
-  let mockPublishJson: Reventless.EventTopic.publishJson = async (service, meta, json) => {
+  let mockPublishJson: ReventlessInfra.EventTopic.publishJson = async (service, meta, json) => {
     publishedEventsRef := publishedEventsRef.contents->Array.concat([{service, meta, json}])
   }
 

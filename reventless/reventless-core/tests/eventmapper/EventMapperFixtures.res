@@ -155,8 +155,8 @@ module CountOrderMappings: EventMapper.Mappings with module Target = CmdTargetSp
 // ─────────────────────────────────────────────────────────────
 
 let capturedCmds: ref<array<Message.commandJson>> = ref([])
-let capturedCountItems: ref<array<Reventless.Counter.countItem>> = ref([])
-let capturedCounterTargets: ref<array<Reventless.Counter.counterTargetRef>> = ref([])
+let capturedCountItems: ref<array<ReventlessInfra.Counter.countItem>> = ref([])
+let capturedCounterTargets: ref<array<ReventlessInfra.Counter.counterTargetRef>> = ref([])
 
 let mockQueryEngine: Reventless.QueryEngine.operations = {
   scan: async (~readModelName as _, ~filterConfigs as _, ~limit as _) => [],
@@ -202,14 +202,14 @@ module MockECOps: EventMapper_Callback.EventCollectorOps = {
   let publishJsons: CommandTopic.publishJsons = async cmds => {
     capturedCmds := capturedCmds.contents->Array.concat(cmds)
   }
-  let count: Reventless.Counter.count = async items => {
+  let count: ReventlessInfra.Counter.count = async items => {
     mockCountCallCount := mockCountCallCount.contents + 1
     capturedCountItems := capturedCountItems.contents->Array.concat(items)
     if mockCountCallCount.contents <= mockCountFailUntil.contents {
       JsError.throwWithMessage("count failed")
     }
   }
-  let addToCounterTarget: Reventless.Counter.addToCounterTarget = async target => {
+  let addToCounterTarget: ReventlessInfra.Counter.addToCounterTarget = async target => {
     capturedCounterTargets := capturedCounterTargets.contents->Array.concat([target])
   }
   let commonEventsHandler = async eventsJson' => {

@@ -80,7 +80,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
   let handleCommands = (dcbEventLog, stream) => {
     Logger.debug(~loc=__LOC__, "starting", "StateChangeSlice.handleCommands")
     stream
-    ->Stream.mapEffect(({Reventless.CommandTopic.reference: reference, command}) =>
+    ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
       Effect.promise(async () => {
         switch await handleSingleCommand(dcbEventLog, command) {
         | Ok(_) => Ok(reference)

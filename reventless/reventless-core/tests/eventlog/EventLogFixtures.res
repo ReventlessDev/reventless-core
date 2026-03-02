@@ -70,7 +70,7 @@ module MockEventTopic: EventTopic.T
   type operations = {
     publish: publish,
     publishJson: EventTopic.publishJson,
-    publishJsonStream: Reventless.EventTopic.publishJsonStream,
+    publishJsonStream: ReventlessInfra.EventTopic.publishJsonStream,
   }
   type component = Component.t<EventTopic.t, EventTopic.outputs, operations>
   let make = (~name as _, ~storageResources as _, ~opts as _=?): component => Obj.magic(0)

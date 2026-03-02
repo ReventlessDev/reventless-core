@@ -18,7 +18,7 @@ module DateCalc = {
   }
 }
 
-let forChannel = (~name, ~channelId, ~resourceNaming: Reventless.ResourceNaming.operations) =>
+let forChannel = (~name, ~channelId, ~resourceNaming: ReventlessInfra.ResourceNaming.operations) =>
   name->resourceNaming.validateName ++ ("-" ++ channelId->String.split("-")->Array.getUnsafe(1))
 
 let minutesFromNow = minutes => {
@@ -65,7 +65,7 @@ exception ScheduleNotDeleted(string)
 let create = (
   ~scheduler: Scheduler.operations,
   ~channelResources,
-  ~resourceNaming: Reventless.ResourceNaming.operations,
+  ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
 ) =>
   async schedule => {
     let name = schedule.name->resourceNaming.validateName
@@ -83,7 +83,7 @@ let create = (
 let delete = (
   ~scheduler: Scheduler.operations,
   ~channelResources,
-  ~resourceNaming: Reventless.ResourceNaming.operations,
+  ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
 ) =>
   async name => {
     let name = name->resourceNaming.validateName

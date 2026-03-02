@@ -1,6 +1,6 @@
 let componentType = ComponentType.EventLog
 
-type outputs = Reventless.EventLog.outputs
+type outputs = ReventlessInfra.EventLog.outputs
 
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
@@ -13,7 +13,7 @@ type replayStream<'id, 'event> = 'id => Stream.t<'event, string, unit>
 type appendStream<'id, 'event> = (int, 'id, Stream.t<'event, string, unit>) => Effect.t<unit, string, unit>
 
 module type T = {
-  module Spec: Reventless.EventLog.T
+  module Spec: ReventlessInfra.EventLog.T
 
   type operations = {
     append: append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,

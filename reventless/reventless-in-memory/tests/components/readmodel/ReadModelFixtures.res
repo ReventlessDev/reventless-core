@@ -65,15 +65,15 @@ module ItemMappings: Mappings with module Target := ItemReadModelSpec = {
 // ─────────────────────────────────────────────────────────────
 
 let topicName = "TestItemEventTopic"
-let topicResource: Adapter.resource = {
+let topicResource: ReventlessInfra.Adapter.resource = {
   name: topicName->Pulumi.Output.make,
   id: topicName->Pulumi.Output.make,
   urn: topicName->Pulumi.Output.make,
   info: ""->Pulumi.Output.make,
   service: "InMemory"->Pulumi.Output.make,
 }
-let allEventTopics: EventTopic.allOutputs = Dict.fromArray([
-  (topicName, {EventTopic.resources: [topicResource]}),
+let allEventTopics: ReventlessInfra.EventTopic.allOutputs = Dict.fromArray([
+  (topicName, {ReventlessInfra.EventTopic.resources: [topicResource]}),
 ])
 
 // ─────────────────────────────────────────────────────────────

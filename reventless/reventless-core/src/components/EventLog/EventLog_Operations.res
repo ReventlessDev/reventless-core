@@ -1,12 +1,12 @@
 module type Ops = {
-  module Spec: Reventless.EventLog.T
+  module Spec: ReventlessInfra.EventLog.T
   module EventTopic: EventTopic.T with module Spec.Id = Spec.Id and type Spec.event = Spec.event
   let eventTopic: EventTopic.operations
   let storage: EventLog_Adapter.operations
 }
 
 module type T = {
-  module Spec: Reventless.EventLog.T
+  module Spec: ReventlessInfra.EventLog.T
   let append: EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
   let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>
@@ -29,7 +29,7 @@ let storageRetrySchedule: Schedule.t<(Duration.t, int), string, unit> =
   ->Schedule.intersect(Schedule.recurs(5))
   ->Schedule.whileInput(isTransient)
 
-module Make = (Spec: Reventless.EventLog.T, Ops: Ops with module Spec = Spec): (
+module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spec): (
   T with module Spec = Spec
 ) => {
   module Spec = Spec

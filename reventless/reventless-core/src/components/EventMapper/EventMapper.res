@@ -2,7 +2,7 @@ module ReventlessEventCollector = EventCollector
 
 let componentType = ComponentType.EventMapper
 
-type outputs = Reventless.EventMapper.outputs
+type outputs = ReventlessInfra.EventMapper.outputs
 
 type t
 type component = Component.t<t, outputs, unit>
@@ -13,7 +13,7 @@ module type T = {
     ~allEventTopics: EventTopic.allOutputs,
     ~queryEngine: Reventless.QueryEngine.operations,
     ~publishJsons: CommandTopic.publishJsons,
-    ~resources: array<Reventless.Adapter.resource>,
+    ~resources: array<ReventlessInfra.Adapter.resource>,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.options=?,

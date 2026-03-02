@@ -59,15 +59,15 @@ module ForwardMapping = {
     _id: string,
     cmd: TestEPSpec.command,
     _meta: Reventless.Message.meta,
-  ): array<Reventless.ExtensionPointMapping.commandAction<TargetAggSpec.command, TestEPSpec.directive>> =>
+  ): array<ReventlessInfra.ExtensionPointMapping.commandAction<TargetAggSpec.command, TestEPSpec.directive>> =>
     switch cmd {
     | Forward({targetId}) =>
       let execCmd = TargetAggSpec.Execute({targetId: targetId})
-      [Reventless.ExtensionPointMapping.PublishCommand(targetId, execCmd)]
+      [ReventlessInfra.ExtensionPointMapping.PublishCommand(targetId, execCmd)]
     }
 
   let mapOutgoingEvent: option<
-    Reventless.ExtensionPointMapping.mapOutgoingEvent<
+    ReventlessInfra.ExtensionPointMapping.mapOutgoingEvent<
       TargetAggSpec.event,
       TestEPSpec.event,
       TestEPSpec.directive,
@@ -79,7 +79,7 @@ module ForwardMapping = {
 // Pre-compiled mapping (Spec + Impl → T)
 // ─────────────────────────────────────────────────────────────
 
-module TestEPMapping1 = Reventless.ExtensionPointMapping.Make(TestEPSpec, ForwardMapping)
+module TestEPMapping1 = ReventlessInfra.ExtensionPointMapping.Make(TestEPSpec, ForwardMapping)
 
 // ─────────────────────────────────────────────────────────────
 // Mappings collection satisfying ExtensionPoint.Mappings
@@ -87,7 +87,7 @@ module TestEPMapping1 = Reventless.ExtensionPointMapping.Make(TestEPSpec, Forwar
 
 module TestEPMappings = {
   module Spec = TestEPSpec
-  module type Mapping = Reventless.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
   let mappings: array<module(Mapping)> = [module(TestEPMapping1)]
 }
 
@@ -108,7 +108,7 @@ let capturedCmds: ref<array<Reventless.Message.commandJson>> = ref([])
 // Mock infrastructure
 // ─────────────────────────────────────────────────────────────
 
-let mockPublishFn: Reventless.CommandTopic.publishJsons = async cmds => {
+let mockPublishFn: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
   capturedCmds := capturedCmds.contents->Array.concat(cmds)
 }
 

@@ -24,6 +24,7 @@
     "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.4",
     "@reventlessdev/rescript-uuid": "^1.1.0-alpha.0",
     "@reventlessdev/reventless-core": "^3.0.0-alpha.7",
+    "@reventlessdev/reventless-infra": "^3.0.0-alpha.0",
     "@reventlessdev/reventless-spec": "^3.0.0-alpha.3"
   },
   "devDependencies": {

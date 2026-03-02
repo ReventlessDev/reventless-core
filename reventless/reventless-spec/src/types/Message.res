@@ -151,9 +151,6 @@ let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(sc
 /** Raised by adapters when an incoming event JSON cannot be matched to a known event variant. */
 exception InvalidEvent(JSON.t)
 
-/** Generates a new UUID v4 string. */
-@module("uuid") @val
-external uuid: unit => string = "v4"
 
 let toEventSchema' = (idSchema, eventSchema) =>
   S.object(s => {

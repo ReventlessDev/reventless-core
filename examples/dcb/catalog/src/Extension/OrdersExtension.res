@@ -2,7 +2,7 @@
 // Routes ItemOrdered / ItemOrderCancelled events to RecordProductDemand commands.
 
 open Reventless
-open Reventless.ExtensionMapping
+open ReventlessInfra.ExtensionMapping
 
 module Spec = OrdersExtensionPointSpec
 

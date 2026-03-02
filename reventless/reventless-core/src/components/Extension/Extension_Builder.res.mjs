@@ -5,8 +5,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Extension$ReventlessCore from "./Extension.res.mjs";
-import * as ExtensionMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Extension_Operations$ReventlessCore from "./Extension_Operations.res.mjs";
 
 function Make(Spec) {
@@ -28,7 +28,7 @@ function Make(Spec) {
       Component$ReventlessCore.setOperations(extra, Pulumi.output(operations));
       let extOutputs_extensionPointName = Spec.name;
       let extOutputs_aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => {
-        if (Mapping.aggregateName === ExtensionMapping$Reventless.NoAggregate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
+        if (Mapping.aggregateName === ExtensionMapping$ReventlessInfra.NoAggregate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
           return;
         } else {
           return Mapping.aggregateName;

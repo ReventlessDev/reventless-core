@@ -5,7 +5,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
 import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
-import * as ExtensionPointMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionPointMapping.res.mjs";
+import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "../../../src/components/ExtensionPoint_Builder.res.mjs";
 
 S.enableJson();
@@ -71,7 +71,7 @@ let ForwardMapping = {
   mapOutgoingEvent: undefined
 };
 
-let TestEPMapping1 = ExtensionPointMapping$Reventless.Make(TestEPSpec)({
+let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make(TestEPSpec)({
   Aggregate: {
     Id: {
       schema: Id$Reventless.StringPure.schema,

@@ -9,7 +9,7 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
   ~api: api,
   ~fields,
   ~runtime,
-  ~resources: array<Reventless.Adapter.resource>,
+  ~resources: array<ReventlessInfra.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions

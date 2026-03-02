@@ -55,7 +55,7 @@ describe("MakeCounterHandler.handleCounterEvents:", () => {
 describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
   describe("Count action", () => {
     testPromise("calls count with the countItem", async () => {
-      let countItem: Reventless.Counter.countItem = {
+      let countItem: ReventlessInfra.Counter.countItem = {
         counterId: "c1",
         reference: "ref-1",
         inc: 1,
@@ -69,7 +69,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
 
   describe("AddToCounterTarget action", () => {
     testPromise("calls addToCounterTarget with the counterTargetRef", async () => {
-      let target: Reventless.Counter.counterTargetRef = {
+      let target: ReventlessInfra.Counter.counterTargetRef = {
         counterId: "c1",
         target: 5,
         targetRef: "ref-1",
@@ -96,7 +96,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
 
   describe("mixed actions", () => {
     testPromise("both publish and count called", async () => {
-      let countItem: Reventless.Counter.countItem = {
+      let countItem: ReventlessInfra.Counter.countItem = {
         counterId: "c1",
         reference: "ref-1",
         inc: 2,
@@ -118,7 +118,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
 
   describe("doCount retry", () => {
     testPromise("retries when count throws, eventually succeeds", async () => {
-      let countItem: Reventless.Counter.countItem = {
+      let countItem: ReventlessInfra.Counter.countItem = {
         counterId: "c1",
         reference: "ref-1",
         inc: 1,

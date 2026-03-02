@@ -33,12 +33,12 @@ let mockQueryEngine: Reventless.QueryEngine.operations = {
   ) => [],
 }
 
-let mockScheduler: Reventless.Scheduler.operations = {
+let mockScheduler: ReventlessInfra.Scheduler.operations = {
   createSchedule: async (_, _) => (),
   deleteSchedule: async (_, _) => (),
 }
 
-let mockResourceNaming: Reventless.ResourceNaming.operations = {
+let mockResourceNaming: ReventlessInfra.ResourceNaming.operations = {
   validateName: n => n,
   urnName: n => n,
 }

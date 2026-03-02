@@ -27,7 +27,7 @@ module NoBucketsSpec = {
 
   let setup = (
     _queryEngine: Reventless.QueryEngine.operations,
-    _queryBucketName: Reventless.Task.queryBucketName,
+    _queryBucketName: ReventlessInfra.Task.queryBucketName,
     _opts: Pulumi.ComponentResource.options,
   ): Reventless.Task.config => {}
 }
@@ -43,7 +43,7 @@ module OneBucketSpec = {
 
   let setup = (
     _queryEngine: Reventless.QueryEngine.operations,
-    _queryBucketName: Reventless.Task.queryBucketName,
+    _queryBucketName: ReventlessInfra.Task.queryBucketName,
     _opts: Pulumi.ComponentResource.options,
   ): Reventless.Task.config => {
     buckets: [
@@ -64,9 +64,9 @@ module OneBucketSpec = {
 // Mock infrastructure (shared across tests)
 // ─────────────────────────────────────────────────────────────
 
-let mockPublishToAggregates: dict<Reventless.CommandTopic.publishJsons> = Dict.make()
+let mockPublishToAggregates: dict<ReventlessInfra.CommandTopic.publishJsons> = Dict.make()
 
-let mockQueryBucketName: Reventless.Task.queryBucketName = (~taskName as _, ~bucketName as _=?) =>
+let mockQueryBucketName: ReventlessInfra.Task.queryBucketName = (~taskName as _, ~bucketName as _=?) =>
   "in-memory-bucket"
 
 // ─────────────────────────────────────────────────────────────

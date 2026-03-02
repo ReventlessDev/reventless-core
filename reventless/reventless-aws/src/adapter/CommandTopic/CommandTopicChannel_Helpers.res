@@ -56,7 +56,7 @@ let createLambdaPolicy = (
   lambdaRole: PulumiAws.IAM.Role.t,
   name: string,
   queue: PulumiAws.SQS.Queue.t,
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   opts: Pulumi.CustomResourceOptions.t,
 ) => {
   let _ =

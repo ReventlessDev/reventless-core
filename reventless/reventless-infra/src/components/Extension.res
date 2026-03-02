@@ -32,7 +32,7 @@ module type T = {
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: dict<array<string>>,
     ~publishToReadModels: dict<EventCollector.enqueueEvent>,
-    ~queryEngine: QueryEngine.operations,
+    ~queryEngine: Reventless.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
   let outputs: component => outputs

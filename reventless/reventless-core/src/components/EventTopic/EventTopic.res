@@ -1,30 +1,30 @@
 let componentType = ComponentType.EventTopic
 
-type outputs = Reventless.EventTopic.outputs
-type allOutputs = Reventless.EventTopic.allOutputs
+type outputs = ReventlessInfra.EventTopic.outputs
+type allOutputs = ReventlessInfra.EventTopic.allOutputs
 
 type t
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => promise<unit>
-type publishJson = Reventless.EventTopic.publishJson
-type publishJsonStream = Reventless.EventTopic.publishJsonStream
+type publishJson = ReventlessInfra.EventTopic.publishJson
+type publishJsonStream = ReventlessInfra.EventTopic.publishJsonStream
 
 exception NotPublishedToPublisher(exn)
 
 module type T = {
-  module Spec: Reventless.EventTopic.T
+  module Spec: ReventlessInfra.EventTopic.T
 
   type publish = publish<Spec.Id.t, Spec.event>
   type operations = {
     publish: publish,
     publishJson: publishJson,
-    publishJsonStream: Reventless.EventTopic.publishJsonStream,
+    publishJsonStream: ReventlessInfra.EventTopic.publishJsonStream,
   }
   type component = Component.t<t, outputs, operations>
 
   let make: (
     ~name: string,
-    ~storageResources: array<Reventless.Adapter.resource>,
+    ~storageResources: array<ReventlessInfra.Adapter.resource>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

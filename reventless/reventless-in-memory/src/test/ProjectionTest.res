@@ -113,7 +113,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
     | ([_], Overwrite) =>
       store->setStates(id, [state])
       Ok()->Promise.resolve
-    | _ => Error(Reventless.QueryDb.StaleState)->Promise.resolve
+    | _ => Error(ReventlessInfra.QueryDb.StaleState)->Promise.resolve
     }
   let saveBatch = (store, batch) => {
     batch->Array.forEach(((id, state, _ttl)) => store->addState(id, state))

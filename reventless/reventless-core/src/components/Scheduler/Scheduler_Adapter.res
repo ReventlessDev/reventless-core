@@ -1,5 +1,5 @@
 type scheduledPublisher = {
-  resource: Reventless.Adapter.resource,
+  resource: ReventlessInfra.Adapter.resource,
   operations: Pulumi.Output.t<Scheduler.operations>,
 }
 

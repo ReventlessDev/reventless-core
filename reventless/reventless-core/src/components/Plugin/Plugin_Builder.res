@@ -1,10 +1,10 @@
 open Plugin_Helpers
 
-module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
+module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
-  let resourceNaming: Reventless.ResourceNaming.operations
+  let resourceNaming: ReventlessInfra.ResourceNaming.operations
   let environment: string
 }
 
@@ -33,11 +33,11 @@ module Make = (
   let construct = (
     ~version: string,
     ~heartbeatInterval: int,
-    ~extensionPoints: array<module(Reventless.ExtensionPoint.T)>,
-    ~extensions: array<module(Reventless.Extension.T)>,
-    ~aggregates: array<module(Reventless.Aggregate.T with type api = api)>,
-    ~readModels: array<module(Reventless.ReadModel.T with type api = api and type role = role)>,
-    ~tasks: array<module(Reventless.Task.T)>,
+    ~extensionPoints: array<module(ReventlessInfra.ExtensionPoint.T)>,
+    ~extensions: array<module(ReventlessInfra.Extension.T)>,
+    ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>,
+    ~tasks: array<module(ReventlessInfra.Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~dcbSpec: option<module(Plugin.DcbSpec)>,
     ~api: api,
@@ -213,7 +213,7 @@ module Make = (
         let collectAggregateNames = ex =>
           ex
           ->Set.fromArray
-          ->Set.remove(Reventless.ExtensionMapping.NoAggregate.name)
+          ->Set.remove(ReventlessInfra.ExtensionMapping.NoAggregate.name)
 
         let extensionPointAggregateNames =
           extensionPointsOutputs
@@ -374,8 +374,8 @@ module Make = (
     ~heartbeatInterval,
     ~extensionPoints=[],
     ~extensions=[],
-    ~aggregates: array<module(Reventless.Aggregate.T with type api = api)>=[],
-    ~readModels: array<module(Reventless.ReadModel.T with type api = api and type role = role)>=[],
+    ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=[],
+    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=[],
     ~tasks=[],
     ~api: api,
     ~apiRole: role,

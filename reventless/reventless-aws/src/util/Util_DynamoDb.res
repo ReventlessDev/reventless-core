@@ -1,5 +1,5 @@
 open PulumiAws.DynamoDb.Table
-open Reventless.Adapter
+open ReventlessInfra.Adapter
 
 let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
@@ -18,7 +18,7 @@ let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   })
 
 let toResource: table => resource = ({id, name, arn} as table) => {
-  Reventless.Adapter.service: name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
+  ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
   name,
   id,
   urn: arn,

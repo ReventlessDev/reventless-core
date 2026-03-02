@@ -126,7 +126,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ->Util.DynamoDb.findResourceInOutput
       ->ReventlessCore.Adapter.outputToResource
 
-    let generateTemplate = (~storageResource: Reventless.Adapter.resource, ~template) =>
+    let generateTemplate = (~storageResource: ReventlessInfra.Adapter.resource, ~template) =>
       storageResource.name
       ->Pulumi.Output.apply(realTableName => template(realTableName))
       ->Pulumi.Output.asInput

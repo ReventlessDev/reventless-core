@@ -1,7 +1,7 @@
 // Catalog's extension subscribing to Ordering's OrdersExtensionPoint.
 // Routes ItemOrdered / ItemOrderCancelled events to ProductDemand commands.
 
-open Reventless.ExtensionMapping
+open ReventlessInfra.ExtensionMapping
 
 module Spec = OrdersExtensionPointSpec
 

@@ -49,8 +49,8 @@ module Make = (
         )
         let counterComp: Component.t<
           _,
-          Reventless.Counter.outputs,
-          Reventless.Counter.operations,
+          ReventlessInfra.Counter.outputs,
+          ReventlessInfra.Counter.operations,
         > = counter->Obj.magic
         (counterComp->Component.operations, counterComp->Component.outputs->Some)
       },

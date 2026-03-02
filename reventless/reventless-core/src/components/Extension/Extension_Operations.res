@@ -1,8 +1,8 @@
-module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
-module ExtensionMapping = Reventless.ExtensionMapping
+module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
+module ExtensionMapping = ReventlessInfra.ExtensionMapping
 
 module type Mappings = {
-  module Spec: Reventless.ExtensionMapping.Spec
+  module Spec: ReventlessInfra.ExtensionMapping.Spec
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
   let name: string
   let mappings: array<module(Mapping)>
@@ -22,7 +22,7 @@ module type T = {
 }
 
 module Make = (
-  MappingSpec: Reventless.ExtensionMapping.Spec,
+  MappingSpec: ReventlessInfra.ExtensionMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
   Ops: Ops,
 ): T => {

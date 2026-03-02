@@ -9,9 +9,6 @@
     "clean": "rescript clean"
   },
   "dependencies": {
-    "@reventlessdev/rescript-effect": "*",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.4",
-    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.0",
     "jsonschema2graphql": "1.1.1",
     "sury": "^11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"

@@ -1,6 +1,6 @@
 let componentType = ComponentType.Extension
 
-type outputs = Reventless.Extension.outputs
+type outputs = ReventlessInfra.Extension.outputs
 type t
 
 type jsonEventsHandler = (JSON.t, Reventless.Plugin.pluginDefinition) => promise<unit>
@@ -23,8 +23,8 @@ module type T = {
 }
 
 module type Mappings = {
-  module Spec: Reventless.ExtensionMapping.Spec
-  module type Mapping = Reventless.ExtensionMapping.T with module ExtensionPoint := Spec
+  module Spec: ReventlessInfra.ExtensionMapping.Spec
+  module type Mapping = ReventlessInfra.ExtensionMapping.T with module ExtensionPoint := Spec
   let name: string
   let mappings: array<module(Mapping)>
 }

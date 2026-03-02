@@ -36,7 +36,7 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
 
   {
     resource: {
-      Reventless.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
+      ReventlessInfra.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
       name: ""->Pulumi.Output.make,
       id: ""->Pulumi.Output.make,
       urn: ""->Pulumi.Output.make,
@@ -47,6 +47,6 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
         role,
       ),
       deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
-    }: Reventless.Scheduler.operations)->Pulumi.Output.make,
+    }: ReventlessInfra.Scheduler.operations)->Pulumi.Output.make,
   }
 }

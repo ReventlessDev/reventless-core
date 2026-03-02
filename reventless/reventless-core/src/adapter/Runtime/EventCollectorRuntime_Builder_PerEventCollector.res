@@ -15,7 +15,7 @@ module Make = (
   let forEventCollector = (
     ~handler,
     ~eventTopics: EventTopic.allOutputs,
-    ~resources: array<Reventless.Adapter.resource>,
+    ~resources: array<ReventlessInfra.Adapter.resource>,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector,

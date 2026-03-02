@@ -1,7 +1,7 @@
-// Re-export from spec so ReventlessCore.CommandTopic.topicItem === Reventless.CommandTopic.topicItem
-type topicItem<'command> = Reventless.CommandTopic.topicItem<'command>
+// Re-export from spec so ReventlessCore.CommandTopic.topicItem === ReventlessInfra.CommandTopic.topicItem
+type topicItem<'command> = ReventlessInfra.CommandTopic.topicItem<'command>
 
-type jsonCommandsHandler = Reventless.CommandTopic.commandsHandler<JSON.t>
+type jsonCommandsHandler = ReventlessInfra.CommandTopic.commandsHandler<JSON.t>
 
 // Convenience helper for test code that needs to call a stream handler with an array
 // (for use in packages that don't have rescript-effect as a direct dependency)

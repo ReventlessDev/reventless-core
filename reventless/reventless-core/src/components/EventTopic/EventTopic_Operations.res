@@ -2,7 +2,7 @@ module type Ops = {
   let publishJson: EventTopic.publishJson
 }
 
-module Make = (Spec: Reventless.EventTopic.T, Ops: Ops) => {
+module Make = (Spec: ReventlessInfra.EventTopic.T, Ops: Ops) => {
   let publish = async events' => {
     let eventCount = events'->Array.length
     await events'

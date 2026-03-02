@@ -175,7 +175,7 @@ module Make = (
       Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
     >,
     ~eventTopics: EventTopic.allOutputs,
-    ~resources: array<Reventless.Adapter.resource>,
+    ~resources: array<ReventlessInfra.Adapter.resource>,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector: EventCollector.component,

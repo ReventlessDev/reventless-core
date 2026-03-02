@@ -1,8 +1,8 @@
 let componentType = ComponentType.QueryDb
 
-type outputs = Reventless.QueryDb.outputs
-type allOutputs = Reventless.QueryDb.allOutputs
-type resolversResourcesMaker = Reventless.QueryDb.resolversResourcesMaker
+type outputs = ReventlessInfra.QueryDb.outputs
+type allOutputs = ReventlessInfra.QueryDb.allOutputs
+type resolversResourcesMaker = ReventlessInfra.QueryDb.resolversResourcesMaker
 
 type t
 
@@ -11,24 +11,24 @@ type saveMode =
   | Overwrite
   | Any
 
-type load<'id, 'state> = 'id => promise<result<array<'state>, Reventless.QueryDb.storageError>>
-type loadStream<'id, 'state> = 'id => Stream.t<'state, Reventless.QueryDb.storageError, unit>
+type load<'id, 'state> = 'id => promise<result<array<'state>, ReventlessInfra.QueryDb.storageError>>
+type loadStream<'id, 'state> = 'id => Stream.t<'state, ReventlessInfra.QueryDb.storageError, unit>
 type save<'id, 'state> = (
   'id,
   'state,
   saveMode,
   option<int>,
-) => promise<result<unit, Reventless.QueryDb.storageError>>
+) => promise<result<unit, ReventlessInfra.QueryDb.storageError>>
 type saveBatch<'id, 'state> = array<('id, 'state, option<int>)> => promise<
-  result<unit, Reventless.QueryDb.storageError>,
+  result<unit, ReventlessInfra.QueryDb.storageError>,
 >
-type count<'id> = ('id, string, int) => promise<result<int, Reventless.QueryDb.storageError>>
+type count<'id> = ('id, string, int) => promise<result<int, ReventlessInfra.QueryDb.storageError>>
 type delete<'id> = (
   'id,
   option<(string, string)>,
-) => promise<result<unit, Reventless.QueryDb.storageError>>
+) => promise<result<unit, ReventlessInfra.QueryDb.storageError>>
 type deleteBatch<'id> = array<('id, option<(string, string)>)> => promise<
-  result<unit, Reventless.QueryDb.storageError>,
+  result<unit, ReventlessInfra.QueryDb.storageError>,
 >
 
 type operations<'id, 'state> = {
@@ -62,7 +62,7 @@ let allResolversMakers = allQueryDbs =>
   ->Dict.valuesToArray
   ->Array.map((queryDb: outputs) => queryDb.resolversMaker)
 
-let storageErrorToString: Reventless.QueryDb.storageError => string = err =>
+let storageErrorToString: ReventlessInfra.QueryDb.storageError => string = err =>
   switch err {
   | NotSavedToStorage(s) => `NotSavedToStorage(${s})`
   | NotLoadedFromStorage(s) => `NotLoadedFromStorage(${s})`

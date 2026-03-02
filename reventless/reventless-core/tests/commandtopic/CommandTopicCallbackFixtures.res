@@ -4,7 +4,7 @@ S.enableJson()
 // Command spec for CommandTopic_Callback tests
 // ─────────────────────────────────────────────────────────────
 
-// Not annotated with `: Reventless.CommandTopic.T` — keeps Id.t transparent (= string)
+// Not annotated with `: ReventlessInfra.CommandTopic.T` — keeps Id.t transparent (= string)
 // so string literals can be used as IDs and as `reference` field without coercion.
 module TestSpec = {
   module Id = Reventless.Id.StringPure
@@ -44,7 +44,7 @@ module TestOps: CommandTopic_Callback.Ops with module Spec = TestSpec = {
       }
       capturedItems :=
         capturedItems.contents->Array.concat(
-          items->Array.map((item: Reventless.CommandTopic.topicItem<
+          items->Array.map((item: ReventlessInfra.CommandTopic.topicItem<
             Message.command'<TestSpec.Id.t, TestSpec.command>,
           >) => {
             reference: item.reference,

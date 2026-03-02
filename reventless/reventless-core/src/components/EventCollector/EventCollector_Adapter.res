@@ -1,6 +1,6 @@
 type channel<'callbackEvent, 'context, 'channelParts> = {
   parts: 'channelParts,
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   enqueueEvent: Pulumi.Output.t<EventCollector.enqueueEvent>,
   handleChannelEvent: EventCollector.jsonEventsHandler => Pulumi.Output.t<
     Runtime.eventHandler<'callbackEvent, 'context, unit>,
@@ -10,7 +10,7 @@ type channel<'callbackEvent, 'context, 'channelParts> = {
 type channelSpec<'callbackEvent, 'context, 'channelParts> = {
   channel: channel<'callbackEvent, 'context, 'channelParts>,
   eventTopics: EventTopic.allOutputs,
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
 }
 
 type connect<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
@@ -18,7 +18,7 @@ type connect<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~channelSpecs: array<channelSpec<'callbackEvent, 'context, 'channelParts>>,
   ~runtime: Runtime.environment<'runtimeParts>,
   ~opts: Pulumi.ComponentResource.options,
-) => array<Reventless.Adapter.resource>
+) => array<ReventlessInfra.Adapter.resource>
 
 type channelMaker<'callbackEvent, 'context, 'channelParts> = (
   ~name: string,

@@ -2,14 +2,14 @@ type rec connect<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
   ~channel: channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
   ~runtime: Runtime.environment<'runtimeParts>,
-  ~resources: array<Reventless.Adapter.resource>,
+  ~resources: array<ReventlessInfra.Adapter.resource>,
   ~opts: Pulumi.ComponentResource.options,
-) => array<Reventless.Adapter.resource>
+) => array<ReventlessInfra.Adapter.resource>
 and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {
   parts: 'channelParts,
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
-  publishJsonsStream: Pulumi.Output.t<Reventless.CommandTopic.publishJsonsStream>,
+  publishJsonsStream: Pulumi.Output.t<ReventlessInfra.CommandTopic.publishJsonsStream>,
   handleChannelEvent: CommandTopic.jsonCommandsHandler => Pulumi.Output.t<
     Runtime.eventHandler<'callbackEvent, 'context, unit>,
   >,

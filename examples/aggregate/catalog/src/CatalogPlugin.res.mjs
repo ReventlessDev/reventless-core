@@ -2,8 +2,8 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
-import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
-import * as ExtensionPointMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionPointMapping.res.mjs";
+import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as Product$ReventlessdevExampleAggregateCatalog from "./Aggregate/Product.res.mjs";
 import * as Category$ReventlessdevExampleAggregateCatalog from "./Aggregate/Category.res.mjs";
 import * as ProductDemand$ReventlessdevExampleAggregateCatalog from "./Aggregate/ProductDemand.res.mjs";
@@ -34,7 +34,7 @@ function Make(Platform) {
     apply: ProductBehavior$ReventlessdevExampleAggregateCatalog.apply,
     create: ProductBehavior$ReventlessdevExampleAggregateCatalog.create,
     execute: ProductBehavior$ReventlessdevExampleAggregateCatalog.execute
-  })(NoEventMappings$Reventless.Make({
+  })(NoEventMappings$ReventlessInfra.Make({
     name: Product$ReventlessdevExampleAggregateCatalog.name,
     Id: Id$Reventless.$$String,
     commandSchema: Product$ReventlessdevExampleAggregateCatalog.commandSchema
@@ -51,7 +51,7 @@ function Make(Platform) {
     apply: CategoryBehavior$ReventlessdevExampleAggregateCatalog.apply,
     create: CategoryBehavior$ReventlessdevExampleAggregateCatalog.create,
     execute: CategoryBehavior$ReventlessdevExampleAggregateCatalog.execute
-  })(NoEventMappings$Reventless.Make({
+  })(NoEventMappings$ReventlessInfra.Make({
     name: Category$ReventlessdevExampleAggregateCatalog.name,
     Id: Id$Reventless.$$String,
     commandSchema: Category$ReventlessdevExampleAggregateCatalog.commandSchema
@@ -100,7 +100,7 @@ function Make(Platform) {
     apply: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.apply,
     create: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.create,
     execute: ProductDemandBehavior$ReventlessdevExampleAggregateCatalog.execute
-  })(NoEventMappings$Reventless.Make({
+  })(NoEventMappings$ReventlessInfra.Make({
     name: ProductDemand$ReventlessdevExampleAggregateCatalog.name,
     Id: Id$Reventless.$$String,
     commandSchema: ProductDemand$ReventlessdevExampleAggregateCatalog.commandSchema
@@ -121,7 +121,7 @@ function Make(Platform) {
     config: ProductDemandReadModel$ReventlessdevExampleAggregateCatalog.config,
     subIdConfig: undefined
   })(ProductDemandMappings);
-  let ProductsEPMappingT = ExtensionPointMapping$Reventless.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
+  let ProductsEPMappingT = ExtensionPointMapping$ReventlessInfra.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
     Aggregate: {
       Id: Id$Reventless.$$String,
       name: Product$ReventlessdevExampleAggregateCatalog.name,

@@ -5,7 +5,7 @@ type operations = {
   appendStream: EventLog.appendStream<string, JSON.t>,
 }
 type storage = {
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   operations: Pulumi.Output.t<operations>,
 }
 type storageMaker = (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage

@@ -73,7 +73,7 @@ module CGMaker = ReventlessCore.CommandGenerator_Builder.Make(
 
 let capturedCmds: ref<array<Reventless.Message.commandJson>> = ref([])
 
-let mockPublish: Reventless.CommandTopic.publishJsons = async cmds => {
+let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
   capturedCmds := capturedCmds.contents->Array.concat(cmds)
 }
 

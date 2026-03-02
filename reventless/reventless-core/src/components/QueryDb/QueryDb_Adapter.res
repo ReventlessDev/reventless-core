@@ -3,7 +3,7 @@ open Reventless.ReadModel
 type operations = QueryDb.operations<string, JSON.t>
 
 type storage = {
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   dataSourceName: Pulumi.Output.t<string>, // TODO create in API
   operations: Pulumi.Output.t<operations>,
 }
@@ -33,7 +33,7 @@ module type QueryEngineAdapter = {
 }
 
 type resolvers = {
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   resourcesMaker: QueryDb.resolversResourcesMaker,
 }
 type resolversMaker<'api, 'role> = (

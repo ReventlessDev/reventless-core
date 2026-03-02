@@ -7,8 +7,8 @@ let toRuntimeTopicOutput = ({name, id, arn}: PulumiAws.SNS.Topic.t) =>
     arn,
   })
 
-let toResource: PulumiAws.SNS.Topic.t => Reventless.Adapter.resource = ({id, name, arn}) => {
-  Reventless.Adapter.service: name->Pulumi.Output.apply(_ => AWS.SNS.service),
+let toResource: PulumiAws.SNS.Topic.t => ReventlessInfra.Adapter.resource = ({id, name, arn}) => {
+  ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.SNS.service),
   name,
   id,
   urn: arn,

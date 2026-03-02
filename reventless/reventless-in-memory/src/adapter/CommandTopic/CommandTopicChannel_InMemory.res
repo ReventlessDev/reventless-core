@@ -44,7 +44,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     channelParts,
     runtimeParts,
   > = (~name, ~opts as _=?) => {
-    let publishJsons: Reventless.CommandTopic.publishJsons = async jsons => {
+    let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async jsons => {
       let _ =
         await jsons
         ->Array.map(async (cmdJson: Reventless.Message.commandJson) => {
@@ -53,7 +53,7 @@ module Make = (Bus: InMemory_Bus.T) => {
         ->Promise.all
     }
 
-    let publishJsonsStream: Reventless.CommandTopic.publishJsonsStream = stream =>
+    let publishJsonsStream: ReventlessInfra.CommandTopic.publishJsonsStream = stream =>
       stream
       ->Stream.grouped(10)
       ->Stream.runForEach(jsons =>
@@ -67,7 +67,7 @@ module Make = (Bus: InMemory_Bus.T) => {
         (fullBody: JSON.t, _ctx) => {
           // Pass the full body as `command` — that's what handleJsonCommands decodes
           let reference = decodeId(fullBody)
-          let item: Reventless.CommandTopic.topicItem<JSON.t> = {command: fullBody, reference}
+          let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {command: fullBody, reference}
           handleCmds(Stream.fromIterable([item]))
           ->Effect.runPromise
           ->Promise.thenResolve(_ => ())

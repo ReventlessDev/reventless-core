@@ -18,7 +18,7 @@ module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module CustomerAgg = AggregateMaker.Make(
   Customer,
   CustomerBehavior,
-  NoEventMappings.Make(Customer),
+  ReventlessInfra.NoEventMappings.Make(Customer),
 )
 
 let agg = CustomerAgg.make(~api=())

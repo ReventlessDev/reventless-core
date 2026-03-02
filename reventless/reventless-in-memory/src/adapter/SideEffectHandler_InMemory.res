@@ -12,20 +12,20 @@ let make = (
   ~allCommandTopics as _,
   ~targets as _=?,
   ~queryEngine as _,
-  ~scheduler: Reventless.Scheduler.operations,
+  ~scheduler: ReventlessInfra.Scheduler.operations,
   ~resourceNaming as _,
   ~memorySize as _=?,
   ~timeout as _=?,
   ~opts=?,
 ): ReventlessCore.SideEffectHandler.component => {
-  let noopEnqueueEvent: Reventless.EventCollector.enqueueEvent = async (_, _, _) => ()
+  let noopEnqueueEvent: ReventlessInfra.EventCollector.enqueueEvent = async (_, _, _) => ()
   let ops: ReventlessCore.SideEffectHandler.operations = {
     enqueueEvent: noopEnqueueEvent,
     // Delegate to the Scheduler adapter, passing empty resources (in-memory has no target queue).
     createSchedule: async schedule => await scheduler.createSchedule([], schedule),
     deleteSchedule: async scheduleName => await scheduler.deleteSchedule([], scheduleName),
   }
-  let eventCollectorOutputs: Reventless.EventCollector.outputs = {
+  let eventCollectorOutputs: ReventlessInfra.EventCollector.outputs = {
     name,
     resources: [],
   }

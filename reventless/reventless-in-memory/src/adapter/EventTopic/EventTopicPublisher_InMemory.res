@@ -4,13 +4,13 @@
 module Make = (Bus: InMemory_Bus.T) => {
   let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~opts as _) => {
     let publishJson = (service, meta, json) => Bus.publishEvent(name, service, meta, json)
-    let publishJsonStream: Reventless.EventTopic.publishJsonStream = stream =>
+    let publishJsonStream: ReventlessInfra.EventTopic.publishJsonStream = stream =>
       stream
       ->Stream.grouped(10)
       ->Stream.runForEach(items =>
         Effect.promise(() =>
           items
-          ->Array.map(({Reventless.EventTopic.service, meta, json}) =>
+          ->Array.map(({ReventlessInfra.EventTopic.service, meta, json}) =>
             publishJson(service, meta, json)
           )
           ->Promise.all

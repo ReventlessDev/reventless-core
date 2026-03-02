@@ -1,12 +1,12 @@
 type publisher = {
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
   publishJson: Pulumi.Output.t<EventTopic.publishJson>,
-  publishJsonStream: Pulumi.Output.t<Reventless.EventTopic.publishJsonStream>,
+  publishJsonStream: Pulumi.Output.t<ReventlessInfra.EventTopic.publishJsonStream>,
 }
 
 type publisherMaker = (
   ~name: string,
-  ~storageResources: array<Reventless.Adapter.resource>,
+  ~storageResources: array<ReventlessInfra.Adapter.resource>,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => publisher
 

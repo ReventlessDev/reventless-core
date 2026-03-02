@@ -4,9 +4,9 @@ import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
-import * as Message$Reventless from "./Message.res.mjs";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as PluginExtensionPointSpec$Reventless from "./PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessInfra from "./PluginExtensionPointSpec.res.mjs";
 
 let cmp = Primitive_string.compare;
 
@@ -90,7 +90,7 @@ function Make(Spec) {
           case "PublishExtensionPointCommand" :
             let command = x._1;
             let id = x._0;
-            if (Spec.name === PluginExtensionPointSpec$Reventless.name) {
+            if (Spec.name === PluginExtensionPointSpec$ReventlessInfra.name) {
               return {
                 TAG: "AbstractPublishPluginExtensionPointCommand",
                 _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
@@ -146,7 +146,7 @@ function Make(Spec) {
           case "PublishExtensionPointCommand" :
             let command = x._1;
             let id = x._0;
-            if (Spec.name === PluginExtensionPointSpec$Reventless.name) {
+            if (Spec.name === PluginExtensionPointSpec$ReventlessInfra.name) {
               return {
                 TAG: "AbstractPublishPluginExtensionPointCommand",
                 _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")

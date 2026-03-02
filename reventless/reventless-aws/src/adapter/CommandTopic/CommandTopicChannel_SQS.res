@@ -11,7 +11,7 @@ let connect = (
     runtimeParts,
   >,
   ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
-  ~resources: array<Reventless.Adapter.resource>,
+  ~resources: array<ReventlessInfra.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions

@@ -6,7 +6,7 @@ Module type for an aggregate's event topic specification.
 aggregate's event schema.
 */
 module type T = {
-  module Id: Id.T
+  module Id: Reventless.Id.T
 
   /** The event type published to this topic. Must carry `@schema` for serialization. */
   @schema
@@ -29,7 +29,7 @@ Publishes a single event as raw JSON to the event topic.
 - `Message.meta` — the event envelope metadata
 - `JSON.t` — the serialized event payload
 */
-type publishJson = (string, Message.meta, JSON.t) => promise<unit>
+type publishJson = (string, Reventless.Message.meta, JSON.t) => promise<unit>
 
 /**
 An item in a streaming event publication batch.
@@ -37,7 +37,7 @@ Passed to `publishJsonStream` for high-throughput event pipelines.
 */
 type publishJsonStreamItem = {
   service: string,
-  meta: Message.meta,
+  meta: Reventless.Message.meta,
   json: JSON.t,
 }
 

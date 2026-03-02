@@ -1,5 +1,5 @@
 let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
-  let r: Reventless.Adapter.resource = {
+  let r: ReventlessInfra.Adapter.resource = {
     service: name->Pulumi.Output.apply(_ => AWS.SNS_FIFO.service),
     name,
     id,

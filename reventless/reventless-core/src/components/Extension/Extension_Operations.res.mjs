@@ -8,7 +8,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
-import * as PluginExtensionPointSpec$Reventless from "@reventlessdev/reventless-spec/src/types/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {
@@ -66,7 +66,7 @@ function Make(MappingSpec) {
           msgId: Message$ReventlessCore.uuid(),
           correlationId: init.correlationId
         },
-        commandJson: Message$ReventlessCore.encode(command, PluginExtensionPointSpec$Reventless.commandSchema)
+        commandJson: Message$ReventlessCore.encode(command, PluginExtensionPointSpec$ReventlessInfra.commandSchema)
       });
     };
     let handle = async handler => {

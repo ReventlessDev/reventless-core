@@ -5,7 +5,7 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
     hashKey ++ ("," ++ (rangeKey->Option.getOr("") ++ ("," ++ streamArn)))
   )
 
-let streamArnFromDynamoDbTableResource = (resource: Reventless.Adapter.resource) =>
+let streamArnFromDynamoDbTableResource = (resource: ReventlessInfra.Adapter.resource) =>
   (resource.info, resource.name)
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((tableInfo, tableName)) =>
@@ -16,19 +16,19 @@ let streamArnFromDynamoDbTableResource = (resource: Reventless.Adapter.resource)
     }
   )
 
-let toResource = (table: PulumiAws.DynamoDb.Table.t): Reventless.Adapter.resource => {
-  Reventless.Adapter.service: table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
+let toResource = (table: PulumiAws.DynamoDb.Table.t): ReventlessInfra.Adapter.resource => {
+  ReventlessInfra.Adapter.service: table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
   name: table.name,
   id: table.id,
   urn: table.arn,
   info: table->toInfo,
 }
 
-let toStreamResource = (table: Reventless.Adapter.resource): Reventless.Adapter.resource => {
+let toStreamResource = (table: ReventlessInfra.Adapter.resource): ReventlessInfra.Adapter.resource => {
   let streamArn = table->streamArnFromDynamoDbTableResource
 
   {
-    Reventless.Adapter.service: table.name->Pulumi.Output.apply(_ =>
+    ReventlessInfra.Adapter.service: table.name->Pulumi.Output.apply(_ =>
       AWS.DynamoDbStream.service
     ),
     name: table.name,

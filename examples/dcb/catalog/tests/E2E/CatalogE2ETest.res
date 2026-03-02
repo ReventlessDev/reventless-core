@@ -47,7 +47,7 @@ module RenameCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(Re
 module ArchiveCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ArchiveCategory)
 
 // publishJsons routing — dispatches each command to its registered StateChangeSlice handler.
-let publishJsons: CommandTopic.publishJsons = async cmdJsons => {
+let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {
   let _ = await cmdJsons
   ->Array.map(async cmdJson => {
     let typeName = switch cmdJson.commandJson {
@@ -73,7 +73,7 @@ let publishJsons: CommandTopic.publishJsons = async cmdJsons => {
     let handlers = ReventlessInMemory.CommandTopic.getHandlers(typeName)
     let _ = await handlers
     ->Array.map(async entry => {
-      let item: Reventless.CommandTopic.topicItem<JSON.t> = {
+      let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
         reference: cmdJson.id,
         command: fullBody,
       }

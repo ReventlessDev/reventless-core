@@ -13,7 +13,7 @@ let _ = TestRunner.setup()
 // ─────────────────────────────────────────────────────────────
 
 let topicName = "TestECEventTopic"
-let topicResource: Reventless.Adapter.resource = {
+let topicResource: ReventlessInfra.Adapter.resource = {
   name: topicName->Pulumi.Output.make,
   id: topicName->Pulumi.Output.make,
   urn: topicName->Pulumi.Output.make,

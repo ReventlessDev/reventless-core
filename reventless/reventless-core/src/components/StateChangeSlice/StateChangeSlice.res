@@ -1,8 +1,8 @@
 let componentType = ComponentType.StateChangeSlice
 
 type t
-type outputs = Reventless.StateChangeSlice.outputs
-type operations = Reventless.StateChangeSlice.operations
+type outputs = ReventlessInfra.StateChangeSlice.outputs
+type operations = ReventlessInfra.StateChangeSlice.operations
 type component = Component.t<t, outputs, operations>
 
 module type T = {

@@ -11,10 +11,10 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (
     let handler: CommandTopic.jsonCommandsHandler = stream => {
       let decodedStream =
         stream
-        ->Stream.mapEffect(({Reventless.CommandTopic.reference: reference, command: json}) =>
+        ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command: json}) =>
           Effect.sync(() =>
             switch json->Message.decodeCommand'(Reventless.Id.String.schema, Spec.commandSchema) {
-            | command' => Some({Reventless.CommandTopic.reference, command: command'})
+            | command' => Some({ReventlessInfra.CommandTopic.reference, command: command'})
             | exception err =>
               let commandStr = json->JSON.stringify
               Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)

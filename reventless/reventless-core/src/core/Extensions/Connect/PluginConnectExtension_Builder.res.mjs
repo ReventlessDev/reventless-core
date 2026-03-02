@@ -3,10 +3,10 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../../Message.res.mjs";
-import * as ExtensionMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../../util/Util_Promise.res.mjs";
+import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Extension_Builder$ReventlessCore from "../../../components/Extension/Extension_Builder.res.mjs";
-import * as PluginExtensionPointSpec$Reventless from "@reventlessdev/reventless-spec/src/types/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
   let subscribe = async (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
@@ -139,12 +139,12 @@ function Make(Spec) {
       return [];
     }
   };
-  let $$let = ExtensionMapping$Reventless.NoAggregate.Id;
-  let ConnectPluginMapping = ExtensionMapping$Reventless.Make({
-    name: PluginExtensionPointSpec$Reventless.name,
-    commandSchema: PluginExtensionPointSpec$Reventless.commandSchema,
-    eventSchema: PluginExtensionPointSpec$Reventless.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$Reventless.directiveSchema
+  let $$let = ExtensionMapping$ReventlessInfra.NoAggregate.Id;
+  let ConnectPluginMapping = ExtensionMapping$ReventlessInfra.Make({
+    name: PluginExtensionPointSpec$ReventlessInfra.name,
+    commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
+    eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
+    directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
   })({
     Aggregate: {
       Id: {
@@ -154,10 +154,10 @@ function Make(Spec) {
         toString: prim => prim,
         cmp: $$let.cmp
       },
-      name: ExtensionMapping$Reventless.NoAggregate.name,
-      commandSchema: ExtensionMapping$Reventless.NoAggregate.commandSchema,
-      eventSchema: ExtensionMapping$Reventless.NoAggregate.eventSchema,
-      errorSchema: ExtensionMapping$Reventless.NoAggregate.errorSchema
+      name: ExtensionMapping$ReventlessInfra.NoAggregate.name,
+      commandSchema: ExtensionMapping$ReventlessInfra.NoAggregate.commandSchema,
+      eventSchema: ExtensionMapping$ReventlessInfra.NoAggregate.eventSchema,
+      errorSchema: ExtensionMapping$ReventlessInfra.NoAggregate.errorSchema
     },
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined
@@ -170,10 +170,10 @@ function Make(Spec) {
     mappings: mappings
   };
   let include = Extension_Builder$ReventlessCore.Make({
-    name: PluginExtensionPointSpec$Reventless.name,
-    commandSchema: PluginExtensionPointSpec$Reventless.commandSchema,
-    eventSchema: PluginExtensionPointSpec$Reventless.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$Reventless.directiveSchema
+    name: PluginExtensionPointSpec$ReventlessInfra.name,
+    commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
+    eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
+    directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
   })({
     name: name,
     mappings: mappings

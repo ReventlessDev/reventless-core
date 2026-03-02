@@ -10,7 +10,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
     | exception err =>
       let errStr = err->JSON.stringifyAny->Option.getOr("unknown error")
       Error(
-        Reventless.QueryDb.NotLoadedFromStorage(
+        ReventlessInfra.QueryDb.NotLoadedFromStorage(
           `QueryDb: Error: Couldn't decode state for ${id->ReadModelSpec.Id.toString}: ${errStr}`,
         ),
       )
@@ -44,7 +44,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       let json = JSON.Encode.object(dict)
       await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
-      Error(Reventless.QueryDb.NotSavedToStorage("Couldn't encode state as JSON object"))
+      Error(ReventlessInfra.QueryDb.NotSavedToStorage("Couldn't encode state as JSON object"))
     }
 
   let saveBatch = async states => {
@@ -57,7 +57,7 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
           Ok(batch->Array.concat([(id->ReadModelSpec.Id.toString, json, ttl)]))
         | None =>
           Error(
-            Reventless.QueryDb.NotSavedToStorage(
+            ReventlessInfra.QueryDb.NotSavedToStorage(
               `Couldn't encode state for ${id->ReadModelSpec.Id.toString}`,
             ),
           )

@@ -14,6 +14,7 @@
     "@reventlessdev/rescript-effect",
     "@reventlessdev/rescript-uuid",
     "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-interop",
     "@reventlessdev/reventless-core",
     "@reventlessdev/reventless-in-memory",

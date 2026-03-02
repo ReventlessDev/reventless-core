@@ -7,7 +7,7 @@ module Make = (
 ) => {
   let construct = (self, _name) => {
     let resources = Behavior.resolverConfig.fields->Array.map(field => {
-      let r: Reventless.Adapter.resource = {
+      let r: ReventlessInfra.Adapter.resource = {
         id: ""->Pulumi.Output.make,
         info: `Mutation.${field}`->Pulumi.Output.make,
         name: ""->Pulumi.Output.make,

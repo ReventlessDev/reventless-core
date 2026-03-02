@@ -2,7 +2,7 @@
 // Decomposes batch OrderPlaced / OrderCancelled events into per-product EP events.
 
 open Reventless
-open Reventless.ExtensionPointMapping
+open ReventlessInfra.ExtensionPointMapping
 
 module ExtensionPoint = OrdersExtensionPointSpec
 

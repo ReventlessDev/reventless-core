@@ -1,6 +1,6 @@
 // Maps internal Product aggregate events to the stable ProductsExtensionPoint public API.
 
-open Reventless.ExtensionPointMapping
+open ReventlessInfra.ExtensionPointMapping
 
 module ExtensionPoint = ProductsExtensionPointSpec
 

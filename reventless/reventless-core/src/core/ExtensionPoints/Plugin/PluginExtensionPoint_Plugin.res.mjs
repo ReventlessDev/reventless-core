@@ -8,9 +8,9 @@ import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src
 import * as PluginSpec$ReventlessCore from "../../Aggregates/Plugin/PluginSpec.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../../../util/ScheduleOps.res.mjs";
 import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-interop/src/protocol/CompatMatrix.res.mjs";
-import * as ExtensionPointMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionPointMapping.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "../../ReadModels/Plugin/PluginReadModelSpec.res.mjs";
-import * as PluginExtensionPointSpec$Reventless from "@reventlessdev/reventless-spec/src/types/PluginExtensionPointSpec.res.mjs";
+import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
   let forwardCommand = async (_id, command, extensionPointName, queryEngine) => {
@@ -82,7 +82,7 @@ function Make(Spec) {
             id: id,
             meta: Message$ReventlessCore.generateMeta("Core.Plugin", undefined, "Scheduler"),
             command: "DisconnectPlugin"
-          }, S.string, PluginExtensionPointSpec$Reventless.commandSchema))
+          }, S.string, PluginExtensionPointSpec$ReventlessInfra.commandSchema))
         });
       case "DeleteDisconnectSchedule" :
         return await deleteSchedule(directive._0);
@@ -230,11 +230,11 @@ function Make(Spec) {
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent
   };
-  let Mapping = ExtensionPointMapping$Reventless.Make({
-    name: PluginExtensionPointSpec$Reventless.name,
-    commandSchema: PluginExtensionPointSpec$Reventless.commandSchema,
-    eventSchema: PluginExtensionPointSpec$Reventless.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$Reventless.directiveSchema
+  let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
+    name: PluginExtensionPointSpec$ReventlessInfra.name,
+    commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
+    eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
+    directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
   })({
     Aggregate: {
       Id: Id$Reventless.$$String,

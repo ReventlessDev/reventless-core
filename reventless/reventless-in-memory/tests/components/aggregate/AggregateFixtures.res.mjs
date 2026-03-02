@@ -2,9 +2,9 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
-import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
+import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "../../../src/components/Aggregate_Builder.res.mjs";
 
 let name = "TestItem";
@@ -87,7 +87,7 @@ let ItemAgg = ItemAggregateMaker.Make({
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema
-})(ItemBehavior)(NoEventMappings$Reventless.Make({
+})(ItemBehavior)(NoEventMappings$ReventlessInfra.Make({
   name: name,
   Id: Id$Reventless.$$String,
   commandSchema: commandSchema

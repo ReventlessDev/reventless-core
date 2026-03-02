@@ -1,4 +1,4 @@
-module Make = (Spec: Reventless.CommandTopic.T, Channel: CommandTopic_Adapter.Channel): (
+module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapter.Channel): (
   CommandTopic.T with module Spec = Spec and type callbackEvent = Channel.callbackEvent
 ) => {
   module Spec = Spec
@@ -32,7 +32,7 @@ module Make = (Spec: Reventless.CommandTopic.T, Channel: CommandTopic_Adapter.Ch
   let filteringHandler: CommandTopic.jsonCommandsHandler = stream =>
     stream
     ->Stream.mapEffect(item => {
-      let {Reventless.CommandTopic.reference: reference, command: json} = item
+      let {ReventlessInfra.CommandTopic.reference: reference, command: json} = item
       let typeName = extractTypeNameFromJson(json)
       let handlers = CommandTopic.getHandlers(typeName)
       Effect.promise(async () => {
@@ -44,7 +44,7 @@ module Make = (Spec: Reventless.CommandTopic.T, Channel: CommandTopic_Adapter.Ch
             try {
               let results =
                 await handler(
-                  Stream.fromIterable([{Reventless.CommandTopic.reference, command: json}]),
+                  Stream.fromIterable([{ReventlessInfra.CommandTopic.reference, command: json}]),
                 )->Effect.runPromise
               allResults->Array.pushMany(results)
             } catch {

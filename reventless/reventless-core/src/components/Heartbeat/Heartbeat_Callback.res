@@ -1,4 +1,4 @@
-module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
+module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 
 module type Spec = {
   let publishToCorePluginExtensionPoint: CommandTopic.publishJsons

@@ -1,7 +1,7 @@
-open Reventless.ExtensionPointMapping
+open ReventlessInfra.ExtensionPointMapping
 open Reventless.Plugin
 
-module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
+module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
@@ -147,5 +147,5 @@ module Make = (Spec: Spec) => {
     )
   }
 
-  module Mapping = Reventless.ExtensionPointMapping.Make(PluginExtensionPointSpec, Impl)
+  module Mapping = ReventlessInfra.ExtensionPointMapping.Make(PluginExtensionPointSpec, Impl)
 }

@@ -11,41 +11,41 @@
 module Make = (Api: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
-}): Reventless.Platform.T => {
+}): ReventlessInfra.Platform.T => {
   module Aggregate = {
     module Make = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
-      EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
-    ): Reventless.Aggregate.T => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
+      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
+    ): ReventlessInfra.Aggregate.T => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
     module Make = (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ): (Reventless.ReadModel.T with module Spec = Spec) =>
+    ): (ReventlessInfra.ReadModel.T with module Spec = Spec) =>
       ReadModel_Builder_Single.Make(Spec, Mappings)
   }
 
   module ExtensionPoint = {
     module Make = (
-      Spec: Reventless.ExtensionPointMapping.Spec,
-      Mappings: Reventless.ExtensionPoint.Mappings with module Spec := Spec,
-    ): Reventless.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings)
+      Spec: ReventlessInfra.ExtensionPointMapping.Spec,
+      Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
+    ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings)
   }
 
   module Extension = {
     module Make = (
-      Spec: Reventless.ExtensionMapping.Spec,
-      Mappings: Reventless.ExtensionMapping.Mappings with module Spec := Spec,
-    ): Reventless.Extension.T => ReventlessCore.Extension_Builder.Make(Spec, Mappings)
+      Spec: ReventlessInfra.ExtensionMapping.Spec,
+      Mappings: ReventlessInfra.ExtensionMapping.Mappings with module Spec := Spec,
+    ): ReventlessInfra.Extension.T => ReventlessCore.Extension_Builder.Make(Spec, Mappings)
   }
 
   module Task = {
     module Make = (
-      Spec: Reventless.Task.Spec,
-    ): (Reventless.Task.T with module Spec = Spec) => Task_Builder_PerBucket.Make(Spec)
+      Spec: ReventlessInfra.Task.Spec,
+    ): (ReventlessInfra.Task.T with module Spec = Spec) => Task_Builder_PerBucket.Make(Spec)
   }
 
   module Counter = Counter_Builder.Make(Api)
@@ -53,7 +53,7 @@ module Make = (Api: {
   module StateChangeSlice = {
     module Make = (
       Spec: Reventless.StateChangeSlice.Spec,
-    ): (Reventless.StateChangeSlice.T
+    ): (ReventlessInfra.StateChangeSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec) => StateChangeSlice_Builder.Make(Spec)
   }
@@ -63,6 +63,6 @@ module Make = (Api: {
   module DcbEventLog = {
     module Make = (
       Spec: Reventless.DcbEventLog.Spec,
-    ): (Reventless.DcbEventLog.T with module Spec = Spec) => DcbEventLog_Builder.Make(Spec)
+    ): (ReventlessInfra.DcbEventLog.T with module Spec = Spec) => DcbEventLog_Builder.Make(Spec)
   }
 }

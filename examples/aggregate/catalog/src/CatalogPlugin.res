@@ -2,20 +2,19 @@
 // Wires the Product and Category aggregates and their read models,
 // the ProductsExtensionPoint (outbound), and the OrdersExtension (inbound).
 
-open Reventless
 open Reventless.Projection
 
-module Make = (Platform: Platform.T) => {
+module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
     ProductBehavior,
-    NoEventMappings.Make(Product),
+    ReventlessInfra.NoEventMappings.Make(Product),
   )
 
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
     CategoryBehavior,
-    NoEventMappings.Make(Category),
+    ReventlessInfra.NoEventMappings.Make(Category),
   )
 
   module ProductMappings: Mappings with module Target := ProductsReadModel = {
@@ -38,7 +37,7 @@ module Make = (Platform: Platform.T) => {
   module ProductDemandAggregate = Platform.Aggregate.Make(
     ProductDemand,
     ProductDemandBehavior,
-    NoEventMappings.Make(ProductDemand),
+    ReventlessInfra.NoEventMappings.Make(ProductDemand),
   )
 
   module ProductDemandMappings: Mappings with module Target := ProductDemandReadModel = {
@@ -53,13 +52,13 @@ module Make = (Platform: Platform.T) => {
   )
 
   // Compile the Products extension point mapping, then build the EP component
-  module ProductsEPMappingT = ExtensionPointMapping.Make(
+  module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
     ProductsExtensionPointSpec,
     ProductsExtensionPointMapping,
   )
   module ProductsEPMappings = {
     module Spec = ProductsExtensionPointSpec
-    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(

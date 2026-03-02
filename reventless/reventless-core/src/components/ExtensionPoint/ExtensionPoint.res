@@ -1,6 +1,6 @@
 let componentType = ComponentType.ExtensionPoint
 
-type outputs = Reventless.ExtensionPoint.outputs
+type outputs = ReventlessInfra.ExtensionPoint.outputs
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
 
@@ -12,19 +12,19 @@ module type T = {
   type component = component<operations>
 
   let make: (
-    ~aggregateResources: dict<array<Reventless.Adapter.resource>>,
+    ~aggregateResources: dict<array<ReventlessInfra.Adapter.resource>>,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
     ~queryEngine: Reventless.QueryEngine.operations,
-    ~resourceNaming: Reventless.ResourceNaming.operations,
+    ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
   let outputs: component => outputs
 }
 
 module type Mappings = {
-  module Spec: Reventless.ExtensionPointMapping.Spec
-  module type Mapping = Reventless.ExtensionPointMapping.T with module ExtensionPoint := Spec
+  module Spec: ReventlessInfra.ExtensionPointMapping.Spec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
   let mappings: array<module(Mapping)>
 }
 

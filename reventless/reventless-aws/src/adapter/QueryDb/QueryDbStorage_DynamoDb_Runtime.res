@@ -15,7 +15,7 @@ let loadStream = table =>
     Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
       Effect.tryPromise(
         ~catch=err =>
-          Reventless.QueryDb.NotLoadedFromStorage(
+          ReventlessInfra.QueryDb.NotLoadedFromStorage(
             (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB loadStream error"),
           ),
         () => {
@@ -45,7 +45,7 @@ let load = table =>
       Console.log(
         __MODULE__ ++ `.load: Error: Couldn't load state for ${id} from ${tableName}: ${errorMsg}`,
       )
-      Error(Reventless.QueryDb.NotLoadedFromStorage(errorMsg))
+      Error(ReventlessInfra.QueryDb.NotLoadedFromStorage(errorMsg))
     }
 
 let save = table =>
@@ -69,7 +69,7 @@ let save = table =>
           __MODULE__ ++
           `.save: Error: Couldn't save Init state to ${tableName}, id=${id}: ${errorMsg}`,
         )
-        Error(Reventless.QueryDb.NotSavedToStorage(errorMsg))
+        Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg))
       }
     | Any
     | Overwrite =>
@@ -82,7 +82,7 @@ let save = table =>
             __MODULE__ ++
             `.save: Error: Couldn't save state to ${tableName}, id=${id}: ${errorMsg}`,
           )
-          Error(Reventless.QueryDb.NotSavedToStorage(errorMsg))
+          Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg))
         }
       }
     }
@@ -144,7 +144,7 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
       let errorMsg =
         __MODULE__ ++ `.writeBatch: Error: Couldn't save states to ${tableName}: ${errorsStr}`
       Console.log(errorMsg)
-      Error(Reventless.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
+      Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
     }
   | exception JsExn(e) =>
     let errorMsg = e->ReventlessCore.Util.Error.message
@@ -152,7 +152,7 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
       __MODULE__ ++
       `.writeBatch: Error: Couldn't save states to ${tableName}, ${count} ids:${allIdsStr}: ${errorMsg}`,
     )
-    Error(Reventless.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
+    Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
   }
 }
 
@@ -188,14 +188,14 @@ let count = table =>
       | Some(value) => Ok(value)
       | None => {
           Console.log(__MODULE__ ++ `.count: Error: Invalid updateOutput in count on ${tableName}`)
-          Error(Reventless.QueryDb.NotCountedOnStorage("Invalid updateOutput in count"))
+          Error(ReventlessInfra.QueryDb.NotCountedOnStorage("Invalid updateOutput in count"))
         }
       }
 
     | exception JsExn(e) =>
       let message = e->ReventlessCore.Util.Error.message
       Console.log2(__MODULE__ ++ `.count: Error: Couldn't count on ${tableName}`, e)
-      Error(Reventless.QueryDb.NotCountedOnStorage(message))
+      Error(ReventlessInfra.QueryDb.NotCountedOnStorage(message))
     }
   }
 
@@ -212,7 +212,7 @@ let delete = table =>
         sort,
         errorMsg,
       )
-      Error(Reventless.QueryDb.NotDeletedFromStorage(errorMsg))
+      Error(ReventlessInfra.QueryDb.NotDeletedFromStorage(errorMsg))
     }
   }
 

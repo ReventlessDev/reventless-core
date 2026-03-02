@@ -5,7 +5,7 @@ Module type for an aggregate's event log specification.
 (e.g. a DynamoDB table) and the associated event topic for downstream subscribers.
 */
 module type T = {
-  module Id: Id.T
+  module Id: Reventless.Id.T
 
   /** Logical name of the aggregate / event stream (used as a table-name prefix). */
   let name: string

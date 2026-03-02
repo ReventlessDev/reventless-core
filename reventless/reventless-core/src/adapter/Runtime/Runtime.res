@@ -2,7 +2,7 @@ type eventHandler<'event, 'context, 'result> = ('event, 'context) => promise<'re
 
 type environment<'parts> = {
   parts: 'parts,
-  resources: array<Reventless.Adapter.resource>,
+  resources: array<ReventlessInfra.Adapter.resource>,
 }
 
 type environmentMaker<'event, 'context, 'result, 'parts> = (
@@ -44,7 +44,7 @@ type forComponentNamed<'handler, 'parts, 'component> = (
 type forEventCollector<'handler, 'component> = (
   ~handler: Pulumi.Output.t<'handler>,
   ~eventTopics: EventTopic.allOutputs,
-  ~resources: array<Reventless.Adapter.resource>,
+  ~resources: array<ReventlessInfra.Adapter.resource>,
   ~memorySize: int=?,
   ~timeout: int=?,
   'component,

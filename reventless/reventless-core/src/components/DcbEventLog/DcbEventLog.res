@@ -1,17 +1,17 @@
 let componentType = ComponentType.DcbEventLog
 
-type outputs = Reventless.DcbEventLog.outputs
+type outputs = ReventlessInfra.DcbEventLog.outputs
 
 type t
 type component<'operations> = Component.t<t, outputs, 'operations>
 
-type sequencedEvent<'event> = Reventless.DcbEventLog.sequencedEvent<'event>
-type readResult<'event> = Reventless.DcbEventLog.readResult<'event>
-type read<'event> = Reventless.DcbEventLog.read<'event>
-type append<'event> = Reventless.DcbEventLog.append<'event>
-type readStream<'event> = Reventless.DcbEventLog.readStream<'event>
-type appendStream<'event> = Reventless.DcbEventLog.appendStream<'event>
-type operations<'event> = Reventless.DcbEventLog.operations<'event>
+type sequencedEvent<'event> = ReventlessInfra.DcbEventLog.sequencedEvent<'event>
+type readResult<'event> = ReventlessInfra.DcbEventLog.readResult<'event>
+type read<'event> = ReventlessInfra.DcbEventLog.read<'event>
+type append<'event> = ReventlessInfra.DcbEventLog.append<'event>
+type readStream<'event> = ReventlessInfra.DcbEventLog.readStream<'event>
+type appendStream<'event> = ReventlessInfra.DcbEventLog.appendStream<'event>
+type operations<'event> = ReventlessInfra.DcbEventLog.operations<'event>
 
 module type T = {
   module Spec: Reventless.DcbEventLog.Spec

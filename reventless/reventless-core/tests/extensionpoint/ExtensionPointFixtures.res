@@ -43,11 +43,11 @@ module TestMapping = {
     _createSchedule: Reventless.Schedule.create,
     _deleteSchedule: Reventless.Schedule.delete,
     _queryEngine: Reventless.QueryEngine.operations,
-  ): array<Reventless.ExtensionPointMapping.abstractCommandAction> =>
+  ): array<ReventlessInfra.ExtensionPointMapping.abstractCommandAction> =>
     topicItems->Array.flatMap(topicItem =>
       switch topicItem.command.command {
       | TestEPSpec.RouteToAgg({aggId}) => [
-          Reventless.ExtensionPointMapping.AbstractPublishCommand(
+          ReventlessInfra.ExtensionPointMapping.AbstractPublishCommand(
             "TestTargetAgg",
             topicItem.reference,
             {
@@ -58,7 +58,7 @@ module TestMapping = {
           ),
         ]
       | TestEPSpec.CallHandler(_) => [
-          Reventless.ExtensionPointMapping.AbstractCall(
+          ReventlessInfra.ExtensionPointMapping.AbstractCall(
             topicItem.reference,
             async () => {
               capturedCallCount := capturedCallCount.contents + 1
@@ -75,7 +75,7 @@ module TestMapping = {
       Reventless.Schedule.delete,
       Reventless.QueryEngine.operations,
     ) => array<
-      Reventless.ExtensionPointMapping.abstractEventAction<TestEPSpec.event>,
+      ReventlessInfra.ExtensionPointMapping.abstractEventAction<TestEPSpec.event>,
     >,
   > = None
 }
@@ -86,7 +86,7 @@ module TestMapping = {
 
 module TestMappings = {
   module Spec = TestEPSpec
-  module type Mapping = Reventless.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
+  module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
   let mappings: array<module(Mapping)> = [module(TestMapping)]
 }
 
@@ -108,7 +108,7 @@ module TestCallbackSpec: ExtensionPoint_Callback.Spec = {
 
   let commandTopicResources: array<Adapter.resolvedResource> = []
 
-  let scheduler: Reventless.Scheduler.operations = {
+  let scheduler: ReventlessInfra.Scheduler.operations = {
     createSchedule: async (_resources, _schedule) => (),
     deleteSchedule: async (_resources, _name) => (),
   }
@@ -126,7 +126,7 @@ module TestCallbackSpec: ExtensionPoint_Callback.Spec = {
     ) => [],
   }
 
-  let resourceNaming: Reventless.ResourceNaming.operations = {
+  let resourceNaming: ReventlessInfra.ResourceNaming.operations = {
     validateName: name => name,
     urnName: name => name,
   }

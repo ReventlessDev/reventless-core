@@ -26,7 +26,7 @@ module Make = (
     ~scheduler,
     ~publishToAggregates,
     ~queryEngine,
-    ~resourceNaming: Reventless.ResourceNaming.operations,
+    ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~allAggregates,
     self,
     taskName,

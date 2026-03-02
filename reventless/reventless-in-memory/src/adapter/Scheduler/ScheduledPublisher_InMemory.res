@@ -48,7 +48,7 @@ module Make = (Bus: InMemory_Bus.T) => {
   }
 
   let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name as _, ~opts as _) => {
-    let createSchedule: Reventless.Scheduler.createSchedule = async (
+    let createSchedule: ReventlessInfra.Scheduler.createSchedule = async (
       channelResources,
       schedule,
     ) => {
@@ -71,7 +71,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       activeTimers.contents->Dict.set(schedule.name, handle)
     }
 
-    let deleteSchedule: Reventless.Scheduler.deleteSchedule = async (_, name) => {
+    let deleteSchedule: ReventlessInfra.Scheduler.deleteSchedule = async (_, name) => {
       switch activeTimers.contents->Dict.get(name) {
       | Some(handle) =>
         clearTimerJs(handle)
@@ -82,7 +82,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     {
       resource: {
-        Reventless.Adapter.service: "InMemory"->Pulumi.Output.make,
+        ReventlessInfra.Adapter.service: "InMemory"->Pulumi.Output.make,
         name: ""->Pulumi.Output.make,
         id: ""->Pulumi.Output.make,
         urn: ""->Pulumi.Output.make,
@@ -91,7 +91,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       operations: ({
         createSchedule,
         deleteSchedule,
-      }: Reventless.Scheduler.operations)->Pulumi.Output.make,
+      }: ReventlessInfra.Scheduler.operations)->Pulumi.Output.make,
     }
   }
 

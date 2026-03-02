@@ -11,9 +11,9 @@ module Make = (Bus: InMemory_Bus.T) => {
     )
 
   module Make = (
-    Spec: Reventless.ExtensionPointMapping.Spec,
-    Mappings: Reventless.ExtensionPoint.Mappings with module Spec := Spec,
-  ): Reventless.ExtensionPoint.T =>
+    Spec: ReventlessInfra.ExtensionPointMapping.Spec,
+    Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
+  ): ReventlessInfra.ExtensionPoint.T =>
     ReventlessCore.ExtensionPoint_Builder.Make(
       Spec,
       Mappings,

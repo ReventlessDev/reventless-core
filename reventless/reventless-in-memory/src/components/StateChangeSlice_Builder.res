@@ -6,7 +6,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec) => {
   // callers needing reventless in scope to see ReventlessCore.CommandTopic.publishJsons).
   let make: (
     ~dcbEventLog: dcbEventLogComponent,
-    ~publishJsons: Pulumi.Output.t<Reventless.CommandTopic.publishJsons>,
+    ~publishJsons: Pulumi.Output.t<ReventlessInfra.CommandTopic.publishJsons>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component = make
 }

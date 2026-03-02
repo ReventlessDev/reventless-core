@@ -28,7 +28,7 @@ let mockJsonOps: QueryDb.operations<string, JSON.t> = {
   save: async (id, state, _saveMode, _ttl) => {
     if failNextWrite.contents {
       failNextWrite := false
-      Error(Reventless.QueryDb.NotSavedToStorage("mock failure"))
+      Error(ReventlessInfra.QueryDb.NotSavedToStorage("mock failure"))
     } else {
       store.contents->Dict.set(id, [state])
       Ok()
@@ -37,7 +37,7 @@ let mockJsonOps: QueryDb.operations<string, JSON.t> = {
   saveBatch: async batch => {
     if failNextWrite.contents {
       failNextWrite := false
-      Error(Reventless.QueryDb.BatchNotFullyWrittenToStorage("mock failure"))
+      Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage("mock failure"))
     } else {
       batch->Array.forEach(((id, state, _ttl)) => {
         store.contents->Dict.set(id, [state])

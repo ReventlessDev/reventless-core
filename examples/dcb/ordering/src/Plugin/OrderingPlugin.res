@@ -2,8 +2,7 @@
 // Wires the shared event log, all StateChangeSlices, StateViewSlices, the
 // OrdersExtensionPoint (outbound), and the ProductsExtension (inbound).
 
-open Reventless
-module Make = (Platform: Platform.T) => {
+module Make = (Platform: ReventlessInfra.Platform.T) => {
   module OrderingEventLogMaker = Platform.DcbEventLog.Make(OrderingEventLog)
 
   module RegisterCustomerSlice = Platform.StateChangeSlice.Make(RegisterCustomer)
@@ -30,13 +29,13 @@ module Make = (Platform: Platform.T) => {
   )
 
   // Compile the Orders extension point mapping, then build the EP component
-  module OrdersEPMappingT = ExtensionPointMapping.Make(
+  module OrdersEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
     OrdersExtensionPointSpec,
     OrdersExtensionPointMapping,
   )
   module OrdersEPMappings = {
     module Spec = OrdersExtensionPointSpec
-    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
     let mappings: array<module(Mapping)> = [module(OrdersEPMappingT)]
   }
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(

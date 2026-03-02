@@ -28,7 +28,7 @@ let _ = afterAll(() => {
 
 let capturedCount: ref<int> = ref(0)
 
-let mockPublish: Reventless.CommandTopic.publishJsons = async cmds => {
+let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
   capturedCount := capturedCount.contents + cmds->Array.length
 }
 

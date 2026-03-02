@@ -13,7 +13,7 @@ module Make = (
     ~targets=?,
     ~queryEngine,
     ~scheduler,
-    ~resourceNaming: Reventless.ResourceNaming.operations,
+    ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~memorySize,
     ~timeout,
     self,

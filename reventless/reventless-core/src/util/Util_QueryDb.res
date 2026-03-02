@@ -1,5 +1,5 @@
 let getLocalStorageResources = (allQueryDbs: dict<QueryDb.outputs>, queryDbName): array<
-  Reventless.Adapter.resource,
+  ReventlessInfra.Adapter.resource,
 > =>
   try (allQueryDbs->Dict.get(queryDbName)->Option.getOrThrow).resources catch {
   | exn =>

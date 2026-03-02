@@ -1,11 +1,11 @@
-type resolvers = {resources: array<Reventless.Adapter.resource>}
+type resolvers = {resources: array<ReventlessInfra.Adapter.resource>}
 
 type resolversMaker<'api, 'runtimeParts> = (
   ~name: string,
   ~api: 'api,
   ~fields: array<string>,
   ~runtime: Runtime.environment<'runtimeParts>,
-  ~resources: array<Reventless.Adapter.resource>,
+  ~resources: array<ReventlessInfra.Adapter.resource>,
   ~opts: Pulumi.ComponentResource.options,
 ) => resolvers
 

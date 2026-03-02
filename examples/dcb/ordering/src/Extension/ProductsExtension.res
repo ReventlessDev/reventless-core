@@ -2,7 +2,7 @@
 // Routes ProductBecameAvailable / ProductPriceChanged events to SyncCatalogProduct commands.
 
 open Reventless
-open Reventless.ExtensionMapping
+open ReventlessInfra.ExtensionMapping
 
 module Spec = ProductsExtensionPointSpec
 
