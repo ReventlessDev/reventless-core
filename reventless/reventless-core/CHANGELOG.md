@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-core@3.0.0-alpha.6...@reventlessdev/reventless-core@3.0.0-alpha.7) (2026-03-02)
+
+**Note:** Version bump only for package @reventlessdev/reventless-core
+
+
+
+
+
 # 3.0.0-alpha.6 (2026-03-01)
 
 * feat(reventless-spec)!: swap namespaces — spec→Reventless, core→ReventlessCore ([0fcf24e](https://github.com/ReventlessDev/reventless-core/commit/0fcf24e3fc1dcc88e9ee741dc99eb7bd726f9fd7))

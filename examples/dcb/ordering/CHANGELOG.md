@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-ordering@1.0.0-alpha.1...@reventlessdev/example-dcb-ordering@1.0.0-alpha.2) (2026-03-02)
+
+### Features
+
+* **examples/dcb:** connect Catalog and Ordering via extension points ([bc95640](https://github.com/ReventlessDev/reventless-core/commit/bc95640cfe8c52a4e95e8c3216a53a29c4f08493))
+
+### BREAKING CHANGES
+
+* **examples/dcb:** OrderCancelled now carries `productIds: array<string>`
+so the OrdersExtensionPoint can decompose cancellations into per-product
+ItemOrderCancelled events.
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+
+
 # 1.0.0-alpha.1 (2026-03-01)
 
 * feat(reventless-spec)!: swap namespaces — spec→Reventless, core→ReventlessCore ([0fcf24e](https://github.com/ReventlessDev/reventless-core/commit/0fcf24e3fc1dcc88e9ee741dc99eb7bd726f9fd7))
