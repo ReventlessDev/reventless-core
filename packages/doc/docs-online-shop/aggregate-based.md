@@ -36,6 +36,41 @@ A named grouping of products (e.g. "Books", "Electronics"). `Product` aggregates
 | `RenameCategory` | `CategoryRenamed` |
 | `ArchiveCategory` | `CategoryArchived` |
 
+### Aggregate: `ProductDemand`
+
+Tracks per-product order demand. Driven entirely by events arriving from Ordering's Extension Point — no direct commands are sent by UI clients.
+
+| Commands | Events |
+|---|---|
+| `RecordDemand` | `ProductDemandRecorded` |
+| `RevokeDemand` | `ProductDemandRevoked` |
+
+### Read Models
+
+| Read Model | Source Aggregates | What It Tracks |
+|---|---|---|
+| `Products` | `Product` | All product listings with current name, description, and price |
+| `Categories` | `Category` | All category names |
+| `ProductDemand` | `Product` + `ProductDemand` | Per-product order count, initialized from `ProductAdded` |
+
+### Extension Point: `ProductsExtensionPoint`
+
+Outbound API from Catalog to Ordering. Translates internal `Product` events into a stable public vocabulary.
+
+| EP Event | Triggered By |
+|---|---|
+| `ProductBecameAvailable` | `Product.ProductAdded` |
+| `ProductPriceChanged` | `Product.ProductPriceUpdated` |
+
+### Extension: `OrdersExtension`
+
+Inbound subscription to Ordering's `OrdersExtensionPoint`. Routes demand events to `ProductDemand` aggregate commands.
+
+| EP Event Received | Command Dispatched |
+|---|---|
+| `ItemOrdered` | `ProductDemand.RecordDemand` |
+| `ItemOrderCancelled` | `ProductDemand.RevokeDemand` |
+
 ---
 
 ## Plugin 2: Ordering
@@ -63,17 +98,53 @@ A confirmed purchase referencing `Product` IDs and a `CustomerId`. Clear, linear
 | `ShipOrder` | `OrderShipped` |
 | `CancelOrder` | `OrderCancelled` |
 
+### Aggregate: `CatalogProduct`
+
+A shadow replica of Catalog product data, kept in sync via Catalog's Extension Point. Allows Ordering to validate product references without querying Catalog at command time.
+
+| Commands | Events |
+|---|---|
+| `SyncCatalogProduct` | `CatalogProductSynced` |
+
+### Extension Point: `OrdersExtensionPoint`
+
+Outbound API from Ordering to Catalog. Publishes order lifecycle events that Catalog's demand tracking subscribes to.
+
+| EP Event | Triggered By |
+|---|---|
+| `ItemOrdered` | `Order.OrderPlaced` |
+| `ItemOrderCancelled` | `Order.OrderCancelled` |
+
+### Extension: `ProductsExtension`
+
+Inbound subscription to Catalog's `ProductsExtensionPoint`. Routes product availability events to `CatalogProduct` aggregate commands.
+
+| EP Event Received | Command Dispatched |
+|---|---|
+| `ProductBecameAvailable` | `CatalogProduct.SyncCatalogProduct` |
+| `ProductPriceChanged` | `CatalogProduct.SyncCatalogProduct` |
+
 ---
 
 ## Cross-Plugin Integration
 
-`Order` references products by `ProductId` — integration by ID, not by object. This demonstrates the standard event-sourcing pattern for cross-plugin references without tight coupling between Plugins.
+The two plugins communicate exclusively through Extension Points. Neither plugin imports the other's internal modules — only the shared EP specs are referenced.
+
+```
+Catalog                          Ordering
+───────────────────────────────────────────────────────
+ProductsExtensionPoint  ──────►  ProductsExtension
+                                 (syncs CatalogProduct)
+
+OrdersExtension  ◄──────────────  OrdersExtensionPoint
+(updates ProductDemand)
+```
 
 ---
 
 ## Implementation
 
-The following walkthrough uses the **Catalog** Plugin from `examples/aggregate/catalog/` — the `Product` aggregate with its read model and the `CatalogPlugin` that wires everything together.
+The following walkthrough uses the **Catalog** Plugin from `examples/aggregate/catalog/` — the `Product` aggregate with its read model, the `ProductDemand` aggregate for demand tracking, the `ProductsExtensionPoint`, the `OrdersExtension`, and the `CatalogPlugin` that wires everything together.
 
 ### 1. Aggregate Spec
 
@@ -241,9 +312,169 @@ module Mappings = Mappings.Make(ProductsReadModel)
 let mappings: array<module(Mappings.Mapping)> = [module(ProductMapping)]
 ```
 
-### 4. Plugin
+A read model can consume events from **multiple aggregates**. The `ProductDemand` read model combines events from both `Product` (to initialise the entry) and `ProductDemand` (to track the order count):
 
-The plugin wires all aggregates and read models together using any `Platform` implementation (in-memory for tests, AWS for production). A single `CatalogPlugin` covers both the `Product` and `Category` aggregates:
+```rescript
+// ProductDemandProjections.res
+
+open Reventless
+open Reventless.Projection
+
+module ProductMapping = Mapping.Make(
+  Product,
+  ProductDemandReadModel,
+  {
+    let map = ({Message.event: event, id, _}) =>
+      switch event {
+      | Product.ProductAdded({productId, name}) =>
+        Set(id, {ProductDemandReadModel.productId, name, orderCount: 0})
+      | _ => Ignore
+      }
+  },
+)
+
+module ProductDemandMapping = Mapping.Make(
+  ProductDemand,
+  ProductDemandReadModel,
+  {
+    let map = ({Message.event: event, id, _}) =>
+      switch event {
+      | ProductDemand.ProductDemandRecorded(_) =>
+        Update(id, (state: ProductDemandReadModel.state) => {...state, orderCount: state.orderCount + 1})
+      | ProductDemand.ProductDemandRevoked(_) =>
+        Update(id, (state: ProductDemandReadModel.state) => {...state, orderCount: max(0, state.orderCount - 1)})
+      }
+  },
+)
+
+module Mappings = Mappings.Make(ProductDemandReadModel)
+
+let mappings: array<module(Mappings.Mapping)> = [module(ProductMapping), module(ProductDemandMapping)]
+```
+
+### 4. Extension Point
+
+An **Extension Point** is the outbound API that Catalog publishes for other Plugins to subscribe to. It has two parts: a **spec** (the stable public contract) and a **mapping** (the translation from internal events to EP events).
+
+The spec defines the stable public vocabulary — the events that Ordering will depend on. This is intentionally different from the internal `Product` event types so that internal refactoring does not break the cross-plugin contract:
+
+```rescript
+// ProductsExtensionPointSpec.res
+
+let name = "Catalog.Products"
+
+@schema
+type command = unit // read-only: no inbound commands
+
+@schema
+type event =
+  | ProductBecameAvailable({productId: string, name: string, price: float})
+  | ProductPriceChanged({productId: string, price: float})
+
+@schema
+type directive = unit
+```
+
+The mapping translates internal `Product` aggregate events to the stable EP vocabulary. Only events that Ordering needs to observe are mapped — everything else is ignored:
+
+```rescript
+// ProductsExtensionPointMapping.res
+
+open Reventless.ExtensionPointMapping
+
+module ExtensionPoint = ProductsExtensionPointSpec
+module Aggregate = Product
+
+let mapIncomingCommand = (_id, _command, _meta) => []
+
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+  switch event {
+  | Product.ProductAdded({productId, name, price}) => [
+      PublishEvent(
+        productId,
+        ProductsExtensionPointSpec.ProductBecameAvailable({productId, name, price}),
+      ),
+    ]
+  | Product.ProductPriceUpdated({productId, price}) => [
+      PublishEvent(productId, ProductsExtensionPointSpec.ProductPriceChanged({productId, price})),
+    ]
+  | _ => []
+  }
+)
+```
+
+`PublishEvent(id, event)` routes the EP event to all Extensions that have subscribed to this Extension Point.
+
+### 5. Extension
+
+An **Extension** is the inbound subscription that Catalog registers to receive events from Ordering's Extension Point. It has two parts: a **spec** (a local copy of Ordering's EP contract) and a **mapping** (the translation from EP events to internal commands).
+
+The local spec copy allows Catalog to decode incoming events without depending on any Ordering module:
+
+```rescript
+// OrdersExtensionPointSpec.res
+
+let name = "Ordering.Orders"
+
+@schema
+type command = unit
+
+@schema
+type event =
+  | ItemOrdered({productId: string, orderId: string, customerId: string})
+  | ItemOrderCancelled({productId: string, orderId: string})
+
+@schema
+type directive = unit
+```
+
+The mapping routes each incoming EP event to an aggregate command. Here, `ItemOrdered` triggers a `RecordDemand` command on the `ProductDemand` aggregate for the referenced product:
+
+```rescript
+// OrdersExtension.res
+
+open Reventless.ExtensionMapping
+
+module Spec = OrdersExtensionPointSpec
+
+module DemandMappingImpl = {
+  module ExtensionPoint = Spec
+  module Aggregate = ProductDemand
+
+  let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
+    switch event {
+    | Spec.ItemOrdered({productId, orderId}) => [
+        PublishAggregateCommand(
+          productId,
+          ProductDemand.RecordDemand({productId, orderId}),
+        ),
+      ]
+    | Spec.ItemOrderCancelled({productId, orderId}) => [
+        PublishAggregateCommand(
+          productId,
+          ProductDemand.RevokeDemand({productId, orderId}),
+        ),
+      ]
+    }
+
+  let mapOutgoingEvent = None
+}
+
+module DemandMappingT = ReventlessCore.ExtensionMapping.Make(Spec, DemandMappingImpl)
+
+module Mappings = {
+  module Spec = Spec
+  module type Mapping = ReventlessCore.ExtensionMapping.T with module ExtensionPoint := Spec
+  let name = "CatalogDemand"
+  let mappings: array<module(Mapping)> = [module(DemandMappingT)]
+}
+```
+
+`PublishAggregateCommand(id, command)` dispatches the command to the aggregate identified by `id` — in this case the `ProductDemand` aggregate for the given `productId`.
+
+### 6. Plugin
+
+The plugin wires all aggregates, read models, the Extension Point, and the Extension together using any `Platform` implementation. It is a pure composition root — no business logic lives here:
 
 ```rescript
 // CatalogPlugin.res
@@ -255,13 +486,13 @@ module Make = (Platform: Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
     ProductBehavior,
-    ReventlessInMemory.NoEventMappings.Make(Product),
+    NoEventMappings.Make(Product),
   )
 
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
     CategoryBehavior,
-    ReventlessInMemory.NoEventMappings.Make(Category),
+    NoEventMappings.Make(Category),
   )
 
   module ProductMappings: Mappings with module Target := ProductsReadModel = {
@@ -278,8 +509,46 @@ module Make = (Platform: Platform.T) => {
     let mappings = CategoriesProjections.mappings
   }
 
-  module CategoryReadModel =
-    Platform.ReadModel.Make(CategoriesReadModel, CategoryMappings)
+  module CategoryReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoryMappings)
+
+  // Demand tracking — driven by Ordering's OrdersExtensionPoint
+  module ProductDemandAggregate = Platform.Aggregate.Make(
+    ProductDemand,
+    ProductDemandBehavior,
+    NoEventMappings.Make(ProductDemand),
+  )
+
+  module ProductDemandMappings: Mappings with module Target := ProductDemandReadModel = {
+    module ProductDemandMappings = Mappings.Make(ProductDemandReadModel)
+    module type Mapping = ProductDemandMappings.Mapping
+    let mappings = ProductDemandProjections.mappings
+  }
+
+  module ProductDemandReadModelMaker = Platform.ReadModel.Make(
+    ProductDemandReadModel,
+    ProductDemandMappings,
+  )
+
+  // Compile the Products extension point mapping, then build the EP component
+  module ProductsEPMappingT = ReventlessCore.ExtensionPointMapping.Make(
+    ProductsExtensionPointSpec,
+    ProductsExtensionPointMapping,
+  )
+  module ProductsEPMappings = {
+    module Spec = ProductsExtensionPointSpec
+    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+    let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
+  }
+  module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
+    ProductsExtensionPointSpec,
+    ProductsEPMappings,
+  )
+
+  // Build the Orders extension (subscribing to Ordering's EP)
+  module OrdersExtensionMaker = ReventlessCore.Extension_Builder.Make(
+    OrdersExtensionPointSpec,
+    OrdersExtension.Mappings,
+  )
 }
 ```
 
