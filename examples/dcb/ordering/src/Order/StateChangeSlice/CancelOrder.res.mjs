@@ -13,25 +13,37 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyShipped")
 ]);
 
+let initialDecisionModel_productIds = [];
+
+let initialDecisionModel = {
+  exists: false,
+  shipped: false,
+  cancelled: false,
+  productIds: initialDecisionModel_productIds
+};
+
 function reduce(model, event) {
   switch (event.TAG) {
     case "OrderPlaced" :
       return {
         exists: true,
         shipped: false,
-        cancelled: false
+        cancelled: false,
+        productIds: event.productIds
       };
     case "OrderShipped" :
       return {
         exists: model.exists,
         shipped: true,
-        cancelled: model.cancelled
+        cancelled: model.cancelled,
+        productIds: model.productIds
       };
     case "OrderCancelled" :
       return {
         exists: model.exists,
         shipped: model.shipped,
-        cancelled: true
+        cancelled: true,
+        productIds: model.productIds
       };
     default:
       return model;
@@ -55,7 +67,8 @@ function decide(model, command) {
         TAG: "Ok",
         _0: [{
             TAG: "OrderCancelled",
-            orderId: command.orderId
+            orderId: command.orderId,
+            productIds: model.productIds
           }]
       };
     }
@@ -70,12 +83,6 @@ function decide(model, command) {
 let name = "CancelOrder";
 
 let DcbEventLogSpec;
-
-let initialDecisionModel = {
-  exists: false,
-  shipped: false,
-  cancelled: false
-};
 
 export {
   name,

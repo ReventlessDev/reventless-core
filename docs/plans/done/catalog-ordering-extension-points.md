@@ -44,7 +44,7 @@ type event =
   | ProductPriceChanged({productId: string, price: float})
 
 @schema
-type callCommand = unit
+type directive = unit
 ```
 
 The EP omits category events and description updates — those are not relevant to order-taking.
@@ -56,9 +56,19 @@ Translates internal `CatalogEventLog` events into the stable public contract:
 ```rescript
 module ExtensionPoint = ProductsExtensionPointSpec
 
+// DCB adapter: exposes CatalogEventLog as Aggregate.Spec so ExtensionPointMapping.Make
+// can decode outgoing events. Only needed because mapOutgoingEvent is Some.
+module Aggregate = {
+  let name = "CatalogEventLog"
+  module Id = Id.String
+  @schema type command = unit
+  @schema type event = CatalogEventLog.event
+  @schema type error = unit
+}
+
 let mapIncomingCommand = (_id, _command, _meta) => []
 
-let mapOutgoingEvent = Some((id, event, _meta, _pluginDef) =>
+let mapOutgoingEvent = Some((id, event, _meta, _queryEngine) =>
   switch event {
   | CatalogEventLog.ProductAdded({productId, name, price}) => [
       PublishEvent(productId, ProductsExtensionPointSpec.ProductBecameAvailable({productId, name, price}))
@@ -133,18 +143,21 @@ let decide = (_model, command) =>
 module DcbEventLogSpec = OrderingEventLog
 
 @schema
+type event = OrderingEventLog.event
+
+@schema
 type state = {productId: string, name: string, price: float}
 
 let project = (state, event) =>
   switch event {
   | OrderingEventLog.CatalogProductSynced({productId, name, price}) =>
-    Set({productId, name, price})
-  | OrderingEventLog.CatalogProductPriceUpdated({price}) =>
+    [Set(productId, {productId, name, price})]
+  | OrderingEventLog.CatalogProductPriceUpdated({productId, price}) =>
     switch state {
-    | Some(p) => Set({...p, price})
-    | None => Ignore
+    | Some(p) => [Set(productId, {...p, price})]
+    | None => []
     }
-  | _ => Ignore
+  | _ => []
   }
 ```
 
@@ -156,11 +169,19 @@ no cross-service query at runtime.
 ```rescript
 module Spec = ProductsExtensionPointSpec
 
-module ProductMapping = {
+module ProductMappingImpl = {
   module ExtensionPoint = Spec
-  module Aggregate = SyncCatalogProduct
 
-  let aggregateName = SyncCatalogProduct.name
+  // DCB adapter: wraps SyncCatalogProduct as Aggregate.Spec so ExtensionMapping.Make
+  // can encode commands routed to this StateChangeSlice.
+  module Aggregate = {
+    let name = SyncCatalogProduct.name
+    module Id = Id.String
+    type command = SyncCatalogProduct.command
+    let commandSchema = SyncCatalogProduct.commandSchema
+    @schema type event = unit  // unused: mapOutgoingEvent = None
+    @schema type error = SyncCatalogProduct.error
+  }
 
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
@@ -181,11 +202,14 @@ module ProductMapping = {
   let mapOutgoingEvent = None
 }
 
+// Compile the Impl into a pre-encoded Mapping module.
+module ProductMappingT = ExtensionMapping.Make(Spec, ProductMappingImpl)
+
 module Mappings = {
   module Spec = Spec
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
   let name = "OrderingProducts"
-  let mappings: array<module(Mapping)> = [module(ProductMapping)]
+  let mappings: array<module(Mapping)> = [module(ProductMappingT)]
 }
 ```
 
@@ -226,7 +250,7 @@ type event =
   | ItemOrderCancelled({productId: string, orderId: string})
 
 @schema
-type callCommand = unit
+type directive = unit
 ```
 
 ### Required domain change: `ordering/src/Plugin/OrderingEventLog.res`
@@ -252,9 +276,19 @@ The decomposition from batch to per-product happens here:
 ```rescript
 module ExtensionPoint = OrdersExtensionPointSpec
 
+// DCB adapter: exposes OrderingEventLog as Aggregate.Spec so ExtensionPointMapping.Make
+// can decode outgoing events. Only needed because mapOutgoingEvent is Some.
+module Aggregate = {
+  let name = "OrderingEventLog"
+  module Id = Id.String
+  @schema type command = unit
+  @schema type event = OrderingEventLog.event
+  @schema type error = unit
+}
+
 let mapIncomingCommand = (_id, _command, _meta) => []
 
-let mapOutgoingEvent = Some((id, event, _meta, _pluginDef) =>
+let mapOutgoingEvent = Some((id, event, _meta, _queryEngine) =>
   switch event {
   | OrderingEventLog.OrderPlaced({orderId, customerId, productIds}) =>
     productIds->Array.map(productId =>
@@ -342,26 +376,29 @@ let decide = (model, command) =>
 module DcbEventLogSpec = CatalogEventLog
 
 @schema
+type event = CatalogEventLog.event
+
+@schema
 type state = {productId: string, name: string, orderCount: int}
 
 let project = (state, event) =>
   switch event {
   | CatalogEventLog.ProductAdded({productId, name}) =>
     switch state {
-    | None => Set({productId, name, orderCount: 0})
-    | Some(s) => Set({...s, name})
+    | None => [Set(productId, {productId, name, orderCount: 0})]
+    | Some(s) => [Set(productId, {...s, name})]
     }
-  | CatalogEventLog.ProductDemandRecorded(_) =>
+  | CatalogEventLog.ProductDemandRecorded({productId}) =>
     switch state {
-    | Some(s) => Set({...s, orderCount: s.orderCount + 1})
-    | None => Ignore
+    | Some(s) => [Set(productId, {...s, orderCount: s.orderCount + 1})]
+    | None => []
     }
-  | CatalogEventLog.ProductDemandRevoked(_) =>
+  | CatalogEventLog.ProductDemandRevoked({productId}) =>
     switch state {
-    | Some(s) => Set({...s, orderCount: max(0, s.orderCount - 1)})
-    | None => Ignore
+    | Some(s) => [Set(productId, {...s, orderCount: max(0, s.orderCount - 1)})]
+    | None => []
     }
-  | _ => Ignore
+  | _ => []
   }
 ```
 
@@ -372,11 +409,19 @@ This is a pure projection — no cross-plugin queries, no runtime coupling.
 ```rescript
 module Spec = OrdersExtensionPointSpec
 
-module DemandMapping = {
+module DemandMappingImpl = {
   module ExtensionPoint = Spec
-  module Aggregate = RecordProductDemand
 
-  let aggregateName = RecordProductDemand.name
+  // DCB adapter: wraps RecordProductDemand as Aggregate.Spec so ExtensionMapping.Make
+  // can encode commands routed to this StateChangeSlice.
+  module Aggregate = {
+    let name = RecordProductDemand.name
+    module Id = Id.String
+    type command = RecordProductDemand.command
+    let commandSchema = RecordProductDemand.commandSchema
+    @schema type event = unit  // unused: mapOutgoingEvent = None
+    @schema type error = RecordProductDemand.error
+  }
 
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
@@ -397,11 +442,14 @@ module DemandMapping = {
   let mapOutgoingEvent = None
 }
 
+// Compile the Impl into a pre-encoded Mapping module.
+module DemandMappingT = ExtensionMapping.Make(Spec, DemandMappingImpl)
+
 module Mappings = {
   module Spec = Spec
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
   let name = "CatalogDemand"
-  let mappings: array<module(Mapping)> = [module(DemandMapping)]
+  let mappings: array<module(Mapping)> = [module(DemandMappingT)]
 }
 ```
 
@@ -419,8 +467,20 @@ module Make = (Platform: Reventless.Platform.T) => {
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand)
   module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
 
-  // extensionPoints = [module(ProductsExtensionPointMapping)]
-  // extensions     = [module(OrdersExtension)]
+  // Compile the Products extension point mapping, then build the EP component
+  module ProductsEPMappingT = ExtensionPointMapping.Make(ProductsExtensionPointSpec, ProductsExtensionPointMapping)
+  module ProductsEPMappings = {
+    module Spec = ProductsExtensionPointSpec
+    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+    let mappings = [module(ProductsEPMappingT)]
+  }
+  module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPointSpec, ProductsEPMappings)
+
+  // Build the Orders extension (subscribing to Ordering's EP)
+  module OrdersExtensionMaker = Extension_Builder.Make(OrdersExtensionPointSpec, OrdersExtension.Mappings)
+
+  // extensionPoints = [module(ProductsExtensionPointMaker)]
+  // extensions     = [module(OrdersExtensionMaker)]
 
   module DcbSpec = CatalogEventLog
 }
@@ -436,8 +496,20 @@ module Make = (Platform: Reventless.Platform.T) => {
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct)
   module AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView)
 
-  // extensionPoints = [module(OrdersExtensionPointMapping)]
-  // extensions     = [module(ProductsExtension)]
+  // Build the Products extension (subscribing to Catalog's EP)
+  module ProductsExtensionMaker = Extension_Builder.Make(ProductsExtensionPointSpec, ProductsExtension.Mappings)
+
+  // Compile the Orders extension point mapping, then build the EP component
+  module OrdersEPMappingT = ExtensionPointMapping.Make(OrdersExtensionPointSpec, OrdersExtensionPointMapping)
+  module OrdersEPMappings = {
+    module Spec = OrdersExtensionPointSpec
+    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+    let mappings = [module(OrdersEPMappingT)]
+  }
+  module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPointSpec, OrdersEPMappings)
+
+  // extensionPoints = [module(OrdersExtensionPointMaker)]
+  // extensions     = [module(ProductsExtensionMaker)]
 
   module DcbSpec = OrderingEventLog
 }
@@ -449,20 +521,22 @@ module Make = (Platform: Reventless.Platform.T) => {
 
 ### Catalog package
 
-- [ ] `src/ExtensionPoint/ProductsExtensionPointSpec.res` — new
-- [ ] `src/ExtensionPoint/ProductsExtensionPointMapping.res` — new
-- [ ] `src/Extension/OrdersExtension.res` — new
-- [ ] `src/Product/StateChangeSlice/RecordProductDemand.res` — new
-- [ ] `src/Product/StateViewSlice/ProductDemandView.res` — new
-- [ ] `src/Plugin/CatalogEventLog.res` — add `ProductDemandRecorded`, `ProductDemandRevoked`
-- [ ] `src/Plugin/CatalogPlugin.res` — register new slices, extension point, extension
+- [x] `src/ExtensionPoint/ProductsExtensionPointSpec.res` — new
+- [x] `src/ExtensionPoint/ProductsExtensionPointMapping.res` — new
+- [x] `src/Extension/OrdersExtensionPointSpec.res` — new (local copy of Ordering's EP spec)
+- [x] `src/Extension/OrdersExtension.res` — new
+- [x] `src/Product/StateChangeSlice/RecordProductDemand.res` — new
+- [x] `src/Product/StateViewSlice/ProductDemandView.res` — new
+- [x] `src/Plugin/CatalogEventLog.res` — add `ProductDemandRecorded`, `ProductDemandRevoked`
+- [x] `src/Plugin/CatalogPlugin.res` — register new slices, extension point, extension
 
 ### Ordering package
 
-- [ ] `src/ExtensionPoint/OrdersExtensionPointSpec.res` — new
-- [ ] `src/ExtensionPoint/OrdersExtensionPointMapping.res` — new
-- [ ] `src/Extension/ProductsExtension.res` — new
-- [ ] `src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res` — new
-- [ ] `src/CatalogProduct/StateViewSlice/AvailableProductsView.res` — new
-- [ ] `src/Plugin/OrderingEventLog.res` — add catalog sync events; extend `OrderCancelled`
-- [ ] `src/Plugin/OrderingPlugin.res` — register new slices, extension point, extension
+- [x] `src/ExtensionPoint/OrdersExtensionPointSpec.res` — new
+- [x] `src/ExtensionPoint/OrdersExtensionPointMapping.res` — new
+- [x] `src/Extension/ProductsExtensionPointSpec.res` — new (local copy of Catalog's EP spec)
+- [x] `src/Extension/ProductsExtension.res` — new
+- [x] `src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res` — new
+- [x] `src/CatalogProduct/StateViewSlice/AvailableProductsView.res` — new
+- [x] `src/Plugin/OrderingEventLog.res` — add catalog sync events; extend `OrderCancelled`
+- [x] `src/Plugin/OrderingPlugin.res` — register new slices, extension point, extension

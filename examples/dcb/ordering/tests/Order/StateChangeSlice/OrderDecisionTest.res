@@ -95,7 +95,10 @@ describe("ShipOrder:", () => {
 
     test("OrderCancelled sets cancelled=true", () =>
       expect(
-        ShipOrder.reduce(placedModel, OrderingEventLog.OrderCancelled({orderId: "ord-1"})),
+        ShipOrder.reduce(
+          placedModel,
+          OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}),
+        ),
       )->toEqual({ShipOrder.exists: true, shipped: false, cancelled: true})
     )
   })
@@ -137,7 +140,12 @@ describe("ShipOrder:", () => {
 })
 
 describe("CancelOrder:", () => {
-  let placedModel: CancelOrder.decisionModel = {exists: true, shipped: false, cancelled: false}
+  let placedModel: CancelOrder.decisionModel = {
+    exists: true,
+    shipped: false,
+    cancelled: false,
+    productIds: ["prod-1"],
+  }
 
   describe("decide", () => {
     test("on non-existent order returns OrderNotFound", () =>
@@ -170,7 +178,9 @@ describe("CancelOrder:", () => {
     test("on placed order produces OrderCancelled", () =>
       expect(
         CancelOrder.decide(placedModel, CancelOrder.CancelOrder({orderId: "ord-1"})),
-      )->toEqual(Ok([OrderingEventLog.OrderCancelled({orderId: "ord-1"})]))
+      )->toEqual(
+        Ok([OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})]),
+      )
     )
   })
 })

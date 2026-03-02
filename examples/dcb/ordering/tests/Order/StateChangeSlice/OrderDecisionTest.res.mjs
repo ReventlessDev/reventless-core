@@ -84,7 +84,8 @@ Jest.describe("ShipOrder:", () => {
     }));
     Jest.test("OrderCancelled sets cancelled=true", () => Jest.Expect.toEqual(Jest.Expect.expect(ShipOrder$ReventlessdevExampleDcbOrdering.reduce(placedModel, {
       TAG: "OrderCancelled",
-      orderId: "ord-1"
+      orderId: "ord-1",
+      productIds: ["prod-1"]
     })), {
       exists: true,
       shipped: false,
@@ -134,50 +135,58 @@ Jest.describe("ShipOrder:", () => {
   });
 });
 
-Jest.describe("CancelOrder:", () => Jest.describe("decide", () => {
-  Jest.test("on non-existent order returns OrderNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide(CancelOrder$ReventlessdevExampleDcbOrdering.initialDecisionModel, {
-    TAG: "CancelOrder",
-    orderId: "ord-1"
-  })), {
-    TAG: "Error",
-    _0: "OrderNotFound"
-  }));
-  Jest.test("on shipped order returns OrderAlreadyShipped", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide({
-    exists: true,
-    shipped: true,
-    cancelled: false
-  }, {
-    TAG: "CancelOrder",
-    orderId: "ord-1"
-  })), {
-    TAG: "Error",
-    _0: "OrderAlreadyShipped"
-  }));
-  Jest.test("on already cancelled order returns Ok([]) (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide({
+Jest.describe("CancelOrder:", () => {
+  let placedModel_productIds = ["prod-1"];
+  let placedModel = {
     exists: true,
     shipped: false,
-    cancelled: true
-  }, {
-    TAG: "CancelOrder",
-    orderId: "ord-1"
-  })), {
-    TAG: "Ok",
-    _0: []
-  }));
-  Jest.test("on placed order produces OrderCancelled", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide({
-    exists: true,
-    shipped: false,
-    cancelled: false
-  }, {
-    TAG: "CancelOrder",
-    orderId: "ord-1"
-  })), {
-    TAG: "Ok",
-    _0: [{
-        TAG: "OrderCancelled",
-        orderId: "ord-1"
-      }]
-  }));
-}));
+    cancelled: false,
+    productIds: placedModel_productIds
+  };
+  Jest.describe("decide", () => {
+    Jest.test("on non-existent order returns OrderNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide(CancelOrder$ReventlessdevExampleDcbOrdering.initialDecisionModel, {
+      TAG: "CancelOrder",
+      orderId: "ord-1"
+    })), {
+      TAG: "Error",
+      _0: "OrderNotFound"
+    }));
+    Jest.test("on shipped order returns OrderAlreadyShipped", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide({
+      exists: true,
+      shipped: true,
+      cancelled: false,
+      productIds: placedModel_productIds
+    }, {
+      TAG: "CancelOrder",
+      orderId: "ord-1"
+    })), {
+      TAG: "Error",
+      _0: "OrderAlreadyShipped"
+    }));
+    Jest.test("on already cancelled order returns Ok([]) (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide({
+      exists: true,
+      shipped: false,
+      cancelled: true,
+      productIds: placedModel_productIds
+    }, {
+      TAG: "CancelOrder",
+      orderId: "ord-1"
+    })), {
+      TAG: "Ok",
+      _0: []
+    }));
+    Jest.test("on placed order produces OrderCancelled", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$ReventlessdevExampleDcbOrdering.decide(placedModel, {
+      TAG: "CancelOrder",
+      orderId: "ord-1"
+    })), {
+      TAG: "Ok",
+      _0: [{
+          TAG: "OrderCancelled",
+          orderId: "ord-1",
+          productIds: ["prod-1"]
+        }]
+    }));
+  });
+});
 
 /*  Not a pure module */

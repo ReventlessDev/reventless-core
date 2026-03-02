@@ -52,7 +52,10 @@ describe("OrdersView.project:", () => {
 
   test("OrderCancelled Update function sets status to cancelled", () =>
     expect(
-      OrdersView.project(None, OrderingEventLog.OrderCancelled({orderId: "ord-1"}))
+      OrdersView.project(
+        None,
+        OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}),
+      )
       ->applyFirstUpdate(baseOrder),
     )->toEqual({...baseOrder, status: "cancelled"})
   )

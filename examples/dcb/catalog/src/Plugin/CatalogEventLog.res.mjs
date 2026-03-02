@@ -39,6 +39,16 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "CategoryArchived",
     categoryId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRecorded",
+    productId: s.m(DcbTag$Reventless.string),
+    orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRevoked",
+    productId: s.m(DcbTag$Reventless.string),
+    orderId: s.m(S.string)
   }))
 ]);
 

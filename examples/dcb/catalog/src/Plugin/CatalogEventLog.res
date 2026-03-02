@@ -19,3 +19,11 @@ type event =
   | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
+  | ProductDemandRecorded({
+      productId: @s.matches(DcbTag.string) string,
+      orderId: string,
+    })
+  | ProductDemandRevoked({
+      productId: @s.matches(DcbTag.string) string,
+      orderId: string,
+    })

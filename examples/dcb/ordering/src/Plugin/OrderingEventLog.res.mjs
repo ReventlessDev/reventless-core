@@ -36,7 +36,19 @@ let eventSchema = S.union([
   })),
   S.schema(s => ({
     TAG: "OrderCancelled",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.string),
+    productIds: s.m(S.array(S.string))
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductSynced",
+    productId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string),
+    price: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductPriceUpdated",
+    productId: s.m(DcbTag$Reventless.string),
+    price: s.m(S.float)
   }))
 ]);
 

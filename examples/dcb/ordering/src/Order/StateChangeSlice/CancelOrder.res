@@ -16,13 +16,13 @@ type error =
   | OrderNotFound
   | OrderAlreadyShipped
 
-type decisionModel = {exists: bool, shipped: bool, cancelled: bool}
+type decisionModel = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
 
-let initialDecisionModel = {exists: false, shipped: false, cancelled: false}
+let initialDecisionModel = {exists: false, shipped: false, cancelled: false, productIds: []}
 
 let reduce = (model, event) =>
   switch event {
-  | OrderPlaced(_) => {exists: true, shipped: false, cancelled: false}
+  | OrderPlaced({productIds}) => {exists: true, shipped: false, cancelled: false, productIds}
   | OrderShipped(_) => {...model, shipped: true}
   | OrderCancelled(_) => {...model, cancelled: true}
   | _ => model
@@ -38,6 +38,6 @@ let decide = (model, command) =>
     } else if model.cancelled {
       Ok([]) // idempotent — already cancelled
     } else {
-      Ok([OrderCancelled({orderId: theId})])
+      Ok([OrderCancelled({orderId: theId, productIds: model.productIds})])
     }
   }

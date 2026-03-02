@@ -18,4 +18,16 @@ type event =
       productIds: array<string>,
     })
   | OrderShipped({orderId: @s.matches(DcbTag.string) string})
-  | OrderCancelled({orderId: @s.matches(DcbTag.string) string})
+  | OrderCancelled({
+      orderId: @s.matches(DcbTag.string) string,
+      productIds: array<string>,
+    })
+  | CatalogProductSynced({
+      productId: @s.matches(DcbTag.string) string,
+      name: string,
+      price: float,
+    })
+  | CatalogProductPriceUpdated({
+      productId: @s.matches(DcbTag.string) string,
+      price: float,
+    })
