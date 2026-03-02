@@ -41,6 +41,35 @@ let encode = S.reverseConvertToJsonOrThrow;
 
 let InvalidEvent = /* @__PURE__ */Primitive_exceptions.create("Message-Reventless.InvalidEvent");
 
+function toEventSchema$p(idSchema, eventSchema) {
+  return S.object(s => ({
+    id: s.f("id", idSchema),
+    meta: s.f("meta", metaSchema),
+    event: s.f("event", eventSchema)
+  }));
+}
+
+function decodeEvent$p(json, idSchema, eventSchema) {
+  return S.parseJsonOrThrow(json, toEventSchema$p(idSchema, eventSchema));
+}
+
+function composeEventJson$p(id, meta, eventJson) {
+  return Object.fromEntries([
+    [
+      "id",
+      id
+    ],
+    [
+      "meta",
+      S.reverseConvertToJsonOrThrow(meta, metaSchema)
+    ],
+    [
+      "event",
+      eventJson
+    ]
+  ]);
+}
+
 let serviceSchema = S.string;
 
 export {
@@ -53,5 +82,8 @@ export {
   decode,
   encode,
   InvalidEvent,
+  toEventSchema$p,
+  decodeEvent$p,
+  composeEventJson$p,
 }
 /*  Not a pure module */

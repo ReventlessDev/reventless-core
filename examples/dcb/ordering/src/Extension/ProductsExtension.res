@@ -40,11 +40,11 @@ module ProductMappingImpl = {
 }
 
 // Compile the Impl into a pre-encoded Mapping module.
-module ProductMappingT = ReventlessCore.ExtensionMapping.Make(Spec, ProductMappingImpl)
+module ProductMappingT = Make(Spec, ProductMappingImpl)
 
 module Mappings = {
   module Spec = Spec
-  module type Mapping = ReventlessCore.ExtensionMapping.T with module ExtensionPoint := Spec
+  module type Mapping = T with module ExtensionPoint := Spec
   let name = "OrderingProducts"
   let mappings: array<module(Mapping)> = [module(ProductMappingT)]
 }

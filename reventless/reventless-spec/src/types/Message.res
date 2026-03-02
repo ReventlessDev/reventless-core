@@ -150,3 +150,28 @@ let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(sc
 
 /** Raised by adapters when an incoming event JSON cannot be matched to a known event variant. */
 exception InvalidEvent(JSON.t)
+
+/** Generates a new UUID v4 string. */
+@module("uuid") @val
+external uuid: unit => string = "v4"
+
+let toEventSchema' = (idSchema, eventSchema) =>
+  S.object(s => {
+    id: s.field("id", idSchema),
+    meta: s.field("meta", metaSchema),
+    event: s.field("event", eventSchema),
+  })
+
+/** Decode a raw event JSON envelope into a typed `event'<'id, 'event>`. */
+let decodeEvent' = (json, idSchema, eventSchema) =>
+  json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+
+/** Compose a raw event JSON envelope from id, meta, and event JSON. */
+let composeEventJson' = (id, meta, eventJson) =>
+  [
+    ("id", id->JSON.Encode.string),
+    ("meta", meta->S.reverseConvertToJsonOrThrow(metaSchema)),
+    ("event", eventJson),
+  ]
+  ->Dict.fromArray
+  ->JSON.Encode.object

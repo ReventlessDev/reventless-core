@@ -21,7 +21,7 @@ import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-int
 import * as Heartbeat_Builder$ReventlessCore from "../Heartbeat/Heartbeat_Builder.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessCore from "../../core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$Reventless from "@reventlessdev/reventless-spec/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
   return ApiSpec => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
@@ -108,7 +108,7 @@ function Make(Spec) {
           let match = Plugin_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
           let extensionPointsOutputs = match[0];
           let coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Stdlib_JsError.throwWithMessage("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
-          let corePluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessCore.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
+          let corePluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$Reventless.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
           let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources.map(Adapter$ReventlessCore.fromInteropResolved));
           let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
           let match$1 = Plugin_Helpers$ReventlessCore.createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
@@ -119,7 +119,7 @@ function Make(Spec) {
           let extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs.flatMap(ex => ex.aggregateNames));
           let extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(ex => ex.aggregateNames));
           let eventTopics = Aggregate$ReventlessCore.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
-          eventTopics[PluginExtensionPointSpec$ReventlessCore.name] = {
+          eventTopics[PluginExtensionPointSpec$Reventless.name] = {
             resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$ReventlessCore.fromInteropResource)
           };
           let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
@@ -212,7 +212,10 @@ function Make(Spec) {
   })))))))));
 }
 
+let PluginExtensionPointSpec;
+
 export {
+  PluginExtensionPointSpec,
   Make,
 }
 /* S Not a pure module */

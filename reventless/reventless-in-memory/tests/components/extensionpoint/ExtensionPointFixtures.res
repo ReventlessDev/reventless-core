@@ -79,7 +79,7 @@ module ForwardMapping = {
 // Pre-compiled mapping (Spec + Impl → T)
 // ─────────────────────────────────────────────────────────────
 
-module TestEPMapping1 = ReventlessCore.ExtensionPointMapping.Make(TestEPSpec, ForwardMapping)
+module TestEPMapping1 = Reventless.ExtensionPointMapping.Make(TestEPSpec, ForwardMapping)
 
 // ─────────────────────────────────────────────────────────────
 // Mappings collection satisfying ExtensionPoint.Mappings

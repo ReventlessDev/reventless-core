@@ -3,8 +3,7 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
-import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
-import * as ExtensionPointMapping$ReventlessCore from "@reventlessdev/reventless-core/src/ExtensionPointMapping.res.mjs";
+import * as ExtensionPointMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionPointMapping.res.mjs";
 import * as Product$ReventlessdevExampleAggregateCatalog from "./Aggregate/Product.res.mjs";
 import * as Category$ReventlessdevExampleAggregateCatalog from "./Aggregate/Category.res.mjs";
 import * as ProductDemand$ReventlessdevExampleAggregateCatalog from "./Aggregate/ProductDemand.res.mjs";
@@ -122,7 +121,7 @@ function Make(Platform) {
     config: ProductDemandReadModel$ReventlessdevExampleAggregateCatalog.config,
     subIdConfig: undefined
   })(ProductDemandMappings);
-  let ProductsEPMappingT = ExtensionPointMapping$ReventlessCore.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
+  let ProductsEPMappingT = ExtensionPointMapping$Reventless.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
     Aggregate: {
       Id: Id$Reventless.$$String,
       name: Product$ReventlessdevExampleAggregateCatalog.name,
@@ -141,7 +140,7 @@ function Make(Platform) {
   let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
     mappings: mappings
   });
-  let OrdersExtensionMaker = Extension_Builder$ReventlessCore.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
+  let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateCatalog)({
     name: OrdersExtension$ReventlessdevExampleAggregateCatalog.Mappings.name,
     mappings: OrdersExtension$ReventlessdevExampleAggregateCatalog.Mappings.mappings
   });

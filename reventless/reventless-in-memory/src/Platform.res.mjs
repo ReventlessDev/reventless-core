@@ -2,6 +2,7 @@
 
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
+import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "./adapter/GraphQL_Server.res.mjs";
 import * as Counter_Builder$ReventlessInMemory from "./components/Counter_Builder.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
@@ -36,22 +37,26 @@ function Make($star) {
   let ExtensionPoint = {
     Make: Make$2
   };
-  let Make$3 = Spec => TaskMaker.Make(Spec);
-  let Task = {
+  let Make$3 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
+  let Extension = {
     Make: Make$3
   };
-  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$4 = StateChangeSlice_Builder$ReventlessInMemory.Make;
-  let StateChangeSlice = {
+  let Make$4 = Spec => TaskMaker.Make(Spec);
+  let Task = {
     Make: Make$4
   };
-  let Make$5 = Spec => StateViewSliceMaker.Make(Spec);
-  let StateViewSlice = {
+  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
+  let Make$5 = StateChangeSlice_Builder$ReventlessInMemory.Make;
+  let StateChangeSlice = {
     Make: Make$5
   };
-  let Make$6 = Spec => DcbEventLogMaker.Make(Spec);
-  let DcbEventLog = {
+  let Make$6 = Spec => StateViewSliceMaker.Make(Spec);
+  let StateViewSlice = {
     Make: Make$6
+  };
+  let Make$7 = Spec => DcbEventLogMaker.Make(Spec);
+  let DcbEventLog = {
+    Make: Make$7
   };
   GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
   return {
@@ -72,6 +77,7 @@ function Make($star) {
     },
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,
+    Extension: Extension,
     Task: Task,
     Counter: {
       make: Counter.make

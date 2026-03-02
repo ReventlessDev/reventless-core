@@ -66,6 +66,14 @@ module type T = {
     ) => ExtensionPoint.T
   }
 
+  /** Factory for extension components (bidirectional EP↔aggregate bridges). */
+  module Extension: {
+    module Make: (
+      Spec: ExtensionMapping.Spec,
+      Mappings: ExtensionMapping.Mappings with module Spec := Spec,
+    ) => Extension.T
+  }
+
   /** Factory for task (background job / S3 trigger) components. */
   module Task: {
     module Make: (Spec: Task.Spec) => Task.T with module Spec = Spec

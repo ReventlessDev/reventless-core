@@ -24,13 +24,13 @@ module Make = (Platform: Platform.T) => {
   module AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView)
 
   // Build the Products extension (subscribing to Catalog's EP)
-  module ProductsExtensionMaker = ReventlessCore.Extension_Builder.Make(
+  module ProductsExtensionMaker = Platform.Extension.Make(
     ProductsExtensionPointSpec,
     ProductsExtension.Mappings,
   )
 
   // Compile the Orders extension point mapping, then build the EP component
-  module OrdersEPMappingT = ReventlessCore.ExtensionPointMapping.Make(
+  module OrdersEPMappingT = ExtensionPointMapping.Make(
     OrdersExtensionPointSpec,
     OrdersExtensionPointMapping,
   )

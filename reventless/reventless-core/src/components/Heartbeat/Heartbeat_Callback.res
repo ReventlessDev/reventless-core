@@ -1,3 +1,5 @@
+module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
+
 module type Spec = {
   let publishToCorePluginExtensionPoint: CommandTopic.publishJsons
   let id: string

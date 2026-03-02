@@ -5,9 +5,8 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Message$ReventlessCore from "../../../Message.res.mjs";
 import * as ExtensionMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../../util/Util_Promise.res.mjs";
-import * as ExtensionMapping$ReventlessCore from "../../../ExtensionMapping.res.mjs";
 import * as Extension_Builder$ReventlessCore from "../../../components/Extension/Extension_Builder.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessCore from "../../plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$Reventless from "@reventlessdev/reventless-spec/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
   let subscribe = async (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
@@ -141,11 +140,11 @@ function Make(Spec) {
     }
   };
   let $$let = ExtensionMapping$Reventless.NoAggregate.Id;
-  let ConnectPluginMapping = ExtensionMapping$ReventlessCore.Make({
-    name: PluginExtensionPointSpec$ReventlessCore.name,
-    commandSchema: PluginExtensionPointSpec$ReventlessCore.commandSchema,
-    eventSchema: PluginExtensionPointSpec$ReventlessCore.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$ReventlessCore.directiveSchema
+  let ConnectPluginMapping = ExtensionMapping$Reventless.Make({
+    name: PluginExtensionPointSpec$Reventless.name,
+    commandSchema: PluginExtensionPointSpec$Reventless.commandSchema,
+    eventSchema: PluginExtensionPointSpec$Reventless.eventSchema,
+    directiveSchema: PluginExtensionPointSpec$Reventless.directiveSchema
   })({
     Aggregate: {
       Id: {
@@ -171,10 +170,10 @@ function Make(Spec) {
     mappings: mappings
   };
   let include = Extension_Builder$ReventlessCore.Make({
-    name: PluginExtensionPointSpec$ReventlessCore.name,
-    commandSchema: PluginExtensionPointSpec$ReventlessCore.commandSchema,
-    eventSchema: PluginExtensionPointSpec$ReventlessCore.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$ReventlessCore.directiveSchema
+    name: PluginExtensionPointSpec$Reventless.name,
+    commandSchema: PluginExtensionPointSpec$Reventless.commandSchema,
+    eventSchema: PluginExtensionPointSpec$Reventless.eventSchema,
+    directiveSchema: PluginExtensionPointSpec$Reventless.directiveSchema
   })({
     name: name,
     mappings: mappings
@@ -190,7 +189,13 @@ function Make(Spec) {
   };
 }
 
+let PluginExtensionPointSpec;
+
+let ExtensionMapping;
+
 export {
+  PluginExtensionPointSpec,
+  ExtensionMapping,
   Make,
 }
 /* Message-ReventlessCore Not a pure module */

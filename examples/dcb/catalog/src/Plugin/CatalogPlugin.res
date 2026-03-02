@@ -24,7 +24,7 @@ module Make = (Platform: Platform.T) => {
   module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
 
   // Compile the Products extension point mapping, then build the EP component
-  module ProductsEPMappingT = ReventlessCore.ExtensionPointMapping.Make(
+  module ProductsEPMappingT = ExtensionPointMapping.Make(
     ProductsExtensionPointSpec,
     ProductsExtensionPointMapping,
   )
@@ -39,7 +39,7 @@ module Make = (Platform: Platform.T) => {
   )
 
   // Build the Orders extension (subscribing to Ordering's EP)
-  module OrdersExtensionMaker = ReventlessCore.Extension_Builder.Make(
+  module OrdersExtensionMaker = Platform.Extension.Make(
     OrdersExtensionPointSpec,
     OrdersExtension.Mappings,
   )

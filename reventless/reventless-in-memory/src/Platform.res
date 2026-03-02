@@ -42,6 +42,13 @@ module Make = (): Reventless.Platform.T => {
     ): Reventless.ExtensionPoint.T => ExtensionPointMaker.Make(Spec, Mappings)
   }
 
+  module Extension = {
+    module Make = (
+      Spec: Reventless.ExtensionMapping.Spec,
+      Mappings: Reventless.ExtensionMapping.Mappings with module Spec := Spec,
+    ): Reventless.Extension.T => ReventlessCore.Extension_Builder.Make(Spec, Mappings)
+  }
+
   module Task = {
     module Make = (
       Spec: Reventless.Task.Spec,

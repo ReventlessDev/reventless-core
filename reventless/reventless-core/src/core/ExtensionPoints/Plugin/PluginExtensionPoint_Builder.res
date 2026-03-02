@@ -1,3 +1,5 @@
+module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
+
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let environment: string

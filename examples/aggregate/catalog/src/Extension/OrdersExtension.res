@@ -29,11 +29,11 @@ module DemandMappingImpl = {
   let mapOutgoingEvent = None
 }
 
-module DemandMappingT = ReventlessCore.ExtensionMapping.Make(Spec, DemandMappingImpl)
+module DemandMappingT = Make(Spec, DemandMappingImpl)
 
 module Mappings = {
   module Spec = Spec
-  module type Mapping = ReventlessCore.ExtensionMapping.T with module ExtensionPoint := Spec
+  module type Mapping = T with module ExtensionPoint := Spec
   let name = "CatalogDemand"
   let mappings: array<module(Mapping)> = [module(DemandMappingT)]
 }

@@ -8,7 +8,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessCore from "../../core/plugin/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec$Reventless from "@reventlessdev/reventless-spec/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {
@@ -23,7 +23,7 @@ function Make(MappingSpec) {
       if (mapOutgoingEvent$1 !== undefined) {
         return mapOutgoingEvent$1(eventJson$p, pluginDef);
       } else {
-        Logger$ReventlessCore.error("File \"Extension_Operations.res\", line 51, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+        Logger$ReventlessCore.error("File \"Extension_Operations.res\", line 54, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
         return [];
       }
     };
@@ -66,7 +66,7 @@ function Make(MappingSpec) {
           msgId: Message$ReventlessCore.uuid(),
           correlationId: init.correlationId
         },
-        commandJson: Message$ReventlessCore.encode(command, PluginExtensionPointSpec$ReventlessCore.commandSchema)
+        commandJson: Message$ReventlessCore.encode(command, PluginExtensionPointSpec$Reventless.commandSchema)
       });
     };
     let handle = async handler => {
@@ -143,7 +143,13 @@ function Make(MappingSpec) {
   });
 }
 
+let PluginExtensionPointSpec;
+
+let ExtensionMapping;
+
 export {
+  PluginExtensionPointSpec,
+  ExtensionMapping,
   Make,
 }
 /* Id-Reventless Not a pure module */

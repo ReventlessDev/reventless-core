@@ -1,3 +1,6 @@
+module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
+module ExtensionMapping = Reventless.ExtensionMapping
+
 module type Mappings = {
   module Spec: Reventless.ExtensionMapping.Spec
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec

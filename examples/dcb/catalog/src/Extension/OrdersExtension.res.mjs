@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
-import * as ExtensionMapping$ReventlessCore from "@reventlessdev/reventless-core/src/ExtensionMapping.res.mjs";
+import * as ExtensionMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionMapping.res.mjs";
 import * as RecordProductDemand$ReventlessdevExampleDcbCatalog from "../Product/StateChangeSlice/RecordProductDemand.res.mjs";
 import * as OrdersExtensionPointSpec$ReventlessdevExampleDcbCatalog from "./OrdersExtensionPointSpec.res.mjs";
 
@@ -46,7 +46,7 @@ let DemandMappingImpl = {
   mapOutgoingEvent: undefined
 };
 
-let DemandMappingT = ExtensionMapping$ReventlessCore.Make(OrdersExtensionPointSpec$ReventlessdevExampleDcbCatalog)({
+let DemandMappingT = ExtensionMapping$Reventless.Make(OrdersExtensionPointSpec$ReventlessdevExampleDcbCatalog)({
   Aggregate: {
     Id: Id$Reventless.$$String,
     name: RecordProductDemand$ReventlessdevExampleDcbCatalog.name,

@@ -24,7 +24,7 @@ module type T = {
 
 module type Mappings = {
   module Spec: Reventless.ExtensionMapping.Spec
-  module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
+  module type Mapping = Reventless.ExtensionMapping.T with module ExtensionPoint := Spec
   let name: string
   let mappings: array<module(Mapping)>
 }

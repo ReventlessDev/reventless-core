@@ -3,8 +3,7 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as NoEventMappings$Reventless from "@reventlessdev/reventless-spec/src/types/NoEventMappings.res.mjs";
-import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
-import * as ExtensionPointMapping$ReventlessCore from "@reventlessdev/reventless-core/src/ExtensionPointMapping.res.mjs";
+import * as ExtensionPointMapping$Reventless from "@reventlessdev/reventless-spec/src/types/ExtensionPointMapping.res.mjs";
 import * as Order$ReventlessdevExampleAggregateOrdering from "./Aggregate/Order.res.mjs";
 import * as Customer$ReventlessdevExampleAggregateOrdering from "./Aggregate/Customer.res.mjs";
 import * as OrderBehavior$ReventlessdevExampleAggregateOrdering from "./Aggregate/OrderBehavior.res.mjs";
@@ -122,11 +121,11 @@ function Make(Platform) {
     config: AvailableProductsReadModel$ReventlessdevExampleAggregateOrdering.config,
     subIdConfig: undefined
   })(AvailableProductsMappings);
-  let ProductsExtensionMaker = Extension_Builder$ReventlessCore.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
+  let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
     name: ProductsExtension$ReventlessdevExampleAggregateOrdering.Mappings.name,
     mappings: ProductsExtension$ReventlessdevExampleAggregateOrdering.Mappings.mappings
   });
-  let OrdersEPMappingT = ExtensionPointMapping$ReventlessCore.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
+  let OrdersEPMappingT = ExtensionPointMapping$Reventless.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
     Aggregate: {
       Id: Id$Reventless.$$String,
       name: Order$ReventlessdevExampleAggregateOrdering.name,

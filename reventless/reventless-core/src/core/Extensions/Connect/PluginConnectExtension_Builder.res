@@ -1,3 +1,6 @@
+module PluginExtensionPointSpec = Reventless.PluginExtensionPointSpec
+module ExtensionMapping = Reventless.ExtensionMapping
+
 module type Spec = {
   let pluginDefinition: Reventless.Plugin.pluginDefinition
   let extensionPointsOutputs: array<ReventlessInterop.ExtensionPoint.resolvedOutputs>

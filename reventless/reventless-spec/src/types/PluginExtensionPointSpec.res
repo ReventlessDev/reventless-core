@@ -1,6 +1,6 @@
 let name = "Core.Plugin"
 
-include Reventless.Plugin
+include Plugin
 
 @schema
 type timeout = int // in minutes
