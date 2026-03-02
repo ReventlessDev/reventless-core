@@ -69,16 +69,20 @@ module Make = (
       }
     }
 
-  let handleIncomingCommands = async topicItems => {
-    let commandActions =
-      topicItems->mapIncomingCommands(
-        Mappings.mappings,
-        Spec.scheduler,
-        Spec.queryEngine,
-        Spec.resourceNaming,
-        Spec.commandTopicResources,
-      )
-
-    await commandActions->Array.map(applyCommandAction)->Promise.all
-  }
+  let handleIncomingCommands = stream =>
+    stream
+    ->Stream.runCollect
+    ->Effect.flatMap(topicItems =>
+      Effect.promise(async () => {
+        let commandActions =
+          topicItems->mapIncomingCommands(
+            Mappings.mappings,
+            Spec.scheduler,
+            Spec.queryEngine,
+            Spec.resourceNaming,
+            Spec.commandTopicResources,
+          )
+        await commandActions->Array.map(applyCommandAction)->Promise.all
+      })
+    )
 }

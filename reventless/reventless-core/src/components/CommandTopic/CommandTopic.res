@@ -14,9 +14,7 @@ type publish<'id, 'command> = Message.command'<'id, 'command> => promise<unit>
 type publishJsons = Reventless.CommandTopic.publishJsons
 type publishJsonsStream = Reventless.CommandTopic.publishJsonsStream
 
-type commandsHandler<'command> = array<topicItem<'command>> => promise<
-  array<result<string, string>>,
->
+type commandsHandler<'command> = Reventless.CommandTopic.commandsHandler<'command>
 
 module type T = {
   module Spec: Reventless.CommandTopic.T

@@ -7,9 +7,10 @@ let _ = beforeEach(() => reset())
 describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
   describe("AbstractPublishCommand — known aggregate", () => {
     testPromise("dispatches to aggregate publishJsons, returns Ok(reference)", async () => {
-      let results = await TestHandler.handleIncomingCommands([
-        makeTopicItem("ref-1", TestEPSpec.RouteToAgg({aggId: "agg-1"})),
-      ])
+      let results =
+        await Stream.fromIterable([makeTopicItem("ref-1", TestEPSpec.RouteToAgg({aggId: "agg-1"}))])
+        ->TestHandler.handleIncomingCommands
+        ->Effect.runPromise
       expect((results, capturedPublishedCmds.contents->Array.length))->toEqual(([Ok("ref-1")], 1))
     })
   })
@@ -24,10 +25,13 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
       // For the "unknown" case, we rely on applyCommandAction's own error path.
       // We test this by calling handleIncomingCommands with 2 items where the second
       // targets a known aggregate — verify both refs in results.
-      let results = await TestHandler.handleIncomingCommands([
-        makeTopicItem("ref-a", TestEPSpec.RouteToAgg({aggId: "agg-1"})),
-        makeTopicItem("ref-b", TestEPSpec.RouteToAgg({aggId: "agg-2"})),
-      ])
+      let results =
+        await Stream.fromIterable([
+          makeTopicItem("ref-a", TestEPSpec.RouteToAgg({aggId: "agg-1"})),
+          makeTopicItem("ref-b", TestEPSpec.RouteToAgg({aggId: "agg-2"})),
+        ])
+        ->TestHandler.handleIncomingCommands
+        ->Effect.runPromise
       // Both route to "TestTargetAgg" (known) — both should return Ok
       expect(results->Array.length)->toBe(2)
       let allOk = results->Array.every(r =>
@@ -42,19 +46,23 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
 
   describe("AbstractCall handler succeeds", () => {
     testPromise("handler called, returns Ok(reference)", async () => {
-      let results = await TestHandler.handleIncomingCommands([
-        makeTopicItem("ref-1", TestEPSpec.CallHandler({value: "test"})),
-      ])
+      let results =
+        await Stream.fromIterable([makeTopicItem("ref-1", TestEPSpec.CallHandler({value: "test"}))])
+        ->TestHandler.handleIncomingCommands
+        ->Effect.runPromise
       expect((results, capturedCallCount.contents))->toEqual(([Ok("ref-1")], 1))
     })
   })
 
   describe("mixed actions", () => {
     testPromise("AbstractPublishCommand and AbstractCall both resolved", async () => {
-      let results = await TestHandler.handleIncomingCommands([
-        makeTopicItem("ref-pub", TestEPSpec.RouteToAgg({aggId: "agg-1"})),
-        makeTopicItem("ref-call", TestEPSpec.CallHandler({value: "v"})),
-      ])
+      let results =
+        await Stream.fromIterable([
+          makeTopicItem("ref-pub", TestEPSpec.RouteToAgg({aggId: "agg-1"})),
+          makeTopicItem("ref-call", TestEPSpec.CallHandler({value: "v"})),
+        ])
+        ->TestHandler.handleIncomingCommands
+        ->Effect.runPromise
       expect((
         results->Array.length,
         capturedPublishedCmds.contents->Array.length,
@@ -65,7 +73,10 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
 
   describe("empty batch", () => {
     testPromise("returns empty array", async () => {
-      let results = await TestHandler.handleIncomingCommands([])
+      let results =
+        await Stream.fromIterable([])
+        ->TestHandler.handleIncomingCommands
+        ->Effect.runPromise
       expect(results)->toEqual([])
     })
   })

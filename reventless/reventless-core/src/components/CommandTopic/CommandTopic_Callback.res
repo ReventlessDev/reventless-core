@@ -27,19 +27,9 @@ module Make = (Spec: Reventless.CommandTopic.T, Ops: Ops with module Spec = Spec
       | None => Stream.empty
       }
     )
-    ->Stream.runCollect
-    ->Effect.flatMap(topicItems =>
-      Effect.tryPromise(
-        ~catch=e => {
-          let err = (e->Obj.magic: JsExn.t)
-          Logger.error(~loc=__LOC__, "Couldn't handle commands", err)
-          err->JsExn.message->Option.getOr("Couldn't handle commands")
-        },
-        () => Ops.commandsHandler(topicItems),
-      )
-      ->Effect.map(res => {
-        Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
-        res
-      })
-    )
+    ->Ops.commandsHandler
+    ->Effect.map(res => {
+      Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
+      res
+    })
 }

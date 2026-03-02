@@ -2,8 +2,12 @@ module type T = {
   module Spec: Reventless.StateChangeSlice.Spec
   let handleCommands: (
     DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
-    array<CommandTopic.topicItem<Message.command'<Reventless.Id.String.t, Spec.command>>>,
-  ) => promise<array<result<string, string>>>
+    Stream.t<
+      CommandTopic.topicItem<Message.command'<Reventless.Id.String.t, Spec.command>>,
+      string,
+      unit,
+    >,
+  ) => Effect.t<array<result<string, string>>, string, unit>
 }
 
 module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Spec) => {
@@ -73,16 +77,17 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
     await attempt(~retries=maxRetries)
   }
 
-  let handleCommands = async (dcbEventLog, topicItems) => {
+  let handleCommands = (dcbEventLog, stream) => {
     Logger.debug(~loc=__LOC__, "starting", "StateChangeSlice.handleCommands")
-    let results = await topicItems
-    ->Array.map(async ({Reventless.CommandTopic.reference: reference, command}) => {
-      switch await handleSingleCommand(dcbEventLog, command) {
-      | Ok(_) => Ok(reference)
-      | Error(_) => Error(reference)
-      }
-    })
-    ->Promise.all
-    results
+    stream
+    ->Stream.mapEffect(({Reventless.CommandTopic.reference: reference, command}) =>
+      Effect.promise(async () => {
+        switch await handleSingleCommand(dcbEventLog, command) {
+        | Ok(_) => Ok(reference)
+        | Error(_) => Error(reference)
+        }
+      })
+    )
+    ->Stream.runCollect
   }
 }

@@ -37,9 +37,12 @@ let _ = beforeEach(() => mock.reset())
 describe("StateChangeSlice_Callback:", () => {
   describe("handleCommands - happy path", () => {
     testPromise("CreateItem on empty log succeeds", async () => {
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
-      ])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
 
       expect((
         results,
@@ -49,9 +52,12 @@ describe("StateChangeSlice_Callback:", () => {
     })
 
     testPromise("stored event has correct tags", async () => {
-      let _ = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
-      ])
+      let _ = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
       let storedEvent = mock.getEvents()->Array.getUnsafe(0)
 
       expect(storedEvent.tags)->toEqual([{Reventless.DcbTag.key: "itemId", value: "item-1"}])
@@ -60,9 +66,10 @@ describe("StateChangeSlice_Callback:", () => {
 
   describe("handleCommands - decide returns Ok([])", () => {
     testPromise("NoOp returns Ok without storing events", async () => {
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-noop", DcbFixtures.TestCommandSpec.NoOp),
-      ])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([makeTopicItem("ref-noop", DcbFixtures.TestCommandSpec.NoOp)]),
+      )->Effect.runPromise
 
       expect((results, mock.getEvents()->Array.length))->toEqual(([Ok("ref-noop")], 0))
     })
@@ -71,13 +78,19 @@ describe("StateChangeSlice_Callback:", () => {
   describe("handleCommands - decide returns Error", () => {
     testPromise("CreateItem when item exists returns Error", async () => {
       // First create the item
-      let _ = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
-      ])
+      let _ = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
       // Try to create again
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-2", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Duplicate"})),
-      ])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-2", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Duplicate"})),
+        ]),
+      )->Effect.runPromise
 
       expect(results)->toEqual([Error("ref-2")])
     })
@@ -86,18 +99,24 @@ describe("StateChangeSlice_Callback:", () => {
   describe("handleCommands - retry on conflict", () => {
     testPromise("retries and succeeds after 1 append failure", async () => {
       mock.failNextAppends := 1
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
-      ])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
 
       expect((results, mock.getEvents()->Array.length))->toEqual(([Ok("ref-1")], 1))
     })
 
     testPromise("returns Error after retries exhausted (4 failures)", async () => {
       mock.failNextAppends := 4
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
-      ])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
 
       expect((results, mock.getEvents()->Array.length))->toEqual(([Error("ref-1")], 0))
     })
@@ -105,15 +124,21 @@ describe("StateChangeSlice_Callback:", () => {
 
   describe("handleCommands - conditional append", () => {
     testPromise("RenameItem after CreateItem uses headPosition in condition", async () => {
-      let _ = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
-      ])
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem(
-          "ref-2",
-          DcbFixtures.TestCommandSpec.RenameItem({itemId: "item-1", newName: "Updated"}),
-        ),
-      ])
+      let _ = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem(
+            "ref-2",
+            DcbFixtures.TestCommandSpec.RenameItem({itemId: "item-1", newName: "Updated"}),
+          ),
+        ]),
+      )->Effect.runPromise
 
       expect((results, mock.getEvents()->Array.length))->toEqual(([Ok("ref-2")], 2))
     })
@@ -121,33 +146,45 @@ describe("StateChangeSlice_Callback:", () => {
 
   describe("handleCommands - batch", () => {
     testPromise("multiple successful commands", async () => {
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "First"})),
-        makeTopicItem("ref-2", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-2", name: "Second"})),
-      ])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "First"})),
+          makeTopicItem("ref-2", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-2", name: "Second"})),
+        ]),
+      )->Effect.runPromise
 
       expect(results)->toEqual([Ok("ref-1"), Ok("ref-2")])
     })
 
     testPromise("mixed success and failure", async () => {
       // Create item-1 first
-      let _ = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-0", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Existing"})),
-      ])
+      let _ = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-0", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Existing"})),
+        ]),
+      )->Effect.runPromise
       // Batch: create item-2 (ok) and duplicate item-1 (error)
-      let results = await TestHandler.handleCommands(testDcbEventLog, [
-        makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-2", name: "New"})),
-        makeTopicItem(
-          "ref-2",
-          DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Duplicate"}),
-        ),
-      ])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-2", name: "New"})),
+          makeTopicItem(
+            "ref-2",
+            DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Duplicate"}),
+          ),
+        ]),
+      )->Effect.runPromise
 
       expect(results)->toEqual([Ok("ref-1"), Error("ref-2")])
     })
 
     testPromise("empty batch returns empty array", async () => {
-      let results = await TestHandler.handleCommands(testDcbEventLog, [])
+      let results = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([]),
+      )->Effect.runPromise
 
       expect(results)->toEqual([])
     })

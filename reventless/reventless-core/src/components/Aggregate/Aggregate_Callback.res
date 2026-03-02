@@ -35,19 +35,19 @@ module Make = (
     ->Message.encode(Spec.eventSchema)
     ->Message.variantNameOfJson
 
-  let groupTopicItemsById = (
-    topicItems: array<CommandTopic.topicItem<Message.command'<'id, 'command>>>,
-  ) => {
-    // FIXME: rethink usage of Set & Belt structures -> optimize
-    let ids = topicItems->Array.map(({command}) => command.id->Spec.Id.toString)
-    ids
-    ->Belt.Set.String.fromArray
-    ->Belt.Set.String.toArray
-    ->Array.map(id => (
-      id->Spec.Id.makeFromString,
-      topicItems->Array.filter(({command}) => command.id == id->Spec.Id.makeFromString),
-    ))
-  }
+  let groupTopicItemsByIdStream = stream =>
+    stream
+    ->Stream.runFold(
+      Dict.make(),
+      (dict, item: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>) => {
+        let id = item.command.id->Spec.Id.toString
+      let existing = dict->Dict.get(id)->Option.getOr([])
+      dict->Dict.set(id, Array.concat(existing, [item]))
+      dict
+    })
+    ->Effect.map(dict =>
+      dict->Dict.toArray->Array.map(((id, items)) => (id->Spec.Id.makeFromString, items))
+    )
 
   let apply' = (stateOpt, event) =>
     switch stateOpt {
@@ -63,11 +63,16 @@ module Make = (
     msgId: Message.uuid(),
   }
 
-  let handleCommands = async topicItems => {
-    Logger.debug(~loc=__LOC__, "starting", "Aggregate.execCommands")
-    let results = await topicItems
-    ->groupTopicItemsById
-    ->Array.map(async ((id, topicItemsForId)) => {
+  let handleCommands: CommandTopic.commandsHandler<
+    Message.command'<Spec.Id.t, Spec.command>,
+  > = stream =>
+    stream
+    ->groupTopicItemsByIdStream
+    ->Effect.flatMap(groups =>
+      Effect.promise(async () => {
+        Logger.debug(~loc=__LOC__, "starting", "Aggregate.execCommands")
+        let results = await groups
+        ->Array.map(async ((id, topicItemsForId)) => {
       // Single-pass stream fold: produces both (initialState, sequenceNr) from the event log.
       // sequenceNr replaces history->Array.length as the optimistic concurrency token for append.
       let (initialState, sequenceNr) = await Ops.eventLog.replayStream(id)
@@ -172,5 +177,6 @@ module Make = (
     })
     ->Promise.all
     results->Array.flat
-  }
+  })
+)
 }

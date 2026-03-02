@@ -35,21 +35,24 @@ let commandHandlerShouldThrow: ref<bool> = ref(false)
 
 module TestOps: CommandTopic_Callback.Ops with module Spec = TestSpec = {
   module Spec = TestSpec
-  let commandsHandler = async items => {
-    if commandHandlerShouldThrow.contents {
-      JsError.throwWithMessage("commandsHandler failed")
-    }
-    capturedItems :=
-      capturedItems.contents->Array.concat(
-        items->Array.map((item: Reventless.CommandTopic.topicItem<
-          Message.command'<TestSpec.Id.t, TestSpec.command>,
-        >) => {
-          reference: item.reference,
-          command: item.command.command,
-        }),
-      )
-    commandHandlerResults.contents
-  }
+  let commandsHandler = stream =>
+    stream
+    ->Stream.runCollect
+    ->Effect.map(items => {
+      if commandHandlerShouldThrow.contents {
+        JsError.throwWithMessage("commandsHandler failed")
+      }
+      capturedItems :=
+        capturedItems.contents->Array.concat(
+          items->Array.map((item: Reventless.CommandTopic.topicItem<
+            Message.command'<TestSpec.Id.t, TestSpec.command>,
+          >) => {
+            reference: item.reference,
+            command: item.command.command,
+          }),
+        )
+      commandHandlerResults.contents
+    })
 }
 
 module TestHandler = CommandTopic_Callback.Make(TestSpec, TestOps)
