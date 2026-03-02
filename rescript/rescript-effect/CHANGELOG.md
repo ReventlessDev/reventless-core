@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.1.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-effect@0.1.0-alpha.1...@reventlessdev/rescript-effect@0.1.0-alpha.2) (2026-03-02)
+
+### Bug Fixes
+
+* **rescript:** stable .res.mjs output for all rescript binding packages ([6d8f8cb](https://github.com/ReventlessDev/reventless-core/commit/6d8f8cbd6ca5152a29bfe1a598a193e4c92549b1))
+
+
 # 0.1.0-alpha.1 (2026-03-01)
 
 ### Features

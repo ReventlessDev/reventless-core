@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-aggregate-catalog@3.0.0-alpha.1...@reventlessdev/example-aggregate-catalog@3.0.0-alpha.2) (2026-03-02)
+
+### Features
+
+* **examples/aggregate:** connect Catalog and Ordering via extension points ([4631e3f](https://github.com/ReventlessDev/reventless-core/commit/4631e3f92a836d134830ed7c42528a218eeb07f5))
+
+
 # 3.0.0-alpha.1 (2026-03-01)
 
 * feat(reventless-spec)!: swap namespaces — spec→Reventless, core→ReventlessCore ([0fcf24e](https://github.com/ReventlessDev/reventless-core/commit/0fcf24e3fc1dcc88e9ee741dc99eb7bd726f9fd7))

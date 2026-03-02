@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.2...@reventlessdev/reventless-in-memory@1.0.0-alpha.3) (2026-03-02)
+
+**Note:** Version bump only for package @reventlessdev/reventless-in-memory
+
+
+
+
+
 # 1.0.0-alpha.2 (2026-03-01)
 
 ### Bug Fixes
