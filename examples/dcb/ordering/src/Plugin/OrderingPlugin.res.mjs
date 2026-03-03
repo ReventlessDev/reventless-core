@@ -153,11 +153,15 @@ function Make(Platform) {
     AvailableProductsViewSlice
   ];
   let automationSlices = [];
+  let outboundTranslationSlices = [];
+  let inboundTranslationSlices = [];
   let DcbSpec = {
     eventSchema: OrderingEventLog$ReventlessdevExampleDcbOrdering.eventSchema,
     stateChangeSlices: stateChangeSlices,
     stateViewSlices: stateViewSlices,
-    automationSlices: automationSlices
+    automationSlices: automationSlices,
+    outboundTranslationSlices: outboundTranslationSlices,
+    inboundTranslationSlices: inboundTranslationSlices
   };
   let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", "1.0.0", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {

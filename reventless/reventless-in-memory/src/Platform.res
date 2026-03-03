@@ -25,6 +25,8 @@ module Make = (): (ReventlessInfra.Platform.T
   module DcbEventLogMaker = DcbEventLog_Builder.Make(Bus)
   module StateViewSliceMaker = StateViewSlice_Builder.Make(Bus)
   module AutomationSliceMaker = AutomationSlice_Builder.Make(Bus)
+  module OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder.Make(Bus)
+  module InboundTranslationSliceMaker = InboundTranslationSlice_Builder.Make(Bus)
 
   module Aggregate = {
     module Make = (
@@ -90,6 +92,22 @@ module Make = (): (ReventlessInfra.Platform.T
     ): (ReventlessInfra.AutomationSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec) => AutomationSliceMaker.Make(Spec)
+  }
+
+  module OutboundTranslationSlice = {
+    module Make = (
+      Spec: Reventless.OutboundTranslationSlice.Spec,
+    ): (ReventlessInfra.OutboundTranslationSlice.T
+      with type dcbEvent = Spec.DcbEventLogSpec.event
+      and module Spec = Spec) => OutboundTranslationSliceMaker.Make(Spec)
+  }
+
+  module InboundTranslationSlice = {
+    module Make = (
+      Spec: Reventless.InboundTranslationSlice.Spec,
+    ): (ReventlessInfra.InboundTranslationSlice.T
+      with type dcbEvent = Spec.DcbEventLogSpec.event
+      and module Spec = Spec) => InboundTranslationSliceMaker.Make(Spec)
   }
 
   module DcbEventLog = {

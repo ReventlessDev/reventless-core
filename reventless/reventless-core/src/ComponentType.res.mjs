@@ -54,6 +54,10 @@ function toString(componentType) {
       return "StateViewSlice";
     case "AutomationSlice" :
       return "AutomationSlice";
+    case "OutboundTranslationSlice" :
+      return "OutboundTranslationSlice";
+    case "InboundTranslationSlice" :
+      return "InboundTranslationSlice";
   }
 }
 
@@ -89,6 +93,10 @@ function ofString(str) {
       return "ExtensionPoint";
     case "Heartbeat" :
       return "Heartbeat";
+    case "InboundTranslationSlice" :
+      return "InboundTranslationSlice";
+    case "OutboundTranslationSlice" :
+      return "OutboundTranslationSlice";
     case "Plugin" :
       return "Plugin";
     case "QueryDB" :
@@ -166,6 +174,10 @@ function toName(componentType) {
       return "StateViewSlice";
     case "AutomationSlice" :
       return "AutoSlice";
+    case "OutboundTranslationSlice" :
+      return "OutTransSlice";
+    case "InboundTranslationSlice" :
+      return "InTransSlice";
   }
 }
 

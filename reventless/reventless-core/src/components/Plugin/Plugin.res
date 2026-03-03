@@ -14,6 +14,8 @@ module type DcbSpec = {
   let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
   let stateViewSlices: array<module(StateViewSlice.T with type dcbEvent = event)>
   let automationSlices: array<module(AutomationSlice.T with type dcbEvent = event)>
+  let outboundTranslationSlices: array<module(OutboundTranslationSlice.T with type dcbEvent = event)>
+  let inboundTranslationSlices: array<module(InboundTranslationSlice.T with type dcbEvent = event)>
 }
 
 module type T = {

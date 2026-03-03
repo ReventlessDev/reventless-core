@@ -70,6 +70,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     let automationSlices: array<
       module(ReventlessInfra.AutomationSlice.T with type dcbEvent = event),
     > = []
+    let outboundTranslationSlices: array<
+      module(ReventlessInfra.OutboundTranslationSlice.T with type dcbEvent = event),
+    > = []
+    let inboundTranslationSlices: array<
+      module(ReventlessInfra.InboundTranslationSlice.T with type dcbEvent = event),
+    > = []
   }
 
   let make = (

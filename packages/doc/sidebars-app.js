@@ -43,6 +43,8 @@ const sidebars = {
         'components/extension',
         'components/extensionpoint',
         'components/heartbeat',
+        'components/inboundtranslationslice',
+        'components/outboundtranslationslice',
         'components/plugin',
         'components/querydb',
         'components/readmodel',

@@ -16,6 +16,8 @@ import * as Aggregate_Builder_Micro$ReventlessAws from "./components/Aggregate_B
 import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationSlice_Builder.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
+import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
+import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
 
 function Make(Api) {
   let Make$1 = Spec => (Behavior => (EventMappings => {
@@ -63,6 +65,8 @@ function Make(Api) {
   };
   let StateViewSlice = StateViewSlice_Builder$ReventlessAws.Make(Api);
   let AutomationSlice = AutomationSlice_Builder$ReventlessAws.Make(Api);
+  let OutboundTranslationSlice = OutboundTranslationSlice_Builder$ReventlessAws.Make(Api);
+  let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(Api);
   let Make$7 = DcbEventLog_Builder$ReventlessAws.Make;
   let DcbEventLog = {
     Make: Make$7
@@ -99,6 +103,8 @@ function Make(Api) {
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
     AutomationSlice: AutomationSlice,
+    OutboundTranslationSlice: OutboundTranslationSlice,
+    InboundTranslationSlice: InboundTranslationSlice,
     DcbEventLog: DcbEventLog,
     Api: Api$1,
     Plugin: Plugin,

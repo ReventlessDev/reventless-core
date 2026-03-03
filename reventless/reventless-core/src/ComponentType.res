@@ -24,6 +24,8 @@ type t =
   | StateChangeSlice
   | StateViewSlice
   | AutomationSlice
+  | OutboundTranslationSlice
+  | InboundTranslationSlice
 
 let toString = componentType =>
   switch componentType {
@@ -52,6 +54,8 @@ let toString = componentType =>
   | StateChangeSlice => "StateChangeSlice"
   | StateViewSlice => "StateViewSlice"
   | AutomationSlice => "AutomationSlice"
+  | OutboundTranslationSlice => "OutboundTranslationSlice"
+  | InboundTranslationSlice => "InboundTranslationSlice"
   }
 
 let ofString = str =>
@@ -81,6 +85,8 @@ let ofString = str =>
   | "StateChangeSlice" => StateChangeSlice->Some
   | "StateViewSlice" => StateViewSlice->Some
   | "AutomationSlice" => AutomationSlice->Some
+  | "OutboundTranslationSlice" => OutboundTranslationSlice->Some
+  | "InboundTranslationSlice" => InboundTranslationSlice->Some
   | _ => None
   }
 
@@ -111,6 +117,8 @@ let toName = componentType =>
   | StateChangeSlice => "StateChgSlc"
   | StateViewSlice => "StateViewSlice"
   | AutomationSlice => "AutoSlice"
+  | OutboundTranslationSlice => "OutTransSlice"
+  | InboundTranslationSlice => "InTransSlice"
   }
 
 let name = (name, t) => name ++ t->toName

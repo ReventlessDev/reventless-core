@@ -198,14 +198,21 @@ dcb_layout: "" {
 
   # ── Row 3 ──────────────────────────────────────────────────────────────────
 
-  automation: Automation {
+  automation: Automation & Translation {
     direction: down
     class: automation-slices-area
 
     auto_slice: Automation Slice { class: automation-slice }
+    outbound_slice: Outbound Translation { class: automation-slice }
+    inbound_slice: Inbound Translation { class: automation-slice }
     todo_db: TODO QueryDb { class: query-db }
+    external: External System { class: external-system }
 
     auto_slice -> todo_db: sync state { class: projection-flow }
+    outbound_slice -> todo_db: sync state { class: projection-flow }
+    outbound_slice -> external: "translate (API call)"
+    external -> inbound_slice: "external input"
+    inbound_slice -> todo_db: audit logwebhook { class: projection-flow }
   }
 
   read_side: Read Side {
@@ -245,6 +252,10 @@ dcb_layout: "" {
   automation.auto_slice -> write_side.cmd_topic: commands { class: command-flow }
   plugins.ext_point -> write_side.cmd_topic: commands { class: cross-plugin }
   scheduling.heartbeat -> plugins.ext_point: periodic signals { class: event-flow }
+  write_side.event_topic -> automation.outbound_slice: events { class: event-flow }
+  write_side.event_topic -> automation.inbound_slice: events { class: event-flow }
+  automation.outbound_slice -> write_side.cmd_topic: "commands (optional)" { class: command-flow }
+  automation.inbound_slice -> write_side.cmd_topic: commands { class: command-flow }
   scheduling.scheduler -> write_side.cmd_topic: scheduled commands { class: command-flow }
 }
 ```
@@ -253,6 +264,8 @@ dcb_layout: "" {
 - **Write Side**: Each StateChangeSlice reads from and appends to the shared DcbEventLog with optimistic concurrency
 - **Event Flow**: DcbEventLog → EventTopic → StateViewSlice → QueryDb
 - **Automation**: AutomationSlice consumes events, maintains a TODO list, and issues commands back to CommandTopic
+- **Outbound Translation**: OutboundTranslationSlice consumes events, calls external systems, and optionally publishes commands back
+- **Inbound Translation**: InboundTranslationSlice receives external input (webhooks, API calls), validates and translates it into domain commands
 - **Read Side**: StateViewSlice projects events directly into QueryDb, replacing the EventCollector + ReadModel pair
 - **Plugin System**: Cross-plugin communication via ExtensionPoints and Extensions
 - **Scheduling**: Time-based command generation and health monitoring
@@ -301,6 +314,51 @@ events -> automation: resolve { class: event-flow }
 - **out**: Commands to CommandTopic
 
 [Read more about the AutomationSlice component.](./components/automationslice.md)
+
+### OutboundTranslationSlice
+
+The **OutboundTranslationSlice** implements the Event Modeling **Translation** pattern for outbound external communication in DCB-based plugins. It listens to events from a shared DcbEventLog, accumulates outbound work items into a TODO list, translates each item by calling an external service, and optionally publishes a command back into the domain.
+
+```d2
+direction: right
+
+events: Events { class: msg-event }
+outbound: OutboundTranslationSlice { class: automation-slice }
+external: External System { class: external-system }
+commands: Commands { class: msg-command }
+
+events -> outbound: collect { class: event-flow }
+outbound -> external: "translate (API call)"
+external -> outbound: response
+outbound -> commands: "command (optional)" { class: command-flow }
+```
+
+- **responsibility**: collect outbound items from events; call external services for each item via the `translate` function; optionally publish commands back into the domain; track status with per-item retry semantics
+- **in**: Events from DcbEventLog
+- **out**: External API calls; optional commands to CommandTopic
+
+[Read more about the OutboundTranslationSlice component.](./components/outboundtranslationslice.md)
+
+### InboundTranslationSlice
+
+The **InboundTranslationSlice** implements the Event Modeling **Translation** pattern for inbound external communication in DCB-based plugins. It receives external input (webhooks, API calls, message queue messages), validates and transforms it through an anti-corruption layer, and publishes domain commands.
+
+```d2
+direction: right
+
+external: External System { class: external-system }
+inbound: InboundTranslationSlice { class: automation-slice }
+commands: Commands { class: msg-command }
+
+external -> inbound: "external input" { class: command-flow }
+inbound -> commands: translate { class: command-flow }
+```
+
+- **responsibility**: receive external input; validate against a schema; translate to domain commands via an anti-corruption layer; publish commands to the shared CommandTopic; maintain an audit log of all translation attempts
+- **in**: External JSON input (via `operations.receive`)
+- **out**: Commands to CommandTopic
+
+[Read more about the InboundTranslationSlice component.](./components/inboundtranslationslice.md)
 
 ### EventLog
 

@@ -57,6 +57,8 @@ module Make = (
       stateChangeSlicesOutputs,
       stateViewSlicesOutputs,
       automationSlicesOutputs,
+      outboundTranslationSlicesOutputs,
+      inboundTranslationSlicesOutputs,
       dcbRuntimeOpt,
     ) = switch dcbSpec {
     | Some(module(DcbSpec)) => {
@@ -133,6 +135,28 @@ module Make = (
           })
           ->Dict.fromArray
 
+        // Create OutboundTranslationSlices — each subscribes to events and translates to external calls
+        let outboundTranslationSlicesOutputs =
+          DcbSpec.outboundTranslationSlices
+          ->Array.map((
+            module(OTS: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            let ots = OTS.make(~dcbEventLog, ~publishJsons, ~opts)
+            (OTS.Spec.name, ots->Component.outputs)
+          })
+          ->Dict.fromArray
+
+        // Create InboundTranslationSlices — each receives external input and publishes commands
+        let inboundTranslationSlicesOutputs =
+          DcbSpec.inboundTranslationSlices
+          ->Array.map((
+            module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            let its = ITS.make(~publishJsons, ~opts)
+            (ITS.Spec.name, its->Component.outputs)
+          })
+          ->Dict.fromArray
+
         // Filtering handler for the shared DCB command topic Lambda
         let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
         // Resources the Lambda needs access to (DcbEventLog resources from all slices)
@@ -153,10 +177,12 @@ module Make = (
           stateChangeSlicesOutputs,
           stateViewSlicesOutputs,
           automationSlicesOutputs,
+          outboundTranslationSlicesOutputs,
+          inboundTranslationSlicesOutputs,
           Some(dcbRuntimeSetup),
         )
       }
-    | None => (None, Dict.make(), Dict.make(), Dict.make(), None)
+    | None => (None, Dict.make(), Dict.make(), Dict.make(), Dict.make(), Dict.make(), None)
     }
 
     // Derive GraphQL schema fragment for this plugin
@@ -444,6 +470,8 @@ module Make = (
           stateChangeSlices: stateChangeSlicesOutputs,
           stateViewSlices: stateViewSlicesOutputs,
           automationSlices: automationSlicesOutputs,
+          outboundTranslationSlices: outboundTranslationSlicesOutputs,
+          inboundTranslationSlices: inboundTranslationSlicesOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
@@ -464,6 +492,8 @@ module Make = (
       stateChangeSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateChangeSlices),
       stateViewSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateViewSlices),
       automationSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.automationSlices),
+      outboundTranslationSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.outboundTranslationSlices),
+      inboundTranslationSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.inboundTranslationSlices),
       readModels: builderOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
       tasks: builderOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
       resolvers: builderOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),

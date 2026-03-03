@@ -113,6 +113,20 @@ module type T = {
       and module Spec = Spec
   }
 
+  /** Factory for DCB outbound translation slice components (tracked external calls). */
+  module OutboundTranslationSlice: {
+    module Make: (Spec: Reventless.OutboundTranslationSlice.Spec) => OutboundTranslationSlice.T
+      with type dcbEvent = Spec.DcbEventLogSpec.event
+      and module Spec = Spec
+  }
+
+  /** Factory for DCB inbound translation slice components (external input to commands). */
+  module InboundTranslationSlice: {
+    module Make: (Spec: Reventless.InboundTranslationSlice.Spec) => InboundTranslationSlice.T
+      with type dcbEvent = Spec.DcbEventLogSpec.event
+      and module Spec = Spec
+  }
+
   /** Factory for DCB event log components. */
   module DcbEventLog: {
     module Make: (Spec: Reventless.DcbEventLog.Spec) => DcbEventLog.T

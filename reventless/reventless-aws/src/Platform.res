@@ -70,6 +70,8 @@ module Make = (Api: {
 
   module StateViewSlice = StateViewSlice_Builder.Make(Api)
   module AutomationSlice = AutomationSlice_Builder.Make(Api)
+  module OutboundTranslationSlice = OutboundTranslationSlice_Builder.Make(Api)
+  module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(Api)
 
   module DcbEventLog = {
     module Make = (
