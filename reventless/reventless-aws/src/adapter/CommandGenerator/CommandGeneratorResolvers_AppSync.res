@@ -8,6 +8,7 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
   ~name: string,
   ~api: api,
   ~fields,
+  ~commandSchema as _,
   ~runtime,
   ~resources: array<ReventlessInfra.Adapter.resource>,
   ~opts,
@@ -146,9 +147,11 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
   `->Pulumi.Input.make
 
   let resolvers = fields->Array.map(field => {
-    let commandName = switch field->String.split("_") {
-    | [_aggregate, commandName] => commandName->String.capitalize
-    | _ => field->String.capitalize
+    // Extract command name: last segment after splitting on "_".
+    // Handles both old ("Aggregate_Command") and prefixed ("Plugin_Aggregate_Command") formats.
+    let commandName = {
+      let parts = field->String.split("_")
+      parts->Array.get(parts->Array.length - 1)->Option.getOr(field)->String.capitalize
     }
     PulumiAws.AppSync.Resolver.makeUnitResolver(
       ~name=field->String.capitalize,

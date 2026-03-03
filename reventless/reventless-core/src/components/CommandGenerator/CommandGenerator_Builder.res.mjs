@@ -4,6 +4,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
 import * as CommandGenerator$ReventlessCore from "./CommandGenerator.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "./CommandGenerator_Callback.res.mjs";
 
@@ -29,7 +30,9 @@ function Make(Spec) {
       let opts = {
         parent: opts_parent
       };
-      let resolvers = Resolvers.make(name, api, Behavior.resolverConfig.fields, runtime, resources, opts);
+      let registeredFields = Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name];
+      let fields = registeredFields !== undefined && registeredFields.length !== 0 ? registeredFields : Behavior.resolverConfig.fields;
+      let resolvers = Resolvers.make(name, api, fields, Behavior.resolverConfig.commandSchema, runtime, resources, opts);
       let cgOutputs = {
         resources: resolvers.resources
       };

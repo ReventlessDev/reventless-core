@@ -34,7 +34,8 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
 function inspectQueryFields(name, typeName, stateSchema) {
   let typeDef = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectType(typeName, stateSchema);
   let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName, undefined);
-  let listQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveListQueryField(name + "s", typeName, undefined);
+  let pluralName = name + "s";
+  let listQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveListQueryField(pluralName, pluralName, undefined);
   return {
     typeDef: typeDef,
     singleQuery: singleQuery,
@@ -71,16 +72,19 @@ function printFragment(fragment) {
   types.forEach(t => {
     let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(t);
     console.log(`    - ` + name);
+    console.log(`      ` + t);
   });
   console.log(`  Mutations (` + mutations.length.toString() + `):`);
   mutations.forEach(m => {
     let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(m);
     console.log(`    - ` + name);
+    console.log(`      ` + m);
   });
   console.log(`  Queries (` + queries.length.toString() + `):`);
   queries.forEach(q => {
     let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(q);
     console.log(`    - ` + name);
+    console.log(`      ` + q);
   });
   console.log("\n--- SDL Preview ---");
   console.log(match.sdlPreview);

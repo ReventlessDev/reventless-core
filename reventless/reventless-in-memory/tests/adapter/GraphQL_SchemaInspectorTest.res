@@ -153,12 +153,15 @@ describe("GraphQL_SchemaInspector", () => {
         ],
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      expect(inspection.types->Array.length)->toBe(1)
+      expect(inspection.types->Array.length)->toBe(2)
       expect(inspection.mutations->Array.length)->toBe(1)
       expect(inspection.queries->Array.length)->toBe(2)
       expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("type Test_States"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("items: [TestState!]!"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("Test_Add"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("Test_State"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("Test_States!"))->toBe(true)
     })
   })
 

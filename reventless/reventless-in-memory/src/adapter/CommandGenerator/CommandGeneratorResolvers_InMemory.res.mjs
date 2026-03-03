@@ -6,7 +6,7 @@ function handleResolversEvent(generateCommand) {
   return Pulumi.output((event, _context) => generateCommand(event));
 }
 
-function make(param, param$1, param$2, param$3, param$4, param$5) {
+function make(param, param$1, param$2, param$3, param$4, param$5, param$6) {
   return {
     resources: []
   };

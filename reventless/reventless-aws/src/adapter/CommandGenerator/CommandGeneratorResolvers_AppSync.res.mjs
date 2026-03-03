@@ -4,6 +4,7 @@ import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
@@ -20,7 +21,7 @@ function handleResolversEvent(generateCommand) {
   return Pulumi.output((event, _context) => generateCommand(event));
 }
 
-function make(name, api, fields, runtime, resources, opts) {
+function make(name, api, fields, param, runtime, resources, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
@@ -89,8 +90,8 @@ function make(name, api, fields, runtime, resources, opts) {
   }
   `;
   let resolvers = fields.map(field => {
-    let match = field.split("_");
-    let commandName = match.length !== 2 ? Stdlib_String.capitalize(field) : Stdlib_String.capitalize(match[1]);
+    let parts = field.split("_");
+    let commandName = Stdlib_String.capitalize(Stdlib_Option.getOr(parts[parts.length - 1 | 0], field));
     return AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, opts$1);
   });
   let resources$1 = resolvers.map(Util_AppSync$ReventlessAws.toResource);

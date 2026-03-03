@@ -132,6 +132,19 @@ module Make = (): (ReventlessInfra.Platform.T
     ReventlessCore.Plugin_Helpers.dcbMutationResolverHook.contents =
       Some(DcbCommandTopicResolvers_GraphQL.register)
 
+  // Set the aggregate mutation resolver hook so Plugin_Builder.construct() registers
+  // GraphQL SDL + resolver stubs for each aggregate during plugin construction.
+  // The real generateCommand handler is bound later when Output.apply chains fire.
+  let () =
+    ReventlessCore.Plugin_Helpers.aggregateMutationResolverHook.contents =
+      Some(CommandGeneratorResolvers_GraphQL.register)
+
+  // Set the schema type registration hook so Plugin_Builder.construct() registers
+  // GraphQL type definitions (from the generated fragment) into the GraphQL server.
+  let () =
+    ReventlessCore.Plugin_Helpers.schemaTypeRegistrationHook.contents =
+      Some(sdlTypes => GraphQL_Server.registerTypes(~sdlTypes))
+
   module PluginMaker = Plugin_Builder.Make(Bus)
   // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
   // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.

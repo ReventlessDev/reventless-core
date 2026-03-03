@@ -4,40 +4,79 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "../GraphQL_Server.res.mjs";
 
 function Make(Bus) {
   let make = (name, param, param$1, param$2, indexes, subIdField, param$3, param$4, param$5) => {
     let cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-    let queryName = name.charAt(0).toLowerCase() + name.slice(1);
-    let byIdSdl = subIdField !== undefined ? `  ` + queryName + `(id: ID!, ` + subIdField + `: String): [String]` : `  ` + queryName + `(id: ID!): [String]`;
+    let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[name];
+    let singleQueryName = registryEntry !== undefined ? registryEntry.singleFieldName : name.charAt(0).toLowerCase() + name.slice(1);
+    let listQueryName;
+    if (registryEntry !== undefined) {
+      let ln = registryEntry.listFieldName;
+      listQueryName = ln !== undefined ? ln : undefined;
+    } else {
+      listQueryName = "every" + name;
+    }
+    let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : "String";
+    let pluralTypeName;
+    if (registryEntry !== undefined) {
+      let pt = registryEntry.pluralTypeName;
+      pluralTypeName = pt !== undefined ? pt : "[String]";
+    } else {
+      pluralTypeName = "[String]";
+    }
+    let byIdSdl = subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName;
     let byIdResolver = async (_root, args) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(name);
-      if (ops !== undefined) {
-        return await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+      if (ops === undefined) {
+        return null;
+      }
+      let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+      let item = items[0];
+      if (item !== undefined) {
+        return item;
       } else {
-        return [];
+        return null;
       }
     };
-    let everyName = "every" + name;
-    let everySdl = `  ` + everyName + `: [String]`;
-    let everyResolver = async (_root, _args) => {
-      let makeStream = Bus.getQueryDbStream(name);
-      if (makeStream !== undefined) {
-        return await Effect.Effect.runPromise(Stream.runCollect(makeStream()));
-      }
-      let scanAll = Bus.getQueryDbScan(name);
-      if (scanAll !== undefined) {
-        return scanAll();
-      } else {
-        return [];
-      }
-    };
-    let byIdListSdl = subIdField !== undefined ? [`  ` + queryName + `ById(id: ID!): [String]`] : [];
+    let match;
+    if (listQueryName !== undefined) {
+      let sdl = [`  ` + listQueryName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`];
+      let resolver = async (_root, _args) => {
+        let makeStream = Bus.getQueryDbStream(name);
+        let items;
+        if (makeStream !== undefined) {
+          items = await Effect.Effect.runPromise(Stream.runCollect(makeStream()));
+        } else {
+          let scanAll = Bus.getQueryDbScan(name);
+          items = scanAll !== undefined ? scanAll() : [];
+        }
+        return {
+          nextToken: null,
+          scannedCount: items.length,
+          items: items
+        };
+      };
+      match = [
+        sdl,
+        [[
+            listQueryName,
+            resolver
+          ]]
+      ];
+    } else {
+      match = [
+        [],
+        []
+      ];
+    }
+    let byIdListSdl = subIdField !== undefined ? [`  ` + singleQueryName + `ById(id: ID!): [String]`] : [];
     let byIdListResolvers;
     if (subIdField !== undefined) {
-      let resolver = async (_root, args) => {
+      let resolver$1 = async (_root, args) => {
         let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
         let ops = Bus.getQueryDb(name);
         if (ops !== undefined) {
@@ -47,16 +86,16 @@ function Make(Bus) {
         }
       };
       byIdListResolvers = [[
-          queryName + "ById",
-          resolver
+          singleQueryName + "ById",
+          resolver$1
         ]];
     } else {
       byIdListResolvers = [];
     }
-    let indexSdlFields = indexes.map(ic => `  ` + queryName + `By` + cap(ic.index) + `(` + ic.index + `: String!): [String]`);
+    let indexSdlFields = indexes.map(ic => `  ` + singleQueryName + `By` + cap(ic.index) + `(` + ic.index + `: String!): [String]`);
     let indexResolvers = indexes.map(ic => {
       let index = ic.index;
-      let resolverName = queryName + "By" + cap(index);
+      let resolverName = singleQueryName + "By" + cap(index);
       let filterField = Stdlib_Option.getOr(ic.idField, index);
       let resolver = async (_root, args) => {
         let value = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[index]), Stdlib_JSON.Decode.string), "");
@@ -72,13 +111,12 @@ function Make(Bus) {
         resolver
       ];
     });
-    let allSdl = [
-      byIdSdl,
-      everySdl
-    ].concat(byIdListSdl).concat(indexSdlFields);
+    let allSdl = [byIdSdl].concat(match[0]).concat(byIdListSdl).concat(indexSdlFields);
     let resolvers = {};
-    resolvers[queryName] = byIdResolver;
-    resolvers[everyName] = everyResolver;
+    resolvers[singleQueryName] = byIdResolver;
+    match[1].forEach(param => {
+      resolvers[param[0]] = param[1];
+    });
     byIdListResolvers.forEach(param => {
       resolvers[param[0]] = param[1];
     });

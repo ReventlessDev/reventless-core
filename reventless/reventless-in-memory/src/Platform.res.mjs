@@ -23,6 +23,7 @@ import * as ScheduledPublisher_InMemory$ReventlessInMemory from "./adapter/Sched
 import * as InboundTranslationSlice_Builder$ReventlessInMemory from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as DcbCommandTopicResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/DcbCommandTopicResolvers_GraphQL.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessInMemory from "./components/OutboundTranslationSlice_Builder.res.mjs";
+import * as CommandGeneratorResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res.mjs";
 
 function Make($star) {
   let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -109,6 +110,8 @@ function Make($star) {
     Make: Make$12
   };
   Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents = DcbCommandTopicResolvers_GraphQL$ReventlessInMemory.register;
+  Plugin_Helpers$ReventlessCore.aggregateMutationResolverHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register;
+  Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents = GraphQL_Server$ReventlessInMemory.registerTypes;
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);
   let Plugin = {
     make: PluginMaker.make

@@ -4,6 +4,7 @@ type resolversMaker<'api, 'runtimeParts> = (
   ~name: string,
   ~api: 'api,
   ~fields: array<string>,
+  ~commandSchema: S.t<unknown>,
   ~runtime: Runtime.environment<'runtimeParts>,
   ~resources: array<ReventlessInfra.Adapter.resource>,
   ~opts: Pulumi.ComponentResource.options,

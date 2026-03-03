@@ -15,6 +15,7 @@ import * as ReadModel$ReventlessCore from "../ReadModel/ReadModel.res.mjs";
 import * as Interstack$ReventlessCore from "../../util/Interstack.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "./Plugin_Helpers.res.mjs";
+import * as GraphQL_Stitcher$ReventlessCore from "../Api/GraphQL_Stitcher.res.mjs";
 import * as AdapterDeploytime$ReventlessCore from "../../adapter/AdapterDeploytime.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
@@ -38,6 +39,29 @@ function Make(Spec) {
           parent: opts_parent
         };
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
+        let pluralize = n => {
+          if (n.endsWith("s")) {
+            return n;
+          } else {
+            return n + "s";
+          }
+        };
+        let stripViewSuffix = n => {
+          if (n.endsWith("View")) {
+            return n.slice(0, n.length - 4 | 0);
+          } else {
+            return n;
+          }
+        };
+        let singularize = n => {
+          if (n.endsWith("ies")) {
+            return n.slice(0, n.length - 3 | 0) + "y";
+          } else if (n.endsWith("s")) {
+            return n.slice(0, n.length - 1 | 0);
+          } else {
+            return n;
+          }
+        };
         let match;
         if (dcbSpec !== undefined) {
           let DcbEventLogSpec = dcbSpec;
@@ -58,8 +82,18 @@ function Make(Spec) {
           }));
           let registerResolver = Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents;
           if (registerResolver !== undefined) {
-            dcbSpec.stateChangeSlices.forEach(S => registerResolver(extra$1 + `_` + S.Spec.name));
+            dcbSpec.stateChangeSlices.forEach(S => registerResolver(extra$1 + `_` + S.Spec.name, S.Spec.commandSchema));
           }
+          dcbSpec.stateViewSlices.forEach(V => {
+            let entity = stripViewSuffix(V.Spec.name);
+            let singular = singularize(entity);
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[V.Spec.name] = {
+              singleFieldName: extra$1 + `_` + singular,
+              listFieldName: extra$1 + `_` + pluralize(entity),
+              returnTypeName: extra$1 + `_` + singular,
+              pluralTypeName: extra$1 + `_` + pluralize(entity)
+            };
+          });
           let stateViewSlicesOutputs = Object.fromEntries(dcbSpec.stateViewSlices.map(StateViewSlice => {
             let sv = StateViewSlice.make(dcbEventLog, opts);
             return [
@@ -119,24 +153,15 @@ function Make(Spec) {
         let stateViewSlicesOutputs$1 = match[2];
         let stateChangeSlicesOutputs$1 = match[1];
         let dcbEventLogOutputs = match[0];
-        let pluralize = n => {
-          if (n.endsWith("s")) {
-            return n;
-          } else {
-            return n + "s";
-          }
-        };
-        let stripViewSuffix = n => {
-          if (n.endsWith("View")) {
-            return n.slice(0, n.length - 4 | 0);
-          } else {
-            return n;
-          }
-        };
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
           let fieldNames = constructorNames.map(cname => extra$1 + `_` + M.Spec.name + `_` + cname);
+          Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[M.Spec.name] = fieldNames;
+          let registerResolver = Plugin_Helpers$ReventlessCore.aggregateMutationResolverHook.contents;
+          if (registerResolver !== undefined) {
+            registerResolver(fieldNames, commandSchema);
+          }
           return [{
               fieldNames: fieldNames,
               commandSchema: commandSchema
@@ -148,24 +173,38 @@ function Make(Spec) {
           })) : [];
         let mutationEntries = mutationEntriesFromAggregates.concat(mutationEntriesFromSlices);
         let queryEntriesFromReadModels = readModels.map(R => ({
-          singleFieldName: extra$1 + `_` + R.Spec.name,
+          singleFieldName: extra$1 + `_` + singularize(R.Spec.name),
           listFieldName: extra$1 + `_` + pluralize(R.Spec.name),
-          returnTypeName: extra$1 + R.Spec.name,
+          returnTypeName: extra$1 + `_` + singularize(R.Spec.name),
           stateSchema: R.Spec.stateSchema,
           authorization: undefined
         }));
         let queryEntriesFromSlices = dcbSpec !== undefined ? dcbSpec.stateViewSlices.map(V => {
             let entity = stripViewSuffix(V.Spec.name);
+            let singular = singularize(entity);
             return {
-              singleFieldName: extra$1 + `_` + entity,
-              listFieldName: undefined,
-              returnTypeName: extra$1 + entity,
+              singleFieldName: extra$1 + `_` + singular,
+              listFieldName: extra$1 + `_` + pluralize(entity),
+              returnTypeName: extra$1 + `_` + singular,
               stateSchema: V.Spec.stateSchema,
               authorization: undefined
             };
           }) : [];
         let queryEntries = queryEntriesFromReadModels.concat(queryEntriesFromSlices);
+        readModels.forEach(R => {
+          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = {
+            singleFieldName: extra$1 + `_` + singularize(R.Spec.name),
+            listFieldName: extra$1 + `_` + pluralize(R.Spec.name),
+            returnTypeName: extra$1 + `_` + singularize(R.Spec.name),
+            pluralTypeName: extra$1 + `_` + pluralize(R.Spec.name)
+          };
+        });
         let apiSchemaFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
+        let registerTypes = Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents;
+        if (registerTypes !== undefined) {
+          let parts = GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment);
+          registerTypes(parts.types);
+        }
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);

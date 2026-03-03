@@ -141,10 +141,7 @@ function finishAggregates(aggregatesOutputs) {
     Pulumi.all(match[0]),
     Pulumi.all(match[1])
   ]).apply(param => Pulumi.all(param[0].map(eventMapperOutput => eventMapperOutput.eventCollector)).apply(param => {
-    Object.values(aggregateFinishFns).forEach(finishFn => {
-      console.log("Plugin_Builder: AggregateRuntimeBuilder.finish");
-      finishFn();
-    });
+    Object.values(aggregateFinishFns).forEach(finishFn => finishFn());
   }));
 }
 
@@ -394,6 +391,22 @@ let dcbMutationResolverHook = {
   contents: undefined
 };
 
+let aggregateMutationResolverHook = {
+  contents: undefined
+};
+
+let schemaTypeRegistrationHook = {
+  contents: undefined
+};
+
+let queryFieldNamesRegistry = {
+  contents: {}
+};
+
+let aggregateMutationFieldsRegistry = {
+  contents: {}
+};
+
 let interopMetaOutput = {
   contents: undefined
 };
@@ -506,6 +519,10 @@ export {
   createResolvers,
   MakeEventCollectorHelper,
   dcbMutationResolverHook,
+  aggregateMutationResolverHook,
+  schemaTypeRegistrationHook,
+  queryFieldNamesRegistry,
+  aggregateMutationFieldsRegistry,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,

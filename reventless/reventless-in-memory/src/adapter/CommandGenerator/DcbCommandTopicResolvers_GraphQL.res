@@ -9,36 +9,62 @@
 @@warning("-44")
 open ReventlessCore
 
-let register = (~fieldName: string) => {
-  let sdlFields = [`  ${fieldName}(id: ID, args: String): String`]
+let register = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
+  // Derive SDL from command schema — same derivation as fragment generator.
+  // DCB commands are single-variant unions; extract the Object variant.
+  let variantSchema = switch commandSchema {
+  | Union({anyOf}) => anyOf->Array.get(0)->Option.getOr(commandSchema)
+  | _ => commandSchema
+  }
+
+  let sdlFields = switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
+    ~fieldName,
+    variantSchema,
+    ~authorization=None,
+  ) {
+  | Some(field) => [field]
+  | None => [`  ${fieldName}: String!`]
+  }
+
+  // Extract TAG (variant constructor name) for routing to correct handler
+  let constructorNames = Reventless.DcbTag.extractEventTypes(commandSchema->Obj.magic)
+  let tag = constructorNames->Array.get(0)->Option.getOr(fieldName)
+
+  // Find the tagged ID field name (the one with @s.matches(DcbTag.string))
+  let idFieldName = switch variantSchema {
+  | Object({properties}) =>
+    properties
+    ->Dict.toArray
+    ->Array.findMap(((name, fieldSchema)) =>
+      if Reventless.DcbTag.isTagged(fieldSchema) {
+        Some(name)
+      } else {
+        None
+      }
+    )
+  | _ => None
+  }
 
   let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
     let argsDict: dict<JSON.t> = args->Obj.magic
-    let id = switch argsDict->Dict.get("id") {
-    | Some(JSON.String(s)) => s
-    | _ => ""
-    }
-    let argsStr = switch argsDict->Dict.get("args") {
-    | Some(JSON.String(s)) => s
-    | _ => "{}"
-    }
 
-    let commandPayload = try {
-      JSON.parseOrThrow(argsStr)
-    } catch {
-    | _ => JSON.Encode.object(Dict.make())
-    }
-
-    // Extract TAG from the command payload to route to the correct handler.
-    // DCB commands are tagged variants — sury serializes them with a "TAG" field.
-    let typeName = switch commandPayload {
-    | JSON.Object(d) =>
-      switch d->Dict.get("TAG") {
+    // Extract entity ID from the tagged field
+    let id = switch idFieldName {
+    | Some(idField) =>
+      switch argsDict->Dict.get(idField) {
       | Some(JSON.String(s)) => s
       | _ => ""
       }
-    | _ => ""
+    | None => ""
     }
+
+    // Build command payload from individual args + TAG
+    let commandDict = Dict.make()
+    commandDict->Dict.set("TAG", JSON.Encode.string(tag))
+    argsDict->Dict.toArray->Array.forEach(((k, v)) =>
+      if k !== "TAG" { commandDict->Dict.set(k, v) }
+    )
+    let commandPayload = JSON.Encode.object(commandDict)
 
     // Build the full message body that StateChangeSlice_Builder.makeJsonHandler
     // expects to decode via Message.decodeCommand'.
@@ -61,7 +87,7 @@ let register = (~fieldName: string) => {
     )
 
     // Route directly to registered handlers (same approach as test publishJsons routing).
-    let handlers = CommandTopic.getHandlers(typeName)
+    let handlers = CommandTopic.getHandlers(tag)
     let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
       command: fullBody,
       reference: id,

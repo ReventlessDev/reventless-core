@@ -2,29 +2,42 @@
 
 import * as Effect from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "../GraphQL_Server.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
-function register(fieldName) {
-  let sdlFields = [`  ` + fieldName + `(id: ID, args: String): String`];
+function register(fieldName, commandSchema) {
+  let variantSchema;
+  variantSchema = commandSchema.type === "union" ? Stdlib_Option.getOr(commandSchema.anyOf[0], commandSchema) : commandSchema;
+  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema, undefined);
+  let sdlFields = field !== undefined ? [field] : [`  ` + fieldName + `: String!`];
+  let constructorNames = DcbTag$Reventless.extractEventTypes(commandSchema);
+  let tag = Stdlib_Option.getOr(constructorNames[0], fieldName);
+  let idFieldName;
+  idFieldName = variantSchema.type === "object" ? Stdlib_Array.findMap(Object.entries(variantSchema.properties), param => {
+      if (DcbTag$Reventless.isTagged(param[1])) {
+        return param[0];
+      }
+    }) : undefined;
   let resolver = async (_root, args) => {
-    let match = args["id"];
-    let id = typeof match === "string" ? match : "";
-    let match$1 = args["args"];
-    let argsStr = typeof match$1 === "string" ? match$1 : "{}";
-    let commandPayload;
-    try {
-      commandPayload = JSON.parse(argsStr);
-    } catch (exn) {
-      commandPayload = {};
-    }
-    let typeName;
-    if (typeof commandPayload === "object" && commandPayload !== null && !Array.isArray(commandPayload)) {
-      let match$2 = commandPayload["TAG"];
-      typeName = typeof match$2 === "string" ? match$2 : "";
+    let id;
+    if (idFieldName !== undefined) {
+      let match = args[idFieldName];
+      id = typeof match === "string" ? match : "";
     } else {
-      typeName = "";
+      id = "";
     }
+    let commandDict = {};
+    commandDict["TAG"] = tag;
+    Object.entries(args).forEach(param => {
+      let k = param[0];
+      if (k !== "TAG") {
+        commandDict[k] = param[1];
+        return;
+      }
+    });
     let metaJson = Object.fromEntries([
       [
         "service",
@@ -62,10 +75,10 @@ function register(fieldName) {
       ],
       [
         "command",
-        commandPayload
+        commandDict
       ]
     ]);
-    let handlers = CommandTopic$ReventlessCore.getHandlers(typeName);
+    let handlers = CommandTopic$ReventlessCore.getHandlers(tag);
     let item = {
       command: fullBody,
       reference: id

@@ -1,6 +1,10 @@
 // GraphQL query resolvers for in-memory QueryDb.
 // Make(Bus) functor: registers query fields into GraphQL_Server during component construction.
-// Supports: getById, every{Name}, {name}ById (when subId), and {name}By{Index} per index.
+// Supports: getById, list (when listFieldName provided), {name}ById (when subId), and {name}By{Index} per index.
+//
+// Query names are resolved from Plugin_Helpers.queryFieldNamesRegistry (populated by
+// Plugin_Builder) to align with fragment SDL. Falls back to camelCase(name) for
+// backward compatibility when no registry entry exists.
 
 module Make = (Bus: InMemory_Bus.T) => {
   open ReventlessCore
@@ -20,12 +24,31 @@ module Make = (Bus: InMemory_Bus.T) => {
     ~opts as _,
   ) => {
     let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
-    let queryName = name->String.charAt(0)->String.toLowerCase ++ name->String.slice(~start=1)
+
+    // Resolve query field names: check registry first, fall back to legacy camelCase
+    let registryEntry = Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.get(name)
+    let singleQueryName = switch registryEntry {
+    | Some({singleFieldName}) => singleFieldName
+    | None => name->String.charAt(0)->String.toLowerCase ++ name->String.slice(~start=1)
+    }
+    let listQueryName = switch registryEntry {
+    | Some({listFieldName: Some(ln)}) => Some(ln)
+    | Some({listFieldName: None}) => None
+    | None => Some("every" ++ name)
+    }
+    let returnTypeName = switch registryEntry {
+    | Some({returnTypeName: rt}) => rt
+    | None => "String"
+    }
+    let pluralTypeName = switch registryEntry {
+    | Some({pluralTypeName: Some(pt)}) => pt
+    | _ => "[String]"
+    }
 
     // -- Main query: getById ---------------------------------------------------
     let byIdSdl = switch subIdField {
-    | Some(sf) => `  ${queryName}(id: ID!, ${sf}: String): [String]`
-    | None => `  ${queryName}(id: ID!): [String]`
+    | Some(sf) => `  ${singleQueryName}(id: ID!, ${sf}: String): ${returnTypeName}`
+    | None => `  ${singleQueryName}(id: ID!): ${returnTypeName}`
     }
     let byIdResolver: GraphQL_Server.resolverFn = async (_root, args) => {
       let id =
@@ -37,31 +60,37 @@ module Make = (Bus: InMemory_Bus.T) => {
           ->Stream.runCollect
           ->Effect.catchAll(_ => Effect.succeed([]))
           ->Effect.runPromise
-        items->JSON.Encode.array
-      | None => []->JSON.Encode.array
+        switch items->Array.get(0) {
+        | Some(item) => item
+        | None => JSON.Encode.null
+        }
+      | None => JSON.Encode.null
       }
     }
 
-    // -- List all: every{Name} ------------------------------------------------
-    let everyName = "every" ++ name
-    let everySdl = `  ${everyName}: [String]`
-    let everyResolver: GraphQL_Server.resolverFn = async (_root, _args) => {
-      switch Bus.getQueryDbStream(name) {
-      | Some(makeStream) =>
-        let items = await makeStream()->Stream.runCollect->Effect.runPromise
-        items->JSON.Encode.array
-      | None =>
-        // Backward compat: fall back to array scan if no stream registered
-        switch Bus.getQueryDbScan(name) {
-        | Some(scanAll) => scanAll()->JSON.Encode.array
-        | None => []->JSON.Encode.array
+    // -- List query (when listQueryName is provided) --------------------------
+    let (listSdl, listResolvers) = switch listQueryName {
+    | Some(listName) =>
+      let sdl = [`  ${listName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
+      let resolver: GraphQL_Server.resolverFn = async (_root, _args) => {
+        let items = switch Bus.getQueryDbStream(name) {
+        | Some(makeStream) =>
+          await makeStream()->Stream.runCollect->Effect.runPromise
+        | None =>
+          switch Bus.getQueryDbScan(name) {
+          | Some(scanAll) => scanAll()
+          | None => []
+          }
         }
+        Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
       }
+      (sdl, [(listName, resolver)])
+    | None => ([], [])
     }
 
     // -- By-id-list: {name}ById (only when subId configured) ------------------
     let byIdListSdl = switch subIdField {
-    | Some(_) => [`  ${queryName}ById(id: ID!): [String]`]
+    | Some(_) => [`  ${singleQueryName}ById(id: ID!): [String]`]
     | None => []
     }
     let byIdListResolvers: array<(string, GraphQL_Server.resolverFn)> = switch subIdField {
@@ -80,18 +109,18 @@ module Make = (Bus: InMemory_Bus.T) => {
         | None => []->JSON.Encode.array
         }
       }
-      [(queryName ++ "ById", resolver)]
+      [(singleQueryName ++ "ById", resolver)]
     | None => []
     }
 
     // -- Index queries: {name}By{Index} ---------------------------------------
     let indexSdlFields = indexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
-      `  ${queryName}By${cap(ic.index)}(${ic.index}: String!): [String]`
+      `  ${singleQueryName}By${cap(ic.index)}(${ic.index}: String!): [String]`
     )
     let indexResolvers: array<(string, GraphQL_Server.resolverFn)> = indexes->Array.map(
       (ic: Reventless.ReadModel.indexConfig) => {
         let index = ic.index
-        let resolverName = queryName ++ "By" ++ cap(index)
+        let resolverName = singleQueryName ++ "By" ++ cap(index)
         let filterField = ic.idField->Option.getOr(index)
         let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
           let value =
@@ -117,11 +146,11 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     // -- Register all fields --------------------------------------------------
     let allSdl =
-      [byIdSdl, everySdl]->Array.concat(byIdListSdl)->Array.concat(indexSdlFields)
+      [byIdSdl]->Array.concat(listSdl)->Array.concat(byIdListSdl)->Array.concat(indexSdlFields)
 
     let resolvers = Dict.make()
-    resolvers->Dict.set(queryName, byIdResolver)
-    resolvers->Dict.set(everyName, everyResolver)
+    resolvers->Dict.set(singleQueryName, byIdResolver)
+    listResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     byIdListResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     indexResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     GraphQL_Server.registerQueries(~sdlFields=allSdl, ~resolvers)

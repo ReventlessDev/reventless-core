@@ -16,6 +16,7 @@ let queryResolvers: ref<dict<resolverFn>> = ref(Dict.make())
 
 let mutationFields: ref<array<string>> = ref([])
 let queryFields: ref<array<string>> = ref([])
+let typeDefinitions: ref<array<string>> = ref([])
 
 let registerMutations = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
   mutationFields.contents = mutationFields.contents->Array.concat(sdlFields)
@@ -25,6 +26,10 @@ let registerMutations = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>
 let registerQueries = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
   queryFields.contents = queryFields.contents->Array.concat(sdlFields)
   resolvers->Dict.toArray->Array.forEach(((k, v)) => queryResolvers.contents->Dict.set(k, v))
+}
+
+let registerTypes = (~sdlTypes: array<string>) => {
+  typeDefinitions.contents = typeDefinitions.contents->Array.concat(sdlTypes)
 }
 
 // -- Server lifecycle ------------------------------------------------------
@@ -37,6 +42,9 @@ let activeSchema: ref<option<YG.schema>> = ref(None)
 let lastFullSdl: ref<option<string>> = ref(None)
 
 let buildSdl = () => {
+  let typesSdl = typeDefinitions.contents->Array.length > 0
+    ? typeDefinitions.contents->Array.join("\n\n")
+    : ""
   let mutations =
     mutationFields.contents->Array.length > 0
       ? mutationFields.contents->Array.join("\n")
@@ -45,12 +53,15 @@ let buildSdl = () => {
     queryFields.contents->Array.length > 0
       ? queryFields.contents->Array.join("\n")
       : "  _noop: String"
-  `type Query {
+  let queriesMutationsSdl = `type Query {
 ${queries}
 }
 type Mutation {
 ${mutations}
 }`
+  typesSdl->String.length > 0
+    ? typesSdl ++ "\n\n" ++ queriesMutationsSdl
+    : queriesMutationsSdl
 }
 
 let start = (~port: int=4000, ()) => {
@@ -79,24 +90,26 @@ let stop = () =>
   }
 
 // Rebuild the server schema by stitching plugin fragments with registered resolvers.
-// Extracts type definitions from all fragments, then uses buildSdl() for Query/Mutation
-// (which matches the registered resolver field names from CommandGenerator/QueryDb builders).
+// Merges any additional type definitions from fragments into the type registry,
+// then uses buildSdl() which includes types + Query + Mutation.
 // Stops the existing server and restarts with the new SDL.
 let rebuildSchema = (
   ~baseFragment: Reventless.Plugin.apiSchemaFragment,
   ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
 ) => {
   stop()
+  // Merge any fragment types not already registered via the hook
   let allFragments = Array.concat([baseFragment], pluginFragments)
-  let fragmentTypes =
-    allFragments
-    ->Array.flatMap(frag => ReventlessCore.GraphQL_Stitcher.decode(frag).types)
-    ->Array.join("\n\n")
-  let queriesMutationsSdl = buildSdl()
-  let fullSdl =
-    fragmentTypes->String.length > 0
-      ? fragmentTypes ++ "\n\n" ++ queriesMutationsSdl
-      : queriesMutationsSdl
+  let fragmentTypes = allFragments->Array.flatMap(frag => ReventlessCore.GraphQL_Stitcher.decode(frag).types)
+  let existingNames = Set.fromArray(typeDefinitions.contents->Array.map(ReventlessCore.GraphQL_Stitcher.extractLeadingName))
+  fragmentTypes->Array.forEach(typeDef => {
+    let name = ReventlessCore.GraphQL_Stitcher.extractLeadingName(typeDef)
+    if !(existingNames->Set.has(name)) {
+      typeDefinitions.contents->Array.push(typeDef)
+      existingNames->Set.add(name)
+    }
+  })
+  let fullSdl = buildSdl()
   lastFullSdl.contents = Some(fullSdl)
   let resolvers = Dict.make()
   resolvers->Dict.set("Query", queryResolvers.contents)
@@ -117,6 +130,7 @@ let reset = () => {
   queryResolvers.contents = Dict.make()
   mutationFields.contents = []
   queryFields.contents = []
+  typeDefinitions.contents = []
   activeSchema.contents = None
   lastFullSdl.contents = None
 }
@@ -147,10 +161,12 @@ let printLiveSdl = () =>
   }
 
 type diagnostics = {
+  registeredTypeDefinitions: array<string>,
   registeredMutationFields: array<string>,
   registeredQueryFields: array<string>,
   registeredMutationResolvers: array<string>,
   registeredQueryResolvers: array<string>,
+  typeCount: int,
   sdlMutationCount: int,
   sdlQueryCount: int,
   resolverMutationCount: int,
@@ -211,11 +227,15 @@ let diagnostics = (): diagnostics => {
     }
   )
 
+  let typeNames = typeDefinitions.contents->Array.map(ReventlessCore.GraphQL_Stitcher.extractLeadingName)
+
   {
+    registeredTypeDefinitions: typeNames,
     registeredMutationFields: mutFieldNames,
     registeredQueryFields: queryFieldNames,
     registeredMutationResolvers: mutResolverNames,
     registeredQueryResolvers: queryResolverNames,
+    typeCount: typeNames->Array.length,
     sdlMutationCount: mutFieldNames->Array.length,
     sdlQueryCount: queryFieldNames->Array.length,
     resolverMutationCount: mutResolverNames->Array.length,
@@ -229,6 +249,8 @@ let diagnostics = (): diagnostics => {
 let printDiagnostics = () => {
   let d = diagnostics()
   Console.log("[GraphQL Diagnostics]")
+  Console.log(`  Types (${d.typeCount->Int.toString}):`)
+  d.registeredTypeDefinitions->Array.forEach(t => Console.log(`    - ${t}`))
   Console.log(
     `  Mutations: ${d.sdlMutationCount->Int.toString} SDL fields, ${d.resolverMutationCount->Int.toString} resolvers`,
   )

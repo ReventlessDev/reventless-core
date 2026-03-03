@@ -23,6 +23,10 @@ let queryFields = {
   contents: []
 };
 
+let typeDefinitions = {
+  contents: []
+};
+
 function registerMutations(sdlFields, resolvers) {
   mutationFields.contents = mutationFields.contents.concat(sdlFields);
   Object.entries(resolvers).forEach(param => {
@@ -35,6 +39,10 @@ function registerQueries(sdlFields, resolvers) {
   Object.entries(resolvers).forEach(param => {
     queryResolvers.contents[param[0]] = param[1];
   });
+}
+
+function registerTypes(sdlTypes) {
+  typeDefinitions.contents = typeDefinitions.contents.concat(sdlTypes);
 }
 
 let debug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
@@ -52,14 +60,20 @@ let lastFullSdl = {
 };
 
 function buildSdl() {
+  let typesSdl = typeDefinitions.contents.length !== 0 ? typeDefinitions.contents.join("\n\n") : "";
   let mutations = mutationFields.contents.length !== 0 ? mutationFields.contents.join("\n") : "  _noop: String";
   let queries = queryFields.contents.length !== 0 ? queryFields.contents.join("\n") : "  _noop: String";
-  return `type Query {
+  let queriesMutationsSdl = `type Query {
 ` + queries + `
 }
 type Mutation {
 ` + mutations + `
 }`;
+  if (typesSdl.length > 0) {
+    return typesSdl + "\n\n" + queriesMutationsSdl;
+  } else {
+    return queriesMutationsSdl;
+  }
 }
 
 function start(portOpt, param) {
@@ -100,9 +114,17 @@ function stop() {
 function rebuildSchema(baseFragment, pluginFragments) {
   stop();
   let allFragments = [baseFragment].concat(pluginFragments);
-  let fragmentTypes = allFragments.flatMap(frag => GraphQL_Stitcher$ReventlessCore.decode(frag).types).join("\n\n");
-  let queriesMutationsSdl = buildSdl();
-  let fullSdl = fragmentTypes.length > 0 ? fragmentTypes + "\n\n" + queriesMutationsSdl : queriesMutationsSdl;
+  let fragmentTypes = allFragments.flatMap(frag => GraphQL_Stitcher$ReventlessCore.decode(frag).types);
+  let existingNames = new Set(typeDefinitions.contents.map(GraphQL_Stitcher$ReventlessCore.extractLeadingName));
+  fragmentTypes.forEach(typeDef => {
+    let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(typeDef);
+    if (!existingNames.has(name)) {
+      typeDefinitions.contents.push(typeDef);
+      existingNames.add(name);
+      return;
+    }
+  });
+  let fullSdl = buildSdl();
   lastFullSdl.contents = fullSdl;
   let resolvers = {};
   resolvers["Query"] = queryResolvers.contents;
@@ -130,6 +152,7 @@ function reset() {
   queryResolvers.contents = {};
   mutationFields.contents = [];
   queryFields.contents = [];
+  typeDefinitions.contents = [];
   activeSchema.contents = undefined;
   lastFullSdl.contents = undefined;
 }
@@ -206,11 +229,14 @@ function diagnostics() {
       return;
     }
   });
+  let typeNames = typeDefinitions.contents.map(GraphQL_Stitcher$ReventlessCore.extractLeadingName);
   return {
+    registeredTypeDefinitions: typeNames,
     registeredMutationFields: mutFieldNames,
     registeredQueryFields: queryFieldNames,
     registeredMutationResolvers: mutResolverNames,
     registeredQueryResolvers: queryResolverNames,
+    typeCount: typeNames.length,
     sdlMutationCount: mutFieldNames.length,
     sdlQueryCount: queryFieldNames.length,
     resolverMutationCount: mutResolverNames.length,
@@ -224,6 +250,10 @@ function diagnostics() {
 function printDiagnostics() {
   let d = diagnostics();
   console.log("[GraphQL Diagnostics]");
+  console.log(`  Types (` + d.typeCount.toString() + `):`);
+  d.registeredTypeDefinitions.forEach(t => {
+    console.log(`    - ` + t);
+  });
   console.log(`  Mutations: ` + d.sdlMutationCount.toString() + ` SDL fields, ` + d.resolverMutationCount.toString() + ` resolvers`);
   d.registeredMutationFields.forEach(f => {
     console.log(`    SDL: ` + f);
@@ -267,8 +297,10 @@ export {
   queryResolvers,
   mutationFields,
   queryFields,
+  typeDefinitions,
   registerMutations,
   registerQueries,
+  registerTypes,
   debug,
   activeServer,
   activeSchema,

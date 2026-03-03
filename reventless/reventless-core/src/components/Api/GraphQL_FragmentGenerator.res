@@ -48,6 +48,13 @@ let deriveObjectType = (~typeName: string, schema: S.t<unknown>): option<string>
   | _ => None
   }
 
+/**
+Derive a plural wrapper type for list queries.
+e.g. `type Catalog_Products { nextToken: String  scannedCount: Int!  items: [Catalog_Product!]! }`
+*/
+let derivePluralWrapperType = (~pluralTypeName: string, ~singularTypeName: string): string =>
+  `type ${pluralTypeName} {\n  nextToken: String\n  scannedCount: Int!\n  items: [${singularTypeName}!]!\n}`
+
 // ── Query field derivation ─────────────────────────────────────────────────
 
 let deriveObjectQueryField = (
@@ -64,14 +71,14 @@ let deriveObjectQueryField = (
 
 let deriveListQueryField = (
   ~listFieldName: string,
-  ~typeName: string,
+  ~pluralTypeName: string,
   ~authorization: option<Reventless.ReadModel.authorization>,
 ): string => {
   let authDirective = switch authorization {
   | Some({group}) => ` @aws_auth(cognito_groups: ["${group}"])`
   | None => ""
   }
-  `  ${listFieldName}(nextToken: String, limit: Int): [${typeName}]${authDirective}`
+  `  ${listFieldName}(nextToken: String, limit: Int): ${pluralTypeName}!${authDirective}`
 }
 
 // ── Mutation field derivation ──────────────────────────────────────────────
@@ -94,6 +101,7 @@ let deriveMutationFieldFromObject = (
     let args =
       properties
       ->Dict.toArray
+      ->Array.filter(((argName, _)) => argName !== "TAG")
       ->Array.map(((argName, argSchema)) => {
         let gqlType = deriveScalarType(argSchema)
         `${argName}: ${gqlType}`
@@ -124,6 +132,7 @@ let generate = (
   let types: array<string> = []
   let mutations: array<string> = []
   let queries: array<string> = []
+  let seenTypes = Set.make()
 
   // Process mutation entries
   mutationEntries->Array.forEach(entry => {
@@ -151,9 +160,12 @@ let generate = (
 
   // Process query entries
   queryEntries->Array.forEach(entry => {
-    // Derive the return type definition from the state schema
-    let typeDef = deriveObjectType(~typeName=entry.returnTypeName, entry.stateSchema)
-    typeDef->Option.forEach(t => types->Array.push(t))
+    // Derive the singular return type definition from the state schema (deduplicated)
+    if !(seenTypes->Set.has(entry.returnTypeName)) {
+      seenTypes->Set.add(entry.returnTypeName)
+      let typeDef = deriveObjectType(~typeName=entry.returnTypeName, entry.stateSchema)
+      typeDef->Option.forEach(t => types->Array.push(t))
+    }
 
     // Single query field
     let singleField = deriveObjectQueryField(
@@ -163,11 +175,22 @@ let generate = (
     )
     queries->Array.push(singleField)
 
-    // Optional list query field
+    // Optional list query field with plural wrapper type
     entry.listFieldName->Option.forEach(listFieldName => {
+      // Generate plural wrapper type (deduplicated)
+      if !(seenTypes->Set.has(listFieldName)) {
+        seenTypes->Set.add(listFieldName)
+        let pluralType = derivePluralWrapperType(
+          ~pluralTypeName=listFieldName,
+          ~singularTypeName=entry.returnTypeName,
+        )
+        types->Array.push(pluralType)
+      }
+
+      // List query returns the plural wrapper type
       let listField = deriveListQueryField(
         ~listFieldName,
-        ~typeName=entry.returnTypeName,
+        ~pluralTypeName=listFieldName,
         ~authorization=entry.authorization,
       )
       queries->Array.push(listField)

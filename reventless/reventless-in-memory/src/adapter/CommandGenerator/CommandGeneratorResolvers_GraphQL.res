@@ -1,46 +1,98 @@
 // GraphQL mutation resolvers for in-memory CommandGenerator.
-// Registers one GraphQL mutation field per resolver config field.
-// Uses a module-level pending-handler slot that is populated by handleResolversEvent
-// (called via makeHandler) immediately before make() is called via connect().
+//
+// Two-phase registration:
+//   Phase 1 (synchronous): Plugin_Builder calls `register(~fields, ~commandSchema)` via the
+//     aggregateMutationResolverHook during construct(). This registers SDL fields and resolver
+//     stubs in GraphQL_Server immediately — before Output.apply chains fire.
+//   Phase 2 (async, inside Output.apply): AggregateRuntime_Builder calls handleResolversEvent
+//     then make(). make() binds the real generateCommand function to the resolver stubs.
 
 open ReventlessCore
 
 type api = unit
 type runtimeParts = RuntimeEnvironment_InMemory.parts
 
-// -- Pending handler slot --------------------------------------------------
-//
-// Execution order in Pulumi mock mode (synchronous):
-//   1. AggregateRuntime_Builder evaluates ~handler=makeHandler(~publishJsons)
-//      -> handleResolversEvent(generateCommand) is called -> pending slot filled
-//   2. AggregateRuntime_Builder calls connect(~runtime)
-//      -> make() is called -> pending slot consumed; generateCommand captured in closures
-//
-// This single slot is safe because mock-mode is single-threaded and the two calls
-// always happen back-to-back for each aggregate before the next aggregate starts.
+let capitalize = s =>
+  s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
+
+let extractCommandName = (fieldName: string) => {
+  let parts = fieldName->String.split("_")
+  parts->Array.get(parts->Array.length - 1)->Option.getOr(fieldName)->capitalize
+}
+
+// -- Per-field handler refs ---------------------------------------------------
+// Populated by register() with empty refs; bound by make() when generateCommand
+// becomes available.
+
+let handlerRefs: dict<ref<option<CommandGenerator.commandGenerator>>> = Dict.make()
+
+// -- register (Phase 1 — synchronous) ----------------------------------------
+// Called by Plugin_Builder via aggregateMutationResolverHook before any
+// Output.apply chains fire. Registers SDL + resolver stubs in GraphQL_Server.
+
+let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
+  let anyOf = switch commandSchema {
+  | Union({anyOf}) => anyOf
+  | _ => []
+  }
+
+  let sdlFields = fields->Array.mapWithIndex((field, i) => {
+    let variantSchema = anyOf->Array.get(i)->Option.getOr(commandSchema)
+    switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
+      ~fieldName=field,
+      variantSchema,
+      ~authorization=None,
+    ) {
+    | Some(sdl) => sdl
+    | None => `  ${field}: String!`
+    }
+  })
+
+  let resolvers = Dict.make()
+  fields->Array.forEach(field => {
+    let handlerRef = ref(None)
+    handlerRefs->Dict.set(field, handlerRef)
+    let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
+      switch handlerRef.contents {
+      | Some(generateCommand) =>
+        let commandName = extractCommandName(field)
+        let payload: CommandGenerator.payload = {
+          command: commandName,
+          arguments: args->Obj.magic,
+          meta: {ip: [], user: "local", info: `Mutation.${field}`},
+        }
+        let result = await generateCommand(payload)
+        result->JSON.Encode.string
+      | None => JSON.Encode.null
+      }
+    }
+    resolvers->Dict.set(field, resolver)
+  })
+
+  GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
+}
+
+// -- Pending handler slot (Phase 2) -------------------------------------------
 
 let pending: ref<option<CommandGenerator.commandGenerator>> = ref(None)
 
-// -- handleResolversEvent --------------------------------------------------
-
 let handleResolversEvent = (generateCommand: CommandGenerator.commandGenerator) => {
   pending.contents = Some(generateCommand)
-  // Return value satisfies the module type; the HTTP resolver path uses generateCommand
-  // directly via the closure in make(), not through this Output.
   Pulumi.Output.make((event, _context) => event->generateCommand)
 }
 
-// -- make ------------------------------------------------------------------
+// -- make (Phase 2 — inside Output.apply) -------------------------------------
+// Binds the real generateCommand to resolver stubs created by register().
 
 let make: CommandGenerator_Adapter.resolversMaker<unit, runtimeParts> = (
   ~name as _,
   ~api as _,
   ~fields,
+  ~commandSchema as _,
   ~runtime as _,
   ~resources as _,
   ~opts as _,
 ) => {
-  // Consume the pending handler that was set by the preceding handleResolversEvent call.
   let generateCommand = switch pending.contents {
   | Some(fn) =>
     pending.contents = None
@@ -48,32 +100,13 @@ let make: CommandGenerator_Adapter.resolversMaker<unit, runtimeParts> = (
   | None => JsError.throwWithMessage("CommandGeneratorResolvers_GraphQL.make: no pending handler")
   }
 
-  // Build SDL fragment: one field per resolver config entry.
-  // Args are generic JSON scalars since concrete types are unknown at schema-build time.
-  let sdlFields = fields->Array.map(field => `  ${field}(id: ID, args: String): String`)
-
-  let capitalize = s =>
-    s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
-
-  let makeResolver = (fieldName: string): GraphQL_Server.resolverFn =>
-    async (_root, args) => {
-      // Mirror AppSync VTL convention: "aggregate_CommandName" -> "CommandName"
-      let commandName = switch fieldName->String.split("_") {
-      | [_agg, cmd] => cmd->capitalize
-      | _ => fieldName->capitalize
-      }
-      let payload: CommandGenerator.payload = {
-        command: commandName,
-        arguments: args->Obj.magic,
-        meta: {ip: [], user: "local", info: `Mutation.${fieldName}`},
-      }
-      let result = await generateCommand(payload)
-      result->JSON.Encode.string
+  // Bind generateCommand to the pre-registered resolver stubs
+  fields->Array.forEach(field => {
+    switch handlerRefs->Dict.get(field) {
+    | Some(handlerRef) => handlerRef.contents = Some(generateCommand)
+    | None => ()
     }
-
-  let resolvers = Dict.make()
-  fields->Array.forEach(f => resolvers->Dict.set(f, makeResolver(f)))
-  GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
+  })
 
   {resources: []}
 }

@@ -116,12 +116,15 @@ describe("GraphQL_SchemaInspector", () => {
           authorization: undefined
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
-      expect(inspection.types.length).toBe(1);
+      expect(inspection.types.length).toBe(2);
       expect(inspection.mutations.length).toBe(1);
       expect(inspection.queries.length).toBe(2);
       expect(inspection.sdlPreview.includes("type TestState")).toBe(true);
+      expect(inspection.sdlPreview.includes("type Test_States")).toBe(true);
+      expect(inspection.sdlPreview.includes("items: [TestState!]!")).toBe(true);
       expect(inspection.sdlPreview.includes("Test_Add")).toBe(true);
       expect(inspection.sdlPreview.includes("Test_State")).toBe(true);
+      expect(inspection.sdlPreview.includes("Test_States!")).toBe(true);
     });
   });
   describe("inspectPluginEntries", () => {

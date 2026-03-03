@@ -57,10 +57,11 @@ let inspectQueryFields = (
     ~typeName,
     ~authorization=None,
   )
+  let pluralName = name ++ "s"
   let listQuery = Some(
     GraphQL_FragmentGenerator.deriveListQueryField(
-      ~listFieldName=name ++ "s",
-      ~typeName,
+      ~listFieldName=pluralName,
+      ~pluralTypeName=pluralName,
       ~authorization=None,
     ),
   )
@@ -100,16 +101,19 @@ let printFragment = (fragment: Reventless.Plugin.apiSchemaFragment): unit => {
   types->Array.forEach(t => {
     let name = GraphQL_Stitcher.extractLeadingName(t)
     Console.log(`    - ${name}`)
+    Console.log(`      ${t}`)
   })
   Console.log(`  Mutations (${mutations->Array.length->Int.toString}):`)
   mutations->Array.forEach(m => {
     let name = GraphQL_Stitcher.extractLeadingName(m)
     Console.log(`    - ${name}`)
+    Console.log(`      ${m}`)
   })
   Console.log(`  Queries (${queries->Array.length->Int.toString}):`)
   queries->Array.forEach(q => {
     let name = GraphQL_Stitcher.extractLeadingName(q)
     Console.log(`    - ${name}`)
+    Console.log(`      ${q}`)
   })
   Console.log("\n--- SDL Preview ---")
   Console.log(sdlPreview)

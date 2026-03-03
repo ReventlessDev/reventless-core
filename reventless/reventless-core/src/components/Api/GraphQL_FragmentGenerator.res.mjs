@@ -28,14 +28,18 @@ function deriveObjectType(typeName, schema) {
   return `type ` + typeName + ` {\n` + fields + `\n}`;
 }
 
+function derivePluralWrapperType(pluralTypeName, singularTypeName) {
+  return `type ` + pluralTypeName + ` {\n  nextToken: String\n  scannedCount: Int!\n  items: [` + singularTypeName + `!]!\n}`;
+}
+
 function deriveObjectQueryField(singleFieldName, typeName, authorization) {
   let authDirective = authorization !== undefined ? ` @aws_auth(cognito_groups: ["` + authorization.group + `"])` : "";
   return `  ` + singleFieldName + `(id: ID!): ` + typeName + authDirective;
 }
 
-function deriveListQueryField(listFieldName, typeName, authorization) {
+function deriveListQueryField(listFieldName, pluralTypeName, authorization) {
   let authDirective = authorization !== undefined ? ` @aws_auth(cognito_groups: ["` + authorization.group + `"])` : "";
-  return `  ` + listFieldName + `(nextToken: String, limit: Int): [` + typeName + `]` + authDirective;
+  return `  ` + listFieldName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!` + authDirective;
 }
 
 function deriveMutationFieldFromObject(fieldName, variantSchema, authorization) {
@@ -43,7 +47,7 @@ function deriveMutationFieldFromObject(fieldName, variantSchema, authorization) 
   if (variantSchema.type !== "object") {
     return;
   }
-  let args = Object.entries(variantSchema.properties).map(param => {
+  let args = Object.entries(variantSchema.properties).filter(param => param[0] !== "TAG").map(param => {
     let gqlType = deriveScalarType(param[1]);
     return param[0] + `: ` + gqlType;
   }).join(", ");
@@ -55,6 +59,7 @@ function generate(mutationEntries, queryEntries) {
   let types = [];
   let mutations = [];
   let queries = [];
+  let seenTypes = new Set();
   mutationEntries.forEach(entry => {
     let schema = entry.commandSchema;
     switch (schema.type) {
@@ -82,14 +87,22 @@ function generate(mutationEntries, queryEntries) {
     }
   });
   queryEntries.forEach(entry => {
-    let typeDef = deriveObjectType(entry.returnTypeName, entry.stateSchema);
-    Stdlib_Option.forEach(typeDef, t => {
-      types.push(t);
-    });
+    if (!seenTypes.has(entry.returnTypeName)) {
+      seenTypes.add(entry.returnTypeName);
+      let typeDef = deriveObjectType(entry.returnTypeName, entry.stateSchema);
+      Stdlib_Option.forEach(typeDef, t => {
+        types.push(t);
+      });
+    }
     let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName, entry.authorization);
     queries.push(singleField);
     Stdlib_Option.forEach(entry.listFieldName, listFieldName => {
-      let listField = deriveListQueryField(listFieldName, entry.returnTypeName, entry.authorization);
+      if (!seenTypes.has(listFieldName)) {
+        seenTypes.add(listFieldName);
+        let pluralType = derivePluralWrapperType(listFieldName, entry.returnTypeName);
+        types.push(pluralType);
+      }
+      let listField = deriveListQueryField(listFieldName, listFieldName, entry.authorization);
       queries.push(listField);
     });
   });
@@ -122,6 +135,7 @@ export {
   extractEventTypes,
   deriveScalarType,
   deriveObjectType,
+  derivePluralWrapperType,
   deriveObjectQueryField,
   deriveListQueryField,
   deriveMutationFieldFromObject,

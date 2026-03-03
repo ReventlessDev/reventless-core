@@ -28,10 +28,18 @@ module Make = (
       ->ComponentType.name(CommandGenerator.componentType)
     let opts = {Pulumi.ComponentResource.parent: commandGeneratorResource}
 
+    // Use plugin-prefixed field names from registry when available;
+    // fall back to Behavior.resolverConfig.fields for backward compat.
+    let fields = switch Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.get(Spec.name) {
+    | Some(registeredFields) if registeredFields->Array.length > 0 => registeredFields
+    | _ => Behavior.resolverConfig.fields
+    }
+
     let resolvers = Resolvers.make(
       ~name,
       ~api,
-      ~fields=Behavior.resolverConfig.fields,
+      ~fields,
+      ~commandSchema=Behavior.resolverConfig.commandSchema->S.castToUnknown,
       ~runtime,
       ~resources,
       ~opts,

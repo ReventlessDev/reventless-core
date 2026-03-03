@@ -191,10 +191,7 @@ let finishAggregates = (
       ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(_ =>
-        aggregateFinishFns->Dict.valuesToArray->Array.forEach(finishFn => {
-          Console.log("Plugin_Builder: AggregateRuntimeBuilder.finish")
-          finishFn()
-        })
+        aggregateFinishFns->Dict.valuesToArray->Array.forEach(finishFn => finishFn())
       )
     )
 }
@@ -632,7 +629,45 @@ module MakeEventCollectorHelper = (
 // built.  Plugin_Builder.construct() calls this for each StateChangeSlice to
 // register GraphQL mutation resolvers.  No-op when unset (AWS/other platforms).
 // ---------------------------------------------------------------------------
-let dcbMutationResolverHook: ref<option<(~fieldName: string) => unit>> = ref(None)
+let dcbMutationResolverHook: ref<option<(~fieldName: string, ~commandSchema: S.t<unknown>) => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
+// Aggregate mutation resolver hook — set by in-memory platform before plugins
+// are built.  Plugin_Builder.construct() calls this for each aggregate to
+// register GraphQL mutation SDL + resolver stubs synchronously (before
+// Output.apply chains fire).  No-op when unset (AWS/other platforms).
+// ---------------------------------------------------------------------------
+let aggregateMutationResolverHook: ref<
+  option<(~fields: array<string>, ~commandSchema: S.t<unknown>) => unit>,
+> = ref(None)
+
+// ---------------------------------------------------------------------------
+// Schema type registration hook — set by in-memory platform before plugins are
+// built.  Plugin_Builder.construct() calls this after generating the fragment
+// to register GraphQL type definitions.  No-op when unset (AWS/other platforms).
+// ---------------------------------------------------------------------------
+let schemaTypeRegistrationHook: ref<option<array<string> => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
+// Query field names registry — populated by Plugin_Builder during construct()
+// to map QueryDb component names → plugin-prefixed GraphQL query field names.
+// Read by QueryDbResolvers_GraphQL.make() to align resolver SDL with fragment SDL.
+// ---------------------------------------------------------------------------
+type queryFieldNames = {
+  singleFieldName: string,
+  listFieldName: option<string>,
+  returnTypeName: string,
+  pluralTypeName: option<string>,
+}
+let queryFieldNamesRegistry: ref<dict<queryFieldNames>> = ref(Dict.make())
+
+// ---------------------------------------------------------------------------
+// Aggregate mutation field names registry — populated by Plugin_Builder during
+// construct() to map aggregate Spec.name → plugin-prefixed mutation field names.
+// Read by CommandGenerator_Builder.connect() to override the empty
+// Behavior.resolverConfig.fields with the correct plugin-prefixed names.
+// ---------------------------------------------------------------------------
+let aggregateMutationFieldsRegistry: ref<dict<array<string>>> = ref(Dict.make())
 
 // ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so
