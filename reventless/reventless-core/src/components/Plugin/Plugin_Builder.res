@@ -99,6 +99,17 @@ module Make = (
           })
           ->Dict.fromArray
 
+        // Register DCB mutation resolvers via platform hook (e.g. GraphQL in-memory)
+        switch dcbMutationResolverHook.contents {
+        | Some(registerResolver) =>
+          DcbSpec.stateChangeSlices->Array.forEach((
+            module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            registerResolver(~fieldName=`${name}_${S.Spec.name}`)
+          })
+        | None => ()
+        }
+
         // Create StateViewSlices - each gets its own QueryDb and subscribes to DcbEventLog events
         let stateViewSlicesOutputs =
           DcbSpec.stateViewSlices

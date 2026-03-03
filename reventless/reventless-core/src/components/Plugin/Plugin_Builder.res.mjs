@@ -56,6 +56,10 @@ function Make(Spec) {
               Component$ReventlessCore.outputs(ch)
             ];
           }));
+          let registerResolver = Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents;
+          if (registerResolver !== undefined) {
+            dcbSpec.stateChangeSlices.forEach(S => registerResolver(extra$1 + `_` + S.Spec.name));
+          }
           let stateViewSlicesOutputs = Object.fromEntries(dcbSpec.stateViewSlices.map(StateViewSlice => {
             let sv = StateViewSlice.make(dcbEventLog, opts);
             return [

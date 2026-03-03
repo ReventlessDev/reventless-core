@@ -2,6 +2,7 @@
 
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as Core_Builder$ReventlessInMemory from "./components/Core_Builder.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
@@ -18,6 +19,7 @@ import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateVi
 import * as GraphQL_InMemory_Adapter$ReventlessInMemory from "./adapter/Api/GraphQL_InMemory_Adapter.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "./components/StateChangeSlice_Builder.res.mjs";
 import * as ScheduledPublisher_InMemory$ReventlessInMemory from "./adapter/Scheduler/ScheduledPublisher_InMemory.res.mjs";
+import * as DcbCommandTopicResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/DcbCommandTopicResolvers_GraphQL.res.mjs";
 
 function Make($star) {
   let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -88,6 +90,7 @@ function Make($star) {
   let Api = {
     Make: Make$9
   };
+  Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents = DcbCommandTopicResolvers_GraphQL$ReventlessInMemory.register;
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);
   let Plugin = {
     make: PluginMaker.make
@@ -103,8 +106,7 @@ function Make($star) {
     });
     return Component$ReventlessCore.operations(S.make(undefined));
   };
-  let makePlatform = (param, param$1, param$2) => {};
-  GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+  let makePlatform = (param, param$1, param$2) => GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
   return {
     Aggregate: Aggregate,
     ReadModel: ReadModel,

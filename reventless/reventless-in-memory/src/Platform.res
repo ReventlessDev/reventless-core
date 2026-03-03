@@ -99,6 +99,12 @@ module Make = (): (ReventlessInfra.Platform.T
     }
   }
 
+  // Set the DCB mutation resolver hook so Plugin_Builder.construct() registers
+  // GraphQL resolvers for each StateChangeSlice during plugin construction.
+  let () =
+    ReventlessCore.Plugin_Helpers.dcbMutationResolverHook.contents =
+      Some(DcbCommandTopicResolvers_GraphQL.register)
+
   module PluginMaker = Plugin_Builder.Make(Bus)
   // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
   // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
@@ -125,12 +131,9 @@ module Make = (): (ReventlessInfra.Platform.T
   }
 
   let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
-    // In-memory mode: schema rebuilding is handled by GraphQL_Server.start() below.
-    ()
+    // Start the shared GraphQL server after all plugins have been built.
+    // All Output.apply chains have fired synchronously by this point,
+    // so all mutation and query resolvers are already registered in GraphQL_Server.
+    GraphQL_Server.start()
   }
-
-  // Start the shared GraphQL server after all components are built.
-  // In Pulumi mock mode, all Output.apply chains have fired synchronously by this point,
-  // so all mutation and query resolvers are already registered in GraphQL_Server.
-  let () = GraphQL_Server.start()
 }

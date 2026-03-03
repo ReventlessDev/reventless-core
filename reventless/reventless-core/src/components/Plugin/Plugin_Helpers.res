@@ -627,6 +627,13 @@ module MakeEventCollectorHelper = (
 }
 
 // ---------------------------------------------------------------------------
+// DCB mutation resolver hook — set by in-memory platform before plugins are
+// built.  Plugin_Builder.construct() calls this for each StateChangeSlice to
+// register GraphQL mutation resolvers.  No-op when unset (AWS/other platforms).
+// ---------------------------------------------------------------------------
+let dcbMutationResolverHook: ref<option<(~fieldName: string) => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so
 // that the plugin's entry-point module can export it as `_interopMeta`.
 // ---------------------------------------------------------------------------

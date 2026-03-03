@@ -388,6 +388,10 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
   });
 }
 
+let dcbMutationResolverHook = {
+  contents: undefined
+};
+
 let interopMetaOutput = {
   contents: undefined
 };
@@ -499,6 +503,7 @@ export {
   createTasks,
   createResolvers,
   MakeEventCollectorHelper,
+  dcbMutationResolverHook,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,
