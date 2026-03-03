@@ -142,7 +142,7 @@ module Make = (
 
     let mutationEntriesFromAggregates =
       aggregates->Array.flatMap((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
-        let commandSchema: S.t<unknown> = M.Spec.commandSchema->Obj.magic
+        let commandSchema = M.Spec.commandSchema->S.castToUnknown
         let constructorNames = Reventless.DcbTag.extractEventTypes(M.Spec.commandSchema)
         let fieldNames = constructorNames->Array.map(cname => `${name}_${M.Spec.name}_${cname}`)
         [{ReventlessInfra.Api.fieldNames, commandSchema}]
@@ -151,7 +151,7 @@ module Make = (
     let mutationEntriesFromSlices = switch dcbSpec {
     | Some(module(DcbSpec)) =>
       DcbSpec.stateChangeSlices->Array.map((module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event)) =>
-        {ReventlessInfra.Api.fieldNames: [`${name}_${S.Spec.name}`], commandSchema: S.Spec.commandSchema->Obj.magic}
+        {ReventlessInfra.Api.fieldNames: [`${name}_${S.Spec.name}`], commandSchema: S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema}
       )
     | None => []
     }
@@ -164,7 +164,7 @@ module Make = (
           ReventlessInfra.Api.singleFieldName: `${name}_${R.Spec.name}`,
           listFieldName: Some(`${name}_${pluralize(R.Spec.name)}`),
           returnTypeName: `${name}${R.Spec.name}`,
-          stateSchema: R.Spec.stateSchema->Obj.magic,
+          stateSchema: R.Spec.stateSchema->S.castToUnknown,
           authorization: None,
         }
       )
@@ -177,7 +177,7 @@ module Make = (
           ReventlessInfra.Api.singleFieldName: `${name}_${entity}`,
           listFieldName: None,
           returnTypeName: `${name}${entity}`,
-          stateSchema: V.Spec.stateSchema->Obj.magic,
+          stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
           authorization: None,
         }
       })

@@ -84,3 +84,9 @@ external listen: (httpServer, int, unit => unit) => unit = "listen"
 /** Stop accepting new connections. Calls `callback` when all connections are closed. */
 @send
 external close: (httpServer, unit => unit) => unit = "close"
+
+// ─── Schema introspection ─────────────────────────────────────────────────
+
+/** Returns the canonical SDL string from a live GraphQL schema object. */
+@module("graphql")
+external printSchema: schema => string = "printSchema"

@@ -9,7 +9,8 @@
     "start": "rescript build -w",
     "clean": "rescript clean",
     "rebuild": "npm run clean && npm run build -- -with-deps",
-    "run": "npx tsx src/Main.res.mjs"
+    "run": "npx tsx src/Main.res.mjs",
+    "dev": "GRAPHQL_DEBUG=1 npx tsx src/Main.res.mjs"
   },
   "dependencies": {
     "@reventlessdev/example-dcb-catalog": "*",

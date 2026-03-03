@@ -36,3 +36,9 @@ Platform.makePlatform(
   ~core,
   ~plugins=[catalogPlugin, orderingPlugin],
 )
+
+// 8. Print schema diagnostics when GRAPHQL_DEBUG is set
+@val external processEnv: dict<string> = "process.env"
+if processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome {
+  ReventlessInMemory.GraphQL_Server.printDiagnostics()
+}
