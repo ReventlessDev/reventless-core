@@ -140,6 +140,12 @@ module type T = {
     }) => Api.T
   }
 
+  /** Whether this platform supports MCP (Model Context Protocol) for AI agent access.
+      In-memory: starts an MCP server alongside GraphQL in makePlatform.
+      AWS: deploys a Lambda Function URL with Streamable HTTP transport. */
+  type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
+  let mcpSupported: mcpSupported
+
   /** Factory for plugin deployment units. */
   module Plugin: Plugin.T with type api = api and type role = role
 

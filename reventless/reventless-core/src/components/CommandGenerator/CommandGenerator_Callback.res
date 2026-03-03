@@ -27,7 +27,10 @@ module Make = (
     let params = switch payload.arguments
     ->JSON.stringifyAny
     ->Option.flatMap(jsonString => jsonString->JSON.parseOrThrow->JSON.Decode.object) {
-    | Some(obj) => obj->Dict.toArray->Array.slice(~start=1)
+    | Some(obj) => {
+        obj->Dict.delete("id")
+        obj->Dict.toArray
+      }
     | None =>
       JsError.throwWithMessage(
         "Couldn't decode:" ++

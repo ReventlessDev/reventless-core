@@ -118,6 +118,9 @@ module Make = (Api: {
     component->ReventlessCore.Component.operations
   }
 
+  type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
+  let mcpSupported = McpNotSupported
+
   let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
     // Schema stitching is handled by the event system (ConnectPluginExtension).
     // Stack exports are set by user entry-point code.

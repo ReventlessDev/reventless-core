@@ -23,6 +23,7 @@
     "@reventlessdev/rescript-effect",
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/rescript-graphql-yoga",
+    "@reventlessdev/rescript-mcp-sdk",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-core"

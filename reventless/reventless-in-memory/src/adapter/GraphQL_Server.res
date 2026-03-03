@@ -28,6 +28,14 @@ let registerQueries = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) 
   resolvers->Dict.toArray->Array.forEach(((k, v)) => queryResolvers.contents->Dict.set(k, v))
 }
 
+/** Look up a registered mutation resolver by field name (used by MCP_Server). */
+let getMutationResolver = (fieldName: string): option<resolverFn> =>
+  mutationResolvers.contents->Dict.get(fieldName)
+
+/** Look up a registered query resolver by field name (used by MCP_Server). */
+let getQueryResolver = (fieldName: string): option<resolverFn> =>
+  queryResolvers.contents->Dict.get(fieldName)
+
 let registerTypes = (~sdlTypes: array<string>) => {
   typeDefinitions.contents = typeDefinitions.contents->Array.concat(sdlTypes)
 }

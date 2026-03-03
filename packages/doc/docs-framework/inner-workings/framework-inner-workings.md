@@ -28,6 +28,7 @@ This pattern ensures clear separation of concerns, type safety through module ty
 - [Pulumi Integration](./pulumi.md) - Deploy-time vs runtime separation
 - [Serialization](./serialization.md) - Data encoding/decoding patterns
 - [Resources](./resources.md) - Infrastructure resource management
+- [MCP (Model Context Protocol)](./mcp.md) - AI-native access via tools and resources
 - [AWS Adapters](/aws/adapters/) - Provider-specific implementations
 
 # Framework Inner Workings
@@ -62,6 +63,7 @@ The framework employs several other important patterns:
 - [**Pulumi Integration**](./pulumi.md) - Deploy-time vs runtime separation
 - [**Resources**](./resources.md) - Resource management patterns
 - [**Serialization**](./serialization.md) - Data encoding and decoding
+- [**MCP (Model Context Protocol)**](./mcp.md) - AI-native access via tools and resources
 
 ## AWS Adapter Implementations
 

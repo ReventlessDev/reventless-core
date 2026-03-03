@@ -31,6 +31,7 @@ const sidebars = {
         'inner-workings/pulumi',
         'inner-workings/resources',
         'inner-workings/serialization',
+        'inner-workings/mcp',
       ],
     },
   ],

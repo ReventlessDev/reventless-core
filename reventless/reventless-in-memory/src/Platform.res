@@ -145,6 +145,73 @@ module Make = (): (ReventlessInfra.Platform.T
     ReventlessCore.Plugin_Helpers.schemaTypeRegistrationHook.contents =
       Some(sdlTypes => GraphQL_Server.registerTypes(~sdlTypes))
 
+  // Set the MCP schema registration hook so Plugin_Builder.construct() registers
+  // MCP tools and resources during plugin construction.
+  let () =
+    ReventlessCore.Plugin_Helpers.mcpSchemaRegistrationHook.contents =
+      Some(({pluginName, mutationEntries, queryEntries}) => {
+        // Register MCP tools — reuse the same GraphQL resolver functions.
+        // The GraphQL mutation resolvers are already registered in GraphQL_Server
+        // at this point. We look them up by field name and wrap them for MCP.
+        MCP_Server.registerToolsFromEntries(
+          ~pluginName,
+          ~mutationEntries,
+          ~commandHandler=async (toolName, args) => {
+            // Look up the GraphQL mutation resolver for this tool name
+            switch GraphQL_Server.getMutationResolver(toolName) {
+            | Some(resolver) =>
+              let result = await resolver(JSON.Encode.null, args)
+              switch result->JSON.Decode.string {
+              | Some(s) => s
+              | None => result->JSON.stringify
+              }
+            | None => `error: no handler found for tool ${toolName}`
+            }
+          },
+        )
+
+        // Register MCP resources from query entries (read models).
+        // Use the Bus QueryDb registry directly for reads.
+        MCP_Server.registerResourcesFromEntries(
+          ~pluginName,
+          ~queryEntries,
+          ~queryHandler=async (resourceName, uri) => {
+            // Extract the ID from the URI (last segment after /)
+            let segments = uri->String.split("/")
+            let id = segments->Array.at(-1)->Option.getOr("")
+            // Find the QueryDb by matching the resource name to registered query field names
+            let queryDbName =
+              ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+              ->Dict.toArray
+              ->Array.find(((_, entry)) => entry.singleFieldName == resourceName)
+              ->Option.map(((name, _)) => name)
+              ->Option.getOr(resourceName)
+            switch Bus.getQueryDb(queryDbName) {
+            | Some(ops) =>
+              if id->String.length > 0 && id != resourceName {
+                // Single-item lookup
+                let items =
+                  await ops.loadStream(id)
+                  ->Stream.runCollect
+                  ->Effect.catchAll(_ => Effect.succeed([]))
+                  ->Effect.runPromise
+                switch items->Array.get(0) {
+                | Some(item) => item
+                | None => JSON.Encode.null
+                }
+              } else {
+                // List query
+                switch Bus.getQueryDbScan(queryDbName) {
+                | Some(scanAll) => scanAll()->JSON.Encode.array
+                | None => []->JSON.Encode.array
+                }
+              }
+            | None => JSON.Encode.null
+            }
+          },
+        )
+      })
+
   module PluginMaker = Plugin_Builder.Make(Bus)
   // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
   // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
@@ -170,10 +237,15 @@ module Make = (): (ReventlessInfra.Platform.T
     component->ReventlessCore.Component.operations
   }
 
+  type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
+  let mcpSupported = McpSupported
+
   let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
     // Start the shared GraphQL server after all plugins have been built.
     // All Output.apply chains have fired synchronously by this point,
     // so all mutation and query resolvers are already registered in GraphQL_Server.
     GraphQL_Server.start()
+    // Start the MCP server alongside GraphQL (shared lifecycle).
+    MCP_Server.start()
   }
 }

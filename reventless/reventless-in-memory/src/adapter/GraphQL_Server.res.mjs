@@ -41,6 +41,14 @@ function registerQueries(sdlFields, resolvers) {
   });
 }
 
+function getMutationResolver(fieldName) {
+  return mutationResolvers.contents[fieldName];
+}
+
+function getQueryResolver(fieldName) {
+  return queryResolvers.contents[fieldName];
+}
+
 function registerTypes(sdlTypes) {
   typeDefinitions.contents = typeDefinitions.contents.concat(sdlTypes);
 }
@@ -300,6 +308,8 @@ export {
   typeDefinitions,
   registerMutations,
   registerQueries,
+  getMutationResolver,
+  getQueryResolver,
   registerTypes,
   debug,
   activeServer,

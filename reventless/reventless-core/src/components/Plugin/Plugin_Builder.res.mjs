@@ -205,6 +205,14 @@ function Make(Spec) {
           let parts = GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment);
           registerTypes(parts.types);
         }
+        let registerMcp = Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents;
+        if (registerMcp !== undefined) {
+          registerMcp({
+            pluginName: extra$1,
+            mutationEntries: mutationEntries,
+            queryEntries: queryEntries
+          });
+        }
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);

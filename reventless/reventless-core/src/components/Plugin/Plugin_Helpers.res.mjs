@@ -407,6 +407,10 @@ let aggregateMutationFieldsRegistry = {
   contents: {}
 };
 
+let mcpSchemaRegistrationHook = {
+  contents: undefined
+};
+
 let interopMetaOutput = {
   contents: undefined
 };
@@ -523,6 +527,7 @@ export {
   schemaTypeRegistrationHook,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,
+  mcpSchemaRegistrationHook,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,

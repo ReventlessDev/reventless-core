@@ -300,6 +300,17 @@ module Make = (
     | None => ()
     }
 
+    // Register MCP tools and resources via platform hook (e.g. MCP in-memory)
+    switch mcpSchemaRegistrationHook.contents {
+    | Some(registerMcp) =>
+      registerMcp({
+        pluginName: name,
+        mutationEntries,
+        queryEntries,
+      })
+    | None => ()
+    }
+
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 

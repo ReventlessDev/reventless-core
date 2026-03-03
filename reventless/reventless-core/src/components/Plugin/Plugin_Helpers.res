@@ -670,6 +670,18 @@ let queryFieldNamesRegistry: ref<dict<queryFieldNames>> = ref(Dict.make())
 let aggregateMutationFieldsRegistry: ref<dict<array<string>>> = ref(Dict.make())
 
 // ---------------------------------------------------------------------------
+// MCP schema registration hook — set by in-memory platform before plugins are
+// built.  Plugin_Builder.construct() calls this after generating entries to
+// register MCP tools and resources.  No-op when unset (AWS/other platforms).
+// ---------------------------------------------------------------------------
+type mcpRegistrationParams = {
+  pluginName: string,
+  mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
+  queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
+}
+let mcpSchemaRegistrationHook: ref<option<mcpRegistrationParams => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so
 // that the plugin's entry-point module can export it as `_interopMeta`.
 // ---------------------------------------------------------------------------

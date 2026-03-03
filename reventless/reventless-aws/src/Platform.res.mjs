@@ -107,6 +107,7 @@ function Make(Api) {
     InboundTranslationSlice: InboundTranslationSlice,
     DcbEventLog: DcbEventLog,
     Api: Api$1,
+    mcpSupported: false,
     Plugin: Plugin,
     Core: Core,
     makeScheduler: makeScheduler,
