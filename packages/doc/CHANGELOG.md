@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/doc@1.0.0-alpha.7...doc@1.0.0-alpha.8) (2026-03-03)
+
+### Bug Fixes
+
+* **deps:** add missing mermaid architecture diagram dependencies ([25cbd74](https://github.com/ReventlessDev/reventless-core/commit/25cbd74abd0ac758a0bd4cfa8d9692acc22084ed))
+### Features
+
+* add TranslationSlice components with docs and webhook backlog plan ([7362a8f](https://github.com/ReventlessDev/reventless-core/commit/7362a8f26bca2eaad9d99488ec597c426635659d))
+
+
 # [1.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/doc@1.0.0-alpha.6...doc@1.0.0-alpha.7) (2026-03-02)
 
 **Note:** Version bump only for package doc

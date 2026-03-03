@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-catalog@1.0.0-alpha.4...@reventlessdev/example-dcb-catalog@1.0.0-alpha.5) (2026-03-03)
+
+### Features
+
+* add AutomationSlice component (TODO list pattern) ([4642688](https://github.com/ReventlessDev/reventless-core/commit/46426884727aff74db33b9289feca9878b0e3ed9))
+* add TranslationSlice components with docs and webhook backlog plan ([7362a8f](https://github.com/ReventlessDev/reventless-core/commit/7362a8f26bca2eaad9d99488ec597c426635659d))
+* **examples:** add example-dcb package with self-assembling DCB plugins ([889a072](https://github.com/ReventlessDev/reventless-core/commit/889a072492967439f9d4692ba9b58cf1bcb01c9d))
+
+
 # [1.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-catalog@1.0.0-alpha.3...@reventlessdev/example-dcb-catalog@1.0.0-alpha.4) (2026-03-03)
 
 ### Features
