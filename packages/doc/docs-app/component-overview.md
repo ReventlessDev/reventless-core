@@ -147,7 +147,11 @@ dcb_layout: "" {
     scheduler: Scheduler { class: scheduler }
   }
 
-  1,3: "" { class: placeholder }
+  client: "" { 
+    class: placeholder 
+    
+    client: GraphQL Client { class: client }
+  }
 
   # ── Row 2 ──────────────────────────────────────────────────────────────────
 
@@ -187,16 +191,22 @@ dcb_layout: "" {
   }
 
   graphql: API {
-    grid-rows: 2
     class: api-area
 
-    client: GraphQL Client { class: client }
     api: GraphQL API { class: api }
   }
 
   # ── Row 3 ──────────────────────────────────────────────────────────────────
 
-  3,1: "" { class: placeholder }
+  automation: Automation {
+    direction: down
+    class: automation-slices-area
+
+    auto_slice: Automation Slice { class: automation-slice }
+    todo_db: TODO QueryDb { class: query-db }
+
+    auto_slice -> todo_db: sync state { class: projection-flow }
+  }
 
   read_side: Read Side {
     direction: down
@@ -227,10 +237,12 @@ dcb_layout: "" {
 
   # ── Edges ──────────────────────────────────────────────────────────────────
 
-  graphql.client -> graphql.api: GraphQL mutations { class: command-flow }
+  client.client -> graphql.api: GraphQL mutations { class: command-flow }
   graphql.api -> write_side.cmd_topic: commands { class: command-flow }
   graphql.api -> read_side.query_dbs_row.db3: queries
   write_side.event_topic -> read_side.view_slices_row: events { class: event-flow }
+  write_side.event_topic -> automation.auto_slice: events { class: event-flow }
+  automation.auto_slice -> write_side.cmd_topic: commands { class: command-flow }
   plugins.ext_point -> write_side.cmd_topic: commands { class: cross-plugin }
   scheduling.heartbeat -> plugins.ext_point: periodic signals { class: event-flow }
   scheduling.scheduler -> write_side.cmd_topic: scheduled commands { class: command-flow }
@@ -240,6 +252,7 @@ dcb_layout: "" {
 - **Command Flow**: Client → API → CommandTopic → StateChangeSlices (routed by command type)
 - **Write Side**: Each StateChangeSlice reads from and appends to the shared DcbEventLog with optimistic concurrency
 - **Event Flow**: DcbEventLog → EventTopic → StateViewSlice → QueryDb
+- **Automation**: AutomationSlice consumes events, maintains a TODO list, and issues commands back to CommandTopic
 - **Read Side**: StateViewSlice projects events directly into QueryDb, replacing the EventCollector + ReadModel pair
 - **Plugin System**: Cross-plugin communication via ExtensionPoints and Extensions
 - **Scheduling**: Time-based command generation and health monitoring
@@ -266,6 +279,28 @@ aggregate -> event: many { class: event-flow }
 - **out**: Events
 
 [Read more about the Aggregate component.](./components/aggregate.md)
+
+### AutomationSlice
+
+The **AutomationSlice** implements the Event Modeling **Automation** pattern (TODO List Pattern) for DCB-based plugins. It subscribes to a shared DcbEventLog, accumulates pending work items into a TODO list, processes them exactly once by issuing commands, and marks items as completed when resolution events arrive.
+
+```d2
+direction: right
+
+events: Events { class: msg-event }
+automation: AutomationSlice { class: automation-slice }
+commands: Commands { class: msg-command }
+
+events -> automation: collect { class: event-flow }
+automation -> commands: process { class: command-flow }
+events -> automation: resolve { class: event-flow }
+```
+
+- **responsibility**: collect pending work items from events; process each item exactly once; track completion via resolution events; provide retry and heartbeat semantics
+- **in**: Events from DcbEventLog
+- **out**: Commands to CommandTopic
+
+[Read more about the AutomationSlice component.](./components/automationslice.md)
 
 ### EventLog
 

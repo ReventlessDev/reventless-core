@@ -346,11 +346,19 @@ Verifies:
 - Publishing failures mark items as Failed with retry support
 - Full lifecycle: collect → process → resolve
 
-### Step 11: Documentation
+### Step 11: Documentation ✅
 
-TODO: Add `docs/reventless-components/automationslice.md` to the Docusaurus site covering:
+Added `packages/doc/docs-app/components/automationslice.md` to the Docusaurus site covering:
 - Event Modeling automation pattern
 - TODO List Pattern explanation
-- AutomationSlice spec API reference
-- Example usage with code
+- AutomationSlice spec API reference (collect/resolve/process)
+- Example usage with ShipOrder code
 - Comparison with EventMapper (when to use which)
+- Runtime behavior with two-phase processing sequence diagram
+- TODO item lifecycle diagram
+- Error handling and retry semantics
+
+Also updated:
+- `packages/doc/docs-app/component-overview.md` — added AutomationSlice section + updated DCB diagram with automation row
+- `packages/doc/sidebars-app.js` — added `components/automationslice` entry
+- `packages/doc/d2/reventless.d2` — added `automation-slice` and `automation-slices-area` D2 classes

@@ -31,6 +31,7 @@ const sidebars = {
       items: [
         'components/aggregate',
         'components/api',
+        'components/automationslice',
         'components/commandgenerator',
         'components/commandtopic',
         'components/counter',
