@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-catalog@1.0.0-alpha.3...@reventlessdev/example-dcb-catalog@1.0.0-alpha.4) (2026-03-03)
+
+### Features
+
+* **api:** implement Api component with GraphQL fragment generation and schema stitching ([c882d3a](https://github.com/ReventlessDev/reventless-core/commit/c882d3aae8722cf6cbe9b4fbf9518d9f434ce06a))
+
+
 # [1.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-catalog@1.0.0-alpha.2...@reventlessdev/example-dcb-catalog@1.0.0-alpha.3) (2026-03-02)
 
 **Note:** Version bump only for package @reventlessdev/example-dcb-catalog

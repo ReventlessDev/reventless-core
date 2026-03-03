@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-aggregate-ordering@3.0.0-alpha.2...@reventlessdev/example-aggregate-ordering@3.0.0-alpha.3) (2026-03-03)
+
+### Features
+
+* **api:** implement Api component with GraphQL fragment generation and schema stitching ([c882d3a](https://github.com/ReventlessDev/reventless-core/commit/c882d3aae8722cf6cbe9b4fbf9518d9f434ce06a))
+
+
 # [3.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-aggregate-ordering@3.0.0-alpha.1...@reventlessdev/example-aggregate-ordering@3.0.0-alpha.2) (2026-03-02)
 
 ### Features
