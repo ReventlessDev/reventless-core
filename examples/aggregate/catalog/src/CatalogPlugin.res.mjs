@@ -144,6 +144,15 @@ function Make(Platform) {
     name: OrdersExtension$ReventlessdevExampleAggregateCatalog.Mappings.name,
     mappings: OrdersExtension$ReventlessdevExampleAggregateCatalog.Mappings.mappings
   });
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", "1.0.0", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
+    ProductAggregate,
+    CategoryAggregate,
+    ProductDemandAggregate
+  ], [
+    ProductReadModel,
+    CategoryReadModel,
+    ProductDemandReadModelMaker
+  ], undefined, api, apiRole, scheduler, undefined, undefined);
   return {
     ProductAggregate: ProductAggregate,
     CategoryAggregate: CategoryAggregate,
@@ -157,7 +166,8 @@ function Make(Platform) {
     ProductsEPMappingT: ProductsEPMappingT,
     ProductsEPMappings: ProductsEPMappings,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
-    OrdersExtensionMaker: OrdersExtensionMaker
+    OrdersExtensionMaker: OrdersExtensionMaker,
+    make: make
   };
 }
 

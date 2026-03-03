@@ -144,6 +144,15 @@ function Make(Platform) {
   let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPointSpec$ReventlessdevExampleAggregateOrdering)({
     mappings: mappings
   });
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", "1.0.0", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
+    CustomerAggregate,
+    OrderAggregate,
+    CatalogProductAggregate
+  ], [
+    CustomerReadModel,
+    OrderReadModel,
+    AvailableProductsReadModelMaker
+  ], undefined, api, apiRole, scheduler, undefined, undefined);
   return {
     CustomerAggregate: CustomerAggregate,
     OrderAggregate: OrderAggregate,
@@ -157,7 +166,8 @@ function Make(Platform) {
     ProductsExtensionMaker: ProductsExtensionMaker,
     OrdersEPMappingT: OrdersEPMappingT,
     OrdersEPMappings: OrdersEPMappings,
-    OrdersExtensionPointMaker: OrdersExtensionPointMaker
+    OrdersExtensionPointMaker: OrdersExtensionPointMaker,
+    make: make
   };
 }
 

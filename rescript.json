@@ -23,7 +23,8 @@
     "@reventlessdev/example-aggregate-ordering",
     "@reventlessdev/example-dcb-catalog",
     "@reventlessdev/example-dcb-ordering",
-    "@reventlessdev/example-dcb"
+    "@reventlessdev/example-dcb",
+    "@reventlessdev/example-aggregate"
   ],
   "sources": [],
   "package-specs": {

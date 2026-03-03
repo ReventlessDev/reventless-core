@@ -72,6 +72,31 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     OrdersEPMappings,
   )
 
-  // extensionPoints = [module(OrdersExtensionPointMaker)]
-  // extensions     = [module(ProductsExtensionMaker)]
+  // --- Self-assembly: produce a ready-to-use Plugin.component ---
+
+  let make = (
+    ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
+    ~api: Platform.api,
+    ~apiRole: Platform.role,
+  ) =>
+    Platform.Plugin.make(
+      ~name="Ordering",
+      ~version="1.0.0",
+      ~heartbeatInterval=60,
+      ~aggregates=[
+        module(CustomerAggregate),
+        module(OrderAggregate),
+        module(CatalogProductAggregate),
+      ],
+      ~readModels=[
+        module(CustomerReadModel),
+        module(OrderReadModel),
+        module(AvailableProductsReadModelMaker),
+      ],
+      ~extensionPoints=[module(OrdersExtensionPointMaker)],
+      ~extensions=[module(ProductsExtensionMaker)],
+      ~api,
+      ~apiRole,
+      ~scheduler,
+    )
 }

@@ -12,7 +12,8 @@
     "@glennsl/rescript-jest",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
-    "@reventlessdev/reventless-in-memory"
+    "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/rescript-pulumi-pulumi"
   ],
   "compiler-flags": []
 }
