@@ -43,8 +43,46 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     OrdersEPMappings,
   )
 
-  // extensionPoints = [module(OrdersExtensionPointMaker)]
-  // extensions     = [module(ProductsExtensionMaker)]
+  // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
-  module DcbSpec = OrderingEventLog
+  module DcbSpec = {
+    @schema
+    type event = OrderingEventLog.event
+    let stateChangeSlices: array<
+      module(ReventlessInfra.StateChangeSlice.T with type dcbEvent = event),
+    > = [
+      module(RegisterCustomerSlice),
+      module(UpdateEmailSlice),
+      module(UpdateAddressSlice),
+      module(DeactivateCustomerSlice),
+      module(PlaceOrderSlice),
+      module(ShipOrderSlice),
+      module(CancelOrderSlice),
+      module(SyncCatalogProductSlice),
+    ]
+    let stateViewSlices: array<
+      module(ReventlessInfra.StateViewSlice.T with type dcbEvent = event),
+    > = [
+      module(CustomersViewSlice),
+      module(OrdersViewSlice),
+      module(AvailableProductsViewSlice),
+    ]
+  }
+
+  let make = (
+    ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
+    ~api: Platform.api,
+    ~apiRole: Platform.role,
+  ) =>
+    Platform.Plugin.make(
+      ~name="Ordering",
+      ~version="1.0.0",
+      ~heartbeatInterval=60,
+      ~extensionPoints=[module(OrdersExtensionPointMaker)],
+      ~extensions=[module(ProductsExtensionMaker)],
+      ~api,
+      ~apiRole,
+      ~scheduler,
+      ~dcbSpec=module(DcbSpec),
+    )
 }

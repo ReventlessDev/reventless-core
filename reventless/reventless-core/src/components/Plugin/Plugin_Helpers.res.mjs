@@ -223,8 +223,22 @@ function createExtensions(extensions, publishToCorePluginExtensionPoint, publish
 
 function extractExtensionPointDefinitions(extensionPointsOutputs) {
   return Pulumi.all(extensionPointsOutputs.map(extensionPointOutputs => Pulumi.all([
-    Output$Pulumi.flatMap(extensionPointOutputs.commandTopic, param => param.resources[0].id),
-    Output$Pulumi.flatMap(extensionPointOutputs.eventTopic, param => param.resources[0].id)
+    Output$Pulumi.flatMap(extensionPointOutputs.commandTopic, param => {
+      let r = param.resources[0];
+      if (r !== undefined) {
+        return r.id;
+      } else {
+        return Pulumi.output("");
+      }
+    }),
+    Output$Pulumi.flatMap(extensionPointOutputs.eventTopic, param => {
+      let r = param.resources[0];
+      if (r !== undefined) {
+        return r.id;
+      } else {
+        return Pulumi.output("");
+      }
+    })
   ]).apply(param => ({
     name: extensionPointOutputs.name,
     commandTopic: param[0],
@@ -283,7 +297,8 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
     let make = (name, eventTopics, opts) => {
       let eventCollector = PluginEventCollector.make(name, eventTopics, opts);
       let eventCollectorOutputs = Component$ReventlessCore.outputs(eventCollector);
-      let eventCollectorUrn = eventCollectorOutputs.resources[0].urn;
+      let r = eventCollectorOutputs.resources[0];
+      let eventCollectorUrn = r !== undefined ? r.urn : Pulumi.output("");
       return [
         eventCollector,
         eventCollectorOutputs,
@@ -319,9 +334,14 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         });
         let handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[5], undefined, undefined, eventCollector);
-        Component$ReventlessCore.outputs(eventCollector).resources[0].urn.apply(urn => {
-          pluginDefinition.eventCollector = urn;
-        });
+        let r = Component$ReventlessCore.outputs(eventCollector).resources[0];
+        if (r !== undefined) {
+          r.urn.apply(urn => {
+            pluginDefinition.eventCollector = urn;
+          });
+        } else {
+          Pulumi.output();
+        }
       });
     };
     let connectWithoutCore = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginDefinition, extensionsHandlers, extensionPointsHandlers) => {
@@ -349,9 +369,14 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         });
         let handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[3], undefined, undefined, eventCollector);
-        Component$ReventlessCore.outputs(eventCollector).resources[0].urn.apply(urn => {
-          pluginDefinition.eventCollector = urn;
-        });
+        let r = Component$ReventlessCore.outputs(eventCollector).resources[0];
+        if (r !== undefined) {
+          r.urn.apply(urn => {
+            pluginDefinition.eventCollector = urn;
+          });
+        } else {
+          Pulumi.output();
+        }
       });
     };
     return {

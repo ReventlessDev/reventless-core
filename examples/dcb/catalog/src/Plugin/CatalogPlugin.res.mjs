@@ -137,6 +137,27 @@ function Make(Platform) {
     name: OrdersExtension$ReventlessdevExampleDcbCatalog.Mappings.name,
     mappings: OrdersExtension$ReventlessdevExampleDcbCatalog.Mappings.mappings
   });
+  let stateChangeSlices = [
+    AddProductSlice,
+    UpdateProductNameSlice,
+    UpdateProductDescriptionSlice,
+    UpdateProductPriceSlice,
+    AddCategorySlice,
+    RenameCategorySlice,
+    ArchiveCategorySlice,
+    RecordProductDemandSlice
+  ];
+  let stateViewSlices = [
+    ProductsViewSlice,
+    CategoriesViewSlice,
+    ProductDemandViewSlice
+  ];
+  let DcbSpec = {
+    eventSchema: CatalogEventLog$ReventlessdevExampleDcbCatalog.eventSchema,
+    stateChangeSlices: stateChangeSlices,
+    stateViewSlices: stateViewSlices
+  };
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", "1.0.0", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {
     CatalogEventLogMaker: CatalogEventLogMaker,
     AddProductSlice: AddProductSlice,
@@ -154,7 +175,8 @@ function Make(Platform) {
     ProductsEPMappings: ProductsEPMappings,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersExtensionMaker: OrdersExtensionMaker,
-    DcbSpec: undefined
+    DcbSpec: DcbSpec,
+    make: make
   };
 }
 

@@ -1,0 +1,28 @@
+{
+  "name": "@reventlessdev/example-dcb",
+  "version": "1.0.0-alpha.1",
+  "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "run": "npx tsx src/Main.res.mjs"
+  },
+  "dependencies": {
+    "@reventlessdev/example-dcb-catalog": "*",
+    "@reventlessdev/example-dcb-ordering": "*",
+    "@reventlessdev/reventless-in-memory": "*",
+    "@reventlessdev/reventless-spec": "*"
+  },
+  "devDependencies": {
+    "rescript": "^12.1.0",
+    "sury": "^11.0.0-alpha.4",
+    "sury-ppx": "^11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "^12.1.0"
+  }
+}

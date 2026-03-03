@@ -334,11 +334,17 @@ let extractExtensionPointDefinitions = (extensionPointsOutputs: array<ExtensionP
   ->Array.map(extensionPointOutputs =>
     (
       extensionPointOutputs.commandTopic->Pulumi.Output.flatMap(({resources}) =>
-        (resources->Array.getUnsafe(0)).id
-      ), // FIXME
+        switch resources->Array.get(0) {
+        | Some(r) => r.id
+        | None => Pulumi.Output.make("")
+        }
+      ),
       extensionPointOutputs.eventTopic->Pulumi.Output.flatMap(({resources}) =>
-        (resources->Array.getUnsafe(0)).id
-      ), // FIXME
+        switch resources->Array.get(0) {
+        | Some(r) => r.id
+        | None => Pulumi.Output.make("")
+        }
+      ),
     )
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((commandTopicChannelId, eventTopicPublisherId)) => {
@@ -448,7 +454,10 @@ module MakeEventCollectorHelper = (
   let make = (~name, ~eventTopics, ~opts) => {
     let eventCollector = PluginEventCollector.make(~name, ~eventTopics, ~opts)
     let eventCollectorOutputs = eventCollector->Component.outputs
-    let eventCollectorUrn = (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn //FIXME
+    let eventCollectorUrn = switch eventCollectorOutputs.resources->Array.get(0) {
+    | Some(r) => r.urn
+    | None => Pulumi.Output.make("")
+    }
 
     (eventCollector, eventCollectorOutputs, eventCollectorUrn)
   }
@@ -534,10 +543,10 @@ module MakeEventCollectorHelper = (
         ~resources,
       )
 
-      let _ =
-        (
-          (eventCollector->Component.outputs).resources->Array.getUnsafe(0)
-        ).urn->Pulumi.Output.apply(urn => pluginDefinition.eventCollector = urn)
+      let _ = switch (eventCollector->Component.outputs).resources->Array.get(0) {
+      | Some(r) => r.urn->Pulumi.Output.apply(urn => pluginDefinition.eventCollector = urn)
+      | None => Pulumi.Output.make()
+      }
     })
   }
 
@@ -609,10 +618,10 @@ module MakeEventCollectorHelper = (
         ~resources,
       )
 
-      let _ =
-        (
-          (eventCollector->Component.outputs).resources->Array.getUnsafe(0)
-        ).urn->Pulumi.Output.apply(urn => pluginDefinition.eventCollector = urn)
+      let _ = switch (eventCollector->Component.outputs).resources->Array.get(0) {
+      | Some(r) => r.urn->Pulumi.Output.apply(urn => pluginDefinition.eventCollector = urn)
+      | None => Pulumi.Output.make()
+      }
     })
   }
 }

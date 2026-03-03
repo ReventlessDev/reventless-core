@@ -137,6 +137,27 @@ function Make(Platform) {
   let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPointSpec$ReventlessdevExampleDcbOrdering)({
     mappings: mappings
   });
+  let stateChangeSlices = [
+    RegisterCustomerSlice,
+    UpdateEmailSlice,
+    UpdateAddressSlice,
+    DeactivateCustomerSlice,
+    PlaceOrderSlice,
+    ShipOrderSlice,
+    CancelOrderSlice,
+    SyncCatalogProductSlice
+  ];
+  let stateViewSlices = [
+    CustomersViewSlice,
+    OrdersViewSlice,
+    AvailableProductsViewSlice
+  ];
+  let DcbSpec = {
+    eventSchema: OrderingEventLog$ReventlessdevExampleDcbOrdering.eventSchema,
+    stateChangeSlices: stateChangeSlices,
+    stateViewSlices: stateViewSlices
+  };
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", "1.0.0", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {
     OrderingEventLogMaker: OrderingEventLogMaker,
     RegisterCustomerSlice: RegisterCustomerSlice,
@@ -154,7 +175,8 @@ function Make(Platform) {
     OrdersEPMappingT: OrdersEPMappingT,
     OrdersEPMappings: OrdersEPMappings,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
-    DcbSpec: undefined
+    DcbSpec: DcbSpec,
+    make: make
   };
 }
 
