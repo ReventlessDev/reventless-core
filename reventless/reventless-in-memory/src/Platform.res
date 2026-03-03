@@ -9,7 +9,13 @@
 // The platform starts a GraphQL server on port 4000 after all components are built.
 // Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
-module Make = (): ReventlessInfra.Platform.T => {
+module Make = (): (ReventlessInfra.Platform.T
+  with type api = unit
+  and type role = unit
+) => {
+  type api = unit
+  type role = unit
+
   module Bus = InMemory_Bus.Make()
 
   module AggregateMaker = Aggregate_Builder.Make(Bus)
@@ -24,14 +30,18 @@ module Make = (): ReventlessInfra.Platform.T => {
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-    ) => AggregateMaker.Make(Spec, Behavior, EventMappings)
+    ): (ReventlessInfra.Aggregate.T with type api = unit) =>
+      AggregateMaker.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
     module Make = (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ): (ReventlessInfra.ReadModel.T with module Spec = Spec) =>
+    ): (ReventlessInfra.ReadModel.T
+      with module Spec = Spec
+      and type api = unit
+      and type role = unit) =>
       ReadModelMaker.Make(Spec, Mappings)
   }
 
@@ -87,6 +97,36 @@ module Make = (): ReventlessInfra.Platform.T => {
       let make = (~name, ~opts=?) =>
         Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
     }
+  }
+
+  module PluginMaker = Plugin_Builder.Make(Bus)
+  // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
+  // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
+  module Plugin: (ReventlessInfra.Plugin.T with type api = unit and type role = unit) = {
+    type api = unit
+    type role = unit
+    type component = ReventlessCore.Plugin.component
+    let make = Obj.magic(PluginMaker.make)
+  }
+
+  module CoreMaker = Core_Builder.Make(Bus)
+  module Core: (ReventlessInfra.Core.T with type api = unit and type role = unit) = {
+    type api = unit
+    type role = unit
+    type component = ReventlessCore.Core.component
+    let make = CoreMaker.make
+  }
+
+  let makeScheduler = () => {
+    module SP = ScheduledPublisher_InMemory.Make(Bus)
+    module S = ReventlessCore.Scheduler_Builder.Make(SP)
+    let component = S.make()
+    component->ReventlessCore.Component.operations
+  }
+
+  let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
+    // In-memory mode: schema rebuilding is handled by GraphQL_Server.start() below.
+    ()
   }
 
   // Start the shared GraphQL server after all components are built.

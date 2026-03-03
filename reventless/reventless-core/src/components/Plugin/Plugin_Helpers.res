@@ -540,6 +540,81 @@ module MakeEventCollectorHelper = (
         ).urn->Pulumi.Output.apply(urn => pluginDefinition.eventCollector = urn)
     })
   }
+
+  // Simplified connect for platforms without a Core stack reference (e.g. in-memory).
+  // Skips ConnectPluginExtension wiring and Core PluginExtensionPoint resources.
+  let connectWithoutCore = (
+    ~eventCollector: EventCollector.component,
+    ~eventTopics: EventTopic.allOutputs,
+    ~extensionPointsOutputs: array<ExtensionPoint.outputs>,
+    ~extensionsOutputs: array<Extension.outputs>,
+    ~pluginDefinition,
+    ~extensionsHandlers,
+    ~extensionPointsHandlers,
+  ) => {
+    let resources =
+      extensionPointsOutputs
+      ->Array.map(extensionPoint => extensionPoint.eventTopic)
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(eventTopics =>
+        eventTopics
+        ->Array.map(eventTopic => eventTopic.resources)
+        ->Array.flat
+      )
+
+    (
+      pluginDefinition,
+      extensionsHandlers->Pulumi.Output.all,
+      extensionPointsHandlers->Pulumi.Output.all,
+      resources,
+    )
+    ->Pulumi.Output.all4
+    ->Pulumi.Output.apply(((
+      pluginDefinition,
+      extensionsHandlers,
+      extensionPointsHandlers,
+      resources,
+    )) => {
+      module Callback = Plugin_Callback.Make({
+        let pluginDefinition = pluginDefinition
+        let outgoingExtensionPointEventHandlers = serviceNameToJsonEventsHandlers(
+          extensionPointsOutputs,
+          outputs => outputs.aggregateNames,
+          extensionPointsHandlers->Array.map(extensionPointsHandler => {
+            outgoing: extensionPointsHandler,
+          }),
+          getOutgoingJsonEventsHandler,
+        )
+        let incomingConnectExtensionEventHandlers = Dict.make()
+        let outgoingExtensionEventHandlers = serviceNameToJsonEventsHandlers(
+          extensionsOutputs,
+          outputs => outputs.aggregateNames,
+          extensionsHandlers,
+          getOutgoingJsonEventsHandler,
+        )
+        let incomingExtensionEventHandlers = serviceNameToJsonEventsHandlers(
+          extensionsOutputs,
+          outputs => [outputs.extensionPointName],
+          extensionsHandlers,
+          getIncomingJsonEventsHandler,
+        )
+      })
+      let handler = PluginEventCollector.makeHandler(
+        ~eventCollector,
+        ~jsonEventsHandler=Callback.handleJsonEvents,
+      )
+      eventCollector->PluginRuntimeBuilder.forPluginEventCollector(
+        ~handler,
+        ~eventTopics,
+        ~resources,
+      )
+
+      let _ =
+        (
+          (eventCollector->Component.outputs).resources->Array.getUnsafe(0)
+        ).urn->Pulumi.Output.apply(urn => pluginDefinition.eventCollector = urn)
+    })
+  }
 }
 
 // ---------------------------------------------------------------------------

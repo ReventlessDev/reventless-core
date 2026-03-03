@@ -40,14 +40,24 @@ module Platform = ReventlessAws.Platform.Make(AwsConfig)
 module App = CatalogPlugin.Make(Platform)
 ```
 */
+
+// Type alias to avoid shadowing by the nested `module Api` inside Platform.T.
+type apiComponent = Api.component
+
 module type T = {
+  /** Platform-specific API type (e.g. `Types.AppSync.api` for AWS, `unit` for in-memory). */
+  type api
+
+  /** Platform-specific role type (e.g. `Types.AppSync.role` for AWS, `unit` for in-memory). */
+  type role
+
   /** Factory for event-sourced aggregate components. */
   module Aggregate: {
     module Make: (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: EventMapper.Mappings with module Target := Spec,
-    ) => Aggregate.T
+    ) => Aggregate.T with type api = api
   }
 
   /** Factory for read model (query-side projection) components. */
@@ -55,7 +65,7 @@ module type T = {
     module Make: (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ) => ReadModel.T with module Spec = Spec
+    ) => ReadModel.T with module Spec = Spec and type api = api and type role = role
   }
 
   /** Factory for extension point components. */
@@ -108,4 +118,20 @@ module type T = {
       let baseFragment: Api.schemaFragment
     }) => Api.T
   }
+
+  /** Factory for plugin deployment units. */
+  module Plugin: Plugin.T with type api = api and type role = role
+
+  /** Factory for the Core management instance. */
+  module Core: Core.T with type api = api and type role = role
+
+  /** Create a shared scheduler for Core and Plugin. */
+  let makeScheduler: unit => Pulumi.Output.t<Scheduler.operations>
+
+  /** Deploy a complete platform (schema stitching + stack exports). */
+  let makePlatform: (
+    ~api: apiComponent,
+    ~core: Core.component,
+    ~plugins: array<Plugin.component>,
+  ) => unit
 }

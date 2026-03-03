@@ -1,4 +1,4 @@
-// Platform — concrete AWS implementation of ReventlessCore.Platform.T.
+// Platform — concrete AWS implementation of ReventlessInfra.Platform.T.
 //
 // Creates a platform instance with pre-wired AWS builders (DynamoDB, Lambda, SQS, SNS).
 // Config is applied once at platform creation; component Make functors then take only
@@ -11,20 +11,30 @@
 module Make = (Api: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
-}): ReventlessInfra.Platform.T => {
+}): (ReventlessInfra.Platform.T
+  with type api = Types.AppSync.api
+  and type role = Types.AppSync.role
+) => {
+  type api = Types.AppSync.api
+  type role = Types.AppSync.role
+
   module Aggregate = {
     module Make = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-    ): ReventlessInfra.Aggregate.T => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
+    ): (ReventlessInfra.Aggregate.T with type api = Types.AppSync.api) =>
+      Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
     module Make = (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ): (ReventlessInfra.ReadModel.T with module Spec = Spec) =>
+    ): (ReventlessInfra.ReadModel.T
+      with module Spec = Spec
+      and type api = Types.AppSync.api
+      and type role = Types.AppSync.role) =>
       ReadModel_Builder_Single.Make(Spec, Mappings)
   }
 
@@ -74,5 +84,40 @@ module Make = (Api: {
       let make = (~name, ~opts=?) =>
         Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
     }
+  }
+
+  // Alias before defining module Plugin to avoid self-reference.
+  module PluginBuilder = Plugin
+  // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
+  // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
+  module Plugin: (ReventlessInfra.Plugin.T
+    with type api = Types.AppSync.api
+    and type role = Types.AppSync.role
+  ) = {
+    type api = Types.AppSync.api
+    type role = Types.AppSync.role
+    type component = ReventlessCore.Plugin.component
+    let make = Obj.magic(PluginBuilder.make)
+  }
+
+  module Core: (ReventlessInfra.Core.T
+    with type api = Types.AppSync.api
+    and type role = Types.AppSync.role
+  ) = {
+    type api = Types.AppSync.api
+    type role = Types.AppSync.role
+    type component = ReventlessCore.Core.component
+    let make = Core_Builder.make
+  }
+
+  let makeScheduler = () => {
+    let component = Scheduler.make()
+    component->ReventlessCore.Component.operations
+  }
+
+  let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
+    // Schema stitching is handled by the event system (ConnectPluginExtension).
+    // Stack exports are set by user entry-point code.
+    ()
   }
 }

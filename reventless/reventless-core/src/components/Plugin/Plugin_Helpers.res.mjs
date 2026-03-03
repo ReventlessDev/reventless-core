@@ -324,10 +324,41 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         });
       });
     };
+    let connectWithoutCore = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginDefinition, extensionsHandlers, extensionPointsHandlers) => {
+      let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat());
+      return Pulumi.all([
+        pluginDefinition,
+        Pulumi.all(extensionsHandlers),
+        Pulumi.all(extensionPointsHandlers),
+        resources
+      ]).apply(param => {
+        let extensionsHandlers = param[1];
+        let pluginDefinition = param[0];
+        let outgoingExtensionPointEventHandlers = serviceNameToJsonEventsHandlers(extensionPointsOutputs, outputs => outputs.aggregateNames, param[2].map(extensionPointsHandler => ({
+          outgoing: extensionPointsHandler
+        })), getOutgoingJsonEventsHandler);
+        let incomingConnectExtensionEventHandlers = {};
+        let outgoingExtensionEventHandlers = serviceNameToJsonEventsHandlers(extensionsOutputs, outputs => outputs.aggregateNames, extensionsHandlers, getOutgoingJsonEventsHandler);
+        let incomingExtensionEventHandlers = serviceNameToJsonEventsHandlers(extensionsOutputs, outputs => [outputs.extensionPointName], extensionsHandlers, getIncomingJsonEventsHandler);
+        let Callback = Plugin_Callback$ReventlessCore.Make({
+          pluginDefinition: pluginDefinition,
+          incomingConnectExtensionEventHandlers: incomingConnectExtensionEventHandlers,
+          outgoingExtensionPointEventHandlers: outgoingExtensionPointEventHandlers,
+          outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
+          incomingExtensionEventHandlers: incomingExtensionEventHandlers
+        });
+        let handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
+        PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[3], undefined, undefined, eventCollector);
+        Component$ReventlessCore.outputs(eventCollector).resources[0].urn.apply(urn => {
+          pluginDefinition.eventCollector = urn;
+        });
+      });
+    };
     return {
       PluginEventCollector: PluginEventCollector,
       make: make,
-      connect: connect
+      connect: connect,
+      connectWithoutCore: connectWithoutCore
     };
   });
 }

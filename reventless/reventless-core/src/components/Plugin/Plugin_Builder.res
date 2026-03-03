@@ -229,25 +229,29 @@ module Make = (
             ~opts,
           )
 
-        let coreExtensionPoints = switch coreExtensionPoints {
-        | Some(coreExtensionPoints) => coreExtensionPoints
-        | None =>
-          JsError.throwWithMessage(
-            "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
-          )
+        // Resolve Core stack reference (None when running without a Core stack, e.g. in-memory)
+        let coreSetup = switch coreExtensionPoints {
+        | Some(coreExtensionPoints) => {
+            let corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
+              (
+                coreExtensionPoints->Pulumi.StackReference.get(
+                  PluginExtensionPointSpec.name,
+                )->Obj.magic: JSON.t
+              )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
+            let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
+              corePluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
+                Adapter.fromInteropResolved,
+              ),
+            )
+            Some((corePluginExtensionPointUnwrapped, corePluginExtensionPointCommandTopicRemoteChannel))
+          }
+        | None => None
         }
-        let corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
-          (
-            coreExtensionPoints->Pulumi.StackReference.get(
-              PluginExtensionPointSpec.name,
-            )->Obj.magic: JSON.t
-          )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
-        let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
-          corePluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
-            Adapter.fromInteropResolved,
-          ),
-        )
-        let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish
+
+        let publishToCorePluginExtensionPoint: ReventlessInfra.CommandTopic.publishJsons = switch coreSetup {
+        | Some((_, remoteChannel)) => remoteChannel.remotePublish
+        | None => async _ => ()
+        }
 
         let (extensionsOutputs, extensionsHandlers) =
           extensions->createExtensions(
@@ -282,14 +286,18 @@ module Make = (
           aggregatesOutputs->Aggregate.filterEventTopics(
             extensionPointAggregateNames->Set.union(extensionAggregateNames),
           )
-        eventTopics->Dict.set(
-          PluginExtensionPointSpec.name,
-          {
-            resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
-              AdapterDeploytime.fromInteropResource,
-            ),
-          },
-        )
+        switch coreSetup {
+        | Some((corePluginExtensionPointUnwrapped, _)) =>
+          eventTopics->Dict.set(
+            PluginExtensionPointSpec.name,
+            {
+              resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
+                AdapterDeploytime.fromInteropResource,
+              ),
+            },
+          )
+        | None => ()
+        }
 
         let childName = name->ComponentType.name(Plugin.componentType)
 
@@ -318,34 +326,48 @@ module Make = (
             apiSchemaFragment: Some(apiSchemaFragment),
           })
 
-        let (
-          connectPluginExtensionOutputs,
-          connectPluginExtensionIncomingEventHandler,
-        ) = createConnectPluginExtension(
-          ~pluginDefinition,
-          ~extensionPointsOutputs,
-          ~extensionsOutputs,
-          ~publishToCorePluginExtensionPoint,
-          ~publishToAggregates,
-          ~readModelNamesForSourceName,
-          ~publishToReadModels,
-          ~queryEngine,
-          ~runtimeOps=Spec.runtimeOps,
-          ~resourceNaming=Spec.resourceNaming,
-          ~opts,
-        )
-        let _ = EventCollectorHelper.connect(
-          ~eventCollector,
-          ~eventTopics,
-          ~extensionPointsOutputs,
-          ~extensionsOutputs,
-          ~corePluginExtensionPointUnwrapped,
-          ~pluginDefinition,
-          ~connectPluginExtensionIncomingEventHandler,
-          ~extensionsHandlers,
-          ~extensionPointsHandlers,
-          ~connectPluginExtensionOutputs,
-        )
+        switch coreSetup {
+        | Some((corePluginExtensionPointUnwrapped, _)) => {
+            let (
+              connectPluginExtensionOutputs,
+              connectPluginExtensionIncomingEventHandler,
+            ) = createConnectPluginExtension(
+              ~pluginDefinition,
+              ~extensionPointsOutputs,
+              ~extensionsOutputs,
+              ~publishToCorePluginExtensionPoint,
+              ~publishToAggregates,
+              ~readModelNamesForSourceName,
+              ~publishToReadModels,
+              ~queryEngine,
+              ~runtimeOps=Spec.runtimeOps,
+              ~resourceNaming=Spec.resourceNaming,
+              ~opts,
+            )
+            let _ = EventCollectorHelper.connect(
+              ~eventCollector,
+              ~eventTopics,
+              ~extensionPointsOutputs,
+              ~extensionsOutputs,
+              ~corePluginExtensionPointUnwrapped,
+              ~pluginDefinition,
+              ~connectPluginExtensionIncomingEventHandler,
+              ~extensionsHandlers,
+              ~extensionPointsHandlers,
+              ~connectPluginExtensionOutputs,
+            )
+          }
+        | None =>
+          let _ = EventCollectorHelper.connectWithoutCore(
+            ~eventCollector,
+            ~eventTopics,
+            ~extensionPointsOutputs,
+            ~extensionsOutputs,
+            ~pluginDefinition,
+            ~extensionsHandlers,
+            ~extensionPointsHandlers,
+          )
+        }
 
         let tasksOutputs = createTasks(
           tasks,
@@ -366,15 +388,23 @@ module Make = (
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
         )
-        heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(
-          ~handler,
-          ~connect=SpecificHeartbeat.connect(
-            heartbeat,
-            ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
-            ~timeout=heartbeatInterval,
-            ...
-          ),
-        )
+        switch coreSetup {
+        | Some((_, corePluginExtensionPointCommandTopicRemoteChannel)) =>
+          heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(
+            ~handler,
+            ~connect=SpecificHeartbeat.connect(
+              heartbeat,
+              ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
+              ~timeout=heartbeatInterval,
+              ...
+            ),
+          )
+        | None =>
+          heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(
+            ~handler,
+            ~connect=(~runtime as _) => (),
+          )
+        }
 
         // Connect DCB command topic to its Lambda runtime (if DCB is configured)
         dcbRuntimeOpt->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
