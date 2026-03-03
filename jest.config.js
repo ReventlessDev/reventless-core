@@ -1,6 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
   reporters: ["<rootDir>/jest.reporter.js"],
+  watchPathIgnorePatterns: ["<rootDir>/.+/lib/bs/"],
   projects: [
     {
       displayName: "reventless-core",
