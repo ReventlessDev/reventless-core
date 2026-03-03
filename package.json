@@ -36,7 +36,8 @@
     "test:coverage": "echo 'No coverage script configured' || exit 0"
   },
   "overrides": {
-    "@docusaurus/theme-common": "3.9.2"
+    "@docusaurus/theme-common": "3.9.2",
+    "graphql": "^16.0.0"
   },
   "version": ""
 }

@@ -65,6 +65,7 @@ external createYoga: {
   "schema": schema,
   "graphiql": bool,
   "logging": bool,
+  "maskedErrors": bool,
 } => yoga = "createYoga"
 
 /**

@@ -62,7 +62,8 @@ function start(portOpt, param) {
   let yoga = GraphqlYoga.createYoga({
     schema: schema,
     graphiql: true,
-    logging: false
+    logging: true,
+    maskedErrors: false
   });
   let server = Http.createServer(yoga);
   server.listen(port, () => {
@@ -96,7 +97,8 @@ function rebuildSchema(baseFragment, pluginFragments) {
   let yoga = GraphqlYoga.createYoga({
     schema: schema,
     graphiql: true,
-    logging: false
+    logging: true,
+    maskedErrors: false
   });
   let server = Http.createServer(yoga);
   server.listen(4000, () => {

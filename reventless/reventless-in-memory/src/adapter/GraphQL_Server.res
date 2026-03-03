@@ -53,7 +53,7 @@ let start = (~port: int=4000, ()) => {
   resolvers->Dict.set("Query", queryResolvers.contents)
   resolvers->Dict.set("Mutation", mutationResolvers.contents)
   let schema = YG.createSchema({"typeDefs": buildSdl(), "resolvers": resolvers})
-  let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": false})
+  let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": true, "maskedErrors": false})
   let server = YG.createServer(yoga)
   server->YG.listen(port, () =>
     Console.log(`[GraphQL] Listening on http://localhost:${port->Int.toString}/graphql`)
@@ -92,7 +92,7 @@ let rebuildSchema = (
   resolvers->Dict.set("Query", queryResolvers.contents)
   resolvers->Dict.set("Mutation", mutationResolvers.contents)
   let schema = YG.createSchema({"typeDefs": fullSdl, "resolvers": resolvers})
-  let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": false})
+  let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": true, "maskedErrors": false})
   let server = YG.createServer(yoga)
   server->YG.listen(4000, () =>
     Console.log("[GraphQL] Rebuilt schema - http://localhost:4000/graphql")
