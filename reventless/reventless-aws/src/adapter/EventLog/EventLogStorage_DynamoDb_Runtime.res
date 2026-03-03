@@ -53,7 +53,7 @@ let appendStream = table =>
     stream->Stream.runForEach(json =>
       Effect.tryPromise(
         ~catch=(err: unknown) =>
-          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB appendStream error"),
+          ReventlessCore.Util.Error.messageFromUnknown(err, "DynamoDB appendStream error"),
         () => append(table)(seqNrRef.contents, id, [json]),
       )->Effect.flatMap(result =>
         switch result {

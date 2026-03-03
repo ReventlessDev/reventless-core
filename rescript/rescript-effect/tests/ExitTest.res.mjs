@@ -2,6 +2,7 @@
 
 import * as Exit from "../src/Exit.res.mjs";
 import * as Effect from "effect";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 describe("Exit", () => {
   describe("constructors + predicates", () => {
@@ -29,17 +30,15 @@ describe("Exit", () => {
       let e = Effect.Exit.fail("err");
       expect(Effect.Exit.getOrElse(e, param => -1)).toBe(-1);
     });
-    test("causeOption on failure returns a Some-tagged Effect Option", () => {
+    test("causeOption on failure returns Some(cause)", () => {
       let e = Effect.Exit.fail("err");
-      let causeOpt = Effect.Exit.causeOption(e);
-      let tag = causeOpt._tag;
-      expect(tag).toBe("Some");
+      let causeOpt = Exit.causeOption(e);
+      expect(Stdlib_Option.isSome(causeOpt)).toBe(true);
     });
-    test("causeOption on success returns a None-tagged Effect Option", () => {
+    test("causeOption on success returns None", () => {
       let e = Effect.Exit.succeed(1);
-      let causeOpt = Effect.Exit.causeOption(e);
-      let tag = causeOpt._tag;
-      expect(tag).toBe("None");
+      let causeOpt = Exit.causeOption(e);
+      expect(Stdlib_Option.isNone(causeOpt)).toBe(true);
     });
   });
   describe("match", () => {

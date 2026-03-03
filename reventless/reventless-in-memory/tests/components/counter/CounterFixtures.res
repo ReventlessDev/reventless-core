@@ -35,11 +35,8 @@ let counter = CounterMaker.make(
 
 // ─────────────────────────────────────────────────────────────
 // Resolve counter operations.
-// Counter.T only exposes `make` and abstract `component` —
-// use Obj.magic to access the underlying Component.operations.
 // ─────────────────────────────────────────────────────────────
 
 let resolveOps = async () => {
-  let c: ReventlessCore.Counter.component = counter->Obj.magic
-  await c->ReventlessCore.Component.operations->TestRunner.resolve
+  await CounterMaker.operations(counter)->TestRunner.resolve
 }

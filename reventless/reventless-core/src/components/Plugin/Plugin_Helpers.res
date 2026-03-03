@@ -287,14 +287,13 @@ let createExtensionPoints = (
       ~resourceNaming,
       ~opts=Some(opts),
     )
-    // Obj.magic is safe here: all ReventlessInfra.ExtensionPoint.T implementations in reventless
-    // return ExtensionPoint.component<ExtensionPoint.operations> at runtime.
-    let concreteEP: ExtensionPoint.component<ExtensionPoint.operations> = Obj.magic(extensionPoint)
+    // operations() returns abstract type from ReventlessInfra.ExtensionPoint.T;
+    // coerce to the concrete ExtensionPoint.operations (always identical at runtime).
+    let ops: Pulumi.Output.t<ExtensionPoint.operations> =
+      SpecificExtensionPoint.operations(extensionPoint)->Obj.magic
     (
       SpecificExtensionPoint.outputs(extensionPoint),
-      concreteEP
-      ->Component.operations
-      ->Pulumi.Output.apply(({outgoingJsonEventsHandler}) => outgoingJsonEventsHandler),
+      ops->Pulumi.Output.apply(({outgoingJsonEventsHandler}) => outgoingJsonEventsHandler),
     )
   })
   ->Belt.Array.unzip
@@ -317,14 +316,13 @@ let createExtensions = (
       ~queryEngine,
       ~opts=Some(opts),
     )
-    // Obj.magic is safe here: all ReventlessInfra.Extension.T implementations in reventless
-    // return Extension.component at runtime.
-    let concreteExt: Extension.component = Obj.magic(extension)
+    // operations() returns abstract type from ReventlessInfra.Extension.T;
+    // coerce to the concrete Extension.operations (always identical at runtime).
+    let ops: Pulumi.Output.t<Extension.operations> =
+      SpecificExtension.operations(extension)->Obj.magic
     (
       SpecificExtension.outputs(extension),
-      concreteExt
-      ->Component.operations
-      ->Pulumi.Output.apply(({outgoingJsonEventsHandler, incomingJsonEventsHandler}) => {
+      ops->Pulumi.Output.apply(({outgoingJsonEventsHandler, incomingJsonEventsHandler}) => {
         incoming: incomingJsonEventsHandler,
         outgoing: outgoingJsonEventsHandler,
       }),

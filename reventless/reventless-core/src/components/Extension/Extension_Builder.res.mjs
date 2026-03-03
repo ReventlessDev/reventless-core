@@ -43,7 +43,8 @@ function Make(Spec) {
     }, opts);
     return {
       make: make,
-      outputs: Component$ReventlessCore.outputs
+      outputs: Component$ReventlessCore.outputs,
+      operations: Component$ReventlessCore.operations
     };
   };
 }

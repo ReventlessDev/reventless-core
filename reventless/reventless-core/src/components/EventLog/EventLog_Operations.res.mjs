@@ -67,7 +67,7 @@ function Make(Spec) {
     let append = async (sequenceNr, id, events$p) => {
       let eventsJson = encodeEvents$p(events$p, id);
       let idStr = Spec.Id.toString(id);
-      let storageEffect = Effect$1.Effect.retry(Effect$1.Effect.flatMap(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "storage error"), () => Ops.storage.append(sequenceNr, idStr, eventsJson)), result => {
+      let storageEffect = Effect$1.Effect.retry(Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "storage error"), () => Ops.storage.append(sequenceNr, idStr, eventsJson)), result => {
         if (result.TAG === "Ok") {
           return Effect$1.Effect.succeed();
         } else {

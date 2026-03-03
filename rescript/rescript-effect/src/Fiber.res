@@ -53,9 +53,7 @@ external collectAll: array<t<'a, 'e>> => Effect.t<array<Exit.t<'a, 'e>>, 'e2, 'r
 
 /**
 Non-blocking poll — returns the fiber's `Exit` if it has already completed, or `None` if still running.
-
-> **Note** Returns Effect's `Option` type `{_id:"Option", _tag:"None"|"Some"}`, not a plain ReScript `option`.
-Use `Obj.magic` or check `._tag` directly if you need to inspect the result.
 */
 @module("effect") @scope("Fiber")
-external poll: t<'a, 'e> => Effect.t<option<Exit.t<'a, 'e>>, 'e2, 'r> = "poll"
+external _poll: t<'a, 'e> => Effect.t<EffectOption.t<Exit.t<'a, 'e>>, 'e2, 'r> = "poll"
+let poll = fiber => fiber->_poll->Effect.map(EffectOption.toOption)

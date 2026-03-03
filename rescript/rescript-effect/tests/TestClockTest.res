@@ -49,8 +49,7 @@ describe("TestClock + TestContext", () => {
       ->Effect.provide(TestContext.testContext)
       ->Effect.runPromise
     // Fiber.poll returns None if the fiber hasn't completed yet
-    let tag: string = (fiberPoll->Obj.magic)["_tag"]
-    expect(tag)->toBe("None")
+    expect(fiberPoll->Option.isNone)->toBe(true)
   })
 
   testPromise("multiple adjusts accumulate", async () => {

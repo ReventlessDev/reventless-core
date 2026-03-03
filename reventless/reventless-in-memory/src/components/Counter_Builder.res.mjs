@@ -16,7 +16,9 @@ function Make(Bus) {
   return {
     QueryDbStorage: QueryDbStorage,
     Api: Api,
-    make: include.make
+    make: include.make,
+    outputs: include.outputs,
+    operations: include.operations
   };
 }
 

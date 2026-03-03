@@ -486,7 +486,7 @@ let queryBySingleTagStream = (
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
       ~catch=err =>
-        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryBySingleTagStream error"),
+        ReventlessCore.Util.Error.messageFromUnknown(err, "queryBySingleTagStream error"),
       () => {
         let params = switch cursor {
         | None => baseParams
@@ -529,9 +529,7 @@ let queryByCompositeTagsStream = (
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
       ~catch=err =>
-        (err->Obj.magic: JsExn.t)
-        ->JsExn.message
-        ->Option.getOr("queryByCompositeTagsStream error"),
+        ReventlessCore.Util.Error.messageFromUnknown(err, "queryByCompositeTagsStream error"),
       () => {
         let params = switch cursor {
         | None => baseParams
@@ -596,7 +594,7 @@ let scanWithFilterStream = (
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
       ~catch=err =>
-        (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("scanWithFilterStream error"),
+        ReventlessCore.Util.Error.messageFromUnknown(err, "scanWithFilterStream error"),
       () => {
         let params = switch cursor {
         | None => baseParams

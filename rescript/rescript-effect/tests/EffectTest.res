@@ -108,18 +108,14 @@ describe("Effect — error handling", () => {
     expect(v)->toBe("recovered")
   })
 
-  // Note: Effect.option returns Effect's Option type {_id:"Option", _tag:"Some"|"None"},
-  // NOT ReScript's option (null | value). Compare via the _tag field.
-  test("option converts success to Some-tagged Effect Option", () => {
+  test("option converts success to Some", () => {
     let v = Effect.succeed(7)->Effect.option->Effect.runSync
-    let tag: string = (v->Obj.magic)["_tag"]
-    expect(tag)->toBe("Some")
+    expect(v->Option.isSome)->toBe(true)
   })
 
-  test("option converts failure to None-tagged Effect Option", () => {
+  test("option converts failure to None", () => {
     let v = Effect.fail("err")->Effect.option->Effect.runSync
-    let tag: string = (v->Obj.magic)["_tag"]
-    expect(tag)->toBe("None")
+    expect(v->Option.isNone)->toBe(true)
   })
 })
 

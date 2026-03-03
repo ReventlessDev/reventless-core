@@ -196,7 +196,8 @@ Converts the `Effect` to always succeed with `option<'a>`:
 Defects still propagate as failures.
 */
 @module("effect") @scope("Effect")
-external option: t<'a, 'e, 'r> => t<option<'a>, 'e2, 'r> = "option"
+external _option: t<'a, 'e, 'r> => t<EffectOption.t<'a>, 'e2, 'r> = "option"
+let option = effect => effect->_option->map(EffectOption.toOption)
 
 // ─── Retry / repeat ──────────────────────────────────────────────────────
 

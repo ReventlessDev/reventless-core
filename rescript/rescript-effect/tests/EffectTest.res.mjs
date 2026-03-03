@@ -3,6 +3,7 @@
 import * as Effect from "../src/Effect.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 describe("Effect — construction", () => {
   test("succeed runSync returns value", () => {
@@ -87,15 +88,13 @@ describe("Effect — error handling", () => {
     let v = Effect$1.Effect.runSync(Effect$1.Effect.catchAll(Effect$1.Effect.fail("err"), _e => Effect$1.Effect.succeed("recovered")));
     expect(v).toBe("recovered");
   });
-  test("option converts success to Some-tagged Effect Option", () => {
-    let v = Effect$1.Effect.runSync(Effect$1.Effect.option(Effect$1.Effect.succeed(7)));
-    let tag = v._tag;
-    expect(tag).toBe("Some");
+  test("option converts success to Some", () => {
+    let v = Effect$1.Effect.runSync(Effect.option(Effect$1.Effect.succeed(7)));
+    expect(Stdlib_Option.isSome(v)).toBe(true);
   });
-  test("option converts failure to None-tagged Effect Option", () => {
-    let v = Effect$1.Effect.runSync(Effect$1.Effect.option(Effect$1.Effect.fail("err")));
-    let tag = v._tag;
-    expect(tag).toBe("None");
+  test("option converts failure to None", () => {
+    let v = Effect$1.Effect.runSync(Effect.option(Effect$1.Effect.fail("err")));
+    expect(Stdlib_Option.isNone(v)).toBe(true);
   });
 });
 

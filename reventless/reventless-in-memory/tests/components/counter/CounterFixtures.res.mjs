@@ -2,7 +2,6 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
-import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
 import * as Counter_Builder$ReventlessInMemory from "../../../src/components/Counter_Builder.res.mjs";
@@ -22,7 +21,7 @@ let counter = CounterMaker.make("TestCounter", stream => Effect.Effect.map(Strea
 }), undefined, undefined);
 
 async function resolveOps() {
-  return await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(counter));
+  return await TestRunner$ReventlessInMemory.resolve(CounterMaker.operations(counter));
 }
 
 export {

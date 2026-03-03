@@ -33,20 +33,16 @@ describe("Exit", () => {
       expect(e->Exit.getOrElse(_ => -1))->toBe(-1)
     })
 
-    // Note: causeOption returns Effect's Option type {_id:"Option", _tag:"Some"|"None"}
-    // NOT ReScript's option (null | value). Compare via the _tag field.
-    test("causeOption on failure returns a Some-tagged Effect Option", () => {
+    test("causeOption on failure returns Some(cause)", () => {
       let e = Exit.fail("err")
       let causeOpt = e->Exit.causeOption
-      let tag: string = (causeOpt->Obj.magic)["_tag"]
-      expect(tag)->toBe("Some")
+      expect(causeOpt->Option.isSome)->toBe(true)
     })
 
-    test("causeOption on success returns a None-tagged Effect Option", () => {
+    test("causeOption on success returns None", () => {
       let e = Exit.succeed(1)
       let causeOpt = e->Exit.causeOption
-      let tag: string = (causeOpt->Obj.magic)["_tag"]
-      expect(tag)->toBe("None")
+      expect(causeOpt->Option.isNone)->toBe(true)
     })
   })
 

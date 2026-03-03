@@ -7,7 +7,13 @@ function message(loc, exn) {
   return Stdlib_Option.getOr(Stdlib_JsExn.message(exn), "unspecified error") + Stdlib_Option.mapOr(loc, "", loc => ` at ` + loc);
 }
 
+let messageFromUnknown = (function(err, fallback) {
+    if (err != null && typeof err.message === 'string') return err.message;
+    return fallback;
+  });
+
 export {
   message,
+  messageFromUnknown,
 }
 /* Stdlib_JsExn Not a pure module */

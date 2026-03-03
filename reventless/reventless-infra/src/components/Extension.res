@@ -36,4 +36,5 @@ module type T = {
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
   let outputs: component => outputs
+  let operations: component => Pulumi.Output.t<operations>
 }

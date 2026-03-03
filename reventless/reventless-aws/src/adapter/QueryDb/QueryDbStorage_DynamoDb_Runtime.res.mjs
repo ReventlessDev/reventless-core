@@ -30,7 +30,7 @@ function loadStream(table) {
     };
     return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => ({
       TAG: "NotLoadedFromStorage",
-      _0: Stdlib_Option.getOr(Stdlib_JsExn.message(err), "DynamoDB loadStream error")
+      _0: Util_Error$ReventlessCore.messageFromUnknown(err, "DynamoDB loadStream error")
     }), () => {
       let params;
       if (cursor !== undefined) {

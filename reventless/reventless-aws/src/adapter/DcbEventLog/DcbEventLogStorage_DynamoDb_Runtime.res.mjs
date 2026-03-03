@@ -6,11 +6,11 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
+import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
@@ -403,7 +403,7 @@ function queryBySingleTagStream(table, tagKey, tagValue, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "queryBySingleTagStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "queryBySingleTagStream error"), () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -449,7 +449,7 @@ function queryByCompositeTagsStream(table, tags, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "queryByCompositeTagsStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "queryByCompositeTagsStream error"), () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -494,7 +494,7 @@ function scanWithFilterStream(table, eventTypes, after) {
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
     FilterExpression: filterExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "scanWithFilterStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "scanWithFilterStream error"), () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};

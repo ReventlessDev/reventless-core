@@ -5,7 +5,6 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -122,7 +121,7 @@ async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
 }
 
 function queryStream(params) {
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "queryStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "queryStream error"), () => {
     let p;
     if (cursor !== undefined) {
       let newrecord = {...params};
@@ -139,7 +138,7 @@ function queryStream(params) {
 }
 
 function scanStream(params) {
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "scanStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "scanStream error"), () => {
     let p;
     if (cursor !== undefined) {
       let newrecord = {...params};

@@ -88,7 +88,9 @@ function Make(QueryDbStorage) {
       }, opts);
     };
     return {
-      make: make
+      make: make,
+      outputs: Component$ReventlessCore.outputs,
+      operations: Component$ReventlessCore.operations
     };
   });
 }

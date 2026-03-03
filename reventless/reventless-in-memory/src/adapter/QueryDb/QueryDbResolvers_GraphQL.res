@@ -28,7 +28,8 @@ module Make = (Bus: InMemory_Bus.T) => {
     | None => `  ${queryName}(id: ID!): [String]`
     }
     let byIdResolver: GraphQL_Server.resolverFn = async (_root, args) => {
-      let id = (args->Obj.magic: dict<string>)->Dict.get("id")->Option.getOr("")
+      let id =
+        args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
       switch Bus.getQueryDb(name) {
       | Some(ops) =>
         let items =
@@ -66,7 +67,8 @@ module Make = (Bus: InMemory_Bus.T) => {
     let byIdListResolvers: array<(string, GraphQL_Server.resolverFn)> = switch subIdField {
     | Some(_) =>
       let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
-        let id = (args->Obj.magic: dict<string>)->Dict.get("id")->Option.getOr("")
+        let id =
+          args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
         switch Bus.getQueryDb(name) {
         | Some(ops) =>
           let items =
@@ -92,13 +94,16 @@ module Make = (Bus: InMemory_Bus.T) => {
         let resolverName = queryName ++ "By" ++ cap(index)
         let filterField = ic.idField->Option.getOr(index)
         let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
-          let value = (args->Obj.magic: dict<string>)->Dict.get(index)->Option.getOr("")
+          let value =
+            args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(index))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
           switch Bus.getQueryDbScan(name) {
           | Some(scanAll) =>
             scanAll()
             ->Array.filter(item =>
-              (item->Obj.magic: dict<string>)
-              ->Dict.get(filterField)
+              item
+              ->JSON.Decode.object
+              ->Option.flatMap(d => d->Dict.get(filterField))
+              ->Option.flatMap(JSON.Decode.string)
               ->Option.map(v => v == value)
               ->Option.getOr(false)
             )

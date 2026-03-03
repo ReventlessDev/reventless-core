@@ -141,4 +141,5 @@ module Make = (
     )
 
   let outputs = Component.outputs
+  let operations = Component.operations
 }

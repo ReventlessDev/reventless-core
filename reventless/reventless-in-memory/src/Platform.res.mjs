@@ -132,7 +132,9 @@ function Make($star) {
     Extension: Extension,
     Task: Task,
     Counter: {
-      make: Counter.make
+      make: Counter.make,
+      outputs: Counter.outputs,
+      operations: Counter.operations
     },
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,

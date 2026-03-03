@@ -4,10 +4,9 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
 import * as Util_Promise$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
@@ -71,7 +70,7 @@ function appendStream(table) {
     let seqNrRef = {
       contents: startingSeqNr
     };
-    return Effect$1.Stream.runForEach(stream, json => Effect$1.Effect.flatMap(Effect.tryPromise(err => Stdlib_Option.getOr(Stdlib_JsExn.message(err), "DynamoDB appendStream error"), () => append(table)(seqNrRef.contents, id, [json])), result => {
+    return Effect$1.Stream.runForEach(stream, json => Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "DynamoDB appendStream error"), () => append(table)(seqNrRef.contents, id, [json])), result => {
       if (result.TAG !== "Ok") {
         return Effect$1.Effect.fail(result._0);
       }

@@ -201,9 +201,10 @@ function createReadModels(readModels, api, apiRole, allEventTopics, opts) {
 function createExtensionPoints(extensionPoints, aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts) {
   return Belt_Array.unzip(extensionPoints.map(SpecificExtensionPoint => {
     let extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts);
+    let ops = SpecificExtensionPoint.operations(extensionPoint);
     return [
       SpecificExtensionPoint.outputs(extensionPoint),
-      Component$ReventlessCore.operations(extensionPoint).apply(param => param.outgoingJsonEventsHandler)
+      ops.apply(param => param.outgoingJsonEventsHandler)
     ];
   }));
 }
@@ -211,9 +212,10 @@ function createExtensionPoints(extensionPoints, aggregateResources, publishToAgg
 function createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts) {
   return Belt_Array.unzip(extensions.map(SpecificExtension => {
     let extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+    let ops = SpecificExtension.operations(extension);
     return [
       SpecificExtension.outputs(extension),
-      Component$ReventlessCore.operations(extension).apply(param => ({
+      ops.apply(param => ({
         outgoing: param.outgoingJsonEventsHandler,
         incoming: param.incomingJsonEventsHandler
       }))

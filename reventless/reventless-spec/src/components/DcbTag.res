@@ -218,8 +218,7 @@ For `CatalogEventLog.event` returns
 Used by the DCB runtime to build `queryItem.eventTypes` arrays automatically.
 */
 let extractEventTypes = (schema: S.t<'event>): array<string> => {
-  let unknownSchema: S.t<unknown> = schema->Obj.magic
-  switch unknownSchema {
+  switch schema->toUnknownSchema {
   | Union({anyOf}) =>
     anyOf->Array.filterMap(variantSchema =>
       switch variantSchema {
@@ -260,10 +259,7 @@ Returns a sorted, deduplicated list of field names annotated with
 For `CatalogEventLog.event` returns `["categoryId", "productId"]`.
 */
 let extractTaggedFields = (schema: S.t<'event>): array<string> => {
-  // Convert to unknown schema for introspection
-  let unknownSchema: S.t<unknown> = schema->Obj.magic
-
-  switch unknownSchema {
+  switch schema->toUnknownSchema {
   | Union({anyOf}) =>
     // For union types, collect tagged fields from all variants
     let allFields = anyOf->Array.flatMap(variantSchema =>

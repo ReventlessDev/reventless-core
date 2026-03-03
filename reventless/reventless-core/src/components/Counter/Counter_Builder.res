@@ -109,4 +109,7 @@ module Make = (
       ~construct=construct(~jsonEventsHandler, ~ttl=Some(ttl), ...),
       ~opts,
     )
+
+  let outputs = Component.outputs
+  let operations = Component.operations
 }

@@ -92,7 +92,7 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
 let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =>
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
-      ~catch=err => (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("queryStream error"),
+      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "queryStream error"),
       () => {
         let p = switch cursor {
         | None => params
@@ -111,7 +111,7 @@ let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =
 let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, string, unit> =>
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
-      ~catch=err => (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("scanStream error"),
+      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "scanStream error"),
       () => {
         let p = switch cursor {
         | None => params

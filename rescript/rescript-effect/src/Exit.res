@@ -54,11 +54,10 @@ external getOrElse: (t<'a, 'e>, Cause.t<'e> => 'a) => 'a = "getOrElse"
 
 /**
 Returns `Some(cause)` if the `Exit` is a failure, or `None` if it succeeded.
-
-Useful for inspecting the cause without pattern matching the full `Exit` structure.
 */
 @module("effect") @scope("Exit")
-external causeOption: t<'a, 'e> => option<Cause.t<'e>> = "causeOption"
+external _causeOption: t<'a, 'e> => EffectOption.t<Cause.t<'e>> = "causeOption"
+let causeOption = exit => exit->_causeOption->EffectOption.toOption
 
 // ─── Transformation ────────────────────────────────────────────────────────
 

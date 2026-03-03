@@ -47,12 +47,7 @@ module Make = (
           ~jsonEventsHandler=CounterHandler.handleCounterEvents,
           ~opts,
         )
-        let counterComp: Component.t<
-          _,
-          ReventlessInfra.Counter.outputs,
-          ReventlessInfra.Counter.operations,
-        > = counter->Obj.magic
-        (counterComp->Component.operations, counterComp->Component.outputs->Some)
+        (Counter.operations(counter), Counter.outputs(counter)->Some)
       },
     )
 

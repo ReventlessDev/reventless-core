@@ -2,6 +2,7 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as GraphQL_Server$ReventlessInMemory from "../GraphQL_Server.res.mjs";
 
@@ -11,7 +12,7 @@ function Make(Bus) {
     let queryName = name.charAt(0).toLowerCase() + name.slice(1);
     let byIdSdl = subIdField !== undefined ? `  ` + queryName + `(id: ID!, ` + subIdField + `: String): [String]` : `  ` + queryName + `(id: ID!): [String]`;
     let byIdResolver = async (_root, args) => {
-      let id = Stdlib_Option.getOr(args["id"], "");
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(name);
       if (ops !== undefined) {
         return await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
@@ -37,7 +38,7 @@ function Make(Bus) {
     let byIdListResolvers;
     if (subIdField !== undefined) {
       let resolver = async (_root, args) => {
-        let id = Stdlib_Option.getOr(args["id"], "");
+        let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
         let ops = Bus.getQueryDb(name);
         if (ops !== undefined) {
           return await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
@@ -58,10 +59,10 @@ function Make(Bus) {
       let resolverName = queryName + "By" + cap(index);
       let filterField = Stdlib_Option.getOr(ic.idField, index);
       let resolver = async (_root, args) => {
-        let value = Stdlib_Option.getOr(args[index], "");
+        let value = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[index]), Stdlib_JSON.Decode.string), "");
         let scanAll = Bus.getQueryDbScan(name);
         if (scanAll !== undefined) {
-          return scanAll().filter(item => Stdlib_Option.getOr(Stdlib_Option.map(item[filterField], v => v === value), false));
+          return scanAll().filter(item => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[filterField]), Stdlib_JSON.Decode.string), v => v === value), false));
         } else {
           return [];
         }

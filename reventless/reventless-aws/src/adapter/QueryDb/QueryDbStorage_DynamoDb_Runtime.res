@@ -16,7 +16,7 @@ let loadStream = table =>
       Effect.tryPromise(
         ~catch=err =>
           ReventlessInfra.QueryDb.NotLoadedFromStorage(
-            (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("DynamoDB loadStream error"),
+            ReventlessCore.Util.Error.messageFromUnknown(err, "DynamoDB loadStream error"),
           ),
         () => {
           let params = switch cursor {

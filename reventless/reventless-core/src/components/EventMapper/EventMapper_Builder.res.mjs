@@ -39,8 +39,8 @@ function Make(Target) {
         ], Counter => {
           let counter = Counter.make(name, CounterHandler.handleCounterEvents, undefined, opts);
           return [
-            Component$ReventlessCore.operations(counter),
-            Component$ReventlessCore.outputs(counter)
+            Counter.operations(counter),
+            Counter.outputs(counter)
           ];
         });
         let aggregateNames = Belt_SetString.fromArray(Stdlib_Array.filterMap(Mappings.mappings, Mapping => {

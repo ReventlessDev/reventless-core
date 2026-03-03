@@ -76,8 +76,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     // Build an Effect that fails with a string on storage error (enabling retry)
     let storageEffect =
       Effect.tryPromise(
-        ~catch=(err: unknown) =>
-          (err->Obj.magic: JsExn.t)->JsExn.message->Option.getOr("storage error"),
+        ~catch=(err: unknown) => Util.Error.messageFromUnknown(err, "storage error"),
         () => Ops.storage.append(sequenceNr, idStr, eventsJson),
       )
       ->Effect.flatMap(result =>
