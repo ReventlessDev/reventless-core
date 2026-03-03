@@ -67,6 +67,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       module(CategoriesViewSlice),
       module(ProductDemandViewSlice),
     ]
+    let automationSlices: array<
+      module(ReventlessInfra.AutomationSlice.T with type dcbEvent = event),
+    > = []
   }
 
   let make = (

@@ -52,6 +52,8 @@ function toString(componentType) {
       return "StateChangeSlice";
     case "StateViewSlice" :
       return "StateViewSlice";
+    case "AutomationSlice" :
+      return "AutomationSlice";
   }
 }
 
@@ -59,6 +61,8 @@ function ofString(str) {
   switch (str) {
     case "Aggregate" :
       return "Aggregate";
+    case "AutomationSlice" :
+      return "AutomationSlice";
     case "Cloner" :
       return "Cloner";
     case "CommandGenerator" :
@@ -160,6 +164,8 @@ function toName(componentType) {
       return "StateChgSlc";
     case "StateViewSlice" :
       return "StateViewSlice";
+    case "AutomationSlice" :
+      return "AutoSlice";
   }
 }
 

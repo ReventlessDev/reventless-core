@@ -106,6 +106,13 @@ module type T = {
       and module Spec = Spec
   }
 
+  /** Factory for DCB automation slice components (TODO list pattern). */
+  module AutomationSlice: {
+    module Make: (Spec: Reventless.AutomationSlice.Spec) => AutomationSlice.T
+      with type dcbEvent = Spec.DcbEventLogSpec.event
+      and module Spec = Spec
+  }
+
   /** Factory for DCB event log components. */
   module DcbEventLog: {
     module Make: (Spec: Reventless.DcbEventLog.Spec) => DcbEventLog.T

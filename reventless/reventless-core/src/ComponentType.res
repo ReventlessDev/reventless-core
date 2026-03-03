@@ -23,6 +23,7 @@ type t =
   | DcbEventLog
   | StateChangeSlice
   | StateViewSlice
+  | AutomationSlice
 
 let toString = componentType =>
   switch componentType {
@@ -50,6 +51,7 @@ let toString = componentType =>
   | DcbEventLog => "DcbEventLog"
   | StateChangeSlice => "StateChangeSlice"
   | StateViewSlice => "StateViewSlice"
+  | AutomationSlice => "AutomationSlice"
   }
 
 let ofString = str =>
@@ -78,6 +80,7 @@ let ofString = str =>
   | "DcbEventLog" => DcbEventLog->Some
   | "StateChangeSlice" => StateChangeSlice->Some
   | "StateViewSlice" => StateViewSlice->Some
+  | "AutomationSlice" => AutomationSlice->Some
   | _ => None
   }
 
@@ -107,6 +110,7 @@ let toName = componentType =>
   | DcbEventLog => "DcbEventLog"
   | StateChangeSlice => "StateChgSlc"
   | StateViewSlice => "StateViewSlice"
+  | AutomationSlice => "AutoSlice"
   }
 
 let name = (name, t) => name ++ t->toName

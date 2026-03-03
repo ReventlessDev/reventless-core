@@ -152,10 +152,12 @@ function Make(Platform) {
     CategoriesViewSlice,
     ProductDemandViewSlice
   ];
+  let automationSlices = [];
   let DcbSpec = {
     eventSchema: CatalogEventLog$ReventlessdevExampleDcbCatalog.eventSchema,
     stateChangeSlices: stateChangeSlices,
-    stateViewSlices: stateViewSlices
+    stateViewSlices: stateViewSlices,
+    automationSlices: automationSlices
   };
   let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", "1.0.0", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {

@@ -16,6 +16,7 @@ import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Bu
 import * as DcbEventLog_Builder$ReventlessInMemory from "./components/DcbEventLog_Builder.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "./components/ExtensionPoint_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateViewSlice_Builder.res.mjs";
+import * as AutomationSlice_Builder$ReventlessInMemory from "./components/AutomationSlice_Builder.res.mjs";
 import * as GraphQL_InMemory_Adapter$ReventlessInMemory from "./adapter/Api/GraphQL_InMemory_Adapter.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "./components/StateChangeSlice_Builder.res.mjs";
 import * as ScheduledPublisher_InMemory$ReventlessInMemory from "./adapter/Scheduler/ScheduledPublisher_InMemory.res.mjs";
@@ -29,6 +30,7 @@ function Make($star) {
   let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
   let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
   let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
+  let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
   let Make$1 = Spec => (Behavior => (EventMappings => {
     let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
     return {
@@ -76,11 +78,15 @@ function Make($star) {
   let StateViewSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => DcbEventLogMaker.Make(Spec);
-  let DcbEventLog = {
+  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
+  let AutomationSlice = {
     Make: Make$8
   };
-  let Make$9 = Config => {
+  let Make$9 = Spec => DcbEventLogMaker.Make(Spec);
+  let DcbEventLog = {
+    Make: Make$9
+  };
+  let Make$10 = Config => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let make = (name, opts) => Builder.make(name, Config.baseFragment, opts);
     return {
@@ -88,7 +94,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$9
+    Make: Make$10
   };
   Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents = DcbCommandTopicResolvers_GraphQL$ReventlessInMemory.register;
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);
@@ -118,6 +124,7 @@ function Make($star) {
     },
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
+    AutomationSlice: AutomationSlice,
     DcbEventLog: DcbEventLog,
     Api: Api,
     Plugin: Plugin,

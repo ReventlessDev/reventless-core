@@ -12,6 +12,7 @@ type builderOutputs = {
   aggregates: dict<Aggregate.outputs>,
   stateChangeSlices: dict<StateChangeSlice.outputs>,
   stateViewSlices: dict<StateViewSlice.outputs>,
+  automationSlices: dict<AutomationSlice.outputs>,
   readModels: dict<ReadModel.outputs>,
   tasks: dict<Task.outputs>,
   resolvers: array<ReventlessInfra.Adapter.resource>,

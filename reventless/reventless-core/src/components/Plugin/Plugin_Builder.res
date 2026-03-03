@@ -56,6 +56,7 @@ module Make = (
       dcbEventLogOutputs,
       stateChangeSlicesOutputs,
       stateViewSlicesOutputs,
+      automationSlicesOutputs,
       dcbRuntimeOpt,
     ) = switch dcbSpec {
     | Some(module(DcbSpec)) => {
@@ -121,6 +122,17 @@ module Make = (
           })
           ->Dict.fromArray
 
+        // Create AutomationSlices — each gets its own QueryDb and subscribes to DcbEventLog events
+        let automationSlicesOutputs =
+          DcbSpec.automationSlices
+          ->Array.map((
+            module(AutoSlice: AutomationSlice.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            let as_ = AutoSlice.make(~dcbEventLog, ~publishJsons, ~opts)
+            (AutoSlice.Spec.name, as_->Component.outputs)
+          })
+          ->Dict.fromArray
+
         // Filtering handler for the shared DCB command topic Lambda
         let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
         // Resources the Lambda needs access to (DcbEventLog resources from all slices)
@@ -140,10 +152,11 @@ module Make = (
           Some(dcbEventLog->Component.outputs),
           stateChangeSlicesOutputs,
           stateViewSlicesOutputs,
+          automationSlicesOutputs,
           Some(dcbRuntimeSetup),
         )
       }
-    | None => (None, Dict.make(), Dict.make(), None)
+    | None => (None, Dict.make(), Dict.make(), Dict.make(), None)
     }
 
     // Derive GraphQL schema fragment for this plugin
@@ -430,6 +443,7 @@ module Make = (
           aggregates: aggregatesOutputs,
           stateChangeSlices: stateChangeSlicesOutputs,
           stateViewSlices: stateViewSlicesOutputs,
+          automationSlices: automationSlicesOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
@@ -449,6 +463,7 @@ module Make = (
       aggregates: builderOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
       stateChangeSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateChangeSlices),
       stateViewSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateViewSlices),
+      automationSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.automationSlices),
       readModels: builderOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
       tasks: builderOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
       resolvers: builderOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),

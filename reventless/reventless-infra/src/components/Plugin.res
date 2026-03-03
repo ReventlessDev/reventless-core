@@ -21,6 +21,7 @@ type outputs = {
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
   stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
   stateViewSlices: Pulumi.Output.t<dict<StateViewSlice.outputs>>,
+  automationSlices: Pulumi.Output.t<dict<AutomationSlice.outputs>>,
 }
 
 /**
@@ -42,6 +43,7 @@ module DcbSpec = {
     module(UpdateProductNameSlice),
   ]
   let stateViewSlices = [module(CategoriesViewSlice), module(ProductsViewSlice)]
+  let automationSlices = []
 }
 ```
 */
@@ -51,6 +53,7 @@ module type DcbSpec = {
   type event
   let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
   let stateViewSlices: array<module(StateViewSlice.T with type dcbEvent = event)>
+  let automationSlices: array<module(AutomationSlice.T with type dcbEvent = event)>
 }
 
 /**

@@ -67,6 +67,13 @@ function Make(Spec) {
               Component$ReventlessCore.outputs(sv)
             ];
           }));
+          let automationSlicesOutputs = Object.fromEntries(dcbSpec.automationSlices.map(AutoSlice => {
+            let as_ = AutoSlice.make(dcbEventLog, publishJsons, opts);
+            return [
+              AutoSlice.Spec.name,
+              Component$ReventlessCore.outputs(as_)
+            ];
+          }));
           let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic);
           let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources);
           let dcbConnectFn = runtime => DcbCommandTopic.connect(runtime, dcbResources, dcbCommandTopic);
@@ -75,6 +82,7 @@ function Make(Spec) {
             Component$ReventlessCore.outputs(dcbEventLog),
             stateChangeSlicesOutputs,
             stateViewSlicesOutputs,
+            automationSlicesOutputs,
             dcbRuntimeSetup
           ];
         } else {
@@ -82,10 +90,12 @@ function Make(Spec) {
             undefined,
             {},
             {},
+            {},
             undefined
           ];
         }
-        let dcbRuntimeOpt = match[3];
+        let dcbRuntimeOpt = match[4];
+        let automationSlicesOutputs$1 = match[3];
         let stateViewSlicesOutputs$1 = match[2];
         let stateChangeSlicesOutputs$1 = match[1];
         let dcbEventLogOutputs = match[0];
@@ -236,6 +246,7 @@ function Make(Spec) {
             aggregates: aggregatesOutputs,
             stateChangeSlices: stateChangeSlicesOutputs$1,
             stateViewSlices: stateViewSlicesOutputs$1,
+            automationSlices: automationSlicesOutputs$1,
             readModels: readModelsOutputs,
             tasks: Object.fromEntries(tasksOutputs.map(el => [
               el.name,
@@ -260,6 +271,7 @@ function Make(Spec) {
         let pluginOutputs_dcbEventLog = builderOutputs.apply(outputs => outputs.dcbEventLog);
         let pluginOutputs_stateChangeSlices = builderOutputs.apply(outputs => outputs.stateChangeSlices);
         let pluginOutputs_stateViewSlices = builderOutputs.apply(outputs => outputs.stateViewSlices);
+        let pluginOutputs_automationSlices = builderOutputs.apply(outputs => outputs.automationSlices);
         let pluginOutputs = {
           id: pluginOutputs_id,
           version: pluginOutputs_version,
@@ -274,7 +286,8 @@ function Make(Spec) {
           heartbeat: pluginOutputs_heartbeat,
           dcbEventLog: pluginOutputs_dcbEventLog,
           stateChangeSlices: pluginOutputs_stateChangeSlices,
-          stateViewSlices: pluginOutputs_stateViewSlices
+          stateViewSlices: pluginOutputs_stateViewSlices,
+          automationSlices: pluginOutputs_automationSlices
         };
         Component$ReventlessCore.setOutputs(extra, pluginOutputs);
         Plugin_Helpers$ReventlessCore.interopMetaOutput.contents = builderOutputs.apply(Plugin_Helpers$ReventlessCore.toInteropMeta);

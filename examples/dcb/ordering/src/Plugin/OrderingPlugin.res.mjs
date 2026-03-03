@@ -152,10 +152,12 @@ function Make(Platform) {
     OrdersViewSlice,
     AvailableProductsViewSlice
   ];
+  let automationSlices = [];
   let DcbSpec = {
     eventSchema: OrderingEventLog$ReventlessdevExampleDcbOrdering.eventSchema,
     stateChangeSlices: stateChangeSlices,
-    stateViewSlices: stateViewSlices
+    stateViewSlices: stateViewSlices,
+    automationSlices: automationSlices
   };
   let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", "1.0.0", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {

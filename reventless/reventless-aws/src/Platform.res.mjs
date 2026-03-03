@@ -13,6 +13,7 @@ import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoi
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
 import * as Aggregate_Builder_Micro$ReventlessAws from "./components/Aggregate_Builder_Micro.res.mjs";
+import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationSlice_Builder.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 
@@ -61,6 +62,7 @@ function Make(Api) {
     Make: Make$6
   };
   let StateViewSlice = StateViewSlice_Builder$ReventlessAws.Make(Api);
+  let AutomationSlice = AutomationSlice_Builder$ReventlessAws.Make(Api);
   let Make$7 = DcbEventLog_Builder$ReventlessAws.Make;
   let DcbEventLog = {
     Make: Make$7
@@ -96,6 +98,7 @@ function Make(Api) {
     Counter: Counter,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
+    AutomationSlice: AutomationSlice,
     DcbEventLog: DcbEventLog,
     Api: Api$1,
     Plugin: Plugin,
