@@ -228,9 +228,19 @@ let splitMessage = json =>
     | _ => "Unknown"
     }
     (typ, payload->Dict.fromArray)
-  | _ => ("Unknown", Dict.make())
+  | _ =>
+    // Payload-less variants: sury encodes as a bare JSON string
+    switch json->JSON.Decode.string {
+    | Some(t) => (t, Dict.make())
+    | _ => ("Unknown", Dict.make())
+    }
   }
 
 let combineMessage = (typ, data) => {
-  JSON.Object([("TAG", JSON.String(typ))]->Array.concat(data->Dict.toArray)->Dict.fromArray)
+  if Dict.toArray(data)->Array.length == 0 {
+    // Payload-less variant: sury expects a bare JSON string
+    JSON.String(typ)
+  } else {
+    JSON.Object([("TAG", JSON.String(typ))]->Array.concat(data->Dict.toArray)->Dict.fromArray)
+  }
 }

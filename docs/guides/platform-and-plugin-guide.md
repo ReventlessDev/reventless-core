@@ -852,5 +852,5 @@ These aggregates:
 - **Circular plugin dependencies** — always use spec packages for cross-plugin references
 - **Namespace shadowing** — avoid short namespace names that conflict with RescriptCore modules
 - **Missing `@schema`** — every command, event, error, state, and directive type needs it
-- **Payload-less events** (e.g., `| Shipped`) — these serialize as JSON strings, which can cause round-trip issues with `splitMessage`/`combineMessage`. Prefer `| Shipped` only when no payload is needed and you've verified serialization works
+- **Payload-less events** (e.g., `| Shipped`) — these serialize as bare JSON strings rather than objects. This is fully supported by `splitMessage`/`combineMessage`, so you can freely use payload-less variants when no payload is needed
 - **Stale build cache** — after renaming or moving files, run `npx rescript clean` then rebuild

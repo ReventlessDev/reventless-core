@@ -240,32 +240,44 @@ function commandJsonOfCommand$p(idToString, commandSchema, cmd) {
 
 function splitMessage(json) {
   let dict = Stdlib_JSON.Decode.object(json);
-  if (dict === undefined) {
+  if (dict !== undefined) {
+    let match = Belt_Array.partition(Object.entries(dict), param => param[0] === "TAG");
+    let match$1 = match[0][0];
+    let typ;
+    if (match$1 !== undefined) {
+      let t = match$1[1];
+      typ = typeof t === "string" ? t : "Unknown";
+    } else {
+      typ = "Unknown";
+    }
+    return [
+      typ,
+      Object.fromEntries(match[1])
+    ];
+  }
+  let t$1 = Stdlib_JSON.Decode.string(json);
+  if (t$1 !== undefined) {
+    return [
+      t$1,
+      {}
+    ];
+  } else {
     return [
       "Unknown",
       {}
     ];
   }
-  let match = Belt_Array.partition(Object.entries(dict), param => param[0] === "TAG");
-  let match$1 = match[0][0];
-  let typ;
-  if (match$1 !== undefined) {
-    let t = match$1[1];
-    typ = typeof t === "string" ? t : "Unknown";
-  } else {
-    typ = "Unknown";
-  }
-  return [
-    typ,
-    Object.fromEntries(match[1])
-  ];
 }
 
 function combineMessage(typ, data) {
-  return Object.fromEntries([[
-      "TAG",
-      typ
-    ]].concat(Object.entries(data)));
+  if (Object.entries(data).length === 0) {
+    return typ;
+  } else {
+    return Object.fromEntries([[
+        "TAG",
+        typ
+      ]].concat(Object.entries(data)));
+  }
 }
 
 let serviceSchema = Message$Reventless.serviceSchema;
