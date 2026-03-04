@@ -18,6 +18,10 @@ let resources = {
   contents: {}
 };
 
+let resourceTemplates = {
+  contents: {}
+};
+
 function registerTool(name, definition, handler) {
   tools.contents[name] = {
     definition: definition,
@@ -27,6 +31,13 @@ function registerTool(name, definition, handler) {
 
 function registerResource(name, definition, handler) {
   resources.contents[name] = {
+    definition: definition,
+    handler: handler
+  };
+}
+
+function registerResourceTemplate(name, definition, handler) {
+  resourceTemplates.contents[name] = {
     definition: definition,
     handler: handler
   };
@@ -59,7 +70,27 @@ function registerResourcesFromEntries(pluginName, queryEntries, queryHandler) {
           }]
       };
     };
-    registerResource(def.name, def, handler);
+    if (def.uriTemplate.includes("{")) {
+      return registerResourceTemplate(def.name, def, handler);
+    } else {
+      return registerResource(def.name, def, handler);
+    }
+  });
+}
+
+function registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, eventLogHandler) {
+  let resourceDefs = MCP_SchemaGenerator$ReventlessCore.generateEventHistoryResources(pluginName, eventLogEntries);
+  resourceDefs.forEach(def => {
+    let handler = async uri => {
+      let result = await eventLogHandler(def.name, uri);
+      return {
+        contents: [{
+            uri: uri,
+            text: JSON.stringify(result)
+          }]
+      };
+    };
+    registerResourceTemplate(def.name, def, handler);
   });
 }
 
@@ -123,6 +154,20 @@ function createServerInstance() {
       resources: resourceDefs
     };
   });
+  McpSdk.onListResourceTemplates(server, async () => {
+    let templateDefs = Object.values(resourceTemplates.contents).map(param => {
+      let definition = param.definition;
+      return {
+        uriTemplate: definition.uriTemplate,
+        name: definition.name,
+        description: definition.description,
+        mimeType: definition.mimeType
+      };
+    });
+    return {
+      resourceTemplates: templateDefs
+    };
+  });
   McpSdk.onReadResource(server, async req => {
     let uri = req.params.uri;
     if (debug) {
@@ -130,7 +175,17 @@ function createServerInstance() {
     }
     let matchedResource = Object.values(resources.contents).find(param => uri.includes(param.definition.name));
     if (matchedResource !== undefined) {
+      if (debug) {
+        console.log(`[MCP]   matched resource: ` + matchedResource.definition.name);
+      }
       return await matchedResource.handler(uri);
+    }
+    let matchedTemplate = Object.values(resourceTemplates.contents).find(param => uri.includes(param.definition.name));
+    if (matchedTemplate !== undefined) {
+      if (debug) {
+        console.log(`[MCP]   matched template: ` + matchedTemplate.definition.name);
+      }
+      return await matchedTemplate.handler(uri);
     } else {
       return {
         contents: [{
@@ -218,11 +273,12 @@ function stop() {
 function reset() {
   tools.contents = {};
   resources.contents = {};
+  resourceTemplates.contents = {};
 }
 
 function diagnostics() {
   let toolNames = Object.keys(tools.contents);
-  let resourceNames = Object.keys(resources.contents);
+  let resourceNames = Object.keys(resources.contents).concat(Object.keys(resourceTemplates.contents));
   return {
     registeredTools: toolNames,
     registeredResources: resourceNames,
@@ -251,10 +307,13 @@ function printDiagnostics() {
 export {
   tools,
   resources,
+  resourceTemplates,
   registerTool,
   registerResource,
+  registerResourceTemplate,
   registerToolsFromEntries,
   registerResourcesFromEntries,
+  registerEventHistoryResourcesFromEntries,
   activeServer,
   debug,
   createServerInstance,

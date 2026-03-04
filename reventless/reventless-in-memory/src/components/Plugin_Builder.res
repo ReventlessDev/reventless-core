@@ -23,7 +23,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     RemoteChannel,
     HeartbeatRunner_InMemory,
     PluginRuntimeBuilder,
-    DcbEventLogStorage_InMemory,
+    DcbEventLogStorage_InMemory.Make(Bus),
     EventTopicPublisher_InMemory.Make(Bus),
     CommandTopicChannel_InMemory.Make(Bus),
   )

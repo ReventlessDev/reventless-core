@@ -274,6 +274,26 @@ module Make = (
 
     let queryEntries = Array.concat(queryEntriesFromReadModels, queryEntriesFromSlices)
 
+    let eventLogEntriesFromAggregates =
+      aggregates->Array.map((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
+        ReventlessInfra.Api.busKey: M.Spec.name ++ "Aggr" ++ "EventLog",
+        displayName: M.Spec.name,
+        eventSchema: M.Spec.eventSchema->S.castToUnknown,
+      })
+
+    let eventLogEntriesFromDcb = switch dcbSpec {
+    | Some(module(DcbSpec)) => [
+        {
+          ReventlessInfra.Api.busKey: name ++ "DcbEventLog",
+          displayName: name,
+          eventSchema: DcbSpec.eventSchema->S.castToUnknown,
+        },
+      ]
+    | None => []
+    }
+
+    let eventLogEntries = Array.concat(eventLogEntriesFromAggregates, eventLogEntriesFromDcb)
+
     // Populate query field names registry so resolvers align with fragment SDL.
     // Keyed by the Spec.name that each component uses for its QueryDb.
     // (StateViewSlice registry is populated earlier, inside the dcbSpec match block,
@@ -307,6 +327,7 @@ module Make = (
         pluginName: name,
         mutationEntries,
         queryEntries,
+        eventLogEntries,
       })
     | None => ()
     }

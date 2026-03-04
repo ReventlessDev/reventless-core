@@ -50,7 +50,9 @@ let EventLogMaker = EventLog_Builder$ReventlessCore.Make({
   },
   name: name,
   eventSchema: eventSchema
-})(EventLogStorage_InMemory$ReventlessInMemory)(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus));
+})({
+  make: EventLogStorage_InMemory$ReventlessInMemory.make
+})(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus));
 
 let eventLog = EventLogMaker.make("TestItemEventLog", undefined);
 

@@ -1,6 +1,6 @@
-# Backlog: MCP Event History Resource
+# MCP Event History Resource
 
-**Status:** Backlog
+**Status:** In-Memory Phases 1–4 completed + bug fixes; AWS (Phase 5) and Pagination (Phase 6) deferred
 **Depends on:** MCP Server Extension plan (completed — `docs/plans/mcp-server-extension.md`)
 **Related:** `docs/analysis/mcp-server-extension.md` (section 5: Event history as agent context)
 
@@ -65,26 +65,40 @@ let generateEventHistoryResources: (
 
 ## Steps
 
-### Phase 1 — Event log entry types
+### Phase 1 — Event log entry types ✅
 
-Add `aggregateEventLogEntry` and `dcbEventLogEntry` types to `Api.res` or a new `McpEventHistory.res` module. These carry the event log name, event sury schema, and entity ID schema needed for resource registration.
+Added `eventLogSchemaEntry` type to `Api.res` with `busKey`, `displayName`, and `eventSchema` fields.
 
-### Phase 2 — Schema generator extension
+### Phase 2 — Schema generator extension ✅
 
-Add `generateEventHistoryResources` to `MCP_SchemaGenerator`. Each entry produces:
-- A single-entity resource (URI with `{entityId}` template)
-- Optionally a "recent events" list resource (latest N events across all entities)
+Added `generateEventHistoryResources` to `MCP_SchemaGenerator`. Each entry produces a single-entity event history resource with URI template `{pluginName}/{displayName}_events/{entityId}`.
 
-### Phase 3 — Registration hook extension
+### Phase 3 — Registration hook extension ✅
 
-Extend `mcpSchemaRegistrationHook` params to include event log entries. Plugin_Builder passes aggregate and DCB event log specs alongside mutation/query entries.
+Extended `mcpRegistrationParams` with `eventLogEntries`. Plugin_Builder collects entries from aggregates (busKey = `SpecName + "Aggr" + "EventLog"`) and DCB (busKey = `pluginName + "DcbEventLog"`).
 
-### Phase 4 — In-memory resource handlers
+### Phase 4 — In-memory resource handlers ✅
 
-Wire event history resource handlers in `MCP_Server.res`:
-- Read from Bus EventLog/DcbEventLog stores
-- Serialize events to JSON with type, payload, timestamp, id, sequence
-- Return as `application/json` resource content
+Wired event history resource handlers in Platform.res and MCP_Server.res:
+- Added `registerEventLogReplay`/`getDcbEventLogRead` registries to InMemory_Bus
+- Added `Make(Bus)` functors to EventLogStorage_InMemory and DcbEventLogStorage_InMemory
+- Updated Aggregate_Builder and Plugin_Builder to use Make(Bus) variants
+- MCP handler reads from Bus registries, serializes events to JSON
+
+### Bug fixes discovered during integration testing ✅
+
+Several issues found and fixed when testing MCP with the online-shop-aggregates example:
+
+1. **QueryDb naming mismatch** — `QueryDb_Builder.res` passed a suffixed name (`name + "QueryDB"`) to Storage but the base `name` to Resolvers, causing Bus lookup mismatches. Both GraphQL and MCP queries returned empty/null. Fixed by passing base `name` to Storage (removing the redundant suffix).
+
+2. **MCP list resource lookup failure** — Platform.res MCP query handler only matched `singleFieldName` in the `queryFieldNamesRegistry`, missing list resources (e.g., `Catalog_Categories`). Fixed by also checking `entry.listFieldName == Some(resourceName)`.
+
+3. **MCP resource templates** — Event history resources (and single-item query resources) have parameterized URIs with `{entityId}` or `{id}`, but were all registered as regular MCP resources. MCP clients (e.g., MCP Inspector) couldn't handle template-style URIs in regular resources. Fixed by:
+   - Adding `resourceTemplates` registry to MCP_Server alongside `resources`
+   - Splitting in `registerResourcesFromEntries`: URIs with `{` → templates, fixed URIs → regular resources
+   - `registerEventHistoryResourcesFromEntries` always registers as templates
+   - Added `onListResourceTemplates` handler in `createServerInstance`
+   - Updated `onReadResource` to search both registries (regular first, then templates)
 
 ### Phase 5 — AWS resource handlers
 

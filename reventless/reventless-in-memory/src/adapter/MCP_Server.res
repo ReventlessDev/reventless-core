@@ -22,6 +22,7 @@ type registeredResource = {
 
 let tools: ref<dict<registeredTool>> = ref(Dict.make())
 let resources: ref<dict<registeredResource>> = ref(Dict.make())
+let resourceTemplates: ref<dict<registeredResource>> = ref(Dict.make())
 
 let registerTool = (~name: string, ~definition, ~handler: toolHandler) => {
   tools.contents->Dict.set(name, {definition, handler})
@@ -29,6 +30,10 @@ let registerTool = (~name: string, ~definition, ~handler: toolHandler) => {
 
 let registerResource = (~name: string, ~definition, ~handler: resourceHandler) => {
   resources.contents->Dict.set(name, {definition, handler})
+}
+
+let registerResourceTemplate = (~name: string, ~definition, ~handler: resourceHandler) => {
+  resourceTemplates.contents->Dict.set(name, {definition, handler})
 }
 
 // ─── Batch registration from schema entries ────────────────────────────────
@@ -81,7 +86,40 @@ let registerResourcesFromEntries = (
         ],
       }
     }
-    registerResource(~name=def.name, ~definition=def, ~handler)
+    // URIs with template parameters ({id}) go into resource templates;
+    // fixed URIs (list endpoints) go into regular resources.
+    if def.uriTemplate->String.includes("{") {
+      registerResourceTemplate(~name=def.name, ~definition=def, ~handler)
+    } else {
+      registerResource(~name=def.name, ~definition=def, ~handler)
+    }
+  })
+}
+
+/** Register MCP resources for event history (aggregate EventLog + DCB EventLog). */
+let registerEventHistoryResourcesFromEntries = (
+  ~pluginName: string,
+  ~eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
+  ~eventLogHandler: (string, string) => promise<JSON.t>,
+) => {
+  let resourceDefs = ReventlessCore.MCP_SchemaGenerator.generateEventHistoryResources(
+    ~pluginName,
+    ~eventLogEntries,
+  )
+  resourceDefs->Array.forEach(def => {
+    let handler: resourceHandler = async uri => {
+      let result = await eventLogHandler(def.name, uri)
+      {
+        McpSdk.contents: [
+          {
+            McpSdk.uri,
+            text: result->JSON.stringify,
+          },
+        ],
+      }
+    }
+    // Event history resources always have template parameters ({entityId})
+    registerResourceTemplate(~name=def.name, ~definition=def, ~handler)
   })
 }
 
@@ -137,21 +175,51 @@ let createServerInstance = () => {
     {McpSdk.resources: resourceDefs}
   })
 
+  server->McpSdk.onListResourceTemplates(async () => {
+    let templateDefs =
+      resourceTemplates.contents
+      ->Dict.valuesToArray
+      ->Array.map(({definition}) => {
+        McpSdk.uriTemplate: definition.uriTemplate,
+        name: definition.name,
+        description: definition.description,
+        mimeType: definition.mimeType,
+      })
+    {McpSdk.resourceTemplates: templateDefs}
+  })
+
   server->McpSdk.onReadResource(async req => {
     let uri = req.params.uri
     if debug {
       Console.log(`[MCP] resources/read: ${uri}`)
     }
+    // Search both regular resources and resource templates
     let matchedResource =
       resources.contents
       ->Dict.valuesToArray
       ->Array.find(({definition}) => uri->String.includes(definition.name))
     switch matchedResource {
-    | Some({handler}) => await handler(uri)
-    | None => {
-        McpSdk.contents: [
-          {McpSdk.uri, text: `{"error": "Resource not found: ${uri}"}`},
-        ],
+    | Some({definition, handler}) =>
+      if debug {
+        Console.log(`[MCP]   matched resource: ${definition.name}`)
+      }
+      await handler(uri)
+    | None =>
+      let matchedTemplate =
+        resourceTemplates.contents
+        ->Dict.valuesToArray
+        ->Array.find(({definition}) => uri->String.includes(definition.name))
+      switch matchedTemplate {
+      | Some({definition, handler}) =>
+        if debug {
+          Console.log(`[MCP]   matched template: ${definition.name}`)
+        }
+        await handler(uri)
+      | None => {
+          McpSdk.contents: [
+            {McpSdk.uri, text: `{"error": "Resource not found: ${uri}"}`},
+          ],
+        }
       }
     }
   })
@@ -226,6 +294,7 @@ let stop = () =>
 let reset = () => {
   tools.contents = Dict.make()
   resources.contents = Dict.make()
+  resourceTemplates.contents = Dict.make()
 }
 
 // ─── Diagnostics ───────────────────────────────────────────────────────────
@@ -240,7 +309,10 @@ type diagnostics = {
 
 let diagnostics = (): diagnostics => {
   let toolNames = tools.contents->Dict.keysToArray
-  let resourceNames = resources.contents->Dict.keysToArray
+  let resourceNames =
+    resources.contents
+    ->Dict.keysToArray
+    ->Array.concat(resourceTemplates.contents->Dict.keysToArray)
   {
     registeredTools: toolNames,
     registeredResources: resourceNames,

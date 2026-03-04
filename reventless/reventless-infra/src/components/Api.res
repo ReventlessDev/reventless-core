@@ -26,6 +26,16 @@ type querySchemaEntry = {
 }
 
 /**
+Schema entry for an event log, derived from an aggregate EventLog or DCB EventLog.
+Used by MCP to expose event history as resources.
+*/
+type eventLogSchemaEntry = {
+  busKey: string,
+  displayName: string,
+  eventSchema: S.t<unknown>,
+}
+
+/**
 Deploy-time outputs produced when an `Api` component is provisioned.
 - `apiId` — the cloud API resource identifier (e.g. AppSync API ID)
 */

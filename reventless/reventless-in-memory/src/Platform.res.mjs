@@ -4,6 +4,7 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as MCP_Server$ReventlessInMemory from "./adapter/MCP_Server.res.mjs";
@@ -118,6 +119,7 @@ function Make($star) {
   Plugin_Helpers$ReventlessCore.aggregateMutationResolverHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register;
   Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents = GraphQL_Server$ReventlessInMemory.registerTypes;
   Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents = param => {
+    let eventLogEntries = param.eventLogEntries;
     let pluginName = param.pluginName;
     MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args) => {
       let resolver = GraphQL_Server$ReventlessInMemory.getMutationResolver(toolName);
@@ -135,7 +137,14 @@ function Make($star) {
     MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
-      let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => param[1].singleFieldName === resourceName), param => param[0]), resourceName);
+      let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => {
+        let entry = param[1];
+        if (entry.singleFieldName === resourceName) {
+          return true;
+        } else {
+          return Primitive_object.equal(entry.listFieldName, resourceName);
+        }
+      }), param => param[0]), resourceName);
       let ops = Bus.getQueryDb(queryDbName);
       if (ops === undefined) {
         return null;
@@ -155,6 +164,51 @@ function Make($star) {
       } else {
         return [];
       }
+    });
+    MCP_Server$ReventlessInMemory.registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, async (resourceName, uri) => {
+      let segments = uri.split("/");
+      let entityId = Stdlib_Option.getOr(segments.at(-1), "");
+      let matchingEntry = eventLogEntries.find(entry => resourceName.includes(entry.displayName.toLowerCase()));
+      if (matchingEntry === undefined) {
+        return [];
+      }
+      let replay = Bus.getEventLogReplay(matchingEntry.busKey);
+      if (replay !== undefined) {
+        return await replay(entityId);
+      }
+      let read = Bus.getDcbEventLogRead(matchingEntry.busKey);
+      if (read === undefined) {
+        return [];
+      }
+      let result = await read([], undefined);
+      let filtered = entityId.length > 0 && entityId !== resourceName ? result.events.filter(e => e.tags.some(tag => tag.value === entityId)) : result.events;
+      return filtered.map(e => Object.fromEntries([
+        [
+          "position",
+          e.position
+        ],
+        [
+          "eventType",
+          e.eventType
+        ],
+        [
+          "data",
+          e.data
+        ],
+        [
+          "tags",
+          e.tags.map(t => Object.fromEntries([
+            [
+              "key",
+              t.key
+            ],
+            [
+              "value",
+              t.value
+            ]
+          ]))
+        ]
+      ]));
     });
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);

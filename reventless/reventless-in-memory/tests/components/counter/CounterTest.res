@@ -40,9 +40,8 @@ describe("Counter E2E", () => {
     let ops = await resolveOps()
     let _ = await ops.count([{counterId: "counter-1", reference: "ref-1", inc: 1}])
     // Counter component name = "TestCounter" ++ "Counter" = "TestCounterCounter"
-    // ReferencesDb name = CounterComponentName ++ "References" ++ "QueryDB"
-    //                   = "TestCounterCounterReferencesQueryDB"
-    let db = Bus.getQueryDb("TestCounterCounterReferencesQueryDB")
+    // ReferencesDb name = CounterComponentName ++ "References"
+    let db = Bus.getQueryDb("TestCounterCounterReferences")
     expect(db->Option.isSome)->toBe(true)
   })
 })

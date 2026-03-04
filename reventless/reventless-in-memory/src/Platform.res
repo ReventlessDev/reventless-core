@@ -149,7 +149,7 @@ module Make = (): (ReventlessInfra.Platform.T
   // MCP tools and resources during plugin construction.
   let () =
     ReventlessCore.Plugin_Helpers.mcpSchemaRegistrationHook.contents =
-      Some(({pluginName, mutationEntries, queryEntries}) => {
+      Some(({pluginName, mutationEntries, queryEntries, eventLogEntries}) => {
         // Register MCP tools — reuse the same GraphQL resolver functions.
         // The GraphQL mutation resolvers are already registered in GraphQL_Server
         // at this point. We look them up by field name and wrap them for MCP.
@@ -180,10 +180,14 @@ module Make = (): (ReventlessInfra.Platform.T
             let segments = uri->String.split("/")
             let id = segments->Array.at(-1)->Option.getOr("")
             // Find the QueryDb by matching the resource name to registered query field names
+            // (match both singleFieldName and listFieldName since list resources use the plural name)
             let queryDbName =
               ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
               ->Dict.toArray
-              ->Array.find(((_, entry)) => entry.singleFieldName == resourceName)
+              ->Array.find(((_, entry)) =>
+                entry.singleFieldName == resourceName ||
+                  entry.listFieldName == Some(resourceName)
+              )
               ->Option.map(((name, _)) => name)
               ->Option.getOr(resourceName)
             switch Bus.getQueryDb(queryDbName) {
@@ -207,6 +211,72 @@ module Make = (): (ReventlessInfra.Platform.T
                 }
               }
             | None => JSON.Encode.null
+            }
+          },
+        )
+
+        // Register MCP resources for event history (aggregate EventLog + DCB EventLog).
+        // Use the Bus event log registries for reads.
+        MCP_Server.registerEventHistoryResourcesFromEntries(
+          ~pluginName,
+          ~eventLogEntries,
+          ~eventLogHandler=async (resourceName, uri) => {
+            let segments = uri->String.split("/")
+            let entityId = segments->Array.at(-1)->Option.getOr("")
+
+            // Find the matching event log entry by resource name
+            let matchingEntry =
+              eventLogEntries->Array.find(entry =>
+                resourceName->String.includes(entry.displayName->String.toLowerCase)
+              )
+            switch matchingEntry {
+            | Some(entry) =>
+              // Try aggregate EventLog first
+              switch Bus.getEventLogReplay(entry.busKey) {
+              | Some(replay) =>
+                let events = await replay(entityId)
+                events->JSON.Encode.array
+              | None =>
+                // Try DCB EventLog — read all events, filter by tag value
+                switch Bus.getDcbEventLogRead(entry.busKey) {
+                | Some(read) =>
+                  let result = await read(~query=[])
+                  let filtered =
+                    if entityId->String.length > 0 && entityId != resourceName {
+                      result.events->Array.filter(e =>
+                        e.tags->Array.some(tag => tag.value == entityId)
+                      )
+                    } else {
+                      result.events
+                    }
+                  filtered
+                  ->Array.map(e => {
+                    [
+                      ("position", JSON.Encode.string(e.position)),
+                      ("eventType", JSON.Encode.string(e.eventType)),
+                      ("data", e.data),
+                      (
+                        "tags",
+                        e.tags
+                        ->Array.map(t =>
+                          [
+                            ("key", JSON.Encode.string(t.key)),
+                            ("value", JSON.Encode.string(t.value)),
+                          ]
+                          ->Dict.fromArray
+                          ->JSON.Encode.object
+                        )
+                        ->JSON.Encode.array,
+                      ),
+                    ]
+                    ->Dict.fromArray
+                    ->JSON.Encode.object
+                  })
+                  ->JSON.Encode.array
+                | None => []->JSON.Encode.array
+                }
+              }
+            | None => []->JSON.Encode.array
             }
           },
         )

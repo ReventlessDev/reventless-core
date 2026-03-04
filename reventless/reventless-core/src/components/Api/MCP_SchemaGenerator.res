@@ -142,3 +142,30 @@ let generateResources = (
 
   resources
 }
+
+// ─── Event history resource generation ───────────────────────────────────
+
+/** Generate MCP resource definitions from event log entries.
+    Each entry becomes a single-entity event history resource. */
+let generateEventHistoryResources = (
+  ~pluginName: string,
+  ~eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
+): array<mcpResourceDefinition> => {
+  let resources: array<mcpResourceDefinition> = []
+  let pluginLower = pluginName->String.toLowerCase
+
+  eventLogEntries->Array.forEach(entry => {
+    let eventTypes = extractEventTypes(entry.eventSchema)
+    let typeList = eventTypes->Array.join(", ")
+    let nameLower = entry.displayName->String.toLowerCase
+
+    resources->Array.push({
+      uriTemplate: `${pluginLower}/${nameLower}_events/{entityId}`,
+      name: `${nameLower}_events`,
+      description: `Event history for ${entry.displayName}. Event types: ${typeList}`,
+      mimeType: "application/json",
+    })
+  })
+
+  resources
+}

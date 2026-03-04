@@ -33,9 +33,7 @@ function Make(Bus) {
     forPluginHeartbeat: PluginRuntimeBuilder.forPluginHeartbeat,
     forDcbCommandTopic: PluginRuntimeBuilder.forDcbCommandTopic,
     finish: PluginRuntimeBuilder.finish
-  })({
-    make: DcbEventLogStorage_InMemory$ReventlessInMemory.make
-  })(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
+  })(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
     make: $$let.make
   });
   return {

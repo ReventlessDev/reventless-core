@@ -33,7 +33,7 @@ function matchesQuery(event, query) {
   }
 }
 
-function make(param, param$1, param$2) {
+function makeStorage(_name, param, param$1) {
   let events = {
     contents: []
   };
@@ -88,19 +88,40 @@ function make(param, param$1, param$2) {
     };
   };
   let readStream = (query, after) => Effect.Stream.flatMap(Effect.Stream.fromEffect(Effect.Effect.map(Effect.Effect.promise(() => read(query, after)), result => result.events)), arr => Effect.Stream.fromIterable(arr));
+  return [
+    _name,
+    read,
+    {
+      resources: [],
+      operations: Pulumi.output({
+        read: read,
+        append: append,
+        readStream: readStream
+      })
+    }
+  ];
+}
+
+function make(name, indexes, opts) {
+  return makeStorage(name, indexes, opts)[2];
+}
+
+function Make(Bus) {
+  let make = (name, indexes, opts) => {
+    let match = makeStorage(name, indexes, opts);
+    Bus.registerDcbEventLogRead(match[0], match[1]);
+    return match[2];
+  };
   return {
-    resources: [],
-    operations: Pulumi.output({
-      read: read,
-      append: append,
-      readStream: readStream
-    })
+    make: make
   };
 }
 
 export {
   posToInt,
   matchesQuery,
+  makeStorage,
   make,
+  Make,
 }
 /* effect Not a pure module */

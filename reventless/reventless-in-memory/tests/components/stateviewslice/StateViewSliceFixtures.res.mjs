@@ -106,7 +106,7 @@ async function appendEvent(event) {
 }
 
 async function loadState(id) {
-  let ops = Bus.getQueryDb("ItemsViewQueryDB");
+  let ops = Bus.getQueryDb("ItemsView");
   if (ops === undefined) {
     return [];
   }

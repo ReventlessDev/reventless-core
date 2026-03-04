@@ -25,6 +25,12 @@ function Impl(C) {
   let queryDbStreamRegistry = {
     contents: {}
   };
+  let eventLogReplayRegistry = {
+    contents: {}
+  };
+  let dcbEventLogReadRegistry = {
+    contents: {}
+  };
   let makeHub = () => {
     if (capacity !== undefined) {
       return Effect.Effect.runSync(Effect.PubSub.bounded(capacity));
@@ -123,6 +129,14 @@ function Impl(C) {
     queryDbStreamRegistry.contents[name] = streamFn;
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerEventLogReplay = (name, replay) => {
+    eventLogReplayRegistry.contents[name] = replay;
+  };
+  let getEventLogReplay = name => eventLogReplayRegistry.contents[name];
+  let registerDcbEventLogRead = (name, read) => {
+    dcbEventLogReadRegistry.contents[name] = read;
+  };
+  let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
   let reset = () => {
     let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventHubs.contents).map(hub => Effect.PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -134,6 +148,8 @@ function Impl(C) {
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
+    eventLogReplayRegistry.contents = {};
+    dcbEventLogReadRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -147,6 +163,10 @@ function Impl(C) {
     getQueryDbScan: getQueryDbScan,
     registerQueryDbStream: registerQueryDbStream,
     getQueryDbStream: getQueryDbStream,
+    registerEventLogReplay: registerEventLogReplay,
+    getEventLogReplay: getEventLogReplay,
+    registerDcbEventLogRead: registerDcbEventLogRead,
+    getDcbEventLogRead: getDcbEventLogRead,
     reset: reset
   };
 }
@@ -168,6 +188,12 @@ function Make($star) {
     contents: {}
   };
   let queryDbStreamRegistry = {
+    contents: {}
+  };
+  let eventLogReplayRegistry = {
+    contents: {}
+  };
+  let dcbEventLogReadRegistry = {
     contents: {}
   };
   let makeHub = () => Effect.Effect.runSync(Effect.PubSub.unbounded());
@@ -262,6 +288,14 @@ function Make($star) {
     queryDbStreamRegistry.contents[name] = streamFn;
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerEventLogReplay = (name, replay) => {
+    eventLogReplayRegistry.contents[name] = replay;
+  };
+  let getEventLogReplay = name => eventLogReplayRegistry.contents[name];
+  let registerDcbEventLogRead = (name, read) => {
+    dcbEventLogReadRegistry.contents[name] = read;
+  };
+  let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
   let reset = () => {
     let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventHubs.contents).map(hub => Effect.PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -273,6 +307,8 @@ function Make($star) {
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
+    eventLogReplayRegistry.contents = {};
+    dcbEventLogReadRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -286,6 +322,10 @@ function Make($star) {
     getQueryDbScan: getQueryDbScan,
     registerQueryDbStream: registerQueryDbStream,
     getQueryDbStream: getQueryDbStream,
+    registerEventLogReplay: registerEventLogReplay,
+    getEventLogReplay: getEventLogReplay,
+    registerDcbEventLogRead: registerDcbEventLogRead,
+    getDcbEventLogRead: getDcbEventLogRead,
     reset: reset
   };
 }
@@ -308,6 +348,12 @@ function MakeBounded(C) {
     contents: {}
   };
   let queryDbStreamRegistry = {
+    contents: {}
+  };
+  let eventLogReplayRegistry = {
+    contents: {}
+  };
+  let dcbEventLogReadRegistry = {
     contents: {}
   };
   let makeHub = () => Effect.Effect.runSync(Effect.PubSub.bounded(capacity));
@@ -399,6 +445,14 @@ function MakeBounded(C) {
     queryDbStreamRegistry.contents[name] = streamFn;
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerEventLogReplay = (name, replay) => {
+    eventLogReplayRegistry.contents[name] = replay;
+  };
+  let getEventLogReplay = name => eventLogReplayRegistry.contents[name];
+  let registerDcbEventLogRead = (name, read) => {
+    dcbEventLogReadRegistry.contents[name] = read;
+  };
+  let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
   let reset = () => {
     let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventHubs.contents).map(hub => Effect.PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -410,6 +464,8 @@ function MakeBounded(C) {
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
+    eventLogReplayRegistry.contents = {};
+    dcbEventLogReadRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -423,6 +479,10 @@ function MakeBounded(C) {
     getQueryDbScan: getQueryDbScan,
     registerQueryDbStream: registerQueryDbStream,
     getQueryDbStream: getQueryDbStream,
+    registerEventLogReplay: registerEventLogReplay,
+    getEventLogReplay: getEventLogReplay,
+    registerDcbEventLogRead: registerDcbEventLogRead,
+    getDcbEventLogRead: getDcbEventLogRead,
     reset: reset
   };
 }

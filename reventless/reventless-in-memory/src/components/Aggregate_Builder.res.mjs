@@ -26,7 +26,7 @@ function Make(Bus) {
       make: CommandGeneratorResolvers_GraphQL$ReventlessInMemory.make
     })({
       make: CommandTopicChannel.make
-    })(EventLogStorage_InMemory$ReventlessInMemory)(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder);
+    })(EventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder);
     return {
       Spec: include.Spec,
       AggregateRuntimeBuilder: include.AggregateRuntimeBuilder,

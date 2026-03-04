@@ -81,10 +81,9 @@ let appendEvent = async event => {
 }
 
 // Load projected state from the in-memory QueryDb.
-// QueryDb is registered as "ItemsViewQueryDB"
-// (= ItemsViewSpec.name ++ "QueryDB").
+// QueryDb is registered with the base Spec.name = "ItemsView".
 let loadState = async id => {
-  switch Bus.getQueryDb("ItemsViewQueryDB") {
+  switch Bus.getQueryDb("ItemsView") {
   | None => []
   | Some(ops) =>
     let states =

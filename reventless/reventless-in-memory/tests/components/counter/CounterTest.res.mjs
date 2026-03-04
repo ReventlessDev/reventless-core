@@ -53,7 +53,7 @@ describe("Counter E2E", () => {
         reference: "ref-1",
         inc: 1
       }]);
-    let db = CounterFixtures$ReventlessInMemory.Bus.getQueryDb("TestCounterCounterReferencesQueryDB");
+    let db = CounterFixtures$ReventlessInMemory.Bus.getQueryDb("TestCounterCounterReferences");
     expect(Stdlib_Option.isSome(db)).toBe(true);
   });
 });

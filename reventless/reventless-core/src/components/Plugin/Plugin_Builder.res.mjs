@@ -191,6 +191,17 @@ function Make(Spec) {
             };
           }) : [];
         let queryEntries = queryEntriesFromReadModels.concat(queryEntriesFromSlices);
+        let eventLogEntriesFromAggregates = aggregates.map(M => ({
+          busKey: M.Spec.name + "AggrEventLog",
+          displayName: M.Spec.name,
+          eventSchema: M.Spec.eventSchema
+        }));
+        let eventLogEntriesFromDcb = dcbSpec !== undefined ? [{
+              busKey: extra$1 + "DcbEventLog",
+              displayName: extra$1,
+              eventSchema: dcbSpec.eventSchema
+            }] : [];
+        let eventLogEntries = eventLogEntriesFromAggregates.concat(eventLogEntriesFromDcb);
         readModels.forEach(R => {
           Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = {
             singleFieldName: extra$1 + `_` + singularize(R.Spec.name),
@@ -210,7 +221,8 @@ function Make(Spec) {
           registerMcp({
             pluginName: extra$1,
             mutationEntries: mutationEntries,
-            queryEntries: queryEntries
+            queryEntries: queryEntries,
+            eventLogEntries: eventLogEntries
           });
         }
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);

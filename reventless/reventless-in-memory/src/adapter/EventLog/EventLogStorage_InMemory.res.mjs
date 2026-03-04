@@ -4,7 +4,7 @@ import * as Effect from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 
-function make(param, param$1) {
+function makeStorage(_name, param) {
   let eventsRef = Effect.Effect.runSync(Effect.STM.commit(Effect.TRef.make({})));
   let append = (_seqNr, id, jsons) => Effect.Effect.runPromise(Effect.STM.commit(Effect.TRef.modify(eventsRef, events => {
     let existing = Stdlib_Option.getOr(events[id], []);
@@ -41,18 +41,39 @@ function make(param, param$1) {
       return Effect.Effect.succeed();
     }));
   };
+  return [
+    _name,
+    replay,
+    {
+      resources: [],
+      operations: Pulumi.output({
+        append: append,
+        replay: replay,
+        replayStream: replayStream,
+        appendStream: appendStream
+      })
+    }
+  ];
+}
+
+function make(name, opts) {
+  return makeStorage(name, opts)[2];
+}
+
+function Make(Bus) {
+  let make = (name, opts) => {
+    let match = makeStorage(name, opts);
+    Bus.registerEventLogReplay(match[0], match[1]);
+    return match[2];
+  };
   return {
-    resources: [],
-    operations: Pulumi.output({
-      append: append,
-      replay: replay,
-      replayStream: replayStream,
-      appendStream: appendStream
-    })
+    make: make
   };
 }
 
 export {
+  makeStorage,
   make,
+  Make,
 }
 /* effect Not a pure module */

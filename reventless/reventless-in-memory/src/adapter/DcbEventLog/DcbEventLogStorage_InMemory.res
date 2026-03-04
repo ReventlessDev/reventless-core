@@ -25,7 +25,7 @@ let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: Reventl
     })
   }
 
-let make: DcbEventLog_Adapter.storageMaker = (~name as _, ~indexes as _, ~opts as _) => {
+let makeStorage = (~name as _name, ~indexes as _, ~opts as _) => {
   let events: ref<array<DcbEventLog_Adapter.rawSequencedEvent>> = ref([])
   let position = ref(0)
 
@@ -84,8 +84,25 @@ let make: DcbEventLog_Adapter.storageMaker = (~name as _, ~indexes as _, ~opts a
     ->Stream.fromEffect
     ->Stream.flatMap(arr => Stream.fromIterable(arr))
 
-  {
-    resources: [],
-    operations: Pulumi.Output.make({DcbEventLog_Adapter.read, append, readStream}),
+  (
+    _name,
+    read,
+    {
+      DcbEventLog_Adapter.resources: [],
+      operations: Pulumi.Output.make({DcbEventLog_Adapter.read, append, readStream}),
+    },
+  )
+}
+
+let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts) => {
+  let (_, _, storage) = makeStorage(~name, ~indexes, ~opts)
+  storage
+}
+
+module Make = (Bus: InMemory_Bus.T) => {
+  let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts) => {
+    let (storageName, read, storage) = makeStorage(~name, ~indexes, ~opts)
+    Bus.registerDcbEventLogRead(storageName, read)
+    storage
   }
 }

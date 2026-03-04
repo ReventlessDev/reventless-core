@@ -75,9 +75,8 @@ describe("QueryDb (in-memory)", () => {
   })
 
   testPromise("registered in bus by component name", async () => {
-    // QueryDb registers itself in the bus as "TestItemQueryDbQueryDB"
-    // (Spec.name ++ "QueryDB")
-    let db = Bus.getQueryDb("TestItemQueryDbQueryDB")
+    // QueryDb registers itself in the bus with the base Spec.name
+    let db = Bus.getQueryDb("TestItemQueryDb")
     expect(db->Option.isSome)->toBe(true)
   })
 })

@@ -118,7 +118,7 @@ describe("QueryDb (in-memory)", () => {
     expect(arr.length).toBe(0);
   });
   test("registered in bus by component name", async () => {
-    let db = QueryDbFixtures$ReventlessInMemory.Bus.getQueryDb("TestItemQueryDbQueryDB");
+    let db = QueryDbFixtures$ReventlessInMemory.Bus.getQueryDb("TestItemQueryDb");
     expect(Stdlib_Option.isSome(db)).toBe(true);
   });
 });

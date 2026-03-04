@@ -111,11 +111,29 @@ function generateResources(pluginName, queryEntries) {
   return resources;
 }
 
+function generateEventHistoryResources(pluginName, eventLogEntries) {
+  let resources = [];
+  let pluginLower = pluginName.toLowerCase();
+  eventLogEntries.forEach(entry => {
+    let eventTypes = DcbTag$Reventless.extractEventTypes(entry.eventSchema);
+    let typeList = eventTypes.join(", ");
+    let nameLower = entry.displayName.toLowerCase();
+    resources.push({
+      uriTemplate: pluginLower + `/` + nameLower + `_events/{entityId}`,
+      name: nameLower + `_events`,
+      description: `Event history for ` + entry.displayName + `. Event types: ` + typeList,
+      mimeType: "application/json"
+    });
+  });
+  return resources;
+}
+
 let extractEventTypes = DcbTag$Reventless.extractEventTypes;
 
 export {
   extractEventTypes,
   generateTools,
   generateResources,
+  generateEventHistoryResources,
 }
 /* DcbTag-Reventless Not a pure module */

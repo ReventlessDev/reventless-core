@@ -78,6 +78,23 @@ module type T = {
   let registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit
   let getQueryDbStream: string => option<unit => Stream.t<JSON.t, string, unit>>
 
+  // Event log replay registry: aggregate EventLog name → replay function (entityId → events)
+  let registerEventLogReplay: (string, string => promise<array<JSON.t>>) => unit
+  let getEventLogReplay: string => option<string => promise<array<JSON.t>>>
+
+  // DCB event log read registry: DCB EventLog name → read function
+  let registerDcbEventLogRead: (
+    string,
+    (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) => promise<
+      ReventlessCore.DcbEventLog_Adapter.rawReadResult,
+    >,
+  ) => unit
+  let getDcbEventLogRead: string => option<
+    (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) => promise<
+      ReventlessCore.DcbEventLog_Adapter.rawReadResult,
+    >,
+  >
+
   let reset: unit => unit
 }
 
@@ -107,6 +124,14 @@ module Impl = (C: BusConfig): T => {
   let queryDbRegistry: ref<dict<ReventlessCore.QueryDb_Adapter.operations>> = ref(Dict.make())
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
   let queryDbStreamRegistry: ref<dict<unit => Stream.t<JSON.t, string, unit>>> = ref(Dict.make())
+  let eventLogReplayRegistry: ref<dict<string => promise<array<JSON.t>>>> = ref(Dict.make())
+  let dcbEventLogReadRegistry: ref<
+    dict<
+      (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) => promise<
+        ReventlessCore.DcbEventLog_Adapter.rawReadResult,
+      >,
+    >,
+  > = ref(Dict.make())
 
   // Create a new hub using the capacity from BusConfig.
   // None → unbounded (synchronous fan-out, no backpressure).
@@ -245,6 +270,13 @@ module Impl = (C: BusConfig): T => {
     queryDbStreamRegistry.contents->Dict.set(name, streamFn)
   let getQueryDbStream = name => queryDbStreamRegistry.contents->Dict.get(name)
 
+  let registerEventLogReplay = (name, replay) =>
+    eventLogReplayRegistry.contents->Dict.set(name, replay)
+  let getEventLogReplay = name => eventLogReplayRegistry.contents->Dict.get(name)
+  let registerDcbEventLogRead = (name, read) =>
+    dcbEventLogReadRegistry.contents->Dict.set(name, read)
+  let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents->Dict.get(name)
+
   let reset = () => {
     // Shut down all hubs — PubSub.shutdown interrupts Stream.fromQueue consumers,
     // causing Stream.runForEach to complete and Effect.scoped to close the subscription.
@@ -261,6 +293,8 @@ module Impl = (C: BusConfig): T => {
     queryDbRegistry := Dict.make()
     queryDbScanRegistry := Dict.make()
     queryDbStreamRegistry := Dict.make()
+    eventLogReplayRegistry := Dict.make()
+    dcbEventLogReadRegistry := Dict.make()
   }
 }
 

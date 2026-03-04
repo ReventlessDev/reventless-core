@@ -678,6 +678,7 @@ type mcpRegistrationParams = {
   pluginName: string,
   mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
+  eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
 }
 let mcpSchemaRegistrationHook: ref<option<mcpRegistrationParams => unit>> = ref(None)
 

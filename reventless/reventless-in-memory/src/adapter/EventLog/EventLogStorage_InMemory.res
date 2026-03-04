@@ -2,7 +2,7 @@
 // Uses Stm.TRef for transactional state management, preparing for future
 // atomic append+publish spanning storage and the event bus.
 
-let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name as _, ~opts as _) => {
+let makeStorage = (~name as _name, ~opts as _) => {
   let eventsRef =
     Stm.TRef.make(Dict.make())
     ->Stm.commit
@@ -54,13 +54,30 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name as _, ~opts as _
     )
   }
 
-  {
-    resources: [],
-    operations: Pulumi.Output.make({
-      ReventlessCore.EventLog_Adapter.append,
-      replay,
-      replayStream,
-      appendStream,
-    }),
+  (
+    _name,
+    replay,
+    {
+      ReventlessCore.EventLog_Adapter.resources: [],
+      operations: Pulumi.Output.make({
+        ReventlessCore.EventLog_Adapter.append,
+        replay,
+        replayStream,
+        appendStream,
+      }),
+    },
+  )
+}
+
+let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
+  let (_, _, storage) = makeStorage(~name, ~opts)
+  storage
+}
+
+module Make = (Bus: InMemory_Bus.T) => {
+  let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
+    let (storageName, replay, storage) = makeStorage(~name, ~opts)
+    Bus.registerEventLogReplay(storageName, replay)
+    storage
   }
 }

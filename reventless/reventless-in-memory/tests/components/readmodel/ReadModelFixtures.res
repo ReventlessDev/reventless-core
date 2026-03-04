@@ -122,10 +122,9 @@ let publishItemCreated = async (id, name) => {
 }
 
 // Query projected state from the in-memory QueryDb.
-// QueryDb is registered as "TestItemReadModelQueryDB"
-// (= ReadModel Spec.name ++ ComponentType.toName(QueryDb) = "TestItemReadModel" ++ "QueryDB").
+// QueryDb is registered with the ReadModel Spec.name = "TestItemReadModel".
 let loadState = async id => {
-  switch Bus.getQueryDb("TestItemReadModelQueryDB") {
+  switch Bus.getQueryDb("TestItemReadModel") {
   | None => []
   | Some(ops) =>
     let states =

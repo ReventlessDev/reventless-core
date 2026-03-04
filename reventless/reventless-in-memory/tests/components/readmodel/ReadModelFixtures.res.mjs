@@ -146,7 +146,7 @@ async function publishItemCreated(id, name) {
 }
 
 async function loadState(id) {
-  let ops = Bus.getQueryDb("TestItemReadModelQueryDB");
+  let ops = Bus.getQueryDb("TestItemReadModel");
   if (ops === undefined) {
     return [];
   }

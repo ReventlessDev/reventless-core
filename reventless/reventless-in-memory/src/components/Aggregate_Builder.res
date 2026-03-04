@@ -24,7 +24,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       RuntimeEnvironment,
       CommandGeneratorResolvers_GraphQL,
       CommandTopicChannel,
-      EventLogStorage_InMemory,
+      EventLogStorage_InMemory.Make(Bus),
       EventTopicPublisher,
       EventCollectorChannel,
       AggregateRuntimeBuilder,
