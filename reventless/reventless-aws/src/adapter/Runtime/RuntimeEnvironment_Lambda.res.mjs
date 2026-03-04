@@ -9,6 +9,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
@@ -46,8 +47,11 @@ function groupBySource(event) {
   return dict;
 }
 
+let logger = Runtime$ReventlessCore.defaultLogger;
+
 export {
   make,
   groupBySource,
+  logger,
 }
 /* @pulumi/aws Not a pure module */

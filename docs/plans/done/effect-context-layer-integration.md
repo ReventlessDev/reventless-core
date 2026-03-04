@@ -1,6 +1,6 @@
 # Effect Context & Layer Integration Plan
 
-**Status:** Complete (all phases A–F done)
+**Status:** Complete (phases A–H done; I & J deferred to [effect-based-handlers](effect-based-handlers.md))
 
 **Created:** 2026-02-28
 
@@ -543,124 +543,74 @@ invocation-scoped (different correlationId per call). This means:
 
 ### Follow-On Phases
 
-#### Phase G — Logger configurable at Platform level
+#### Phase G — Logger configurable at Platform level ✅
 
-**Scope:** Allow tests to opt in to `Logger.silent` to suppress log noise from the framework's
-own dispatch logging (e.g., "InMemory_Bus: no command handler").
+**Status:** Done.
 
-**What to add:**
-- `Platform.MakeWithConfig` functor: `(Config: {let logger: Logger.t}): Reventless.Platform.T`
-- `InMemory_Bus.MakeWithLogger` functor: `(Config: {let logger: Logger.t}): T`
-  (wraps `Impl` with `capacity = None` and the supplied logger)
-- Keep `Platform.Make()` and `InMemory_Bus.Make()` unchanged (default to `consoleLogger`)
+- `InMemory_Bus.MakeWithLogger` functor added (wraps `Impl` with `capacity = None` and supplied logger)
+- `Platform.MakeWithConfig` functor added; `Platform.Make` delegates via `include MakeWithConfig({let logger = Logger.consoleLogger})`
+- Zero call-site impact — existing `Platform.Make()` sites are unchanged
 
-**Files touched:** `Platform.res`, `InMemory_Bus.res`
-
-**Call-site impact:** Zero — existing `Platform.Make()` sites are unchanged.
+**Files changed:** `InMemory_Bus.res`, `Platform.res`
 
 ---
 
-#### Phase H — Logger in runtime builder functors
+#### Phase H — Logger in runtime builder functors ✅
 
-**Scope:** Replace all Category 2 Console.log calls (Lambda handler dispatch routing logs)
-with `logger.info / logger.warn` calls.
+**Status:** Done.
 
-**What to change:**
-- Add `logger: Logger.t` to `AggregateRuntime_Builder_Common.Make` functor
-  (extra module parameter, or as a named module `(Log: {let logger: Logger.t})`)
-- Add same to `EventCollectorRuntime_Builder_Single.Make`
-- Thread through `AggregateRuntime_Builder_Single`, `_PerAggregate`, `_Micro`,
-  `EventCollectorRuntime_Builder_PerEventCollector`
-- Thread through `PluginRuntime_Builder` up to the application handler entry point
-- Default to `Logger.consoleLogger` everywhere so no existing call sites break
+**Approach:** Added `runtimeLogger` type + `defaultLogger`/`silentLogger` to `Runtime.res`
+(synchronous `{info: string => unit, warn: string => unit}`) instead of `Logger.t` from
+`rescript-effect`, because `reventless-core`'s own `Logger.res` (old Logger) shadows the
+Effect-based `Logger` module within the `ReventlessCore` namespace. Added `let logger: runtimeLogger`
+to `Runtime.Environment` module type.
 
-**Files touched (runtime builder chain):**
-```
-AggregateRuntime_Builder_Common.res
-AggregateRuntime_Builder_Single.res
-AggregateRuntime_Builder_PerAggregate.res
-AggregateRuntime_Builder_Micro.res
-EventCollectorRuntime_Builder_Single.res
-EventCollectorRuntime_Builder_PerEventCollector.res
-PluginRuntime_Builder.res
-PluginRuntime_Builder_Single.res
-PluginRuntime_Builder_Micro.res
-```
+All Console.log/log2/log3 calls in handler dispatch (Category 2) and deploy-time `Output.apply`
+callbacks (Category 1) replaced with `log.info`/`log.warn` calls. "No handler found" cases
+use `log.warn`; successful dispatch uses `log.info`.
 
-**Category 1 (deploy-time)** can be migrated in the same commit by passing the same logger
-into the `Pulumi.Output.apply` closures via closure capture. No extra abstraction needed.
+**Files changed:**
+- `Runtime.res` — added `runtimeLogger` type, `defaultLogger`, `silentLogger`, `let logger` in `Environment`
+- `AggregateRuntime_Builder_Common.res` — replaced 7 Console.log calls
+- `EventCollectorRuntime_Builder_Single.res` — replaced 4 Console.log calls
+- `RuntimeEnvironment_InMemory.res` — added `let logger = ReventlessCore.Runtime.defaultLogger`
+- `RuntimeEnvironment_Lambda.res` — added `let logger = ReventlessCore.Runtime.defaultLogger`
 
-**AWS adapter entry point:** The Lambda handler (in `reventless-aws`) calls
-`PluginRuntime_Builder.handler(...)`. This is where the Logger implementation is chosen:
-`Logger.consoleLogger` for production (writes to CloudWatch), `Logger.silent` for tests.
+No changes needed to `AggregateRuntime_Builder_Single/PerAggregate/Micro`,
+`EventCollectorRuntime_Builder_PerEventCollector`, or `PluginRuntime_Builder*` — they
+don't have their own Console.log calls and satisfy the module type transitively through
+`RuntimeEnvironment`.
 
 ---
 
-#### Phase I — Logger in Effect pipelines (`'r` propagation)
+#### Phase I — Logger in Effect pipelines (`'r` propagation) — Deferred
 
-**Scope:** Effect-returning operations in components (CommandTopic, EventTopic, Stream variants)
-gain `Logger.t` in `'r`. Callers add `provideService` at the handler boundary.
-
-**What to change:**
-- `CommandTopic_Operations.publishJsons`, `publishJsonsStream`, `publishJsonStream` gain
-  `Logger.t` in `'r` by using `Effect.serviceWithEffect(Logger.tag, ...)` internally for any
-  diagnostic logging they emit.
-- Same for EventTopic publisher operations.
-- At Lambda handler entry points and in-memory test runners: add
-  `->Effect.provideService(Logger.tag, Logger.consoleLogger)` before `runPromise`.
-
-**Note:** Since `runPromise` accepts any `'r`, this phase is purely opt-in and non-breaking.
-Existing callers that don't add `provideService` still compile and run — they just use whatever
-Logger implementation was already in context (or none, since the default is the live Effect
-context which has no Logger injected, meaning the requirement goes unsatisfied silently).
+**Status:** Deferred. Requires converting `Runtime.eventHandler` from `async` to `Effect.t`
+first. See [effect-based-handlers.md](effect-based-handlers.md) for the prerequisite plan.
 
 ---
 
-#### Phase J — `RequestContext` propagation through Effect pipelines
+#### Phase J — `RequestContext` propagation through Effect pipelines — Deferred
 
-**Scope:** Effects that need per-invocation data (correlationId, future tenantId) declare
-`RequestContext.t` in `'r` instead of accepting those values as function arguments.
-
-**What to change:**
-- Any Effect-returning function that currently takes `~correlationId: string` as a parameter is
-  changed to use `Effect.serviceWith(RequestContext.tag, ctx => ctx.correlationId)` instead.
-- Lambda handler entry point extracts the correlationId from the event and provides it:
-  ```rescript
-  effect
-  ->Effect.provideService(RequestContext.tag, {correlationId: event.meta.correlationId})
-  ->Effect.provideService(Logger.tag, Logger.consoleLogger)
-  ->Effect.runPromise
-  ```
-- In-memory test runners provide a test context:
-  ```rescript
-  ->Effect.provideService(RequestContext.tag, RequestContext.test())
-  ->Effect.provideService(Logger.tag, Logger.silent)
-  ->Effect.runPromise
-  ```
-
-**Prerequisite:** Phase I (Logger in Effect pipelines) should be stable first, as both services
-are provided together at the same handler boundary.
+**Status:** Deferred. Same prerequisite as Phase I.
+See [effect-based-handlers.md](effect-based-handlers.md).
 
 ---
 
 ### Migration Order & Priority
 
-| Phase | What | Effort | Value | Prerequisite |
-|-------|------|--------|-------|-------------|
-| G | Platform-level Logger config | XS | Medium | Phase F |
-| H | Logger in runtime builder functors | M | High | Phase G |
-| I | Logger in Effect pipelines (`'r`) | S | Medium | Phases A–F |
-| J | RequestContext in Effect pipelines | S | High | Phase I |
+| Phase | What | Effort | Value | Status |
+|-------|------|--------|-------|--------|
+| G | Platform-level Logger config | XS | Medium | ✅ Done |
+| H | Logger in runtime builder functors | M | High | ✅ Done |
+| I | Logger in Effect pipelines (`'r`) | S | Medium | Deferred → [effect-based-handlers](effect-based-handlers.md) |
+| J | RequestContext in Effect pipelines | S | High | Deferred → [effect-based-handlers](effect-based-handlers.md) |
 
-**Recommended order:** G → H (these address all Category 1 and 2 Console.log calls) → I → J.
+Phases G and H are complete — all Category 1 and 2 Console.log calls are replaced with
+injectable `runtimeLogger` calls that can be silenced in tests.
 
-Phases I and J are the purest application of the Effect service pattern but have the smallest
-immediate impact because the pipeline-internal logging (Category 2) is more frequent and more
-visible than the per-operation pipeline logs.
-
-Phase H provides the highest return on investment: it replaces all remaining framework-level
-Console.log calls with structured logging that can be silenced in tests and enriched in
-production (e.g., prefixed with correlationId via a `withPrefix` wrapper on `Logger.t`).
+Phases I and J require converting `Runtime.eventHandler` from `async` to `Effect.t` first.
+See [effect-based-handlers.md](effect-based-handlers.md) for the prerequisite plan.
 
 ---
 

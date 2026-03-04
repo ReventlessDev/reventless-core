@@ -22,7 +22,8 @@ function Make(Bus) {
   let include = Plugin_Builder$ReventlessCore.Make(InMemory_PluginSpec$ReventlessInMemory)({})(GraphQL_InMemory_Adapter$ReventlessInMemory)({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
   })(EventCollectorChannel)({
     make: QE.make
   })(RemoteChannel)({

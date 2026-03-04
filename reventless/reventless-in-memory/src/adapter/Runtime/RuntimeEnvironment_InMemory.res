@@ -42,3 +42,5 @@ let groupBySource = (event: JSON.t) => {
 }
 
 external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'r> = "%identity"
+
+let logger = ReventlessCore.Runtime.defaultLogger

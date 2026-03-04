@@ -330,6 +330,166 @@ function Make($star) {
   };
 }
 
+function MakeWithLogger(L) {
+  let logger = L.logger;
+  let eventHubs = {
+    contents: {}
+  };
+  let subscriberCounts = {
+    contents: {}
+  };
+  let commandHandlers = {
+    contents: {}
+  };
+  let queryDbRegistry = {
+    contents: {}
+  };
+  let queryDbScanRegistry = {
+    contents: {}
+  };
+  let queryDbStreamRegistry = {
+    contents: {}
+  };
+  let eventLogReplayRegistry = {
+    contents: {}
+  };
+  let dcbEventLogReadRegistry = {
+    contents: {}
+  };
+  let makeHub = () => Effect.Effect.runSync(Effect.PubSub.unbounded());
+  let subscribeToEvents = (topicName, handler) => {
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = makeHub();
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    subscriberCounts.contents[topicName] = n + 1 | 0;
+    let drainLoop = Effect.Effect.scoped(Effect.Effect.flatMap(Effect.PubSub.subscribe(hub), queue => Effect.Stream.runForEach(Effect.Stream.fromQueue(queue), msg => Effect.Effect.zipRight(Effect.Effect.promise(() => handler(msg.service, msg.meta, msg.json)), msg.done_))));
+    Effect.Effect.runFork(drainLoop);
+  };
+  let subscribeToEventStream = topicName => {
+    let h = eventHubs.contents[topicName];
+    let hub;
+    if (h !== undefined) {
+      hub = Primitive_option.valFromOption(h);
+    } else {
+      let h$1 = makeHub();
+      eventHubs.contents[topicName] = h$1;
+      hub = h$1;
+    }
+    return Effect.Effect.map(Effect.Effect.acquireRelease(Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+      subscriberCounts.contents[topicName] = n + 1 | 0;
+    }), () => Effect.PubSub.subscribe(hub)), (queue, _exit) => Effect.Effect.zipRight(Effect.Effect.sync(() => {
+      let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 1);
+      subscriberCounts.contents[topicName] = n - 1 | 0;
+    }), Effect.Queue.shutdown(queue))), queue => Effect.Stream.fromQueue(queue));
+  };
+  let publishEvent = async (topicName, service, meta, json) => {
+    let hub = eventHubs.contents[topicName];
+    if (hub === undefined) {
+      return;
+    }
+    let hub$1 = Primitive_option.valFromOption(hub);
+    let n = Stdlib_Option.getOr(subscriberCounts.contents[topicName], 0);
+    if (n === 0) {
+      return;
+    }
+    let allDone = Effect.Effect.runSync(Effect.Deferred.make());
+    let remaining = {
+      contents: n
+    };
+    let done_ = Effect.Effect.flatMap(Effect.Effect.sync(() => {
+      remaining.contents = remaining.contents - 1 | 0;
+    }), () => {
+      if (remaining.contents === 0) {
+        return Effect.Effect.map(Effect.Deferred.succeed(allDone, undefined), param => {});
+      } else {
+        return Effect.Effect.succeed();
+      }
+    });
+    let msg = {
+      service: service,
+      meta: meta,
+      json: json,
+      done_: done_
+    };
+    let publishAndWait = Effect.Effect.zipRight(Effect.Effect.sync(() => {
+      Effect.Effect.runSync(Effect.PubSub.publish(hub$1, msg));
+    }), Effect.Deferred.await(allDone));
+    await Effect.Effect.runPromise(publishAndWait);
+  };
+  let dispatchCommand = async (channelName, json) => {
+    let handler = commandHandlers.contents[channelName];
+    if (handler !== undefined) {
+      return await handler(json, undefined);
+    } else {
+      Effect.Effect.runSync(logger.warn("InMemory_Bus: no command handler for channel: " + channelName));
+      return;
+    }
+  };
+  let registerCommandHandler = (channelName, handler) => {
+    commandHandlers.contents[channelName] = handler;
+  };
+  let registerQueryDb = (name, ops) => {
+    queryDbRegistry.contents[name] = ops;
+  };
+  let getQueryDb = name => queryDbRegistry.contents[name];
+  let registerQueryDbScan = (name, scan) => {
+    queryDbScanRegistry.contents[name] = scan;
+  };
+  let getQueryDbScan = name => queryDbScanRegistry.contents[name];
+  let registerQueryDbStream = (name, streamFn) => {
+    queryDbStreamRegistry.contents[name] = streamFn;
+  };
+  let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerEventLogReplay = (name, replay) => {
+    eventLogReplayRegistry.contents[name] = replay;
+  };
+  let getEventLogReplay = name => eventLogReplayRegistry.contents[name];
+  let registerDcbEventLogRead = (name, read) => {
+    dcbEventLogReadRegistry.contents[name] = read;
+  };
+  let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
+  let reset = () => {
+    let shutdownAll = Effect.Effect.map(Effect.Effect.all(Object.values(eventHubs.contents).map(hub => Effect.PubSub.shutdown(hub)), {
+      concurrency: "unbounded"
+    }), param => {});
+    Effect.Effect.runSync(shutdownAll);
+    eventHubs.contents = {};
+    subscriberCounts.contents = {};
+    commandHandlers.contents = {};
+    queryDbRegistry.contents = {};
+    queryDbScanRegistry.contents = {};
+    queryDbStreamRegistry.contents = {};
+    eventLogReplayRegistry.contents = {};
+    dcbEventLogReadRegistry.contents = {};
+  };
+  return {
+    publishEvent: publishEvent,
+    subscribeToEvents: subscribeToEvents,
+    subscribeToEventStream: subscribeToEventStream,
+    dispatchCommand: dispatchCommand,
+    registerCommandHandler: registerCommandHandler,
+    registerQueryDb: registerQueryDb,
+    getQueryDb: getQueryDb,
+    registerQueryDbScan: registerQueryDbScan,
+    getQueryDbScan: getQueryDbScan,
+    registerQueryDbStream: registerQueryDbStream,
+    getQueryDbStream: getQueryDbStream,
+    registerEventLogReplay: registerEventLogReplay,
+    getEventLogReplay: getEventLogReplay,
+    registerDcbEventLogRead: registerDcbEventLogRead,
+    getDcbEventLogRead: getDcbEventLogRead,
+    reset: reset
+  };
+}
+
 function MakeBounded(C) {
   let capacity = C.capacity;
   let eventHubs = {
@@ -490,6 +650,7 @@ function MakeBounded(C) {
 export {
   Impl,
   Make,
+  MakeWithLogger,
   MakeBounded,
 }
 /* Logger Not a pure module */

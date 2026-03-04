@@ -10,7 +10,8 @@ import * as EventCollectorRuntime_Builder_PerEventCollector$ReventlessCore from 
 let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollector$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  asEventHandler: prim => prim
+  asEventHandler: prim => prim,
+  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
@@ -20,7 +21,8 @@ function Make(Spec) {
   return Mappings => ReadModel_Builder$ReventlessCore.Make(Spec)(Mappings)({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
   })({
     make: QueryDbStorage_DynamoDb$ReventlessAws.make
   })(QueryDbResolvers_AppSync$ReventlessAws)({

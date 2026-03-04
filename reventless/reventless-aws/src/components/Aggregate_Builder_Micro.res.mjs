@@ -12,7 +12,8 @@ import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/
 let AggregateRuntimeBuilder = AggregateRuntime_Builder_Micro$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  asEventHandler: prim => prim
+  asEventHandler: prim => prim,
+  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
 })({
@@ -24,7 +25,8 @@ function Make(Spec) {
   return Behavior => (EventMappings => Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)(EventMappings)({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
   })(CommandGeneratorResolvers_AppSync$ReventlessAws)({
     make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
   })(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({

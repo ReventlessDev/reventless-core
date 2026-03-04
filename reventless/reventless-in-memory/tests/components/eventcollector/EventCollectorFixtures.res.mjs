@@ -45,7 +45,8 @@ let capturedEvents = {
 let EventCollectorMaker = EventCollector_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
   groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-  asEventHandler: prim => prim
+  asEventHandler: prim => prim,
+  logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
 })(EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus));
 
 let eventCollector = EventCollectorMaker.make("TestEC", allEventTopics, {});

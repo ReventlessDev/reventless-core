@@ -33,6 +33,7 @@ module Make = (
     maxTimeout: 0,
   })
   let eventCollectorHandlers = Dict.make()
+  let log = RuntimeEnvironment.logger
 
   let eventCollectorHandler = parentName =>
     async (event: RuntimeEnvironment.event, context) => {
@@ -44,9 +45,9 @@ module Make = (
         switch eventCollectorHandlers->Dict.get(urn) {
         | Some(handlers) =>
           let count = handlers->Array.length->Int.toString
-          Console.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
+          log.info(`----- ${desc} found ${count} handler(s) for EventCollector ${urn}`)
           let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
-        | None => Console.log2(`${desc} no handler found:`, urn)
+        | None => log.warn(`${desc} no handler found: ${urn}`)
         }
       })
       ->Promise.all
@@ -62,7 +63,7 @@ module Make = (
           parts->Array.getUnsafe(parts->Array.length - 1)
         })
         ->Option.getOr("Unknown")
-      Console.log(`validateParent: parent ${parentName} type: ${pulumiType}`)
+      log.info(`validateParent: parent ${parentName} type: ${pulumiType}`)
       switch (grandParent.contents, parentType.contents) {
       | (None, None) =>
         parentType := Some(pulumiType)
@@ -132,7 +133,7 @@ module Make = (
         (registered, urns, handler)
         ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((_, urns, handler)) => {
-          Console.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
+          log.info(`***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`)
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
@@ -167,12 +168,13 @@ module Make = (
 
         let _connectResources = EventCollectorChannel.connect(~name, ~channelSpecs, ~runtime, ~opts)
       | _ =>
-        Console.log3(
-          "EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set:",
-          grandParent.contents->Option.map(grandParent =>
-            `${grandParent.pulumiType} ${grandParent.name->Option.getOr("UnnamedGrandParent")}`
-          ),
-          parentType.contents,
+        let gpInfo =
+          grandParent.contents
+          ->Option.map(gp => `${gp.pulumiType} ${gp.name->Option.getOr("UnnamedGrandParent")}`)
+          ->Option.getOr("None")
+        let ptInfo = parentType.contents->Option.getOr("None")
+        log.warn(
+          `EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set: grandParent=${gpInfo}, parentType=${ptInfo}`,
         )
         JsError.throwWithMessage(
           "EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set",

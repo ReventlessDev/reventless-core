@@ -15,7 +15,8 @@ function Make(Bus) {
   let Make$1 = Spec => (Mappings => ReadModel_Builder$ReventlessCore.Make(Spec)(Mappings)({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
   })(QueryDbStorage)(QueryDbResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder));
   return {
     RuntimeEnvironment: undefined,

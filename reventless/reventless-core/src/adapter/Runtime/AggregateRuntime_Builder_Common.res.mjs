@@ -12,16 +12,17 @@ function Make(RuntimeEnvironment) {
     let commandGeneratorHandlers = {};
     let commandTopicHandlers = {};
     let eventCollectorHandlers = {};
+    let log = RuntimeEnvironment.logger;
     let aggregateHandler = aggregateName => (async (event, context) => {
       let desc = `aggregateHandler for ` + aggregateName + `:`;
       let info = CommandGenerator$ReventlessCore.metaInfo(event);
       if (info !== undefined) {
         let handler = commandGeneratorHandlers[info];
         if (handler !== undefined) {
-          console.log(`----- ` + desc + ` found handler for CommandGenerator`, info);
+          log.info(`----- ` + desc + ` found handler for CommandGenerator ` + info);
           return await handler(event, context);
         } else {
-          console.log(desc + ` no handler found:`, info);
+          log.warn(desc + ` no handler found: ` + info);
           return "";
         }
       }
@@ -30,17 +31,16 @@ function Make(RuntimeEnvironment) {
         let urn = param[0];
         let handler = commandTopicHandlers[urn];
         if (handler !== undefined) {
-          console.log(`----- ` + desc + ` found handler for CommandTopic`, urn);
+          log.info(`----- ` + desc + ` found handler for CommandTopic ` + urn);
           return await handler(event, context);
         }
         let handlers = eventCollectorHandlers[urn];
-        if (handlers !== undefined) {
-          let count = handlers.length.toString();
-          console.log(`----- ` + desc + ` found ` + count + ` handler(s) for EventCollector`, urn);
-          await Promise.all(handlers.map(handler => handler(event, context)));
-          return;
+        if (handlers === undefined) {
+          return log.warn(desc + ` no handler found: ` + urn);
         }
-        console.log(desc + ` no handler found:`, urn);
+        let count = handlers.length.toString();
+        log.info(`----- ` + desc + ` found ` + count + ` handler(s) for EventCollector ` + urn);
+        await Promise.all(handlers.map(handler => handler(event, context)));
       }));
       return "";
     });
@@ -95,7 +95,7 @@ function Make(RuntimeEnvironment) {
       ]).apply(param => {
         let handler = param[1];
         let infos = param[0];
-        console.log(`***** forCommandGenerator ` + commandGeneratorName + `: set handler for`, infos);
+        log.info(`***** forCommandGenerator ` + commandGeneratorName + `: set handler for ` + infos.join(", "));
         return infos.map(info => {
           commandGeneratorHandlers[info] = handler;
         });
@@ -117,7 +117,7 @@ function Make(RuntimeEnvironment) {
         handler
       ]).apply(param => {
         let urn = param[0];
-        console.log(`***** forCommandTopic ` + commandTopicName + `: set handler for ` + urn);
+        log.info(`***** forCommandTopic ` + commandTopicName + `: set handler for ` + urn);
         commandTopicHandlers[urn] = RuntimeEnvironment.asEventHandler(param[1]);
       });
     };
@@ -139,7 +139,7 @@ function Make(RuntimeEnvironment) {
       ]).apply(param => {
         let handler = param[1];
         let urns = param[0];
-        console.log(`***** forEventCollector ` + eventCollectorName + `: set handler for`, urns);
+        log.info(`***** forEventCollector ` + eventCollectorName + `: set handler for ` + urns.join(", "));
         return urns.map(urn => {
           let handlers = Stdlib_Option.getOr(eventCollectorHandlers[urn], []);
           eventCollectorHandlers[urn] = handlers.concat([RuntimeEnvironment.asEventHandler(handler)]);
@@ -153,6 +153,7 @@ function Make(RuntimeEnvironment) {
       commandGeneratorHandlers: commandGeneratorHandlers,
       commandTopicHandlers: commandTopicHandlers,
       eventCollectorHandlers: eventCollectorHandlers,
+      log: log,
       aggregateHandler: aggregateHandler,
       getRuntimeSpec: getRuntimeSpec,
       setRuntimeSpec: setRuntimeSpec,

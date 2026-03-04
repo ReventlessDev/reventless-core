@@ -14,12 +14,14 @@ function Make(Bus) {
   let TaskRuntimeBuilder = TaskRuntime_Builder_PerBucket$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
   })(TaskBucket_InMemory$ReventlessInMemory);
   let Make$1 = Spec => Task_Builder$ReventlessCore.Make(Spec)({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
   })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(TaskRuntimeBuilder)(TaskBucket_InMemory$ReventlessInMemory)(SideEffectHandler_InMemory$ReventlessInMemory);
   return {
     RuntimeEnvironment: undefined,

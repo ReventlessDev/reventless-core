@@ -30,6 +30,8 @@ module Make = (
   let commandTopicHandlers: dict<eventHandler> = Dict.make()
   let eventCollectorHandlers: dict<array<eventHandler>> = Dict.make()
 
+  let log = RuntimeEnvironment.logger
+
   let aggregateHandler = aggregateName =>
     async (event: RuntimeEnvironment.event, context) => {
       let desc = `aggregateHandler for ${aggregateName}:`
@@ -37,10 +39,10 @@ module Make = (
       | Some(info) =>
         switch commandGeneratorHandlers->Dict.get(info) {
         | Some(handler) =>
-          Console.log2(`----- ${desc} found handler for CommandGenerator`, info)
+          log.info(`----- ${desc} found handler for CommandGenerator ${info}`)
           await handler(event->CommandGenerator.asPayload, context)
         | None =>
-          Console.log2(`${desc} no handler found:`, info)
+          log.warn(`${desc} no handler found: ${info}`)
           ""
         }
       | _ =>
@@ -50,15 +52,15 @@ module Make = (
         ->Array.map(async ((urn, event)) => {
           switch commandTopicHandlers->Dict.get(urn) {
           | Some(handler) =>
-            Console.log2(`----- ${desc} found handler for CommandTopic`, urn)
+            log.info(`----- ${desc} found handler for CommandTopic ${urn}`)
             await handler(event, context)
           | None =>
             switch eventCollectorHandlers->Dict.get(urn) {
             | Some(handlers) =>
               let count = handlers->Array.length->Int.toString
-              Console.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
+              log.info(`----- ${desc} found ${count} handler(s) for EventCollector ${urn}`)
               let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
-            | None => Console.log2(`${desc} no handler found:`, urn)
+            | None => log.warn(`${desc} no handler found: ${urn}`)
             }
           }
         })
@@ -131,7 +133,7 @@ module Make = (
         (infos, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
-          Console.log2(`***** forCommandGenerator ${commandGeneratorName}: set handler for`, infos)
+          log.info(`***** forCommandGenerator ${commandGeneratorName}: set handler for ${infos->Array.join(", ")}`)
           infos->Array.map(info => commandGeneratorHandlers->Dict.set(info, handler))
         })
 
@@ -161,7 +163,7 @@ module Make = (
         (urn, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
-          Console.log(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
+          log.info(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
           commandTopicHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
         })
     | None =>
@@ -200,10 +202,7 @@ module Make = (
         (urns, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urns, handler)) => {
-          Console.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
-          // urns->Array.map(urn =>
-          //   eventCollectorHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
-          // )
+          log.info(`***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`)
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(

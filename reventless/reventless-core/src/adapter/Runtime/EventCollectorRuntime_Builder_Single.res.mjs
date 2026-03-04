@@ -22,19 +22,19 @@ function Make(RuntimeEnvironment) {
       }
     };
     let eventCollectorHandlers = {};
+    let log = RuntimeEnvironment.logger;
     let eventCollectorHandler = parentName => (async (event, context) => {
       let desc = `eventCollectorHandler for ` + parentName + `:`;
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource(event)).map(async param => {
         let event = param[1];
         let urn = param[0];
         let handlers = eventCollectorHandlers[urn];
-        if (handlers !== undefined) {
-          let count = handlers.length.toString();
-          console.log(`----- ` + desc + ` found ` + count + ` handler(s) for EventCollector`, urn);
-          await Promise.all(handlers.map(handler => handler(event, context)));
-          return;
+        if (handlers === undefined) {
+          return log.warn(desc + ` no handler found: ` + urn);
         }
-        console.log(desc + ` no handler found:`, urn);
+        let count = handlers.length.toString();
+        log.info(`----- ` + desc + ` found ` + count + ` handler(s) for EventCollector ` + urn);
+        await Promise.all(handlers.map(handler => handler(event, context)));
       }));
     });
     let validateParent = parent => {
@@ -44,7 +44,7 @@ function Make(RuntimeEnvironment) {
           let parts = fullType.split(":");
           return parts[parts.length - 1 | 0];
         }), "Unknown");
-        console.log(`validateParent: parent ` + parentName + ` type: ` + pulumiType);
+        log.info(`validateParent: parent ` + parentName + ` type: ` + pulumiType);
         let match = grandParent.contents;
         let match$1 = parentType.contents;
         if (match !== undefined) {
@@ -93,7 +93,7 @@ function Make(RuntimeEnvironment) {
       ]).apply(param => {
         let handler = param[2];
         let urns = param[1];
-        console.log(`***** forEventCollector ` + eventCollectorName + `: set handler for`, urns);
+        log.info(`***** forEventCollector ` + eventCollectorName + `: set handler for ` + urns.join(", "));
         return urns.map(urn => {
           let handlers = Stdlib_Option.getOr(eventCollectorHandlers[urn], []);
           eventCollectorHandlers[urn] = handlers.concat([RuntimeEnvironment.asEventHandler(handler)]);
@@ -125,7 +125,9 @@ function Make(RuntimeEnvironment) {
         exit = 1;
       }
       if (exit === 1) {
-        console.log("EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set:", Stdlib_Option.map(grandParent.contents, grandParent => grandParent.__pulumiType + ` ` + Stdlib_Option.getOr(grandParent.__name, "UnnamedGrandParent")), parentType.contents);
+        let gpInfo = Stdlib_Option.getOr(Stdlib_Option.map(grandParent.contents, gp => gp.__pulumiType + ` ` + Stdlib_Option.getOr(gp.__name, "UnnamedGrandParent")), "None");
+        let ptInfo = Stdlib_Option.getOr(parentType.contents, "None");
+        log.warn(`EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set: grandParent=` + gpInfo + `, parentType=` + ptInfo);
         Stdlib_JsError.throwWithMessage("EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set");
       }
       finished.contents = true;

@@ -20,7 +20,8 @@ function Make(Bus) {
   let CoreMaker = AutomationSlice_Builder$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
   })(QueryDbStorage)(QueryDbResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => {
     let include = CoreMaker.Make(Spec);

@@ -9,14 +9,16 @@
 // The platform starts a GraphQL server on port 4000 after all components are built.
 // Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
-module Make = (): (ReventlessInfra.Platform.T
+// Logger-configurable platform — inject Logger.silent to suppress log noise in tests.
+// Usage: module Platform = Platform.MakeWithConfig({let logger = Logger.silent})
+module MakeWithConfig = (Config: {let logger: Logger.t}): (ReventlessInfra.Platform.T
   with type api = unit
   and type role = unit
 ) => {
   type api = unit
   type role = unit
 
-  module Bus = InMemory_Bus.Make()
+  module Bus = InMemory_Bus.MakeWithLogger({let logger = Config.logger})
 
   module AggregateMaker = Aggregate_Builder.Make(Bus)
   module ReadModelMaker = ReadModel_Builder.Make(Bus)
@@ -318,4 +320,12 @@ module Make = (): (ReventlessInfra.Platform.T
     // Start the MCP server alongside GraphQL (shared lifecycle).
     MCP_Server.start()
   }
+}
+
+// Default platform — uses Logger.consoleLogger for all runtime diagnostics.
+module Make = (): (ReventlessInfra.Platform.T
+  with type api = unit
+  and type role = unit
+) => {
+  include MakeWithConfig({let logger = Logger.consoleLogger})
 }

@@ -9,7 +9,8 @@ import * as EventCollectorRuntime_Builder_Single$ReventlessCore from "@reventles
 let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_Single$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  asEventHandler: prim => prim
+  asEventHandler: prim => prim,
+  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
@@ -18,14 +19,16 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_Single$Reventle
 let include = SideEffectHandler_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  asEventHandler: prim => prim
+  asEventHandler: prim => prim,
+  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
 })(EventCollector_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  asEventHandler: prim => prim
+  asEventHandler: prim => prim,
+  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect

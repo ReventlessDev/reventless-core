@@ -9,7 +9,8 @@ function Make(Bus) {
   let include = PluginRuntime_Builder_Micro$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    asEventHandler: prim => prim
+    asEventHandler: prim => prim,
+    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
   })(ECChannel);
   return {
     ECChannel: ECChannel,

@@ -307,6 +307,14 @@ module Make = (): T => {
   })
 }
 
+// Logger-configurable unbounded bus — use with Platform.MakeWithConfig to inject Logger.silent in tests.
+module MakeWithLogger = (L: {let logger: Logger.t}): T => {
+  include Impl({
+    let capacity: option<int> = None
+    let logger = L.logger
+  })
+}
+
 // Bounded bus (Phase G): each subscriber queue has a fixed capacity.
 // publishEvent suspends when any subscriber's queue is full — providing backpressure.
 // Resolves in 3 microtask ticks (1 more than unbounded).

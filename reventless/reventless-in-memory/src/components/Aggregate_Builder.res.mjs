@@ -20,7 +20,8 @@ function Make(Bus) {
     let include = Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)(EventMappings)({
       make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
       groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-      asEventHandler: prim => prim
+      asEventHandler: prim => prim,
+      logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
     })({
       handleResolversEvent: CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handleResolversEvent,
       make: CommandGeneratorResolvers_GraphQL$ReventlessInMemory.make
