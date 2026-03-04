@@ -37,16 +37,51 @@ let generateTools = (
 
     switch schema {
     | Union({anyOf}) =>
-      // Aggregate commands: each variant is a separate tool
+      // Aggregate commands: each variant is a separate tool.
+      // Inject an "id" property (aggregate instance ID) since aggregate
+      // commands target a specific instance.
       anyOf->Array.forEachWithIndex((variantSchema, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
           let inputSchema = SuryToJsonSchema.deriveVariantSchema(variantSchema)
+          // Add "id" to the JSON Schema properties and required list
+          let withId = switch inputSchema->JSON.Decode.object {
+          | Some(obj) =>
+            let props = switch obj->Dict.get("properties") {
+            | Some(p) =>
+              switch p->JSON.Decode.object {
+              | Some(propsDict) =>
+                // Build new dict with "id" first so it appears first in the schema
+                let ordered = Dict.fromArray([
+                  ("id", SuryToJsonSchema.jsonObject([("type", SuryToJsonSchema.str("string"))])),
+                ])
+                propsDict->Dict.toArray->Array.forEach(((k, v)) => ordered->Dict.set(k, v))
+                JSON.Encode.object(ordered)
+              | None => p
+              }
+            | None => JSON.Encode.null
+            }
+            obj->Dict.set("properties", props)
+            // Add "id" to required array
+            switch obj->Dict.get("required") {
+            | Some(req) =>
+              switch req->JSON.Decode.array {
+              | Some(arr) =>
+                arr->Array.unshift(JSON.Encode.string("id"))
+                obj->Dict.set("required", JSON.Encode.array(arr))
+              | None => ()
+              }
+            | None =>
+              obj->Dict.set("required", JSON.Encode.array([JSON.Encode.string("id")]))
+            }
+            JSON.Encode.object(obj)
+          | None => inputSchema
+          }
           let desc =
             entryDescription->String.length > 0
               ? entryDescription
               : `Execute ${fieldName} on ${pluginName}`
-          tools->Array.push({name: fieldName, description: desc, inputSchema})
+          tools->Array.push({name: fieldName, description: desc, inputSchema: withId})
         }
       })
     | Object(_) =>

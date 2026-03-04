@@ -139,12 +139,22 @@ let generate = (
     let schema = entry.commandSchema
     switch schema {
     | Union({anyOf}) =>
-      // Aggregate command union: pair each fieldName[i] with anyOf[i]
+      // Aggregate command union: pair each fieldName[i] with anyOf[i].
+      // Prepend "id: ID!" — aggregate commands target a specific instance.
       anyOf->Array.forEachWithIndex((variantSchema, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
           deriveMutationFieldFromObject(~fieldName, variantSchema, ~authorization=None)
-          ->Option.forEach(field => mutations->Array.push(field))
+          ->Option.forEach(field => {
+            let withId = if field->String.includes("(") {
+              // Has other args — prepend id
+              field->String.replace(`${fieldName}(`, `${fieldName}(id: ID!, `)
+            } else {
+              // No args — add (id: ID!)
+              field->String.replace(`${fieldName}:`, `${fieldName}(id: ID!):`)
+            }
+            mutations->Array.push(withId)
+          })
         }
       })
     | Object(_) =>

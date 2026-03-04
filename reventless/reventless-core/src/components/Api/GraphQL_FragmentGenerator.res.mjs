@@ -77,7 +77,8 @@ function generate(mutationEntries, queryEntries) {
           let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
           if (fieldName.length > 0) {
             return Stdlib_Option.forEach(deriveMutationFieldFromObject(fieldName, variantSchema, undefined), field => {
-              mutations.push(field);
+              let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);
+              mutations.push(withId);
             });
           }
         });

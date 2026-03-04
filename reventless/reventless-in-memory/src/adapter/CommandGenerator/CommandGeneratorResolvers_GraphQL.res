@@ -36,6 +36,7 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
   | _ => []
   }
 
+  // Aggregate commands target a specific instance — prepend id: ID!
   let sdlFields = fields->Array.mapWithIndex((field, i) => {
     let variantSchema = anyOf->Array.get(i)->Option.getOr(commandSchema)
     switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
@@ -43,8 +44,13 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
       variantSchema,
       ~authorization=None,
     ) {
-    | Some(sdl) => sdl
-    | None => `  ${field}: String!`
+    | Some(sdl) =>
+      if sdl->String.includes("(") {
+        sdl->String.replace(`${field}(`, `${field}(id: ID!, `)
+      } else {
+        sdl->String.replace(`${field}:`, `${field}(id: ID!):`)
+      }
+    | None => `  ${field}(id: ID!): String!`
     }
   })
 

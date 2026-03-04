@@ -24,9 +24,13 @@ function register(fields, commandSchema) {
     let variantSchema = Stdlib_Option.getOr(anyOf[i], commandSchema);
     let sdl = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(field, variantSchema, undefined);
     if (sdl !== undefined) {
-      return sdl;
+      if (sdl.includes("(")) {
+        return sdl.replace(field + `(`, field + `(id: ID!, `);
+      } else {
+        return sdl.replace(field + `:`, field + `(id: ID!):`);
+      }
     } else {
-      return `  ` + field + `: String!`;
+      return `  ` + field + `(id: ID!): String!`;
     }
   });
   let resolvers = {};
