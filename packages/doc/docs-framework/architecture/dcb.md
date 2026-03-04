@@ -9,7 +9,7 @@ Client: Client { class: client }
 SQS: "DCB Command Topic" { class: command-topic }
 Handler: "filteringHandler" { class: command-generator }
 Slice1: AddProduct Slice { class: state-change-slice }
-Slice2: UpdateProductPrice Slice { class: state-change-slice }
+Slice2: ChangeProductPrice Slice { class: state-change-slice }
 EventLog: "DcbEventLog\n(Shared Event Log)" { class: dcb-event-log }
 ViewSlice: "ProductsView Slice\n(Projection)" { class: state-view-slice }
 QueryDb: "ProductsView\nQueryDb" { class: query-db }

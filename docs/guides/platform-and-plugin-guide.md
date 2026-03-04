@@ -21,6 +21,15 @@ This guide walks through building platforms with plugins using Reventless. It co
 6. [Configuration Reference](#configuration-reference)
 7. [Cross-Plugin Communication](#cross-plugin-communication)
 8. [Conventions & Pitfalls](#conventions--pitfalls)
+9. [DCB Approach](#dcb-approach)
+   - [DCB Event Log](#dcb-event-log)
+   - [StateChangeSlice](#statechangeslice)
+   - [StateViewSlice](#stateviewslice)
+   - [DCB Plugin Composition](#dcb-plugin-composition)
+   - [DCB Extension Point / Extension Adapter Pattern](#dcb-extension-point--extension-adapter-pattern)
+   - [DCB Directory Layout](#dcb-directory-layout)
+   - [DCB Package Structure](#dcb-package-structure)
+   - [DCB Platform Package](#dcb-platform-package)
 
 ---
 
@@ -854,3 +863,436 @@ These aggregates:
 - **Missing `@schema`** — every command, event, error, state, and directive type needs it
 - **Payload-less events** (e.g., `| Shipped`) — these serialize as bare JSON strings rather than objects. This is fully supported by `splitMessage`/`combineMessage`, so you can freely use payload-less variants when no payload is needed
 - **Stale build cache** — after renaming or moving files, run `npx rescript clean` then rebuild
+
+---
+
+## DCB Approach
+
+The **DCB** (Decision-Causation-Based) approach is an alternative to the aggregate pattern. Instead of per-entity aggregates with private event streams, DCB uses a **shared event log** per bounded context. Commands are handled by **StateChangeSlices** (write-side) and queries by **StateViewSlices** (read-side). Both slice types read from the same event log, filtering events by tags.
+
+The DCB example lives in `examples/online-shop-dcb/` and mirrors the same online-shop domain as the aggregate example.
+
+### Key differences from the aggregate approach
+
+| Aspect | Aggregates | DCB |
+|--------|-----------|-----|
+| Event storage | One event stream per aggregate instance | One shared event log per bounded context |
+| Write-side | Behavior (`init`/`apply`/`create`/`execute`) | StateChangeSlice (`initialDecisionModel`/`reduce`/`decide`) |
+| Read-side | ReadModel + Projection mappings | StateViewSlice (`project`) |
+| Entity filtering | Implicit (stream per ID) | Explicit (`@s.matches(DcbTag.string)` on entity ID fields) |
+| State model | Full aggregate state rebuilt from events | Minimal decision model — only what's needed to accept/reject |
+
+---
+
+### DCB Event Log
+
+A DCB event log defines **all events** for a bounded context in a single type. Entity ID fields are tagged with `@s.matches(DcbTag.string)` so the runtime can filter events by entity.
+
+**`CatalogEventLog.res`**:
+```rescript
+open Reventless
+@schema
+type event =
+  | ProductAdded({
+      productId: @s.matches(DcbTag.string) string,
+      name: string,
+      description: string,
+      price: float,
+    })
+  | ProductNameChanged({productId: @s.matches(DcbTag.string) string, name: string})
+  | ProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
+  | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
+  | CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
+  | CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
+```
+
+Key points:
+- **`@s.matches(DcbTag.string)`** — required on every entity ID field. Without it, queries return ALL events instead of filtering by entity, causing phantom state in decision models
+- **Both command AND event types** need the tag annotation on entity ID fields
+- All entity types (Product, Category, etc.) share the same event log
+- The event log file has no `name` or `Id` — it's just a type definition
+
+---
+
+### StateChangeSlice
+
+A StateChangeSlice handles commands using a **decision model** — a minimal projection of past events that captures only the information needed to accept or reject a command.
+
+**`AddProduct.res`**:
+```rescript
+open Reventless
+open CatalogEventLog
+
+let name = "AddProduct"
+
+module DcbEventLogSpec = CatalogEventLog
+
+@schema
+type command =
+  | AddProduct({
+      productId: @s.matches(DcbTag.string) string,
+      name: string,
+      description: string,
+      price: float,
+    })
+
+@schema
+type error = | ProductAlreadyExists
+
+type decisionModel = {exists: bool}
+
+let initialDecisionModel = {exists: false}
+
+let reduce = (model, event) =>
+  switch event {
+  | ProductAdded(_) => {exists: true}
+  | _ => model
+  }
+
+let decide = (model, command) =>
+  switch command {
+  | AddProduct({productId, name, description, price}) =>
+    if model.exists {
+      Error(ProductAlreadyExists)
+    } else {
+      Ok([ProductAdded({productId, name, description, price})])
+    }
+  }
+```
+
+**StateChangeSlice spec fields:**
+
+| Field | Purpose |
+|-------|---------|
+| `name` | Unique slice name |
+| `module DcbEventLogSpec` | Links to the shared event log |
+| `command` | Commands this slice handles (with `@s.matches` tags) |
+| `error` | Domain error variants |
+| `decisionModel` | Minimal state needed for command decisions |
+| `initialDecisionModel` | Starting value before any events |
+| `reduce` | Fold events into the decision model (like `apply` in aggregates) |
+| `decide` | Accept or reject a command → `Ok(events)` or `Error(error)` |
+
+**Contrast with aggregates:**
+- `reduce` replaces `init` + `apply` — there's no separate creation path
+- `decide` replaces `create` + `execute` — returns `Result` instead of using an error handler
+- The decision model is typically much smaller than full aggregate state (e.g., `{exists: bool}` vs the entire product record)
+- The `reduce` function receives ALL events from the log (filtered by entity ID tag), so use `| _ => model` to skip irrelevant ones
+
+---
+
+### StateViewSlice
+
+A StateViewSlice projects events from the shared event log into a query-side read model. It replaces the ReadModel + Projection pattern from the aggregate approach.
+
+**`ProductsView.res`**:
+```rescript
+open Reventless.Projection
+open CatalogEventLog
+
+let name = "ProductsView"
+
+module DcbEventLogSpec = CatalogEventLog
+
+@schema
+type event = CatalogEventLog.event
+
+@schema
+type state = {productId: string, name: string, description: string, price: float}
+
+let project = (_, event) =>
+  switch event {
+  | ProductAdded({productId, name, description, price}) => [
+      Set(productId, {productId, name, description, price}),
+    ]
+  | ProductNameChanged({productId, name}) => [Update(productId, state => {...state, name})]
+  | ProductPriceChanged({productId, price}) => [Update(productId, state => {...state, price})]
+  | _ => []
+  }
+```
+
+**StateViewSlice spec fields:**
+
+| Field | Purpose |
+|-------|---------|
+| `name` | Unique view name |
+| `module DcbEventLogSpec` | Links to the shared event log |
+| `event` | Event type (always `= DcbEventLogSpec.event`) |
+| `state` | Read model record shape |
+| `project` | Map events to `Set`/`Update`/`Ignore` operations |
+
+The `project` function uses the same operations as aggregate projections (`Set`, `Update`, `Ignore`), but receives events directly from the shared log rather than through mapping modules.
+
+---
+
+### DCB Plugin Composition
+
+The DCB plugin composition root is similar to the aggregate version, but uses different builder functors and includes a `DcbSpec` module that collects all slices.
+
+**`CatalogPlugin.res`**:
+```rescript
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // ── Event Log ──────────────────────────────────────────────
+  module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
+
+  // ── StateChangeSlices (write-side) ─────────────────────────
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
+  // ... more slices ...
+
+  // ── StateViewSlices (read-side) ────────────────────────────
+  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
+  // ... more views ...
+
+  // ── Extension Point (same pattern as aggregates) ────────────
+  module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
+    CatalogSpec.ProductsExtensionPoint,
+    ProductsExtensionPointMapping,
+  )
+  // ... EP wiring ...
+
+  // ── Extension (functor application + Mappings wrapper) ─────
+  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
+    OrderingSpec.OrdersExtensionPoint,
+    OrdersExtension.DemandMappingImpl,
+  )
+  module OrdersExtensionMappings = {
+    module Spec = OrderingSpec.OrdersExtensionPoint
+    module type Mapping = ReventlessInfra.ExtensionMapping.T
+      with module ExtensionPoint := Spec
+    let name = "CatalogDemand"
+    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
+  }
+  module OrdersExtensionMaker = Platform.Extension.Make(
+    OrderingSpec.OrdersExtensionPoint,
+    OrdersExtensionMappings,
+  )
+
+  // ── DcbSpec: collect all slices for the plugin ─────────────
+  module DcbSpec = {
+    @schema
+    type event = CatalogEventLog.event
+    let stateChangeSlices: array<
+      module(ReventlessInfra.StateChangeSlice.T with type dcbEvent = event),
+    > = [
+      module(AddProductSlice),
+      module(ChangeProductNameSlice),
+      // ... all write slices ...
+    ]
+    let stateViewSlices: array<
+      module(ReventlessInfra.StateViewSlice.T with type dcbEvent = event),
+    > = [
+      module(ProductsViewSlice),
+      // ... all view slices ...
+    ]
+    let automationSlices = []
+    let outboundTranslationSlices = []
+    let inboundTranslationSlices = []
+  }
+
+  let make = (~scheduler, ~api, ~apiRole) =>
+    Platform.Plugin.make(
+      ~name="Catalog",
+      ~version="1.0.0",
+      ~heartbeatInterval=60,
+      ~extensionPoints=[module(ProductsExtensionPointMaker)],
+      ~extensions=[module(OrdersExtensionMaker)],
+      ~api,
+      ~apiRole,
+      ~scheduler,
+      ~dcbSpec=module(DcbSpec),   // ← DCB-specific: passes the slice collection
+    )
+}
+```
+
+**Key differences from aggregate plugin composition:**
+- **`Platform.DcbEventLog.Make`** instead of `Platform.Aggregate.Make`
+- **`Platform.StateChangeSlice.Make`** instead of aggregate + behavior
+- **`Platform.StateViewSlice.Make`** instead of read model + projection mappings
+- **`DcbSpec` module** collects all slices into typed arrays
+- **`~dcbSpec=module(DcbSpec)`** passed to `Plugin.make` (aggregates don't have this)
+
+---
+
+### DCB Extension Point / Extension Adapter Pattern
+
+Extension points and extensions in DCB work the same as in aggregates, but require a **shim module** to expose the DCB event log as an `Aggregate.Spec`. This is because the EP/Extension mapping infrastructure expects aggregate-shaped modules.
+
+**Extension point mapping** (`ProductsExtensionPointMapping.res`):
+```rescript
+open Reventless
+open ReventlessInfra.ExtensionPointMapping
+
+module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
+
+// DCB adapter: exposes CatalogEventLog as Aggregate.Spec
+module Aggregate = {
+  let name = "CatalogEventLog"
+  module Id = Id.String
+  @schema type command = unit
+  @schema type event = CatalogEventLog.event
+  @schema type error = unit
+}
+
+let mapIncomingCommand = (_id, _command, _meta) => []
+
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+  switch event {
+  | CatalogEventLog.ProductAdded({productId, name, price}) => [
+      PublishEvent(productId, ExtensionPoint.ProductBecameAvailable({productId, name, price})),
+    ]
+  | CatalogEventLog.ProductPriceChanged({productId, price}) => [
+      PublishEvent(productId, ExtensionPoint.ProductPriceChanged({productId, price})),
+    ]
+  | _ => []
+  }
+)
+```
+
+**Extension mapping** (`OrdersExtension.res`):
+```rescript
+open Reventless
+open ReventlessInfra.ExtensionMapping
+
+module Spec = OrderingSpec.OrdersExtensionPoint
+
+module DemandMappingImpl = {
+  module ExtensionPoint = Spec
+
+  // DCB adapter: wraps StateChangeSlice as Aggregate.Spec
+  module Aggregate = {
+    let name = RecordProductDemand.name
+    module Id = Id.String
+    type command = RecordProductDemand.command
+    let commandSchema = RecordProductDemand.commandSchema
+    @schema type event = unit
+    @schema type error = unit
+  }
+
+  let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
+    switch event {
+    | Spec.ItemOrdered({productId, orderId}) => [
+        PublishAggregateCommand(productId, RecordProductDemand.RecordDemand({productId, orderId})),
+      ]
+    | Spec.ItemOrderCancelled({productId, orderId}) => [
+        PublishAggregateCommand(productId, RecordProductDemand.RevokeDemand({productId, orderId})),
+      ]
+    }
+
+  let mapOutgoingEvent = None
+}
+```
+
+The extension file exports only the mapping implementation — the functor application and `Mappings` wrapper are built in the plugin file (same as the aggregate approach).
+
+The adapter pattern:
+- **EP mapping**: The `Aggregate` shim exposes the event log's event type so `ExtensionPointMapping.Make` can decode outgoing events
+- **Extension mapping**: The `Aggregate` shim exposes the target slice's command type and schema so `ExtensionMapping.Make` can encode routed commands
+- Both shims use `unit` for unused types (commands in EP, events/errors in extensions)
+
+---
+
+### DCB Directory Layout
+
+```
+online-shop-dcb/
+├── catalog-spec/              # Spec package (extension point types)
+│   ├── package.json
+│   ├── rescript.json
+│   └── src/
+│       └── ProductsExtensionPoint.res
+├── ordering-spec/             # Spec package
+│   └── ...
+├── catalog/                   # Plugin package
+│   ├── package.json
+│   ├── rescript.json
+│   └── src/
+│       ├── Product/
+│       │   ├── StateChangeSlice/
+│       │   │   ├── AddProduct.res
+│       │   │   ├── ChangeProductName.res
+│       │   │   └── ...
+│       │   └── StateViewSlice/
+│       │       ├── ProductsView.res
+│       │       └── ProductDemandView.res
+│       ├── Category/
+│       │   ├── StateChangeSlice/
+│       │   └── StateViewSlice/
+│       ├── ExtensionPoint/
+│       │   └── ProductsExtensionPointMapping.res
+│       ├── Extension/
+│       │   └── OrdersExtension.res
+│       └── Plugin/
+│           ├── CatalogEventLog.res    # Shared event log type
+│           └── CatalogPlugin.res      # Composition root
+├── ordering/                  # Plugin package
+│   └── ...
+└── online-shop-dcb/           # Platform package
+    ├── package.json
+    ├── rescript.json
+    └── src/
+        └── Main.res
+```
+
+**Compared to aggregates:**
+- `Aggregate/` → `<Entity>/StateChangeSlice/` (one file per command, not per aggregate)
+- `ReadModel/` → `<Entity>/StateViewSlice/` (view replaces read model + projection)
+- `Plugin/CatalogEventLog.res` — new: the shared event log type definition
+- No separate `Behavior` files (logic is inline in each slice)
+
+---
+
+### DCB Package Structure
+
+Spec packages are **identical** between the aggregate and DCB approaches — they contain the same extension point type definitions. This means both examples can share the same EP specs.
+
+**Package naming convention:**
+
+```
+@reventlessdev/online-shop-dcb-catalog-spec    # Spec package
+@reventlessdev/online-shop-dcb-catalog          # Plugin package
+@reventlessdev/online-shop-dcb                  # Platform package
+```
+
+**Namespace strategy:**
+
+Both examples use the same namespace conventions (`CatalogSpec`, `CatalogPlugin`, etc.). They build independently — each example group has its own build root with `package-specs` in its platform package's `rescript.json`.
+
+---
+
+### DCB Platform Package
+
+The platform `Main.res` is nearly identical to the aggregate version:
+
+```rescript
+let _ = ReventlessInMemory.TestRunner.setup()
+
+module Platform = ReventlessInMemory.Platform.Make()
+
+module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
+module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
+
+let scheduler = Platform.makeScheduler()
+
+let catalogPlugin = Catalog.make(~scheduler, ~api=(), ~apiRole=())
+let orderingPlugin = Ordering.make(~scheduler, ~api=(), ~apiRole=())
+
+let core = Platform.Core.make(
+  ~version="1.0.0",
+  ~extensionPoints=[],
+  ~aggregates=[],
+  ~readModels=[],
+  ~scheduler,
+  ~api=(),
+  ~apiRole=(),
+  ~resourceNaming=ReventlessInMemory.InMemory_PluginSpec.resourceNaming,
+)
+
+Platform.makePlatform(
+  ~api=Obj.magic(),
+  ~core,
+  ~plugins=[catalogPlugin, orderingPlugin],
+)
+```
+
+The **double namespace** pattern applies here too: `CatalogPlugin.CatalogPlugin.Make(Platform)` — the first part is the package namespace, the second is the module name within that namespace.

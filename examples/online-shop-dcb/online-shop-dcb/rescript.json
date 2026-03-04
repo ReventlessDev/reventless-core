@@ -1,0 +1,26 @@
+{
+  "name": "@reventlessdev/online-shop-dcb",
+  "namespace": true,
+  "ppx-flags": ["sury-ppx/bin"],
+  "warnings": { "error": "-44+101" },
+  "sources": [
+    { "dir": "src", "subdirs": true }
+  ],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/online-shop-dcb-catalog-spec",
+    "@reventlessdev/online-shop-dcb-ordering-spec",
+    "@reventlessdev/online-shop-dcb-catalog",
+    "@reventlessdev/online-shop-dcb-ordering",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/rescript-pulumi-pulumi"
+  ],
+  "compiler-flags": [],
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs"
+}

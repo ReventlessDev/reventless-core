@@ -29,7 +29,7 @@ This runs Jest across all 8 projects in a single pass and prints a unified summa
 PASS reventless-core AggregateCallbackTest (7 tests, 0.320s)
 PASS reventless-core DcbTagTest (33 tests, 0.265s)
 ...
-PASS example-dcb-catalog CatalogE2ETest (9 tests, 3.225s)
+PASS online-shop-dcb-catalog CatalogE2ETest (9 tests, 3.225s)
 
 Test Suites: 69 passed, 69 total
 Tests:       579 passed, 579 total
@@ -73,7 +73,7 @@ npm test
 cd reventless/reventless-in-memory
 npm test
 
-cd examples/dcb/catalog
+cd examples/online-shop-dcb/catalog
 npm test
 ```
 

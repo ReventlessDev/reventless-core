@@ -1,0 +1,13 @@
+{
+  "name": "@reventlessdev/online-shop-dcb-ordering-spec",
+  "namespace": "OrderingSpec",
+  "ppx-flags": ["sury-ppx/bin"],
+  "warnings": { "error": "-44+101" },
+  "sources": [
+    { "dir": "src", "subdirs": true }
+  ],
+  "dependencies": [
+    "sury"
+  ],
+  "compiler-flags": []
+}

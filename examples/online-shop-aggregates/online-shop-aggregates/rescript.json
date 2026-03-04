@@ -16,5 +16,10 @@
     "@reventlessdev/online-shop-aggregates-ordering-spec",
     "@reventlessdev/online-shop-aggregates-catalog",
     "@reventlessdev/online-shop-aggregates-ordering"
-  ]
+  ],
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs"
 }

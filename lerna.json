@@ -35,7 +35,7 @@
       "createRelease": "github"
     },
     "bootstrap": {
-      "hoist": true,
+      "hoist": "true",
       "npmClientArgs": [
         "--no-package-lock"
       ]

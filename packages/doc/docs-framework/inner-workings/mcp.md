@@ -158,7 +158,7 @@ MCP_Server.printDiagnostics()
 // [MCP Diagnostics]
 //   Tools (3):
 //     - Catalog_CreateProduct
-//     - Catalog_UpdateProductPrice
+//     - Catalog_ChangeProductPrice
 //     - Catalog_ArchiveCategory
 //   Resources (2):
 //     - Catalog_Products

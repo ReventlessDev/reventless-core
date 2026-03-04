@@ -44,8 +44,8 @@ module.exports = {
       moduleFileExtensions: ["js", "mjs"],
     },
     {
-      displayName: "example-dcb-catalog",
-      rootDir: "./examples/dcb/catalog",
+      displayName: "online-shop-dcb-catalog",
+      rootDir: "./examples/online-shop-dcb/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       moduleNameMapper: {
@@ -59,8 +59,8 @@ module.exports = {
       },
     },
     {
-      displayName: "example-dcb-ordering",
-      rootDir: "./examples/dcb/ordering",
+      displayName: "online-shop-dcb-ordering",
+      rootDir: "./examples/online-shop-dcb/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       moduleNameMapper: {

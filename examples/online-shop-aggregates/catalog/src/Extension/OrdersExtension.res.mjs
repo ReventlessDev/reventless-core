@@ -24,16 +24,15 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
 }
 
 let DemandMapping = {
+  Source: undefined,
+  Target: undefined,
   ExtensionPoint: undefined,
   Aggregate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined
 };
 
-let ExtensionPoint;
-
 export {
-  ExtensionPoint,
   DemandMapping,
 }
 /* No side effect */

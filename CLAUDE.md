@@ -18,7 +18,7 @@ This is a Lerna monorepo. Packages are organized by type — **always place new 
 |--------|---------|---------|
 | `rescript/` | ReScript bindings for JS/npm libraries | `rescript-uuid`, `rescript-graphql-yoga` |
 | `reventless/` | Reventless framework + extension packages | `reventless-spec`, `reventless-in-memory` |
-| `examples/` | Example applications | `examples/aggregate/`, `examples/dcb/` |
+| `examples/` | Example applications | `examples/online-shop-aggregates/`, `examples/online-shop-dcb/` |
 | `packages/` | Build tooling and documentation only | `doc`, `aws-lambda-layer` |
 
 All four folders are Lerna workspaces (`lerna.json` packages) and npm workspaces (`package.json` workspaces).
@@ -206,8 +206,8 @@ From the codebase documentation:
 - `rescript-moment` (shared with UI repo via file reference)
 
 **`examples/` — Example applications:**
-- `examples/aggregate/` — aggregate-based plugin examples
-- `examples/dcb/` — DCB-based plugin examples
+- `examples/online-shop-aggregates/` — aggregate-based plugin examples
+- `examples/online-shop-dcb/` — DCB-based plugin examples
 
 **`packages/` — Build tooling and documentation:**
 - `doc` — Docusaurus documentation site

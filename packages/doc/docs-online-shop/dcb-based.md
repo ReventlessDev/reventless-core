@@ -22,13 +22,13 @@ A product listing with a name, description, and price. Product events are tagged
 | State Change Slices | Commands | Events |
 |---|---|---|
 | `AddProduct` | `AddProduct` | `ProductAdded` |
-| `UpdateProductName` | `UpdateProductName` | `ProductNameUpdated` |
-| `UpdateProductDescription` | `UpdateProductDescription` | `ProductDescriptionUpdated` |
-| `UpdateProductPrice` | `UpdateProductPrice` | `ProductPriceUpdated` |
+| `ChangeProductName` | `ChangeProductName` | `ProductNameChanged` |
+| `ChangeProductDescription` | `ChangeProductDescription` | `ProductDescriptionChanged` |
+| `ChangeProductPrice` | `ChangeProductPrice` | `ProductPriceChanged` |
 
 | State View Slices | Events | Read Models |
 |---|---|---|
-| `ProductsView` | `ProductAdded`, `ProductNameUpdated`, `ProductDescriptionUpdated`, `ProductPriceUpdated` | `Products` |
+| `ProductsView` | `ProductAdded`, `ProductNameChanged`, `ProductDescriptionChanged`, `ProductPriceChanged` | `Products` |
 
 ### Chapter: Category
 
@@ -63,7 +63,7 @@ Outbound API from Catalog to Ordering. Translates internal `CatalogEventLog` eve
 | EP Event | Triggered By |
 |---|---|
 | `ProductBecameAvailable` | `ProductAdded` |
-| `ProductPriceChanged` | `ProductPriceUpdated` |
+| `ProductPriceChanged` | `ProductPriceChanged` |
 
 ### Extension: `OrdersExtension`
 
@@ -87,13 +87,13 @@ A registered buyer with contact details and account status. Customer events are 
 | State Change Slices | Commands | Events |
 |---|---|---|
 | `RegisterCustomer` | `RegisterCustomer` | `CustomerRegistered` |
-| `UpdateEmail` | `UpdateEmail` | `EmailUpdated` |
-| `UpdateAddress` | `UpdateAddress` | `AddressUpdated` |
+| `ChangeEmail` | `ChangeEmail` | `EmailChanged` |
+| `ChangeAddress` | `ChangeAddress` | `AddressChanged` |
 | `DeactivateCustomer` | `DeactivateCustomer` | `CustomerDeactivated` |
 
 | State View Slices | Events | Read Models |
 |---|---|---|
-| `CustomersView` | `CustomerRegistered`, `EmailUpdated`, `AddressUpdated`, `CustomerDeactivated` | `Customers` |
+| `CustomersView` | `CustomerRegistered`, `EmailChanged`, `AddressChanged`, `CustomerDeactivated` | `Customers` |
 
 ### Chapter: Order
 
@@ -119,7 +119,7 @@ As with the aggregate-based approach, `Order` references products by `ProductId`
 
 ## Implementation
 
-The following walkthrough uses the **Catalog** Plugin from `examples/dcb/catalog/` — the `Product` chapter with its StateChangeSlices, StateViewSlice, the `ProductDemand` chapter for demand tracking, the `ProductsExtensionPoint`, the `OrdersExtension`, and the `CatalogPlugin` that wires everything together.
+The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-dcb/catalog/` — the `Product` chapter with its StateChangeSlices, StateViewSlice, the `ProductDemand` chapter for demand tracking, the `ProductsExtensionPoint`, the `OrdersExtension`, and the `CatalogPlugin` that wires everything together.
 
 ### 1. DCB Event Log Spec
 
@@ -137,12 +137,12 @@ type event =
       description: string,
       price: float,
     })
-  | ProductNameUpdated({productId: @s.matches(DcbTag.string) string, name: string})
-  | ProductDescriptionUpdated({
+  | ProductNameChanged({productId: @s.matches(DcbTag.string) string, name: string})
+  | ProductDescriptionChanged({
       productId: @s.matches(DcbTag.string) string,
       description: string,
     })
-  | ProductPriceUpdated({productId: @s.matches(DcbTag.string) string, price: float})
+  | ProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
   | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
@@ -211,22 +211,22 @@ let decide = (model, command) =>
 
 The `reduce` function only reacts to `ProductAdded` — any other event in the shared log is passed through unchanged. The `decide` function checks the single `exists` flag and either returns an error or emits a `ProductAdded` event.
 
-#### UpdateProductPrice — update with idempotency
+#### ChangeProductPrice — update with idempotency
 
-`UpdateProductPrice` modifies an existing product's price. The decision model tracks both existence and the current price, allowing the handler to reject unknown products and skip writes when the price has not changed.
+`ChangeProductPrice` modifies an existing product's price. The decision model tracks both existence and the current price, allowing the handler to reject unknown products and skip writes when the price has not changed.
 
 ```rescript
-// UpdateProductPrice.res
+// ChangeProductPrice.res
 
 open Reventless
 open CatalogEventLog
 
-let name = "UpdateProductPrice"
+let name = "ChangeProductPrice"
 module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | UpdateProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
+  | ChangeProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
 
 @schema
 type error = | ProductNotFound
@@ -238,24 +238,24 @@ let initialDecisionModel = {exists: false, currentPrice: 0.0}
 let reduce = (model, event) =>
   switch event {
   | ProductAdded({price}) => {exists: true, currentPrice: price}
-  | ProductPriceUpdated({price}) => {...model, currentPrice: price}
+  | ProductPriceChanged({price}) => {...model, currentPrice: price}
   | _ => model
   }
 
 let decide = (model, command) =>
   switch command {
-  | UpdateProductPrice({productId, price}) =>
+  | ChangeProductPrice({productId, price}) =>
     if !model.exists {
       Error(ProductNotFound)
     } else if price == model.currentPrice {
       Ok([]) // idempotent — price unchanged
     } else {
-      Ok([ProductPriceUpdated({productId, price})])
+      Ok([ProductPriceChanged({productId, price})])
     }
   }
 ```
 
-The `reduce` function reacts to both `ProductAdded` (to capture the initial price) and `ProductPriceUpdated` (to track subsequent changes). Returning `Ok([])` when the price is unchanged makes the command idempotent — safe to retry without side effects.
+The `reduce` function reacts to both `ProductAdded` (to capture the initial price) and `ProductPriceChanged` (to track subsequent changes). Returning `Ok([])` when the price is unchanged makes the command idempotent — safe to retry without side effects.
 
 #### RecordProductDemand — driven by an Extension
 
@@ -346,11 +346,11 @@ let project = (_, event) =>
   | ProductAdded({productId, name, description, price}) => [
       Set(productId, {productId, name, description, price}),
     ]
-  | ProductNameUpdated({productId, name}) => [Update(productId, state => {...state, name})]
-  | ProductDescriptionUpdated({productId, description}) => [
+  | ProductNameChanged({productId, name}) => [Update(productId, state => {...state, name})]
+  | ProductDescriptionChanged({productId, description}) => [
       Update(productId, state => {...state, description}),
     ]
-  | ProductPriceUpdated({productId, price}) => [Update(productId, state => {...state, price})]
+  | ProductPriceChanged({productId, price}) => [Update(productId, state => {...state, price})]
   | _ => [] // Category and demand events are not handled by this view
   }
 ```
@@ -454,7 +454,7 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
         ProductsExtensionPointSpec.ProductBecameAvailable({productId, name, price}),
       ),
     ]
-  | CatalogEventLog.ProductPriceUpdated({productId, price}) => [
+  | CatalogEventLog.ProductPriceChanged({productId, price}) => [
       PublishEvent(productId, ProductsExtensionPointSpec.ProductPriceChanged({productId, price})),
     ]
   | _ => []
@@ -527,18 +527,9 @@ module DemandMappingImpl = {
 
   let mapOutgoingEvent = None
 }
-
-module DemandMappingT = ReventlessCore.ExtensionMapping.Make(Spec, DemandMappingImpl)
-
-module Mappings = {
-  module Spec = Spec
-  module type Mapping = ReventlessCore.ExtensionMapping.T with module ExtensionPoint := Spec
-  let name = "CatalogDemand"
-  let mappings: array<module(Mapping)> = [module(DemandMappingT)]
-}
 ```
 
-The mapping logic — routing `ItemOrdered` to `RecordDemand` and `ItemOrderCancelled` to `RevokeDemand` — is the same as in the aggregate-based approach. Only the `module Aggregate` adapter differs.
+The extension file exports only the mapping implementation (`DemandMappingImpl`). The functor application and `Mappings` wrapper are built in the plugin file — the same pattern as the aggregate approach. The mapping logic — routing `ItemOrdered` to `RecordDemand` and `ItemOrderCancelled` to `RevokeDemand` — is the same as in the aggregate-based approach. Only the `module Aggregate` adapter differs.
 
 ### 6. Plugin
 
@@ -552,9 +543,9 @@ module Make = (Platform: Platform.T) => {
   module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
 
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-  module UpdateProductNameSlice = Platform.StateChangeSlice.Make(UpdateProductName)
-  module UpdateProductDescriptionSlice = Platform.StateChangeSlice.Make(UpdateProductDescription)
-  module UpdateProductPriceSlice = Platform.StateChangeSlice.Make(UpdateProductPrice)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
+  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription)
+  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice)
 
   module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
 
@@ -584,9 +575,20 @@ module Make = (Platform: Platform.T) => {
   )
 
   // Build the Orders extension (subscribing to Ordering's EP)
-  module OrdersExtensionMaker = ReventlessCore.Extension_Builder.Make(
+  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
     OrdersExtensionPointSpec,
-    OrdersExtension.Mappings,
+    OrdersExtension.DemandMappingImpl,
+  )
+  module OrdersExtensionMappings = {
+    module Spec = OrdersExtensionPointSpec
+    module type Mapping = ReventlessInfra.ExtensionMapping.T
+      with module ExtensionPoint := Spec
+    let name = "CatalogDemand"
+    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
+  }
+  module OrdersExtensionMaker = Platform.Extension.Make(
+    OrdersExtensionPointSpec,
+    OrdersExtensionMappings,
   )
 
   module DcbSpec = CatalogEventLog

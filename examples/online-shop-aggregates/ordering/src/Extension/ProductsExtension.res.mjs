@@ -25,16 +25,15 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
 }
 
 let ProductMapping = {
+  Source: undefined,
+  Target: undefined,
   ExtensionPoint: undefined,
   Aggregate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined
 };
 
-let ExtensionPoint;
-
 export {
-  ExtensionPoint,
   ProductMapping,
 }
 /* No side effect */
