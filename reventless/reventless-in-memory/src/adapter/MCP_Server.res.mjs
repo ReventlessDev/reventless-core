@@ -69,8 +69,7 @@ let activeServer = {
 
 let debug = Stdlib_Option.isSome(process.env["MCP_DEBUG"]);
 
-function start(portOpt, param) {
-  let port = portOpt !== undefined ? portOpt : 3001;
+function createServerInstance() {
   let server = new IndexJs.Server({
     name: "reventless-mcp",
     version: "1.0.0"
@@ -141,10 +140,18 @@ function start(portOpt, param) {
       };
     }
   });
+  return server;
+}
+
+function start(portOpt, param) {
+  let port = portOpt !== undefined ? portOpt : 3001;
   let httpServer = Http.createServer((req, res) => {
     (async () => {
       let reqMethod = req.method;
       let reqUrl = req.url;
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       if (reqUrl === "/mcp" || reqUrl.startsWith("/mcp?")) {
         switch (reqMethod) {
           case "DELETE" :
@@ -155,8 +162,13 @@ function start(portOpt, param) {
             res.setHeader("Content-Type", "text/plain");
             res.end("MCP server running");
             return;
+          case "OPTIONS" :
+            res.statusCode = 204;
+            res.end();
+            return;
           case "POST" :
             let body = await McpSdk.parseJsonBody(req);
+            let server = createServerInstance();
             let transport = new StreamableHttpJs.StreamableHTTPServerTransport({
               enableJsonResponse: true
             });
@@ -245,6 +257,7 @@ export {
   registerResourcesFromEntries,
   activeServer,
   debug,
+  createServerInstance,
   start,
   stop,
   reset,

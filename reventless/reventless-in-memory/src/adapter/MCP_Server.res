@@ -92,14 +92,14 @@ let activeServer: ref<option<McpSdk.httpServer>> = ref(None)
 @val external processEnv: dict<string> = "process.env"
 let debug = processEnv->Dict.get("MCP_DEBUG")->Option.isSome
 
-let start = (~port: int=3001, ()) => {
-  // Create a low-level MCP server with tools + resources capabilities
+// Create a fresh MCP server instance with all registered handlers.
+// Called per-request for stateless Streamable HTTP (each request gets its own server+transport).
+let createServerInstance = () => {
   let server = McpSdk.newServer(
     {name: "reventless-mcp", version: "1.0.0"},
     {capabilities: {tools: {_placeholder: false}, resources: {_placeholder: false}}},
   )
 
-  // Register tools/list handler
   server->McpSdk.onListTools(async () => {
     let toolDefs =
       tools.contents
@@ -112,7 +112,6 @@ let start = (~port: int=3001, ()) => {
     {McpSdk.tools: toolDefs}
   })
 
-  // Register tools/call handler
   server->McpSdk.onCallTool(async req => {
     let toolName = req.params.name
     let args = req.params.arguments->Option.getOr(JSON.Encode.null)
@@ -125,7 +124,6 @@ let start = (~port: int=3001, ()) => {
     }
   })
 
-  // Register resources/list handler
   server->McpSdk.onListResources(async () => {
     let resourceDefs =
       resources.contents
@@ -139,13 +137,11 @@ let start = (~port: int=3001, ()) => {
     {McpSdk.resources: resourceDefs}
   })
 
-  // Register resources/read handler
   server->McpSdk.onReadResource(async req => {
     let uri = req.params.uri
     if debug {
       Console.log(`[MCP] resources/read: ${uri}`)
     }
-    // Find resource by matching URI against registered resource names
     let matchedResource =
       resources.contents
       ->Dict.valuesToArray
@@ -160,26 +156,35 @@ let start = (~port: int=3001, ()) => {
     }
   })
 
-  // Create HTTP server with Streamable HTTP transport.
-  // The Node http callback must be synchronous (unit => unit),
-  // so we fire-and-forget the async handler inside.
+  server
+}
+
+let start = (~port: int=3001, ()) => {
   let httpServer = McpSdk.createHttpServer((req, res) => {
     let _ = (async () => {
       let reqMethod = req->McpSdk.method
       let reqUrl = req->McpSdk.url
 
+      // CORS headers for browser-based clients (e.g. MCP Inspector)
+      res->McpSdk.setHeader("Access-Control-Allow-Origin", "*")
+      res->McpSdk.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+      res->McpSdk.setHeader("Access-Control-Allow-Headers", "Content-Type")
+
       if reqUrl == "/mcp" || reqUrl->String.startsWith("/mcp?") {
         switch reqMethod {
+        | "OPTIONS" =>
+          res->McpSdk.setStatusCode(204)
+          res->McpSdk.endResponseNoBody
         | "POST" =>
           let body = await McpSdk.parseJsonBody(req)
-          // Create a stateless transport for each request
+          // Stateless mode: fresh server + transport per request
+          let server = createServerInstance()
           let transport = McpSdk.newStreamableHTTPTransport({
             enableJsonResponse: true,
           })
           let _ = await server->McpSdk.connect(transport)
           let _ = await transport->McpSdk.handleRequest(req, res, body)
         | "GET" =>
-          // Health check / SSE endpoint
           res->McpSdk.setHeader("Content-Type", "text/plain")
           res->McpSdk.endResponse("MCP server running")
         | "DELETE" =>
