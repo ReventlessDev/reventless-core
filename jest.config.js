@@ -75,7 +75,7 @@ module.exports = {
     },
     {
       displayName: "example-aggregate-catalog",
-      rootDir: "./examples/aggregate/catalog",
+      rootDir: "./examples/online-shop-aggregates/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       moduleNameMapper: {
@@ -90,7 +90,7 @@ module.exports = {
     },
     {
       displayName: "example-aggregate-ordering",
-      rootDir: "./examples/aggregate/ordering",
+      rootDir: "./examples/online-shop-aggregates/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       moduleNameMapper: {
