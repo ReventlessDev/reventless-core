@@ -20,12 +20,14 @@
     "@reventlessdev/reventless-core",
     "@reventlessdev/reventless-in-memory",
     "@reventlessdev/reventless-aws",
-    "@reventlessdev/example-aggregate-catalog",
-    "@reventlessdev/example-aggregate-ordering",
+    "@reventlessdev/online-shop-aggregates-catalog-spec",
+    "@reventlessdev/online-shop-aggregates-ordering-spec",
+    "@reventlessdev/online-shop-aggregates-catalog",
+    "@reventlessdev/online-shop-aggregates-ordering",
     "@reventlessdev/example-dcb-catalog",
     "@reventlessdev/example-dcb-ordering",
     "@reventlessdev/example-dcb",
-    "@reventlessdev/example-aggregate"
+    "@reventlessdev/online-shop-aggregates"
   ],
   "sources": [],
   "package-specs": {
