@@ -1,47 +1,32 @@
-# Pure Effect Callbacks (Phase C)
+# Pure Effect AWS Runtime (Phase D)
 
 **Status:** Backlog
 
 **Created:** 2026-03-05
 
-**Depends on:** `docs/plans/done/effect-logger-and-request-context.md` (complete)
+**Depends on:** `docs/plans/pure-effect-callbacks.md` (core callbacks complete)
 
-**Summary:** Restructure callbacks to stay entirely in the Effect pipeline, eliminating
-`Effect.promise(async () => ...)` blocks in favor of Effect combinators. Also migrate AWS adapter
-runtime files from `Console.*` to `Effect.logInfo`/`Effect.logError` once they are lifted into
-pure Effect pipelines.
+**Summary:** Lift AWS adapter runtime handlers into pure Effect pipelines and migrate
+`Console.*` logging to `Effect.logInfo`/`Effect.logError`. Using `Effect.logInfo->Effect.runSync`
+in plain async functions provides no benefit over `Console.*`, so the runtime functions must
+first be restructured into Effect pipelines before logging can be migrated.
 
 ---
 
 ## Goal
 
-After the logger migration (Phase A+B), logging inside async closures uses
-`Effect.logInfo(...)->Effect.runSync` -- it works but is awkward. Pure Effect callbacks would:
-
-- Make logging natural: `->Effect.tap(_ => Effect.logInfo("msg"))` with no `runSync`
+- Consistent logging across the entire stack (core + AWS adapters)
 - Enable testability: silence logs with `Effect.provide(Logger.minimumLogLevel(LogLevel.None))`
-- Enable composability: callbacks become pure Effect values -- combinable, retriable, timeable
-- Align with the Effect programming model
+- Structured log output with fiber/timestamp context from Effect's built-in logger
+- Align AWS runtime code with the Effect programming model
 
 ---
 
 ## Scope
 
-### Core callbacks
+### AWS runtime files to migrate (all in `reventless/reventless-aws/src/`)
 
-Each needs restructuring:
-- `Effect.promise(async () => { ... })` -> Effect combinators (`flatMap`, `tap`, `forEach`, `all`)
-- `await somePromise` -> `Effect.tryPromise(() => somePromise)`
-- `Array.map(async ...)` -> `Effect.forEach` or `Effect.all`
-- Mutable accumulators -> `Effect.reduce` or `Ref`
-
-### AWS adapter runtime files
-
-Migrate `Console.*` to `Effect.logInfo`/`Effect.logError` once the functions they're called from
-are lifted into pure Effect pipelines. Using `Effect.logInfo->Effect.runSync` in plain async
-functions provides no benefit over `Console.*`.
-
-AWS runtime files to migrate (all in `reventless/reventless-aws/src/`):
+Each file needs two changes: (1) lift async handlers into Effect pipelines, (2) replace `Console.*` with `Effect.logInfo`/`Effect.logError`.
 
 - `adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res` -- SQS command handling + publishing
 - `adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res` -- SQS/DynamoDB stream event handling
@@ -62,6 +47,8 @@ AWS runtime files to migrate (all in `reventless/reventless-aws/src/`):
 
 ### AWS deploy-time files (keep as `Console.*` -- no Effect pipeline)
 
+These run at deploy time (Pulumi) and have no Effect pipeline:
+
 - `util/Util_DynamoDb.res`, `util/Util_DynamoDbStream.res`, `util/Util_SNS.res`
 - `adapter/EventCollector/EventCollectorChannel_Helpers.res`
 - `adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res`
@@ -71,5 +58,12 @@ AWS runtime files to migrate (all in `reventless/reventless-aws/src/`):
 
 ## Approach
 
-This is a significant refactor -- each callback can be migrated independently.
-Should be broken into per-callback work items when work begins.
+This is a significant refactor -- each runtime file can be migrated independently.
+Should be broken into per-file work items when work begins.
+
+Patterns established in the core callback migration (Phase C) apply here:
+- `Effect.promise(async () => { ... })` → `Effect.flatMap` chains with `Effect.promise(() => singleCall)`
+- `Console.log(...)` → `Effect.logInfo(...)` (natural in pipeline, no `runSync`)
+- `Console.error(...)` → `Effect.logError(...)`
+- `try { await ... } catch { ... }` → `Effect.tryPromise(~catch=..., ...)`
+- Retry loops → `Effect.retry` with `Schedule` or recursive `Effect.flatMap`

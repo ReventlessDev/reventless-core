@@ -4,31 +4,31 @@ import * as Effect from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
-import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function Make(Spec) {
-  let handleEvent = async (eventJson$p, jsonEventsHandlersByService) => await Stdlib_Option.mapOr(Stdlib_Option.flatMap(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), serviceName => jsonEventsHandlersByService[serviceName]), Promise.resolve(), async jsonEventsHandlers => await Util_Promise$ReventlessCore.toUnit(Promise.all(jsonEventsHandlers.map(jsonEventsHandler => jsonEventsHandler(eventJson$p, Spec.pluginDefinition)))));
-  let detectUnhandledEvent = eventJson$p => Stdlib_Option.mapOr(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), undefined, serviceName => {
+  let handleEventEffect = (eventJson$p, jsonEventsHandlersByService) => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), serviceName => jsonEventsHandlersByService[serviceName]), Effect.Effect.succeed(), jsonEventsHandlers => Effect.Effect.map(Effect.Effect.all(jsonEventsHandlers.map(jsonEventsHandler => Effect.Effect.promise(() => jsonEventsHandler(eventJson$p, Spec.pluginDefinition))), {
+    concurrency: "unbounded"
+  }), param => {}));
+  let detectUnhandledEventEffect = eventJson$p => Stdlib_Option.mapOr(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), Effect.Effect.succeed(), serviceName => {
     let match = Spec.outgoingExtensionPointEventHandlers[serviceName];
     let match$1 = Spec.outgoingExtensionEventHandlers[serviceName];
     let match$2 = Spec.incomingExtensionEventHandlers[serviceName];
     if (match !== undefined || match$1 !== undefined || match$2 !== undefined) {
-      return;
+      return Effect.Effect.succeed();
     } else {
-      return Effect.Effect.runSync(Effect.Effect.logInfo("No mapping matches service name"));
+      return Effect.Effect.logInfo("No mapping matches service name");
     }
   });
-  let handleJsonEvents = stream => Effect.Stream.runDrain(Effect.Stream.mapEffect(stream, eventJson$p => Effect.Effect.promise(async () => {
+  let handleJsonEvents = stream => Effect.Stream.runDrain(Effect.Stream.mapEffect(stream, eventJson$p => {
     let id = Spec.pluginDefinition.id;
-    Effect.Effect.runSync(Effect.Effect.logInfo(`Plugin ` + id + ` handleJsonEvents: incoming event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
-    detectUnhandledEvent(eventJson$p);
-    await handleEvent(eventJson$p, Spec.incomingConnectExtensionEventHandlers);
-    await Promise.all([
-      handleEvent(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
-      handleEvent(eventJson$p, Spec.outgoingExtensionEventHandlers),
-      handleEvent(eventJson$p, Spec.incomingExtensionEventHandlers)
-    ]);
-  })));
+    return Effect.Effect.zipRight(Effect.Effect.zipRight(Effect.Effect.logInfo(`Plugin ` + id + ` handleJsonEvents: incoming event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), detectUnhandledEventEffect(eventJson$p)), Effect.Effect.zipRight(handleEventEffect(eventJson$p, Spec.incomingConnectExtensionEventHandlers), Effect.Effect.map(Effect.Effect.all([
+      handleEventEffect(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
+      handleEventEffect(eventJson$p, Spec.outgoingExtensionEventHandlers),
+      handleEventEffect(eventJson$p, Spec.incomingExtensionEventHandlers)
+    ], {
+      concurrency: "unbounded"
+    }), param => {})));
+  }));
   return {
     handleJsonEvents: handleJsonEvents
   };

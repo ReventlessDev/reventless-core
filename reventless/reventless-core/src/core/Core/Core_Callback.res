@@ -11,14 +11,16 @@ module Make = (Spec: Spec): T => {
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream
     ->Stream.mapEffect(eventJson' =>
-      Effect.promise(async () => {
-        Effect.logInfo(
-          `Core handleJsonEvents: outgoing event: ${LogFormat.event'JsonToLogMessage(eventJson')}`,
-        )->Effect.runSync
-        let _ = await Spec.outgoingExtensionPointJsonEventsHandlers
-        ->Array.map(handleEvent => handleEvent(eventJson', Spec.pluginDefinition))
-        ->Promise.all
-      })
+      Effect.logInfo(
+        `Core handleJsonEvents: outgoing event: ${LogFormat.event'JsonToLogMessage(eventJson')}`,
+      )->Effect.zipRight(
+        Effect.all(
+          Spec.outgoingExtensionPointJsonEventsHandlers->Array.map(handleEvent =>
+            Effect.promise(() => handleEvent(eventJson', Spec.pluginDefinition))
+          ),
+          {"concurrency": "unbounded"},
+        )->Effect.map(_ => ())
+      )
     )
     ->Stream.runDrain
 }

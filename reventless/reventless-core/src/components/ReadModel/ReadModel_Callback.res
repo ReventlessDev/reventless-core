@@ -15,11 +15,14 @@ module Make = (
     ->Stream.mapEffect(json =>
       Effect.sync(() => {
         let sourceName = (json->Message.decode(Reventless.Message.contextSchema)).meta.service
+        (sourceName, json->EventProjector.map(~sourceName=Some(sourceName)))
+      })
+      ->Effect.tap(((sourceName, _)) =>
         Effect.logInfo(
           `ReadModel ${ReadModelSpec.name}: handling event from ${sourceName}: ${json->JSON.stringify}`,
-        )->Effect.runSync
-        json->EventProjector.map(~sourceName=Some(sourceName))
-      })
+        )
+      )
+      ->Effect.map(((_, actions)) => actions)
     )
     ->Stream.flatMap(actions => Stream.fromIterable(actions))
     ->Stream.runForEach(action =>

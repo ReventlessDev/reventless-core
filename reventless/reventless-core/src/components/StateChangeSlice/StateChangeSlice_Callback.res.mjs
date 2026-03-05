@@ -7,84 +7,73 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 function Make(Spec) {
   let queryEventTypes = DcbTag$Reventless.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
-  let handleSingleCommand = async (dcbEventLog, command$p) => {
+  let handleSingleCommand = (dcbEventLog, command$p) => {
     let commandTags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
     let query = [{
         eventTypes: queryEventTypes,
         tags: commandTags
       }];
-    let attempt = async retries => {
-      let match = await Effect.Effect.runPromise(Effect.Stream.runFold(dcbEventLog.readStream(query, undefined), [
-        Spec.initialDecisionModel,
-        undefined
-      ], (param, se) => [
-        Spec.reduce(param[0], se.event),
-        se.position
-      ]));
-      let newEvents = Spec.decide(match[0], command$p.command);
+    let attempt = retries => Effect.Effect.flatMap(Effect.Stream.runFold(dcbEventLog.readStream(query, undefined), [
+      Spec.initialDecisionModel,
+      undefined
+    ], (param, se) => [
+      Spec.reduce(param[0], se.event),
+      se.position
+    ]), param => {
+      let newEvents = Spec.decide(param[0], command$p.command);
       if (newEvents.TAG === "Ok") {
         let newEvents$1 = newEvents._0;
         if (newEvents$1.length === 0) {
-          Effect.Effect.runSync(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): no events generated`));
-          return {
+          return Effect.Effect.map(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): no events generated`), () => ({
             TAG: "Ok",
             _0: "ok"
-          };
+          }));
         }
-        let condition_after = match[1];
+        let condition_after = param[1];
         let condition = {
           query: query,
           after: condition_after
         };
-        let _position = await dcbEventLog.append(newEvents$1, condition);
-        if (_position.TAG !== "Ok") {
-          if (retries > 0) {
-            Effect.Effect.runSync(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): conflict, retrying`));
-            return await attempt(retries - 1 | 0);
+        return Effect.Effect.flatMap(Effect.Effect.promise(() => dcbEventLog.append(newEvents$1, condition)), appendResult => {
+          if (appendResult.TAG === "Ok") {
+            return Effect.Effect.map(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): ` + newEvents$1.length.toString() + ` event(s) appended`), () => ({
+              TAG: "Ok",
+              _0: "ok"
+            }));
+          } else if (retries > 0) {
+            return Effect.Effect.flatMap(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): conflict, retrying`), () => attempt(retries - 1 | 0));
           } else {
-            Effect.Effect.runSync(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`));
-            return {
+            return Effect.Effect.map(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`), () => ({
               TAG: "Error",
               _0: "conflict: retries exhausted"
-            };
+            }));
           }
-        }
-        Effect.Effect.runSync(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): ` + newEvents$1.length.toString() + ` event(s) appended`));
-        return {
-          TAG: "Ok",
-          _0: "ok"
-        };
+        });
       }
       let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
-      Effect.Effect.runSync(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): decide error: ` + errorJson));
-      return {
+      return Effect.Effect.map(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): decide error: ` + errorJson), () => ({
         TAG: "Error",
         _0: errorJson
-      };
-    };
-    return await attempt(3);
+      }));
+    });
+    return attempt(3);
   };
-  let handleCommands = (dcbEventLog, stream) => {
-    Effect.Effect.runSync(Effect.Effect.logInfo("starting StateChangeSlice.handleCommands"));
-    return Stream.runCollect(Effect.Stream.mapEffect(stream, param => {
-      let reference = param.reference;
-      let command = param.command;
-      return Effect.Effect.promise(async () => {
-        let match = await handleSingleCommand(dcbEventLog, command);
-        if (match.TAG === "Ok") {
-          return {
-            TAG: "Ok",
-            _0: reference
-          };
-        } else {
-          return {
-            TAG: "Error",
-            _0: reference
-          };
-        }
-      });
-    }));
-  };
+  let handleCommands = (dcbEventLog, stream) => Effect.Effect.zipRight(Effect.Effect.logInfo("starting StateChangeSlice.handleCommands"), Stream.runCollect(Effect.Stream.mapEffect(stream, param => {
+    let reference = param.reference;
+    return Effect.Effect.map(handleSingleCommand(dcbEventLog, param.command), result => {
+      if (result.TAG === "Ok") {
+        return {
+          TAG: "Ok",
+          _0: reference
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: reference
+        };
+      }
+    });
+  })));
   return {
     Spec: Spec,
     handleCommands: handleCommands

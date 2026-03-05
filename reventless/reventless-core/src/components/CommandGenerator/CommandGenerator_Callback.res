@@ -12,7 +12,7 @@ module Make = (
   Behavior: Behavior.T with module Spec := AggregateSpec,
 ): T => {
   let generateCommand = (payload: CommandGenerator.payload) =>
-    Effect.promise(async () => {
+    Effect.sync(() => {
       let msgId = Message.uuid()
       let id = payload.arguments.id
       let meta = {
@@ -45,13 +45,19 @@ module Make = (
       | 0 => commandStr
       | _ => [("TAG", commandStr)]->Array.concat(params)->Dict.fromArray->JSON.Encode.object
       }
+      (meta, commandJson, id)
+    })
+    ->Effect.tap(((_, commandJson, _)) =>
       Effect.logInfo(
         "CommandGenerator: generated command: " ++ commandJson->JSON.stringify,
-      )->Effect.runSync
+      )
+    )
+    ->Effect.flatMap(((meta, commandJson, id)) => {
       switch commandJson->Message.decode(Behavior.resolverConfig.commandSchema) {
       | _ =>
-        await Spec.publishJsons([{id, meta, commandJson}])
-        meta.msgId
+        Effect.promise(() => {
+          Spec.publishJsons([{id, meta, commandJson}])
+        })->Effect.map(_ => meta.msgId)
       | exception err =>
         JsError.throwWithMessage(
           `Error: Couldn't decode ${commandJson->JSON.stringify}: ${err

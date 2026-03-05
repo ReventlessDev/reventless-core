@@ -18,6 +18,8 @@ module MakeCounterHandler = (
 ): CounterHandler => {
   let target = Target.name
 
+  // Looks up the event mapping for a given event JSON by matching the source service name
+  // from the event's meta against the registered Mapping modules.
   let findMapping = (mappings, eventJson') => {
     eventJson'
     ->JSON.Decode.object
@@ -71,6 +73,8 @@ module MakeCounterHandler = (
     ?delay,
   }
 
+  // Converts high-level EventMapping actions into concrete Publisher/Counter actions,
+  // stamping each with the event's meta (service name, correlation ID, timestamps).
   let processMappingActions = (actions, eventMeta) =>
     actions->Array.map(action =>
       switch action {
@@ -96,6 +100,9 @@ module MakeCounterHandler = (
       }
     )
 
+  // Shared event processing logic used by both Counter and EventCollector handlers.
+  // For each event: finds the mapping, decodes id+event, runs Mapping.map, then splits
+  // the resulting actions into (publisherEntries, counterActions).
   let commonEventsHandler = async eventsJson' => {
     let eventsCount = eventsJson'->Array.length
     let (publisherActions, counterActions) =
@@ -172,17 +179,24 @@ module MakeCounterHandler = (
     (publisherEntries, counterActions)
   }
 
+  // Counter stream handler — maps events via commonEventsHandler, rejects counter actions
+  // (counter-to-counter mapping is not allowed), and publishes generated commands.
   let handleCounterEvents: Counter.jsonEventsHandler = stream =>
     stream->Stream.runForEach(eventJson' =>
-      Effect.promise(async () => {
-        let (publisherEntries, countActions) = await commonEventsHandler([eventJson'])
+      Effect.promise(() => commonEventsHandler([eventJson']))
+      ->Effect.tap(((_, countActions)) =>
         if countActions->Array.length > 0 {
           Effect.logError(
             "EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!",
-          )->Effect.runSync
+          )
+        } else {
+          Effect.succeed()
         }
-        await Ops.publishJsons(await publisherEntries)
-      })
+      )
+      ->Effect.flatMap(((publisherEntries, _)) =>
+        Effect.promise(() => publisherEntries)
+        ->Effect.flatMap(entries => Effect.promise(() => Ops.publishJsons(entries)))
+      )
     )
 }
 
@@ -201,26 +215,38 @@ module type EventCollectorHandler = {
 }
 
 module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandler => {
-  let rec doCount = async countItems =>
+  // Applies counter increments to the QueryDb with infinite retry on failure.
+  // Waits a random 1–3s between retries.
+  let rec doCount = countItems =>
     switch countItems->Array.length {
-    | 0 => ()
+    | 0 => Effect.succeed()
     | _ =>
-      switch await Ops.count(countItems) {
-      | exception e =>
-        let errMsg = e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(__MODULE__ ++ `.doCount: count error: ${errMsg}`)->Effect.runSync
-        let timeout = Math.Int.random(1000, 3000)
-        await ReventlessCore.Util.Promise.finishTimeout(timeout)
-        Effect.logInfo(`Retry count after ${timeout->Int.toString} ms`)->Effect.runSync
-        await doCount(countItems)
-      | _ => ()
-      }
+      Effect.tryPromise(
+        ~catch=e => Util.Error.messageFromUnknown(e, "unknown"),
+        () => Ops.count(countItems),
+      )->Effect.catchAll(errMsg =>
+        Effect.logError(__MODULE__ ++ `.doCount: count error: ${errMsg}`)
+        ->Effect.flatMap(_ =>
+          Effect.sync(() => Math.Int.random(1000, 3000))
+          ->Effect.flatMap(timeout =>
+            Effect.promise(() => ReventlessCore.Util.Promise.finishTimeout(timeout))
+            ->Effect.flatMap(_ =>
+              Effect.logInfo(`Retry count after ${timeout->Int.toString} ms`)
+              ->Effect.flatMap(_ => doCount(countItems))
+            )
+          )
+        )
+      )
     }
 
+  // EventCollector stream handler — maps events via commonEventsHandler, then:
+  //   1. Applies counter increments (with retry)
+  //   2. Registers counter targets
+  //   3. Publishes generated commands to the target aggregate
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream->Stream.runForEach(eventJson' =>
-      Effect.promise(async () => {
-        let (publisherEntries, counterActions) = await Ops.commonEventsHandler([eventJson'])
+      Effect.promise(() => Ops.commonEventsHandler([eventJson']))
+      ->Effect.flatMap(((publisherEntries, counterActions)) => {
         let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(
           x =>
             switch x {
@@ -228,7 +254,6 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
             | AddToCounterTarget(_) => false
             },
         )
-
         let countItems = countActions->Array.filterMap(
           countAction =>
             switch countAction {
@@ -240,26 +265,31 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
           `EventMapper.eventCollectorEventsHandler: countItems: ${countItems
             ->Array.length
             ->Int.toString}`,
-        )->Effect.runSync
-        await doCount(countItems)
-
-        Effect.logInfo(
-          `EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ${addToCounterTargetActions
-            ->JSON.stringifyAny
-            ->Option.getOr("[]")}`,
-        )->Effect.runSync
-        await addToCounterTargetActions
-        ->Array.map(
-          async x =>
-            switch x {
-            | AddToCounterTarget(counterTarget) => await Ops.addToCounterTarget(counterTarget)
-            | _ => ()
-            },
         )
-        ->Promise.all
-        ->Util.Promise.toUnit
-
-        await Ops.publishJsons(await publisherEntries)
+        ->Effect.flatMap(_ => doCount(countItems))
+        ->Effect.flatMap(_ =>
+          Effect.logInfo(
+            `EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ${addToCounterTargetActions
+              ->JSON.stringifyAny
+              ->Option.getOr("[]")}`,
+          )
+        )
+        ->Effect.flatMap(_ =>
+          Effect.all(
+            addToCounterTargetActions->Array.filterMap(x =>
+              switch x {
+              | AddToCounterTarget(counterTarget) =>
+                Some(Effect.promise(() => Ops.addToCounterTarget(counterTarget)))
+              | _ => None
+              }
+            ),
+            {"concurrency": "unbounded"},
+          )->Effect.map(_ => ())
+        )
+        ->Effect.flatMap(_ =>
+          Effect.promise(() => publisherEntries)
+          ->Effect.flatMap(entries => Effect.promise(() => Ops.publishJsons(entries)))
+        )
       })
     )
 }

@@ -8,6 +8,8 @@ module type T = {
 }
 
 module Make = (Spec: Spec): T => {
+  // Matches an incoming event JSON to a registered SideEffect module by comparing
+  // the event's meta.service against each SideEffect.Source.name.
   let findSideEffect = (sideEffects, eventJson') =>
     eventJson'
     ->JSON.Decode.object
@@ -34,51 +36,56 @@ module Make = (Spec: Spec): T => {
       }
     })
 
+  // EventCollector handler — for each event, finds the matching SideEffect module,
+  // decodes the event id+payload, and calls SideEffect.execute.
+  // Decode and execution errors are logged and swallowed (side effects are fire-and-forget).
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream
     ->Stream.mapEffect(eventJson' =>
       switch Spec.sideEffects->findSideEffect(eventJson') {
       | Some((eventObj, eventMeta, sideEffect)) =>
-        Effect.promise(async () => {
-          module SideEffect = unpack(sideEffect)
-          let sourceName = SideEffect.Source.name
-          Effect.logInfo(
-            `SideEffectHandler.eventsHandler: handling event from source ${sourceName}: ${LogFormat.event'JsonToLogMessage(
-                eventJson',
-              )}`,
-          )->Effect.runSync
-          try {
-            let idDecoded =
-              eventObj
-              ->Dict.get("id")
-              ->Option.map(id => id->Message.decode(SideEffect.Source.Id.schema))
-            let eventDecoded =
-              eventObj
-              ->Dict.get("event")
-              ->Option.map(json => json->Message.decode(SideEffect.Source.eventSchema))
-            switch (idDecoded, eventDecoded) {
+        module SideEffect = unpack(sideEffect)
+        let sourceName = SideEffect.Source.name
+        Effect.logInfo(
+          `SideEffectHandler.eventsHandler: handling event from source ${sourceName}: ${LogFormat.event'JsonToLogMessage(
+              eventJson',
+            )}`,
+        )->Effect.zipRight(
+          Effect.trySync(
+            ~catch=err => {
+              let errMsg = Util.Error.messageFromUnknown(err, "unknown")
+              `SideEffectHandler.eventHandler: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`
+            },
+            () => {
+              let idDecoded =
+                eventObj
+                ->Dict.get("id")
+                ->Option.map(id => id->Message.decode(SideEffect.Source.Id.schema))
+              let eventDecoded =
+                eventObj
+                ->Dict.get("event")
+                ->Option.map(json => json->Message.decode(SideEffect.Source.eventSchema))
+              (idDecoded, eventDecoded)
+            },
+          )
+          ->Effect.flatMap(decoded =>
+            switch decoded {
             | (Some(eventId), Some(event)) =>
-              try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
-              | err =>
-                let errMsg =
-                  err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-                Effect.logError(`SideEffect: Error while processing: ${errMsg}`)->Effect.runSync
-              }
-            | (None, _)
-            | (_, None) =>
+              Effect.tryPromise(
+                ~catch=err => {
+                  let errMsg = Util.Error.messageFromUnknown(err, "unknown")
+                  `SideEffect: Error while processing: ${errMsg}`
+                },
+                () => SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine),
+              )->Effect.catchAll(errMsg => Effect.logError(errMsg))
+            | _ =>
               Effect.logError(
                 `SideEffectHandler.eventHandler: Invalid event ${eventJson'->JSON.stringify}`,
-              )->Effect.runSync
+              )
             }
-          } catch {
-          | err =>
-            let errMsg =
-              err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-            Effect.logError(
-              `SideEffectHandler.eventHandler: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
-            )->Effect.runSync
-          }
-        })
+          )
+          ->Effect.catchAll(errMsg => Effect.logError(errMsg))
+        )
       | None => Effect.succeed()
       }
     )

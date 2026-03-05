@@ -14,11 +14,13 @@ function Make(ReadModelSpec) {
       stateSchema: ReadModelSpec.stateSchema,
       subIdConfig: ReadModelSpec.subIdConfig
     })(Mappings);
-    let handleJsonEvents = stream => Effect.Stream.runForEach(Effect.Stream.flatMap(Effect.Stream.mapEffect(stream, json => Effect.Effect.sync(() => {
+    let handleJsonEvents = stream => Effect.Stream.runForEach(Effect.Stream.flatMap(Effect.Stream.mapEffect(stream, json => Effect.Effect.map(Effect.Effect.tap(Effect.Effect.sync(() => {
       let sourceName = Message$ReventlessCore.decode(json, Message$Reventless.contextSchema).meta.service;
-      Effect.Effect.runSync(Effect.Effect.logInfo(`ReadModel ` + ReadModelSpec.name + `: handling event from ` + sourceName + `: ` + JSON.stringify(json)));
-      return EventProjector.map(sourceName, json);
-    })), actions => Effect.Stream.fromIterable(actions)), action => Effect.Effect.map(Effect.Effect.promise(() => Projection$ReventlessCore.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig)), param => {}));
+      return [
+        sourceName,
+        EventProjector.map(sourceName, json)
+      ];
+    }), param => Effect.Effect.logInfo(`ReadModel ` + ReadModelSpec.name + `: handling event from ` + param[0] + `: ` + JSON.stringify(json))), param => param[1])), actions => Effect.Stream.fromIterable(actions)), action => Effect.Effect.map(Effect.Effect.promise(() => Projection$ReventlessCore.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig)), param => {}));
     return {
       EventProjector: EventProjector,
       handleJsonEvents: handleJsonEvents

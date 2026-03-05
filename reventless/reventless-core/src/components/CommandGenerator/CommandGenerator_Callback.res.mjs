@@ -10,7 +10,7 @@ import * as Message$ReventlessCore from "../../Message.res.mjs";
 
 function Make(Spec) {
   return AggregateSpec => (Behavior => {
-    let generateCommand = payload => Effect.Effect.promise(async () => {
+    let generateCommand = payload => Effect.Effect.flatMap(Effect.Effect.tap(Effect.Effect.sync(() => {
       let msgId = Message$ReventlessCore.uuid();
       let id = payload.arguments.id;
       let meta_service = AggregateSpec.name;
@@ -33,7 +33,15 @@ function Make(Spec) {
             "TAG",
             commandStr
           ]].concat(params)) : commandStr;
-      Effect.Effect.runSync(Effect.Effect.logInfo("CommandGenerator: generated command: " + JSON.stringify(commandJson)));
+      return [
+        meta,
+        commandJson,
+        id
+      ];
+    }), param => Effect.Effect.logInfo("CommandGenerator: generated command: " + JSON.stringify(param[1]))), param => {
+      let id = param[2];
+      let commandJson = param[1];
+      let meta = param[0];
       let val;
       try {
         val = Message$ReventlessCore.decode(commandJson, Behavior.resolverConfig.commandSchema);
@@ -41,12 +49,11 @@ function Make(Spec) {
         let err = Primitive_exceptions.internalToException(raw_err);
         return Stdlib_JsError.throwWithMessage(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + Stdlib_Option.getOrThrow(JSON.stringify(err), undefined));
       }
-      await Spec.publishJsons([{
+      return Effect.Effect.map(Effect.Effect.promise(() => Spec.publishJsons([{
           id: id,
           meta: meta,
           commandJson: commandJson
-        }]);
-      return msgId;
+        }])), () => meta.msgId);
     });
     return {
       generateCommand: generateCommand

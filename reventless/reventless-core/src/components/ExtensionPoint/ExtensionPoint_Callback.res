@@ -26,6 +26,8 @@ module Make = (
 ): (T with module MappingSpec = MappingSpec) => {
   module MappingSpec = MappingSpec
 
+  // Runs all registered Mapping modules against the incoming commands, collecting
+  // the resulting command actions (publish-to-aggregate or async call).
   let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, resourceNaming, queue) =>
     mappings
     ->Array.map((module(Mapping: Mappings.Mapping)) =>
@@ -38,59 +40,71 @@ module Make = (
     )
     ->Array.flat
 
-  let applyCommandAction = async action =>
+  // Executes a single command action: either publishes a command JSON to the target
+  // aggregate's CommandTopic, or calls an async handler. Errors are logged and returned
+  // as Error(reference) without failing the overall batch.
+  let applyCommandAction = action =>
     switch action {
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishCommand(
         aggregateName,
         reference,
         cmdJson,
       ) =>
-      let result =
-        Spec.publishToAggregates
-        ->Dict.get(aggregateName)
-        ->Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
-        ->Option.mapOr(
-          () =>
-            JsError.throwWithMessage(
-              `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
-            ),
-          x => {() => x},
-        )
-      switch result() {
-      | _ => Ok(reference)
-      | exception err => {
-          let errMsg =
-            err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-          Effect.logError(`ExtensionPoint: Error on publish command: ${errMsg}`)->Effect.runSync
-          Error(reference)
-        }
-      }
+      Effect.trySync(
+        ~catch=err => {
+          let errMsg = Util.Error.messageFromUnknown(err, "unknown")
+          (Error(reference), `ExtensionPoint: Error on publish command: ${errMsg}`)
+        },
+        () => {
+          let result =
+            Spec.publishToAggregates
+            ->Dict.get(aggregateName)
+            ->Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
+            ->Option.mapOr(
+              () =>
+                JsError.throwWithMessage(
+                  `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
+                ),
+              x => {() => x},
+            )
+          let _ = result()
+          Ok(reference)
+        },
+      )
+      ->Effect.catchAll(((errorResult, errMsg)) =>
+        Effect.logError(errMsg)->Effect.map(_ => errorResult)
+      )
     | AbstractCall(reference, handler) =>
-      switch await handler() {
-      | _ => Ok(reference)
-      | exception err => {
-          let errMsg =
-            err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-          Effect.logError(`ExtensionPoint: Error on calling handler: ${errMsg}`)->Effect.runSync
-          Error(reference)
-        }
-      }
+      Effect.tryPromise(
+        ~catch=err => {
+          let errMsg = Util.Error.messageFromUnknown(err, "unknown")
+          (Error(reference), `ExtensionPoint: Error on calling handler: ${errMsg}`)
+        },
+        () => handler(),
+      )
+      ->Effect.map(_ => Ok(reference))
+      ->Effect.catchAll(((errorResult, errMsg)) =>
+        Effect.logError(errMsg)->Effect.map(_ => errorResult)
+      )
     }
 
+  // CommandTopic handler — collects all incoming commands, maps them through the
+  // extension point mappings, then applies each resulting action concurrently.
   let handleIncomingCommands = stream =>
     stream
     ->Stream.runCollect
-    ->Effect.flatMap(topicItems =>
-      Effect.promise(async () => {
-        let commandActions =
-          topicItems->mapIncomingCommands(
-            Mappings.mappings,
-            Spec.scheduler,
-            Spec.queryEngine,
-            Spec.resourceNaming,
-            Spec.commandTopicResources,
-          )
-        await commandActions->Array.map(applyCommandAction)->Promise.all
-      })
-    )
+    ->Effect.flatMap(topicItems => {
+      let commandActions =
+        topicItems->mapIncomingCommands(
+          Mappings.mappings,
+          Spec.scheduler,
+          Spec.queryEngine,
+          Spec.resourceNaming,
+          Spec.commandTopicResources,
+        )
+      Effect.all(
+        commandActions->Array.map(applyCommandAction),
+        {"concurrency": "unbounded"},
+      )
+    })
 }

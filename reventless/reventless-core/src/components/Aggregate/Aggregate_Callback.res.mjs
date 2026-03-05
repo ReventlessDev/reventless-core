@@ -46,24 +46,39 @@ function Make(Spec) {
         correlationId: init.correlationId
       };
     };
-    let handleCommands = stream => Effect.Effect.flatMap(groupTopicItemsByIdStream(stream), groups => Effect.Effect.promise(async () => {
-      Effect.Effect.runSync(Effect.Effect.logInfo("starting Aggregate.execCommands"));
-      return (await Promise.all(groups.map(async param => {
-        let topicItemsForId = param[1];
-        let id = param[0];
-        let match = await Effect.Effect.runPromise(Effect.Stream.runFold(Ops.eventLog.replayStream(id), [
-          undefined,
-          0
-        ], (param, ev) => [
-          apply$p(param[0], ev),
-          param[1] + 1 | 0
+    let handleCommands = stream => Effect.Effect.flatMap(Effect.Effect.tap(groupTopicItemsByIdStream(stream), param => Effect.Effect.logInfo("starting Aggregate.execCommands")), groups => Effect.Effect.map(Effect.Effect.all(groups.map(param => {
+      let topicItemsForId = param[1];
+      let id = param[0];
+      return Effect.Effect.flatMap(Effect.Effect.tap(Effect.Effect.tap(Effect.Stream.runFold(Ops.eventLog.replayStream(id), [
+        undefined,
+        0
+      ], (param, ev) => [
+        apply$p(param[0], ev),
+        param[1] + 1 | 0
+      ]), param => Effect.Effect.logInfo(`finished eventLogReplayStream for id ` + Spec.Id.toString(id))), param => {
+        LogFormat$ReventlessCore.commandJsonsToLogMessages(topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command))).forEach(msg => Effect.Effect.runSync(Effect.Effect.logInfo("Handling command: " + msg)));
+        return Effect.Effect.succeed();
+      }), param => {
+        let sequenceNr = param[1];
+        let match = Belt_Array.unzip(topicItemsForId.map(param => [
+          param.reference,
+          param.command
         ]));
-        let processCommand = async (accP, command$p) => {
-          let acc = await accP;
-          if (acc.TAG === "Ok") {
-            let param = acc._0;
-            let events = param[1];
-            let stateO = param[0];
+        let references = match[0];
+        return Effect.Effect.flatMap(Stdlib_Array.reduce(match[1], Effect.Effect.succeed({
+          TAG: "Ok",
+          _0: [
+            param[0],
+            []
+          ]
+        }), (accEffect, command$p) => Effect.Effect.flatMap(accEffect, acc => {
+          if (acc.TAG !== "Ok") {
+            return Effect.Effect.succeed(acc);
+          }
+          let match = acc._0;
+          let events = match[1];
+          let stateO = match[0];
+          let runBehavior = () => {
             if (stateO !== undefined) {
               let generatedEvents;
               try {
@@ -105,58 +120,44 @@ function Make(Spec) {
                   ]])
               ]
             };
-          } else {
-            return acc;
-          }
-        };
-        Effect.Effect.runSync(Effect.Effect.logInfo(`finished eventLogReplayStream for id ` + Spec.Id.toString(id)));
-        LogFormat$ReventlessCore.commandJsonsToLogMessages(topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command))).forEach(msg => Effect.Effect.runSync(Effect.Effect.logInfo("Handling command: " + msg)));
-        let match$1 = Belt_Array.unzip(topicItemsForId.map(param => [
-          param.reference,
-          param.command
-        ]));
-        let references = match$1[0];
-        let result = await Stdlib_Array.reduce(match$1[1], Promise.resolve({
-          TAG: "Ok",
-          _0: [
-            match[0],
-            []
-          ]
-        }), processCommand);
-        let events;
-        events = result.TAG === "Ok" ? result._0[1].map(param => {
-            let meta = param[1];
-            return param[0].map(event => ({
-              id: id,
-              meta: meta,
-              event: event
-            }));
-          }).flat() : Stdlib_JsError.throwWithMessage(result._0);
-        if (events.length !== 0) {
-          let eventCount = events.length.toString();
-          let eventNames = events.map(event$p => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(event$p.event, Spec.eventSchema))).join(", ");
-          Effect.Effect.runSync(Effect.Effect.logInfo(`Aggregate.handleCommands(` + Spec.Id.toString(id) + `): ` + eventCount + ` Event(s) generated: ` + eventNames));
-          let match$2 = await Ops.eventLog.append(match[1], id, events);
-          if (match$2.TAG === "Ok") {
-            Effect.Effect.runSync(Effect.Effect.logInfo(`finished eventLogAppend for id ` + Spec.Id.toString(id)));
-            return references.map(reference => ({
+          };
+          return Effect.Effect.succeed(runBehavior());
+        })), result => {
+          let events;
+          events = result.TAG === "Ok" ? result._0[1].map(param => {
+              let meta = param[1];
+              return param[0].map(event => ({
+                id: id,
+                meta: meta,
+                event: event
+              }));
+            }).flat() : Stdlib_JsError.throwWithMessage(result._0);
+          if (events.length === 0) {
+            return Effect.Effect.map(Effect.Effect.logInfo(`handleCommands(` + Spec.Id.toString(id) + `): no Event generated`), () => references.map(reference => ({
               TAG: "Ok",
               _0: reference
-            }));
+            })));
           }
-          Effect.Effect.runSync(Effect.Effect.logError(`failed eventLogAppend for id ` + Spec.Id.toString(id)));
-          return references.map(reference => ({
-            TAG: "Error",
-            _0: reference
-          }));
-        }
-        Effect.Effect.runSync(Effect.Effect.logInfo(`handleCommands(` + Spec.Id.toString(id) + `): no Event generated`));
-        return references.map(reference => ({
-          TAG: "Ok",
-          _0: reference
-        }));
-      }))).flat();
-    }));
+          let eventCount = events.length.toString();
+          let eventNames = events.map(event$p => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(event$p.event, Spec.eventSchema))).join(", ");
+          return Effect.Effect.flatMap(Effect.Effect.flatMap(Effect.Effect.logInfo(`Aggregate.handleCommands(` + Spec.Id.toString(id) + `): ` + eventCount + ` Event(s) generated: ` + eventNames), () => Effect.Effect.promise(() => Ops.eventLog.append(sequenceNr, id, events))), appendResult => {
+            if (appendResult.TAG === "Ok") {
+              return Effect.Effect.map(Effect.Effect.logInfo(`finished eventLogAppend for id ` + Spec.Id.toString(id)), () => references.map(reference => ({
+                TAG: "Ok",
+                _0: reference
+              })));
+            } else {
+              return Effect.Effect.map(Effect.Effect.logError(`failed eventLogAppend for id ` + Spec.Id.toString(id)), () => references.map(reference => ({
+                TAG: "Error",
+                _0: reference
+              })));
+            }
+          });
+        });
+      });
+    }), {
+      concurrency: "unbounded"
+    }), prim => prim.flat()));
     return {
       Spec: Spec,
       handleCommands: handleCommands

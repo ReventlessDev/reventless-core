@@ -14,51 +14,56 @@ module type T = {
 }
 
 module Make = (Spec: Spec): T => {
-  let handleEvent = async (eventJson', jsonEventsHandlersByService) =>
-    await eventJson'
-    ->Message.serviceNameOfMsg
-    ->Option.flatMap(serviceName => jsonEventsHandlersByService->Dict.get(serviceName))
-    ->Option.mapOr(Promise.resolve(), async jsonEventsHandlers => {
-      await jsonEventsHandlers
-      ->Array.map(jsonEventsHandler => jsonEventsHandler(eventJson', Spec.pluginDefinition))
-      ->Promise.all
-      ->Util.Promise.toUnit
-    })
-
-  let detectUnhandledEvent = eventJson' =>
+  let handleEventEffect = (eventJson', jsonEventsHandlersByService) =>
     eventJson'
     ->Message.serviceNameOfMsg
-    ->Option.mapOr((), serviceName =>
+    ->Option.flatMap(serviceName => jsonEventsHandlersByService->Dict.get(serviceName))
+    ->Option.mapOr(Effect.succeed(), jsonEventsHandlers =>
+      Effect.all(
+        jsonEventsHandlers->Array.map(jsonEventsHandler =>
+          Effect.promise(() => jsonEventsHandler(eventJson', Spec.pluginDefinition))
+        ),
+        {"concurrency": "unbounded"},
+      )->Effect.map(_ => ())
+    )
+
+  let detectUnhandledEventEffect = eventJson' =>
+    eventJson'
+    ->Message.serviceNameOfMsg
+    ->Option.mapOr(Effect.succeed(), serviceName =>
       switch (
         Spec.outgoingExtensionPointEventHandlers->Dict.get(serviceName),
         Spec.outgoingExtensionEventHandlers->Dict.get(serviceName),
         Spec.incomingExtensionEventHandlers->Dict.get(serviceName),
       ) {
-      | (None, None, None) => Effect.logInfo("No mapping matches service name")->Effect.runSync
-      | _ => ()
+      | (None, None, None) => Effect.logInfo("No mapping matches service name")
+      | _ => Effect.succeed()
       }
     )
 
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream
-    ->Stream.mapEffect(eventJson' =>
-      Effect.promise(async () => {
-        let id = Spec.pluginDefinition.id
-        Effect.logInfo(
-          `Plugin ${id} handleJsonEvents: incoming event: ${LogFormat.event'JsonToLogMessage(
-              eventJson',
-            )}`,
-        )->Effect.runSync
-        detectUnhandledEvent(eventJson')
-        switch await eventJson'->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
-        | _ =>
-          let _ = await [
-            eventJson'->handleEvent(Spec.outgoingExtensionPointEventHandlers),
-            eventJson'->handleEvent(Spec.outgoingExtensionEventHandlers),
-            eventJson'->handleEvent(Spec.incomingExtensionEventHandlers),
-          ]->Promise.all
-        }
-      })
-    )
+    ->Stream.mapEffect(eventJson' => {
+      let id = Spec.pluginDefinition.id
+      Effect.logInfo(
+        `Plugin ${id} handleJsonEvents: incoming event: ${LogFormat.event'JsonToLogMessage(
+            eventJson',
+          )}`,
+      )
+      ->Effect.zipRight(detectUnhandledEventEffect(eventJson'))
+      ->Effect.zipRight(
+        handleEventEffect(eventJson', Spec.incomingConnectExtensionEventHandlers)
+        ->Effect.zipRight(
+          Effect.all(
+            [
+              handleEventEffect(eventJson', Spec.outgoingExtensionPointEventHandlers),
+              handleEventEffect(eventJson', Spec.outgoingExtensionEventHandlers),
+              handleEventEffect(eventJson', Spec.incomingExtensionEventHandlers),
+            ],
+            {"concurrency": "unbounded"},
+          )->Effect.map(_ => ())
+        )
+      )
+    })
     ->Stream.runDrain
 }
