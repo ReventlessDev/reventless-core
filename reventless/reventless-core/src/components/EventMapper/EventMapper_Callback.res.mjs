@@ -5,12 +5,13 @@ import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function MakeCounterHandler(Target) {
@@ -22,7 +23,8 @@ function MakeCounterHandler(Target) {
         eventMeta = Stdlib_Option.map(eventObj$p["meta"], metaJson => Message$ReventlessCore.decode(metaJson, Message$ReventlessCore.metaSchema));
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
-        console.log("EventMapper_Callback.findMapping: Couldn't decode meta:", err);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+        Effect.Effect.runSync(Effect.Effect.logError(`EventMapper_Callback.findMapping: Couldn't decode meta: ` + errMsg));
         return;
       }
       if (eventMeta !== undefined) {
@@ -30,17 +32,17 @@ function MakeCounterHandler(Target) {
         let mapping = mappings.find(Mapping => Mapping.Source.name === source);
         if (mapping !== undefined) {
           let source$1 = mapping.Source.name;
-          console.log(`EventMapper.map: found mapping ` + source$1 + ` -> ` + target);
+          Effect.Effect.runSync(Effect.Effect.logInfo(`EventMapper.map: found mapping ` + source$1 + ` -> ` + target));
           return [
             eventObj$p,
             eventMeta,
             mapping
           ];
         }
-        console.log(`EventMapper.map: No mapping ` + source + ` -> ` + target + ` found`);
+        Effect.Effect.runSync(Effect.Effect.logInfo(`EventMapper.map: No mapping ` + source + ` -> ` + target + ` found`));
         return;
       }
-      console.log("EventMapper_Callback.findMapping: Invalid JSON object:", eventJson$p);
+      Effect.Effect.runSync(Effect.Effect.logError(`EventMapper_Callback.findMapping: Invalid JSON object: ` + JSON.stringify(eventJson$p)));
     });
     let createCommandJson = (delay, id, meta, command) => ({
       id: Target.Id.toString(id),
@@ -116,7 +118,7 @@ function MakeCounterHandler(Target) {
       let eventsCount = eventsJson$p.length;
       let match = Belt_Array.partition(Stdlib_Array.filterMap(eventsJson$p.map((eventJson$p, idx) => {
         let idx$1 = idx + 1 | 0;
-        Logger$ReventlessCore.logJsonEvent(undefined, undefined, eventJson$p, `EventMapper.eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `:`);
+        Effect.Effect.runSync(Effect.Effect.logInfo(`EventMapper.eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
         let match = findMapping(Mappings.mappings, eventJson$p);
         if (match === undefined) {
           return;
@@ -126,15 +128,23 @@ function MakeCounterHandler(Target) {
         try {
           let idDecoded = Stdlib_Option.map(eventObj["id"], id => Message$ReventlessCore.decode(id, mapping.Source.Id.schema));
           let eventDecoded = Stdlib_Option.map(eventObj["event"], event => Message$ReventlessCore.decode(event, mapping.Source.eventSchema));
-          if (idDecoded !== undefined && eventDecoded !== undefined) {
-            return processMappingActions(mapping.map(Primitive_option.valFromOption(idDecoded), Primitive_option.valFromOption(eventDecoded), Ops.queryEngine), match[1]);
+          let exit = 0;
+          if (idDecoded !== undefined) {
+            if (eventDecoded !== undefined) {
+              return processMappingActions(mapping.map(Primitive_option.valFromOption(idDecoded), Primitive_option.valFromOption(eventDecoded), Ops.queryEngine), match[1]);
+            }
+            exit = 1;
           } else {
-            console.log("EventMapper.map: Invalid event:", eventJson$p);
+            exit = 1;
+          }
+          if (exit === 1) {
+            Effect.Effect.runSync(Effect.Effect.logError(`EventMapper.map: Invalid event: ` + JSON.stringify(eventJson$p)));
             return;
           }
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
-          console.log("EventMapper.map: Couldn't decode event:", eventJson$p, err);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+          Effect.Effect.runSync(Effect.Effect.logError(`EventMapper.map: Couldn't decode event: ` + JSON.stringify(eventJson$p) + ` ` + errMsg));
           return;
         }
       }), entry => entry).flat(), resultType => resultType.TAG !== "Counter");
@@ -160,7 +170,7 @@ function MakeCounterHandler(Target) {
     let handleCounterEvents = stream => Effect.Stream.runForEach(stream, eventJson$p => Effect.Effect.promise(async () => {
       let match = await commonEventsHandler([eventJson$p]);
       if (match[1].length !== 0) {
-        console.log("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!");
+        Effect.Effect.runSync(Effect.Effect.logError("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!"));
       }
       return await Ops.publishJsons(await match[0]);
     }));
@@ -182,10 +192,11 @@ function MakeEventCollectorHandler(Ops) {
       return;
     } catch (raw_e) {
       let e = Primitive_exceptions.internalToException(raw_e);
-      console.log("EventMapper_Callback-ReventlessCore" + ".doCount: count error", e);
+      let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown");
+      Effect.Effect.runSync(Effect.Effect.logError("EventMapper_Callback-ReventlessCore" + (`.doCount: count error: ` + errMsg)));
       let timeout = Stdlib_Math.Int.random(1000, 3000);
       await Util_Promise$ReventlessCore.finishTimeout(timeout);
-      console.log(`Retry count after ` + timeout.toString() + ` ms`);
+      Effect.Effect.runSync(Effect.Effect.logInfo(`Retry count after ` + timeout.toString() + ` ms`));
       return await doCount(countItems);
     }
   };
@@ -198,9 +209,9 @@ function MakeEventCollectorHandler(Ops) {
         return countAction._0;
       }
     });
-    console.log("EventMapper.eventCollectorEventsHandler: countItems:", countItems.length);
+    Effect.Effect.runSync(Effect.Effect.logInfo(`EventMapper.eventCollectorEventsHandler: countItems: ` + countItems.length.toString()));
     await doCount(countItems);
-    console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", JSON.stringify(addToCounterTargetActions));
+    Effect.Effect.runSync(Effect.Effect.logInfo(`EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ` + Stdlib_Option.getOr(JSON.stringify(addToCounterTargetActions), "[]")));
     await Util_Promise$ReventlessCore.toUnit(Promise.all(addToCounterTargetActions.map(async x => {
       if (x.TAG === "Count") {
         return;

@@ -27,7 +27,9 @@ module Make = (Spec: Spec) => {
     | jsons =>
       switch jsons {
       | [] =>
-        Console.log2("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName)
+        Effect.logWarning(
+          `ForwardCommand: Couldn't find Plugin with ExtensionPoint ${extensionPointName}`,
+        )->Effect.runSync
       | plugins =>
         let plugin = plugins->Array.getUnsafe(0)
         switch plugin->Message.decode(PluginReadModelSpec.stateSchema) {
@@ -43,19 +45,26 @@ module Make = (Spec: Spec) => {
               ~messageBody=command,
             ) {
             | _ =>
-              Console.log3(
-                "ForwardCommand: published command to",
-                plugin.name,
-                extensionPoint.commandTopic,
-              )
+              Effect.logInfo(
+                `ForwardCommand: published command to ${plugin.name} ${extensionPoint.commandTopic}`,
+              )->Effect.runSync
             | exception err =>
-              Console.log2("PluginExtensionPoint_PluginMapping: Error on publish command:", err)
+              let errMsg =
+                err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+              Effect.logError(
+                `PluginExtensionPoint_PluginMapping: Error on publish command: ${errMsg}`,
+              )->Effect.runSync
             }
 
           | None =>
-            Console.log3("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin)
+            Effect.logWarning(
+              `ForwardCommand: Couldn't find ExtensionPoint ${extensionPointName} in ${plugin.name}`,
+            )->Effect.runSync
           }
-        | exception err => Console.log3("ForwardCommand: Couldn't decode Plugin", plugin, err)
+        | exception err =>
+          let errMsg =
+            err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          Effect.logError(`ForwardCommand: Couldn't decode Plugin: ${errMsg}`)->Effect.runSync
         }
       }
     }
@@ -106,8 +115,7 @@ module Make = (Spec: Spec) => {
         // On mismatch, emit a ReportIncompatibility command so that an
         // IncompatiblePlugin event is recorded; the connection still proceeds.
         let protocolErrors =
-          pluginDefinition.extensionProtocols
-          ->Array.flatMap(proto =>
+          pluginDefinition.extensionProtocols->Array.flatMap(proto =>
             ReventlessInterop.Compat.validateProtocol(
               ~host=ReventlessInterop.CompatMatrix.corePlugin,
               ~extensionPointName=proto.extensionPointName,
@@ -115,17 +123,16 @@ module Make = (Spec: Spec) => {
               ~eventVersion=proto.eventVersion,
             )
           )
-        let reportAction =
-          if protocolErrors->Array.length > 0 {
-            Console.warn3(
-              "[Core.Plugin] Protocol version mismatch for plugin",
-              pluginDefinition.id,
-              protocolErrors,
-            )
-            [PublishCommand(id, Aggregate.ReportIncompatibility(pluginDefinition))]
-          } else {
-            []
-          }
+        let reportAction = if protocolErrors->Array.length > 0 {
+          Effect.logWarning(
+            `[Core.Plugin] Protocol version mismatch for plugin ${pluginDefinition.id}: ${protocolErrors
+              ->JSON.stringifyAny
+              ->Option.getOr("[]")}`,
+          )->Effect.runSync
+          [PublishCommand(id, Aggregate.ReportIncompatibility(pluginDefinition))]
+        } else {
+          []
+        }
         Array.concat([PublishCommand(id, Aggregate.Connect(pluginDefinition))], reportAction)
       | DisconnectPlugin => [
           PublishCommand(id, Disconnect),

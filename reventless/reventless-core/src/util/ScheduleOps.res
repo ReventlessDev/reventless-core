@@ -72,9 +72,18 @@ let create = (
     let schedule = {...schedule, name}
     let createSchedule = scheduler.createSchedule
     switch await createSchedule(channelResources, schedule) {
-    | _ => Console.log2("ScheduleOps.create: created", schedule)
+    | _ =>
+      Effect.logInfo(
+        `ScheduleOps.create: created ${schedule->JSON.stringifyAny->Option.getOr("")}`,
+      )->Effect.runSync
     | exception err => {
-        Console.log3("ScheduleOps.create: couldn't create", schedule, err)
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `ScheduleOps.create: couldn't create ${schedule
+            ->JSON.stringifyAny
+            ->Option.getOr("")}: ${errMsg}`,
+        )->Effect.runSync
         throw(ScheduleNotCreated(schedule))
       }
     }
@@ -89,9 +98,11 @@ let delete = (
     let name = name->resourceNaming.validateName
     let deleteSchedule = scheduler.deleteSchedule
     switch await deleteSchedule(channelResources, name) {
-    | _ => Console.log2("ScheduleOps.delete: deleted", name)
+    | _ => Effect.logInfo(`ScheduleOps.delete: deleted ${name}`)->Effect.runSync
     | exception err => {
-        Console.log3("ScheduleOps.delete: couldn't delete", name, err)
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(`ScheduleOps.delete: couldn't delete ${name}: ${errMsg}`)->Effect.runSync
         throw(ScheduleNotDeleted(name))
       }
     }

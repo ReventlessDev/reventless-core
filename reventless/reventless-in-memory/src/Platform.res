@@ -9,16 +9,20 @@
 // The platform starts a GraphQL server on port 4000 after all components are built.
 // Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
-// Logger-configurable platform — inject Logger.silent to suppress log noise in tests.
-// Usage: module Platform = Platform.MakeWithConfig({let logger = Logger.silent})
-module MakeWithConfig = (Config: {let logger: Logger.t}): (ReventlessInfra.Platform.T
-  with type api = unit
-  and type role = unit
-) => {
+// Silent-configurable platform — set silent=true to suppress diagnostic warnings in tests.
+// Usage: module Platform = Platform.MakeWithConfig({let silent = true})
+module MakeWithConfig = (
+  Config: {
+    let silent: bool
+  },
+): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   type api = unit
   type role = unit
 
-  module Bus = InMemory_Bus.MakeWithLogger({let logger = Config.logger})
+  module Bus = InMemory_Bus.Impl({
+    let capacity = None
+    let silent = Config.silent
+  })
 
   module AggregateMaker = Aggregate_Builder.Make(Bus)
   module ReadModelMaker = ReadModel_Builder.Make(Bus)
@@ -35,19 +39,20 @@ module MakeWithConfig = (Config: {let logger: Logger.t}): (ReventlessInfra.Platf
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-    ): (ReventlessInfra.Aggregate.T with type api = unit) =>
-      AggregateMaker.Make(Spec, Behavior, EventMappings)
+    ): (ReventlessInfra.Aggregate.T with type api = unit) => AggregateMaker.Make(
+      Spec,
+      Behavior,
+      EventMappings,
+    )
   }
 
   module ReadModel = {
     module Make = (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ): (ReventlessInfra.ReadModel.T
-      with module Spec = Spec
-      and type api = unit
-      and type role = unit) =>
-      ReadModelMaker.Make(Spec, Mappings)
+    ): (
+      ReventlessInfra.ReadModel.T with module Spec = Spec and type api = unit and type role = unit
+    ) => ReadModelMaker.Make(Spec, Mappings)
   }
 
   module ExtensionPoint = {
@@ -65,229 +70,224 @@ module MakeWithConfig = (Config: {let logger: Logger.t}): (ReventlessInfra.Platf
   }
 
   module Task = {
-    module Make = (
-      Spec: ReventlessInfra.Task.Spec,
-    ): (ReventlessInfra.Task.T with module Spec = Spec) => TaskMaker.Make(Spec)
+    module Make = (Spec: ReventlessInfra.Task.Spec): (
+      ReventlessInfra.Task.T with module Spec = Spec
+    ) => TaskMaker.Make(Spec)
   }
 
   module Counter = Counter_Builder.Make(Bus)
 
   module StateChangeSlice = {
-    module Make = (
-      Spec: Reventless.StateChangeSlice.Spec,
-    ): (ReventlessInfra.StateChangeSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => StateChangeSlice_Builder.Make(Spec)
+    module Make = (Spec: Reventless.StateChangeSlice.Spec): (
+      ReventlessInfra.StateChangeSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    ) => StateChangeSlice_Builder.Make(Spec)
   }
 
   module StateViewSlice = {
-    module Make = (
-      Spec: Reventless.StateViewSlice.Spec,
-    ): (ReventlessInfra.StateViewSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => StateViewSliceMaker.Make(Spec)
+    module Make = (Spec: Reventless.StateViewSlice.Spec): (
+      ReventlessInfra.StateViewSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    ) => StateViewSliceMaker.Make(Spec)
   }
 
   module AutomationSlice = {
-    module Make = (
-      Spec: Reventless.AutomationSlice.Spec,
-    ): (ReventlessInfra.AutomationSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => AutomationSliceMaker.Make(Spec)
+    module Make = (Spec: Reventless.AutomationSlice.Spec): (
+      ReventlessInfra.AutomationSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    ) => AutomationSliceMaker.Make(Spec)
   }
 
   module OutboundTranslationSlice = {
-    module Make = (
-      Spec: Reventless.OutboundTranslationSlice.Spec,
-    ): (ReventlessInfra.OutboundTranslationSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => OutboundTranslationSliceMaker.Make(Spec)
+    module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
+      ReventlessInfra.OutboundTranslationSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    ) => OutboundTranslationSliceMaker.Make(Spec)
   }
 
   module InboundTranslationSlice = {
-    module Make = (
-      Spec: Reventless.InboundTranslationSlice.Spec,
-    ): (ReventlessInfra.InboundTranslationSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => InboundTranslationSliceMaker.Make(Spec)
+    module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (
+      ReventlessInfra.InboundTranslationSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    ) => InboundTranslationSliceMaker.Make(Spec)
   }
 
   module DcbEventLog = {
-    module Make = (
-      Spec: Reventless.DcbEventLog.Spec,
-    ): (ReventlessInfra.DcbEventLog.T with module Spec = Spec) => DcbEventLogMaker.Make(Spec)
+    module Make = (Spec: Reventless.DcbEventLog.Spec): (
+      ReventlessInfra.DcbEventLog.T with module Spec = Spec
+    ) => DcbEventLogMaker.Make(Spec)
   }
 
   module Api = {
     module Make = (
-      Config: {let baseFragment: ReventlessInfra.Api.schemaFragment},
+      Config: {
+        let baseFragment: ReventlessInfra.Api.schemaFragment
+      },
     ): ReventlessInfra.Api.T => {
       module Builder = ReventlessCore.Api_Builder.Make(GraphQL_InMemory_Adapter)
-      let make = (~name, ~opts=?) =>
-        Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
+      let make = (~name, ~opts=?) => Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
     }
   }
 
   // Set the DCB mutation resolver hook so Plugin_Builder.construct() registers
   // GraphQL resolvers for each StateChangeSlice during plugin construction.
-  let () =
-    ReventlessCore.Plugin_Helpers.dcbMutationResolverHook.contents =
-      Some(DcbCommandTopicResolvers_GraphQL.register)
+  let () = ReventlessCore.Plugin_Helpers.dcbMutationResolverHook.contents = Some(
+    DcbCommandTopicResolvers_GraphQL.register,
+  )
 
   // Set the aggregate mutation resolver hook so Plugin_Builder.construct() registers
   // GraphQL SDL + resolver stubs for each aggregate during plugin construction.
   // The real generateCommand handler is bound later when Output.apply chains fire.
-  let () =
-    ReventlessCore.Plugin_Helpers.aggregateMutationResolverHook.contents =
-      Some(CommandGeneratorResolvers_GraphQL.register)
+  let () = ReventlessCore.Plugin_Helpers.aggregateMutationResolverHook.contents = Some(
+    CommandGeneratorResolvers_GraphQL.register,
+  )
 
   // Set the schema type registration hook so Plugin_Builder.construct() registers
   // GraphQL type definitions (from the generated fragment) into the GraphQL server.
-  let () =
-    ReventlessCore.Plugin_Helpers.schemaTypeRegistrationHook.contents =
-      Some(sdlTypes => GraphQL_Server.registerTypes(~sdlTypes))
+  let () = ReventlessCore.Plugin_Helpers.schemaTypeRegistrationHook.contents = Some(
+    sdlTypes => GraphQL_Server.registerTypes(~sdlTypes),
+  )
 
   // Set the MCP schema registration hook so Plugin_Builder.construct() registers
   // MCP tools and resources during plugin construction.
-  let () =
-    ReventlessCore.Plugin_Helpers.mcpSchemaRegistrationHook.contents =
-      Some(({pluginName, mutationEntries, queryEntries, eventLogEntries}) => {
-        // Register MCP tools — reuse the same GraphQL resolver functions.
-        // The GraphQL mutation resolvers are already registered in GraphQL_Server
-        // at this point. We look them up by field name and wrap them for MCP.
-        MCP_Server.registerToolsFromEntries(
-          ~pluginName,
-          ~mutationEntries,
-          ~commandHandler=async (toolName, args) => {
-            // Look up the GraphQL mutation resolver for this tool name
-            switch GraphQL_Server.getMutationResolver(toolName) {
-            | Some(resolver) =>
-              let result = await resolver(JSON.Encode.null, args)
-              switch result->JSON.Decode.string {
-              | Some(s) => s
-              | None => result->JSON.stringify
-              }
-            | None => `error: no handler found for tool ${toolName}`
-            }
-          },
-        )
+  let () = ReventlessCore.Plugin_Helpers.mcpSchemaRegistrationHook.contents = Some(
+    ({pluginName, mutationEntries, queryEntries, eventLogEntries}) => {
+      // Register MCP tools — reuse the same GraphQL resolver functions.
+      // The GraphQL mutation resolvers are already registered in GraphQL_Server
+      // at this point. We look them up by field name and wrap them for MCP.
+      MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
+        toolName,
+        args,
+      ) => {
+        // Look up the GraphQL mutation resolver for this tool name
+        switch GraphQL_Server.getMutationResolver(toolName) {
+        | Some(resolver) =>
+          let result = await resolver(JSON.Encode.null, args)
+          switch result->JSON.Decode.string {
+          | Some(s) => s
+          | None => result->JSON.stringify
+          }
+        | None => `error: no handler found for tool ${toolName}`
+        }
+      })
 
-        // Register MCP resources from query entries (read models).
-        // Use the Bus QueryDb registry directly for reads.
-        MCP_Server.registerResourcesFromEntries(
-          ~pluginName,
-          ~queryEntries,
-          ~queryHandler=async (resourceName, uri) => {
-            // Extract the ID from the URI (last segment after /)
-            let segments = uri->String.split("/")
-            let id = segments->Array.at(-1)->Option.getOr("")
-            // Find the QueryDb by matching the resource name to registered query field names
-            // (match both singleFieldName and listFieldName since list resources use the plural name)
-            let queryDbName =
-              ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
-              ->Dict.toArray
-              ->Array.find(((_, entry)) =>
-                entry.singleFieldName == resourceName ||
-                  entry.listFieldName == Some(resourceName)
-              )
-              ->Option.map(((name, _)) => name)
-              ->Option.getOr(resourceName)
-            switch Bus.getQueryDb(queryDbName) {
-            | Some(ops) =>
-              if id->String.length > 0 && id != resourceName {
-                // Single-item lookup
-                let items =
-                  await ops.loadStream(id)
-                  ->Stream.runCollect
-                  ->Effect.catchAll(_ => Effect.succeed([]))
-                  ->Effect.runPromise
-                switch items->Array.get(0) {
-                | Some(item) => item
-                | None => JSON.Encode.null
-                }
-              } else {
-                // List query
-                switch Bus.getQueryDbScan(queryDbName) {
-                | Some(scanAll) => scanAll()->JSON.Encode.array
-                | None => []->JSON.Encode.array
-                }
-              }
+      // Register MCP resources from query entries (read models).
+      // Use the Bus QueryDb registry directly for reads.
+      MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler=async (
+        resourceName,
+        uri,
+      ) => {
+        // Extract the ID from the URI (last segment after /)
+        let segments = uri->String.split("/")
+        let id = segments->Array.at(-1)->Option.getOr("")
+        // Find the QueryDb by matching the resource name to registered query field names
+        // (match both singleFieldName and listFieldName since list resources use the plural name)
+        let queryDbName =
+          ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+          ->Dict.toArray
+          ->Array.find(((_, entry)) =>
+            entry.singleFieldName == resourceName || entry.listFieldName == Some(resourceName)
+          )
+          ->Option.map(((name, _)) => name)
+          ->Option.getOr(resourceName)
+        switch Bus.getQueryDb(queryDbName) {
+        | Some(ops) =>
+          if id->String.length > 0 && id != resourceName {
+            // Single-item lookup
+            let items = await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
+            switch items->Array.get(0) {
+            | Some(item) => item
             | None => JSON.Encode.null
             }
-          },
-        )
+          } else {
+            // List query
+            switch Bus.getQueryDbScan(queryDbName) {
+            | Some(scanAll) => scanAll()->JSON.Encode.array
+            | None => []->JSON.Encode.array
+            }
+          }
+        | None => JSON.Encode.null
+        }
+      })
 
-        // Register MCP resources for event history (aggregate EventLog + DCB EventLog).
-        // Use the Bus event log registries for reads.
-        MCP_Server.registerEventHistoryResourcesFromEntries(
-          ~pluginName,
-          ~eventLogEntries,
-          ~eventLogHandler=async (resourceName, uri) => {
-            let segments = uri->String.split("/")
-            let entityId = segments->Array.at(-1)->Option.getOr("")
+      // Register MCP resources for event history (aggregate EventLog + DCB EventLog).
+      // Use the Bus event log registries for reads.
+      MCP_Server.registerEventHistoryResourcesFromEntries(
+        ~pluginName,
+        ~eventLogEntries,
+        ~eventLogHandler=async (resourceName, uri) => {
+          let segments = uri->String.split("/")
+          let entityId = segments->Array.at(-1)->Option.getOr("")
 
-            // Find the matching event log entry by resource name
-            let matchingEntry =
-              eventLogEntries->Array.find(entry =>
-                resourceName->String.includes(entry.displayName->String.toLowerCase)
-              )
-            switch matchingEntry {
-            | Some(entry) =>
-              // Try aggregate EventLog first
-              switch Bus.getEventLogReplay(entry.busKey) {
-              | Some(replay) =>
-                let events = await replay(entityId)
-                events->JSON.Encode.array
-              | None =>
-                // Try DCB EventLog — read all events, filter by tag value
-                switch Bus.getDcbEventLogRead(entry.busKey) {
-                | Some(read) =>
-                  let result = await read(~query=[])
-                  let filtered =
-                    if entityId->String.length > 0 && entityId != resourceName {
-                      result.events->Array.filter(e =>
-                        e.tags->Array.some(tag => tag.value == entityId)
-                      )
-                    } else {
-                      result.events
-                    }
-                  filtered
-                  ->Array.map(e => {
-                    [
-                      ("position", JSON.Encode.string(e.position)),
-                      ("eventType", JSON.Encode.string(e.eventType)),
-                      ("data", e.data),
-                      (
-                        "tags",
-                        e.tags
-                        ->Array.map(t =>
+          // Find the matching event log entry by resource name
+          let matchingEntry =
+            eventLogEntries->Array.find(entry =>
+              resourceName->String.includes(entry.displayName->String.toLowerCase)
+            )
+          switch matchingEntry {
+          | Some(entry) =>
+            // Try aggregate EventLog first
+            switch Bus.getEventLogReplay(entry.busKey) {
+            | Some(replay) =>
+              let events = await replay(entityId)
+              events->JSON.Encode.array
+            | None =>
+              // Try DCB EventLog — read all events, filter by tag value
+              switch Bus.getDcbEventLogRead(entry.busKey) {
+              | Some(read) =>
+                let result = await read(~query=[])
+                let filtered = if entityId->String.length > 0 && entityId != resourceName {
+                  result.events->Array.filter(e => e.tags->Array.some(tag => tag.value == entityId))
+                } else {
+                  result.events
+                }
+                filtered
+                ->Array.map(e => {
+                  [
+                    ("position", JSON.Encode.string(e.position)),
+                    ("eventType", JSON.Encode.string(e.eventType)),
+                    ("data", e.data),
+                    (
+                      "tags",
+                      e.tags
+                      ->Array.map(
+                        t =>
                           [
                             ("key", JSON.Encode.string(t.key)),
                             ("value", JSON.Encode.string(t.value)),
                           ]
                           ->Dict.fromArray
-                          ->JSON.Encode.object
-                        )
-                        ->JSON.Encode.array,
-                      ),
-                    ]
-                    ->Dict.fromArray
-                    ->JSON.Encode.object
-                  })
-                  ->JSON.Encode.array
-                | None => []->JSON.Encode.array
-                }
+                          ->JSON.Encode.object,
+                      )
+                      ->JSON.Encode.array,
+                    ),
+                  ]
+                  ->Dict.fromArray
+                  ->JSON.Encode.object
+                })
+                ->JSON.Encode.array
+              | None => []->JSON.Encode.array
               }
-            | None => []->JSON.Encode.array
             }
-          },
-        )
-      })
+          | None => []->JSON.Encode.array
+          }
+        },
+      )
+    },
+  )
 
   module PluginMaker = Plugin_Builder.Make(Bus)
   // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
   // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
-  module Plugin: (ReventlessInfra.Plugin.T with type api = unit and type role = unit) = {
+  module Plugin: ReventlessInfra.Plugin.T with type api = unit and type role = unit = {
     type api = unit
     type role = unit
     type component = ReventlessCore.Plugin.component
@@ -295,7 +295,7 @@ module MakeWithConfig = (Config: {let logger: Logger.t}): (ReventlessInfra.Platf
   }
 
   module CoreMaker = Core_Builder.Make(Bus)
-  module Core: (ReventlessInfra.Core.T with type api = unit and type role = unit) = {
+  module Core: ReventlessInfra.Core.T with type api = unit and type role = unit = {
     type api = unit
     type role = unit
     type component = ReventlessCore.Core.component
@@ -322,10 +322,9 @@ module MakeWithConfig = (Config: {let logger: Logger.t}): (ReventlessInfra.Platf
   }
 }
 
-// Default platform — uses Logger.consoleLogger for all runtime diagnostics.
-module Make = (): (ReventlessInfra.Platform.T
-  with type api = unit
-  and type role = unit
-) => {
-  include MakeWithConfig({let logger = Logger.consoleLogger})
+// Default platform — diagnostic warnings enabled.
+module Make = (): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
+  include MakeWithConfig({
+    let silent = false
+  })
 }

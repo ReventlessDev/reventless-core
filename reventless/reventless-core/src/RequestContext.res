@@ -9,7 +9,6 @@
 //   let ctx = { correlationId: event.meta.correlationId }
 //   myEffect
 //   ->Effect.provideService(RequestContext.tag, ctx)
-//   ->Effect.provideService(Logger.tag, Logger.consoleLogger)
 //   ->Effect.runPromise
 //
 // In tests:

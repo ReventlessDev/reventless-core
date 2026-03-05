@@ -20,9 +20,9 @@ function Make(Bus) {
     let include = Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)(EventMappings)({
       make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
       groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+      extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
       asEventHandler: prim => prim,
-      asEffectHandler: prim => prim,
-      logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+      asEffectHandler: prim => prim
     })({
       handleResolversEvent: CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handleResolversEvent,
       make: CommandGeneratorResolvers_GraphQL$ReventlessInMemory.make

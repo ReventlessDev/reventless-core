@@ -51,13 +51,18 @@ module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Sp
       let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
       let meta = Message.generateMeta(~service=name)
       try await Ops.publishJson(name, meta, json) catch {
-      | JsExn(err) => Console.log2(`DcbEventLog(${name}): EventTopic.publish Error:`, err)
+      | JsExn(err) =>
+        let errMsg = err->JsExn.message->Option.getOr("unknown")
+        Effect.logError(`DcbEventLog(${name}): EventTopic.publish Error: ${errMsg}`)->Effect.runSync
       }
     })
     ->Promise.all
   }
 
-  let append = async (events: array<Spec.event>, ~condition: option<Reventless.DcbTag.appendCondition>=?) => {
+  let append = async (
+    events: array<Spec.event>,
+    ~condition: option<Reventless.DcbTag.appendCondition>=?,
+  ) => {
     let rawEvents = events->Array.map(encodeEvent)
     let result = await Ops.storage.append(rawEvents, ~condition?)
     switch result {
@@ -68,7 +73,10 @@ module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Sp
     }
   }
 
-  let read = async (~query: Reventless.DcbTag.query, ~after: option<Reventless.DcbTag.sequencePosition>=?) => {
+  let read = async (
+    ~query: Reventless.DcbTag.query,
+    ~after: option<Reventless.DcbTag.sequencePosition>=?,
+  ) => {
     let rawResult = await Ops.storage.read(~query, ~after?)
     let events = rawResult.events->Array.map(decodeEvent)
     let result: DcbEventLog.readResult<_> = {
@@ -79,8 +87,7 @@ module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Sp
   }
 
   let readStream: DcbEventLog.readStream<Spec.event> = (~query, ~after=?) =>
-    Ops.storage.readStream(~query, ~after?)
-    ->Stream.map(raw => decodeEvent(raw))
+    Ops.storage.readStream(~query, ~after?)->Stream.map(raw => decodeEvent(raw))
 
   // Streaming append — collects the stream into an array, then makes a single
   // storage.append call to preserve atomicity of the condition check.
@@ -89,7 +96,5 @@ module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Sp
     stream
     ->Stream.map(event => encodeEvent(event))
     ->Stream.runCollect
-    ->Effect.flatMap(rawEvents =>
-      Effect.promise(() => Ops.storage.append(rawEvents, ~condition?))
-    )
+    ->Effect.flatMap(rawEvents => Effect.promise(() => Ops.storage.append(rawEvents, ~condition?)))
 }

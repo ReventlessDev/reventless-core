@@ -17,7 +17,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (
             | command' => Some({ReventlessInfra.CommandTopic.reference, command: command'})
             | exception err =>
               let commandStr = json->JSON.stringify
-              Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}:`, err)
+              Console.error2(`Couldn't decode command ${commandStr}:`, err)
               None
             }
           )

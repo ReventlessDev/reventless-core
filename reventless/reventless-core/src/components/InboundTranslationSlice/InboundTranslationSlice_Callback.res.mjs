@@ -2,10 +2,12 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
+import * as Effect from "effect";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+
+S.enableJson();
 
 let auditStatusSchema = S.union([
   S.literal("Success"),
@@ -58,7 +60,8 @@ function Make(Spec) {
           commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
         } catch (raw_exn$1) {
           let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-          Logger$ReventlessCore.error("File \"InboundTranslationSlice_Callback.res\", line 80, characters 17-24", undefined, undefined, `InboundTranslationSlice(` + Spec.name + `): failed to encode command`, exn$1);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
+          Effect.Effect.runSync(Effect.Effect.logError(`InboundTranslationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
           commandJson = undefined;
         }
         if (commandJson !== undefined) {
@@ -146,4 +149,4 @@ export {
   auditRowSchema,
   Make,
 }
-/* auditStatusSchema Not a pure module */
+/*  Not a pure module */

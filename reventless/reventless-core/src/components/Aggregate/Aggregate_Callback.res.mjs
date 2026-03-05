@@ -7,8 +7,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 
 function Make(Spec) {
   return Behavior => (Ops => {
@@ -16,7 +16,7 @@ function Make(Spec) {
       let errorJson = JSON.stringify(Message$ReventlessCore.encode(error, Spec.errorSchema));
       let commandJsonStr = JSON.stringify(Message$ReventlessCore.encode(command, Spec.commandSchema));
       let id = context.id;
-      Logger$ReventlessCore.error("File \"Aggregate_Callback.res\", line 25, characters 11-18", undefined, undefined, `Behavior error ` + errorJson + ` in ` + Spec.name + `(` + id + `): Command: `, commandJsonStr);
+      Effect.Effect.runSync(Effect.Effect.logError(`Behavior error ` + errorJson + ` in ` + Spec.name + `(` + id + `): Command: ` + commandJsonStr));
       return [];
     };
     let groupTopicItemsByIdStream = stream => Effect.Effect.map(Effect.Stream.runFold(stream, {}, (dict, item) => {
@@ -47,7 +47,7 @@ function Make(Spec) {
       };
     };
     let handleCommands = stream => Effect.Effect.flatMap(groupTopicItemsByIdStream(stream), groups => Effect.Effect.promise(async () => {
-      Logger$ReventlessCore.debug("File \"Aggregate_Callback.res\", line 73, characters 26-33", undefined, undefined, "starting", "Aggregate.execCommands");
+      Effect.Effect.runSync(Effect.Effect.logInfo("starting Aggregate.execCommands"));
       return (await Promise.all(groups.map(async param => {
         let topicItemsForId = param[1];
         let id = param[0];
@@ -74,7 +74,7 @@ function Make(Spec) {
               } catch (raw_event) {
                 let event = Primitive_exceptions.internalToException(raw_event);
                 if (event.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
-                  Logger$ReventlessCore.error("File \"Aggregate_Callback.res\", line 95, characters 32-39", undefined, undefined, "Behavior.execute: InvalidEvent", event._1);
+                  Effect.Effect.runSync(Effect.Effect.logError(`Behavior.execute: InvalidEvent ` + Stdlib_Option.getOr(JSON.stringify(event._1), "")));
                   generatedEvents = [];
                 } else {
                   throw event;
@@ -109,8 +109,8 @@ function Make(Spec) {
             return acc;
           }
         };
-        Logger$ReventlessCore.debug("File \"Aggregate_Callback.res\", line 123, characters 24-31", undefined, undefined, "finished eventLogReplayStream for id", id);
-        Logger$ReventlessCore.logCmdJsons("File \"Aggregate_Callback.res\", line 135, characters 32-39", undefined, topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command)), "Handling command");
+        Effect.Effect.runSync(Effect.Effect.logInfo(`finished eventLogReplayStream for id ` + Spec.Id.toString(id)));
+        LogFormat$ReventlessCore.commandJsonsToLogMessages(topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command))).forEach(msg => Effect.Effect.runSync(Effect.Effect.logInfo("Handling command: " + msg)));
         let match$1 = Belt_Array.unzip(topicItemsForId.map(param => [
           param.reference,
           param.command
@@ -134,22 +134,23 @@ function Make(Spec) {
           }).flat() : Stdlib_JsError.throwWithMessage(result._0);
         if (events.length !== 0) {
           let eventCount = events.length.toString();
-          Logger$ReventlessCore.debug(undefined, undefined, undefined, `Aggregate.handleCommands(` + Spec.Id.toString(id) + `): ` + eventCount + ` Event(s) generated:`, events.map(event$p => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(event$p.event, Spec.eventSchema))));
+          let eventNames = events.map(event$p => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(event$p.event, Spec.eventSchema))).join(", ");
+          Effect.Effect.runSync(Effect.Effect.logInfo(`Aggregate.handleCommands(` + Spec.Id.toString(id) + `): ` + eventCount + ` Event(s) generated: ` + eventNames));
           let match$2 = await Ops.eventLog.append(match[1], id, events);
           if (match$2.TAG === "Ok") {
-            Logger$ReventlessCore.debug("File \"Aggregate_Callback.res\", line 170, characters 28-35", undefined, undefined, "finished eventLogAppend for id", Spec.Id.toString(id));
+            Effect.Effect.runSync(Effect.Effect.logInfo(`finished eventLogAppend for id ` + Spec.Id.toString(id)));
             return references.map(reference => ({
               TAG: "Ok",
               _0: reference
             }));
           }
-          Logger$ReventlessCore.error("File \"Aggregate_Callback.res\", line 173, characters 28-35", undefined, undefined, "failed eventLogAppend for id", Spec.Id.toString(id));
+          Effect.Effect.runSync(Effect.Effect.logError(`failed eventLogAppend for id ` + Spec.Id.toString(id)));
           return references.map(reference => ({
             TAG: "Error",
             _0: reference
           }));
         }
-        Logger$ReventlessCore.debug("File \"Aggregate_Callback.res\", line 156, characters 17-24", undefined, undefined, `handleCommands(` + Spec.Id.toString(id) + `)`, "no Event generated");
+        Effect.Effect.runSync(Effect.Effect.logInfo(`handleCommands(` + Spec.Id.toString(id) + `): no Event generated`));
         return references.map(reference => ({
           TAG: "Ok",
           _0: reference

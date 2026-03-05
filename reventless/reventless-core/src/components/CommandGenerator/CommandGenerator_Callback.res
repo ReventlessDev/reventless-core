@@ -45,7 +45,9 @@ module Make = (
       | 0 => commandStr
       | _ => [("TAG", commandStr)]->Array.concat(params)->Dict.fromArray->JSON.Encode.object
       }
-      Console.log2("CommandGenerator: generated command:", commandJson)
+      Effect.logInfo(
+        "CommandGenerator: generated command: " ++ commandJson->JSON.stringify,
+      )->Effect.runSync
       switch commandJson->Message.decode(Behavior.resolverConfig.commandSchema) {
       | _ =>
         await Spec.publishJsons([{id, meta, commandJson}])

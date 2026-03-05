@@ -40,7 +40,11 @@ module Make = (
 
   let applyCommandAction = async action =>
     switch action {
-    | ReventlessInfra.ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
+    | ReventlessInfra.ExtensionPointMapping.AbstractPublishCommand(
+        aggregateName,
+        reference,
+        cmdJson,
+      ) =>
       let result =
         Spec.publishToAggregates
         ->Dict.get(aggregateName)
@@ -55,7 +59,9 @@ module Make = (
       switch result() {
       | _ => Ok(reference)
       | exception err => {
-          Console.log2("ExtensionPoint: Error on publish command:", err)
+          let errMsg =
+            err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          Effect.logError(`ExtensionPoint: Error on publish command: ${errMsg}`)->Effect.runSync
           Error(reference)
         }
       }
@@ -63,7 +69,9 @@ module Make = (
       switch await handler() {
       | _ => Ok(reference)
       | exception err => {
-          err->Console.log2("ExtensionPoint: Error on calling handler:")
+          let errMsg =
+            err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          Effect.logError(`ExtensionPoint: Error on calling handler: ${errMsg}`)->Effect.runSync
           Error(reference)
         }
       }

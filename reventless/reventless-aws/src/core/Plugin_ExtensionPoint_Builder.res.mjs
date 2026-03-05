@@ -11,9 +11,9 @@ import * as ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore from 
 let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: CommandTopicChannel_SQS$ReventlessAws.make
 });
@@ -27,9 +27,9 @@ let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
 })({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: CommandTopicChannel_SQS$ReventlessAws.make
 })(EventTopicPublisher_SNS$ReventlessAws)({

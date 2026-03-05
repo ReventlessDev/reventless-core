@@ -15,10 +15,9 @@ module Make = (
     ->Stream.mapEffect(json =>
       Effect.sync(() => {
         let sourceName = (json->Message.decode(Reventless.Message.contextSchema)).meta.service
-        Console.log2(
-          `ReadModel ${ReadModelSpec.name}: handling event from ${sourceName}:`,
-          json,
-        )
+        Effect.logInfo(
+          `ReadModel ${ReadModelSpec.name}: handling event from ${sourceName}: ${json->JSON.stringify}`,
+        )->Effect.runSync
         json->EventProjector.map(~sourceName=Some(sourceName))
       })
     )
@@ -26,7 +25,6 @@ module Make = (
     ->Stream.runForEach(action =>
       Effect.promise(() =>
         Projection.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig)
-      )
-      ->Effect.map(_ => ())
+      )->Effect.map(_ => ())
     )
 }

@@ -2,10 +2,13 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
+import * as Effect from "effect";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+
+S.enableJson();
 
 let todoStatusSchema = S.union([
   S.literal("Pending"),
@@ -84,7 +87,8 @@ function Make(Spec) {
         item = Primitive_option.some(S.parseJsonOrThrow(row.item, Spec.todoItemSchema));
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        Logger$ReventlessCore.error("File \"AutomationSlice_Callback.res\", line 99, characters 26-33", undefined, undefined, `AutomationSlice(` + Spec.name + `): failed to decode todoItem`, exn);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+        Effect.Effect.runSync(Effect.Effect.logError(`AutomationSlice(` + Spec.name + `): failed to decode todoItem: ` + errMsg));
         item = undefined;
       }
       Stdlib_Option.forEach(item, item => {
@@ -102,7 +106,8 @@ function Make(Spec) {
           commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
         } catch (raw_exn) {
           let exn = Primitive_exceptions.internalToException(raw_exn);
-          Logger$ReventlessCore.error("File \"AutomationSlice_Callback.res\", line 112, characters 19-26", undefined, undefined, `AutomationSlice(` + Spec.name + `): failed to encode command`, exn);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+          Effect.Effect.runSync(Effect.Effect.logError(`AutomationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
           let newrecord$1 = {...row};
           newrecord$1.retryCount = row.retryCount + 1 | 0;
           newrecord$1.status = "Failed";
@@ -127,7 +132,8 @@ function Make(Spec) {
       return await publishJsons(commands);
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
-      Logger$ReventlessCore.error("File \"AutomationSlice_Callback.res\", line 139, characters 15-22", undefined, undefined, `AutomationSlice(` + Spec.name + `): failed to publish commands`, exn);
+      let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+      Effect.Effect.runSync(Effect.Effect.logError(`AutomationSlice(` + Spec.name + `): failed to publish commands: ` + errMsg));
       pending.forEach(param => {
         let row = param[1];
         let id = param[0];
@@ -159,4 +165,4 @@ export {
   todoRowSchema,
   Make,
 }
-/* todoStatusSchema Not a pure module */
+/*  Not a pure module */

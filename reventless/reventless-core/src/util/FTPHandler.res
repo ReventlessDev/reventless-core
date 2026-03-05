@@ -44,7 +44,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
 
   client
   ->FTP.Client.onEnd(() => {
-    Console.log("Client.onEnd")
+    Effect.logInfo("Client.onEnd")->Effect.runSync
     resolve(result.contents)
   })
   ->FTP.Client.onError(err => {
@@ -68,11 +68,13 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
 
           sftp
           ->FTP.onEnd(() => {
-            Console.log("FTPHandler: end sftp stream")
+            Effect.logInfo("FTPHandler: end sftp stream")->Effect.runSync
             // client->FTP.Client.end_
           })
           ->FTP.onError(err => {
-            Console.log2("FTPHandler: Error:", err)
+            Effect.logError(
+              `FTPHandler: Error: ${err->JSON.stringifyAny->Option.getOr("unknown")}`,
+            )->Effect.runSync
             client->FTP.Client.error(err->FTP.toJsError)->ignore
             endFtp()
           })
@@ -93,15 +95,19 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
               ->FTP.createWriteStream(sftp, ~path=_)
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
-                Console.log("FTPHandler: writable ended")
+                Effect.logInfo("FTPHandler: writable ended")->Effect.runSync
               })
               ->NodeStreams.Writable.onClose(() => {
                 result := Ok(true) // Workaround: since Node 18 there is no call to onFinish() anymore
-                Console.log("FTPHandler: writable closed")
+                Effect.logInfo("FTPHandler: writable closed")->Effect.runSync
                 endFtp()
               })
               ->NodeStreams.Writable.onError(err => {
-                Console.error2("FTPHandler: FTPHandler: Error in Write Stream:", err)
+                Effect.logError(
+                  `FTPHandler: Error in Write Stream: ${err
+                    ->JsExn.message
+                    ->Option.getOr("unknown")}`,
+                )->Effect.runSync
                 FTP.makeError("FTPHandler: Error in Write Stream")->fail
               })
             await readableStream->NodeStreams.pipeline0(ws)

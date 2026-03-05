@@ -36,11 +36,9 @@ module Make = (
           queryEngine,
         )
       | None =>
-        Logger.error(
-          ~loc=__LOC__,
-          "mapOutgoingEvent",
-          "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
-        )
+        Effect.logError(
+          "mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
+        )->Effect.runSync
         []
       }
     | None =>
@@ -52,26 +50,43 @@ module Make = (
   let applyEventAction = async action =>
     switch action {
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
-      Console.log2("ExtensionPoint_Operations.applyEventAction:", eventJson->JSON.stringify)
+      Effect.logInfo(
+        `ExtensionPoint_Operations.applyEventAction: ${eventJson->JSON.stringify}`,
+      )->Effect.runSync
       try await Ops.publishToEventTopic(id, meta, eventJson) catch {
-      | err => err->Console.log2("ExtensionPoint: Error on publishToEventTopic command:")
+      | err =>
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `ExtensionPoint: Error on publishToEventTopic command: ${errMsg}`,
+        )->Effect.runSync
       }
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
       let publishToEventTopic = async promise => {
         let (id, meta, eventJson) = await promise
         try await Ops.publishToEventTopic(id, meta, eventJson) catch {
-        | err => err->Console.log2("ExtensionPoint: Error on publishToEventTopic command:")
+        | err =>
+          let errMsg =
+            err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          Effect.logError(
+            `ExtensionPoint: Error on publishToEventTopic command: ${errMsg}`,
+          )->Effect.runSync
         }
       }
       await promise->publishToEventTopic
     | AbstractCall(handler) =>
       try await handler() catch {
-      | err => err->Console.log2("ExtensionPoint: Error on calling handler:")
+      | err =>
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(`ExtensionPoint: Error on calling handler: ${errMsg}`)->Effect.runSync
       }
     }
 
   let outgoingJsonEventsHandler = async (eventJson', _pluginDef) => {
-    Console.log2("ExtensionPoint_Operations.outgoingJsonEventsHandler:", eventJson'->JSON.stringify)
+    Effect.logInfo(
+      `ExtensionPoint_Operations.outgoingJsonEventsHandler: ${eventJson'->JSON.stringify}`,
+    )->Effect.runSync
     let eventActions = mapOutgoingEvent(
       eventJson',
       Mappings.mappings,

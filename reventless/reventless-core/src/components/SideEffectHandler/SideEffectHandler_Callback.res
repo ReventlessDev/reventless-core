@@ -24,10 +24,12 @@ module Make = (Spec: Spec): T => {
         | Some(sideEffect) => Some((eventObj', eventMeta, sideEffect))
         }
       | exception err =>
-        Console.log2("SideEffects.map: Couldn't decode meta:", err)
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(`SideEffects.map: Couldn't decode meta: ${errMsg}`)->Effect.runSync
         None
       | _ =>
-        Console.log("SideEffects.map: Invalid JSON object")
+        Effect.logError("SideEffects.map: Invalid JSON object")->Effect.runSync
         None
       }
     })
@@ -40,9 +42,11 @@ module Make = (Spec: Spec): T => {
         Effect.promise(async () => {
           module SideEffect = unpack(sideEffect)
           let sourceName = SideEffect.Source.name
-          eventJson'->Logger.logJsonEvent(
-            `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
-          )
+          Effect.logInfo(
+            `SideEffectHandler.eventsHandler: handling event from source ${sourceName}: ${LogFormat.event'JsonToLogMessage(
+                eventJson',
+              )}`,
+          )->Effect.runSync
           try {
             let idDecoded =
               eventObj
@@ -55,18 +59,27 @@ module Make = (Spec: Spec): T => {
             switch (idDecoded, eventDecoded) {
             | (Some(eventId), Some(event)) =>
               try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
-              | err => Console.log2("SideEffect: Error while processing:", err)
+              | err =>
+                let errMsg =
+                  err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+                Effect.logError(`SideEffect: Error while processing: ${errMsg}`)->Effect.runSync
               }
             | (None, _)
             | (_, None) =>
-              Console.log2("SideEffectHandler.eventHandler: Invalid event", eventJson')
+              Effect.logError(
+                `SideEffectHandler.eventHandler: Invalid event ${eventJson'->JSON.stringify}`,
+              )->Effect.runSync
             }
           } catch {
           | err =>
-            Console.log3("SideEffectHandler.eventHandler: Couldn't decode event:", eventJson', err)
+            let errMsg =
+              err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+            Effect.logError(
+              `SideEffectHandler.eventHandler: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
+            )->Effect.runSync
           }
         })
-      | None => Effect.succeed(())
+      | None => Effect.succeed()
       }
     )
     ->Stream.runDrain

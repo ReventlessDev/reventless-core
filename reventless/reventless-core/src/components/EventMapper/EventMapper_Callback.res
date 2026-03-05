@@ -31,19 +31,25 @@ module MakeCounterHandler = (
           mappings->Array.find((module(Mapping: Mappings.Mapping)) => Mapping.Source.name == source)
         switch mapping {
         | None =>
-          Console.log(`EventMapper.map: No mapping ${source} -> ${target} found`)
+          Effect.logInfo(`EventMapper.map: No mapping ${source} -> ${target} found`)->Effect.runSync
           None
         | Some(mapping) =>
           module Mapping = unpack(mapping)
           let source = Mapping.Source.name
-          Console.log(`EventMapper.map: found mapping ${source} -> ${target}`)
+          Effect.logInfo(`EventMapper.map: found mapping ${source} -> ${target}`)->Effect.runSync
           Some((eventObj', eventMeta, mapping))
         }
       | None =>
-        Console.log2("EventMapper_Callback.findMapping: Invalid JSON object:", eventJson')
+        Effect.logError(
+          `EventMapper_Callback.findMapping: Invalid JSON object: ${eventJson'->JSON.stringify}`,
+        )->Effect.runSync
         None
       | exception err =>
-        Console.log2("EventMapper_Callback.findMapping: Couldn't decode meta:", err)
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `EventMapper_Callback.findMapping: Couldn't decode meta: ${errMsg}`,
+        )->Effect.runSync
         None
       }
     })
@@ -96,9 +102,11 @@ module MakeCounterHandler = (
       eventsJson'
       ->Array.mapWithIndex((eventJson', idx) => {
         let idx = idx + 1
-        eventJson'->Logger.logJsonEvent(
-          `EventMapper.eventsHandler: incoming event ${idx->Int.toString}/${eventsCount->Int.toString}:`,
-        )
+        Effect.logInfo(
+          `EventMapper.eventsHandler: incoming event ${idx->Int.toString}/${eventsCount->Int.toString}: ${LogFormat.event'JsonToLogMessage(
+              eventJson',
+            )}`,
+        )->Effect.runSync
         switch findMapping(Mappings.mappings, eventJson') {
         // TODO: support multiple mappings for the same source
         | Some((eventObj, eventMeta, mapping)) =>
@@ -117,12 +125,18 @@ module MakeCounterHandler = (
             | (Some(eventId), Some(event)) =>
               Mapping.map(eventId, event, Ops.queryEngine)->processMappingActions(eventMeta)->Some
             | _ =>
-              Console.log2("EventMapper.map: Invalid event:", eventJson')
+              Effect.logError(
+                `EventMapper.map: Invalid event: ${eventJson'->JSON.stringify}`,
+              )->Effect.runSync
               None
             }
           } catch {
           | err =>
-            Console.log3("EventMapper.map: Couldn't decode event:", eventJson', err)
+            let errMsg =
+              err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+            Effect.logError(
+              `EventMapper.map: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
+            )->Effect.runSync
             None
           }
         | None => None
@@ -163,9 +177,9 @@ module MakeCounterHandler = (
       Effect.promise(async () => {
         let (publisherEntries, countActions) = await commonEventsHandler([eventJson'])
         if countActions->Array.length > 0 {
-          Console.log(
+          Effect.logError(
             "EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!",
-          )
+          )->Effect.runSync
         }
         await Ops.publishJsons(await publisherEntries)
       })
@@ -193,10 +207,11 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
     | _ =>
       switch await Ops.count(countItems) {
       | exception e =>
-        Console.log2(__MODULE__ ++ ".doCount: count error", e)
+        let errMsg = e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(__MODULE__ ++ `.doCount: count error: ${errMsg}`)->Effect.runSync
         let timeout = Math.Int.random(1000, 3000)
         await ReventlessCore.Util.Promise.finishTimeout(timeout)
-        Console.log(`Retry count after ${timeout->Int.toString} ms`)
+        Effect.logInfo(`Retry count after ${timeout->Int.toString} ms`)->Effect.runSync
         await doCount(countItems)
       | _ => ()
       }
@@ -206,32 +221,40 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
     stream->Stream.runForEach(eventJson' =>
       Effect.promise(async () => {
         let (publisherEntries, counterActions) = await Ops.commonEventsHandler([eventJson'])
-        let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
-          switch x {
-          | Counter.Count(_) => true
-          | AddToCounterTarget(_) => false
-          }
+        let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(
+          x =>
+            switch x {
+            | Counter.Count(_) => true
+            | AddToCounterTarget(_) => false
+            },
         )
 
-        let countItems = countActions->Array.filterMap(countAction =>
-          switch countAction {
-          | Count(countItem) => Some(countItem)
-          | _ => None
-          }
+        let countItems = countActions->Array.filterMap(
+          countAction =>
+            switch countAction {
+            | Count(countItem) => Some(countItem)
+            | _ => None
+            },
         )
-        Console.log2("EventMapper.eventCollectorEventsHandler: countItems:", countItems->Array.length)
+        Effect.logInfo(
+          `EventMapper.eventCollectorEventsHandler: countItems: ${countItems
+            ->Array.length
+            ->Int.toString}`,
+        )->Effect.runSync
         await doCount(countItems)
 
-        Console.log2(
-          "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
-          addToCounterTargetActions->JSON.stringifyAny,
-        )
+        Effect.logInfo(
+          `EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ${addToCounterTargetActions
+            ->JSON.stringifyAny
+            ->Option.getOr("[]")}`,
+        )->Effect.runSync
         await addToCounterTargetActions
-        ->Array.map(async x =>
-          switch x {
-          | AddToCounterTarget(counterTarget) => await Ops.addToCounterTarget(counterTarget)
-          | _ => ()
-          }
+        ->Array.map(
+          async x =>
+            switch x {
+            | AddToCounterTarget(counterTarget) => await Ops.addToCounterTarget(counterTarget)
+            | _ => ()
+            },
         )
         ->Promise.all
         ->Util.Promise.toUnit

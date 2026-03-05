@@ -3,11 +3,12 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Effect from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 
 function Make(Spec) {
   let findSideEffect = (sideEffects, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
@@ -17,7 +18,8 @@ function Make(Spec) {
       eventMeta = Stdlib_Option.map(metaJson, meta => S.parseJsonOrThrow(meta, Message$ReventlessCore.metaSchema));
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
-      console.log("SideEffects.map: Couldn't decode meta:", err);
+      let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+      Effect.Effect.runSync(Effect.Effect.logError(`SideEffects.map: Couldn't decode meta: ` + errMsg));
       return;
     }
     if (eventMeta !== undefined) {
@@ -32,7 +34,7 @@ function Make(Spec) {
         return;
       }
     }
-    console.log("SideEffects.map: Invalid JSON object");
+    Effect.Effect.runSync(Effect.Effect.logError("SideEffects.map: Invalid JSON object"));
   });
   let handleJsonEvents = stream => Effect.Stream.runDrain(Effect.Stream.mapEffect(stream, eventJson$p => {
     let match = findSideEffect(Spec.sideEffects, eventJson$p);
@@ -44,26 +46,29 @@ function Make(Spec) {
     let eventObj = match[0];
     return Effect.Effect.promise(async () => {
       let sourceName = sideEffect.Source.name;
-      Logger$ReventlessCore.logJsonEvent(undefined, undefined, eventJson$p, `SideEffectHandler.eventsHandler: handling event from source ` + sourceName + `:`);
+      Effect.Effect.runSync(Effect.Effect.logInfo(`SideEffectHandler.eventsHandler: handling event from source ` + sourceName + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
       try {
         let idDecoded = Stdlib_Option.map(eventObj["id"], id => Message$ReventlessCore.decode(id, sideEffect.Source.Id.schema));
         let eventDecoded = Stdlib_Option.map(eventObj["event"], json => Message$ReventlessCore.decode(json, sideEffect.Source.eventSchema));
+        let exit = 0;
         if (idDecoded !== undefined && eventDecoded !== undefined) {
           try {
             return await sideEffect.execute(Primitive_option.valFromOption(idDecoded), eventMeta, Primitive_option.valFromOption(eventDecoded), Spec.queryEngine);
           } catch (raw_err) {
             let err = Primitive_exceptions.internalToException(raw_err);
-            console.log("SideEffect: Error while processing:", err);
-            return;
+            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+            return Effect.Effect.runSync(Effect.Effect.logError(`SideEffect: Error while processing: ` + errMsg));
           }
         } else {
-          console.log("SideEffectHandler.eventHandler: Invalid event", eventJson$p);
-          return;
+          exit = 1;
+        }
+        if (exit === 1) {
+          return Effect.Effect.runSync(Effect.Effect.logError(`SideEffectHandler.eventHandler: Invalid event ` + JSON.stringify(eventJson$p)));
         }
       } catch (raw_err$1) {
         let err$1 = Primitive_exceptions.internalToException(raw_err$1);
-        console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventJson$p, err$1);
-        return;
+        let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
+        return Effect.Effect.runSync(Effect.Effect.logError(`SideEffectHandler.eventHandler: Couldn't decode event: ` + JSON.stringify(eventJson$p) + ` ` + errMsg$1));
       }
     });
   }));

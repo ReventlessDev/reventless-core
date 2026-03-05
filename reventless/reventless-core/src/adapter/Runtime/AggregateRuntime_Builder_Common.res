@@ -30,24 +30,26 @@ module Make = (
   let commandTopicHandlers: dict<effectHandler> = Dict.make()
   let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
 
-  let log = RuntimeEnvironment.logger
-
-  let runEffect = effect =>
+  let runEffect = (~correlationId=?, effect) =>
     effect
-    ->Effect.provideService(EffectLogger.tag, EffectLogger.consoleLogger)
+    ->Effect.provideService(
+      RequestContext.tag,
+      {correlationId: correlationId->Option.getOr("unknown")},
+    )
     ->Effect.runPromise
 
   let aggregateHandler = aggregateName =>
     async (event: RuntimeEnvironment.event, context) => {
+      let correlationId = event->RuntimeEnvironment.extractCorrelationId
       let desc = `aggregateHandler for ${aggregateName}:`
       switch event->CommandGenerator.metaInfo {
       | Some(info) =>
         switch commandGeneratorHandlers->Dict.get(info) {
         | Some(handler) =>
-          log.info(`----- ${desc} found handler for CommandGenerator ${info}`)
-          await handler(event->CommandGenerator.asPayload, context)->runEffect
+          Effect.logInfo(`----- ${desc} found handler for CommandGenerator ${info}`)->Effect.runSync
+          await runEffect(~correlationId?, handler(event->CommandGenerator.asPayload, context))
         | None =>
-          log.warn(`${desc} no handler found: ${info}`)
+          Effect.logWarning(`${desc} no handler found: ${info}`)->Effect.runSync
           ""
         }
       | _ =>
@@ -57,16 +59,19 @@ module Make = (
         ->Array.map(async ((urn, event)) => {
           switch commandTopicHandlers->Dict.get(urn) {
           | Some(handler) =>
-            log.info(`----- ${desc} found handler for CommandTopic ${urn}`)
-            await handler(event, context)->runEffect
+            Effect.logInfo(`----- ${desc} found handler for CommandTopic ${urn}`)->Effect.runSync
+            await runEffect(~correlationId?, handler(event, context))
           | None =>
             switch eventCollectorHandlers->Dict.get(urn) {
             | Some(handlers) =>
               let count = handlers->Array.length->Int.toString
-              log.info(`----- ${desc} found ${count} handler(s) for EventCollector ${urn}`)
-              let _ =
-                await handlers->Array.map(handler => handler(event, context)->runEffect)->Promise.all
-            | None => log.warn(`${desc} no handler found: ${urn}`)
+              Effect.logInfo(
+                `----- ${desc} found ${count} handler(s) for EventCollector ${urn}`,
+              )->Effect.runSync
+              let _ = await handlers
+              ->Array.map(handler => runEffect(~correlationId?, handler(event, context)))
+              ->Promise.all
+            | None => Effect.logWarning(`${desc} no handler found: ${urn}`)->Effect.runSync
             }
           }
         })
@@ -139,7 +144,11 @@ module Make = (
         (infos, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
-          log.info(`***** forCommandGenerator ${commandGeneratorName}: set handler for ${infos->Array.join(", ")}`)
+          Console.log(
+            `***** forCommandGenerator ${commandGeneratorName}: set handler for ${infos->Array.join(
+                ", ",
+              )}`,
+          )
           infos->Array.map(info => commandGeneratorHandlers->Dict.set(info, handler))
         })
 
@@ -169,7 +178,7 @@ module Make = (
         (urn, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
-          log.info(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
+          Console.log(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
           commandTopicHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEffectHandler)
         })
     | None =>
@@ -208,7 +217,11 @@ module Make = (
         (urns, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urns, handler)) => {
-          log.info(`***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`)
+          Console.log(
+            `***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(
+                ", ",
+              )}`,
+          )
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(

@@ -2,6 +2,7 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -21,7 +22,8 @@ function Make(Spec) {
           val = result();
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
-          console.log("ExtensionPoint: Error on publish command:", err);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+          Effect.Effect.runSync(Effect.Effect.logError(`ExtensionPoint: Error on publish command: ` + errMsg));
           return {
             TAG: "Error",
             _0: reference
@@ -38,7 +40,8 @@ function Make(Spec) {
         val$1 = await action._1();
       } catch (raw_err$1) {
         let err$1 = Primitive_exceptions.internalToException(raw_err$1);
-        console.log(err$1, "ExtensionPoint: Error on calling handler:");
+        let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
+        Effect.Effect.runSync(Effect.Effect.logError(`ExtensionPoint: Error on calling handler: ` + errMsg$1));
         return {
           TAG: "Error",
           _0: reference$1

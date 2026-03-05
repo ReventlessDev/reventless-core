@@ -6,13 +6,14 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops) => {
   let publishJsons = async cmdJsons =>
     switch await Ops.publishJsons(cmdJsons) {
     | exception e =>
-      cmdJsons->Logger.logCmdJsons(
-        ~level=Logger.Level.Error,
-        ~loc=__LOC__,
-        "Couldn't publish commands",
-      )
+      cmdJsons
+      ->LogFormat.commandJsonsToLogMessages
+      ->Array.forEach(msg => Effect.logError("Couldn't publish commands: " ++ msg)->Effect.runSync)
       throw(e)
-    | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
+    | _ =>
+      cmdJsons
+      ->LogFormat.commandJsonsToLogMessages
+      ->Array.forEach(msg => Effect.logInfo("Published commands: " ++ msg)->Effect.runSync)
     }
 
   let publish = (command': Message.command'<Spec.Id.t, Spec.command>) => {

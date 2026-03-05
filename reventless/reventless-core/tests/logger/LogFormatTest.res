@@ -1,21 +1,11 @@
 open Jest
 open Expect
-open Logger
+open LogFormat
 
 S.enableJson()
 
-describe("Logger", () => {
-  describe("commandJsonsToLogMessage", () => {
-    test(
-      "createTag",
-      () => {
-        let level = Level.Info
-        let loc = Some("File \"Aggregate.res\", line 214, characters 17-24")
-        expect(createTag(~level, ~loc))->toEqual("Aggregate#214:")
-      },
-    )
-  })
-  describe("commandJsonsToLogMessage", () => {
+describe("LogFormat", () => {
+  describe("commandJsonsToLogMessages", () => {
     test(
       "empty",
       () => {

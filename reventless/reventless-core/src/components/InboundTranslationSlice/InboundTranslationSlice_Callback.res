@@ -1,3 +1,4 @@
+S.enableJson()
 // InboundTranslationSlice callback — receives external input and translates to commands.
 //
 // Maintains an audit log QueryDb and delegates translation to Spec.translate.
@@ -45,7 +46,10 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
     correlationId: "",
   }
 
-  let receive = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons, inputJson: JSON.t) => {
+  let receive = async (
+    publishJsons: ReventlessInfra.CommandTopic.publishJsons,
+    inputJson: JSON.t,
+  ) => {
     let requestId = Uuid.v4()
 
     // Parse the external input
@@ -61,26 +65,27 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
 
     switch input {
     | Error(msg) =>
-      auditLog.contents->Dict.set(requestId, {
-        input: inputJson,
-        status: Failure,
-        error: msg,
-        receivedAt: now(),
-      })
+      auditLog.contents->Dict.set(
+        requestId,
+        {
+          input: inputJson,
+          status: Failure,
+          error: msg,
+          receivedAt: now(),
+        },
+      )
       Error(msg)
 
     | Ok(input) =>
       switch Spec.translate(input) {
       | Ok((targetId, cmd)) =>
-        let commandJson = try
-          cmd->S.reverseConvertToJsonOrThrow(Spec.commandSchema)->Some
-        catch {
+        let commandJson = try cmd->S.reverseConvertToJsonOrThrow(Spec.commandSchema)->Some catch {
         | exn =>
-          Logger.error(
-            ~loc=__LOC__,
-            `InboundTranslationSlice(${Spec.name}): failed to encode command`,
-            exn,
-          )
+          let errMsg =
+            exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+          Effect.logError(
+            `InboundTranslationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
+          )->Effect.runSync
           None
         }
 
@@ -93,12 +98,15 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
               commandJson,
             }
             await publishJsons([msg])
-            auditLog.contents->Dict.set(requestId, {
-              input: inputJson,
-              status: Success,
-              targetId,
-              receivedAt: now(),
-            })
+            auditLog.contents->Dict.set(
+              requestId,
+              {
+                input: inputJson,
+                status: Success,
+                targetId,
+                receivedAt: now(),
+              },
+            )
             Ok(targetId)
           } catch {
           | exn =>
@@ -107,33 +115,42 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
               ->JsExn.fromException
               ->Option.flatMap(JsExn.message)
               ->Option.getOr("publish failed")
-            auditLog.contents->Dict.set(requestId, {
-              input: inputJson,
-              status: Failure,
-              error: msg,
-              receivedAt: now(),
-            })
+            auditLog.contents->Dict.set(
+              requestId,
+              {
+                input: inputJson,
+                status: Failure,
+                error: msg,
+                receivedAt: now(),
+              },
+            )
             Error(msg)
           }
 
         | None =>
           let msg = "failed to encode command"
-          auditLog.contents->Dict.set(requestId, {
-            input: inputJson,
-            status: Failure,
-            error: msg,
-            receivedAt: now(),
-          })
+          auditLog.contents->Dict.set(
+            requestId,
+            {
+              input: inputJson,
+              status: Failure,
+              error: msg,
+              receivedAt: now(),
+            },
+          )
           Error(msg)
         }
 
       | Error(msg) =>
-        auditLog.contents->Dict.set(requestId, {
-          input: inputJson,
-          status: Failure,
-          error: msg,
-          receivedAt: now(),
-        })
+        auditLog.contents->Dict.set(
+          requestId,
+          {
+            input: inputJson,
+            status: Failure,
+            error: msg,
+            receivedAt: now(),
+          },
+        )
         Error(msg)
       }
     }

@@ -16,7 +16,7 @@ function Make(ReadModelSpec) {
     })(Mappings);
     let handleJsonEvents = stream => Effect.Stream.runForEach(Effect.Stream.flatMap(Effect.Stream.mapEffect(stream, json => Effect.Effect.sync(() => {
       let sourceName = Message$ReventlessCore.decode(json, Message$Reventless.contextSchema).meta.service;
-      console.log(`ReadModel ` + ReadModelSpec.name + `: handling event from ` + sourceName + `:`, json);
+      Effect.Effect.runSync(Effect.Effect.logInfo(`ReadModel ` + ReadModelSpec.name + `: handling event from ` + sourceName + `: ` + JSON.stringify(json)));
       return EventProjector.map(sourceName, json);
     })), actions => Effect.Stream.fromIterable(actions)), action => Effect.Effect.map(Effect.Effect.promise(() => Projection$ReventlessCore.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig)), param => {}));
     return {

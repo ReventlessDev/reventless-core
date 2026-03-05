@@ -24,8 +24,12 @@ module type Spec = {
 
 module Make = (Spec: Spec) => {
   let counterHandler = async (~references, ~counts) => {
-    Console.log2("counterHandler: references:", references->Array.length)
-    Console.log2("counterHandler: counts:", counts)
+    Effect.logInfo(
+      `counterHandler: references: ${references->Array.length->Int.toString}`,
+    )->Effect.runSync
+    Effect.logInfo(
+      `counterHandler: counts: ${counts->JSON.stringifyAny->Option.getOr("[]")}`,
+    )->Effect.runSync
     await references
     ->groupByCounterId
     ->Array.map(((counterId, dec)) =>
@@ -40,34 +44,37 @@ module Make = (Spec: Spec) => {
     // TODO error handling
 
     await Spec.jsonEventsHandler(
-      Stream.fromIterable(counts->Array.filterMap(state =>
-        switch state->Message.decode(countsStateSchema) {
-        | {id, count} if count == 0 =>
-          let (counterId, _) = id->Counter.unmakeId
-          Console.log(
-            __MODULE__ ++
-            `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
-          )
-          let meta = Message.generateMeta(
-            ~service=ComponentType.Counter->ComponentType.toName,
-            ~user="Counter",
-          )
-          Some(
-            [
-              ("id", counterId->JSON.Encode.string),
-              ("meta", meta->Message.encode(Message.metaSchema)),
-              ("event", Counter.CountFinished->Message.encode(Counter.counterEventSchema)),
-            ]
-            ->Dict.fromArray
-            ->JSON.Encode.object,
-          )
-        | {id, count} =>
-          Console.log(
-            __MODULE__ ++
-            `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
-          )
-          None
-        }
-      )))->Effect.runPromise
+      Stream.fromIterable(
+        counts->Array.filterMap(state =>
+          switch state->Message.decode(countsStateSchema) {
+          | {id, count} if count == 0 =>
+            let (counterId, _) = id->Counter.unmakeId
+            Effect.logInfo(
+              __MODULE__ ++
+              `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
+            )->Effect.runSync
+            let meta = Message.generateMeta(
+              ~service=ComponentType.Counter->ComponentType.toName,
+              ~user="Counter",
+            )
+            Some(
+              [
+                ("id", counterId->JSON.Encode.string),
+                ("meta", meta->Message.encode(Message.metaSchema)),
+                ("event", Counter.CountFinished->Message.encode(Counter.counterEventSchema)),
+              ]
+              ->Dict.fromArray
+              ->JSON.Encode.object,
+            )
+          | {id, count} =>
+            Effect.logInfo(
+              __MODULE__ ++
+              `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
+            )->Effect.runSync
+            None
+          }
+        ),
+      ),
+    )->Effect.runPromise
   }
 }

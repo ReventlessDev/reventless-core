@@ -286,8 +286,6 @@ let metaSchema = Message$Reventless.metaSchema;
 
 let contextSchema = Message$Reventless.contextSchema;
 
-let invalidEvent = Message$Reventless.invalidEvent;
-
 let statusChangeSchema = Message$Reventless.statusChangeSchema;
 
 let commandJsonSchema = Message$Reventless.commandJsonSchema;
@@ -302,7 +300,6 @@ export {
   serviceSchema,
   metaSchema,
   contextSchema,
-  invalidEvent,
   statusChangeSchema,
   commandJsonSchema,
   decode,

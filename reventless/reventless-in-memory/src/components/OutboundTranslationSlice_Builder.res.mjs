@@ -20,9 +20,9 @@ function Make(Bus) {
   let CoreMaker = OutboundTranslationSlice_Builder$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
     asEventHandler: prim => prim,
-    asEffectHandler: prim => prim,
-    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+    asEffectHandler: prim => prim
   })(QueryDbStorage)(QueryDbResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => {
     let include = CoreMaker.Make(Spec);

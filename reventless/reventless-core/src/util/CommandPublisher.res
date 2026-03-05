@@ -24,17 +24,18 @@ module Make = (Spec: Spec, Config: Config) => {
     | None => ()
     | Some(promise) =>
       try await promise catch {
-      | JsExn(e) => Logger.error(~loc=__LOC__, "Couldn't publish commands", e)
+      | JsExn(e) =>
+        let errMsg = e->JsExn.message->Option.getOr("unknown")
+        Effect.logError(`Couldn't publish commands: ${errMsg}`)->Effect.runSync
       }
     }
 
   let toJsons = commandsToSend => {
-    Console.log4(
-      "toJsons: commandsToSend:",
-      commandsToSend->Array.length,
-      "rest:",
-      buffer->Array.length,
-    )
+    Effect.logInfo(
+      `toJsons: commandsToSend: ${commandsToSend->Array.length->Int.toString} rest: ${buffer
+        ->Array.length
+        ->Int.toString}`,
+    )->Effect.runSync
     commandsToSend->Array.map(((id, command)) => {
       let commandJson = command->Message.encode(Spec.commandSchema)
       {
@@ -55,24 +56,22 @@ module Make = (Spec: Spec, Config: Config) => {
         let sizeStr = size->Int.toString
         let bufferSizeStr = buffer->Array.length->Int.toString
         let chunkCountStr = chunkCount.contents->Int.toString
-        Logger.debug(
-          ~loc=__LOC__,
-          "send",
-          `bufferSize: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`,
-        )
+        Effect.logInfo(
+          `send: bufferSize: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`,
+        )->Effect.runSync
         let commandsToSend = buffer->Array.toSpliced(~start=0, ~remove=size, ~insert=[])
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => Logger.debug(~loc=__LOC__, "send", `finished chunk ${chunkCountStr}: ${sizeStr}`)
+        | () => Effect.logInfo(`send: finished chunk ${chunkCountStr}: ${sizeStr}`)->Effect.runSync
         | exception JsExn(e) =>
           let errorMessage = e->JsExn.message->Option.getOr("unknown Error")
-          Console.log(
+          Effect.logError(
             `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr}: ${errorMessage}`,
-          )
+          )->Effect.runSync
           let timeout = Math.Int.random(3000, 7000)
           await Util.Promise.finishTimeout(timeout)
-          Console.log(`Retry sending after ${timeout->Int.toString} ms ...`)
+          Effect.logInfo(`Retry sending after ${timeout->Int.toString} ms ...`)->Effect.runSync
           chunkCount := chunkCount.contents - 1
           let _ = buffer->Array.unshiftMany(commandsToSend)
         }
@@ -87,9 +86,15 @@ module Make = (Spec: Spec, Config: Config) => {
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => Console.log2("CommandPublisher.send: finished SendAllInOneChunk:", size)
+        | () =>
+          Effect.logInfo(
+            `CommandPublisher.send: finished SendAllInOneChunk: ${size->Int.toString}`,
+          )->Effect.runSync
         | exception JsExn(e) =>
-          Console.log2("CommandPublisher: Error: Couldn't publish commands", e)
+          let errMsg = e->JsExn.message->Option.getOr("unknown")
+          Effect.logError(
+            `CommandPublisher: Error: Couldn't publish commands: ${errMsg}`,
+          )->Effect.runSync
         }
         running := None
       }
@@ -107,13 +112,13 @@ module Make = (Spec: Spec, Config: Config) => {
   }
 
   let clear = () => {
-    Console.log("CommandPublisher.clear")
+    Effect.logInfo("CommandPublisher.clear")->Effect.runSync
     let _ = buffer->Array.removeInPlace(0)
     flush := false
   }
 
   let flush = async () => {
-    Console.log("CommandPublisher.flush")
+    Effect.logInfo("CommandPublisher.flush")->Effect.runSync
     flush := true
     switch running.contents {
     | None => await send()

@@ -19,7 +19,9 @@ let logCountItems = countItems =>
   ->Array.forEach(((counterId, references)) => {
     let size = references->Array.length
     let referencesStr = references->Array.joinUnsafe(",")
-    Console.log(`  ${size->Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`)
+    Effect.logInfo(
+      `  ${size->Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`,
+    )->Effect.runSync
   })
 
 exception NotCounted(string)
@@ -41,18 +43,22 @@ module Make = (Ops: Ops) => {
     switch result {
     | Ok(_) =>
       let batchSize = countItems->Array.length
-      Console.log(__MODULE__ ++ `: saved batch of ${batchSize->Int.toString} reference(s):`)
+      Effect.logInfo(
+        __MODULE__ ++ `: saved batch of ${batchSize->Int.toString} reference(s):`,
+      )->Effect.runSync
       countItems->logCountItems
     | Error(ReventlessInfra.QueryDb.NotSavedToStorage(err)) =>
       let batchSize = countItems->Array.length
-      Console.log(`Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`)
+      Effect.logError(
+        `Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`,
+      )->Effect.runSync
       countItems->logCountItems
       throw(NotCounted(err))
     | Error(_) =>
       let batchSize = countItems->Array.length
-      Console.log(
+      Effect.logError(
         `Unknown Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`,
-      )
+      )->Effect.runSync
       countItems->logCountItems
       throw(NotCounted("Unknown error"))
     }

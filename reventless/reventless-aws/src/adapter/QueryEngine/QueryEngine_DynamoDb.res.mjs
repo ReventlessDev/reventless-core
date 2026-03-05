@@ -8,7 +8,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_QueryDbRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDbRuntime.res.mjs";
@@ -166,13 +165,13 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     Limit: params_Limit,
     ScanIndexForward: params_ScanIndexForward
   };
-  Logger$ReventlessCore.debug("File \"QueryEngine_DynamoDb.res\", line 101, characters 35-42", undefined, undefined, "queryByTableName params:", params);
+  console.log("queryByTableName params:", params);
   let items;
   try {
     items = await Effect.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(params)));
   } catch (raw_err) {
     let err = Primitive_exceptions.internalToException(raw_err);
-    Logger$ReventlessCore.error("File \"QueryEngine_DynamoDb.res\", line 105, characters 37-44", undefined, undefined, "Error:", err);
+    console.error("Error:", err);
     return [];
   }
   return items.map(js => JSON.parse(JSON.stringify(js)));
@@ -202,13 +201,13 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     FilterExpression: params_FilterExpression,
     Limit: params_Limit
   };
-  Logger$ReventlessCore.debug("File \"QueryEngine_DynamoDb.res\", line 129, characters 35-42", undefined, undefined, "scanByTableName params:", params);
+  console.log("scanByTableName params:", params);
   let items;
   try {
     items = await Effect.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(params)));
   } catch (raw_err) {
     let err = Primitive_exceptions.internalToException(raw_err);
-    Logger$ReventlessCore.error("File \"QueryEngine_DynamoDb.res\", line 133, characters 37-44", undefined, undefined, "Error:", err);
+    console.error("Error:", err);
     return [];
   }
   return items.map(js => JSON.parse(JSON.stringify(js)));

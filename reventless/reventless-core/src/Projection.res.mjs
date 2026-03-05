@@ -9,7 +9,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
-import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
 import * as Message$ReventlessCore from "./Message.res.mjs";
 import * as QueryDb$ReventlessCore from "./components/QueryDb/QueryDb.res.mjs";
 import * as QueryDb$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/QueryDb.res.mjs";
@@ -572,7 +571,7 @@ async function handleActions(actions, operations, subIdConfig) {
     }), async (p, action) => {
       let err = await p;
       if (err.TAG !== "Ok") {
-        Logger$ReventlessCore.error("File \"Projection.res\", line 367, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$ReventlessInfra.storageErrorSchema)));
+        console.error("storage error: " + JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$ReventlessInfra.storageErrorSchema)));
       }
       return await handleAction(action, operations, subIdConfig);
     });

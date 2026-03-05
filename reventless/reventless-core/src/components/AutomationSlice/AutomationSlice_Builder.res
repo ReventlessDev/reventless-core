@@ -39,7 +39,10 @@ module Make = (
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(TodoQueryDbSpec, QueryDbStorage, QueryDbResolvers)
-    module SpecificEventCollector = EventCollector_Builder.Make(RuntimeEnvironment, EventCollectorChannel)
+    module SpecificEventCollector = EventCollector_Builder.Make(
+      RuntimeEnvironment,
+      EventCollectorChannel,
+    )
 
     let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations) => {
       let items = Callback.todoItems.contents->Dict.toArray
@@ -77,39 +80,35 @@ module Make = (
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream
             ->Stream.mapEffect(json =>
-              Effect.sync(() =>
-                try [json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema)] catch {
-                | exn =>
-                  Console.log2("AutomationSlice: Failed to decode event:", exn)
-                  []
-                }
+              Effect.sync(
+                () =>
+                  try [json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema)] catch {
+                  | exn =>
+                    Console.log2("AutomationSlice: Failed to decode event:", exn)
+                    []
+                  },
               )
             )
             ->Stream.flatMap(events => Stream.fromIterable(events))
             ->Stream.runCollect
             ->Effect.flatMap(eventsArr =>
-              Effect.promise(async () => {
-                // Phase 1: collect/resolve
-                Callback.phase1(eventsArr)
-                // Phase 2: process pending items
-                switch publishJsonsRef.contents {
-                | Some(pj) => await Callback.phase2(pj)
-                | None =>
-                  Logger.error(
-                    ~loc=__LOC__,
-                    `AutomationSlice(${Spec.name}): publishJsons not yet resolved`,
-                    "",
-                  )
-                }
-                // Sync TODO state to QueryDb for observability
-                await syncToQueryDb(queryDbOps)
-              })
+              Effect.promise(
+                async () => {
+                  // Phase 1: collect/resolve
+                  Callback.phase1(eventsArr)
+                  // Phase 2: process pending items
+                  switch publishJsonsRef.contents {
+                  | Some(pj) => await Callback.phase2(pj)
+                  | None =>
+                    Console.error(`AutomationSlice(${Spec.name}): publishJsons not yet resolved`)
+                  }
+                  // Sync TODO state to QueryDb for observability
+                  await syncToQueryDb(queryDbOps)
+                },
+              )
             )
 
-          let handler = SpecificEventCollector.makeHandler(
-            ~eventCollector=ec,
-            ~jsonEventsHandler,
-          )
+          let handler = SpecificEventCollector.makeHandler(~eventCollector=ec, ~jsonEventsHandler)
           let resources = (queryDb->Component.outputs).resources
           ec->EventCollectorRuntimeBuilder.forEventCollector(
             ~handler,

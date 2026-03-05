@@ -1,3 +1,4 @@
+S.enableJson()
 // AutomationSlice callback — implements the TODO list pattern.
 //
 // Phase 1 (collect/resolve): updates the in-memory TODO list from events
@@ -72,10 +73,7 @@ module Make = (Spec: Reventless.AutomationSlice.Spec): (T with module Spec = Spe
         todoItems.contents
         ->Dict.get(id)
         ->Option.forEach(row => {
-          todoItems.contents->Dict.set(
-            id,
-            {...row, status: Completed, completedAt: now()},
-          )
+          todoItems.contents->Dict.set(id, {...row, status: Completed, completedAt: now()})
         })
       | None => ()
       }
@@ -87,8 +85,7 @@ module Make = (Spec: Reventless.AutomationSlice.Spec): (T with module Spec = Spe
       todoItems.contents
       ->Dict.toArray
       ->Array.filter(((_, row)) =>
-        row.status == Pending ||
-          (row.status == Failed && row.retryCount < Spec.maxRetries)
+        row.status == Pending || (row.status == Failed && row.retryCount < Spec.maxRetries)
       )
 
     let commands = []
@@ -96,7 +93,11 @@ module Make = (Spec: Reventless.AutomationSlice.Spec): (T with module Spec = Spe
     pending->Array.forEach(((id, row)) => {
       let item = try row.item->S.parseJsonOrThrow(Spec.todoItemSchema)->Some catch {
       | exn =>
-        Logger.error(~loc=__LOC__, `AutomationSlice(${Spec.name}): failed to decode todoItem`, exn)
+        let errMsg =
+          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `AutomationSlice(${Spec.name}): failed to decode todoItem: ${errMsg}`,
+        )->Effect.runSync
         None
       }
 
@@ -104,29 +105,31 @@ module Make = (Spec: Reventless.AutomationSlice.Spec): (T with module Spec = Spe
         switch Spec.process(id, item) {
         | Some((targetId, command)) =>
           todoItems.contents->Dict.set(id, {...row, status: Processing, processedAt: now()})
-          let commandJson = try
-            command->S.reverseConvertToJsonOrThrow(Spec.commandSchema)->Some
-          catch {
+          let commandJson = try command
+          ->S.reverseConvertToJsonOrThrow(Spec.commandSchema)
+          ->Some catch {
           | exn =>
-            Logger.error(
-              ~loc=__LOC__,
-              `AutomationSlice(${Spec.name}): failed to encode command`,
-              exn,
-            )
+            let errMsg =
+              exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+            Effect.logError(
+              `AutomationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
+            )->Effect.runSync
             todoItems.contents->Dict.set(
               id,
               {...row, status: Failed, retryCount: row.retryCount + 1},
             )
             None
           }
-          commandJson->Option.forEach(commandJson => {
-            let msg: Reventless.Message.commandJson = {
-              id: targetId,
-              meta: makeMeta(),
-              commandJson,
-            }
-            let _ = commands->Array.push(msg)
-          })
+          commandJson->Option.forEach(
+            commandJson => {
+              let msg: Reventless.Message.commandJson = {
+                id: targetId,
+                meta: makeMeta(),
+                commandJson,
+              }
+              let _ = commands->Array.push(msg)
+            },
+          )
         | None => () // Skip — process returned None
         }
       })
@@ -135,11 +138,11 @@ module Make = (Spec: Reventless.AutomationSlice.Spec): (T with module Spec = Spe
     if commands->Array.length > 0 {
       try await publishJsons(commands) catch {
       | exn =>
-        Logger.error(
-          ~loc=__LOC__,
-          `AutomationSlice(${Spec.name}): failed to publish commands`,
-          exn,
-        )
+        let errMsg =
+          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `AutomationSlice(${Spec.name}): failed to publish commands: ${errMsg}`,
+        )->Effect.runSync
         // Mark items as Failed for retry
         pending->Array.forEach(((id, row)) => {
           switch todoItems.contents->Dict.get(id) {

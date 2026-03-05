@@ -3,7 +3,6 @@
 import * as Effect from "effect";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as CommandTopic$ReventlessCore from "../CommandTopic/CommandTopic.res.mjs";
@@ -24,7 +23,7 @@ function Make(Spec) {
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
           let commandStr = JSON.stringify(json);
-          Logger$ReventlessCore.error("File \"StateChangeSlice_Builder.res\", line 20, characters 32-39", undefined, undefined, `Couldn't decode command ` + commandStr + `:`, err);
+          console.error(`Couldn't decode command ` + commandStr + `:`, err);
           return;
         }
         return {

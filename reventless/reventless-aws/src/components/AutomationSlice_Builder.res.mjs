@@ -10,9 +10,9 @@ import * as EventCollectorRuntime_Builder_Single$ReventlessCore from "@reventles
 let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_Single$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
@@ -22,9 +22,9 @@ function Make(Api) {
   return AutomationSlice_Builder$ReventlessCore.Make({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
     asEventHandler: prim => prim,
-    asEffectHandler: prim => prim,
-    logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+    asEffectHandler: prim => prim
   })({
     make: QueryDbStorage_DynamoDb$ReventlessAws.make
   })(QueryDbResolvers_AppSync$ReventlessAws)({

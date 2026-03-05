@@ -4,7 +4,6 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 
 function Make(Spec) {
   let queryEventTypes = DcbTag$Reventless.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
@@ -26,7 +25,7 @@ function Make(Spec) {
       if (newEvents.TAG === "Ok") {
         let newEvents$1 = newEvents._0;
         if (newEvents$1.length === 0) {
-          Logger$ReventlessCore.debug("File \"StateChangeSlice_Callback.res\", line 42, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, "no events generated");
+          Effect.Effect.runSync(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): no events generated`));
           return {
             TAG: "Ok",
             _0: "ok"
@@ -38,27 +37,26 @@ function Make(Spec) {
           after: condition_after
         };
         let _position = await dcbEventLog.append(newEvents$1, condition);
-        if (_position.TAG === "Ok") {
-          Logger$ReventlessCore.debug("File \"StateChangeSlice_Callback.res\", line 52, characters 17-24", undefined, undefined, `StateChangeSlice(` + Spec.name + `)`, newEvents$1.length.toString() + ` event(s) appended`);
-          return {
-            TAG: "Ok",
-            _0: "ok"
-          };
+        if (_position.TAG !== "Ok") {
+          if (retries > 0) {
+            Effect.Effect.runSync(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): conflict, retrying`));
+            return await attempt(retries - 1 | 0);
+          } else {
+            Effect.Effect.runSync(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`));
+            return {
+              TAG: "Error",
+              _0: "conflict: retries exhausted"
+            };
+          }
         }
-        let err = _position._0;
-        if (retries > 0) {
-          Logger$ReventlessCore.info("File \"StateChangeSlice_Callback.res\", line 59, characters 29-36", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retrying`, err);
-          return await attempt(retries - 1 | 0);
-        } else {
-          Logger$ReventlessCore.error("File \"StateChangeSlice_Callback.res\", line 63, characters 19-26", undefined, undefined, `StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`, err);
-          return {
-            TAG: "Error",
-            _0: "conflict: retries exhausted"
-          };
-        }
+        Effect.Effect.runSync(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): ` + newEvents$1.length.toString() + ` event(s) appended`));
+        return {
+          TAG: "Ok",
+          _0: "ok"
+        };
       }
       let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
-      Logger$ReventlessCore.error("File \"StateChangeSlice_Callback.res\", line 72, characters 26-33", undefined, undefined, `StateChangeSlice(` + Spec.name + `): decide error`, errorJson);
+      Effect.Effect.runSync(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): decide error: ` + errorJson));
       return {
         TAG: "Error",
         _0: errorJson
@@ -67,7 +65,7 @@ function Make(Spec) {
     return await attempt(3);
   };
   let handleCommands = (dcbEventLog, stream) => {
-    Logger$ReventlessCore.debug("File \"StateChangeSlice_Callback.res\", line 81, characters 22-29", undefined, undefined, "starting", "StateChangeSlice.handleCommands");
+    Effect.Effect.runSync(Effect.Effect.logInfo("starting StateChangeSlice.handleCommands"));
     return Stream.runCollect(Effect.Stream.mapEffect(stream, param => {
       let reference = param.reference;
       let command = param.command;

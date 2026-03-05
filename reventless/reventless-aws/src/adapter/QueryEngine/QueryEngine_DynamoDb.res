@@ -98,11 +98,11 @@ let queryByTableName = async (
       limit,
     }
   }
-  ReventlessCore.Logger.debug(~loc=__LOC__, "queryByTableName params:", params)
+  Console.log2("queryByTableName params:", params)
   switch await Util_DynamoDb_Runtime.queryStream(params)->Stream.runCollect->Effect.runPromise {
   | items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
   | exception err =>
-    ReventlessCore.Logger.error(~loc=__LOC__, "Error:", err)
+    Console.error2("Error:", err)
     []
   }
 }
@@ -126,11 +126,11 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     expressionAttributeValues: ?attributeValues,
     limit,
   }
-  ReventlessCore.Logger.debug(~loc=__LOC__, "scanByTableName params:", params)
+  Console.log2("scanByTableName params:", params)
   switch await Util_DynamoDb_Runtime.scanStream(params)->Stream.runCollect->Effect.runPromise {
   | items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
   | exception err =>
-    ReventlessCore.Logger.error(~loc=__LOC__, "Error:", err)
+    Console.error2("Error:", err)
     []
   }
 }

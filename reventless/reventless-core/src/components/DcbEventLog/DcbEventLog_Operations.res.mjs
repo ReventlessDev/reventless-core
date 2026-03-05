@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -40,8 +41,8 @@ function Make(Spec) {
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
           if (err.RE_EXN_ID === "JsExn") {
-            console.log(`DcbEventLog(` + name + `): EventTopic.publish Error:`, err._1);
-            return;
+            let errMsg = Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "unknown");
+            return Effect.Effect.runSync(Effect.Effect.logError(`DcbEventLog(` + name + `): EventTopic.publish Error: ` + errMsg));
           }
           throw err;
         }

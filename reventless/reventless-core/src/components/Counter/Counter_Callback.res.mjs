@@ -26,8 +26,8 @@ function groupByCounterId(references) {
 
 function Make(Spec) {
   let counterHandler = async (references, counts) => {
-    console.log("counterHandler: references:", references.length);
-    console.log("counterHandler: counts:", counts);
+    Effect.Effect.runSync(Effect.Effect.logInfo(`counterHandler: references: ` + references.length.toString()));
+    Effect.Effect.runSync(Effect.Effect.logInfo(`counterHandler: counts: ` + Stdlib_Option.getOr(JSON.stringify(counts), "[]")));
     await Util_Promise$ReventlessCore.toUnit(Promise.all(groupByCounterId(references).map(param => Spec.countsDbCount(param[0], "count", -param[1] | 0))));
     return await Effect.Effect.runPromise(Spec.jsonEventsHandler(Effect.Stream.fromIterable(Stdlib_Array.filterMap(counts, state => {
       let match = Message$ReventlessCore.decode(state, countsStateSchema);
@@ -35,7 +35,7 @@ function Make(Spec) {
       let id = match.id;
       if (count === 0) {
         let match$1 = Counter$ReventlessCore.unmakeId(id);
-        console.log("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
+        Effect.Effect.runSync(Effect.Effect.logInfo("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString())));
         let meta = Message$ReventlessCore.generateMeta(ComponentType$ReventlessCore.toName("Counter"), undefined, "Counter");
         return Object.fromEntries([
           [
@@ -52,7 +52,7 @@ function Make(Spec) {
           ]
         ]);
       }
-      console.log("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
+      Effect.Effect.runSync(Effect.Effect.logInfo("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString())));
     }))));
   };
   return {

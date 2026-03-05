@@ -73,9 +73,6 @@ type event'<'id, 'event> = {
   event: 'event,
 }
 
-/** Logs a warning when an event cannot be decoded or processed. Used internally by adapters. */
-let invalidEvent = (reason, event) => Console.log4("Invalid Event (", reason, "), Event:", event)
-
 /**
 Records who changed a resource's status and when.
 Useful in audit-trail projections (e.g. "approved by bob at 2024-01-15").
@@ -150,7 +147,6 @@ let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(sc
 
 /** Raised by adapters when an incoming event JSON cannot be matched to a known event variant. */
 exception InvalidEvent(JSON.t)
-
 
 let toEventSchema' = (idSchema, eventSchema) =>
   S.object(s => {

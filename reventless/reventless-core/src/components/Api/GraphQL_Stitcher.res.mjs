@@ -3,7 +3,6 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 
 function decode(fragment) {
   let dict = Stdlib_JSON.Decode.object(JSON.parse(fragment.encoded));
@@ -53,13 +52,11 @@ function stitch(baseFragment, pluginFragments) {
       let name = extractLeadingName(typeDef);
       if (name.length === 0) {
         allTypes.push(typeDef);
-        return;
       } else if (seenTypeNames.has(name)) {
-        return Logger$ReventlessCore.warn(undefined, undefined, undefined, `[GraphQL_Stitcher] Duplicate type — skipped`, name);
+        console.warn(`[GraphQL_Stitcher] Duplicate type — skipped: ` + name);
       } else {
         seenTypeNames.add(name);
         allTypes.push(typeDef);
-        return;
       }
     });
   });
@@ -69,11 +66,10 @@ function stitch(baseFragment, pluginFragments) {
     param.mutations.forEach(field => {
       let fieldName = extractLeadingName(field);
       if (seenMutationFields.has(fieldName)) {
-        return Logger$ReventlessCore.warn(undefined, undefined, undefined, `[GraphQL_Stitcher] Duplicate mutation field — skipped`, fieldName);
+        console.warn(`[GraphQL_Stitcher] Duplicate mutation field — skipped: ` + fieldName);
       } else {
         seenMutationFields.add(fieldName);
         allMutations.push(field);
-        return;
       }
     });
   });
@@ -83,11 +79,10 @@ function stitch(baseFragment, pluginFragments) {
     param.queries.forEach(field => {
       let fieldName = extractLeadingName(field);
       if (seenQueryFields.has(fieldName)) {
-        return Logger$ReventlessCore.warn(undefined, undefined, undefined, `[GraphQL_Stitcher] Duplicate query field — skipped`, fieldName);
+        console.warn(`[GraphQL_Stitcher] Duplicate query field — skipped: ` + fieldName);
       } else {
         seenQueryFields.add(fieldName);
         allQueries.push(field);
-        return;
       }
     });
   });
@@ -107,4 +102,4 @@ export {
   extractLeadingName,
   stitch,
 }
-/* Logger-ReventlessCore Not a pure module */
+/* No side effect */

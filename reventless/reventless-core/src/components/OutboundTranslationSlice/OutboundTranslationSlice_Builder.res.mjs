@@ -9,7 +9,6 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
@@ -71,7 +70,7 @@ function Make(RuntimeEnvironment) {
             if (pj !== undefined) {
               await Callback.phase2(pj);
             } else {
-              Logger$ReventlessCore.error("File \"OutboundTranslationSlice_Builder.res\", line 99, characters 25-32", undefined, undefined, `OutboundTranslationSlice(` + Spec.name + `): publishJsons not yet resolved`, "");
+              console.error(`OutboundTranslationSlice(` + Spec.name + `): publishJsons not yet resolved`);
             }
             return await syncToQueryDb(queryDbOps);
           }));

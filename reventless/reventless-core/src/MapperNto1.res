@@ -67,10 +67,9 @@ module Mapper = (
     )->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
       try Some(json->Mapping.map) catch {
       | exn =>
-        Console.log2(
-          "Mapping failed:",
-          exn->JsExn.fromException->Option.map(exn => exn->JsExn.message),
-        )
+        let errMsg =
+          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(`Mapping failed: ${errMsg}`)->Effect.runSync
         None
       }
     )

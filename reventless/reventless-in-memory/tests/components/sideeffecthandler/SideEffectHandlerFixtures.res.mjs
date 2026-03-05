@@ -53,9 +53,9 @@ let EventCollectorCh = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bu
 let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
   groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+  asEffectHandler: prim => prim
 })(EventCollectorCh);
 
 let ECRTBuilder = EventCollectorRuntime_Builder_InMemory$ReventlessInMemory.Make(Bus)(EventCollectorCh);
@@ -63,9 +63,9 @@ let ECRTBuilder = EventCollectorRuntime_Builder_InMemory$ReventlessInMemory.Make
 let SEHBuilder = SideEffectHandler_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
   groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+  asEffectHandler: prim => prim
 })(EventCollectorCh)(SpecificEventCollector)(ECRTBuilder);
 
 let topicName = "TestSEHSource";

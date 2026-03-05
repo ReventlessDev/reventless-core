@@ -2,8 +2,8 @@
 
 import * as Effect from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function Make(Spec) {
@@ -15,13 +15,12 @@ function Make(Spec) {
     if (match !== undefined || match$1 !== undefined || match$2 !== undefined) {
       return;
     } else {
-      console.log("No mapping matches service name");
-      return;
+      return Effect.Effect.runSync(Effect.Effect.logInfo("No mapping matches service name"));
     }
   });
   let handleJsonEvents = stream => Effect.Stream.runDrain(Effect.Stream.mapEffect(stream, eventJson$p => Effect.Effect.promise(async () => {
     let id = Spec.pluginDefinition.id;
-    Logger$ReventlessCore.logJsonEvent(undefined, undefined, eventJson$p, `Plugin ` + id + ` handleJsonEvents: incoming event:`);
+    Effect.Effect.runSync(Effect.Effect.logInfo(`Plugin ` + id + ` handleJsonEvents: incoming event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
     detectUnhandledEvent(eventJson$p);
     await handleEvent(eventJson$p, Spec.incomingConnectExtensionEventHandlers);
     await Promise.all([

@@ -41,7 +41,14 @@ let groupBySource = (event: JSON.t) => {
   dict
 }
 
-external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'r> = "%identity"
-external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<event, context, 'r, 'error> = "%identity"
+let extractCorrelationId = (event: event) =>
+  event
+  ->JSON.Decode.object
+  ->Option.flatMap(obj => obj->Dict.get("meta"))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(meta => meta->Dict.get("correlationId"))
+  ->Option.flatMap(JSON.Decode.string)
 
-let logger = ReventlessCore.Runtime.defaultLogger
+external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'r> = "%identity"
+external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<event, context, 'r, 'error> =
+  "%identity"

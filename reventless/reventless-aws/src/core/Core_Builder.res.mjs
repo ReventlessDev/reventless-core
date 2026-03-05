@@ -10,9 +10,9 @@ import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reve
 let include = Core_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
@@ -21,9 +21,9 @@ let include = Core_Builder$ReventlessCore.Make({
 })(ClonerRunner_Fargate$ReventlessAws)(PluginRuntime_Builder_Micro$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect

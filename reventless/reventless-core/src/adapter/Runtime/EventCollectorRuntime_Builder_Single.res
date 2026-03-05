@@ -34,15 +34,17 @@ module Make = (
   })
   type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
   let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
-  let log = RuntimeEnvironment.logger
-
-  let runEffect = effect =>
+  let runEffect = (~correlationId=?, effect) =>
     effect
-    ->Effect.provideService(EffectLogger.tag, EffectLogger.consoleLogger)
+    ->Effect.provideService(
+      RequestContext.tag,
+      {correlationId: correlationId->Option.getOr("unknown")},
+    )
     ->Effect.runPromise
 
   let eventCollectorHandler = parentName =>
     async (event: RuntimeEnvironment.event, context) => {
+      let correlationId = event->RuntimeEnvironment.extractCorrelationId
       let desc = `eventCollectorHandler for ${parentName}:`
       let _ = await event
       ->RuntimeEnvironment.groupBySource
@@ -51,10 +53,13 @@ module Make = (
         switch eventCollectorHandlers->Dict.get(urn) {
         | Some(handlers) =>
           let count = handlers->Array.length->Int.toString
-          log.info(`----- ${desc} found ${count} handler(s) for EventCollector ${urn}`)
-          let _ =
-            await handlers->Array.map(handler => handler(event, context)->runEffect)->Promise.all
-        | None => log.warn(`${desc} no handler found: ${urn}`)
+          Effect.logInfo(
+            `----- ${desc} found ${count} handler(s) for EventCollector ${urn}`,
+          )->Effect.runSync
+          let _ = await handlers
+          ->Array.map(handler => runEffect(~correlationId?, handler(event, context)))
+          ->Promise.all
+        | None => Effect.logWarning(`${desc} no handler found: ${urn}`)->Effect.runSync
         }
       })
       ->Promise.all
@@ -70,7 +75,7 @@ module Make = (
           parts->Array.getUnsafe(parts->Array.length - 1)
         })
         ->Option.getOr("Unknown")
-      log.info(`validateParent: parent ${parentName} type: ${pulumiType}`)
+      Console.log(`validateParent: parent ${parentName} type: ${pulumiType}`)
       switch (grandParent.contents, parentType.contents) {
       | (None, None) =>
         parentType := Some(pulumiType)
@@ -140,7 +145,11 @@ module Make = (
         (registered, urns, handler)
         ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((_, urns, handler)) => {
-          log.info(`***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`)
+          Console.log(
+            `***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(
+                ", ",
+              )}`,
+          )
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
@@ -180,7 +189,7 @@ module Make = (
           ->Option.map(gp => `${gp.pulumiType} ${gp.name->Option.getOr("UnnamedGrandParent")}`)
           ->Option.getOr("None")
         let ptInfo = parentType.contents->Option.getOr("None")
-        log.warn(
+        Console.warn(
           `EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set: grandParent=${gpInfo}, parentType=${ptInfo}`,
         )
         JsError.throwWithMessage(

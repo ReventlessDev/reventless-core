@@ -11,9 +11,9 @@ import * as EventCollectorRuntime_Builder_PerEventCollector$ReventlessCore from 
 let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollector$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
@@ -22,9 +22,9 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollect
 let TaskRuntimeBuilder = TaskRuntime_Builder_PerBucket$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   connect: TaskBucket_S3$ReventlessAws.connect,
   makeHandler: TaskBucket_S3$ReventlessAws.makeHandler,
@@ -35,9 +35,9 @@ function Make(Spec) {
   return Task_Builder$ReventlessCore.Make(Spec)({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
     asEventHandler: prim => prim,
-    asEffectHandler: prim => prim,
-    logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+    asEffectHandler: prim => prim
   })({
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
     connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect

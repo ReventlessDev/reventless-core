@@ -50,7 +50,10 @@ type queuedEvent = {
 module type T = {
   // Event fan-out: aggregate EventTopic → read model EventCollector
   let publishEvent: (string, string, ReventlessCore.Message.meta, JSON.t) => promise<unit>
-  let subscribeToEvents: (string, (string, ReventlessCore.Message.meta, JSON.t) => promise<unit>) => unit
+  let subscribeToEvents: (
+    string,
+    (string, ReventlessCore.Message.meta, JSON.t) => promise<unit>,
+  ) => unit
 
   /**
    * Stream-based alternative to subscribeToEvents.
@@ -85,14 +88,16 @@ module type T = {
   // DCB event log read registry: DCB EventLog name → read function
   let registerDcbEventLogRead: (
     string,
-    (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) => promise<
-      ReventlessCore.DcbEventLog_Adapter.rawReadResult,
-    >,
+    (
+      ~query: Reventless.DcbTag.query,
+      ~after: Reventless.DcbTag.sequencePosition=?,
+    ) => promise<ReventlessCore.DcbEventLog_Adapter.rawReadResult>,
   ) => unit
   let getDcbEventLogRead: string => option<
-    (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) => promise<
-      ReventlessCore.DcbEventLog_Adapter.rawReadResult,
-    >,
+    (
+      ~query: Reventless.DcbTag.query,
+      ~after: Reventless.DcbTag.sequencePosition=?,
+    ) => promise<ReventlessCore.DcbEventLog_Adapter.rawReadResult>,
   >
 
   let reset: unit => unit
@@ -101,10 +106,10 @@ module type T = {
 // Internal module type for bus configuration.
 // capacity=None → unbounded hub (synchronous fan-out, no backpressure, 2-tick delivery).
 // capacity=Some(n) → bounded hub (async publish with backpressure, 3-tick delivery).
-// logger — used for runtime diagnostics; defaults to Logger.consoleLogger in Make/MakeBounded.
+// silent — when true, suppresses diagnostic warnings (e.g. missing command handlers).
 module type BusConfig = {
   let capacity: option<int>
-  let logger: Logger.t
+  let silent: bool
 }
 
 // Full implementation parameterised by BusConfig.
@@ -127,9 +132,10 @@ module Impl = (C: BusConfig): T => {
   let eventLogReplayRegistry: ref<dict<string => promise<array<JSON.t>>>> = ref(Dict.make())
   let dcbEventLogReadRegistry: ref<
     dict<
-      (~query: Reventless.DcbTag.query, ~after: Reventless.DcbTag.sequencePosition=?) => promise<
-        ReventlessCore.DcbEventLog_Adapter.rawReadResult,
-      >,
+      (
+        ~query: Reventless.DcbTag.query,
+        ~after: Reventless.DcbTag.sequencePosition=?,
+      ) => promise<ReventlessCore.DcbEventLog_Adapter.rawReadResult>,
     >,
   > = ref(Dict.make())
 
@@ -159,14 +165,11 @@ module Impl = (C: BusConfig): T => {
     // The fiber runs synchronously up to the first Queue.take suspension, so PubSub.subscribe
     // registers before Effect.runFork returns.
     let drainLoop = Effect.scoped(
-      PubSub.subscribe(hub)
-      ->Effect.flatMap(queue =>
-        Stream.fromQueue(queue)
-        ->Stream.runForEach(msg =>
-          Effect.promise(() => handler(msg.service, msg.meta, msg.json))
-          ->Effect.zipRight(msg.done_)
+      PubSub.subscribe(hub)->Effect.flatMap(queue =>
+        Stream.fromQueue(queue)->Stream.runForEach(msg =>
+          Effect.promise(() => handler(msg.service, msg.meta, msg.json))->Effect.zipRight(msg.done_)
         )
-      )
+      ),
     )
     let _ = Effect.runFork(drainLoop)
   }
@@ -187,16 +190,13 @@ module Impl = (C: BusConfig): T => {
       Effect.sync(() => {
         let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(0)
         subscriberCounts.contents->Dict.set(topicName, n + 1)
-      })
-      ->Effect.flatMap(_ => PubSub.subscribe(hub)),
+      })->Effect.flatMap(_ => PubSub.subscribe(hub)),
       (queue, _exit) =>
         Effect.sync(() => {
           let n = subscriberCounts.contents->Dict.get(topicName)->Option.getOr(1)
           subscriberCounts.contents->Dict.set(topicName, n - 1)
-        })
-        ->Effect.zipRight(Queue.shutdown(queue)),
-    )
-    ->Effect.map(queue => Stream.fromQueue(queue))
+        })->Effect.zipRight(Queue.shutdown(queue)),
+    )->Effect.map(queue => Stream.fromQueue(queue))
   }
 
   let publishEvent = async (topicName, service, meta, json) => {
@@ -216,15 +216,15 @@ module Impl = (C: BusConfig): T => {
         // IMPORTANT: done_ must NOT be called via Effect.runSync from a JS callback.
         // It must run within the Effect fiber so that Deferred.succeed operates in the
         // same runtime as Deferred.await_ below.
-        let done_: Effect.t<unit, unit, unit> =
-          Effect.sync(() => {remaining := remaining.contents - 1})
-          ->Effect.flatMap(_ =>
-            if remaining.contents == 0 {
-              Deferred.succeed(allDone, ())->Effect.map(_ => ())
-            } else {
-              Effect.succeed(())
-            }
-          )
+        let done_: Effect.t<unit, unit, unit> = Effect.sync(() => {
+          remaining := remaining.contents - 1
+        })->Effect.flatMap(_ =>
+          if remaining.contents == 0 {
+            Deferred.succeed(allDone, ())->Effect.map(_ => ())
+          } else {
+            Effect.succeed()
+          }
+        )
         let msg = {service, meta, json, done_}
         // Publish path is conditional on capacity:
         //   None (unbounded): Effect.runSync for publish (synchronous fan-out, 2-tick path).
@@ -236,8 +236,7 @@ module Impl = (C: BusConfig): T => {
           // Effect.runSync keeps fan-out synchronous, preserving the 2-tick guarantee.
           Effect.sync(() => {
             let _ = PubSub.publish(hub, msg)->Effect.runSync
-          })
-          ->Effect.zipRight(Deferred.await_(allDone))
+          })->Effect.zipRight(Deferred.await_(allDone))
         | Some(_) =>
           // Bounded: publish is an Effect that may suspend if any subscriber queue is full.
           // This provides backpressure: publishEvent suspends until a slow subscriber drains.
@@ -252,9 +251,9 @@ module Impl = (C: BusConfig): T => {
     switch commandHandlers.contents->Dict.get(channelName) {
     | Some(handler) => await handler(json, ())
     | None =>
-      let _ =
-        C.logger.warn("InMemory_Bus: no command handler for channel: " ++ channelName)
-        ->Effect.runSync
+      if !C.silent {
+        Console.warn("InMemory_Bus: no command handler for channel: " ++ channelName)
+      }
     }
   }
 
@@ -303,15 +302,15 @@ module Impl = (C: BusConfig): T => {
 module Make = (): T => {
   include Impl({
     let capacity: option<int> = None
-    let logger = Logger.consoleLogger
+    let silent = false
   })
 }
 
-// Logger-configurable unbounded bus — use with Platform.MakeWithConfig to inject Logger.silent in tests.
-module MakeWithLogger = (L: {let logger: Logger.t}): T => {
+// Silent unbounded bus — suppresses diagnostic warnings. Use in tests.
+module MakeSilent = (): T => {
   include Impl({
     let capacity: option<int> = None
-    let logger = L.logger
+    let silent = true
   })
 }
 
@@ -319,9 +318,13 @@ module MakeWithLogger = (L: {let logger: Logger.t}): T => {
 // publishEvent suspends when any subscriber's queue is full — providing backpressure.
 // Resolves in 3 microtask ticks (1 more than unbounded).
 // Usage: module TestBus = InMemory_Bus.MakeBounded({let capacity = 2})
-module MakeBounded = (C: {let capacity: int}): T => {
+module MakeBounded = (
+  C: {
+    let capacity: int
+  },
+): T => {
   include Impl({
     let capacity: option<int> = Some(C.capacity)
-    let logger = Logger.consoleLogger
+    let silent = false
   })
 }

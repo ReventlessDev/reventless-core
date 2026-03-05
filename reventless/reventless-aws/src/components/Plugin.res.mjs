@@ -28,9 +28,9 @@ let include = Plugin_Builder$ReventlessCore.Make({
 })({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
@@ -39,9 +39,9 @@ let include = Plugin_Builder$ReventlessCore.Make({
 })(CommandTopicRemoteChannel_SQS$ReventlessAws)(HeartbeatRunner_CloudWatchEvents$ReventlessAws)(PluginRuntime_Builder_Micro$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   asEventHandler: prim => prim,
-  asEffectHandler: prim => prim,
-  logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
+  asEffectHandler: prim => prim
 })({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect

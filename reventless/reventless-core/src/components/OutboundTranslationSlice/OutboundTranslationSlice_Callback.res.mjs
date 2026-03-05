@@ -2,12 +2,14 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
+import * as Effect from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+
+S.enableJson();
 
 let todoStatusSchema = S.union([
   S.literal("Pending"),
@@ -78,7 +80,8 @@ function Make(Spec) {
         item = Primitive_option.some(S.parseJsonOrThrow(row.item, Spec.outboundItemSchema));
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
-        Logger$ReventlessCore.error("File \"OutboundTranslationSlice_Callback.res\", line 88, characters 15-22", undefined, undefined, `OutboundTranslationSlice(` + Spec.name + `): failed to decode outboundItem`, exn);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+        Effect.Effect.runSync(Effect.Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to decode outboundItem: ` + errMsg));
         item = undefined;
       }
       if (item === undefined) {
@@ -107,7 +110,8 @@ function Make(Spec) {
             commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.inboundCommandSchema);
           } catch (raw_exn$2) {
             let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
-            Logger$ReventlessCore.error("File \"OutboundTranslationSlice_Callback.res\", line 118, characters 19-26", undefined, undefined, `OutboundTranslationSlice(` + Spec.name + `): failed to encode inbound command`, exn$2);
+            let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
+            Effect.Effect.runSync(Effect.Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to encode inbound command: ` + errMsg$1));
             commandJson = undefined;
           }
           if (commandJson !== undefined) {
@@ -127,7 +131,8 @@ function Make(Spec) {
               return;
             } catch (raw_exn$3) {
               let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
-              Logger$ReventlessCore.error("File \"OutboundTranslationSlice_Callback.res\", line 141, characters 21-28", undefined, undefined, `OutboundTranslationSlice(` + Spec.name + `): failed to publish command`, exn$3);
+              let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
+              Effect.Effect.runSync(Effect.Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to publish command: ` + errMsg$2));
               let newrecord$2 = {...row};
               newrecord$2.retryCount = row.retryCount + 1 | 0;
               newrecord$2.status = "Failed";
@@ -171,4 +176,4 @@ export {
   todoRowSchema,
   Make,
 }
-/* todoStatusSchema Not a pure module */
+/*  Not a pure module */

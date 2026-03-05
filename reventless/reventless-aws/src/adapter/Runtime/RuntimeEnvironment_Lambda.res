@@ -55,9 +55,31 @@ let groupBySource = (event: event) => {
   dict
 }
 
+// SQS records carry a `body` string field not included in the minimal record type.
+@get external recordBody: PulumiAws.Lambda.CallbackFunction.record => option<string> = "body"
+
+let extractCorrelationId = (event: event) =>
+  event.records
+  ->Array.get(0)
+  ->Option.flatMap(r =>
+    r
+    ->recordBody
+    ->Option.flatMap(body => {
+      try body->JSON.parseOrThrow->JSON.Decode.object catch {
+      | _ => None
+      }
+    })
+  )
+  ->Option.flatMap(obj => obj->Dict.get("meta"))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(meta => meta->Dict.get("correlationId"))
+  ->Option.flatMap(JSON.Decode.string)
+
 external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'result> =
   "%identity"
-external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<event, context, 'result, 'error> =
-  "%identity"
-
-let logger = ReventlessCore.Runtime.defaultLogger
+external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<
+  event,
+  context,
+  'result,
+  'error,
+> = "%identity"

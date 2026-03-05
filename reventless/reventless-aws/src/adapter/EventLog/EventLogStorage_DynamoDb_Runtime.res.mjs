@@ -5,7 +5,6 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
 import * as Util_Promise$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
@@ -28,7 +27,7 @@ function append(table) {
         _0: undefined
       };
     }
-    Logger$ReventlessCore.error(undefined, undefined, undefined, "Error: unprocessed items:", unprocessedItems._0);
+    console.error("Error: unprocessed items:", unprocessedItems._0);
     return {
       TAG: "Error",
       _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !"
@@ -42,7 +41,7 @@ async function tryReplay(retryOpt, table, id) {
     return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)));
   } catch (raw_err) {
     let err = Primitive_exceptions.internalToException(raw_err);
-    Logger$ReventlessCore.warn("File \"EventLogStorage_DynamoDb_Runtime.res\", line 23, characters 11-18", undefined, undefined, `Couldn't replay events for id ` + id + `, retry:` + retry.toString(), err);
+    console.warn(`Couldn't replay events for id ` + id + `, retry:` + retry.toString(), err);
     let timeout = (100 * retry | 0) + Stdlib_Math.Int.random(0, 100) | 0;
     await Util_Promise$ReventlessCore.finishTimeout(timeout);
     return await tryReplay(retry + 1 | 0, table, id);

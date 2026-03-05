@@ -50,11 +50,9 @@ module Make = (
       switch Mapping.mapOutgoingEvent {
       | Some(mapOutgoingEvent) => mapOutgoingEvent(eventJson', pluginDef)
       | None =>
-        Logger.error(
-          ~loc=__LOC__,
-          "mapOutgoingEvent",
-          "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
-        )
+        Effect.logError(
+          "mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
+        )->Effect.runSync
         []
       }
     | None =>
@@ -66,13 +64,21 @@ module Make = (
   let publishAggregateCommand = async (aggregateName, cmdJson) => {
     let pub = Ops.publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow
     try await pub([cmdJson]) catch {
-    | err => Console.log2(`Extension: Error on publish command to aggregate ${aggregateName}:`, err)
+    | err =>
+      let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+      Effect.logError(
+        `Extension: Error on publish command to aggregate ${aggregateName}: ${errMsg}`,
+      )->Effect.runSync
     }
   }
 
   let publishCorePluginExtensionPointCommand = async cmdJson =>
     try await Ops.publishToCorePluginExtensionPoint([cmdJson]) catch {
-    | err => Console.log2(`Extension: Error on publish command to Core.Plugin ExtensionPoint:`, err)
+    | err =>
+      let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+      Effect.logError(
+        `Extension: Error on publish command to Core.Plugin ExtensionPoint: ${errMsg}`,
+      )->Effect.runSync
     }
 
   let forwardCommand = (extensionPointName, commandJson: Message.commandJson) => {
@@ -93,7 +99,9 @@ module Make = (
 
   let handle = async handler =>
     try await handler() catch {
-    | err => Console.log2("ExtensionPoint: Error on calling handler:", err)
+    | err =>
+      let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+      Effect.logError(`ExtensionPoint: Error on calling handler: ${errMsg}`)->Effect.runSync
     }
 
   let applyIncomingCommandAction = async action =>
@@ -166,7 +174,11 @@ module Make = (
       | None => ()
       }
 
-    | exception err => Console.log3("Could not decode event':", eventJson', err)
+    | exception err =>
+      let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+      Effect.logError(
+        `Could not decode event': ${eventJson'->JSON.stringify} ${errMsg}`,
+      )->Effect.runSync
     }
   }
 

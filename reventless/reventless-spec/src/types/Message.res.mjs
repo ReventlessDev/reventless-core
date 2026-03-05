@@ -19,10 +19,6 @@ let contextSchema = S.schema(s => ({
   meta: s.m(metaSchema)
 }));
 
-function invalidEvent(reason, event) {
-  console.log("Invalid Event (", reason, "), Event:", event);
-}
-
 let statusChangeSchema = S.schema(s => ({
   at: s.m(S.string),
   by: s.m(S.string)
@@ -76,7 +72,6 @@ export {
   serviceSchema,
   metaSchema,
   contextSchema,
-  invalidEvent,
   statusChangeSchema,
   commandJsonSchema,
   decode,

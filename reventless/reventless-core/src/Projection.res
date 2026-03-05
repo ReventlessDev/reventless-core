@@ -62,7 +62,7 @@ let statesToString: array<'a> => string = states =>
 
 let handleAction = async (
   action,
-  {QueryDb.loadStream, save, saveBatch, delete, deleteBatch} as operations,
+  {QueryDb.loadStream: loadStream, save, saveBatch, delete, deleteBatch} as operations,
   subIdConfig,
 ) => {
   let loadAtMost = (n, id) =>
@@ -363,9 +363,8 @@ let handleActions = async (actions, operations, subIdConfig) => {
       switch await p {
       | Ok() => ()
       | Error(err) =>
-        Logger.error(
-          ~loc=__LOC__,
-          "storage error:",
+        Console.error(
+          "storage error: " ++
           err->Message.encode(ReventlessInfra.QueryDb.storageErrorSchema)->JSON.stringify,
         )
       }

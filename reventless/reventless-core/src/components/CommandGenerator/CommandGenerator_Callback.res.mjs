@@ -33,7 +33,7 @@ function Make(Spec) {
             "TAG",
             commandStr
           ]].concat(params)) : commandStr;
-      console.log("CommandGenerator: generated command:", commandJson);
+      Effect.Effect.runSync(Effect.Effect.logInfo("CommandGenerator: generated command: " + JSON.stringify(commandJson)));
       let val;
       try {
         val = Message$ReventlessCore.decode(commandJson, Behavior.resolverConfig.commandSchema);

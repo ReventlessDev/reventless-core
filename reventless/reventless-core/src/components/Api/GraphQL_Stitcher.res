@@ -37,13 +37,24 @@ let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
 let extractLeadingName = (str: string): string => {
   let trimmed = str->String.trim
   // Remove "type " prefix if present
-  let afterType = trimmed->String.startsWith("type ")
-    ? trimmed->String.slice(~start=5, ~end=trimmed->String.length)->String.trim
-    : trimmed
+  let afterType =
+    trimmed->String.startsWith("type ")
+      ? trimmed->String.slice(~start=5, ~end=trimmed->String.length)->String.trim
+      : trimmed
   // Split on "(" first to remove arg list, then on " " and "{" for the name
-  afterType->String.split("(")->Array.get(0)->Option.getOr("")->String.trim
-  ->String.split(" ")->Array.get(0)->Option.getOr("")->String.trim
-  ->String.split("{")->Array.get(0)->Option.getOr("")->String.trim
+  afterType
+  ->String.split("(")
+  ->Array.get(0)
+  ->Option.getOr("")
+  ->String.trim
+  ->String.split(" ")
+  ->Array.get(0)
+  ->Option.getOr("")
+  ->String.trim
+  ->String.split("{")
+  ->Array.get(0)
+  ->Option.getOr("")
+  ->String.trim
 }
 
 /**
@@ -72,7 +83,7 @@ let stitch = (
       if name->String.length == 0 {
         allTypes->Array.push(typeDef)
       } else if seenTypeNames->Set.has(name) {
-        Logger.warn(`[GraphQL_Stitcher] Duplicate type — skipped`, name)
+        Console.warn(`[GraphQL_Stitcher] Duplicate type — skipped: ${name}`)
       } else {
         seenTypeNames->Set.add(name)
         allTypes->Array.push(typeDef)
@@ -88,7 +99,7 @@ let stitch = (
     mutations->Array.forEach(field => {
       let fieldName = extractLeadingName(field)
       if seenMutationFields->Set.has(fieldName) {
-        Logger.warn(`[GraphQL_Stitcher] Duplicate mutation field — skipped`, fieldName)
+        Console.warn(`[GraphQL_Stitcher] Duplicate mutation field — skipped: ${fieldName}`)
       } else {
         seenMutationFields->Set.add(fieldName)
         allMutations->Array.push(field)
@@ -104,7 +115,7 @@ let stitch = (
     queries->Array.forEach(field => {
       let fieldName = extractLeadingName(field)
       if seenQueryFields->Set.has(fieldName) {
-        Logger.warn(`[GraphQL_Stitcher] Duplicate query field — skipped`, fieldName)
+        Console.warn(`[GraphQL_Stitcher] Duplicate query field — skipped: ${fieldName}`)
       } else {
         seenQueryFields->Set.add(fieldName)
         allQueries->Array.push(field)

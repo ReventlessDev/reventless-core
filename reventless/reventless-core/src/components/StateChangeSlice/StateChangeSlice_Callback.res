@@ -31,15 +31,15 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
 
     let rec attempt = async (~retries) => {
       let (decisionModel, headPosition) = await dcbEventLog.readStream(~query)
-        ->Stream.runFold(
-          (Spec.initialDecisionModel, None),
-          ((dm, _pos), se) => (Spec.reduce(dm, se.event), Some(se.position)),
-        )
-        ->Effect.runPromise
+      ->Stream.runFold((Spec.initialDecisionModel, None), ((dm, _pos), se) => (
+        Spec.reduce(dm, se.event),
+        Some(se.position),
+      ))
+      ->Effect.runPromise
 
       switch Spec.decide(decisionModel, command'.command) {
       | Ok(newEvents) if newEvents->Array.length == 0 =>
-        Logger.debug(~loc=__LOC__, `StateChangeSlice(${Spec.name})`, "no events generated")
+        Effect.logInfo(`StateChangeSlice(${Spec.name}): no events generated`)->Effect.runSync
         Ok("ok")
       | Ok(newEvents) =>
         let condition: Reventless.DcbTag.appendCondition = {
@@ -48,28 +48,28 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
         }
         switch await dcbEventLog.append(newEvents, ~condition) {
         | Ok(_position) =>
-          Logger.debug(
-            ~loc=__LOC__,
-            `StateChangeSlice(${Spec.name})`,
-            `${newEvents->Array.length->Int.toString} event(s) appended`,
-          )
+          Effect.logInfo(
+            `StateChangeSlice(${Spec.name}): ${newEvents
+              ->Array.length
+              ->Int.toString} event(s) appended`,
+          )->Effect.runSync
           Ok("ok")
         | Error(err) =>
           if retries > 0 {
-            Logger.info(~loc=__LOC__, `StateChangeSlice(${Spec.name}): conflict, retrying`, err)
+            Effect.logInfo(`StateChangeSlice(${Spec.name}): conflict, retrying`)->Effect.runSync
             await attempt(~retries=retries - 1)
           } else {
-            Logger.error(
-              ~loc=__LOC__,
+            Effect.logError(
               `StateChangeSlice(${Spec.name}): conflict, retries exhausted`,
-              err,
-            )
+            )->Effect.runSync
             Error("conflict: retries exhausted")
           }
         }
       | Error(error) =>
         let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)->JSON.stringify
-        Logger.error(~loc=__LOC__, `StateChangeSlice(${Spec.name}): decide error`, errorJson)
+        Effect.logError(
+          `StateChangeSlice(${Spec.name}): decide error: ${errorJson}`,
+        )->Effect.runSync
         Error(errorJson)
       }
     }
@@ -78,7 +78,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
   }
 
   let handleCommands = (dcbEventLog, stream) => {
-    Logger.debug(~loc=__LOC__, "starting", "StateChangeSlice.handleCommands")
+    Effect.logInfo("starting StateChangeSlice.handleCommands")->Effect.runSync
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
       Effect.promise(async () => {

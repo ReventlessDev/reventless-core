@@ -1,3 +1,4 @@
+S.enableJson()
 // OutboundTranslationSlice callback — implements the tracked external call pattern.
 //
 // Phase 1 (collect): updates the in-memory TODO list from events (no resolve)
@@ -74,8 +75,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
       todoItems.contents
       ->Dict.toArray
       ->Array.filter(((_, row)) =>
-        row.status == Pending ||
-          (row.status == Failed && row.retryCount < Spec.maxRetries)
+        row.status == Pending || (row.status == Failed && row.retryCount < Spec.maxRetries)
       )
 
     // Process each item individually -- each translate call is independent
@@ -84,11 +84,11 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
 
       let item = try row.item->S.parseJsonOrThrow(Spec.outboundItemSchema)->Some catch {
       | exn =>
-        Logger.error(
-          ~loc=__LOC__,
-          `OutboundTranslationSlice(${Spec.name}): failed to decode outboundItem`,
-          exn,
-        )
+        let errMsg =
+          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `OutboundTranslationSlice(${Spec.name}): failed to decode outboundItem: ${errMsg}`,
+        )->Effect.runSync
         None
       }
 
@@ -110,15 +110,15 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
         switch result {
         | Ok(Some((targetId, cmd))) =>
           // Encode command and publish
-          let commandJson = try
-            cmd->S.reverseConvertToJsonOrThrow(Spec.inboundCommandSchema)->Some
-          catch {
+          let commandJson = try cmd
+          ->S.reverseConvertToJsonOrThrow(Spec.inboundCommandSchema)
+          ->Some catch {
           | exn =>
-            Logger.error(
-              ~loc=__LOC__,
-              `OutboundTranslationSlice(${Spec.name}): failed to encode inbound command`,
-              exn,
-            )
+            let errMsg =
+              exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+            Effect.logError(
+              `OutboundTranslationSlice(${Spec.name}): failed to encode inbound command: ${errMsg}`,
+            )->Effect.runSync
             None
           }
 
@@ -131,17 +131,14 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
                 commandJson,
               }
               await publishJsons([msg])
-              todoItems.contents->Dict.set(
-                id,
-                {...row, status: Completed, completedAt: now()},
-              )
+              todoItems.contents->Dict.set(id, {...row, status: Completed, completedAt: now()})
             } catch {
             | exn =>
-              Logger.error(
-                ~loc=__LOC__,
-                `OutboundTranslationSlice(${Spec.name}): failed to publish command`,
-                exn,
-              )
+              let errMsg =
+                exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+              Effect.logError(
+                `OutboundTranslationSlice(${Spec.name}): failed to publish command: ${errMsg}`,
+              )->Effect.runSync
               todoItems.contents->Dict.set(
                 id,
                 {...row, status: Failed, retryCount: row.retryCount + 1},
@@ -156,10 +153,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
 
         | Ok(None) =>
           // Fire-and-forget: no command to publish
-          todoItems.contents->Dict.set(
-            id,
-            {...row, status: Completed, completedAt: now()},
-          )
+          todoItems.contents->Dict.set(id, {...row, status: Completed, completedAt: now()})
 
         | Error(msg) =>
           todoItems.contents->Dict.set(

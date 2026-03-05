@@ -14,17 +14,18 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Ops: Ops) => {
 
       switch await Ops.publishJson(id->Spec.Id.toString, event'.meta, eventJson') {
       | exception e =>
-        eventJson'->Logger.logJsonEvent(
-          ~loc=__LOC__,
-          ~level=Error,
-          `Couldn't publish event ${idx->Int.toString}/${eventCount->Int.toString}:`,
-        )
+        Effect.logError(
+          `Couldn't publish event ${idx->Int.toString}/${eventCount->Int.toString}: ${LogFormat.event'JsonToLogMessage(
+              eventJson',
+            )}`,
+        )->Effect.runSync
         throw(e)
       | _ =>
-        eventJson'->Logger.logJsonEvent(
-          ~loc=__LOC__,
-          `Published event ${idx->Int.toString}/${eventCount->Int.toString}:`,
-        )
+        Effect.logInfo(
+          `Published event ${idx->Int.toString}/${eventCount->Int.toString}: ${LogFormat.event'JsonToLogMessage(
+              eventJson',
+            )}`,
+        )->Effect.runSync
       }
     })
     ->Promise.all

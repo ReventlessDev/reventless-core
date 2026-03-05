@@ -14,7 +14,7 @@ let $$Array;
 
 let $$Error;
 
-let Logger;
+let LogFormat;
 
 let $$Promise;
 
@@ -32,7 +32,7 @@ export {
   AdapterRuntime,
   $$Array,
   $$Error,
-  Logger,
+  LogFormat,
   $$Promise,
   Pulumi,
   QueryDb,

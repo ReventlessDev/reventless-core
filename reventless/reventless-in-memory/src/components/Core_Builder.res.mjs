@@ -13,17 +13,17 @@ function Make(Bus) {
   let include = Core_Builder$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
     asEventHandler: prim => prim,
-    asEffectHandler: prim => prim,
-    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+    asEffectHandler: prim => prim
   })(EventCollectorChannel)({
     make: QE.make
   })(ClonerRunner_InMemory$ReventlessInMemory)(PluginRuntime_Builder_Micro$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
     asEventHandler: prim => prim,
-    asEffectHandler: prim => prim,
-    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+    asEffectHandler: prim => prim
   })(EventCollectorChannel));
   return {
     EventCollectorChannel: EventCollectorChannel,

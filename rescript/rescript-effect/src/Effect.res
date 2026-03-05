@@ -1,3 +1,11 @@
+// ─── Forward-declared abstract types ─────────────────────────────────────
+// Defined here to break circular dependencies. Each has a corresponding
+// module that re-exports as a transparent type alias:
+//   Fiber.res    → type t<'a,'e> = Effect.fiber<'a,'e>
+//   Latch.res    → type t       = Effect.latch
+//   Semaphore    → abstract, accessible via Effect.semaphore
+//   Schedule.res → type t<'o,'i,'r> = Effect.schedule<'o,'i,'r>
+
 /**
 ReScript bindings for `Effect<A, E, R>` — the core type of the Effect library.
 
@@ -18,15 +26,6 @@ Effect.succeed(42)
 // 84
 ```
 */
-
-// ─── Forward-declared abstract types ─────────────────────────────────────
-// Defined here to break circular dependencies. Each has a corresponding
-// module that re-exports as a transparent type alias:
-//   Fiber.res    → type t<'a,'e> = Effect.fiber<'a,'e>
-//   Latch.res    → type t       = Effect.latch
-//   Semaphore    → abstract, accessible via Effect.semaphore
-//   Schedule.res → type t<'o,'i,'r> = Effect.schedule<'o,'i,'r>
-
 /** Opaque fiber handle — see `Fiber` module for join, interrupt, and collect operations. */
 type fiber<'a, 'e>
 
@@ -74,10 +73,8 @@ Use `tryPromise` if you want to map exceptions to typed errors.
 external promise: (unit => promise<'a>) => t<'a, 'e, 'r> = "promise"
 
 @module("effect") @scope("Effect")
-external _tryPromiseRaw: {
-  "try": unit => promise<'a>,
-  "catch": unknown => 'e,
-} => t<'a, 'e, 'r> = "tryPromise"
+external _tryPromiseRaw: {"try": unit => promise<'a>, "catch": unknown => 'e} => t<'a, 'e, 'r> =
+  "tryPromise"
 
 /**
 Wraps a `Promise`-returning thunk, mapping thrown exceptions to typed errors.
@@ -99,10 +96,7 @@ let tryPromise = (~catch as onError: unknown => 'e, f: unit => promise<'a>): t<'
   _tryPromiseRaw({"try": f, "catch": onError})
 
 @module("effect") @scope("Effect")
-external _trySyncRaw: {
-  "try": unit => 'a,
-  "catch": unknown => 'e,
-} => t<'a, 'e, 'r> = "try"
+external _trySyncRaw: {"try": unit => 'a, "catch": unknown => 'e} => t<'a, 'e, 'r> = "try"
 
 /**
 Wraps a synchronous computation that may throw into a typed `Effect`.
@@ -267,7 +261,7 @@ Effect.all(effects, {"concurrency": 3})  // at most 3 concurrent
 ```
 */
 @module("effect") @scope("Effect")
-external all: (array<t<'a, 'e, 'r>>, {. "concurrency": 'concurrency}) => t<array<'a>, 'e, 'r> = "all"
+external all: (array<t<'a, 'e, 'r>>, {"concurrency": 'concurrency}) => t<array<'a>, 'e, 'r> = "all"
 
 /**
 Races two effects — the first to succeed wins and its value is returned.
@@ -309,7 +303,10 @@ Effect.acquireRelease(
 ```
 */
 @module("effect") @scope("Effect")
-external acquireRelease: (t<'a, 'e, 'r>, ('a, Exit.t<'b, 'e2>) => t<unit, 'e3, 'r>) => t<'a, 'e, 'r> = "acquireRelease"
+external acquireRelease: (
+  t<'a, 'e, 'r>,
+  ('a, Exit.t<'b, 'e2>) => t<unit, 'e3, 'r>,
+) => t<'a, 'e, 'r> = "acquireRelease"
 
 /**
 Opens a new `Scope` and runs the `Effect` within it.
@@ -411,8 +408,7 @@ let logInfo = (msg: string) =>
 ```
 */
 @module("effect") @scope("Effect")
-external serviceWith: (Context.tag<'service>, 'service => 'b) => t<'b, 'e, 'service> =
-  "serviceWith"
+external serviceWith: (Context.tag<'service>, 'service => 'b) => t<'b, 'e, 'service> = "serviceWith"
 
 /**
 Like `serviceWith`, but the mapping function returns an `Effect`.
@@ -440,7 +436,7 @@ Place at the outermost handler boundary, after all service uses are composed.
 **Example**
 ```rescript
 myEffect
-->Effect.provideService(Logger.tag, Logger.consoleLogger)
+->Effect.provideService(Config.tag, Config.default)
 ->Effect.runPromise
 ```
 */
@@ -458,6 +454,25 @@ implementing cooperative multitasking in a tight computation loop.
 */
 @module("effect") @scope("Effect")
 external yieldNow: unit => t<unit, 'e, 'r> = "yieldNow"
+
+// ─── Logging ──────────────────────────────────────────────────────────────
+
+/**
+Effect's built-in log functions — no service requirements.
+They use the fiber's logger, configured at the layer level.
+In tests, silence with `Effect.provide(Logger.minimumLogLevel(LogLevel.None))`.
+*/
+@module("effect") @scope("Effect")
+external logInfo: string => t<unit, 'e, 'r> = "logInfo"
+
+@module("effect") @scope("Effect")
+external logDebug: string => t<unit, 'e, 'r> = "logDebug"
+
+@module("effect") @scope("Effect")
+external logWarning: string => t<unit, 'e, 'r> = "logWarning"
+
+@module("effect") @scope("Effect")
+external logError: string => t<unit, 'e, 'r> = "logError"
 
 // ─── Running effects ─────────────────────────────────────────────────────
 

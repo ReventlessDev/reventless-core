@@ -11,11 +11,11 @@ The three type parameters:
 
 **Example**
 ```rescript
-let loggerLive: Layer.t<Logger.t, unit, unit> =
-  Layer.succeed_(Logger.tag, Logger.consoleLogger)
+let configLive: Layer.t<Config.t, unit, unit> =
+  Layer.succeed_(Config.tag, Config.default)
 
 myEffect
-->Effect.provide(loggerLive)
+->Effect.provide(configLive)
 ->Effect.runPromise
 ```
 */

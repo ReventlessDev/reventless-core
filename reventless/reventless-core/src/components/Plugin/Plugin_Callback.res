@@ -34,7 +34,7 @@ module Make = (Spec: Spec): T => {
         Spec.outgoingExtensionEventHandlers->Dict.get(serviceName),
         Spec.incomingExtensionEventHandlers->Dict.get(serviceName),
       ) {
-      | (None, None, None) => Console.log("No mapping matches service name")
+      | (None, None, None) => Effect.logInfo("No mapping matches service name")->Effect.runSync
       | _ => ()
       }
     )
@@ -44,7 +44,11 @@ module Make = (Spec: Spec): T => {
     ->Stream.mapEffect(eventJson' =>
       Effect.promise(async () => {
         let id = Spec.pluginDefinition.id
-        eventJson'->Logger.logJsonEvent(`Plugin ${id} handleJsonEvents: incoming event:`)
+        Effect.logInfo(
+          `Plugin ${id} handleJsonEvents: incoming event: ${LogFormat.event'JsonToLogMessage(
+              eventJson',
+            )}`,
+        )->Effect.runSync
         detectUnhandledEvent(eventJson')
         switch await eventJson'->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
         | _ =>

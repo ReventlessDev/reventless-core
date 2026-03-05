@@ -12,18 +12,18 @@ function Make(Bus) {
   let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
     asEventHandler: prim => prim,
-    asEffectHandler: prim => prim,
-    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+    asEffectHandler: prim => prim
   })({
     make: CommandTopicChannel.make
   });
   let Make$1 = Spec => (Mappings => ExtensionPoint_Builder$ReventlessCore.Make(Spec)(Mappings)({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
     asEventHandler: prim => prim,
-    asEffectHandler: prim => prim,
-    logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
+    asEffectHandler: prim => prim
   })({
     make: CommandTopicChannel.make
   })(EventTopicPublisher)({

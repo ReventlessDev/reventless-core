@@ -1,4 +1,7 @@
-let handleQueueEvent = (queue, handleJsonCommands: ReventlessCore.CommandTopic.jsonCommandsHandler) =>
+let handleQueueEvent = (
+  queue,
+  handleJsonCommands: ReventlessCore.CommandTopic.jsonCommandsHandler,
+) =>
   (event: PulumiAws.SQS.Queue.event, _) => {
     let records = event.records
     let jsons = records->Array.filterMap(record => {
@@ -28,30 +31,26 @@ let handleQueueEvent = (queue, handleJsonCommands: ReventlessCore.CommandTopic.j
     ->Effect.flatMap(results =>
       Effect.promise(async () => {
         switch await results
-        ->Array.mapWithIndex((result, idx) =>
-          switch result {
-          | Ok(reference) =>
-            let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {
-              id: idx->Int.toString,
-              receiptHandle: reference,
-            }
-            deleteMessageBatchEntry->Some
-          | Error(reference) =>
-            Console.log2(
-              __MODULE__ ++ ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:",
-              reference,
-            )
-            None
-          }
+        ->Array.mapWithIndex(
+          (result, idx) =>
+            switch result {
+            | Ok(reference) =>
+              let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {
+                id: idx->Int.toString,
+                receiptHandle: reference,
+              }
+              deleteMessageBatchEntry->Some
+            | Error(reference) =>
+              Console.log2(
+                __MODULE__ ++ ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:",
+                reference,
+              )
+              None
+            },
         )
         ->Array.filterMap(x => x)
         ->Util.SQS_Runtime.deleteMessages(queue) {
-        | () =>
-          ReventlessCore.Logger.debug(
-            ~loc=__LOC__,
-            "handleQueueEvent:",
-            "Deleted all commands from queue",
-          )
+        | () => Console.log("handleQueueEvent: Deleted all commands from queue")
         | exception JsExn(e) =>
           Console.log2(
             __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
