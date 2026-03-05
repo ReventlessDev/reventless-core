@@ -1,12 +1,6 @@
 open ReventlessCore.Cloner
 
 let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, payload, _) => {
-  Console.log(
-    "clone: requested by user " ++
-    (payload["meta"]["user"] ++
-    (" from ip " ++ payload["meta"]["ip"])),
-  )
-
   let {organization, project, stack} = fullQualifiedStackName
 
   let environment = {
@@ -16,25 +10,33 @@ let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, paylo
     ]->Dict.fromArray
   }
 
-  {
-    {
-      taskDefinition: taskDefinition->Pulumi.Output.get,
-      cluster: cluster->Pulumi.Output.get,
-      networkConfiguration: {
-        awsvpcConfiguration: {subnets},
-      },
-      launchType: #FARGATE,
-      overrides: {
-        containerOverrides: [
-          {
-            name: "reventless-ci",
-            environment,
-            command: ["reventless-ci", "clone-environment"],
-          },
-        ],
-      },
-    }
-    ->AwsSdk.ECS.RunTaskCommand.make
-    ->AwsSdk.ECS.RunTaskCommand.send
-  }
+  Effect.logInfo(
+    "clone: requested by user " ++
+    (payload["meta"]["user"] ++
+    (" from ip " ++ payload["meta"]["ip"])),
+  )
+  ->Effect.flatMap(_ =>
+    Effect.promise(() =>
+      {
+        taskDefinition: taskDefinition->Pulumi.Output.get,
+        cluster: cluster->Pulumi.Output.get,
+        networkConfiguration: {
+          awsvpcConfiguration: {subnets},
+        },
+        launchType: #FARGATE,
+        overrides: {
+          containerOverrides: [
+            {
+              name: "reventless-ci",
+              environment,
+              command: ["reventless-ci", "clone-environment"],
+            },
+          ],
+        },
+      }
+      ->AwsSdk.ECS.RunTaskCommand.make
+      ->AwsSdk.ECS.RunTaskCommand.send
+    )
+  )
+  ->Effect.runPromise
 }

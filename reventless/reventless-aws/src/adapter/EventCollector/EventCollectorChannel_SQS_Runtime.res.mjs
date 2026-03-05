@@ -9,17 +9,15 @@ function handleDynamoDbOrSqsEvent(queue, handleEvents) {
   return (event, param) => {
     let records = event.Records;
     let jsons = Stdlib_Array.filterMap(records, record => {
-      let eventSource = record.eventSource;
-      switch (eventSource) {
+      let _eventSource = record.eventSource;
+      switch (_eventSource) {
         case "aws:dynamodb" :
           let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
           if (typeof match !== "object") {
-            console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
             return;
           }
           switch (match.TAG) {
             case "OldImage" :
-              console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
               return;
             case "NewImage" :
             case "NewAndOldImage" :
@@ -28,7 +26,6 @@ function handleDynamoDbOrSqsEvent(queue, handleEvents) {
         case "aws:sqs" :
           return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
         default:
-          console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: ignoring record from eventSource:", eventSource);
           return;
       }
     });
@@ -39,11 +36,13 @@ function handleDynamoDbOrSqsEvent(queue, handleEvents) {
       Id: idx.toString(),
       ReceiptHandle: record.receiptHandle
     }));
-    return Effect.Effect.flatMap(handleEvents(Effect.Stream.fromIterable(jsons)), param => Effect.Effect.promise(async () => {
+    return Effect.Effect.flatMap(handleEvents(Effect.Stream.fromIterable(jsons)), param => {
       if (entries.length !== 0) {
-        return await Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue);
+        return Effect.Effect.catchAll(Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue), _err => Effect.Effect.succeed());
+      } else {
+        return Effect.Effect.succeed();
       }
-    }));
+    });
   };
 }
 
@@ -51,24 +50,20 @@ function handleDynamoDbEvent(handleEvents) {
   return (event, param) => {
     let records = event.Records;
     let jsons = Stdlib_Array.filterMap(records, record => {
-      let eventSource = record.eventSource;
-      if (eventSource === "aws:dynamodb") {
-        let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
-        if (typeof match !== "object") {
-          console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
-          return;
-        }
-        switch (match.TAG) {
-          case "OldImage" :
-            console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
-            return;
-          case "NewImage" :
-          case "NewAndOldImage" :
-            return match._1;
-        }
-      } else {
-        console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: ignoring record from eventSource:", eventSource);
+      let _eventSource = record.eventSource;
+      if (_eventSource !== "aws:dynamodb") {
         return;
+      }
+      let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
+      if (typeof match !== "object") {
+        return;
+      }
+      switch (match.TAG) {
+        case "OldImage" :
+          return;
+        case "NewImage" :
+        case "NewAndOldImage" :
+          return match._1;
       }
     });
     return Effect.Effect.map(handleEvents(Effect.Stream.fromIterable(jsons)), param => {});
@@ -76,15 +71,11 @@ function handleDynamoDbEvent(handleEvents) {
 }
 
 function enqueueEvent(queue, delay, _id, messageBody) {
-  let queueName = queue.name;
-  console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueEvent:", delay, messageBody, queueName);
-  return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody);
+  return Effect.Effect.runPromise(Effect.Effect.map(Effect.Effect.flatMap(Effect.Effect.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody))), () => {}));
 }
 
 function enqueueFifoEvent(queue, delay, id, messageBody) {
-  let queueName = queue.name;
-  console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent:", delay, messageBody, queueName);
-  return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody);
+  return Effect.Effect.runPromise(Effect.Effect.map(Effect.Effect.flatMap(Effect.Effect.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody))), () => {}));
 }
 
 export {

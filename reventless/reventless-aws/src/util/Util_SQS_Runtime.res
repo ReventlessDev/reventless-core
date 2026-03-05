@@ -19,29 +19,41 @@ let sendMessage = (queue, ~delay=?, messageBody) =>
 let sendFifoMessage = (queue, ~delay=?, ~messageGroupId, messageBody) =>
   SQS.sendMessage(~queueId=queue.id, ~messageBody, ~messageGroupId, ~delay?)
 
-let rec send = async (queue, queueService, commandJson) => {
+let rec send = (queue, queueService, commandJson) => {
   let messageBody = commandJson->toMessageBody
-  try await (
-    if queueService == AWS.SQS_FIFO {
-      queue->sendFifoMessage(~messageGroupId=commandJson.id, ~delay=?commandJson.delay, messageBody)
-    } else {
-      queue->sendMessage(~delay=?commandJson.delay, messageBody)
-    }
-  ) catch {
-  | JsExn(e) =>
-    Console.log3("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e->JsExn.message)
-    let timeout = Math.Int.random(3000, 7000)
-    await ReventlessCore.Util.Promise.finishTimeout(timeout)
-    Console.log(`Retry send after ${timeout->Int.toString} ms ...`)
-    await send(queue, queueService, commandJson)
-  }
+  Effect.tryPromise(
+    ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "SQS send"),
+    () =>
+      if queueService == AWS.SQS_FIFO {
+        queue->sendFifoMessage(
+          ~messageGroupId=commandJson.id,
+          ~delay=?commandJson.delay,
+          messageBody,
+        )
+      } else {
+        queue->sendMessage(~delay=?commandJson.delay, messageBody)
+      },
+  )
+  ->Effect.map(_ => ())
+  ->Effect.catchAll(errorMsg =>
+    Effect.logError(
+      "Util.SQS_Runtime.send: Error: failed commandJson: " ++ errorMsg,
+    )
+    ->Effect.flatMap(_ => {
+      let timeout = Math.Int.random(3000, 7000)
+      Effect.sleep(Duration.millis(timeout))
+      ->Effect.tap(_ =>
+        Effect.logInfo(`Retry send after ${timeout->Int.toString} ms ...`)
+      )
+      ->Effect.flatMap(_ => send(queue, queueService, commandJson))
+    })
+  )
 }
 
 let makeEntry = (queueService, commandJson) => {
   let {id, meta: {msgId: messageId}} = commandJson
   let messageBody = commandJson->toMessageBody
 
-  // Console.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
   if queueService == AWS.SQS_FIFO {
     SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay=?commandJson.delay)
   } else {
@@ -49,22 +61,43 @@ let makeEntry = (queueService, commandJson) => {
   }
 }
 
-let rec sendMessages = async (queue, queueService, commandJsons) => {
-  switch await commandJsons
-  ->Array.map(commandJson => makeEntry(queueService, commandJson))
-  ->SQS.sendMessagesParallel(~queueId=queue.id) {
-  | Ok() => ()
-  | Error(failedIds) =>
-    Console.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
-    let commandJsonsToRetry =
-      commandJsons->Array.filter(({meta: {msgId}}) =>
-        failedIds->Belt.Array.some(failedId => failedId == msgId)
-      )
-    let timeout = Math.Int.random(3000, 7000)
-    await ReventlessCore.Util.Promise.finishTimeout(timeout)
-    Console.log2(`Retry sendMessages after ${timeout->Int.toString} ms:`, commandJsonsToRetry)
-    await sendMessages(queue, queueService, commandJsonsToRetry)
-  }
+let sendMessages = (queue, queueService, commandJsons) => {
+  let rec attempt = toSend =>
+    Effect.tryPromise(
+      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "SQS sendMessages"),
+      () =>
+        toSend
+        ->Array.map(commandJson => makeEntry(queueService, commandJson))
+        ->SQS.sendMessagesParallel(~queueId=queue.id),
+    )
+    ->Effect.flatMap(result =>
+      switch result {
+      | Ok() => Effect.succeed()
+      | Error(failedIds) =>
+        Effect.logError(
+          "Util.SQS_Runtime.sendMessages: Error: failed ids: " ++
+          failedIds->Array.joinUnsafe(", "),
+        )
+        ->Effect.flatMap(_ => {
+          let commandJsonsToRetry =
+            toSend->Array.filter(({meta: {msgId}}) =>
+              failedIds->Belt.Array.some(failedId => failedId == msgId)
+            )
+          let timeout = Math.Int.random(3000, 7000)
+          Effect.sleep(Duration.millis(timeout))
+          ->Effect.tap(_ =>
+            Effect.logInfo(
+              `Retry sendMessages after ${timeout->Int.toString} ms: ${commandJsonsToRetry->Array.length->Int.toString} commands`,
+            )
+          )
+          ->Effect.flatMap(_ => attempt(commandJsonsToRetry))
+        })
+      }
+    )
+    ->Effect.catchAll(errorMsg =>
+      Effect.logError(errorMsg)->Effect.flatMap(_ => Effect.fail(errorMsg))
+    )
+  attempt(commandJsons)
 }
 
 let deleteMessage = async (queue, receiptHandle) => {
@@ -76,34 +109,52 @@ let deleteMessage = async (queue, receiptHandle) => {
   ->SQS.DeleteMessageCommand.send
 }
 
-let rec deleteMessages = async (entries, queue) =>
-  switch await SQS.deleteMessagesParallel(~queueId=queue.id, entries) {
-  | Ok() => ()
-  | Error(failedIds) =>
-    Console.log2("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds)
-    let entriesToRetry =
-      entries
-      ->Belt.Array.keepWithIndex((_, idx) => {
-        let id = idx->Int.toString
-        failedIds->Belt.Array.some(failedId => failedId == id)
-      })
-      ->Array.mapWithIndex((entry, idx) => {
-        AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Int.toString,
-        receiptHandle: entry.receiptHandle,
-      })
-    let timeout = Math.Int.random(3000, 7000)
-    await ReventlessCore.Util.Promise.finishTimeout(timeout)
-    Console.log2(`Retry deleteMessages after ${timeout->Int.toString} ms:`, entriesToRetry)
-    await deleteMessages(entriesToRetry, queue)
-  }
+let deleteMessages = (entries, queue) => {
+  let rec attempt = toDelete =>
+    Effect.tryPromise(
+      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "SQS deleteMessages"),
+      () => SQS.deleteMessagesParallel(~queueId=queue.id, toDelete),
+    )
+    ->Effect.flatMap(result =>
+      switch result {
+      | Ok() => Effect.succeed()
+      | Error(failedIds) =>
+        Effect.logError(
+          "Util.SQS_Runtime.deleteMessages: Error: failed ids: " ++
+          failedIds->Array.joinUnsafe(", "),
+        )
+        ->Effect.flatMap(_ => {
+          let entriesToRetry =
+            toDelete
+            ->Belt.Array.keepWithIndex((_, idx) => {
+              let id = idx->Int.toString
+              failedIds->Belt.Array.some(failedId => failedId == id)
+            })
+            ->Array.mapWithIndex((entry, idx) => {
+              AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Int.toString,
+              receiptHandle: entry.receiptHandle,
+            })
+          let timeout = Math.Int.random(3000, 7000)
+          Effect.sleep(Duration.millis(timeout))
+          ->Effect.tap(_ =>
+            Effect.logInfo(
+              `Retry deleteMessages after ${timeout->Int.toString} ms: ${entriesToRetry->Array.length->Int.toString} entries`,
+            )
+          )
+          ->Effect.flatMap(_ => attempt(entriesToRetry))
+        })
+      }
+    )
+    ->Effect.catchAll(errorMsg =>
+      Effect.logError(errorMsg)->Effect.flatMap(_ => Effect.fail(errorMsg))
+    )
+  attempt(entries)
+}
 
 let parseSqsRecord = (record: PulumiAws.SQS.Queue.record) => {
   let eventStr = record.body
-  Console.log2("parseSqsRecord: eventStr:", eventStr)
   switch eventStr->JSON.parseOrThrow {
   | json => Some(json)
-  | exception err =>
-    Console.log3("parseSqsRecord: Couldn't parse event:", eventStr, err)
-    None
+  | exception _err => None
   }
 }

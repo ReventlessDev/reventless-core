@@ -6,24 +6,20 @@ import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_Dyna
 
 function handleStreamEvent(handleEvents, streamEvent, param) {
   let jsons = Stdlib_Array.filterMap(streamEvent.Records, record => {
-    let eventSource = record.eventSource;
-    if (eventSource === "aws:dynamodb") {
-      let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
-      if (typeof match !== "object") {
-        console.log("EventCollectorChannel_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
-        return;
-      }
-      switch (match.TAG) {
-        case "OldImage" :
-          console.log("EventCollectorChannel_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
-          return;
-        case "NewImage" :
-        case "NewAndOldImage" :
-          return match._1;
-      }
-    } else {
-      console.log("EventCollectorChannel_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", eventSource);
+    let _eventSource = record.eventSource;
+    if (_eventSource !== "aws:dynamodb") {
       return;
+    }
+    let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
+    if (typeof match !== "object") {
+      return;
+    }
+    switch (match.TAG) {
+      case "OldImage" :
+        return;
+      case "NewImage" :
+      case "NewAndOldImage" :
+        return match._1;
     }
   });
   return Effect.Effect.map(handleEvents(Effect.Stream.fromIterable(jsons)), () => {});

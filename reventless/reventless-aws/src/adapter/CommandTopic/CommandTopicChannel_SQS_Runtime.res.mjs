@@ -3,8 +3,6 @@
 import * as Effect from "effect";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_SQS_Runtime$ReventlessAws from "../../util/Util_SQS_Runtime.res.mjs";
 
 function handleQueueEvent(queue, handleJsonCommands) {
@@ -15,9 +13,7 @@ function handleQueueEvent(queue, handleJsonCommands) {
       let json;
       try {
         json = JSON.parse(commandStr);
-      } catch (raw_err) {
-        let err = Primitive_exceptions.internalToException(raw_err);
-        console.log("CommandTopicChannel_SQS.handleQueueEvent: Couldn't parse command:", commandStr, err);
+      } catch (_err) {
         return;
       }
       return json;
@@ -26,28 +22,22 @@ function handleQueueEvent(queue, handleJsonCommands) {
       command: param[1],
       reference: param[0]
     }));
-    return Effect.Effect.flatMap(handleJsonCommands(Effect.Stream.fromIterable(topicItems)), results => Effect.Effect.promise(async () => {
-      let val;
-      try {
-        val = await Util_SQS_Runtime$ReventlessAws.deleteMessages(Stdlib_Array.filterMap(results.map((result, idx) => {
-          if (result.TAG === "Ok") {
-            return {
-              Id: idx.toString(),
-              ReceiptHandle: result._0
-            };
-          }
-          console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
-        }), x => x), queue);
-      } catch (raw_e) {
-        let e = Primitive_exceptions.internalToException(raw_e);
-        if (e.RE_EXN_ID === "JsExn") {
-          console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", Stdlib_JsExn.message(e._1));
-          return;
+    return Effect.Effect.flatMap(handleJsonCommands(Effect.Stream.fromIterable(topicItems)), results => {
+      let deleteEntries = Stdlib_Array.filterMap(results.map((result, idx) => {
+        if (result.TAG === "Ok") {
+          return {
+            Id: idx.toString(),
+            ReceiptHandle: result._0
+          };
         }
-        throw e;
+        Effect.Effect.runSync(Effect.Effect.logError("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle: " + result._0));
+      }), x => x);
+      if (deleteEntries.length !== 0) {
+        return Effect.Effect.catchAll(Effect.Effect.tap(Util_SQS_Runtime$ReventlessAws.deleteMessages(deleteEntries, queue), () => Effect.Effect.logInfo("handleQueueEvent: Deleted all commands from queue")), errorMsg => Effect.Effect.logError("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch: " + errorMsg));
+      } else {
+        return Effect.Effect.succeed();
       }
-      console.log("handleQueueEvent: Deleted all commands from queue");
-    }));
+    });
   };
 }
 
@@ -56,12 +46,12 @@ function publishJsons(queue, queueService) {
     let match = jsons.length;
     if (match !== 0) {
       if (match !== 1) {
-        return await Util_SQS_Runtime$ReventlessAws.sendMessages(queue, queueService, jsons);
+        return await Effect.Effect.runPromise(Util_SQS_Runtime$ReventlessAws.sendMessages(queue, queueService, jsons));
       } else {
-        return await Util_SQS_Runtime$ReventlessAws.send(queue, queueService, jsons[0]);
+        return await Effect.Effect.runPromise(Util_SQS_Runtime$ReventlessAws.send(queue, queueService, jsons[0]));
       }
     } else {
-      console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".publishJsons: No commands to send");
+      Effect.Effect.runPromise(Effect.Effect.logInfo("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".publishJsons: No commands to send"));
       return;
     }
   };

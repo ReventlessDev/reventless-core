@@ -1,30 +1,45 @@
 open Util_DynamoDb_Runtime
 
 let append = table =>
-  async (_sequenceNr, _id, jsons) => {
-    let result =
-      jsons
-      ->Array.map(toPutRequest)
-      ->toTable(table.name)
-      ->batchWriteWithRetries
-    switch await result {
-    | Ok() => Ok()
-    | Error(unprocessedItems) =>
-      Console.error2("Error: unprocessed items:", unprocessedItems)
-      Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !")
-    | exception _ => Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed !") // TODO: error message
-    }
-  }
+  (_sequenceNr, _id, jsons) =>
+    jsons
+    ->Array.map(toPutRequest)
+    ->toTable(table.name)
+    ->batchWriteWithRetries
+    ->Effect.flatMap(result =>
+      switch result {
+      | Ok() => Effect.succeed(Ok())
+      | Error(msg) =>
+        Effect.logError("Error: unprocessed items: " ++ msg)
+        ->Effect.map(_ =>
+          Error(
+            "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !",
+          )
+        )
+      }
+    )
+    ->Effect.catchAll(msg =>
+      Effect.succeed(Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed: " ++ msg))
+    )
+    ->Effect.runPromise
 
-let rec tryReplay = async (~retry=0, table, id) =>
-  switch await queryById(table, id)->Stream.runCollect->Effect.runPromise {
-  | exception err =>
-    Console.warn2(`Couldn't replay events for id ${id}, retry:${retry->Int.toString}`, err)
-    let timeout = 100 * retry + Math.Int.random(0, 100)
-    await ReventlessCore.Util.Promise.finishTimeout(timeout)
-    await tryReplay(~retry=retry + 1, table, id)
-  | history => history
-  }
+let tryReplay = (table, id) => {
+  let rec attempt = retry =>
+    queryById(table, id)
+    ->Stream.runCollect
+    ->Effect.catchAll(err =>
+      Effect.logWarning(
+        `Couldn't replay events for id ${id}, retry:${retry->Int.toString}: ` ++
+        err,
+      )
+      ->Effect.flatMap(_ => {
+        let timeout = 100 * retry + Math.Int.random(0, 100)
+        Effect.sleep(Duration.millis(timeout))
+        ->Effect.flatMap(_ => attempt(retry + 1))
+      })
+    )
+  attempt(0)->Effect.runPromise
+}
 
 let replay = table => {
   async id => await tryReplay(table, id)

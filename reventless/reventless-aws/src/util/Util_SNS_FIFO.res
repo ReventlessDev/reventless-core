@@ -14,9 +14,9 @@ let findTopicInResolvedResources = resources =>
     AWS.SNS_FIFO.service,
   ]) {
   | [] =>
-    let err = "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources"
-    Console.log(err)
-    JsError.throwWithMessage(err)
+    JsError.throwWithMessage(
+      "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources",
+    )
 
   | resources => resources->Array.getUnsafe(0)
   }

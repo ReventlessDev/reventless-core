@@ -11,16 +11,9 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) =>
         | NewImage(_, newImage)
         | NewAndOldImage(_, newImage, _) =>
           Some(newImage)
-        | _ =>
-          Console.log(__MODULE__ ++ ".handleChannelEvent: no NewImage included in Stream event !")
-          None
+        | _ => None
         }
-      | eventSource =>
-        Console.log2(
-          __MODULE__ ++ ".handleChannelEvent: ignoring record from eventSource:",
-          eventSource,
-        )
-        None
+      | _eventSource => None
       }
     )
 
@@ -43,12 +36,12 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) =>
     Stream.fromIterable(jsons)
     ->handleEvents
     ->Effect.flatMap(_ =>
-      Effect.promise(async () => {
-        switch entries {
-        | [] => ()
-        | entries => await Util.SQS_Runtime.deleteMessages(entries, queue)
-        }
-      })
+      switch entries {
+      | [] => Effect.succeed()
+      | entries =>
+        Util.SQS_Runtime.deleteMessages(entries, queue)
+        ->Effect.catchAll(_err => Effect.succeed())
+      }
     )
   }
 
@@ -64,30 +57,33 @@ let handleDynamoDbEvent = handleEvents =>
         | NewImage(_, newImage)
         | NewAndOldImage(_, newImage, _) =>
           Some(newImage)
-        | _ =>
-          Console.log(__MODULE__ ++ ".handleChannelEvent: no NewImage included in Stream event !")
-          None
+        | _ => None
         }
-      | eventSource =>
-        Console.log2(
-          __MODULE__ ++ ".handleChannelEvent: ignoring record from eventSource:",
-          eventSource,
-        )
-        None
+      | _eventSource => None
       }
     )
 
     Stream.fromIterable(jsons)->handleEvents->Effect.map(_ => ())
   }
 
-let enqueueEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, _id, messageBody) => {
-  let queueName = queue.name
-  Console.log4(__MODULE__ ++ ".enqueueEvent:", delay, messageBody, queueName)
-  queue->Util_SQS_Runtime.sendMessage(~delay, messageBody)
-}
+let enqueueEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, _id, messageBody) =>
+  Effect.logInfo(
+    __MODULE__ ++ ".enqueueEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
+  )
+  ->Effect.flatMap(_ =>
+    Effect.promise(() => queue->Util_SQS_Runtime.sendMessage(~delay, messageBody))
+  )
+  ->Effect.map(_ => ())
+  ->Effect.runPromise
 
-let enqueueFifoEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, id, messageBody) => {
-  let queueName = queue.name
-  Console.log4(__MODULE__ ++ ".enqueueFifoEvent:", delay, messageBody, queueName)
-  queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)
-}
+let enqueueFifoEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, id, messageBody) =>
+  Effect.logInfo(
+    __MODULE__ ++ ".enqueueFifoEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
+  )
+  ->Effect.flatMap(_ =>
+    Effect.promise(() =>
+      queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)
+    )
+  )
+  ->Effect.map(_ => ())
+  ->Effect.runPromise

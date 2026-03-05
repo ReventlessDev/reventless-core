@@ -8,13 +8,7 @@ let handleQueueEvent = (
       let commandStr = record.body
       switch JSON.parseOrThrow(commandStr) {
       | json => Some(json)
-      | exception err =>
-        Console.log3(
-          "CommandTopicChannel_SQS.handleQueueEvent: Couldn't parse command:",
-          commandStr,
-          err,
-        )
-        None
+      | exception _err => None
       }
     })
     let topicItems =
@@ -28,9 +22,9 @@ let handleQueueEvent = (
 
     Stream.fromIterable(topicItems)
     ->handleJsonCommands
-    ->Effect.flatMap(results =>
-      Effect.promise(async () => {
-        switch await results
+    ->Effect.flatMap(results => {
+      let deleteEntries =
+        results
         ->Array.mapWithIndex(
           (result, idx) =>
             switch result {
@@ -41,30 +35,39 @@ let handleQueueEvent = (
               }
               deleteMessageBatchEntry->Some
             | Error(reference) =>
-              Console.log2(
-                __MODULE__ ++ ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:",
+              Effect.logError(
+                __MODULE__ ++
+                ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle: " ++
                 reference,
-              )
+              )->Effect.runSync
               None
             },
         )
         ->Array.filterMap(x => x)
-        ->Util.SQS_Runtime.deleteMessages(queue) {
-        | () => Console.log("handleQueueEvent: Deleted all commands from queue")
-        | exception JsExn(e) =>
-          Console.log2(
-            __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
-            e->JsExn.message,
+
+      switch deleteEntries {
+      | [] => Effect.succeed()
+      | entries =>
+        Util.SQS_Runtime.deleteMessages(entries, queue)
+        ->Effect.tap(_ => Effect.logInfo("handleQueueEvent: Deleted all commands from queue"))
+        ->Effect.catchAll(errorMsg =>
+          Effect.logError(
+            __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch: " ++ errorMsg,
           )
-        }
-      })
-    )
+        )
+      }
+    })
   }
 
 let publishJsons = (queue, queueService) =>
   async jsons =>
     switch jsons->Array.length {
-    | 0 => Console.log(__MODULE__ ++ ".publishJsons: No commands to send")
-    | 1 => await queue->Util_SQS_Runtime.send(queueService, jsons->Array.getUnsafe(0))
-    | _ => await queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
+    | 0 =>
+      Effect.logInfo(__MODULE__ ++ ".publishJsons: No commands to send")->Effect.runPromise->ignore
+    | 1 =>
+      await queue->Util_SQS_Runtime.send(queueService, jsons->Array.getUnsafe(0))->Effect.runPromise
+    | _ =>
+      await queue
+      ->Util_SQS_Runtime.sendMessages(queueService, jsons)
+      ->Effect.runPromise
     }

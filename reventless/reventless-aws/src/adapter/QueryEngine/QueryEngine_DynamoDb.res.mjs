@@ -7,7 +7,6 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_QueryDbRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDbRuntime.res.mjs";
@@ -121,7 +120,7 @@ function createFilterExprNamesValues(filterConfigs) {
   }));
 }
 
-async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, ascendingOpt, limitOpt) {
+function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, ascendingOpt, limitOpt) {
   let key = keyOpt !== undefined ? keyOpt : "id";
   let filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : [];
   let ascending = ascendingOpt !== undefined ? ascendingOpt : true;
@@ -165,19 +164,10 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     Limit: params_Limit,
     ScanIndexForward: params_ScanIndexForward
   };
-  console.log("queryByTableName params:", params);
-  let items;
-  try {
-    items = await Effect.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(params)));
-  } catch (raw_err) {
-    let err = Primitive_exceptions.internalToException(raw_err);
-    console.error("Error:", err);
-    return [];
-  }
-  return items.map(js => JSON.parse(JSON.stringify(js)));
+  return Effect.Effect.runPromise(Effect.Effect.flatMap(Effect.Effect.logDebug("queryByTableName params: " + Stdlib_Option.getOr(JSON.stringify(params), "")), () => Effect.Effect.catchAll(Effect.Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(params)), items => items.map(js => JSON.parse(JSON.stringify(js)))), err => Effect.Effect.map(Effect.Effect.logError("Error: " + err), () => []))));
 }
 
-async function scanByTableName(tableName, filterConfigs, limit) {
+function scanByTableName(tableName, filterConfigs, limit) {
   let match = createFilterExprNamesValues(filterConfigs);
   let filterExpressions = match[0];
   let match$1 = Belt_Array.unzip(match[1]);
@@ -201,16 +191,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     FilterExpression: params_FilterExpression,
     Limit: params_Limit
   };
-  console.log("scanByTableName params:", params);
-  let items;
-  try {
-    items = await Effect.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(params)));
-  } catch (raw_err) {
-    let err = Primitive_exceptions.internalToException(raw_err);
-    console.error("Error:", err);
-    return [];
-  }
-  return items.map(js => JSON.parse(JSON.stringify(js)));
+  return Effect.Effect.runPromise(Effect.Effect.flatMap(Effect.Effect.logDebug("scanByTableName params: " + Stdlib_Option.getOr(JSON.stringify(params), "")), () => Effect.Effect.catchAll(Effect.Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(params)), items => items.map(js => JSON.parse(JSON.stringify(js)))), err => Effect.Effect.map(Effect.Effect.logError("Error: " + err), () => []))));
 }
 
 function make(allQueryDbs) {

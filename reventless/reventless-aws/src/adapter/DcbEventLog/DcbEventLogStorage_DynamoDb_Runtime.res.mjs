@@ -319,18 +319,7 @@ async function writeEventsWithPosition(table, events, basePosition) {
     let position = generatePositionForBatch(basePosition, idx);
     return toItem(position, event);
   });
-  let msg = await Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name));
-  if (msg.TAG === "Ok") {
-    return {
-      TAG: "Ok",
-      _0: undefined
-    };
-  } else {
-    return {
-      TAG: "Error",
-      _0: msg._0
-    };
-  }
+  return await Effect$1.Effect.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
 }
 
 function append(table) {

@@ -7,7 +7,6 @@ import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
@@ -49,77 +48,70 @@ function loadStream(table) {
 }
 
 function load(table) {
-  return async id => {
-    let arr;
-    try {
-      arr = await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)));
-    } catch (raw_e) {
-      let e = Primitive_exceptions.internalToException(raw_e);
-      if (e.RE_EXN_ID === "JsExn") {
-        let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
-        let tableName = table.name;
-        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.load: Error: Couldn't load state for ` + id + ` from ` + tableName + `: ` + errorMsg));
-        return {
-          TAG: "Error",
-          _0: {
-            TAG: "NotLoadedFromStorage",
-            _0: errorMsg
-          }
-        };
+  return id => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)), arr => ({
+    TAG: "Ok",
+    _0: arr
+  })), err => {
+    let tableName = table.name;
+    return Effect$1.Effect.map(Effect$1.Effect.logError("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.load: Error: Couldn't load state for ` + id + ` from ` + tableName + `: ` + err)), () => ({
+      TAG: "Error",
+      _0: {
+        TAG: "NotLoadedFromStorage",
+        _0: err
       }
-      throw e;
-    }
-    return {
-      TAG: "Ok",
-      _0: arr
-    };
-  };
+    }));
+  }));
 }
 
 function save(table) {
-  return async (id, json, saveMode, ttl) => {
+  return (id, json, saveMode, ttl) => {
     let tableName = table.name;
     let json$1 = Util_DynamoDb_Runtime$ReventlessAws.insertTtl(json, ttl);
+    let tmp;
+    let exit = 0;
     switch (saveMode) {
       case "Init" :
-        let errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(undefined, undefined, table.hashKey, table.rangeKey, table, id, json$1);
-        if (errorMsg.TAG === "Ok") {
-          console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: saved Init state to ` + tableName + `: id=` + id));
-          return {
+        tmp = Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(undefined, table.hashKey, table.rangeKey, table, id, json$1), result => {
+          if (result.TAG === "Ok") {
+            return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: saved Init state to ` + tableName + `: id=` + id)), () => ({
+              TAG: "Ok",
+              _0: undefined
+            }));
+          }
+          let errorMsg = result._0;
+          return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: Error: Couldn't save Init state to ` + tableName + `, id=` + id + `: ` + errorMsg)), () => ({
+            TAG: "Error",
+            _0: {
+              TAG: "NotSavedToStorage",
+              _0: errorMsg
+            }
+          }));
+        });
+        break;
+      case "Overwrite" :
+      case "Any" :
+        exit = 1;
+        break;
+    }
+    if (exit === 1) {
+      tmp = Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.putWithRetries(undefined, table, id, json$1), result => {
+        if (result.TAG === "Ok") {
+          return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: saved state to ` + tableName + `: id=` + id)), () => ({
             TAG: "Ok",
             _0: undefined
-          };
+          }));
         }
-        let errorMsg$1 = errorMsg._0;
-        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: Error: Couldn't save Init state to ` + tableName + `, id=` + id + `: ` + errorMsg$1));
-        return {
+        let errorMsg = result._0;
+        return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: Error: Couldn't save state to ` + tableName + `, id=` + id + `: ` + errorMsg)), () => ({
           TAG: "Error",
           _0: {
             TAG: "NotSavedToStorage",
-            _0: errorMsg$1
+            _0: errorMsg
           }
-        };
-      case "Overwrite" :
-      case "Any" :
-        break;
+        }));
+      });
     }
-    let errorMsg$2 = await Util_DynamoDb_Runtime$ReventlessAws.putWithRetries(undefined, undefined, table, id, json$1);
-    if (errorMsg$2.TAG === "Ok") {
-      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: saved state to ` + tableName + `: id=` + id));
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    }
-    let errorMsg$3 = errorMsg$2._0;
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: Error: Couldn't save state to ` + tableName + `, id=` + id + `: ` + errorMsg$3));
-    return {
-      TAG: "Error",
-      _0: {
-        TAG: "NotSavedToStorage",
-        _0: errorMsg$3
-      }
-    };
+    return Effect$1.Effect.runPromise(tmp);
   };
 }
 
@@ -129,66 +121,54 @@ function sliceBatch(arr, batchNr) {
   return arr.slice(start, end);
 }
 
-async function writeMultiple(writeRequests, op, ids, table) {
+function writeMultiple(writeRequests, op, ids, table) {
   let tableName = table.name;
   let count = ids.length.toString();
   let allIdsStr = ids.join(", ");
   let size = writeRequests.length;
   let batches = Stdlib_Math.Int.ceil(size / DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
-  if (batches > 1) {
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`writeBatch: splitting up batch of size ` + size.toString() + ` into ` + batches.toString() + ` batches`));
-  }
-  let results = Promise.allSettled(Stdlib_Array.fromInitializer(batches, batchNr => Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(sliceBatch(writeRequests, batchNr), tableName))));
-  let results$1;
-  try {
-    results$1 = await results;
-  } catch (raw_e) {
-    let e = Primitive_exceptions.internalToException(raw_e);
-    if (e.RE_EXN_ID === "JsExn") {
-      let errorMsg = Util_Error$ReventlessCore.message(undefined, e._1);
-      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: Error: Couldn't save states to ` + tableName + `, ` + count + ` ids:` + allIdsStr + `: ` + errorMsg));
-      return {
-        TAG: "Error",
-        _0: {
-          TAG: "BatchNotFullyWrittenToStorage",
-          _0: errorMsg
-        }
-      };
+  let logSplitEffect = batches > 1 ? Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`writeBatch: splitting up batch of size ` + size.toString() + ` into ` + batches.toString() + ` batches`)) : Effect$1.Effect.succeed();
+  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(logSplitEffect, () => Effect$1.Effect.promise(() => Promise.allSettled(Stdlib_Array.fromInitializer(batches, batchNr => Effect$1.Effect.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(sliceBatch(writeRequests, batchNr), tableName))))))), results => {
+    let errors = Stdlib_Array.filterMap(results.map((result, batchNr) => {
+      let batchIds = sliceBatch(ids, batchNr);
+      let count = batchIds.length.toString();
+      let batchIdsStr = batchIds.join(", ");
+      let match = result.value;
+      let match$1 = result.reason;
+      if (match !== undefined && match.TAG !== "Ok") {
+        return `Batch ` + batchNr.toString() + `: ` + count + ` ids:` + batchIdsStr + `: ` + match._0;
+      }
+      if (match$1 === undefined) {
+        return;
+      }
+      let error = match$1.RE_EXN_ID === "JsExn" ? Stdlib_Option.getOr(Stdlib_JsExn.message(match$1._1), "Unknown error") : "Unknown error";
+      return `Batch ` + batchNr.toString() + `: ` + count + ` ids:` + batchIdsStr + `: ` + error;
+    }), x => x);
+    if (errors.length === 0) {
+      return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: ` + op + ` ` + count + ` states: ` + tableName + `, ids:` + allIdsStr)), () => ({
+        TAG: "Ok",
+        _0: undefined
+      }));
     }
-    throw e;
-  }
-  let errors = Stdlib_Array.filterMap(results$1.map((result, batchNr) => {
-    let batchIds = sliceBatch(ids, batchNr);
-    let count = batchIds.length.toString();
-    let batchIdsStr = batchIds.join(", ");
-    let match = result.value;
-    let match$1 = result.reason;
-    if (match !== undefined && match.TAG !== "Ok") {
-      return `Batch ` + batchNr.toString() + `: ` + count + ` ids:` + batchIdsStr + `: ` + match._0;
-    }
-    if (match$1 === undefined) {
-      return;
-    }
-    let error = match$1.RE_EXN_ID === "JsExn" ? Stdlib_Option.getOr(Stdlib_JsExn.message(match$1._1), "Unknown error") : "Unknown error";
-    return `Batch ` + batchNr.toString() + `: ` + count + ` ids:` + batchIdsStr + `: ` + error;
-  }), x => x);
-  if (errors.length !== 0) {
     let errorsStr = errors.join("; ");
-    let errorMsg$1 = "QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: Error: Couldn't save states to ` + tableName + `: ` + errorsStr);
-    console.log(errorMsg$1);
-    return {
+    let errorMsg = "QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: Error: Couldn't save states to ` + tableName + `: ` + errorsStr);
+    return Effect$1.Effect.map(Effect$1.Effect.logError(errorMsg), () => ({
       TAG: "Error",
       _0: {
         TAG: "BatchNotFullyWrittenToStorage",
-        _0: errorMsg$1
+        _0: errorMsg
       }
-    };
-  }
-  console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: ` + op + ` ` + count + ` states: ` + tableName + `, ids:` + allIdsStr));
-  return {
-    TAG: "Ok",
-    _0: undefined
-  };
+    }));
+  }), err => {
+    let errorMsg = "QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: Error: Couldn't save states to ` + tableName + `, ` + count + ` ids:` + allIdsStr + `: ` + err);
+    return Effect$1.Effect.map(Effect$1.Effect.logError(errorMsg), () => ({
+      TAG: "Error",
+      _0: {
+        TAG: "BatchNotFullyWrittenToStorage",
+        _0: errorMsg
+      }
+    }));
+  }));
 }
 
 function saveBatch(table) {
@@ -210,83 +190,69 @@ function saveBatch(table) {
 }
 
 function count(table) {
-  return async (id, fieldName, inc) => {
+  return (id, fieldName, inc) => {
     let tableName = table.name;
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.count: ` + tableName + `, ` + id + `, ` + fieldName + `, ` + inc.toString()));
-    let updateOutput;
-    try {
-      updateOutput = await DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
-        Key: Object.fromEntries([[
-            "id",
-            id
-          ]]),
-        TableName: tableName,
-        ExpressionAttributeNames: Object.fromEntries([[
-            "#fieldName",
-            fieldName
-          ]]),
-        ExpressionAttributeValues: Object.fromEntries([[
-            ":inc",
-            inc
-          ]]),
-        ReturnValues: "UPDATED_NEW",
-        UpdateExpression: "ADD #fieldName :inc"
-      }));
-    } catch (raw_e) {
-      let e = Primitive_exceptions.internalToException(raw_e);
-      if (e.RE_EXN_ID === "JsExn") {
-        let e$1 = e._1;
-        let message = Util_Error$ReventlessCore.message(undefined, e$1);
-        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.count: Error: Couldn't count on ` + tableName), e$1);
-        return {
+    return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.count: ` + tableName + `, ` + id + `, ` + fieldName + `, ` + inc.toString())), () => Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "count"), () => DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
+      Key: Object.fromEntries([[
+          "id",
+          id
+        ]]),
+      TableName: tableName,
+      ExpressionAttributeNames: Object.fromEntries([[
+          "#fieldName",
+          fieldName
+        ]]),
+      ExpressionAttributeValues: Object.fromEntries([[
+          ":inc",
+          inc
+        ]]),
+      ReturnValues: "UPDATED_NEW",
+      UpdateExpression: "ADD #fieldName :inc"
+    })))), updateOutput => {
+      let value = DynamoDb_DocumentClient$AwsSdk.getIntAttribute(updateOutput.Attributes, "count");
+      if (value !== undefined) {
+        return Effect$1.Effect.succeed({
+          TAG: "Ok",
+          _0: value
+        });
+      } else {
+        return Effect$1.Effect.map(Effect$1.Effect.logError("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.count: Error: Invalid updateOutput in count on ` + tableName)), () => ({
           TAG: "Error",
           _0: {
             TAG: "NotCountedOnStorage",
-            _0: message
+            _0: "Invalid updateOutput in count"
           }
-        };
+        }));
       }
-      throw e;
-    }
-    let value = DynamoDb_DocumentClient$AwsSdk.getIntAttribute(updateOutput.Attributes, "count");
-    if (value !== undefined) {
-      return {
-        TAG: "Ok",
-        _0: value
-      };
-    } else {
-      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.count: Error: Invalid updateOutput in count on ` + tableName));
-      return {
-        TAG: "Error",
-        _0: {
-          TAG: "NotCountedOnStorage",
-          _0: "Invalid updateOutput in count"
-        }
-      };
-    }
+    }), errorMsg => Effect$1.Effect.map(Effect$1.Effect.logError("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.count: Error: Couldn't count on ` + tableName + `: ` + errorMsg)), () => ({
+      TAG: "Error",
+      _0: {
+        TAG: "NotCountedOnStorage",
+        _0: errorMsg
+      }
+    }))));
   };
 }
 
 function $$delete(table) {
-  return async (id, sort) => {
+  return (id, sort) => {
     let tableName = table.name;
-    let errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(undefined, undefined, sort, table, id);
-    if (errorMsg.TAG === "Ok") {
-      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.delete: deleted state from ` + tableName + `: id=` + id + `, sort=`), sort);
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    }
-    let errorMsg$1 = errorMsg._0;
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.delete: Error: Couldn't delete state from ` + tableName + `, id=` + id + `, sort=`), sort, errorMsg$1);
-    return {
-      TAG: "Error",
-      _0: {
-        TAG: "NotDeletedFromStorage",
-        _0: errorMsg$1
+    return Effect$1.Effect.runPromise(Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(undefined, sort, table, id), result => {
+      if (result.TAG === "Ok") {
+        return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.delete: deleted state from ` + tableName + `: id=` + id + `, sort=` + Stdlib_Option.getOr(JSON.stringify(sort), "None"))), () => ({
+          TAG: "Ok",
+          _0: undefined
+        }));
       }
-    };
+      let errorMsg = result._0;
+      return Effect$1.Effect.map(Effect$1.Effect.logError("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.delete: Error: Couldn't delete state from ` + tableName + `, id=` + id + `, sort=` + Stdlib_Option.getOr(JSON.stringify(sort), "None") + `: ` + errorMsg)), () => ({
+        TAG: "Error",
+        _0: {
+          TAG: "NotDeletedFromStorage",
+          _0: errorMsg
+        }
+      }));
+    }));
   };
 }
 

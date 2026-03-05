@@ -19,10 +19,9 @@ function findTopicInResolvedResources(resources) {
   let resources$1 = Util_Adapter$ReventlessCore.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS_FIFO.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
+  } else {
+    return Stdlib_JsError.throwWithMessage("Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources");
   }
-  let err = "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources";
-  console.log(err);
-  return Stdlib_JsError.throwWithMessage(err);
 }
 
 export {

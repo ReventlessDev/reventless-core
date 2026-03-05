@@ -22,8 +22,10 @@ let fifoQueue = SQS.Queue.make(
   },
 )
 
-let callback: Lambda.eventHandlerNoResult<'a> = (evt, ctx) =>
-  Promise.make((resolve, _) => resolve(Console.log3("DEAD LETTER ITEM:", evt, ctx)))
+let callback: Lambda.eventHandlerNoResult<'a> = (evt, _ctx) =>
+  Effect.logError(
+    "DEAD LETTER ITEM: " ++ evt->JSON.stringifyAny->Option.getOr("<unknown>"),
+  )->Effect.runPromise
 
 let opts = {Pulumi.CustomResourceOptions.parent: queue->PulumiAws.SQS.Queue.toResource}
 let lambdaRole = IAM.Role.makeWithDefaultPolicy(

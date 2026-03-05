@@ -50,7 +50,7 @@ let createFilterExprNamesValues = filterConfigs =>
   })
   ->Belt.Array.unzip
 
-let queryByTableName = async (
+let queryByTableName = (
   ~tableName,
   ~key="id",
   ~id,
@@ -98,16 +98,19 @@ let queryByTableName = async (
       limit,
     }
   }
-  Console.log2("queryByTableName params:", params)
-  switch await Util_DynamoDb_Runtime.queryStream(params)->Stream.runCollect->Effect.runPromise {
-  | items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
-  | exception err =>
-    Console.error2("Error:", err)
-    []
-  }
+  Effect.logDebug("queryByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
+  ->Effect.flatMap(_ =>
+    Util_DynamoDb_Runtime.queryStream(params)
+    ->Stream.runCollect
+    ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
+    ->Effect.catchAll(err =>
+      Effect.logError("Error: " ++ err)->Effect.map(_ => [])
+    )
+  )
+  ->Effect.runPromise
 }
 
-let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
+let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilterExprNamesValues
   let (filterNames, filterValues) = filterNamesValues->Belt.Array.unzip
   let (filterExpression, attributeNames, attributeValues) = switch filterExpressions {
@@ -126,13 +129,16 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     expressionAttributeValues: ?attributeValues,
     limit,
   }
-  Console.log2("scanByTableName params:", params)
-  switch await Util_DynamoDb_Runtime.scanStream(params)->Stream.runCollect->Effect.runPromise {
-  | items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow)
-  | exception err =>
-    Console.error2("Error:", err)
-    []
-  }
+  Effect.logDebug("scanByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
+  ->Effect.flatMap(_ =>
+    Util_DynamoDb_Runtime.scanStream(params)
+    ->Stream.runCollect
+    ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
+    ->Effect.catchAll(err =>
+      Effect.logError("Error: " ++ err)->Effect.map(_ => [])
+    )
+  )
+  ->Effect.runPromise
 }
 
 let make: ReventlessCore.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {

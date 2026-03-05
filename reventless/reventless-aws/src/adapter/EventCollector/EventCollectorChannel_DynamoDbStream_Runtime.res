@@ -10,13 +10,9 @@ let handleStreamEvent: (
       | NewImage(_, newImage)
       | NewAndOldImage(_, newImage, _) =>
         Some(newImage)
-      | _ =>
-        Console.log(__MODULE__ ++ ": no NewImage included in Stream event !")
-        None
+      | _ => None
       }
-    | eventSource =>
-      Console.log2(__MODULE__ ++ ": ignoring record from eventSource:", eventSource)
-      None
+    | _eventSource => None
     }
   )
 

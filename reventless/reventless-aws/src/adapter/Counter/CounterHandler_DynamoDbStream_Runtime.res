@@ -3,44 +3,55 @@
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
-let addToCounterTarget = async (
+let addToCounterTarget = (
   table: ReventlessInfra.Adapter.resource,
   {ReventlessInfra.Counter.counterId: counterId, target, targetRef},
 ) => {
-  Console.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
   let tableName = table.name->Pulumi.Output.get
-  switch await UpdateCommand.make({
-    tableName,
-    key: Dict.fromArray([("id", counterId->JSON.Encode.string)]),
-    updateExpression: "ADD #count :inc, #total :inc " ++
-    ("SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle), " ++
-    "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)"),
-    expressionAttributeNames: [
-      ("#count", ReventlessCore.Counter.countFieldName),
-      ("#total", "total"),
-      ("#targets", "targets"),
-      ("#targetRefs", "targetRefs"),
-    ]->Dict.fromArray,
-    expressionAttributeValues: [
-      (":inc", target->Int.toFloat->JSON.Encode.float),
-      (":targetSingle", [target->Int.toFloat->JSON.Encode.float]->JSON.Encode.array),
-      (":targetRefSingle", [targetRef->JSON.Encode.string]->JSON.Encode.array),
-      (":targetRef", targetRef->JSON.Encode.string),
-      (":empty", []->JSON.Encode.array),
-    ]->Dict.fromArray,
-    returnValues: #UPDATED_NEW,
-    conditionExpression: "NOT contains(#targetRefs, :targetRef)",
-  })->UpdateCommand.send {
-  | (updateOutput: UpdateCommand.output) =>
-    Console.log2(
-      __MODULE__ ++ `.addToCounterTarget: current count for ${counterId}:`,
-      updateOutput.attributes->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count"),
+  Effect.logInfo(__MODULE__ ++ ".addToCounterTarget: " ++ counterId ++ " " ++ target->Int.toString)
+  ->Effect.flatMap(_ =>
+    Effect.tryPromise(
+      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "addToCounterTarget"),
+      () =>
+        UpdateCommand.make({
+          tableName,
+          key: Dict.fromArray([("id", counterId->JSON.Encode.string)]),
+          updateExpression: "ADD #count :inc, #total :inc " ++
+          ("SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle), " ++
+          "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)"),
+          expressionAttributeNames: [
+            ("#count", ReventlessCore.Counter.countFieldName),
+            ("#total", "total"),
+            ("#targets", "targets"),
+            ("#targetRefs", "targetRefs"),
+          ]->Dict.fromArray,
+          expressionAttributeValues: [
+            (":inc", target->Int.toFloat->JSON.Encode.float),
+            (":targetSingle", [target->Int.toFloat->JSON.Encode.float]->JSON.Encode.array),
+            (":targetRefSingle", [targetRef->JSON.Encode.string]->JSON.Encode.array),
+            (":targetRef", targetRef->JSON.Encode.string),
+            (":empty", []->JSON.Encode.array),
+          ]->Dict.fromArray,
+          returnValues: #UPDATED_NEW,
+          conditionExpression: "NOT contains(#targetRefs, :targetRef)",
+        })->UpdateCommand.send,
     )
-  | exception _ =>
-    JsError.throwWithMessage(
-      __MODULE__ ++ `.addToCounterTarget Error: Couldn't count on ${tableName}`,
+  )
+  ->Effect.flatMap((updateOutput: UpdateCommand.output) =>
+    Effect.logInfo(
+      __MODULE__ ++
+      `.addToCounterTarget: current count for ${counterId}: ` ++
+      updateOutput.attributes
+      ->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count")
+      ->Option.mapOr("N/A", v => v->Int.toString),
     )
-  }
+  )
+  ->Effect.catchAll(err =>
+    Effect.fail(
+      JsError.make(__MODULE__ ++ `.addToCounterTarget Error: Couldn't count on ${tableName}: ${err}`),
+    )
+  )
+  ->Effect.runPromise
 }
 
 @schema
@@ -66,12 +77,13 @@ let handleStreamEvent = (
     )
 
   ignoredRecords->Array.forEach(record =>
-    Console.log4(
-      __MODULE__ ++ ": ignoring record from eventSource:",
-      record.eventSource,
+    Effect.logWarning(
+      __MODULE__ ++
+      ": ignoring record from eventSource: " ++
+      record.eventSource ++
+      " " ++
       record.eventSourceARN,
-      record->JSON.stringifyAny,
-    )
+    )->Effect.runSync
   )
 
   let (referenceRecords, countRecords) =
@@ -82,17 +94,15 @@ let handleStreamEvent = (
     | NewImage(id, newImage) =>
       let inc = switch newImage->S.parseJsonOrThrow(referencesViewSchema) {
       | {inc} => inc
-      | exception err =>
-        Console.log3(__MODULE__ ++ " (references): error parsing newImage:", newImage, err)
-        1
+      | exception _err => 1
       }
       Some((id, inc))
     | NewAndOldImage(id, _, _) =>
-      Console.log2(__MODULE__ ++ " (references): ignoring duplicate id:", id)
+      Effect.logInfo(
+        __MODULE__ ++ " (references): ignoring duplicate id: " ++ id,
+      )->Effect.runSync
       None
-    | _ =>
-      // Console.log2(__MODULE__ ++ " (references): ignoring record:", record->JSON.stringifyAny)
-      None
+    | _ => None
     }
   )
 
@@ -101,9 +111,7 @@ let handleStreamEvent = (
     | NewImage(_, newImage)
     | NewAndOldImage(_, newImage, _) =>
       Some(newImage)
-    | _ =>
-      // Console.log2(__MODULE__ ++ " (counts): ignoring record:", record->JSON.stringifyAny)
-      None
+    | _ => None
     }
   )
 

@@ -415,13 +415,11 @@ let writeEventsWithPosition = async (
     toItem(position, event)
   })
 
-  switch await items
+  await items
   ->Array.map(toPutRequest)
   ->toTable(table.name)
-  ->batchWriteWithRetries {
-  | Ok() => Ok()
-  | Error(msg) => Error(msg)
-  }
+  ->batchWriteWithRetries
+  ->Effect.runPromise
 }
 
 let append = (table: runtimeTable) =>

@@ -4,52 +4,38 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
-import * as Util_Promise$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Promise.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
 function append(table) {
-  return async (_sequenceNr, _id, jsons) => {
-    let result = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(jsons.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name));
-    let unprocessedItems;
-    try {
-      unprocessedItems = await result;
-    } catch (exn) {
-      return {
-        TAG: "Error",
-        _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed !"
-      };
-    }
-    if (unprocessedItems.TAG === "Ok") {
-      return {
+  return (_sequenceNr, _id, jsons) => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(jsons.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)), result => {
+    if (result.TAG === "Ok") {
+      return Effect$1.Effect.succeed({
         TAG: "Ok",
         _0: undefined
-      };
+      });
+    } else {
+      return Effect$1.Effect.map(Effect$1.Effect.logError("Error: unprocessed items: " + result._0), () => ({
+        TAG: "Error",
+        _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !"
+      }));
     }
-    console.error("Error: unprocessed items:", unprocessedItems._0);
-    return {
-      TAG: "Error",
-      _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !"
-    };
-  };
+  }), msg => Effect$1.Effect.succeed({
+    TAG: "Error",
+    _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed: " + msg
+  })));
 }
 
-async function tryReplay(retryOpt, table, id) {
-  let retry = retryOpt !== undefined ? retryOpt : 0;
-  try {
-    return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)));
-  } catch (raw_err) {
-    let err = Primitive_exceptions.internalToException(raw_err);
-    console.warn(`Couldn't replay events for id ` + id + `, retry:` + retry.toString(), err);
+function tryReplay(table, id) {
+  let attempt = retry => Effect$1.Effect.catchAll(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)), err => Effect$1.Effect.flatMap(Effect$1.Effect.logWarning(`Couldn't replay events for id ` + id + `, retry:` + retry.toString() + `: ` + err), () => {
     let timeout = (100 * retry | 0) + Stdlib_Math.Int.random(0, 100) | 0;
-    await Util_Promise$ReventlessCore.finishTimeout(timeout);
-    return await tryReplay(retry + 1 | 0, table, id);
-  }
+    return Effect$1.Effect.flatMap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => attempt(retry + 1 | 0));
+  }));
+  return Effect$1.Effect.runPromise(attempt(0));
 }
 
 function replay(table) {
-  return async id => await tryReplay(undefined, table, id);
+  return async id => await tryReplay(table, id);
 }
 
 function replayStream(table) {
