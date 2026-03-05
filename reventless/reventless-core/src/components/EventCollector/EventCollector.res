@@ -24,7 +24,7 @@ module type T = {
   let makeHandler: (
     ~eventCollector: component,
     ~jsonEventsHandler: jsonEventsHandler,
-  ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
+  ) => Pulumi.Output.t<Runtime.effectHandler<callbackEvent, 'context, unit, string>>
 
   let make: (
     ~name: string,

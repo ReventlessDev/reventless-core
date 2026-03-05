@@ -62,15 +62,13 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     let handleChannelEvent = (
       handleCmds: ReventlessCore.CommandTopic.jsonCommandsHandler,
-    ): Pulumi.Output.t<ReventlessCore.Runtime.eventHandler<callbackEvent, 'context, unit>> =>
+    ): Pulumi.Output.t<ReventlessCore.Runtime.effectHandler<callbackEvent, 'context, unit, string>> =>
       (
         (fullBody: JSON.t, _ctx) => {
           // Pass the full body as `command` — that's what handleJsonCommands decodes
           let reference = decodeId(fullBody)
           let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {command: fullBody, reference}
-          handleCmds(Stream.fromIterable([item]))
-          ->Effect.runPromise
-          ->Promise.thenResolve(_ => ())
+          handleCmds(Stream.fromIterable([item]))->Effect.map(_ => ())
         }
       )->Pulumi.Output.make
 

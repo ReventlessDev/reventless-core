@@ -1,5 +1,5 @@
 let handleDynamoDbOrSqsEvent = (queue, handleEvents) =>
-  async (event: PulumiAws.Lambda.CallbackFunction.event, _) => {
+  (event: PulumiAws.Lambda.CallbackFunction.event, _) => {
     let records = event.records
     let jsons = records->Array.filterMap(record =>
       switch record.eventSource {
@@ -24,7 +24,6 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) =>
       }
     )
 
-    let _ = await (Stream.fromIterable(jsons)->handleEvents->Effect.runPromise)
     let entries =
       records
       ->Array.filter(record =>
@@ -40,14 +39,21 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) =>
         id: idx->Int.toString,
         receiptHandle: (record->PulumiAws.SQS.Queue.asRecord).receiptHandle,
       })
-    switch entries {
-    | [] => ()
-    | entries => await Util.SQS_Runtime.deleteMessages(entries, queue)
-    }
+
+    Stream.fromIterable(jsons)
+    ->handleEvents
+    ->Effect.flatMap(_ =>
+      Effect.promise(async () => {
+        switch entries {
+        | [] => ()
+        | entries => await Util.SQS_Runtime.deleteMessages(entries, queue)
+        }
+      })
+    )
   }
 
 let handleDynamoDbEvent = handleEvents =>
-  async (event: PulumiAws.Lambda.CallbackFunction.event, _) => {
+  (event: PulumiAws.Lambda.CallbackFunction.event, _) => {
     let records = event.records
     let jsons = records->Array.filterMap(record =>
       switch record.eventSource {
@@ -71,7 +77,7 @@ let handleDynamoDbEvent = handleEvents =>
       }
     )
 
-    await (Stream.fromIterable(jsons)->handleEvents->Effect.runPromise)
+    Stream.fromIterable(jsons)->handleEvents->Effect.map(_ => ())
   }
 
 let enqueueEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, _id, messageBody) => {

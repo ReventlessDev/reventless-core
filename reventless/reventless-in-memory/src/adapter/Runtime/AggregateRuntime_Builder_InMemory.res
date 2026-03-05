@@ -35,7 +35,9 @@ module Make = (
       ~name=resource.name->ReventlessCore.ComponentType.nameOpt(
         ReventlessCore.CommandGenerator.componentType,
       ),
-      ~handler=handler->Pulumi.Output.apply(h => h->RuntimeEnvironment_InMemory.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(h =>
+        h->RuntimeEnvironment_InMemory.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+      ),
     )
     connect(~runtime)
   }
@@ -50,7 +52,9 @@ module Make = (
     let resource = commandTopic->ReventlessCore.Component.toPulumiResource
     let runtime = RuntimeEnvironment_InMemory.make(
       ~name=resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.CommandTopic.componentType),
-      ~handler=handler->Pulumi.Output.apply(h => h->RuntimeEnvironment_InMemory.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(h =>
+        h->RuntimeEnvironment_InMemory.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+      ),
     )
     connect(~runtime)
   }
@@ -69,7 +73,9 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment_InMemory.make(
       ~name,
-      ~handler=handler->Pulumi.Output.apply(h => h->RuntimeEnvironment_InMemory.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(h =>
+        h->RuntimeEnvironment_InMemory.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+      ),
     )
     let _connectResources = EventCollectorChannel.connect(
       ~name,

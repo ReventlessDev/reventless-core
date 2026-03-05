@@ -25,7 +25,9 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment.make(
       ~name,
-      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(handler =>
+        handler->RuntimeEnvironment.asEffectHandler->Runtime.runEffectHandler
+      ),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},

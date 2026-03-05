@@ -13,6 +13,7 @@ let AggregateRuntimeBuilder = AggregateRuntime_Builder_Single$ReventlessCore.Mak
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim,
+  asEffectHandler: prim => prim,
   logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
@@ -26,6 +27,7 @@ function Make(Spec) {
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     asEventHandler: prim => prim,
+    asEffectHandler: prim => prim,
     logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
   })(CommandGeneratorResolvers_AppSync$ReventlessAws)({
     make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make

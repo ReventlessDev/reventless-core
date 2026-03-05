@@ -1,4 +1,17 @@
 type eventHandler<'event, 'context, 'result> = ('event, 'context) => promise<'result>
+type effectHandler<'event, 'context, 'result, 'error> = ('event, 'context) => Effect.t<'result, 'error, unit>
+
+// Convert an effectHandler to an eventHandler by providing Logger and running as promise.
+// Used at handler dispatch points (runtime builders) where Effect.runPromise is called.
+let runEffectHandler = (handler: effectHandler<'event, 'context, 'result, 'error>): eventHandler<
+  'event,
+  'context,
+  'result,
+> =>
+  (event, ctx) =>
+    handler(event, ctx)
+    ->Effect.provideService(EffectLogger.tag, EffectLogger.consoleLogger)
+    ->Effect.runPromise
 
 type environment<'parts> = {
   parts: 'parts,
@@ -38,6 +51,7 @@ module type Environment = {
   let make: environmentMaker<event, context, 'result, parts>
   let groupBySource: event => dict<event>
   let asEventHandler: 'a => eventHandler<event, context, 'result>
+  let asEffectHandler: 'a => effectHandler<event, context, 'result, 'error>
   let logger: runtimeLogger
 }
 

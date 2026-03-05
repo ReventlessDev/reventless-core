@@ -10,7 +10,7 @@ function Make(Bus) {
       parts: undefined,
       resources: eventTopicResources,
       enqueueEvent: Pulumi.output((param, param$1, param$2) => Promise.resolve()),
-      handleChannelEvent: handleEvents => Pulumi.output((json, _ctx) => Effect.Effect.runPromise(handleEvents(Effect.Stream.fromIterable([json]))))
+      handleChannelEvent: handleEvents => Pulumi.output((json, _ctx) => Effect.Effect.map(handleEvents(Effect.Stream.fromIterable([json])), () => {}))
     };
   };
   let connect = (param, channelSpecs, runtime, param$1) => {

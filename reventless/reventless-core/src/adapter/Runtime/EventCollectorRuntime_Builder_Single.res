@@ -32,8 +32,14 @@ module Make = (
     maxMemorySize: 0,
     maxTimeout: 0,
   })
-  let eventCollectorHandlers = Dict.make()
+  type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
+  let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
   let log = RuntimeEnvironment.logger
+
+  let runEffect = effect =>
+    effect
+    ->Effect.provideService(EffectLogger.tag, EffectLogger.consoleLogger)
+    ->Effect.runPromise
 
   let eventCollectorHandler = parentName =>
     async (event: RuntimeEnvironment.event, context) => {
@@ -46,7 +52,8 @@ module Make = (
         | Some(handlers) =>
           let count = handlers->Array.length->Int.toString
           log.info(`----- ${desc} found ${count} handler(s) for EventCollector ${urn}`)
-          let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
+          let _ =
+            await handlers->Array.map(handler => handler(event, context)->runEffect)->Promise.all
         | None => log.warn(`${desc} no handler found: ${urn}`)
         }
       })
@@ -104,7 +111,7 @@ module Make = (
 
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
-      Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
+      Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     >,
     ~eventTopics: EventTopic.allOutputs,
     ~resources: array<ReventlessInfra.Adapter.resource>,
@@ -138,7 +145,7 @@ module Make = (
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
               urn,
-              handlers->Array.concat([handler->RuntimeEnvironment.asEventHandler]),
+              handlers->Array.concat([handler->RuntimeEnvironment.asEffectHandler]),
             )
           })
         })

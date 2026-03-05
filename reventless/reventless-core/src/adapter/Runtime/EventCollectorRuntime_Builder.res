@@ -4,7 +4,7 @@ module type T = {
   module EventCollectorChannel: EventCollector_Adapter.Channel
 
   let forEventCollector: Runtime.forEventCollector<
-    Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
+    Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     EventCollector.component,
   >
   let finish: unit => unit

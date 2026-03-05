@@ -4,7 +4,7 @@ module type T = {
   module CommandTopicChannel: CommandTopic_Adapter.Channel
 
   let forCommandTopic: Runtime.forComponent<
-    Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,
+    Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
     runtimeParts,
     CommandTopic.component<'op>,
   >

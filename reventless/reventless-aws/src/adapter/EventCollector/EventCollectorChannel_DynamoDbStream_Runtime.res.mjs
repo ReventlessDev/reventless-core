@@ -2,10 +2,9 @@
 
 import * as Effect from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_DynamoDbStream_Runtime.res.mjs";
 
-async function handleStreamEvent(handleEvents, streamEvent, param) {
+function handleStreamEvent(handleEvents, streamEvent, param) {
   let jsons = Stdlib_Array.filterMap(streamEvent.Records, record => {
     let eventSource = record.eventSource;
     if (eventSource === "aws:dynamodb") {
@@ -27,13 +26,7 @@ async function handleStreamEvent(handleEvents, streamEvent, param) {
       return;
     }
   });
-  try {
-    return await Effect.Effect.runPromise(handleEvents(Effect.Stream.fromIterable(jsons)));
-  } catch (raw_err) {
-    let err = Primitive_exceptions.internalToException(raw_err);
-    console.log("handleStreamEvent error:", err);
-    return;
-  }
+  return Effect.Effect.map(handleEvents(Effect.Stream.fromIterable(jsons)), () => {});
 }
 
 export {

@@ -6,7 +6,7 @@ import * as Util_SQS_Runtime$ReventlessAws from "../../util/Util_SQS_Runtime.res
 import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_DynamoDbStream_Runtime.res.mjs";
 
 function handleDynamoDbOrSqsEvent(queue, handleEvents) {
-  return async (event, param) => {
+  return (event, param) => {
     let records = event.Records;
     let jsons = Stdlib_Array.filterMap(records, record => {
       let eventSource = record.eventSource;
@@ -32,7 +32,6 @@ function handleDynamoDbOrSqsEvent(queue, handleEvents) {
           return;
       }
     });
-    await Effect.Effect.runPromise(handleEvents(Effect.Stream.fromIterable(jsons)));
     let entries = records.filter(record => {
       let match = record.eventSource;
       return match === "aws:sqs";
@@ -40,14 +39,16 @@ function handleDynamoDbOrSqsEvent(queue, handleEvents) {
       Id: idx.toString(),
       ReceiptHandle: record.receiptHandle
     }));
-    if (entries.length !== 0) {
-      return await Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue);
-    }
+    return Effect.Effect.flatMap(handleEvents(Effect.Stream.fromIterable(jsons)), param => Effect.Effect.promise(async () => {
+      if (entries.length !== 0) {
+        return await Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue);
+      }
+    }));
   };
 }
 
 function handleDynamoDbEvent(handleEvents) {
-  return async (event, param) => {
+  return (event, param) => {
     let records = event.Records;
     let jsons = Stdlib_Array.filterMap(records, record => {
       let eventSource = record.eventSource;
@@ -70,7 +71,7 @@ function handleDynamoDbEvent(handleEvents) {
         return;
       }
     });
-    return await Effect.Effect.runPromise(handleEvents(Effect.Stream.fromIterable(jsons)));
+    return Effect.Effect.map(handleEvents(Effect.Stream.fromIterable(jsons)), param => {});
   };
 }
 

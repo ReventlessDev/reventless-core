@@ -12,6 +12,7 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollect
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim,
+  asEffectHandler: prim => prim,
   logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
@@ -22,6 +23,7 @@ let TaskRuntimeBuilder = TaskRuntime_Builder_PerBucket$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim,
+  asEffectHandler: prim => prim,
   logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   connect: TaskBucket_S3$ReventlessAws.connect,
@@ -34,6 +36,7 @@ function Make(Spec) {
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     asEventHandler: prim => prim,
+    asEffectHandler: prim => prim,
     logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
   })({
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,

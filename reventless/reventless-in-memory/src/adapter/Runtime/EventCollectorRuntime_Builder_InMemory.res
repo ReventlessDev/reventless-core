@@ -29,7 +29,9 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment_InMemory.make(
       ~name,
-      ~handler=handler->Pulumi.Output.apply(h => h->RuntimeEnvironment_InMemory.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(h =>
+        h->RuntimeEnvironment_InMemory.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+      ),
     )
     let _connectResources = EventCollectorChannel.connect(
       ~name,

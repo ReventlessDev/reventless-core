@@ -1,5 +1,5 @@
 let handleQueueEvent = (queue, handleJsonCommands: ReventlessCore.CommandTopic.jsonCommandsHandler) =>
-  async (event: PulumiAws.SQS.Queue.event, _) => {
+  (event: PulumiAws.SQS.Queue.event, _) => {
     let records = event.records
     let jsons = records->Array.filterMap(record => {
       let commandStr = record.body
@@ -23,45 +23,43 @@ let handleQueueEvent = (queue, handleJsonCommands: ReventlessCore.CommandTopic.j
         command,
       })
 
-    switch await (Stream.fromIterable(topicItems)->handleJsonCommands->Effect.runPromise) {
-    | exception JsExn(err) =>
-      Console.log3(__MODULE__ ++ ".handleQueueEvent error:", err, err->JSON.stringifyAny)
-      JsError.throwWithMessage(
-        __MODULE__ ++ ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!",
-      )
-    | results =>
-      switch await results
-      ->Array.mapWithIndex((result, idx) =>
-        switch result {
-        | Ok(reference) =>
-          let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {
-            id: idx->Int.toString,
-            receiptHandle: reference,
+    Stream.fromIterable(topicItems)
+    ->handleJsonCommands
+    ->Effect.flatMap(results =>
+      Effect.promise(async () => {
+        switch await results
+        ->Array.mapWithIndex((result, idx) =>
+          switch result {
+          | Ok(reference) =>
+            let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {
+              id: idx->Int.toString,
+              receiptHandle: reference,
+            }
+            deleteMessageBatchEntry->Some
+          | Error(reference) =>
+            Console.log2(
+              __MODULE__ ++ ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:",
+              reference,
+            )
+            None
           }
-          deleteMessageBatchEntry->Some
-        | Error(reference) =>
-          Console.log2(
-            __MODULE__ ++ ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:",
-            reference,
+        )
+        ->Array.filterMap(x => x)
+        ->Util.SQS_Runtime.deleteMessages(queue) {
+        | () =>
+          ReventlessCore.Logger.debug(
+            ~loc=__LOC__,
+            "handleQueueEvent:",
+            "Deleted all commands from queue",
           )
-          None
+        | exception JsExn(e) =>
+          Console.log2(
+            __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
+            e->JsExn.message,
+          )
         }
-      )
-      ->Array.filterMap(x => x)
-      ->Util.SQS_Runtime.deleteMessages(queue) {
-      | () =>
-        ReventlessCore.Logger.debug(
-          ~loc=__LOC__,
-          "handleQueueEvent:",
-          "Deleted all commands from queue",
-        )
-      | exception JsExn(e) =>
-        Console.log2(
-          __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
-          e->JsExn.message,
-        )
-      }
-    }
+      })
+    )
   }
 
 let publishJsons = (queue, queueService) =>

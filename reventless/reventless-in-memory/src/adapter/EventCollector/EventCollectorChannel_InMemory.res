@@ -27,7 +27,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       enqueueEvent: ((_, _, _) => Promise.resolve())->Pulumi.Output.make,
       handleChannelEvent: (handleEvents: ReventlessCore.EventCollector.jsonEventsHandler) =>
         ((json: JSON.t, _ctx) =>
-          handleEvents(Stream.fromIterable([json]))->Effect.runPromise
+          handleEvents(Stream.fromIterable([json]))->Effect.map(_ => ())
         )->Pulumi.Output.make,
     }
   }

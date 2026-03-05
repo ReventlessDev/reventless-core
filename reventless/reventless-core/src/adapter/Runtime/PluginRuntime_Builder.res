@@ -4,7 +4,7 @@ module type T = {
   module EventCollectorChannel: EventCollector_Adapter.Channel
 
   let forPluginEventCollector: Runtime.forEventCollector<
-    Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
+    Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     EventCollector.component,
   >
   let forPluginHeartbeat: Runtime.forComponent<
@@ -13,7 +13,7 @@ module type T = {
     Heartbeat.component,
   >
   let forDcbCommandTopic: Runtime.forComponent<
-    Runtime.eventHandler<'callbackEvent, context, unit>,
+    Runtime.effectHandler<'callbackEvent, context, unit, string>,
     runtimeParts,
     CommandTopic.component<'op>,
   >

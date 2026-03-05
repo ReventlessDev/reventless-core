@@ -2,7 +2,7 @@ let handleStreamEvent: (
   ReventlessCore.EventCollector.jsonEventsHandler,
   PulumiAws.DynamoDb.Stream.event,
   _,
-) => promise<unit> = async (handleEvents, streamEvent, _) => {
+) => Effect.t<unit, string, unit> = (handleEvents, streamEvent, _) => {
   let jsons = streamEvent.records->Array.filterMap(record =>
     switch record.eventSource {
     | "aws:dynamodb" =>
@@ -20,7 +20,5 @@ let handleStreamEvent: (
     }
   )
 
-  try await (Stream.fromIterable(jsons)->handleEvents->Effect.runPromise) catch {
-  | err => Console.log2("handleStreamEvent error:", err)
-  }
+  Stream.fromIterable(jsons)->handleEvents->Effect.map(_ => ())
 }

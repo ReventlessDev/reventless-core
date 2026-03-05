@@ -12,6 +12,7 @@ let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoi
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim,
+  asEffectHandler: prim => prim,
   logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: CommandTopicChannel_SQS$ReventlessAws.make
@@ -27,6 +28,7 @@ let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim,
+  asEffectHandler: prim => prim,
   logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: CommandTopicChannel_SQS$ReventlessAws.make

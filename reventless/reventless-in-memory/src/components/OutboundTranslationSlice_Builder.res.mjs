@@ -21,6 +21,7 @@ function Make(Bus) {
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
     asEventHandler: prim => prim,
+    asEffectHandler: prim => prim,
     logger: RuntimeEnvironment_InMemory$ReventlessInMemory.logger
   })(QueryDbStorage)(QueryDbResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => {

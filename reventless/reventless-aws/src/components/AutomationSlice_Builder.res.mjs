@@ -11,6 +11,7 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_Single$Reventle
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: prim => prim,
+  asEffectHandler: prim => prim,
   logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
@@ -22,6 +23,7 @@ function Make(Api) {
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     asEventHandler: prim => prim,
+    asEffectHandler: prim => prim,
     logger: RuntimeEnvironment_Lambda$ReventlessAws.logger
   })({
     make: QueryDbStorage_DynamoDb$ReventlessAws.make

@@ -23,14 +23,19 @@ module Make = (
     memorySize: int,
     timeout: int,
   }
-  type eventHandler = Runtime.eventHandler<RuntimeEnvironment.event, context, unit>
+  type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
 
   let runtimeSpecs: dict<runtimeSpec> = Dict.make()
-  let commandGeneratorHandlers: dict<CommandGenerator.eventHandler<context>> = Dict.make()
-  let commandTopicHandlers: dict<eventHandler> = Dict.make()
-  let eventCollectorHandlers: dict<array<eventHandler>> = Dict.make()
+  let commandGeneratorHandlers: dict<CommandGenerator.effectEventHandler<context>> = Dict.make()
+  let commandTopicHandlers: dict<effectHandler> = Dict.make()
+  let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
 
   let log = RuntimeEnvironment.logger
+
+  let runEffect = effect =>
+    effect
+    ->Effect.provideService(EffectLogger.tag, EffectLogger.consoleLogger)
+    ->Effect.runPromise
 
   let aggregateHandler = aggregateName =>
     async (event: RuntimeEnvironment.event, context) => {
@@ -40,7 +45,7 @@ module Make = (
         switch commandGeneratorHandlers->Dict.get(info) {
         | Some(handler) =>
           log.info(`----- ${desc} found handler for CommandGenerator ${info}`)
-          await handler(event->CommandGenerator.asPayload, context)
+          await handler(event->CommandGenerator.asPayload, context)->runEffect
         | None =>
           log.warn(`${desc} no handler found: ${info}`)
           ""
@@ -53,13 +58,14 @@ module Make = (
           switch commandTopicHandlers->Dict.get(urn) {
           | Some(handler) =>
             log.info(`----- ${desc} found handler for CommandTopic ${urn}`)
-            await handler(event, context)
+            await handler(event, context)->runEffect
           | None =>
             switch eventCollectorHandlers->Dict.get(urn) {
             | Some(handlers) =>
               let count = handlers->Array.length->Int.toString
               log.info(`----- ${desc} found ${count} handler(s) for EventCollector ${urn}`)
-              let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
+              let _ =
+                await handlers->Array.map(handler => handler(event, context)->runEffect)->Promise.all
             | None => log.warn(`${desc} no handler found: ${urn}`)
             }
           }
@@ -114,7 +120,7 @@ module Make = (
   }
 
   let forCommandGenerator = (
-    ~handler: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
+    ~handler: Pulumi.Output.t<CommandGenerator.effectEventHandler<context>>,
     ~connect,
     ~memorySize=1024,
     ~timeout=30,
@@ -146,7 +152,7 @@ module Make = (
 
   let forCommandTopic = (
     ~handler: Pulumi.Output.t<
-      Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,
+      Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
     >,
     ~connect,
     ~memorySize=1024,
@@ -164,7 +170,7 @@ module Make = (
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
           log.info(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
-          commandTopicHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
+          commandTopicHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEffectHandler)
         })
     | None =>
       JsError.throwWithMessage(
@@ -174,7 +180,7 @@ module Make = (
   }
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
-      Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
+      Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     >,
     ~eventTopics: EventTopic.allOutputs,
     ~resources: array<ReventlessInfra.Adapter.resource>,
@@ -207,7 +213,7 @@ module Make = (
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
               urn,
-              handlers->Array.concat([handler->RuntimeEnvironment.asEventHandler]),
+              handlers->Array.concat([handler->RuntimeEnvironment.asEffectHandler]),
             )
           })
         })

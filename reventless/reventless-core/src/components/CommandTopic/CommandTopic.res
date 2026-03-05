@@ -47,12 +47,12 @@ module type T = {
   let makeHandler: (
     ~commandTopic: component,
     ~commandsHandler: commandsHandler,
-  ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
+  ) => Pulumi.Output.t<Runtime.effectHandler<callbackEvent, 'context, unit, string>>
 
   // Returns the filtering handler output for runtime connection
   // Registers the handler with the channel's event routing
   let makeFilteringHandler: component => Pulumi.Output.t<
-    Runtime.eventHandler<callbackEvent, 'context, unit>,
+    Runtime.effectHandler<callbackEvent, 'context, unit, string>,
   >
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component

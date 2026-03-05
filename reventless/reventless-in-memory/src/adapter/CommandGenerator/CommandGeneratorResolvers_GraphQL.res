@@ -67,7 +67,7 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
           arguments: args->Obj.magic,
           meta: {ip: [], user: "local", info: `Mutation.${field}`},
         }
-        let result = await generateCommand(payload)
+        let result = await generateCommand(payload)->Effect.runPromise
         result->JSON.Encode.string
       | None => JSON.Encode.null
       }

@@ -5,17 +5,17 @@ module type T = {
   module EventCollectorChannel: EventCollector_Adapter.Channel
 
   let forCommandGenerator: Runtime.forComponent<
-    CommandGenerator.eventHandler<context>,
+    CommandGenerator.effectEventHandler<context>,
     runtimeParts,
     CommandGenerator.component,
   >
   let forCommandTopic: Runtime.forComponent<
-    Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,
+    Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
     runtimeParts,
     CommandTopic.component<'op>,
   >
   let forEventCollector: Runtime.forEventCollector<
-    Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
+    Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     EventCollector.component,
   >
   let finish: unit => unit

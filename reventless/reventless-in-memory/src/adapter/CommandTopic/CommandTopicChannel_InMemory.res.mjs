@@ -44,7 +44,7 @@ function Make(Bus) {
         command: fullBody,
         reference: reference
       };
-      return Effect.Effect.runPromise(handleCmds(Effect.Stream.fromIterable([item]))).then(param => {});
+      return Effect.Effect.map(handleCmds(Effect.Stream.fromIterable([item])), param => {});
     });
     let connect = (param, channel, runtime, param$1, param$2) => {
       Bus.registerCommandHandler(channel.parts.name, async (json, ctx) => {

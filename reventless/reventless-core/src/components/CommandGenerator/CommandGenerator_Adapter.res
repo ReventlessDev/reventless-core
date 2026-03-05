@@ -15,7 +15,7 @@ module type Resolvers = {
   type runtimeParts
 
   let handleResolversEvent: CommandGenerator.commandGenerator => Pulumi.Output.t<
-    Runtime.eventHandler<CommandGenerator.payload, 'context, string>,
+    Runtime.effectHandler<CommandGenerator.payload, 'context, string, unit>,
   >
 
   let make: resolversMaker<api, runtimeParts>

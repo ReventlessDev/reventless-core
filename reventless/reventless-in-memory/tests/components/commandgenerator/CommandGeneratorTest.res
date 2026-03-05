@@ -31,7 +31,7 @@ describe("CommandGenerator_Builder.Make:", () => {
       }
 
       // Call handler — generateCommand is async (awaits publishJsons internally)
-      let _ = await handler(payload, ())
+      let _ = await handler(payload, ())->Effect.runPromise
 
       expect(capturedCmds.contents->Array.length)->toBe(1)
 

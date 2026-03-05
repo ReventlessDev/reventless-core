@@ -4,13 +4,12 @@ import * as Effect from "effect";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
-import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Util_SQS_Runtime$ReventlessAws from "../../util/Util_SQS_Runtime.res.mjs";
 
 function handleQueueEvent(queue, handleJsonCommands) {
-  return async (event, param) => {
+  return (event, param) => {
     let records = event.Records;
     let jsons = Stdlib_Array.filterMap(records, record => {
       let commandStr = record.body;
@@ -28,22 +27,7 @@ function handleQueueEvent(queue, handleJsonCommands) {
       command: param[1],
       reference: param[0]
     }));
-    let exit = 0;
-    let results;
-    try {
-      results = await Effect.Effect.runPromise(handleJsonCommands(Effect.Stream.fromIterable(topicItems)));
-      exit = 1;
-    } catch (raw_err) {
-      let err = Primitive_exceptions.internalToException(raw_err);
-      if (err.RE_EXN_ID === "JsExn") {
-        let err$1 = err._1;
-        console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err$1, JSON.stringify(err$1));
-        return Stdlib_JsError.throwWithMessage("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
-      }
-      throw err;
-    }
-    if (exit === 1) {
-      let exit$1 = 0;
+    return Effect.Effect.flatMap(handleJsonCommands(Effect.Stream.fromIterable(topicItems)), results => Effect.Effect.promise(async () => {
       let val;
       try {
         val = await Util_SQS_Runtime$ReventlessAws.deleteMessages(Stdlib_Array.filterMap(results.map((result, idx) => {
@@ -55,7 +39,6 @@ function handleQueueEvent(queue, handleJsonCommands) {
           }
           console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
         }), x => x), queue);
-        exit$1 = 2;
       } catch (raw_e) {
         let e = Primitive_exceptions.internalToException(raw_e);
         if (e.RE_EXN_ID === "JsExn") {
@@ -64,10 +47,8 @@ function handleQueueEvent(queue, handleJsonCommands) {
         }
         throw e;
       }
-      if (exit$1 === 2) {
-        return Logger$ReventlessCore.debug("File \"CommandTopicChannel_SQS_Runtime.res\", line 54, characters 15-22", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
-      }
-    }
+      return Logger$ReventlessCore.debug("File \"CommandTopicChannel_SQS_Runtime.res\", line 51, characters 17-24", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
+    }));
   };
 }
 

@@ -16,7 +16,7 @@ module Make = (
   module EventCollectorChannel = EventCollectorChannel
 
   let forCommandGenerator = (
-    ~handler: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
+    ~handler: Pulumi.Output.t<CommandGenerator.effectEventHandler<context>>,
     ~connect,
     ~memorySize=1024,
     ~timeout=30,
@@ -25,7 +25,9 @@ module Make = (
     let resource = commandGenerator->Component.toPulumiResource
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandGenerator.componentType),
-      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(handler =>
+        handler->RuntimeEnvironment.asEffectHandler->Runtime.runEffectHandler
+      ),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
@@ -34,7 +36,7 @@ module Make = (
   }
   let forCommandTopic = (
     ~handler: Pulumi.Output.t<
-      Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,
+      Runtime.effectHandler<CommandTopicChannel.callbackEvent, context, unit, string>,
     >,
     ~connect,
     ~memorySize=1024,
@@ -44,7 +46,9 @@ module Make = (
     let resource = commandTopic->Component.toPulumiResource
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
-      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(handler =>
+        handler->RuntimeEnvironment.asEffectHandler->Runtime.runEffectHandler
+      ),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
@@ -54,7 +58,7 @@ module Make = (
 
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
-      Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
+      Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     >,
     ~eventTopics: EventTopic.allOutputs,
     ~resources: array<ReventlessInfra.Adapter.resource>,
@@ -67,7 +71,9 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment.make(
       ~name,
-      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
+      ~handler=handler->Pulumi.Output.apply(handler =>
+        handler->RuntimeEnvironment.asEffectHandler->Runtime.runEffectHandler
+      ),
       ~memorySize,
       ~timeout,
       ~opts,
