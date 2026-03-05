@@ -1,23 +1,27 @@
 let subscribe = (~channelId, ~topicId) =>
   Effect.tryPromise(
-    ~catch=err => err,
+    ~catch=SQS_Error.classify,
     () => AwsSdk.SNS.subscribeQueueToTopic(channelId, topicId),
   )
   ->Effect.map(_ => ())
-  ->Effect.catchAll(err =>
-    Effect.logError("Failed to subscribe channel to topic")
+  ->Effect.retry(SQS_Error.retrySchedule)
+  ->Effect.catchAll(err => {
+    let msg = SQS_Error.message(err)
+    Effect.logError("Failed to subscribe channel to topic: " ++ msg)
     ->Effect.flatMap(_ => Effect.fail(err))
-  )
+  })
   ->Effect.runPromise
 
 let unsubscribe = (~channelId, ~topicId) =>
   Effect.tryPromise(
-    ~catch=err => err,
+    ~catch=SQS_Error.classify,
     () => AwsSdk.SNS.unsubscribeQueueFromTopic(channelId, topicId),
   )
   ->Effect.map(_ => ())
-  ->Effect.catchAll(err =>
-    Effect.logError("Failed to unsubscribe channel from topic")
+  ->Effect.retry(SQS_Error.retrySchedule)
+  ->Effect.catchAll(err => {
+    let msg = SQS_Error.message(err)
+    Effect.logError("Failed to unsubscribe channel from topic: " ++ msg)
     ->Effect.flatMap(_ => Effect.fail(err))
-  )
+  })
   ->Effect.runPromise

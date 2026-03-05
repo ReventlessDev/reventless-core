@@ -46,6 +46,8 @@ module Make = (Spec: Spec, Config: Config) => {
     })
   }
 
+  // Sends buffered commands. The underlying publishCommands (SQS) already retries
+  // transient failures — no retry at this layer.
   let rec send = async () => {
     await finishRunning()
     switch Config.mode {
@@ -67,13 +69,8 @@ module Make = (Spec: Spec, Config: Config) => {
         | exception JsExn(e) =>
           let errorMessage = e->JsExn.message->Option.getOr("unknown Error")
           Effect.logError(
-            `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr}: ${errorMessage}`,
+            `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr} (${sizeStr} commands): ${errorMessage}`,
           )->Effect.runSync
-          let timeout = Math.Int.random(3000, 7000)
-          await Util.Promise.finishTimeout(timeout)
-          Effect.logInfo(`Retry sending after ${timeout->Int.toString} ms ...`)->Effect.runSync
-          chunkCount := chunkCount.contents - 1
-          let _ = buffer->Array.unshiftMany(commandsToSend)
         }
         await send()
       } else {
@@ -93,7 +90,7 @@ module Make = (Spec: Spec, Config: Config) => {
         | exception JsExn(e) =>
           let errMsg = e->JsExn.message->Option.getOr("unknown")
           Effect.logError(
-            `CommandPublisher: Error: Couldn't publish commands: ${errMsg}`,
+            `CommandPublisher.send: Error: Couldn't publish ${size->Int.toString} commands: ${errMsg}`,
           )->Effect.runSync
         }
         running := None

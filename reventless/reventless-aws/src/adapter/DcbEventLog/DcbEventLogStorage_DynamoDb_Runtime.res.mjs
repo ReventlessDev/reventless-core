@@ -10,7 +10,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
-import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
@@ -319,7 +319,7 @@ async function writeEventsWithPosition(table, events, basePosition) {
     let position = generatePositionForBatch(basePosition, idx);
     return toItem(position, event);
   });
-  return await Effect$1.Effect.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
+  return await Effect$1.Effect.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
 }
 
 function append(table) {
@@ -392,7 +392,7 @@ function queryBySingleTagStream(table, tagKey, tagValue, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "queryBySingleTagStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -402,7 +402,7 @@ function queryBySingleTagStream(table, tagKey, tagValue, after) {
       params = baseParams;
     }
     return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
-  }), result => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.Effect.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
   ]));
@@ -438,7 +438,7 @@ function queryByCompositeTagsStream(table, tags, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "queryByCompositeTagsStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -448,7 +448,7 @@ function queryByCompositeTagsStream(table, tags, after) {
       params = baseParams;
     }
     return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
-  }), result => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.Effect.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
   ]));
@@ -483,7 +483,7 @@ function scanWithFilterStream(table, eventTypes, after) {
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
     FilterExpression: filterExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "scanWithFilterStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -493,7 +493,7 @@ function scanWithFilterStream(table, eventTypes, after) {
       params = baseParams;
     }
     return DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand(params));
-  }), result => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.Effect.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
   ]));

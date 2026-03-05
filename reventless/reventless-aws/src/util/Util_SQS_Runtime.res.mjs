@@ -4,10 +4,9 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as SQS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS.res.mjs";
-import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as ClientSqs from "@aws-sdk/client-sqs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as SQS_Error$ReventlessAws from "../errors/SQS_Error.res.mjs";
 
 function toRuntimeQueue(param) {
   return {
@@ -27,16 +26,16 @@ function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
 
 function send(queue, queueService, commandJson) {
   let messageBody = Message$ReventlessCore.toMessageBody(commandJson);
-  return Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "SQS send"), () => {
+  return Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => {
     if (queueService === "SQS_FIFO") {
       return sendFifoMessage(queue, commandJson.delay, commandJson.id, messageBody);
     } else {
       return sendMessage(queue, commandJson.delay, messageBody);
     }
-  }), () => {}), errorMsg => Effect$1.Effect.flatMap(Effect$1.Effect.logError("Util.SQS_Runtime.send: Error: failed commandJson: " + errorMsg), () => {
-    let timeout = Stdlib_Math.Int.random(3000, 7000);
-    return Effect$1.Effect.flatMap(Effect$1.Effect.tap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => Effect$1.Effect.logInfo(`Retry send after ` + timeout.toString() + ` ms ...`)), () => send(queue, queueService, commandJson));
-  }));
+  }), () => {}), SQS_Error$ReventlessAws.sendRetrySchedule), err => {
+    let msg = SQS_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.flatMap(Effect$1.Effect.logError("Util.SQS_Runtime.send: Error: " + msg), () => Effect$1.Effect.fail(msg));
+  });
 }
 
 function makeEntry(queueService, commandJson) {
@@ -50,21 +49,28 @@ function makeEntry(queueService, commandJson) {
 }
 
 function sendMessages(queue, queueService, commandJsons) {
-  let attempt = toSend => Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "SQS sendMessages"), () => SQS$AwsSdk.sendMessagesParallel(queue.id, toSend.map(commandJson => makeEntry(queueService, commandJson)))), result => {
+  let attempt = (retry, toSend) => Effect$1.Effect.flatMap(Effect$1.Effect.retry(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS$AwsSdk.sendMessagesParallel(queue.id, toSend.map(commandJson => makeEntry(queueService, commandJson)))), SQS_Error$ReventlessAws.retrySchedule), result => {
     if (result.TAG === "Ok") {
       return Effect$1.Effect.succeed();
     }
     let failedIds = result._0;
-    return Effect$1.Effect.flatMap(Effect$1.Effect.logError("Util.SQS_Runtime.sendMessages: Error: failed ids: " + failedIds.join(", ")), () => {
-      let commandJsonsToRetry = toSend.filter(param => {
-        let msgId = param.meta.msgId;
-        return Belt_Array.some(failedIds, failedId => failedId === msgId);
-      });
-      let timeout = Stdlib_Math.Int.random(3000, 7000);
-      return Effect$1.Effect.flatMap(Effect$1.Effect.tap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => Effect$1.Effect.logInfo(`Retry sendMessages after ` + timeout.toString() + ` ms: ` + commandJsonsToRetry.length.toString() + ` commands`)), () => attempt(commandJsonsToRetry));
+    let commandJsonsToRetry = toSend.filter(param => {
+      let msgId = param.meta.msgId;
+      return Belt_Array.some(failedIds, failedId => failedId === msgId);
     });
-  }), errorMsg => Effect$1.Effect.flatMap(Effect$1.Effect.logError(errorMsg), () => Effect$1.Effect.fail(errorMsg)));
-  return attempt(commandJsons);
+    if (retry < 5) {
+      return Effect$1.Effect.flatMap(Effect$1.Effect.logInfo(`Util.SQS_Runtime.sendMessages: ` + failedIds.length.toString() + ` failed ids, retrying subset`), () => attempt(retry + 1 | 0, commandJsonsToRetry));
+    }
+    let ids = failedIds.join(", ");
+    return Effect$1.Effect.fail({
+      TAG: "Permanent",
+      _0: `sendMessages failed for ids: ` + ids
+    });
+  });
+  return Effect$1.Effect.catchAll(attempt(0, commandJsons), err => {
+    let msg = SQS_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.flatMap(Effect$1.Effect.logError(`Util.SQS_Runtime.sendMessages: ` + msg), () => Effect$1.Effect.fail(msg));
+  });
 }
 
 async function deleteMessage(queue, receiptHandle) {
@@ -75,24 +81,31 @@ async function deleteMessage(queue, receiptHandle) {
 }
 
 function deleteMessages(entries, queue) {
-  let attempt = toDelete => Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "SQS deleteMessages"), () => SQS$AwsSdk.deleteMessagesParallel(queue.id, toDelete)), result => {
+  let attempt = (retry, toDelete) => Effect$1.Effect.flatMap(Effect$1.Effect.retry(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS$AwsSdk.deleteMessagesParallel(queue.id, toDelete)), SQS_Error$ReventlessAws.retrySchedule), result => {
     if (result.TAG === "Ok") {
       return Effect$1.Effect.succeed();
     }
     let failedIds = result._0;
-    return Effect$1.Effect.flatMap(Effect$1.Effect.logError("Util.SQS_Runtime.deleteMessages: Error: failed ids: " + failedIds.join(", ")), () => {
-      let entriesToRetry = Belt_Array.keepWithIndex(toDelete, (param, idx) => {
-        let id = idx.toString();
-        return Belt_Array.some(failedIds, failedId => failedId === id);
-      }).map((entry, idx) => ({
-        Id: idx.toString(),
-        ReceiptHandle: entry.ReceiptHandle
-      }));
-      let timeout = Stdlib_Math.Int.random(3000, 7000);
-      return Effect$1.Effect.flatMap(Effect$1.Effect.tap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => Effect$1.Effect.logInfo(`Retry deleteMessages after ` + timeout.toString() + ` ms: ` + entriesToRetry.length.toString() + ` entries`)), () => attempt(entriesToRetry));
+    let entriesToRetry = Belt_Array.keepWithIndex(toDelete, (param, idx) => {
+      let id = idx.toString();
+      return Belt_Array.some(failedIds, failedId => failedId === id);
+    }).map((entry, idx) => ({
+      Id: idx.toString(),
+      ReceiptHandle: entry.ReceiptHandle
+    }));
+    if (retry < 5) {
+      return Effect$1.Effect.flatMap(Effect$1.Effect.logInfo(`Util.SQS_Runtime.deleteMessages: ` + failedIds.length.toString() + ` failed ids, retrying subset`), () => attempt(retry + 1 | 0, entriesToRetry));
+    }
+    let ids = failedIds.join(", ");
+    return Effect$1.Effect.fail({
+      TAG: "Permanent",
+      _0: `deleteMessages failed for ids: ` + ids
     });
-  }), errorMsg => Effect$1.Effect.flatMap(Effect$1.Effect.logError(errorMsg), () => Effect$1.Effect.fail(errorMsg)));
-  return attempt(entries);
+  });
+  return Effect$1.Effect.catchAll(attempt(0, entries), err => {
+    let msg = SQS_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.flatMap(Effect$1.Effect.logError(`Util.SQS_Runtime.deleteMessages: ` + msg), () => Effect$1.Effect.fail(msg));
+  });
 }
 
 function parseSqsRecord(record) {
@@ -106,14 +119,20 @@ function parseSqsRecord(record) {
   return json;
 }
 
+let sendMessagesMaxRetries = 5;
+
+let deleteMessagesMaxRetries = 5;
+
 export {
   toRuntimeQueue,
   sendMessage,
   sendFifoMessage,
   send,
   makeEntry,
+  sendMessagesMaxRetries,
   sendMessages,
   deleteMessage,
+  deleteMessagesMaxRetries,
   deleteMessages,
   parseSqsRecord,
 }

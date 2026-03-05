@@ -483,8 +483,7 @@ let queryBySingleTagStream = (
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
-      ~catch=err =>
-        ReventlessCore.Util.Error.messageFromUnknown(err, "queryBySingleTagStream error"),
+      ~catch=DynamoDb_Error.classify,
       () => {
         let params = switch cursor {
         | None => baseParams
@@ -493,6 +492,8 @@ let queryBySingleTagStream = (
         QueryCommand.send(params->QueryCommand.make)
       },
     )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
+    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
     ->Effect.map(result => (
       result.items->Option.getOr([]),
       result.lastEvaluatedKey->Option.map(key => Some(key)),
@@ -526,8 +527,7 @@ let queryByCompositeTagsStream = (
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
-      ~catch=err =>
-        ReventlessCore.Util.Error.messageFromUnknown(err, "queryByCompositeTagsStream error"),
+      ~catch=DynamoDb_Error.classify,
       () => {
         let params = switch cursor {
         | None => baseParams
@@ -536,6 +536,8 @@ let queryByCompositeTagsStream = (
         QueryCommand.send(params->QueryCommand.make)
       },
     )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
+    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
     ->Effect.map(result => (
       result.items->Option.getOr([]),
       result.lastEvaluatedKey->Option.map(key => Some(key)),
@@ -591,8 +593,7 @@ let scanWithFilterStream = (
 
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
-      ~catch=err =>
-        ReventlessCore.Util.Error.messageFromUnknown(err, "scanWithFilterStream error"),
+      ~catch=DynamoDb_Error.classify,
       () => {
         let params = switch cursor {
         | None => baseParams
@@ -601,6 +602,8 @@ let scanWithFilterStream = (
         ScanCommand.send(ScanCommand.make(params))
       },
     )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
+    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
     ->Effect.map(result => (
       result.items->Option.getOr([]),
       result.lastEvaluatedKey->Option.map(key => Some(key)),

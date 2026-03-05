@@ -12,103 +12,65 @@ let put = (table, item) => {
   {PutCommand.tableName: table.name, item}->PutCommand.make->PutCommand.send
 }
 
-let putWithRetries = (~maxRetries=5, table, id, item) => {
-  let rec attempt = retry =>
-    Effect.tryPromise(
-      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "put"),
-      () => table->put(item),
-    )
-    ->Effect.map(_ => Ok())
-    ->Effect.catchAll(errorMsg =>
-      Effect.logInfo(
-        __MODULE__ ++ `.putWithRetries: id=${id}: retry ${retry->Int.toString} failed: ${errorMsg}`,
+let putWithRetries = (table, id, item) =>
+  Effect.tryPromise(~catch=DynamoDb_Error.classify, () => table->put(item))
+  ->Effect.map(_ => Ok())
+  ->Effect.retry(DynamoDb_Error.retrySchedule)
+  ->Effect.catchAll(err =>
+    switch err {
+    | Transient(msg) | Permanent(msg) =>
+      Effect.logError(
+        __MODULE__ ++ `.putWithRetries: id=${id}: ${msg}`,
       )
-      ->Effect.flatMap(_ =>
-        if retry < maxRetries {
-          let timeout = Math.Int.random(500, 1500)
-          Effect.sleep(Duration.millis(timeout))
-          ->Effect.tap(_ => Effect.logInfo(`Retry put after ${timeout->Int.toString} ms`))
-          ->Effect.flatMap(_ => attempt(retry + 1))
-        } else {
-          Effect.succeed(Error(`put id=${id} failed after ${maxRetries->Int.toString} retries`))
-        }
-      )
-    )
-  attempt(0)
-}
+      ->Effect.map(_ => Error(`put id=${id} failed: ${msg}`))
+    | StaleState(msg) =>
+      Effect.succeed(Error(`Stale State: id=${id}: ${msg}`))
+    }
+  )
 
-let putIfNotExistsWithRetries = (~maxRetries=5, ~idKey, ~sortKey=?, table, id, item) => {
-  let rec attempt = retry =>
-    Effect.tryPromise(
-      ~catch=err => {
-        let jsErr: JsExn.t = Obj.magic(err)
-        jsErr
-      },
-      () => putIfNotExists(table.name, idKey, sortKey, item),
-    )
-    ->Effect.map(_ => Ok())
-    ->Effect.catchAll(jsErr =>
-      switch jsErr->PutError.classify {
-      | ConditionCheckFailedException(_) => Effect.succeed(Error(`Stale State: id=${id}`))
-      | _ =>
-        let errorMsg = jsErr->ReventlessCore.Util.Error.message
-        Effect.logInfo(
-          __MODULE__ ++
-          `.putIfNotExistsWithRetries: id=${id}: retry ${retry->Int.toString} failed: ${errorMsg}`,
-        )
-        ->Effect.flatMap(_ =>
-          if retry < maxRetries {
-            let timeout = Math.Int.random(500, 1500)
-            Effect.sleep(Duration.millis(timeout))
-            ->Effect.tap(_ =>
-              Effect.logInfo(`Retry putIfNotExists after ${timeout->Int.toString} ms`)
-            )
-            ->Effect.flatMap(_ => attempt(retry + 1))
-          } else {
-            Effect.succeed(
-              Error(`putIfNotExists id=${id} failed after ${maxRetries->Int.toString} retries`),
-            )
-          }
-        )
-      }
-    )
-  attempt(0)
-}
+let putIfNotExistsWithRetries = (~idKey, ~sortKey=?, table, id, item) =>
+  Effect.tryPromise(
+    ~catch=DynamoDb_Error.classify,
+    () => putIfNotExists(table.name, idKey, sortKey, item),
+  )
+  ->Effect.map(_ => Ok())
+  ->Effect.retry(DynamoDb_Error.retrySchedule)
+  ->Effect.catchAll(err =>
+    switch err {
+    | StaleState(_) => Effect.succeed(Error(`Stale State: id=${id}`))
+    | Transient(msg) | Permanent(msg) =>
+      Effect.logError(
+        __MODULE__ ++ `.putIfNotExistsWithRetries: id=${id}: ${msg}`,
+      )
+      ->Effect.map(_ => Error(`putIfNotExists id=${id} failed: ${msg}`))
+    }
+  )
 
 let delete = (table, ~sort=?, id) => {
   delete(~tableName=table.name, ~sort?, ~id)
 }
 
-let deleteWithRetries = (~maxRetries=5, ~sort=?, table, id) => {
-  let rec attempt = retry =>
-    Effect.tryPromise(
-      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "delete"),
-      () => table->delete(id, ~sort?),
+let deleteWithRetries = (~sort=?, table, id) =>
+  Effect.tryPromise(
+    ~catch=DynamoDb_Error.classify,
+    () => table->delete(id, ~sort?),
+  )
+  ->Effect.map(_ => Ok())
+  ->Effect.retry(DynamoDb_Error.retrySchedule)
+  ->Effect.catchAll(err => {
+    let msg = DynamoDb_Error.message(err)
+    Effect.logError(
+      __MODULE__ ++ `.delete: id=${id}: ${msg}`,
     )
-    ->Effect.map(_ => Ok())
-    ->Effect.catchAll(errorMsg =>
-      Effect.logInfo(
-        __MODULE__ ++ `.delete: id=${id}: retry ${retry->Int.toString} failed: ${errorMsg}`,
-      )
-      ->Effect.flatMap(_ =>
-        if retry < maxRetries {
-          let timeout = Math.Int.random(500, 1500)
-          Effect.sleep(Duration.millis(timeout))
-          ->Effect.tap(_ => Effect.logInfo(`Retry delete after ${timeout->Int.toString} ms`))
-          ->Effect.flatMap(_ => attempt(retry + 1))
-        } else {
-          Effect.succeed(Error(`delete id=${id} failed after ${maxRetries->Int.toString} retries`))
-        }
-      )
-    )
-  attempt(0)
-}
+    ->Effect.map(_ => Error(`delete id=${id} failed: ${msg}`))
+  })
 
 // Streams all items matching a QueryCommand, fetching one DynamoDB page at a time.
-let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =>
+// Each page fetch retries independently on transient errors.
+let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, DynamoDb_Error.t, unit> =>
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
-      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "queryStream error"),
+      ~catch=DynamoDb_Error.classify,
       () => {
         let p = switch cursor {
         | None => params
@@ -117,6 +79,7 @@ let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =
         QueryCommand.send(p->QueryCommand.make)
       },
     )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.map(res => (
       res.items->Option.getOr([]),
       res.lastEvaluatedKey->Option.map(key => Some(key)),
@@ -124,10 +87,11 @@ let queryStream = (params: QueryCommand.input): Stream.t<JSON.t, string, unit> =
   )
 
 // Streams all items matching a ScanCommand, fetching one DynamoDB page at a time.
-let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, string, unit> =>
+// Each page fetch retries independently on transient errors.
+let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, DynamoDb_Error.t, unit> =>
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
-      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "scanStream error"),
+      ~catch=DynamoDb_Error.classify,
       () => {
         let p = switch cursor {
         | None => params
@@ -136,6 +100,7 @@ let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, string, unit> =>
         ScanCommand.send(ScanCommand.make(p))
       },
     )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.map(res => (
       res.items->Option.getOr([]),
       res.lastEvaluatedKey->Option.map(key => Some(key)),
@@ -144,7 +109,7 @@ let scanStream = (params: ScanCommand.input): Stream.t<JSON.t, string, unit> =>
 
 // Convenience wrapper: streams all events for a given id.
 // Returns the stream directly — callers decide how to consume it.
-let queryById = (table, id): Stream.t<JSON.t, string, unit> =>
+let queryById = (table, id): Stream.t<JSON.t, DynamoDb_Error.t, unit> =>
   queryStream({
     tableName: table.name,
     consistentRead: true,
@@ -199,52 +164,31 @@ let hasUnprocessedItems = writeOutput =>
     items->Dict.keysToArray->Array.length
   ) > 0
 
-let batchWriteWithRetries = (~maxRetries=5, batchWriteRequests) => {
+let batchWriteWithRetries = batchWriteRequests => {
   let all = batchWriteRequests->Dict.valuesToArray->Array.flat->Array.length->Int.toString
-  let rec attempt = (retry, requests) => {
-    let handleRetry = (logMsg, retryRequests) =>
-      Effect.logInfo(logMsg)
-      ->Effect.flatMap(_ =>
-        if retry < maxRetries {
-          let timeout = Math.Int.random(500, 1500)
-          Effect.sleep(Duration.millis(timeout))
-          ->Effect.tap(_ => Effect.logInfo(`Retry batchWrite after ${timeout->Int.toString} ms`))
-          ->Effect.flatMap(_ => attempt(retry + 1, retryRequests))
-        } else {
-          let count = retryRequests->Dict.valuesToArray->Array.flat->Array.length->Int.toString
-          Effect.succeed(
-            Error(
-              `batchWrite failed ${count}/${all} requests after ${maxRetries->Int.toString} retries`,
-            ),
-          )
-        }
-      )
-
+  let rec attempt = (retry, requests) =>
     Effect.tryPromise(
-      ~catch=err => ReventlessCore.Util.Error.messageFromUnknown(err, "batchWrite"),
+      ~catch=DynamoDb_Error.classify,
       () => batchWrite(requests),
     )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
     ->Effect.flatMap(writeOutput =>
       if writeOutput->hasUnprocessedItems {
         let unprocessedRequests = writeOutput.BatchWriteCommand.unprocessedItems->Option.getOrThrow
         let count = unprocessedRequests->Dict.keysToArray->Array.length->Int.toString
-        handleRetry(
+        Effect.logInfo(
           __MODULE__ ++
           `.batchWriteWithRetries: retry ${retry->Int.toString}: ${count} unprocessed items`,
-          unprocessedRequests,
         )
+        ->Effect.flatMap(_ => attempt(retry + 1, unprocessedRequests))
       } else {
         Effect.succeed(Ok())
       }
     )
-    ->Effect.catchAll(errorMsg =>
-      handleRetry(
-        __MODULE__ ++
-        `.batchWriteWithRetries: retry ${retry->Int.toString} failed: ${errorMsg}`,
-        requests,
-      )
-    )
-  }
+    ->Effect.catchAll(err => {
+      let msg = DynamoDb_Error.message(err)
+      Effect.succeed(Error(`batchWrite failed ${all} requests: ${msg}`))
+    })
   attempt(0, batchWriteRequests)
 }
 

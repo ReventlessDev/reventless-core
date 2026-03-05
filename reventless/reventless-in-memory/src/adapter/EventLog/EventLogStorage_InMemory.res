@@ -17,12 +17,6 @@ let makeStorage = (~name as _name, ~opts as _) => {
     ->Stm.commit
     ->Effect.runPromise
 
-  let replay: ReventlessCore.EventLog.replay<string, JSON.t> = id =>
-    Stm.TRef.get(eventsRef)
-    ->Stm.commit
-    ->Effect.map(events => events->Dict.get(id)->Option.getOr([]))
-    ->Effect.runPromise
-
   // The in-memory array is already resident; expose it as a stream for API uniformity.
   // The real performance gain from streaming comes from the DynamoDB adapter.
   let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
@@ -31,6 +25,10 @@ let makeStorage = (~name as _name, ~opts as _) => {
     ->Effect.map(events => events->Dict.get(id)->Option.getOr([]))
     ->Stream.fromEffect
     ->Stream.flatMap(arr => Stream.fromIterable(arr))
+
+  // Eager replay derived from replayStream.
+  let replay: ReventlessCore.EventLog.replay<string, JSON.t> = id =>
+    replayStream(id)->Stream.runCollect->Effect.runPromise
 
   // Appends each stream item sequentially to storage.
   // Node.js is single-threaded so a plain ref is safe for the seqNr counter.

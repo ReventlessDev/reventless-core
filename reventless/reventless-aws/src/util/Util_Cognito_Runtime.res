@@ -33,6 +33,7 @@ let signUp = (
 /** sign up a user to a given userPool, if the user is not already present
    NOTE: should be called in runtime
 */
+// Intentionally silent on failure: user may already exist (idempotent sign-up).
 let signUpIfMissing = (
   ~region: string,
   ~userPoolId: string,
@@ -41,11 +42,11 @@ let signUpIfMissing = (
   ~password: string,
 ) =>
   Effect.tryPromise(
-    ~catch=_err => `Didn't create user: ${userName}`,
+    ~catch=Cognito_Error.classify,
     () => signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password),
   )
   ->Effect.flatMap(result =>
     Effect.logInfo(`Created User ${userName} ${result.userSub->Option.getOr("")}`)
   )
-  ->Effect.catchAll(msg => Effect.logInfo(msg))
+  ->Effect.catchAll(err => Effect.logInfo(Cognito_Error.message(err)))
   ->Effect.runPromise

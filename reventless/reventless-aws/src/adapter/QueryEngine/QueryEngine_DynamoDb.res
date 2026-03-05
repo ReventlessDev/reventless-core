@@ -103,9 +103,10 @@ let queryByTableName = (
     Util_DynamoDb_Runtime.queryStream(params)
     ->Stream.runCollect
     ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
-    ->Effect.catchAll(err =>
-      Effect.logError("Error: " ++ err)->Effect.map(_ => [])
-    )
+    ->Effect.catchAll(err => {
+      let msg = DynamoDb_Error.message(err)
+      Effect.logError("Error: " ++ msg)->Effect.map(_ => [])
+    })
   )
   ->Effect.runPromise
 }
@@ -134,9 +135,10 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
     Util_DynamoDb_Runtime.scanStream(params)
     ->Stream.runCollect
     ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
-    ->Effect.catchAll(err =>
-      Effect.logError("Error: " ++ err)->Effect.map(_ => [])
-    )
+    ->Effect.catchAll(err => {
+      let msg = DynamoDb_Error.message(err)
+      Effect.logError("Error: " ++ msg)->Effect.map(_ => [])
+    })
   )
   ->Effect.runPromise
 }

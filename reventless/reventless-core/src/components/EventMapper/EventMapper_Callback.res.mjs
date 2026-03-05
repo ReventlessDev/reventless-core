@@ -4,7 +4,6 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
-import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -14,7 +13,6 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
-import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function MakeCounterHandler(Target) {
   return Mappings => (Ops => {
@@ -187,14 +185,7 @@ function MakeCounterHandler(Target) {
 }
 
 function MakeEventCollectorHandler(Ops) {
-  let doCount = countItems => {
-    let match = countItems.length;
-    if (match !== 0) {
-      return Effect$1.Effect.catchAll(Effect.tryPromise(e => Util_Error$ReventlessCore.messageFromUnknown(e, "unknown"), () => Ops.count(countItems)), errMsg => Effect$1.Effect.flatMap(Effect$1.Effect.logError("EventMapper_Callback-ReventlessCore" + (`.doCount: count error: ` + errMsg)), () => Effect$1.Effect.flatMap(Effect$1.Effect.sync(() => Stdlib_Math.Int.random(1000, 3000)), timeout => Effect$1.Effect.flatMap(Effect$1.Effect.promise(() => Util_Promise$ReventlessCore.finishTimeout(timeout)), () => Effect$1.Effect.flatMap(Effect$1.Effect.logInfo(`Retry count after ` + timeout.toString() + ` ms`), () => doCount(countItems))))));
-    } else {
-      return Effect$1.Effect.succeed();
-    }
-  };
+  let countRetrySchedule = Effect$1.Schedule.intersect(Effect$1.Schedule.jittered(Effect$1.Schedule.exponential(Effect$1.Duration.millis(1000))), Effect$1.Schedule.recurs(10));
   let handleJsonEvents = stream => Effect$1.Stream.runForEach(stream, eventJson$p => Effect$1.Effect.flatMap(Effect$1.Effect.promise(() => Ops.commonEventsHandler([eventJson$p])), param => {
     let publisherEntries = param[0];
     let match = Belt_Array.partition(param[1], x => x.TAG === "Count");
@@ -204,7 +195,14 @@ function MakeEventCollectorHandler(Ops) {
         return countAction._0;
       }
     });
-    return Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(Effect$1.Effect.logInfo(`EventMapper.eventCollectorEventsHandler: countItems: ` + countItems.length.toString()), () => doCount(countItems)), () => Effect$1.Effect.logInfo(`EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ` + Stdlib_Option.getOr(JSON.stringify(addToCounterTargetActions), "[]"))), () => Effect$1.Effect.map(Effect$1.Effect.all(Stdlib_Array.filterMap(addToCounterTargetActions, x => {
+    return Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(Effect$1.Effect.logInfo(`EventMapper.eventCollectorEventsHandler: countItems: ` + countItems.length.toString()), () => {
+      let match = countItems.length;
+      if (match !== 0) {
+        return Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(e => Util_Error$ReventlessCore.messageFromUnknown(e, "unknown"), () => Ops.count(countItems)), countRetrySchedule), errMsg => Effect$1.Effect.logError("EventMapper_Callback-ReventlessCore" + (`.doCount: count error after retries: ` + errMsg)));
+      } else {
+        return Effect$1.Effect.succeed();
+      }
+    }), () => Effect$1.Effect.logInfo(`EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ` + Stdlib_Option.getOr(JSON.stringify(addToCounterTargetActions), "[]"))), () => Effect$1.Effect.map(Effect$1.Effect.all(Stdlib_Array.filterMap(addToCounterTargetActions, x => {
       if (x.TAG === "Count") {
         return;
       }

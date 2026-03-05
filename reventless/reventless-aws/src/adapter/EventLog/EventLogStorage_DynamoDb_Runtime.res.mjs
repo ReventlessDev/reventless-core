@@ -3,12 +3,12 @@
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
-import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
 function append(table) {
-  return (_sequenceNr, _id, jsons) => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(jsons.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)), result => {
+  return (_sequenceNr, _id, jsons) => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(jsons.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)), result => {
     if (result.TAG === "Ok") {
       return Effect$1.Effect.succeed({
         TAG: "Ok",
@@ -20,26 +20,17 @@ function append(table) {
         _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !"
       }));
     }
-  }), msg => Effect$1.Effect.succeed({
-    TAG: "Error",
-    _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed: " + msg
-  })));
-}
-
-function tryReplay(table, id) {
-  let attempt = retry => Effect$1.Effect.catchAll(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)), err => Effect$1.Effect.flatMap(Effect$1.Effect.logWarning(`Couldn't replay events for id ` + id + `, retry:` + retry.toString() + `: ` + err), () => {
-    let timeout = (100 * retry | 0) + Stdlib_Math.Int.random(0, 100) | 0;
-    return Effect$1.Effect.flatMap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => attempt(retry + 1 | 0));
+  }), err => {
+    let msg = DynamoDb_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.succeed({
+      TAG: "Error",
+      _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed: " + msg
+    });
   }));
-  return Effect$1.Effect.runPromise(attempt(0));
-}
-
-function replay(table) {
-  return async id => await tryReplay(table, id);
 }
 
 function replayStream(table) {
-  return id => Util_DynamoDb_Runtime$ReventlessAws.queryStream({
+  return id => Effect$1.Stream.catchAll(Util_DynamoDb_Runtime$ReventlessAws.queryStream({
     TableName: table.name,
     ConsistentRead: true,
     ExpressionAttributeValues: Object.fromEntries([[
@@ -47,7 +38,14 @@ function replayStream(table) {
         id
       ]]),
     KeyConditionExpression: "id=:id"
+  }), err => {
+    let msg = DynamoDb_Error$ReventlessAws.message(err);
+    return Effect$1.Stream.fromEffect(Effect$1.Effect.fail(msg));
   });
+}
+
+function replay(table) {
+  return id => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Stream.runCollect(replayStream(table)(id)), msg => Effect$1.Effect.flatMap(Effect$1.Effect.logError(`Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.Effect.fail(msg))));
 }
 
 function appendStream(table) {
@@ -67,9 +65,8 @@ function appendStream(table) {
 
 export {
   append,
-  tryReplay,
-  replay,
   replayStream,
+  replay,
   appendStream,
 }
 /* Effect Not a pure module */

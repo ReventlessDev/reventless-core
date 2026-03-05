@@ -3,6 +3,7 @@ open Util_DynamoDb_Runtime
 open Belt.Result
 
 // True lazy pagination: each DynamoDB page is fetched on demand.
+// Per-page retry is handled inside the paginateEffect callback.
 // Stream.take(n) short-circuits pagination once n items are consumed.
 let loadStream = table =>
   id => {
@@ -14,10 +15,7 @@ let loadStream = table =>
     }
     Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
       Effect.tryPromise(
-        ~catch=err =>
-          ReventlessInfra.QueryDb.NotLoadedFromStorage(
-            ReventlessCore.Util.Error.messageFromUnknown(err, "DynamoDB loadStream error"),
-          ),
+        ~catch=DynamoDb_Error.classify,
         () => {
           let params = switch cursor {
           | None => baseParams
@@ -25,6 +23,12 @@ let loadStream = table =>
           }
           QueryCommand.send(params->QueryCommand.make)
         },
+      )
+      ->Effect.retry(DynamoDb_Error.retrySchedule)
+      ->Effect.catchAll(err =>
+        Effect.fail(
+          ReventlessInfra.QueryDb.NotLoadedFromStorage(DynamoDb_Error.message(err)),
+        )
       )
       ->Effect.map(result => (
         result.items
@@ -35,17 +39,19 @@ let loadStream = table =>
     )
   }
 
+// Eager load derived from loadStream — collects all items into an array.
 let load = table =>
   id =>
-    Util_DynamoDb_Runtime.queryById(table, id)
+    loadStream(table)(id)
     ->Stream.runCollect
     ->Effect.map(arr => arr->Ok)
     ->Effect.catchAll(err => {
       let tableName = table.name
+      let msg = ReventlessCore.QueryDb.storageErrorToString(err)
       Effect.logError(
-        __MODULE__ ++ `.load: Error: Couldn't load state for ${id} from ${tableName}: ${err}`,
+        __MODULE__ ++ `.load: Error: Couldn't load state for ${id} from ${tableName}: ${msg}`,
       )
-      ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotLoadedFromStorage(err)))
+      ->Effect.map(_ => Error(err))
     })
     ->Effect.runPromise
 
@@ -56,8 +62,7 @@ let save = table =>
 
     let effect = switch saveMode {
     | Init =>
-      table
-      ->putIfNotExistsWithRetries(~idKey=table.hashKey, ~sortKey=?table.rangeKey, id, json)
+      table->putIfNotExistsWithRetries(~idKey=table.hashKey, ~sortKey=?table.rangeKey, id, json)
       ->Effect.flatMap(result =>
         switch result {
         | Ok() =>
@@ -115,38 +120,30 @@ let writeMultiple = (writeRequests, op, ids, table) => {
       Effect.succeed()
     }
 
-  logSplitEffect
-  ->Effect.flatMap(_ =>
-    Effect.promise(() =>
-      Array.fromInitializer(~length=batches, batchNr =>
-        writeRequests
-        ->sliceBatch(batchNr)
-        ->toTable(tableName)
-        ->batchWriteWithRetries
-        ->Effect.runPromise
-      )->ReventlessCore.Util.Promise.allSettled
-    )
-  )
-  ->Effect.flatMap(results => {
-    let errors =
-      results
-      ->Array.mapWithIndex((result, batchNr) => {
+  let batchEffects =
+    Array.fromInitializer(~length=batches, batchNr =>
+      writeRequests
+      ->sliceBatch(batchNr)
+      ->toTable(tableName)
+      ->batchWriteWithRetries
+      ->Effect.map(result => {
         let batchIds = ids->sliceBatch(batchNr)
-        let count = batchIds->Array.length->Int.toString
+        let batchCount = batchIds->Array.length->Int.toString
         let batchIdsStr = batchIds->Array.joinUnsafe(", ")
-        switch (result.value, result.reason) {
-        | (Some(Error(error)), _) =>
-          Some(`Batch ${batchNr->Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
-        | (_, Some(reason)) =>
-          let error = switch reason {
-          | JsExn(e) => e->JsExn.message->Option.getOr("Unknown error")
-          | _ => "Unknown error"
-          }
-          Some(`Batch ${batchNr->Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
-        | _ => None
+        switch result {
+        | Ok() => None
+        | Error(error) =>
+          Some(`Batch ${batchNr->Int.toString}: ${batchCount} ids:${batchIdsStr}: ${error}`)
         }
       })
-      ->Array.filterMap(x => x)
+    )
+
+  logSplitEffect
+  ->Effect.flatMap(_ =>
+    Effect.all(batchEffects, {"concurrency": "unbounded"})
+  )
+  ->Effect.map(results => results->Array.filterMap(x => x))
+  ->Effect.flatMap(errors =>
     switch errors {
     | [] =>
       Effect.logInfo(
@@ -160,11 +157,12 @@ let writeMultiple = (writeRequests, op, ids, table) => {
       Effect.logError(errorMsg)
       ->Effect.map(_ => Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg)))
     }
-  })
+  )
   ->Effect.catchAll(err => {
+    let msg = DynamoDb_Error.message(err)
     let errorMsg =
       __MODULE__ ++
-      `.writeBatch: Error: Couldn't save states to ${tableName}, ${count} ids:${allIdsStr}: ${err}`
+      `.writeBatch: Error: Couldn't save states to ${tableName}, ${count} ids:${allIdsStr}: ${msg}`
     Effect.logError(errorMsg)
     ->Effect.map(_ => Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg)))
   })

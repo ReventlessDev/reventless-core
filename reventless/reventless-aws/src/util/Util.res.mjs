@@ -3,6 +3,8 @@
 
 let AppSync;
 
+let Cloudwatch;
+
 let Cognito_Runtime;
 
 let CognitoGroupUser;
@@ -17,15 +19,23 @@ let DynamoDb_Runtime;
 
 let DynamoDb_TableManager;
 
-let DynamoDbStream_Runtime;
-
 let DynamoDbStream;
 
+let DynamoDbStream_Runtime;
+
+let Env;
+
 let EventSourceMapping;
+
+let IAM_Role;
 
 let Kinesis_Runtime;
 
 let Lambda;
+
+let PluginMessage_Runtime;
+
+let ResourceNaming;
 
 let S3;
 
@@ -45,10 +55,13 @@ let SQS_FIFO;
 
 let SQS_Runtime;
 
-let IAM_Role;
+let TopicSubscription_Runtime;
+
+let Vpc;
 
 export {
   AppSync,
+  Cloudwatch,
   Cognito_Runtime,
   CognitoGroupUser,
   CognitoGroupUser_Runtime,
@@ -56,11 +69,15 @@ export {
   DynamoDb,
   DynamoDb_Runtime,
   DynamoDb_TableManager,
-  DynamoDbStream_Runtime,
   DynamoDbStream,
+  DynamoDbStream_Runtime,
+  Env,
   EventSourceMapping,
+  IAM_Role,
   Kinesis_Runtime,
   Lambda,
+  PluginMessage_Runtime,
+  ResourceNaming,
   S3,
   S3_Runtime,
   SesPolicy_Runtime,
@@ -70,6 +87,7 @@ export {
   SQS,
   SQS_FIFO,
   SQS_Runtime,
-  IAM_Role,
+  TopicSubscription_Runtime,
+  Vpc,
 }
 /* No side effect */

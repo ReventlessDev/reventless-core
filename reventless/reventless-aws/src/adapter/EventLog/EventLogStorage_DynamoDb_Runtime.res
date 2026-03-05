@@ -18,34 +18,14 @@ let append = table =>
         )
       }
     )
-    ->Effect.catchAll(msg =>
+    ->Effect.catchAll(err => {
+      let msg = DynamoDb_Error.message(err)
       Effect.succeed(Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed: " ++ msg))
-    )
+    })
     ->Effect.runPromise
 
-let tryReplay = (table, id) => {
-  let rec attempt = retry =>
-    queryById(table, id)
-    ->Stream.runCollect
-    ->Effect.catchAll(err =>
-      Effect.logWarning(
-        `Couldn't replay events for id ${id}, retry:${retry->Int.toString}: ` ++
-        err,
-      )
-      ->Effect.flatMap(_ => {
-        let timeout = 100 * retry + Math.Int.random(0, 100)
-        Effect.sleep(Duration.millis(timeout))
-        ->Effect.flatMap(_ => attempt(retry + 1))
-      })
-    )
-  attempt(0)->Effect.runPromise
-}
-
-let replay = table => {
-  async id => await tryReplay(table, id)
-}
-
 // True lazy pagination: each DynamoDB page is fetched on demand.
+// Per-page retry is handled inside queryStream.
 // Stream.take(n) short-circuits pagination once n events are consumed.
 let replayStream = table =>
   id =>
@@ -55,6 +35,23 @@ let replayStream = table =>
       keyConditionExpression: "id=:id",
       expressionAttributeValues: [(":id", id->JSON.Encode.string)]->Dict.fromArray,
     })
+    ->Stream.catchAll(err => {
+      let msg = DynamoDb_Error.message(err)
+      Stream.fromEffect(Effect.fail(msg))
+    })
+
+// Eager replay derived from replayStream — collects all events into an array.
+let replay = table =>
+  id =>
+    replayStream(table)(id)
+    ->Stream.runCollect
+    ->Effect.catchAll(msg => {
+      Effect.logError(
+        `Couldn't replay events for id ${id} after retries: ${msg}`,
+      )
+      ->Effect.flatMap(_ => Effect.fail(msg))
+    })
+    ->Effect.runPromise
 
 // Appends each stream item sequentially via the existing per-item append.
 // Node.js is single-threaded so a plain ref is safe for the seqNr counter.

@@ -4,12 +4,11 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
-import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as DynamoDb_Error$ReventlessAws from "../errors/DynamoDb_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 
 function put(table, item) {
@@ -19,76 +18,71 @@ function put(table, item) {
   }));
 }
 
-function putWithRetries(maxRetriesOpt, table, id, item) {
-  let maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
-  let attempt = retry => Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "put"), () => put(table, item)), param => ({
+function putWithRetries(table, id, item) {
+  return Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => put(table, item)), param => ({
     TAG: "Ok",
     _0: undefined
-  })), errorMsg => Effect$1.Effect.flatMap(Effect$1.Effect.logInfo("Util_DynamoDb_Runtime-ReventlessAws" + (`.putWithRetries: id=` + id + `: retry ` + retry.toString() + ` failed: ` + errorMsg)), () => {
-    if (retry >= maxRetries) {
-      return Effect$1.Effect.succeed({
-        TAG: "Error",
-        _0: `put id=` + id + ` failed after ` + maxRetries.toString() + ` retries`
-      });
-    }
-    let timeout = Stdlib_Math.Int.random(500, 1500);
-    return Effect$1.Effect.flatMap(Effect$1.Effect.tap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => Effect$1.Effect.logInfo(`Retry put after ` + timeout.toString() + ` ms`)), () => attempt(retry + 1 | 0));
-  }));
-  return attempt(0);
-}
-
-function putIfNotExistsWithRetries(maxRetriesOpt, idKey, sortKey, table, id, item) {
-  let maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
-  let attempt = retry => Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(err => err, () => DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item)), param => ({
-    TAG: "Ok",
-    _0: undefined
-  })), jsErr => {
-    let match = DynamoDb_DocumentClient$AwsSdk.PutError.classify(jsErr);
-    if (match.TAG === "ConditionCheckFailedException") {
-      return Effect$1.Effect.succeed({
-        TAG: "Error",
-        _0: `Stale State: id=` + id
-      });
-    }
-    let errorMsg = Util_Error$ReventlessCore.message(undefined, jsErr);
-    return Effect$1.Effect.flatMap(Effect$1.Effect.logInfo("Util_DynamoDb_Runtime-ReventlessAws" + (`.putIfNotExistsWithRetries: id=` + id + `: retry ` + retry.toString() + ` failed: ` + errorMsg)), () => {
-      if (retry >= maxRetries) {
+  })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
+    switch (err.TAG) {
+      case "StaleState" :
         return Effect$1.Effect.succeed({
           TAG: "Error",
-          _0: `putIfNotExists id=` + id + ` failed after ` + maxRetries.toString() + ` retries`
+          _0: `Stale State: id=` + id + `: ` + err._0
         });
-      }
-      let timeout = Stdlib_Math.Int.random(500, 1500);
-      return Effect$1.Effect.flatMap(Effect$1.Effect.tap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => Effect$1.Effect.logInfo(`Retry putIfNotExists after ` + timeout.toString() + ` ms`)), () => attempt(retry + 1 | 0));
-    });
+      case "Transient" :
+      case "Permanent" :
+        break;
+    }
+    let msg = err._0;
+    return Effect$1.Effect.map(Effect$1.Effect.logError("Util_DynamoDb_Runtime-ReventlessAws" + (`.putWithRetries: id=` + id + `: ` + msg)), () => ({
+      TAG: "Error",
+      _0: `put id=` + id + ` failed: ` + msg
+    }));
   });
-  return attempt(0);
+}
+
+function putIfNotExistsWithRetries(idKey, sortKey, table, id, item) {
+  return Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item)), param => ({
+    TAG: "Ok",
+    _0: undefined
+  })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
+    switch (err.TAG) {
+      case "StaleState" :
+        return Effect$1.Effect.succeed({
+          TAG: "Error",
+          _0: `Stale State: id=` + id
+        });
+      case "Transient" :
+      case "Permanent" :
+        break;
+    }
+    let msg = err._0;
+    return Effect$1.Effect.map(Effect$1.Effect.logError("Util_DynamoDb_Runtime-ReventlessAws" + (`.putIfNotExistsWithRetries: id=` + id + `: ` + msg)), () => ({
+      TAG: "Error",
+      _0: `putIfNotExists id=` + id + ` failed: ` + msg
+    }));
+  });
 }
 
 function $$delete(table, sort, id) {
   return DynamoDb_DocumentClient$AwsSdk.$$delete(sort, table.name, id);
 }
 
-function deleteWithRetries(maxRetriesOpt, sort, table, id) {
-  let maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
-  let attempt = retry => Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "delete"), () => $$delete(table, sort, id)), param => ({
+function deleteWithRetries(sort, table, id) {
+  return Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => $$delete(table, sort, id)), param => ({
     TAG: "Ok",
     _0: undefined
-  })), errorMsg => Effect$1.Effect.flatMap(Effect$1.Effect.logInfo("Util_DynamoDb_Runtime-ReventlessAws" + (`.delete: id=` + id + `: retry ` + retry.toString() + ` failed: ` + errorMsg)), () => {
-    if (retry >= maxRetries) {
-      return Effect$1.Effect.succeed({
-        TAG: "Error",
-        _0: `delete id=` + id + ` failed after ` + maxRetries.toString() + ` retries`
-      });
-    }
-    let timeout = Stdlib_Math.Int.random(500, 1500);
-    return Effect$1.Effect.flatMap(Effect$1.Effect.tap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => Effect$1.Effect.logInfo(`Retry delete after ` + timeout.toString() + ` ms`)), () => attempt(retry + 1 | 0));
-  }));
-  return attempt(0);
+  })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
+    let msg = DynamoDb_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.map(Effect$1.Effect.logError("Util_DynamoDb_Runtime-ReventlessAws" + (`.delete: id=` + id + `: ` + msg)), () => ({
+      TAG: "Error",
+      _0: `delete id=` + id + ` failed: ` + msg
+    }));
+  });
 }
 
 function queryStream(params) {
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "queryStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let p;
     if (cursor !== undefined) {
       let newrecord = {...params};
@@ -98,14 +92,14 @@ function queryStream(params) {
       p = params;
     }
     return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(p));
-  }), res => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), res => [
     Stdlib_Option.getOr(res.Items, []),
     Stdlib_Option.map(res.LastEvaluatedKey, key => key)
   ]));
 }
 
 function scanStream(params) {
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "scanStream error"), () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let p;
     if (cursor !== undefined) {
       let newrecord = {...params};
@@ -115,7 +109,7 @@ function scanStream(params) {
       p = params;
     }
     return DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand(p));
-  }), res => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), res => [
     Stdlib_Option.getOr(res.Items, []),
     Stdlib_Option.map(res.LastEvaluatedKey, key => key)
   ]));
@@ -198,33 +192,25 @@ function hasUnprocessedItems(writeOutput) {
   return Stdlib_Option.mapOr(writeOutput.UnprocessedItems, 0, items => Object.keys(items).length) > 0;
 }
 
-function batchWriteWithRetries(maxRetriesOpt, batchWriteRequests) {
-  let maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
+function batchWriteWithRetries(batchWriteRequests) {
   let all = Object.values(batchWriteRequests).flat().length.toString();
-  let attempt = (retry, requests) => {
-    let handleRetry = (logMsg, retryRequests) => Effect$1.Effect.flatMap(Effect$1.Effect.logInfo(logMsg), () => {
-      if (retry < maxRetries) {
-        let timeout = Stdlib_Math.Int.random(500, 1500);
-        return Effect$1.Effect.flatMap(Effect$1.Effect.tap(Effect$1.Effect.sleep(Effect$1.Duration.millis(timeout)), () => Effect$1.Effect.logInfo(`Retry batchWrite after ` + timeout.toString() + ` ms`)), () => attempt(retry + 1 | 0, retryRequests));
-      }
-      let count = Object.values(retryRequests).flat().length.toString();
+  let attempt = (retry, requests) => Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => batchWrite(requests)), DynamoDb_Error$ReventlessAws.retrySchedule), writeOutput => {
+    if (!hasUnprocessedItems(writeOutput)) {
       return Effect$1.Effect.succeed({
-        TAG: "Error",
-        _0: `batchWrite failed ` + count + `/` + all + ` requests after ` + maxRetries.toString() + ` retries`
+        TAG: "Ok",
+        _0: undefined
       });
+    }
+    let unprocessedRequests = Stdlib_Option.getOrThrow(writeOutput.UnprocessedItems, undefined);
+    let count = Object.keys(unprocessedRequests).length.toString();
+    return Effect$1.Effect.flatMap(Effect$1.Effect.logInfo("Util_DynamoDb_Runtime-ReventlessAws" + (`.batchWriteWithRetries: retry ` + retry.toString() + `: ` + count + ` unprocessed items`)), () => attempt(retry + 1 | 0, unprocessedRequests));
+  }), err => {
+    let msg = DynamoDb_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.succeed({
+      TAG: "Error",
+      _0: `batchWrite failed ` + all + ` requests: ` + msg
     });
-    return Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "batchWrite"), () => batchWrite(requests)), writeOutput => {
-      if (!hasUnprocessedItems(writeOutput)) {
-        return Effect$1.Effect.succeed({
-          TAG: "Ok",
-          _0: undefined
-        });
-      }
-      let unprocessedRequests = Stdlib_Option.getOrThrow(writeOutput.UnprocessedItems, undefined);
-      let count = Object.keys(unprocessedRequests).length.toString();
-      return handleRetry("Util_DynamoDb_Runtime-ReventlessAws" + (`.batchWriteWithRetries: retry ` + retry.toString() + `: ` + count + ` unprocessed items`), unprocessedRequests);
-    }), errorMsg => handleRetry("Util_DynamoDb_Runtime-ReventlessAws" + (`.batchWriteWithRetries: retry ` + retry.toString() + ` failed: ` + errorMsg), requests));
-  };
+  });
   return attempt(0, batchWriteRequests);
 }
 

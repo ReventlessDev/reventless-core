@@ -3,13 +3,20 @@
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
 import * as SNS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SNS.res.mjs";
+import * as SQS_Error$ReventlessAws from "../errors/SQS_Error.res.mjs";
 
 function subscribe(channelId, topicId) {
-  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(err => err, () => SNS$AwsSdk.subscribeQueueToTopic(channelId, topicId)), () => {}), err => Effect$1.Effect.flatMap(Effect$1.Effect.logError("Failed to subscribe channel to topic"), () => Effect$1.Effect.fail(err))));
+  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SNS$AwsSdk.subscribeQueueToTopic(channelId, topicId)), () => {}), SQS_Error$ReventlessAws.retrySchedule), err => {
+    let msg = SQS_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.flatMap(Effect$1.Effect.logError("Failed to subscribe channel to topic: " + msg), () => Effect$1.Effect.fail(err));
+  }));
 }
 
 function unsubscribe(channelId, topicId) {
-  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(err => err, () => SNS$AwsSdk.unsubscribeQueueFromTopic(channelId, topicId)), () => {}), err => Effect$1.Effect.flatMap(Effect$1.Effect.logError("Failed to unsubscribe channel from topic"), () => Effect$1.Effect.fail(err))));
+  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SNS$AwsSdk.unsubscribeQueueFromTopic(channelId, topicId)), () => {}), SQS_Error$ReventlessAws.retrySchedule), err => {
+    let msg = SQS_Error$ReventlessAws.message(err);
+    return Effect$1.Effect.flatMap(Effect$1.Effect.logError("Failed to unsubscribe channel from topic: " + msg), () => Effect$1.Effect.fail(err));
+  }));
 }
 
 export {

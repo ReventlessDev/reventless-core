@@ -8,18 +8,30 @@ let addUserToGroup = (
   ~userName: string,
   ~groupName: string,
   ~userPoolId: string,
-) => {
-  open CognitoIdentityServiceProvider
-  let client: CognitoIdentityServiceProvider.client = Raw.client(
-    ~options={endpoint: Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), region},
+) =>
+  Effect.tryPromise(
+    ~catch=Cognito_Error.classify,
+    () => {
+      open CognitoIdentityServiceProvider
+      let client: CognitoIdentityServiceProvider.client = Raw.client(
+        ~options={endpoint: Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), region},
+      )
+      let addUserToGroupCommand: AdminAddUserToGroupCommand.t = {
+        username: userName,
+        groupName,
+        userPoolId,
+      }->AdminAddUserToGroupCommand.make
+      client->AdminAddUserToGroupCommand.Raw.send(addUserToGroupCommand)
+    },
   )
-  let addUserToGroupCommand: AdminAddUserToGroupCommand.t = {
-    username: userName,
-    groupName,
-    userPoolId,
-  }->AdminAddUserToGroupCommand.make
-  client->AdminAddUserToGroupCommand.Raw.send(addUserToGroupCommand)
-}
+  ->Effect.map(_ => ())
+  ->Effect.retry(Cognito_Error.retrySchedule)
+  ->Effect.catchAll(err => {
+    let msg = Cognito_Error.message(err)
+    Effect.logError(`Util_CognitoGroupUser_Runtime.addUserToGroup: ${msg}`)
+    ->Effect.flatMap(_ => Effect.fail(msg))
+  })
+  ->Effect.runPromise
 
 /** remove a user from a given group of a given userPool */
 let removeUserFromGroup = (
@@ -27,15 +39,27 @@ let removeUserFromGroup = (
   ~userName: string,
   ~groupName: string,
   ~userPoolId: string,
-) => {
-  open CognitoIdentityServiceProvider
-  let client: CognitoIdentityServiceProvider.client = Raw.client(
-    ~options={endpoint: Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), region},
+) =>
+  Effect.tryPromise(
+    ~catch=Cognito_Error.classify,
+    () => {
+      open CognitoIdentityServiceProvider
+      let client: CognitoIdentityServiceProvider.client = Raw.client(
+        ~options={endpoint: Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), region},
+      )
+      let removeUserFromGroupCommand = AdminRemoveUserFromGroupCommand.make({
+        username: userName,
+        groupName,
+        userPoolId,
+      })
+      client->AdminRemoveUserFromGroupCommand.Raw.send(removeUserFromGroupCommand)
+    },
   )
-  let removeUserFromGroupCommand = AdminRemoveUserFromGroupCommand.make({
-    username: userName,
-    groupName,
-    userPoolId,
+  ->Effect.map(_ => ())
+  ->Effect.retry(Cognito_Error.retrySchedule)
+  ->Effect.catchAll(err => {
+    let msg = Cognito_Error.message(err)
+    Effect.logError(`Util_CognitoGroupUser_Runtime.removeUserFromGroup: ${msg}`)
+    ->Effect.flatMap(_ => Effect.fail(msg))
   })
-  client->AdminRemoveUserFromGroupCommand.Raw.send(removeUserFromGroupCommand)
-}
+  ->Effect.runPromise

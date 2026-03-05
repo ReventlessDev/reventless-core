@@ -215,27 +215,23 @@ module type EventCollectorHandler = {
 }
 
 module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandler => {
-  // Applies counter increments to the QueryDb with infinite retry on failure.
-  // Waits a random 1–3s between retries.
-  let rec doCount = countItems =>
+  let countRetrySchedule =
+    Schedule.exponential(Duration.millis(1000))
+    ->Schedule.jittered
+    ->Schedule.intersect(Schedule.recurs(10))
+
+  // Applies counter increments to the QueryDb with retry on failure.
+  let doCount = countItems =>
     switch countItems->Array.length {
     | 0 => Effect.succeed()
     | _ =>
       Effect.tryPromise(
         ~catch=e => Util.Error.messageFromUnknown(e, "unknown"),
         () => Ops.count(countItems),
-      )->Effect.catchAll(errMsg =>
-        Effect.logError(__MODULE__ ++ `.doCount: count error: ${errMsg}`)
-        ->Effect.flatMap(_ =>
-          Effect.sync(() => Math.Int.random(1000, 3000))
-          ->Effect.flatMap(timeout =>
-            Effect.promise(() => ReventlessCore.Util.Promise.finishTimeout(timeout))
-            ->Effect.flatMap(_ =>
-              Effect.logInfo(`Retry count after ${timeout->Int.toString} ms`)
-              ->Effect.flatMap(_ => doCount(countItems))
-            )
-          )
-        )
+      )
+      ->Effect.retry(countRetrySchedule)
+      ->Effect.catchAll(errMsg =>
+        Effect.logError(__MODULE__ ++ `.doCount: count error after retries: ${errMsg}`)
       )
     }
 

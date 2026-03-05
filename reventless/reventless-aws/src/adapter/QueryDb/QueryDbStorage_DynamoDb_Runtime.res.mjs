@@ -5,10 +5,11 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
 import * as Stdlib_Math from "@rescript/runtime/lib/es6/Stdlib_Math.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
+import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
@@ -27,10 +28,7 @@ function loadStream(table) {
       ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
       KeyConditionExpression: baseParams_KeyConditionExpression
     };
-    return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect.tryPromise(err => ({
-      TAG: "NotLoadedFromStorage",
-      _0: Util_Error$ReventlessCore.messageFromUnknown(err, "DynamoDB loadStream error")
-    }), () => {
+    return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
       let params;
       if (cursor !== undefined) {
         let newrecord = {...baseParams};
@@ -40,7 +38,10 @@ function loadStream(table) {
         params = baseParams;
       }
       return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
-    }), result => [
+    }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.Effect.fail({
+      TAG: "NotLoadedFromStorage",
+      _0: DynamoDb_Error$ReventlessAws.message(err)
+    })), result => [
       Stdlib_Option.getOr(result.Items, []).map(js => JSON.parse(Stdlib_Option.getOr(JSON.stringify(js), ""))),
       Stdlib_Option.map(result.LastEvaluatedKey, key => key)
     ]));
@@ -48,17 +49,15 @@ function loadStream(table) {
 }
 
 function load(table) {
-  return id => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryById(table, id)), arr => ({
+  return id => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.map(Stream.runCollect(loadStream(table)(id)), arr => ({
     TAG: "Ok",
     _0: arr
   })), err => {
     let tableName = table.name;
-    return Effect$1.Effect.map(Effect$1.Effect.logError("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.load: Error: Couldn't load state for ` + id + ` from ` + tableName + `: ` + err)), () => ({
+    let msg = QueryDb$ReventlessCore.storageErrorToString(err);
+    return Effect$1.Effect.map(Effect$1.Effect.logError("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.load: Error: Couldn't load state for ` + id + ` from ` + tableName + `: ` + msg)), () => ({
       TAG: "Error",
-      _0: {
-        TAG: "NotLoadedFromStorage",
-        _0: err
-      }
+      _0: err
     }));
   }));
 }
@@ -71,7 +70,7 @@ function save(table) {
     let exit = 0;
     switch (saveMode) {
       case "Init" :
-        tmp = Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(undefined, table.hashKey, table.rangeKey, table, id, json$1), result => {
+        tmp = Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(table.hashKey, table.rangeKey, table, id, json$1), result => {
           if (result.TAG === "Ok") {
             return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: saved Init state to ` + tableName + `: id=` + id)), () => ({
               TAG: "Ok",
@@ -94,7 +93,7 @@ function save(table) {
         break;
     }
     if (exit === 1) {
-      tmp = Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.putWithRetries(undefined, table, id, json$1), result => {
+      tmp = Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.putWithRetries(table, id, json$1), result => {
         if (result.TAG === "Ok") {
           return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.save: saved state to ` + tableName + `: id=` + id)), () => ({
             TAG: "Ok",
@@ -128,22 +127,19 @@ function writeMultiple(writeRequests, op, ids, table) {
   let size = writeRequests.length;
   let batches = Stdlib_Math.Int.ceil(size / DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
   let logSplitEffect = batches > 1 ? Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`writeBatch: splitting up batch of size ` + size.toString() + ` into ` + batches.toString() + ` batches`)) : Effect$1.Effect.succeed();
-  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect$1.Effect.flatMap(logSplitEffect, () => Effect$1.Effect.promise(() => Promise.allSettled(Stdlib_Array.fromInitializer(batches, batchNr => Effect$1.Effect.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(sliceBatch(writeRequests, batchNr), tableName))))))), results => {
-    let errors = Stdlib_Array.filterMap(results.map((result, batchNr) => {
-      let batchIds = sliceBatch(ids, batchNr);
-      let count = batchIds.length.toString();
-      let batchIdsStr = batchIds.join(", ");
-      let match = result.value;
-      let match$1 = result.reason;
-      if (match !== undefined && match.TAG !== "Ok") {
-        return `Batch ` + batchNr.toString() + `: ` + count + ` ids:` + batchIdsStr + `: ` + match._0;
-      }
-      if (match$1 === undefined) {
-        return;
-      }
-      let error = match$1.RE_EXN_ID === "JsExn" ? Stdlib_Option.getOr(Stdlib_JsExn.message(match$1._1), "Unknown error") : "Unknown error";
-      return `Batch ` + batchNr.toString() + `: ` + count + ` ids:` + batchIdsStr + `: ` + error;
-    }), x => x);
+  let batchEffects = Stdlib_Array.fromInitializer(batches, batchNr => Effect$1.Effect.map(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(sliceBatch(writeRequests, batchNr), tableName)), result => {
+    let batchIds = sliceBatch(ids, batchNr);
+    let batchCount = batchIds.length.toString();
+    let batchIdsStr = batchIds.join(", ");
+    if (result.TAG === "Ok") {
+      return;
+    } else {
+      return `Batch ` + batchNr.toString() + `: ` + batchCount + ` ids:` + batchIdsStr + `: ` + result._0;
+    }
+  }));
+  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect$1.Effect.map(Effect$1.Effect.flatMap(logSplitEffect, () => Effect$1.Effect.all(batchEffects, {
+    concurrency: "unbounded"
+  })), results => Stdlib_Array.filterMap(results, x => x)), errors => {
     if (errors.length === 0) {
       return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: ` + op + ` ` + count + ` states: ` + tableName + `, ids:` + allIdsStr)), () => ({
         TAG: "Ok",
@@ -160,7 +156,8 @@ function writeMultiple(writeRequests, op, ids, table) {
       }
     }));
   }), err => {
-    let errorMsg = "QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: Error: Couldn't save states to ` + tableName + `, ` + count + ` ids:` + allIdsStr + `: ` + err);
+    let msg = DynamoDb_Error$ReventlessAws.message(err);
+    let errorMsg = "QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.writeBatch: Error: Couldn't save states to ` + tableName + `, ` + count + ` ids:` + allIdsStr + `: ` + msg);
     return Effect$1.Effect.map(Effect$1.Effect.logError(errorMsg), () => ({
       TAG: "Error",
       _0: {
@@ -237,7 +234,7 @@ function count(table) {
 function $$delete(table) {
   return (id, sort) => {
     let tableName = table.name;
-    return Effect$1.Effect.runPromise(Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(undefined, sort, table, id), result => {
+    return Effect$1.Effect.runPromise(Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(sort, table, id), result => {
       if (result.TAG === "Ok") {
         return Effect$1.Effect.map(Effect$1.Effect.logInfo("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (`.delete: deleted state from ` + tableName + `: id=` + id + `, sort=` + Stdlib_Option.getOr(JSON.stringify(sort), "None"))), () => ({
           TAG: "Ok",

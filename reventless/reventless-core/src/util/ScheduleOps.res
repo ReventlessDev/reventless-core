@@ -71,21 +71,28 @@ let create = (
     let name = schedule.name->resourceNaming.validateName
     let schedule = {...schedule, name}
     let createSchedule = scheduler.createSchedule
-    switch await createSchedule(channelResources, schedule) {
-    | _ =>
-      Effect.logInfo(
-        `ScheduleOps.create: created ${schedule->JSON.stringifyAny->Option.getOr("")}`,
+    let exit =
+      await Effect.tryPromise(
+        ~catch=err => Util.Error.messageFromUnknown(err, "schedule create"),
+        () => createSchedule(channelResources, schedule),
+      )
+      ->Effect.tap(_ =>
+        Effect.logInfo(
+          `ScheduleOps.create: created ${schedule->JSON.stringifyAny->Option.getOr("")}`,
+        )
+      )
+      ->Effect.runPromiseExit
+    if !(exit->Exit.isSuccess) {
+      let errMsg = exit->Exit.match(
+        ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("unknown"),
+        ~onSuccess=_ => "unknown",
+      )
+      Effect.logError(
+        `ScheduleOps.create: couldn't create ${schedule
+          ->JSON.stringifyAny
+          ->Option.getOr("")}: ${errMsg}`,
       )->Effect.runSync
-    | exception err => {
-        let errMsg =
-          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `ScheduleOps.create: couldn't create ${schedule
-            ->JSON.stringifyAny
-            ->Option.getOr("")}: ${errMsg}`,
-        )->Effect.runSync
-        throw(ScheduleNotCreated(schedule))
-      }
+      throw(ScheduleNotCreated(schedule))
     }
   }
 
@@ -97,13 +104,19 @@ let delete = (
   async name => {
     let name = name->resourceNaming.validateName
     let deleteSchedule = scheduler.deleteSchedule
-    switch await deleteSchedule(channelResources, name) {
-    | _ => Effect.logInfo(`ScheduleOps.delete: deleted ${name}`)->Effect.runSync
-    | exception err => {
-        let errMsg =
-          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(`ScheduleOps.delete: couldn't delete ${name}: ${errMsg}`)->Effect.runSync
-        throw(ScheduleNotDeleted(name))
-      }
+    let exit =
+      await Effect.tryPromise(
+        ~catch=err => Util.Error.messageFromUnknown(err, "schedule delete"),
+        () => deleteSchedule(channelResources, name),
+      )
+      ->Effect.tap(_ => Effect.logInfo(`ScheduleOps.delete: deleted ${name}`))
+      ->Effect.runPromiseExit
+    if !(exit->Exit.isSuccess) {
+      let errMsg = exit->Exit.match(
+        ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("unknown"),
+        ~onSuccess=_ => "unknown",
+      )
+      Effect.logError(`ScheduleOps.delete: couldn't delete ${name}: ${errMsg}`)->Effect.runSync
+      throw(ScheduleNotDeleted(name))
     }
   }
