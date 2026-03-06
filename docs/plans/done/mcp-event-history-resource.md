@@ -1,6 +1,6 @@
 # MCP Event History Resource
 
-**Status:** In-Memory Phases 1–4 completed + bug fixes; AWS (Phase 5) and Pagination (Phase 6) deferred
+**Status:** All phases completed (1–6)
 **Depends on:** MCP Server Extension plan (completed — `docs/plans/mcp-server-extension.md`)
 **Related:** `docs/analysis/mcp-server-extension.md` (section 5: Event history as agent context)
 
@@ -100,18 +100,25 @@ Several issues found and fixed when testing MCP with the online-shop-aggregates 
    - Added `onListResourceTemplates` handler in `createServerInstance`
    - Updated `onReadResource` to search both registries (regular first, then templates)
 
-### Phase 5 — AWS resource handlers
+### Phase 5 — AWS resource handlers ✅
 
-Add DynamoDB query logic to `MCP_Lambda.res` for event history reads:
-- EventLog table: query by partition key (entity ID), sort by sequence
-- DcbEventLog table: query by tag, sort by sequence
+Extended `MCP_Lambda.res` with event history support:
+- Added `mcpEventHistoryEntry` type and `eventHistoryResources` field to `mcpConfig`
+- Extended `generateConfig` to accept `~eventLogEntries` and `~eventLogTableNames` (with defaults for backward compatibility)
+- Added `readEventLogHistory` — queries EventLog DynamoDB table using `queryStream` with `exclusiveStartKey` for cursor-based pagination and `Stream.take` for efficient limiting
+- Added `readDcbEventLogHistory` — reads DcbEventLog DynamoDB table using existing runtime `read` function with tag-based entity filtering
+- Added shared URI parsing helpers: `extractEntityId`, `parsePaginationParams`, `paginatedResponse`
+- Updated IAM role documentation to include EventLog and DcbEventLog table permissions
 
-### Phase 6 — Pagination
+### Phase 6 — Pagination ✅
 
-Event histories can be large. Add pagination support:
-- `?limit=N` — maximum number of events to return (default: 100)
-- `?after=sequenceNumber` — cursor-based pagination
-- Return pagination metadata in the resource response
+Added pagination support to both in-memory and AWS event history handlers:
+- `?limit=N` — maximum number of events to return
+- `?after=position` — cursor-based pagination (sequenceNr for EventLog, position for DcbEventLog)
+- Response format changed from flat array to `{events: [...], pagination: {hasMore, nextAfter}}`
+- In-memory (Platform.res): parses URI query params, applies after-filtering and limit with a shared `paginate` helper
+- AWS (MCP_Lambda.res): uses DynamoDB `exclusiveStartKey` for native cursor pagination on EventLog; applies limit after read for DcbEventLog
+- Both platforms use the same response format via `paginatedResponse` / `makePaginatedResponse` helpers
 
 ## Open questions
 

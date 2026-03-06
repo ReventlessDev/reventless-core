@@ -220,12 +220,82 @@ module MakeWithConfig = (
 
       // Register MCP resources for event history (aggregate EventLog + DCB EventLog).
       // Use the Bus event log registries for reads.
+      // Supports pagination via ?limit=N&after=position query params.
       MCP_Server.registerEventHistoryResourcesFromEntries(
         ~pluginName,
         ~eventLogEntries,
         ~eventLogHandler=async (resourceName, uri) => {
-          let segments = uri->String.split("/")
+          // Parse URI: extract entity ID from path, pagination from query string
+          let pathPart = (uri->String.split("?"))->Array.getUnsafe(0)
+          let segments = pathPart->String.split("/")
           let entityId = segments->Array.at(-1)->Option.getOr("")
+          let (limit, after) = {
+            let parts = uri->String.split("?")
+            switch parts->Array.get(1) {
+            | None => (None, None)
+            | Some(qs) =>
+              let params = Dict.make()
+              qs->String.split("&")->Array.forEach(param => {
+                let kv = param->String.split("=")
+                switch (kv->Array.get(0), kv->Array.get(1)) {
+                | (Some(k), Some(v)) => params->Dict.set(k, v)
+                | _ => ()
+                }
+              })
+              (
+                params->Dict.get("limit")->Option.flatMap(v => Int.fromString(v)),
+                params->Dict.get("after"),
+              )
+            }
+          }
+
+          // Build paginated response helper
+          let makePaginatedResponse = (
+            ~events: array<JSON.t>,
+            ~hasMore: bool,
+            ~nextAfter: option<string>,
+          ) =>
+            Dict.fromArray([
+              ("events", events->JSON.Encode.array),
+              (
+                "pagination",
+                Dict.fromArray([
+                  ("hasMore", hasMore->JSON.Encode.bool),
+                  (
+                    "nextAfter",
+                    nextAfter->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
+                  ),
+                ])->JSON.Encode.object,
+              ),
+            ])->JSON.Encode.object
+
+          // Apply pagination: skip events before "after" position, limit count
+          let paginate = (events: array<JSON.t>, getPosition: JSON.t => option<string>) => {
+            let filtered = switch after {
+            | Some(afterPos) =>
+              let idx =
+                events->Array.findIndex(e =>
+                  getPosition(e)->Option.mapOr(false, p => p > afterPos)
+                )
+              if idx >= 0 {
+                events->Array.slice(~start=idx, ~end=events->Array.length)
+              } else {
+                []
+              }
+            | None => events
+            }
+            let (limited, hasMore) = switch limit {
+            | Some(n) when filtered->Array.length > n =>
+              (filtered->Array.slice(~start=0, ~end=n), true)
+            | _ => (filtered, false)
+            }
+            let nextAfterVal = if hasMore {
+              limited->Array.at(-1)->Option.flatMap(getPosition)
+            } else {
+              None
+            }
+            makePaginatedResponse(~events=limited, ~hasMore, ~nextAfter=nextAfterVal)
+          }
 
           // Find the matching event log entry by resource name
           let matchingEntry =
@@ -238,46 +308,61 @@ module MakeWithConfig = (
             switch Bus.getEventLogReplay(entry.busKey) {
             | Some(replay) =>
               let events = await replay(entityId)
-              events->JSON.Encode.array
+              // Aggregate events use array index as position
+              paginate(events, e => {
+                switch e->JSON.Decode.object {
+                | Some(obj) =>
+                  obj
+                  ->Dict.get("sequenceNr")
+                  ->Option.flatMap(JSON.Decode.string)
+                | None => None
+                }
+              })
             | None =>
               // Try DCB EventLog — read all events, filter by tag value
               switch Bus.getDcbEventLogRead(entry.busKey) {
               | Some(read) =>
                 let result = await read(~query=[])
                 let filtered = if entityId->String.length > 0 && entityId != resourceName {
-                  result.events->Array.filter(e => e.tags->Array.some(tag => tag.value == entityId))
+                  result.events->Array.filter(e =>
+                    e.tags->Array.some(tag => tag.value == entityId)
+                  )
                 } else {
                   result.events
                 }
-                filtered
-                ->Array.map(e => {
-                  [
-                    ("position", JSON.Encode.string(e.position)),
-                    ("eventType", JSON.Encode.string(e.eventType)),
-                    ("data", e.data),
-                    (
-                      "tags",
-                      e.tags
-                      ->Array.map(
-                        t =>
-                          [
+                let serialized =
+                  filtered->Array.map(e =>
+                    Dict.fromArray([
+                      ("position", JSON.Encode.string(e.position)),
+                      ("eventType", JSON.Encode.string(e.eventType)),
+                      ("data", e.data),
+                      (
+                        "tags",
+                        e.tags
+                        ->Array.map(t =>
+                          Dict.fromArray([
                             ("key", JSON.Encode.string(t.key)),
                             ("value", JSON.Encode.string(t.value)),
-                          ]
-                          ->Dict.fromArray
-                          ->JSON.Encode.object,
-                      )
-                      ->JSON.Encode.array,
-                    ),
-                  ]
-                  ->Dict.fromArray
-                  ->JSON.Encode.object
+                          ])->JSON.Encode.object
+                        )
+                        ->JSON.Encode.array,
+                      ),
+                    ])->JSON.Encode.object
+                  )
+                paginate(serialized, e => {
+                  switch e->JSON.Decode.object {
+                  | Some(obj) =>
+                    obj
+                    ->Dict.get("position")
+                    ->Option.flatMap(JSON.Decode.string)
+                  | None => None
+                  }
                 })
-                ->JSON.Encode.array
-              | None => []->JSON.Encode.array
+              | None =>
+                makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
               }
             }
-          | None => []->JSON.Encode.array
+          | None => makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
           }
         },
       )

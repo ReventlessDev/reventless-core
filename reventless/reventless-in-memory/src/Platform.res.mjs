@@ -2,6 +2,7 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
+import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
@@ -169,23 +170,95 @@ function MakeWithConfig(Config) {
       }
     });
     MCP_Server$ReventlessInMemory.registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, async (resourceName, uri) => {
-      let segments = uri.split("/");
+      let pathPart = uri.split("?")[0];
+      let segments = pathPart.split("/");
       let entityId = Stdlib_Option.getOr(segments.at(-1), "");
+      let parts = uri.split("?");
+      let qs = parts[1];
+      let match;
+      if (qs !== undefined) {
+        let params = {};
+        qs.split("&").forEach(param => {
+          let kv = param.split("=");
+          let match = kv[0];
+          let match$1 = kv[1];
+          if (match !== undefined && match$1 !== undefined) {
+            params[match] = match$1;
+            return;
+          }
+        });
+        match = [
+          Stdlib_Option.flatMap(params["limit"], v => Stdlib_Int.fromString(v, undefined)),
+          params["after"]
+        ];
+      } else {
+        match = [
+          undefined,
+          undefined
+        ];
+      }
+      let after = match[1];
+      let limit = match[0];
+      let makePaginatedResponse = (events, hasMore, nextAfter) => Object.fromEntries([
+        [
+          "events",
+          events
+        ],
+        [
+          "pagination",
+          Object.fromEntries([
+            [
+              "hasMore",
+              hasMore
+            ],
+            [
+              "nextAfter",
+              Stdlib_Option.mapOr(nextAfter, null, prim => prim)
+            ]
+          ])
+        ]
+      ]);
+      let paginate = (events, getPosition) => {
+        let filtered;
+        if (after !== undefined) {
+          let idx = events.findIndex(e => Stdlib_Option.mapOr(getPosition(e), false, p => p > after));
+          filtered = idx >= 0 ? events.slice(idx, events.length) : [];
+        } else {
+          filtered = events;
+        }
+        let match = limit !== undefined && filtered.length > limit ? [
+            filtered.slice(0, limit),
+            true
+          ] : [
+            filtered,
+            false
+          ];
+        let hasMore = match[1];
+        let limited = match[0];
+        let nextAfterVal = hasMore ? Stdlib_Option.flatMap(limited.at(-1), getPosition) : undefined;
+        return makePaginatedResponse(limited, hasMore, nextAfterVal);
+      };
       let matchingEntry = eventLogEntries.find(entry => resourceName.includes(entry.displayName.toLowerCase()));
       if (matchingEntry === undefined) {
-        return [];
+        return makePaginatedResponse([], false, undefined);
       }
       let replay = Bus.getEventLogReplay(matchingEntry.busKey);
       if (replay !== undefined) {
-        return await replay(entityId);
+        let events = await replay(entityId);
+        return paginate(events, e => {
+          let obj = Stdlib_JSON.Decode.object(e);
+          if (obj !== undefined) {
+            return Stdlib_Option.flatMap(obj["sequenceNr"], Stdlib_JSON.Decode.string);
+          }
+        });
       }
       let read = Bus.getDcbEventLogRead(matchingEntry.busKey);
       if (read === undefined) {
-        return [];
+        return makePaginatedResponse([], false, undefined);
       }
       let result = await read([], undefined);
       let filtered = entityId.length > 0 && entityId !== resourceName ? result.events.filter(e => e.tags.some(tag => tag.value === entityId)) : result.events;
-      return filtered.map(e => Object.fromEntries([
+      let serialized = filtered.map(e => Object.fromEntries([
         [
           "position",
           e.position
@@ -212,6 +285,12 @@ function MakeWithConfig(Config) {
           ]))
         ]
       ]));
+      return paginate(serialized, e => {
+        let obj = Stdlib_JSON.Decode.object(e);
+        if (obj !== undefined) {
+          return Stdlib_Option.flatMap(obj["position"], Stdlib_JSON.Decode.string);
+        }
+      });
     });
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);
@@ -397,23 +476,95 @@ function Make($star) {
       }
     });
     MCP_Server$ReventlessInMemory.registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, async (resourceName, uri) => {
-      let segments = uri.split("/");
+      let pathPart = uri.split("?")[0];
+      let segments = pathPart.split("/");
       let entityId = Stdlib_Option.getOr(segments.at(-1), "");
+      let parts = uri.split("?");
+      let qs = parts[1];
+      let match;
+      if (qs !== undefined) {
+        let params = {};
+        qs.split("&").forEach(param => {
+          let kv = param.split("=");
+          let match = kv[0];
+          let match$1 = kv[1];
+          if (match !== undefined && match$1 !== undefined) {
+            params[match] = match$1;
+            return;
+          }
+        });
+        match = [
+          Stdlib_Option.flatMap(params["limit"], v => Stdlib_Int.fromString(v, undefined)),
+          params["after"]
+        ];
+      } else {
+        match = [
+          undefined,
+          undefined
+        ];
+      }
+      let after = match[1];
+      let limit = match[0];
+      let makePaginatedResponse = (events, hasMore, nextAfter) => Object.fromEntries([
+        [
+          "events",
+          events
+        ],
+        [
+          "pagination",
+          Object.fromEntries([
+            [
+              "hasMore",
+              hasMore
+            ],
+            [
+              "nextAfter",
+              Stdlib_Option.mapOr(nextAfter, null, prim => prim)
+            ]
+          ])
+        ]
+      ]);
+      let paginate = (events, getPosition) => {
+        let filtered;
+        if (after !== undefined) {
+          let idx = events.findIndex(e => Stdlib_Option.mapOr(getPosition(e), false, p => p > after));
+          filtered = idx >= 0 ? events.slice(idx, events.length) : [];
+        } else {
+          filtered = events;
+        }
+        let match = limit !== undefined && filtered.length > limit ? [
+            filtered.slice(0, limit),
+            true
+          ] : [
+            filtered,
+            false
+          ];
+        let hasMore = match[1];
+        let limited = match[0];
+        let nextAfterVal = hasMore ? Stdlib_Option.flatMap(limited.at(-1), getPosition) : undefined;
+        return makePaginatedResponse(limited, hasMore, nextAfterVal);
+      };
       let matchingEntry = eventLogEntries.find(entry => resourceName.includes(entry.displayName.toLowerCase()));
       if (matchingEntry === undefined) {
-        return [];
+        return makePaginatedResponse([], false, undefined);
       }
       let replay = Bus.getEventLogReplay(matchingEntry.busKey);
       if (replay !== undefined) {
-        return await replay(entityId);
+        let events = await replay(entityId);
+        return paginate(events, e => {
+          let obj = Stdlib_JSON.Decode.object(e);
+          if (obj !== undefined) {
+            return Stdlib_Option.flatMap(obj["sequenceNr"], Stdlib_JSON.Decode.string);
+          }
+        });
       }
       let read = Bus.getDcbEventLogRead(matchingEntry.busKey);
       if (read === undefined) {
-        return [];
+        return makePaginatedResponse([], false, undefined);
       }
       let result = await read([], undefined);
       let filtered = entityId.length > 0 && entityId !== resourceName ? result.events.filter(e => e.tags.some(tag => tag.value === entityId)) : result.events;
-      return filtered.map(e => Object.fromEntries([
+      let serialized = filtered.map(e => Object.fromEntries([
         [
           "position",
           e.position
@@ -440,6 +591,12 @@ function Make($star) {
           ]))
         ]
       ]));
+      return paginate(serialized, e => {
+        let obj = Stdlib_JSON.Decode.object(e);
+        if (obj !== undefined) {
+          return Stdlib_Option.flatMap(obj["position"], Stdlib_JSON.Decode.string);
+        }
+      });
     });
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);
