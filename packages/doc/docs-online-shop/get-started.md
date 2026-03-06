@@ -96,6 +96,42 @@ The order lifecycle is strictly linear: `PlaceOrder` → `ShipOrder` or `CancelO
 
 ---
 
+## Automation and Integration
+
+Beyond the core write-side and read-side patterns, the Online Shop includes three additional features that demonstrate reactive automation, external input processing, and outbound side effects.
+
+### Auto-Ship Order (Ordering)
+
+When an order is placed, an automation automatically issues a `ShipOrder` command — closing the order lifecycle without manual intervention. In the aggregate-based approach this is a stateless **EventMapper** (fire-and-forget). In the DCB approach this is a stateful **AutomationSlice** with a TODO list that tracks pending shipments and marks them resolved when `OrderShipped` arrives.
+
+```
+OrderPlaced  ──►  [automation]  ──►  ShipOrder command  ──►  OrderShipped
+```
+
+This feature uses the existing `ShipOrder` command and `OrderShipped` event — no domain model changes are needed.
+
+### Import Product from Supplier Feed (Catalog)
+
+An external supplier system sends product data in its own format (SKU, title, unit price in cents, currency). A translation layer validates the input, converts the supplier format to domain fields (field renaming, unit conversion, currency validation), and publishes an `AddProduct` command. In the aggregate-based approach this is a file-triggered **Task** (CSV upload to S3). In the DCB approach this is a webhook-triggered **InboundTranslationSlice** with schema validation and an audit log.
+
+```
+External input  ──►  [anti-corruption layer]  ──►  AddProduct command
+```
+
+This feature reuses the existing `AddProduct` command — no domain model changes are needed.
+
+### Send Order Confirmation Email (Ordering)
+
+When an order is placed, a notification is sent to the customer via an external email service. In the aggregate-based approach this is a fire-and-forget **SideEffectHandler**. In the DCB approach this is an **OutboundTranslationSlice** with a TODO list providing per-item retry and status tracking.
+
+```
+OrderPlaced  ──►  [outbound handler]  ──►  EmailService.send(...)
+```
+
+This feature uses the existing `OrderPlaced` event — no domain model changes are needed. The email service call is stubbed for the example.
+
+---
+
 ## Cross-Plugin Integration
 
 The two Plugins are loosely coupled — they communicate only through IDs and through a defined Extension Point protocol. Neither Plugin imports the other's internal modules.
@@ -153,6 +189,20 @@ The same domain is implemented twice — once using each core Reventless plugin 
 
 Both implementations cover the full **Catalog** and **Ordering** Plugins — including cross-plugin integration — and serve as a concrete reference for comparing the two approaches side by side.
 
+### Package Structure
+
+Each implementation is split into **five packages** — two spec packages containing only the public Extension Point contracts, two plugin packages with all internal business logic, and one platform assembly package that wires everything together:
+
+| Package | Purpose |
+|---|---|
+| `catalog-spec` | Catalog's public Extension Point spec (`ProductsExtensionPoint`) — depended on by Ordering |
+| `ordering-spec` | Ordering's public Extension Point spec (`OrdersExtensionPoint`) — depended on by Catalog |
+| `catalog` | Catalog plugin implementation — aggregates/slices, read models, extension point mapping, extension |
+| `ordering` | Ordering plugin implementation — aggregates/slices, read models, extension point mapping, extension |
+| `online-shop-*` | Platform assembly — creates the in-memory platform, instantiates both plugins, wires the core |
+
+The spec packages are the **only cross-plugin dependency**. Catalog depends on `ordering-spec` (to subscribe to its Extension Point), and Ordering depends on `catalog-spec` (to subscribe to its Extension Point). Neither plugin package imports the other plugin's internal modules — only spec packages cross the boundary.
+
 ---
 
 ## Common Features
@@ -174,38 +224,56 @@ No business logic changes are needed when switching platforms.
 
 Plugins communicate through **Extension Points** and **Extensions** — a stable, versioned API layer that decouples Plugins from each other's internals. The protocol is identical in both the aggregate-based and DCB-based implementations.
 
+#### Spec packages — the public contract
+
+Each Plugin's Extension Point contract lives in a dedicated **spec package** (`catalog-spec`, `ordering-spec`) that is separate from the Plugin implementation. The spec package contains only the Extension Point definition — the `name`, `event`, `command`, and `directive` types that form the public API.
+
+This separation is what makes cross-plugin integration possible without coupling: Catalog depends on `ordering-spec` (not on the `ordering` package), and Ordering depends on `catalog-spec` (not on `catalog`). The spec packages are small, stable, and change only when the public contract changes.
+
 #### Extension Point — outbound API
 
-An **Extension Point** is the contract a Plugin publishes for others to subscribe to. It defines:
+An **Extension Point** is the contract a Plugin publishes for others to subscribe to. Its spec (in the spec package) defines:
 
 - **`name`** — a stable string identifier shared by both sides (e.g. `"Catalog.Products"`). This is the only value that must match between the publishing Plugin and its subscribers.
 - **`event`** — the public event vocabulary. These are intentionally different from internal event types so internal refactoring does not break the cross-plugin contract.
 - **`command`** — inbound commands the Extension Point accepts (typically `unit` for read-only Extension Points).
 - **`directive`** — reserved for framework use (typically `unit`).
 
-An **Extension Point Mapping** sits next to the spec in the publishing Plugin. It translates internal events to Extension Point events using `PublishEvent(id, extensionPointEvent)`, deciding which internal events to expose and how to rename or reshape them for the public API.
+An **Extension Point Mapping** sits in the publishing Plugin's implementation package (not the spec package). It translates internal events to Extension Point events using `PublishEvent(id, extensionPointEvent)`, deciding which internal events to expose and how to rename or reshape them for the public API.
 
 #### Extension — inbound subscription
 
-An **Extension** is the subscription a Plugin registers to receive events from another Plugin's Extension Point. It has two parts:
+An **Extension** is the subscription a Plugin registers to receive events from another Plugin's Extension Point. It references the other Plugin's spec package and provides:
 
-- A **local copy of the Extension Point spec** — the subscribing Plugin declares its own copy of the Extension Point's `name`, `event`, and `command` types. Only the spec is copied, never any internal modules. This is what allows both Plugins to be deployed and versioned independently.
 - An **Extension Mapping** — translates incoming Extension Point events to internal commands using `PublishAggregateCommand(id, command)` (aggregate-based) or the equivalent DCB form. One Extension can register multiple mappings if different Extension Point events route to different internal entities.
 
-#### The four components in this example
+The subscribing Plugin depends only on the other Plugin's spec package — never on its implementation. This is what allows both Plugins to be deployed and versioned independently.
 
-| Component | Lives In | Direction | Translates |
+#### The components in this example
+
+Each Plugin has an Extension Point (outbound) and an Extension (inbound), spread across spec and implementation packages:
+
+| Component | Package | Direction | Purpose |
 |---|---|---|---|
-| `ProductsExtensionPointSpec` | Catalog | — | Public contract: `ProductBecameAvailable`, `ProductPriceChanged` |
-| `ProductsExtensionPointMapping` | Catalog | Catalog → Ordering | `ProductAdded` → `ProductBecameAvailable`, `ProductPriceUpdated` → `ProductPriceChanged` |
-| `OrdersExtensionPointSpec` (local copy) | Catalog | — | Local copy of Ordering's contract: `ItemOrdered`, `ItemOrderCancelled` |
-| `OrdersExtension` | Catalog | Ordering → Catalog | `ItemOrdered` → `RecordDemand`, `ItemOrderCancelled` → `RevokeDemand` |
+| `ProductsExtensionPoint` (spec) | `catalog-spec` | — | Public contract: `ProductBecameAvailable`, `ProductPriceChanged` |
+| `ProductsExtensionPointMapping` | `catalog` | Catalog → Ordering | `ProductAdded` → `ProductBecameAvailable`, `ProductPriceUpdated` → `ProductPriceChanged` |
+| `OrdersExtension` | `catalog` | Ordering → Catalog | `ItemOrdered` → `RecordDemand`, `ItemOrderCancelled` → `RevokeDemand` |
+| `OrdersExtensionPoint` (spec) | `ordering-spec` | — | Public contract: `ItemOrdered`, `ItemOrderCancelled` |
+| `OrdersExtensionPointMapping` | `ordering` | Ordering → Catalog | `OrderPlaced` → `ItemOrdered` (per product), `OrderCancelled` → `ItemOrderCancelled` |
+| `ProductsExtension` | `ordering` | Catalog → Ordering | `ProductBecameAvailable` → `SyncCatalogProduct`, `ProductPriceChanged` → `SyncCatalogProduct` |
 
-Ordering holds the symmetric counterparts: `OrdersExtensionPointSpec` (the original), `OrdersExtensionPointMapping`, a local copy of `ProductsExtensionPointSpec`, and `ProductsExtension`.
+#### Dependency graph
+
+```
+catalog-spec ◄─── ordering (depends on Catalog's public EP contract)
+ordering-spec ◄── catalog  (depends on Ordering's public EP contract)
+```
+
+Neither `catalog` nor `ordering` depends on each other's implementation — only on each other's spec package.
 
 #### Why this protocol works
 
-The Extension Point name is the only runtime coupling. At deploy time, both Plugins register their Extension Points and Extensions with the framework, which wires up the message routing. Neither Plugin needs to know how the other is deployed, what storage it uses, or even what language it is written in.
+The Extension Point name is the only runtime coupling. At deploy time, both Plugins register their Extension Points and Extensions with the framework, which wires up the message routing. Neither Plugin needs to know how the other is deployed, what storage it uses, or even what language it is written in. The spec package separation enforces this boundary at the package level — it is structurally impossible to accidentally import another Plugin's internals.
 
 ---
 
@@ -221,3 +289,15 @@ The Extension Point name is the only runtime coupling. At deploy time, both Plug
 | Infrastructure footprint | More event log tables | Fewer tables, more events per table |
 
 Choose the aggregate-based approach when entity lifecycles are independent and you want the simplest possible consistency model. Choose DCB when you need consistency across multiple entities in the same command, or when you want to avoid the overhead of per-instance event streams.
+
+### Automation and Integration Components
+
+The three additional features are implemented with different component types in each approach, highlighting the trade-offs:
+
+| Feature | Aggregate-Based | DCB-Based | Key Difference |
+|---|---|---|---|
+| Auto-Ship Order | **EventMapper** | **AutomationSlice** | Stateless fire-and-forget vs. stateful TODO list with resolution tracking and retry |
+| Import Product from Supplier | **Task** (S3 file upload) | **InboundTranslationSlice** (webhook) | File-triggered with CSV parsing vs. API-triggered with schema validation and audit log |
+| Send Order Confirmation Email | **SideEffectHandler** | **OutboundTranslationSlice** | Fire-and-forget vs. per-item retry with status tracking |
+
+Aggregate-based components are simpler but offer less built-in reliability. DCB-based slices provide more operational guarantees (retry, audit, status tracking) at the cost of additional infrastructure.
