@@ -391,6 +391,18 @@ let dcbMutationResolverHook = {
   contents: undefined
 };
 
+let inboundMutationResolverHook = {
+  contents: undefined
+};
+
+let inboundMutationBindReceiveHook = {
+  contents: undefined
+};
+
+let inboundAppSyncResolverHook = {
+  contents: undefined
+};
+
 let aggregateMutationResolverHook = {
   contents: undefined
 };
@@ -523,6 +535,9 @@ export {
   createResolvers,
   MakeEventCollectorHelper,
   dcbMutationResolverHook,
+  inboundMutationResolverHook,
+  inboundMutationBindReceiveHook,
+  inboundAppSyncResolverHook,
   aggregateMutationResolverHook,
   schemaTypeRegistrationHook,
   queryFieldNamesRegistry,

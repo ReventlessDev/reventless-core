@@ -88,6 +88,8 @@ let translate = (input: externalInput) =>
 
 `translate` performs three validations (currency, price, SKU) before producing the command. The price is converted from cents to dollars. The SKU becomes the `productId` tag, linking the imported product to the existing `AddProduct` StateChangeSlice for duplicate detection.
 
+The framework automatically exposes `Catalog_ImportProduct` as a GraphQL mutation. The `externalInput` fields become the mutation arguments (`sku`, `title`, `desc`, `unitPrice`, `currency`). No manual API wiring is needed — the resolver calls `receive` directly, which handles parsing, validation, translation, and command publishing internally.
+
 ### Chapter: Category
 
 A named grouping of products (e.g. "Books", "Electronics"). Category events are tagged by `categoryId`. `Product` entities reference a `categoryId` by value.

@@ -178,24 +178,133 @@ module Make = (
           })
           ->Dict.fromArray
 
-        // Create InboundTranslationSlices — each receives external input and publishes commands
-        let inboundTranslationSlicesOutputs =
+        // Create InboundTranslationSlices — each receives external input and publishes commands.
+        // Capture both outputs (for plugin result) and components (for operations access).
+        let inboundTranslationSliceData =
           DcbSpec.inboundTranslationSlices
           ->Array.map((
             module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
           ) => {
             let its = ITS.make(~publishJsons, ~opts)
-            (ITS.Spec.name, its->Component.outputs)
+            let fieldName = `${name}_${ITS.Spec.name}`
+
+            // Phase 1: Register SDL + resolver stub synchronously (before server starts).
+            switch inboundMutationResolverHook.contents {
+            | Some(registerResolver) =>
+              registerResolver(
+                ~fieldName,
+                ~externalInputSchema=ITS.Spec.externalInputSchema->S.castToUnknown,
+              )
+            | None => ()
+            }
+
+            // Phase 2: Bind `receive` when Output.apply resolves.
+            switch inboundMutationBindReceiveHook.contents {
+            | Some(bindReceive) =>
+              let _ =
+                its
+                ->Component.operations
+                ->Pulumi.Output.apply(ops => bindReceive(~fieldName, ~receive=ops.receive))
+            | None => ()
+            }
+
+            (
+              ITS.Spec.name,
+              fieldName,
+              its,
+              ITS.Spec.externalInputSchema->S.castToUnknown,
+            )
           })
+
+        let inboundTranslationSlicesOutputs =
+          inboundTranslationSliceData
+          ->Array.map(((specName, _, its, _)) => (specName, its->Component.outputs))
           ->Dict.fromArray
 
-        // Filtering handler for the shared DCB command topic Lambda
-        let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
-        // Resources the Lambda needs access to (DcbEventLog resources from all slices)
-        let dcbResources =
-          stateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources)
-        let dcbConnectFn = (~runtime) =>
+        // Collect InboundTranslationSlice receive functions from Component.operations.
+        // These are Output.t values — we resolve them and build a dict for the composite
+        // DCB handler to route direct invocations (AppSync on AWS).
+        let inboundReceiversOutput =
+          inboundTranslationSliceData
+          ->Array.map(((_, fieldName, its, _)) =>
+            its
+            ->Component.operations
+            ->Pulumi.Output.apply(ops => (fieldName, ops.receive))
+          )
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray)
+
+        // Filtering handler for the shared DCB command topic Lambda.
+        // Wrap with InboundTranslation routing so the same Lambda handles both
+        // SQS commands (StateChangeSlice) and direct invocations (InboundTranslation).
+        let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
+
+        let dcbHandler =
+          (dcbHandlerBase, inboundReceiversOutput)
+          ->Pulumi.Output.all2
+          ->Pulumi.Output.apply(((baseHandler, receivers)) => {
+            let composite = (event, ctx) => {
+              // At runtime: check if this is a direct AppSync invocation
+              // for an InboundTranslationSlice mutation.
+              let raw: dict<JSON.t> = event->Obj.magic
+              switch raw->Dict.get("__inboundTranslation") {
+              | Some(_) =>
+                let fieldName =
+                  raw
+                  ->Dict.get("fieldName")
+                  ->Option.flatMap(JSON.Decode.string)
+                  ->Option.getOr("")
+                let args = raw->Dict.get("arguments")->Option.getOr(JSON.Encode.null)
+                switch receivers->Dict.get(fieldName) {
+                | Some(receiveFn) =>
+                  Effect.promise(async () => {
+                    let result = await receiveFn(args)
+                    let response = switch result {
+                    | Ok(id) => id
+                    | Error(msg) => msg
+                    }
+                    response->Obj.magic
+                  })
+                | None => baseHandler(event, ctx)
+                }
+              | None => baseHandler(event, ctx)
+              }
+            }
+            composite->Obj.magic
+          })
+
+        // Resources the Lambda needs access to (DcbEventLog + InboundTranslation audit logs)
+        let dcbResources = Array.concat(
+          stateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources),
+          inboundTranslationSlicesOutputs
+          ->Dict.valuesToArray
+          ->Array.flatMap(outputs => outputs.resources),
+        )
+
+        // Collect InboundTranslation field names and schemas for AppSync resolver hook
+        let inboundFieldNames =
+          inboundTranslationSliceData->Array.map(((_, fieldName, _, _)) => fieldName)
+        let inboundSchemas =
+          inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
+
+        let dcbConnectFn = (~runtime) => {
           DcbCommandTopic.connect(~runtime, ~resources=dcbResources, dcbCommandTopic)
+
+          // Create AppSync resolvers for InboundTranslationSlice mutations
+          // pointing to the shared DCB CommandTopic Lambda (Option A).
+          if inboundFieldNames->Array.length > 0 {
+            switch inboundAppSyncResolverHook.contents {
+            | Some(hook) =>
+              hook({
+                runtime: runtime->Obj.magic,
+                fieldNames: inboundFieldNames,
+                externalInputSchemas: inboundSchemas,
+                opts,
+              })
+            | None => ()
+            }
+          }
+        }
 
         // Capture the forDcbCommandTopic call in a closure while DcbCommandTopic is in scope
         let dcbRuntimeSetup = () =>
@@ -243,7 +352,23 @@ module Make = (
     | None => []
     }
 
-    let mutationEntries = Array.concat(mutationEntriesFromAggregates, mutationEntriesFromSlices)
+    let mutationEntriesFromInboundSlices = switch dcbSpec {
+    | Some(module(DcbSpec)) =>
+      DcbSpec.inboundTranslationSlices->Array.map((
+        module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+      ) =>
+        {
+          ReventlessInfra.Api.fieldNames: [`${name}_${ITS.Spec.name}`],
+          commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
+        }
+      )
+    | None => []
+    }
+
+    let mutationEntries =
+      Array.concat(mutationEntriesFromAggregates, mutationEntriesFromSlices)->Array.concat(
+        mutationEntriesFromInboundSlices,
+      )
 
     let queryEntriesFromReadModels =
       readModels->Array.map((module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role)) =>

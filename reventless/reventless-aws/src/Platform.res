@@ -18,6 +18,9 @@ module Make = (Api: {
   type api = Types.AppSync.api
   type role = Types.AppSync.role
 
+  // Alias the functor parameter before module Api shadows it below.
+  let appSyncApi = Api.api
+
   module Aggregate = {
     module Make = (
       Spec: Reventless.Aggregate.Spec,
@@ -88,6 +91,21 @@ module Make = (Api: {
         Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
     }
   }
+
+  // Set the InboundTranslationSlice AppSync resolver hook so Plugin_Builder
+  // creates AppSync DataSource + Resolvers pointing to the shared DCB Lambda.
+  let () = ReventlessCore.Plugin_Helpers.inboundAppSyncResolverHook.contents = Some(
+    ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
+      let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
+        runtime->Obj.magic
+      InboundTranslationResolvers_AppSync.make(
+        ~api=appSyncApi,
+        ~runtime=runtimeTyped,
+        ~fieldNames,
+        ~opts,
+      )
+    },
+  )
 
   // Alias before defining module Plugin to avoid self-reference.
   module PluginBuilder = Plugin

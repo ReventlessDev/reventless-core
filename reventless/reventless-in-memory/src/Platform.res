@@ -140,6 +140,17 @@ module MakeWithConfig = (
     DcbCommandTopicResolvers_GraphQL.register,
   )
 
+  // Set the InboundTranslationSlice mutation resolver hooks so Plugin_Builder.construct()
+  // registers GraphQL resolvers for each InboundTranslationSlice during plugin construction.
+  // Phase 1 (register): SDL + resolver stub synchronously.
+  // Phase 2 (bindReceive): bind `receive` when Output.apply resolves.
+  let () = ReventlessCore.Plugin_Helpers.inboundMutationResolverHook.contents = Some(
+    InboundTranslationResolvers_GraphQL.register,
+  )
+  let () = ReventlessCore.Plugin_Helpers.inboundMutationBindReceiveHook.contents = Some(
+    InboundTranslationResolvers_GraphQL.bindReceive,
+  )
+
   // Set the aggregate mutation resolver hook so Plugin_Builder.construct() registers
   // GraphQL SDL + resolver stubs for each aggregate during plugin construction.
   // The real generateCommand handler is bound later when Output.apply chains fire.

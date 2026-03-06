@@ -7,6 +7,7 @@ import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as Core_Builder$ReventlessAws from "./core/Core_Builder.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as DcbEventLog_Builder$ReventlessAws from "./components/DcbEventLog_Builder.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoint_Builder.res.mjs";
@@ -18,8 +19,10 @@ import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
+import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 
 function Make(Api) {
+  let appSyncApi = Api.api;
   let Make$1 = Spec => (Behavior => (EventMappings => {
     let $$let = Aggregate_Builder_Micro$ReventlessAws.Make(Spec)(Behavior)(EventMappings);
     return {
@@ -85,6 +88,7 @@ function Make(Api) {
   let Api$1 = {
     Make: Make$8
   };
+  Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
   let Plugin = {
     make: Plugin$ReventlessAws.make
   };

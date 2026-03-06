@@ -632,6 +632,35 @@ module MakeEventCollectorHelper = (
 let dcbMutationResolverHook: ref<option<(~fieldName: string, ~commandSchema: S.t<unknown>) => unit>> = ref(None)
 
 // ---------------------------------------------------------------------------
+// InboundTranslationSlice mutation resolver hooks — set by in-memory platform
+// before plugins are built.
+// Phase 1 (registerHook): called synchronously to register SDL + resolver stub.
+// Phase 2 (bindReceiveHook): called inside Output.apply to bind `receive`.
+// ---------------------------------------------------------------------------
+let inboundMutationResolverHook: ref<
+  option<(~fieldName: string, ~externalInputSchema: S.t<unknown>) => unit>,
+> = ref(None)
+
+let inboundMutationBindReceiveHook: ref<
+  option<(~fieldName: string, ~receive: JSON.t => promise<result<string, string>>) => unit>,
+> = ref(None)
+
+// ---------------------------------------------------------------------------
+// InboundTranslationSlice AppSync resolver hook — set by AWS platform before
+// plugins are built.  Plugin_Builder.construct() calls this from the DCB
+// connect function to create AppSync DataSource + Resolvers for each
+// InboundTranslationSlice, pointing to the shared DCB CommandTopic Lambda.
+// No-op when unset (in-memory/other platforms).
+// ---------------------------------------------------------------------------
+type inboundAppSyncResolverParams = {
+  runtime: Runtime.environment<unknown>,
+  fieldNames: array<string>,
+  externalInputSchemas: array<S.t<unknown>>,
+  opts: Pulumi.ComponentResource.options,
+}
+let inboundAppSyncResolverHook: ref<option<inboundAppSyncResolverParams => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
 // Aggregate mutation resolver hook — set by in-memory platform before plugins
 // are built.  Plugin_Builder.construct() calls this for each aggregate to
 // register GraphQL mutation SDL + resolver stubs synchronously (before
