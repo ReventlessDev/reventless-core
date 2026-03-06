@@ -16,6 +16,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder)
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder)
 
+  module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder)
+  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation)
+
   module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView)
 
   // Catalog product shadow — driven by Catalog's ProductsExtensionPoint
@@ -80,10 +83,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ]
     let automationSlices: array<
       module(ReventlessInfra.AutomationSlice.T with type dcbEvent = event),
-    > = []
+    > = [module(AutoShipOrderSlice)]
     let outboundTranslationSlices: array<
       module(ReventlessInfra.OutboundTranslationSlice.T with type dcbEvent = event),
-    > = []
+    > = [module(SendOrderConfirmationSlice)]
     let inboundTranslationSlices: array<
       module(ReventlessInfra.InboundTranslationSlice.T with type dcbEvent = event),
     > = []

@@ -4,6 +4,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as AddProduct$CatalogPlugin from "../Product/StateChangeSlice/AddProduct.res.mjs";
 import * as AddCategory$CatalogPlugin from "../Category/StateChangeSlice/AddCategory.res.mjs";
 import * as ProductsView$CatalogPlugin from "../Product/StateViewSlice/ProductsView.res.mjs";
+import * as ImportProduct$CatalogPlugin from "../Product/InboundTranslationSlice/ImportProduct.res.mjs";
 import * as CategoriesView$CatalogPlugin from "../Category/StateViewSlice/CategoriesView.res.mjs";
 import * as RenameCategory$CatalogPlugin from "../Category/StateChangeSlice/RenameCategory.res.mjs";
 import * as ArchiveCategory$CatalogPlugin from "../Category/StateChangeSlice/ArchiveCategory.res.mjs";
@@ -99,6 +100,13 @@ function Make(Platform) {
     stateSchema: CategoriesView$CatalogPlugin.stateSchema,
     project: CategoriesView$CatalogPlugin.project
   });
+  let ImportProductSlice = Platform.InboundTranslationSlice.Make({
+    name: ImportProduct$CatalogPlugin.name,
+    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
+    commandSchema: ImportProduct$CatalogPlugin.commandSchema,
+    translate: ImportProduct$CatalogPlugin.translate
+  });
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
@@ -174,7 +182,7 @@ function Make(Platform) {
   ];
   let automationSlices = [];
   let outboundTranslationSlices = [];
-  let inboundTranslationSlices = [];
+  let inboundTranslationSlices = [ImportProductSlice];
   let DcbSpec = {
     eventSchema: CatalogEventLog$CatalogPlugin.eventSchema,
     stateChangeSlices: stateChangeSlices,
@@ -195,6 +203,7 @@ function Make(Platform) {
     RenameCategorySlice: RenameCategorySlice,
     ArchiveCategorySlice: ArchiveCategorySlice,
     CategoriesViewSlice: CategoriesViewSlice,
+    ImportProductSlice: ImportProductSlice,
     RecordProductDemandSlice: RecordProductDemandSlice,
     ProductDemandViewSlice: ProductDemandViewSlice,
     ProductsEPMappingT: ProductsEPMappingT,

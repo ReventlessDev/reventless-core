@@ -18,6 +18,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView)
 
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)
+
   // Demand tracking — driven by Ordering's OrdersExtensionPoint
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand)
   module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
@@ -86,7 +88,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     > = []
     let inboundTranslationSlices: array<
       module(ReventlessInfra.InboundTranslationSlice.T with type dcbEvent = event),
-    > = []
+    > = [module(ImportProductSlice)]
   }
 
   let make = (

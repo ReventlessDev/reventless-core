@@ -30,6 +30,64 @@ A product listing with a name, description, and price. Product events are tagged
 |---|---|---|
 | `ProductsView` | `ProductAdded`, `ProductNameChanged`, `ProductDescriptionChanged`, `ProductPriceChanged` | `Products` |
 
+#### Inbound Translation: Import Product from Supplier
+
+An **InboundTranslationSlice** is an anti-corruption layer that receives external data, validates it, and translates it into an internal command. Unlike the other slice types, it is triggered by an explicit `receive` call (e.g. from an API endpoint), not by events.
+
+`ImportProduct` accepts supplier JSON with SKU, title, description, unit price (in cents), and currency. It validates the input and translates it into an `AddProduct` command.
+
+| Inbound Translation Slice | External Input | Command Produced |
+|---|---|---|
+| `ImportProduct` | Supplier product JSON | `AddProduct` |
+
+```rescript
+// ImportProduct.res
+
+open Reventless
+open CatalogEventLog
+
+let name = "ImportProduct"
+module DcbEventLogSpec = CatalogEventLog
+
+@schema
+type externalInput = {
+  sku: string,
+  title: string,
+  desc: string,
+  unitPrice: int,
+  currency: string,
+}
+
+@schema
+type command = AddProduct({
+  productId: @s.matches(DcbTag.string) string,
+  name: string,
+  description: string,
+  price: float,
+})
+
+let translate = (input: externalInput) =>
+  if input.currency !== "USD" {
+    Error("Unsupported currency: " ++ input.currency)
+  } else if input.unitPrice <= 0 {
+    Error("Price must be positive")
+  } else if input.sku === "" {
+    Error("SKU is required")
+  } else {
+    Ok((
+      input.sku,
+      AddProduct({
+        productId: input.sku,
+        name: input.title,
+        description: input.desc,
+        price: Int.toFloat(input.unitPrice) /. 100.0,
+      }),
+    ))
+  }
+```
+
+`translate` performs three validations (currency, price, SKU) before producing the command. The price is converted from cents to dollars. The SKU becomes the `productId` tag, linking the imported product to the existing `AddProduct` StateChangeSlice for duplicate detection.
+
 ### Chapter: Category
 
 A named grouping of products (e.g. "Books", "Electronics"). Category events are tagged by `categoryId`. `Product` entities reference a `categoryId` by value.
@@ -108,6 +166,105 @@ A confirmed purchase referencing product IDs and a customer. Order events are ta
 | State View Slices | Events | Read Models |
 |---|---|---|
 | `OrdersView` | `OrderPlaced`, `OrderShipped`, `OrderCancelled` | `Orders` |
+
+#### Automation: Auto-Ship Order
+
+An **AutomationSlice** implements the TODO list pattern: it collects pending items from events, processes them by issuing commands, and resolves items when the expected outcome event arrives.
+
+`AutoShipOrder` automatically ships every placed order. When `OrderPlaced` is emitted, a TODO item is created. The slice processes it by issuing a `ShipOrder` command. When `OrderShipped` arrives, the TODO item is resolved.
+
+| Automation Slice | Trigger Event | Command Issued | Resolved By |
+|---|---|---|---|
+| `AutoShipOrder` | `OrderPlaced` | `ShipOrder` | `OrderShipped` |
+
+```rescript
+// AutoShipOrder.res
+
+open Reventless
+open OrderingEventLog
+
+let name = "AutoShipOrder"
+module DcbEventLogSpec = OrderingEventLog
+
+@schema
+type todoItem = {orderId: string}
+
+@schema
+type command = ShipOrder({orderId: @s.matches(DcbTag.string) string})
+
+let collect = event =>
+  switch event {
+  | OrderPlaced({orderId}) => [(orderId, {orderId: orderId})]
+  | _ => []
+  }
+
+let resolve = event =>
+  switch event {
+  | OrderShipped({orderId}) => Some(orderId)
+  | _ => None
+  }
+
+let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
+
+let maxRetries = 3
+let heartbeatInterval = 60
+```
+
+`collect` creates a TODO keyed by `orderId` whenever an order is placed. `resolve` marks the TODO as done when the corresponding `OrderShipped` event appears. `process` converts each pending TODO into a `ShipOrder` command targeting the same `orderId`.
+
+#### Outbound Translation: Send Order Confirmation Email
+
+An **OutboundTranslationSlice** bridges internal events to external systems. Like AutomationSlice it uses the TODO list pattern, but instead of issuing a command it calls an external service. The fire-and-forget variant returns `Ok(None)` — no command back into the system.
+
+`SendOrderConfirmation` sends a confirmation email whenever an order is placed.
+
+| Outbound Translation Slice | Trigger Event | External Action |
+|---|---|---|
+| `SendOrderConfirmation` | `OrderPlaced` | Send email via `EmailService` |
+
+```rescript
+// SendOrderConfirmation.res
+
+open OrderingEventLog
+
+let name = "SendOrderConfirmation"
+module DcbEventLogSpec = OrderingEventLog
+
+@schema
+type outboundItem = {orderId: string, customerId: string}
+
+@schema
+type inboundCommand = unit
+
+let collect = event =>
+  switch event {
+  | OrderPlaced({orderId, customerId}) => [(orderId, {orderId, customerId})]
+  | _ => []
+  }
+
+let translate = async (_id, item) => {
+  try {
+    await EmailService.sendOrderConfirmation(
+      ~email=item.customerId,
+      ~orderId=item.orderId,
+    )
+    Ok(None)
+  } catch {
+  | exn =>
+    let msg =
+      exn
+      ->JsExn.fromException
+      ->Option.flatMap(JsExn.message)
+      ->Option.getOr("email send failed")
+    Error(msg)
+  }
+}
+
+let maxRetries = 3
+let heartbeatInterval = 60
+```
+
+`collect` captures the order ID and customer ID from `OrderPlaced`. `translate` calls the external email service and returns `Ok(None)` on success (fire-and-forget — no command back). On failure it returns `Error(msg)` so the framework can retry up to `maxRetries` times.
 
 ---
 

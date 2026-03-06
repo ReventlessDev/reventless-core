@@ -3,6 +3,7 @@
 Add three new features to the DCB online shop example demonstrating the remaining slice types. See `docs/analysis/dcb-online-shop-missing-slices.md` for the analysis behind these choices.
 
 **Branch**: feature/dcb-online-shop-slices (from alpha)
+**Status**: Complete
 
 ---
 
@@ -14,13 +15,14 @@ Add three new features to the DCB online shop example demonstrating the remainin
 
 The `ShipOrder` StateChangeSlice already exists at `examples/online-shop-dcb/ordering/src/Order/StateChangeSlice/ShipOrder.res`. Confirm it handles the `ShipOrder` command and emits `OrderShipped`. No changes expected.
 
-- [ ] Read `ShipOrder.res` and verify spec
+- [x] Read `ShipOrder.res` and verify spec
 
 ### 1b. Create AutoShipOrder automation spec
 
 Create `examples/online-shop-dcb/ordering/src/Order/AutomationSlice/AutoShipOrder.res`:
 
 ```rescript
+open Reventless
 open OrderingEventLog
 
 let name = "AutoShipOrder"
@@ -30,7 +32,7 @@ module DcbEventLogSpec = OrderingEventLog
 type todoItem = {orderId: string}
 
 @schema
-type command = ShipOrder({orderId: @s.matches(Reventless.DcbTag.string) string})
+type command = ShipOrder({orderId: @s.matches(DcbTag.string) string})
 
 let collect = event =>
   switch event {
@@ -44,15 +46,14 @@ let resolve = event =>
   | _ => None
   }
 
-let process = (id, _item) =>
-  Some((id, ShipOrder({orderId: id})))
+let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
 
 let maxRetries = 3
 let heartbeatInterval = 60
 ```
 
-- [ ] Create `AutoShipOrder.res`
-- [ ] Add source dir to `rescript.json` if needed
+- [x] Create `AutoShipOrder.res`
+- [x] Add source dir to `rescript.json` if needed — not needed, `{"dir": "src", "subdirs": true}` already covers it
 
 ### 1c. Wire into OrderingPlugin
 
@@ -60,12 +61,12 @@ Update `examples/online-shop-dcb/ordering/src/Plugin/OrderingPlugin.res`:
 - Add `module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder)`
 - Add `module(AutoShipOrderSlice)` to `automationSlices` array in DcbSpec
 
-- [ ] Update `OrderingPlugin.res`
+- [x] Update `OrderingPlugin.res`
 
 ### 1d. Build and verify
 
-- [ ] Run `npm run build` from monorepo root — zero warnings
-- [ ] Run `npm test` in the ordering package — all existing tests pass
+- [x] Run `npm run build` from monorepo root — zero warnings
+- [x] Run `npm test` in the ordering package — all existing tests pass (48 passed)
 
 ---
 
@@ -78,6 +79,7 @@ Update `examples/online-shop-dcb/ordering/src/Plugin/OrderingPlugin.res`:
 Create `examples/online-shop-dcb/catalog/src/Product/InboundTranslationSlice/ImportProduct.res`:
 
 ```rescript
+open Reventless
 open CatalogEventLog
 
 let name = "ImportProduct"
@@ -88,13 +90,13 @@ type externalInput = {
   sku: string,
   title: string,
   desc: string,
-  unitPrice: int,    // cents
+  unitPrice: int,
   currency: string,
 }
 
 @schema
 type command = AddProduct({
-  productId: @s.matches(Reventless.DcbTag.string) string,
+  productId: @s.matches(DcbTag.string) string,
   name: string,
   description: string,
   price: float,
@@ -120,8 +122,8 @@ let translate = (input: externalInput) =>
   }
 ```
 
-- [ ] Create `ImportProduct.res`
-- [ ] Add source dir to `rescript.json` if needed
+- [x] Create `ImportProduct.res`
+- [x] Add source dir to `rescript.json` if needed — not needed, `{"dir": "src", "subdirs": true}` already covers it
 
 ### 2b. Wire into CatalogPlugin
 
@@ -129,12 +131,12 @@ Update `examples/online-shop-dcb/catalog/src/Plugin/CatalogPlugin.res`:
 - Add `module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)`
 - Add `module(ImportProductSlice)` to `inboundTranslationSlices` array in DcbSpec
 
-- [ ] Update `CatalogPlugin.res`
+- [x] Update `CatalogPlugin.res`
 
 ### 2c. Build and verify
 
-- [ ] Run `npm run build` from monorepo root — zero warnings
-- [ ] Run `npm test` in the catalog package — all existing tests pass
+- [x] Run `npm run build` from monorepo root — zero warnings
+- [x] Run `npm test` in the catalog package — all existing tests pass (44 passed)
 
 ---
 
@@ -148,13 +150,12 @@ Create `examples/online-shop-dcb/ordering/src/Service/EmailService.res`:
 
 ```rescript
 let sendOrderConfirmation = async (~email as _: string, ~orderId as _: string) => {
-  // Stub — in production this would call an email API
   Console.log("[EmailService] Order confirmation sent")
 }
 ```
 
-- [ ] Create `EmailService.res`
-- [ ] Add source dir to `rescript.json` if needed
+- [x] Create `EmailService.res`
+- [x] Add source dir to `rescript.json` if needed — not needed, `{"dir": "src", "subdirs": true}` already covers it
 
 ### 3b. Create SendOrderConfirmation outbound translation spec
 
@@ -182,10 +183,10 @@ let collect = event =>
 let translate = async (_id, item) => {
   try {
     await EmailService.sendOrderConfirmation(
-      ~email=item.customerId,  // simplified: use customerId as email placeholder
+      ~email=item.customerId,
       ~orderId=item.orderId,
     )
-    Ok(None)  // fire-and-forget: no command back
+    Ok(None)
   } catch {
   | exn =>
     let msg =
@@ -201,8 +202,8 @@ let maxRetries = 3
 let heartbeatInterval = 60
 ```
 
-- [ ] Create `SendOrderConfirmation.res`
-- [ ] Add source dir to `rescript.json` if needed
+- [x] Create `SendOrderConfirmation.res`
+- [x] Add source dir to `rescript.json` if needed — not needed, `{"dir": "src", "subdirs": true}` already covers it
 
 ### 3c. Wire into OrderingPlugin
 
@@ -210,12 +211,12 @@ Update `examples/online-shop-dcb/ordering/src/Plugin/OrderingPlugin.res`:
 - Add `module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation)`
 - Add `module(SendOrderConfirmationSlice)` to `outboundTranslationSlices` array in DcbSpec
 
-- [ ] Update `OrderingPlugin.res`
+- [x] Update `OrderingPlugin.res`
 
 ### 3d. Build and verify
 
-- [ ] Run `npm run build` from monorepo root — zero warnings
-- [ ] Run `npm test` in the ordering package — all existing tests pass
+- [x] Run `npm run build` from monorepo root — zero warnings
+- [x] Run `npm test` in the ordering package — all existing tests pass (48 passed)
 
 ---
 
@@ -227,16 +228,16 @@ Update `packages/doc/docs-online-shop/dcb-based.md` to document the three new fe
 - Add an "Outbound Translation: Send Order Confirmation Email" section under Ordering's Chapter: Order
 - Include code snippets matching the implementation walkthrough style of existing sections
 
-- [ ] Update `dcb-based.md`
+- [x] Update `dcb-based.md`
 
 ---
 
 ## Step 5: Final verification
 
-- [ ] `npm run build` from root — zero warnings across all packages
-- [ ] `npm test` from root — all tests pass
-- [ ] Verify the three new slice types appear in plugin DcbSpec arrays
-- [ ] Commit with message: `feat(examples): add AutomationSlice, InboundTranslationSlice, and OutboundTranslationSlice to DCB online shop`
+- [x] `npm run build` from root — zero warnings across all packages
+- [x] `npm test` from root — all tests pass (85 suites, 697 tests)
+- [x] Verify the three new slice types appear in plugin DcbSpec arrays
+- [x] Commit with message: `feat(examples): add AutomationSlice, InboundTranslationSlice, and OutboundTranslationSlice to DCB online shop`
 
 ---
 
@@ -251,6 +252,8 @@ Update `packages/doc/docs-online-shop/dcb-based.md` to document the three new fe
 ### Modified files
 - `examples/online-shop-dcb/ordering/src/Plugin/OrderingPlugin.res` (wire AutomationSlice + OutboundTranslationSlice)
 - `examples/online-shop-dcb/catalog/src/Plugin/CatalogPlugin.res` (wire InboundTranslationSlice)
-- `examples/online-shop-dcb/ordering/rescript.json` (add source dirs if needed)
-- `examples/online-shop-dcb/catalog/rescript.json` (add source dirs if needed)
 - `packages/doc/docs-online-shop/dcb-based.md` (document new features)
+
+### Not modified (no changes needed)
+- `examples/online-shop-dcb/ordering/rescript.json` — `{"dir": "src", "subdirs": true}` already covers new subdirs
+- `examples/online-shop-dcb/catalog/rescript.json` — same

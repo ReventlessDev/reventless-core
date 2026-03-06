@@ -6,6 +6,7 @@ import * as OrdersView$OrderingPlugin from "../Order/StateViewSlice/OrdersView.r
 import * as PlaceOrder$OrderingPlugin from "../Order/StateChangeSlice/PlaceOrder.res.mjs";
 import * as CancelOrder$OrderingPlugin from "../Order/StateChangeSlice/CancelOrder.res.mjs";
 import * as ChangeEmail$OrderingPlugin from "../Customer/StateChangeSlice/ChangeEmail.res.mjs";
+import * as AutoShipOrder$OrderingPlugin from "../Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as ChangeAddress$OrderingPlugin from "../Customer/StateChangeSlice/ChangeAddress.res.mjs";
 import * as CustomersView$OrderingPlugin from "../Customer/StateViewSlice/CustomersView.res.mjs";
 import * as OrderingEventLog$OrderingPlugin from "./OrderingEventLog.res.mjs";
@@ -17,6 +18,7 @@ import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-d
 import * as SyncCatalogProduct$OrderingPlugin from "../CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
 import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductsExtensionPoint.res.mjs";
 import * as AvailableProductsView$OrderingPlugin from "../CatalogProduct/StateViewSlice/AvailableProductsView.res.mjs";
+import * as SendOrderConfirmation$OrderingPlugin from "../Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as OrdersExtensionPointMapping$OrderingPlugin from "../ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
 
@@ -91,6 +93,27 @@ function Make(Platform) {
     reduce: CancelOrder$OrderingPlugin.reduce,
     decide: CancelOrder$OrderingPlugin.decide,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema
+  });
+  let AutoShipOrderSlice = Platform.AutomationSlice.Make({
+    name: AutoShipOrder$OrderingPlugin.name,
+    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
+    commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
+    collect: AutoShipOrder$OrderingPlugin.collect,
+    resolve: AutoShipOrder$OrderingPlugin.resolve,
+    process: AutoShipOrder$OrderingPlugin.process,
+    maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
+    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
+  });
+  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
+    name: SendOrderConfirmation$OrderingPlugin.name,
+    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
+    inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
+    collect: SendOrderConfirmation$OrderingPlugin.collect,
+    translate: SendOrderConfirmation$OrderingPlugin.translate,
+    maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
+    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
   });
   let OrdersViewSlice = Platform.StateViewSlice.Make({
     name: OrdersView$OrderingPlugin.name,
@@ -172,8 +195,8 @@ function Make(Platform) {
     OrdersViewSlice,
     AvailableProductsViewSlice
   ];
-  let automationSlices = [];
-  let outboundTranslationSlices = [];
+  let automationSlices = [AutoShipOrderSlice];
+  let outboundTranslationSlices = [SendOrderConfirmationSlice];
   let inboundTranslationSlices = [];
   let DcbSpec = {
     eventSchema: OrderingEventLog$OrderingPlugin.eventSchema,
@@ -194,6 +217,8 @@ function Make(Platform) {
     PlaceOrderSlice: PlaceOrderSlice,
     ShipOrderSlice: ShipOrderSlice,
     CancelOrderSlice: CancelOrderSlice,
+    AutoShipOrderSlice: AutoShipOrderSlice,
+    SendOrderConfirmationSlice: SendOrderConfirmationSlice,
     OrdersViewSlice: OrdersViewSlice,
     SyncCatalogProductSlice: SyncCatalogProductSlice,
     AvailableProductsViewSlice: AvailableProductsViewSlice,
