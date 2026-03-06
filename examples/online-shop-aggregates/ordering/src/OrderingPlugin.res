@@ -14,7 +14,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module OrderAggregate = Platform.Aggregate.Make(
     Order,
     OrderBehavior,
-    ReventlessInfra.NoEventMappings.Make(Order),
+    Order_EventMappings,
   )
 
   module CustomerProjections: Projection.Mappings with module Target := CustomersReadModel = {
@@ -86,6 +86,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     OrdersEPMappings,
   )
 
+  module OrderNotificationsTask = Platform.Task.Make(OrderNotifications)
+
   // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
   let make = (
@@ -109,6 +111,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ],
       ~extensionPoints=[module(OrdersExtensionPointMaker)],
       ~extensions=[module(ProductsExtensionMaker)],
+      ~tasks=[module(OrderNotificationsTask)],
       ~api,
       ~apiRole,
       ~scheduler,

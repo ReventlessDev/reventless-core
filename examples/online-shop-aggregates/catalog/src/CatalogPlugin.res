@@ -86,6 +86,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     OrdersExtensionMappings,
   )
 
+  module ImportProductsTask = Platform.Task.Make(ImportProducts)
+
   // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
   let make = (
@@ -109,6 +111,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ],
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
+      ~tasks=[module(ImportProductsTask)],
       ~api,
       ~apiRole,
       ~scheduler,

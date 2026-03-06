@@ -5,6 +5,7 @@ import * as Product$CatalogPlugin from "./Aggregate/Product.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as Category$CatalogPlugin from "./Aggregate/Category.res.mjs";
 import * as ProductDemand$CatalogPlugin from "./Aggregate/ProductDemand.res.mjs";
+import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as OrdersExtension$CatalogPlugin from "./Extension/OrdersExtension.res.mjs";
 import * as ProductBehavior$CatalogPlugin from "./Aggregate/ProductBehavior.res.mjs";
 import * as CategoryBehavior$CatalogPlugin from "./Aggregate/CategoryBehavior.res.mjs";
@@ -164,6 +165,10 @@ function Make(Platform) {
     mappings: mappings$4
   };
   let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)(OrdersExtensionMappings);
+  let ImportProductsTask = Platform.Task.Make({
+    name: ImportProducts$CatalogPlugin.name,
+    setup: ImportProducts$CatalogPlugin.setup
+  });
   let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", "1.0.0", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
     ProductAggregate,
     CategoryAggregate,
@@ -172,7 +177,7 @@ function Make(Platform) {
     ProductReadModel,
     CategoryReadModel,
     ProductDemandReadModelMaker
-  ], undefined, api, apiRole, scheduler, undefined, undefined);
+  ], [ImportProductsTask], api, apiRole, scheduler, undefined, undefined);
   return {
     ProductAggregate: ProductAggregate,
     CategoryAggregate: CategoryAggregate,
@@ -189,6 +194,7 @@ function Make(Platform) {
     OrdersDemandMapping: OrdersDemandMapping,
     OrdersExtensionMappings: OrdersExtensionMappings,
     OrdersExtensionMaker: OrdersExtensionMaker,
+    ImportProductsTask: ImportProductsTask,
     make: make
   };
 }

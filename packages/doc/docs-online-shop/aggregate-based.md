@@ -45,6 +45,14 @@ Tracks per-product order demand. Driven entirely by events arriving from Orderin
 | `RecordDemand` | `ProductDemandRecorded` |
 | `RevokeDemand` | `ProductDemandRevoked` |
 
+### Task: Import Products from CSV
+
+A file-triggered Task that watches an S3 bucket for CSV uploads and publishes `Product.Add` commands for each row.
+
+| Trigger | Action |
+|---|---|
+| S3 `ObjectCreated` on `product-imports` bucket | Parse file, publish `Product.Add` commands |
+
 ### Read Models
 
 | Read Model | Source Aggregates | What It Tracks |
@@ -97,6 +105,22 @@ A confirmed purchase referencing `Product` IDs and a `CustomerId`. Clear, linear
 | `PlaceOrder` | `OrderPlaced` |
 | `ShipOrder` | `OrderShipped` |
 | `CancelOrder` | `OrderCancelled` |
+
+### EventMapper: Auto-Ship Order
+
+When an `Order.Placed` event is emitted, the EventMapper automatically issues an `Order.Ship` command for the same aggregate. Stateless fire-and-forget — no TODO list, no resolution tracking.
+
+| Source Event | Target Command |
+|---|---|
+| `Order.Placed` | `Order.Ship` (same aggregate ID) |
+
+### SideEffectHandler: Send Order Confirmation Email
+
+When an `Order.Placed` event is emitted, a side effect calls a (stubbed) email service. Fire-and-forget — no retry tracking, no TODO list. Hosted on the `OrderNotifications` Task.
+
+| Source Event | Side Effect |
+|---|---|
+| `Order.Placed` | `EmailService.sendOrderConfirmation` |
 
 ### Aggregate: `CatalogProduct`
 
@@ -553,3 +577,152 @@ module Make = (Platform: Platform.T) => {
 ```
 
 Swapping `Platform` is the only change needed to move from an in-memory test environment to a full AWS deployment.
+
+### 7. EventMapper
+
+An **EventMapper** routes events from one aggregate to commands on the same or a different aggregate. It replaces `NoEventMappings` as the third argument to `Platform.Aggregate.Make`.
+
+Here, `Order.Placed` triggers an automatic `Order.Ship` command on the same aggregate:
+
+```rescript
+// Order_EventMappings.res
+
+open Reventless
+
+module Target = Order
+
+module AutoShipMapping = {
+  module Source = Order
+  module Target = Order
+
+  let map = (orderId, event, _queryEngine) =>
+    switch event {
+    | Order.Placed(_) => [EventMapping.Publish(orderId, Order.Ship)]
+    | _ => []
+    }
+}
+
+module type Mapping = EventMapping.T with module Target := Target
+
+let mappings: array<module(Mapping)> = [module(AutoShipMapping)]
+
+let counter = None
+```
+
+The EventMapper module satisfies the `EventMapper.Mappings` module type. Wire it into the plugin by replacing `NoEventMappings.Make(Order)`:
+
+```rescript
+module OrderAggregate = Platform.Aggregate.Make(
+  Order,
+  OrderBehavior,
+  Order_EventMappings,  // was: NoEventMappings.Make(Order)
+)
+```
+
+### 8. SideEffectHandler
+
+A **SideEffectHandler** executes imperative side effects (e.g. sending emails, calling APIs) when aggregate events are emitted. Side effects are fire-and-forget — they do not produce new events or commands.
+
+A side effect module defines the `Source` it subscribes to and an `execute` function:
+
+```rescript
+// Order_EmailNotification.res
+
+module Source = {
+  let name = Order.name
+  module Id = Order.Id
+  @schema type event = Order.event
+}
+
+let execute = async (orderId, _meta, event, _queryEngine) =>
+  switch event {
+  | Order.Placed({customerId}) =>
+    await EmailService.sendOrderConfirmation(
+      ~email=customerId,
+      ~orderId=orderId->Order.Id.toString,
+    )
+  | _ => ()
+  }
+```
+
+Side effects are hosted on a **Task**. The Task's `setup` function lists them in its `sideEffects` field:
+
+```rescript
+// OrderNotifications.res
+
+open Reventless
+
+let name = "OrderNotifications"
+
+let setup = (_queryEngine, _queryBucketName, _opts) => {
+  Task.sideEffects: [module(Order_EmailNotification): module(SideEffect.T)],
+}
+```
+
+Wire the Task into the plugin:
+
+```rescript
+module OrderNotificationsTask = Platform.Task.Make(OrderNotifications)
+
+// In Plugin.make:
+~tasks=[module(OrderNotificationsTask)],
+```
+
+### 9. Task
+
+A **Task** is a serverless handler triggered by S3 events. It can publish commands, manage schedules, and execute side effects.
+
+Here, the `ImportProducts` Task watches an S3 bucket for CSV uploads and publishes `Product.Add` commands:
+
+```rescript
+// ImportProducts.res
+
+open Reventless
+
+let name = "ImportProducts"
+
+let importCallback = (~eventName, ~key) => {
+  if eventName->String.includes("ObjectCreated") {
+    let meta: Message.meta = {
+      service: "ImportProducts",
+      time: Date.now()->Float.toString,
+      ip: "",
+      user: "system",
+      msgId: key,
+      correlationId: key,
+    }
+
+    [
+      Task.PublishCommands(
+        "Product",
+        [{id: key, meta, commandJson: Product.Add({
+            name: "Imported Product",
+            description: "Imported from " ++ key,
+            price: 9.99,
+          })->Message.encode(Product.commandSchema)}],
+      ),
+    ]->Promise.resolve
+  } else {
+    []->Promise.resolve
+  }
+}
+
+let setup = (_queryEngine, _queryBucketName, _opts) => {
+  Task.buckets: [
+    {
+      bucketName: "product-imports",
+      bucketMode: Task.Read,
+      callback: importCallback,
+    },
+  ],
+}
+```
+
+Wire the Task into the plugin:
+
+```rescript
+module ImportProductsTask = Platform.Task.Make(ImportProducts)
+
+// In Plugin.make:
+~tasks=[module(ImportProductsTask)],
+```

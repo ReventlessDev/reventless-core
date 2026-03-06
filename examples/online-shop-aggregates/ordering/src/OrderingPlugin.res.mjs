@@ -13,7 +13,9 @@ import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-inf
 import * as OrdersProjections$OrderingPlugin from "./ReadModel/OrdersProjections.res.mjs";
 import * as ProductsExtension$OrderingPlugin from "./Extension/ProductsExtension.res.mjs";
 import * as CustomersReadModel$OrderingPlugin from "./ReadModel/CustomersReadModel.res.mjs";
+import * as OrderNotifications$OrderingPlugin from "./Task/OrderNotifications.res.mjs";
 import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/OrdersExtensionPoint.res.mjs";
+import * as Order_EventMappings$OrderingPlugin from "./EventMappings/Order_EventMappings.res.mjs";
 import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/ProductsExtensionPoint.res.mjs";
 import * as CustomersProjections$OrderingPlugin from "./ReadModel/CustomersProjections.res.mjs";
 import * as OrdersExtensionPoint$OrderingPlugin from "./ExtensionPoint/OrdersExtensionPoint.res.mjs";
@@ -52,11 +54,10 @@ function Make(Platform) {
     apply: OrderBehavior$OrderingPlugin.apply,
     create: OrderBehavior$OrderingPlugin.create,
     execute: OrderBehavior$OrderingPlugin.execute
-  })(NoEventMappings$ReventlessInfra.Make({
-    name: Order$OrderingPlugin.name,
-    Id: Id$Reventless.$$String,
-    commandSchema: Order$OrderingPlugin.commandSchema
-  }));
+  })({
+    mappings: Order_EventMappings$OrderingPlugin.mappings,
+    counter: undefined
+  });
   Projection$Reventless.Mappings.Make({
     Id: Id$Reventless.$$String,
     name: CustomersReadModel$OrderingPlugin.name,
@@ -161,6 +162,7 @@ function Make(Platform) {
   let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPoint$OrderingSpec)({
     mappings: mappings$4
   });
+  let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
   let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", "1.0.0", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
     CustomerAggregate,
     OrderAggregate,
@@ -169,7 +171,7 @@ function Make(Platform) {
     CustomerReadModel,
     OrderReadModel,
     AvailableProductsReadModelMaker
-  ], undefined, api, apiRole, scheduler, undefined, undefined);
+  ], [OrderNotificationsTask], api, apiRole, scheduler, undefined, undefined);
   return {
     CustomerAggregate: CustomerAggregate,
     OrderAggregate: OrderAggregate,
@@ -186,6 +188,7 @@ function Make(Platform) {
     OrdersEPOrderMapping: OrdersEPOrderMapping,
     OrdersEPMappings: OrdersEPMappings,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
+    OrderNotificationsTask: OrderNotificationsTask,
     make: make
   };
 }

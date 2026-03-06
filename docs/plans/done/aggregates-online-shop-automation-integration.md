@@ -14,7 +14,7 @@ Add three new features to the aggregates online shop example demonstrating the r
 
 The Order aggregate at `examples/online-shop-aggregates/ordering/src/Aggregate/Order.res` already defines `Ship` as a command and `Shipped` as an event. The behavior in `OrderBehavior.res` handles `Ship` when in `Placed` state and is idempotent when already `Shipped`. No changes needed.
 
-- [ ] Confirm `Order.res` and `OrderBehavior.res` — no modifications required
+- [x] Confirm `Order.res` and `OrderBehavior.res` — no modifications required
 
 ### 1b. Create Order EventMappings
 
@@ -47,7 +47,7 @@ let mappings: array<module(Mapping)> = [module(AutoShipMapping)]
 let counter = None
 ```
 
-- [ ] Create `Order_EventMappings.res`
+- [x] Create `Order_EventMappings.res`
 
 ### 1c. Wire into OrderingPlugin
 
@@ -72,12 +72,12 @@ module OrderAggregate = Platform.Aggregate.Make(
 )
 ```
 
-- [ ] Update `OrderingPlugin.res`
+- [x] Update `OrderingPlugin.res`
 
 ### 1d. Build and verify
 
-- [ ] Run `npm run build` from monorepo root — zero warnings
-- [ ] Run `npm test` in the ordering package — all existing tests pass
+- [x] Run `npm run build` from monorepo root — zero warnings
+- [x] Run `npm test` in the ordering package — all existing tests pass
 
 ---
 
@@ -136,7 +136,7 @@ let setup = (_queryEngine, _queryBucketName, _opts) => {
 }
 ```
 
-- [ ] Create `ImportProducts.res`
+- [x] Create `ImportProducts.res`
 
 ### 2b. Wire into CatalogPlugin
 
@@ -151,12 +151,12 @@ module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
 And include `module(ImportProductsTask)` in the tasks list passed to `Plugin.make`.
 
-- [ ] Update `CatalogPlugin.res`
+- [x] Update `CatalogPlugin.res`
 
 ### 2c. Build and verify
 
-- [ ] Run `npm run build` from monorepo root — zero warnings
-- [ ] Run `npm test` in the catalog package — all existing tests pass
+- [x] Run `npm run build` from monorepo root — zero warnings
+- [x] Run `npm test` in the catalog package — all existing tests pass
 
 **Note**: The exact Task wiring depends on the `Platform.Task.Make` functor signature and `Plugin.make` parameters. If the Plugin assembly doesn't support a `~tasks` parameter, the Task may need to be created alongside the plugin in the platform assembly (`Main.res`) instead. Adjust wiring based on the actual API during implementation.
 
@@ -179,7 +179,7 @@ let sendOrderConfirmation = async (~email as _: string, ~orderId as _: string) =
 }
 ```
 
-- [ ] Create `EmailService.res`
+- [x] Create `EmailService.res`
 
 ### 3b. Create Order SideEffect
 
@@ -205,7 +205,7 @@ let execute = async (orderId, _meta, event, _queryEngine) =>
   }
 ```
 
-- [ ] Create `Order_EmailNotification.res`
+- [x] Create `Order_EmailNotification.res`
 
 ### 3c. Wire into OrderingPlugin
 
@@ -222,12 +222,12 @@ let orderSideEffects: ReventlessInfra.SideEffectHandler.sideEffects = [
 
 Pass this to `Platform.Plugin.make` via the appropriate parameter (e.g., `~sideEffects`).
 
-- [ ] Update `OrderingPlugin.res`
+- [x] Update `OrderingPlugin.res`
 
 ### 3d. Build and verify
 
-- [ ] Run `npm run build` from monorepo root — zero warnings
-- [ ] Run `npm test` in the ordering package — all existing tests pass
+- [x] Run `npm run build` from monorepo root — zero warnings
+- [x] Run `npm test` in the ordering package — all existing tests pass
 
 **Note**: The exact SideEffectHandler wiring depends on how `Platform.Plugin.make` accepts side effects. It may be passed as a `~sideEffects` parameter, or the SideEffectHandler may need to be created as a separate component via `Platform.SideEffectHandler.Make(...)`. Adjust wiring based on the actual API during implementation.
 
@@ -241,17 +241,17 @@ Update `packages/doc/docs-online-shop/aggregate-based.md` to document the three 
 - Add a "SideEffectHandler: Send Order Confirmation Email" section under the Order aggregate
 - Include code snippets matching the implementation walkthrough style of existing sections
 
-- [ ] Update `aggregate-based.md`
+- [x] Update `aggregate-based.md`
 
 ---
 
 ## Step 5: Final verification
 
-- [ ] `npm run build` from root — zero warnings across all packages
-- [ ] `npm test` from root — all tests pass
-- [ ] Verify the EventMapper replaces `NoEventMappings` for Order aggregate
-- [ ] Verify the SideEffectHandler and Task are wired into the plugin assembly
-- [ ] Commit with message: `feat(examples): add EventMapper, SideEffectHandler, and Task to aggregates online shop`
+- [x] `npm run build` from root — zero warnings across all packages
+- [x] `npm test` from root — all tests pass
+- [x] Verify the EventMapper replaces `NoEventMappings` for Order aggregate
+- [x] Verify the SideEffectHandler and Task are wired into the plugin assembly
+- [x] Commit with message: `feat(examples): add EventMapper, SideEffectHandler, and Task to aggregates online shop`
 
 ---
 
