@@ -29,7 +29,7 @@ This pattern ensures clear separation of concerns, type safety through module ty
 - [Serialization](./serialization.md) - Data encoding/decoding patterns
 - [Resources](./resources.md) - Infrastructure resource management
 - [MCP (Model Context Protocol)](./mcp.md) - AI-native access via tools and resources
-- [AWS Adapters](/aws/adapters/) - Provider-specific implementations
+- [AWS Adapters](/providers/aws) - Provider-specific implementations
 
 # Framework Inner Workings
 
@@ -69,13 +69,13 @@ The framework employs several other important patterns:
 
 Provider-specific implementations of framework components:
 
-- [**CommandGenerator**](/aws/adapters/commandgenerator)
-- [**CommandTopic**](/aws/adapters/commandtopic)
-- [**EventCollector**](/aws/adapters/eventcollector)
-- [**EventLog**](/aws/adapters/eventlog)
-- [**EventTopic**](/aws/adapters/eventtopic)
-- [**ScheduledPublisher**](/aws/adapters/scheduledpublisher)
-- [**Task**](/aws/adapters/task)
+- [**CommandGenerator**](/providers/aws/adapters/commandgenerator)
+- [**CommandTopic**](/providers/aws/adapters/commandtopic)
+- [**EventCollector**](/providers/aws/adapters/eventcollector)
+- [**EventLog**](/providers/aws/adapters/eventlog)
+- [**EventTopic**](/providers/aws/adapters/eventtopic)
+- [**ScheduledPublisher**](/providers/aws/adapters/scheduledpublisher)
+- [**Task**](/providers/aws/adapters/task)
 
 ## Understanding the Framework
 

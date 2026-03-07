@@ -116,7 +116,7 @@ const config = {
         language: ["en"],
         indexDocs: true,
         indexBlog: false,
-        docsRouteBasePath: ["/app", "/framework", "/cloud-provider", "/aws", "/online-shop"],
+        docsRouteBasePath: ["/app", "/framework", "/providers", "/online-shop"],
         // Enable search in dev mode by using the production index
         removeDefaultStopWordFilter: true,
         // Highlight search terms
@@ -164,23 +164,10 @@ const config = {
     [
       "@docusaurus/plugin-content-docs",
       {
-        id: "cloud-provider",
-        path: "docs-cloud-provider",
-        routeBasePath: "cloud-provider",
-        sidebarPath: "./sidebars-cloud-provider.js",
-        remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
-        rehypePlugins: [rehypeSequenceDiagramClass],
-        editUrl:
-          "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
-      },
-    ],
-    [
-      "@docusaurus/plugin-content-docs",
-      {
-        id: "aws",
-        path: "docs-aws",
-        routeBasePath: "aws",
-        sidebarPath: "./sidebars-aws.js",
+        id: "providers",
+        path: "docs-providers",
+        routeBasePath: "providers",
+        sidebarPath: "./sidebars-providers.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
@@ -255,17 +242,10 @@ const config = {
           },
           {
             type: "docSidebar",
-            sidebarId: "cloudProviderSidebar",
-            docsPluginId: "cloud-provider",
+            sidebarId: "providersSidebar",
+            docsPluginId: "providers",
             position: "left",
-            label: "Cloud Providers",
-          },
-          {
-            type: "docSidebar",
-            sidebarId: "awsSidebar",
-            docsPluginId: "aws",
-            position: "left",
-            label: "AWS",
+            label: "Providers",
           },
           {
             type: "docSidebar",
@@ -305,12 +285,8 @@ const config = {
                 to: "/framework",
               },
               {
-                label: "Cloud Providers",
-                to: "/cloud-provider",
-              },
-              {
-                label: "AWS",
-                to: "/aws",
+                label: "Providers",
+                to: "/providers",
               },
             ],
           },

@@ -91,7 +91,7 @@ For an overview of both approaches and how to create a plugin, see the [Plugin S
 
 ## Next Steps
 
-- [AWS Get Started](/docs/aws/get-started) - Deploy your application to AWS
+- [AWS Get Started](/providers/aws/get-started) - Deploy your application to AWS
 - [Writing Unit Tests](./writing-unit-tests.md) - Write tests for your Reventless application
 
 ## Reventless Components

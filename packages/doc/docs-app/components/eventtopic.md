@@ -265,5 +265,5 @@ type outputs = {
 
 ## AWS Implementation
 
-For detailed implementation, see [EventTopic AWS Adapter Documentation](/aws/adapters/eventtopic).
+For detailed implementation, see [EventTopic AWS Adapter Documentation](/providers/aws/adapters/eventtopic).
 

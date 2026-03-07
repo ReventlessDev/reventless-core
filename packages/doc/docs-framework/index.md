@@ -7,7 +7,7 @@ sidebar_position: 1
 
 This guide is for contributors to the **`reventless`** package — the cloud-agnostic framework core that application developers build on top of.
 
-If you are building an application with Reventless, see the [App Developer Guide](/app). If you are writing a new cloud provider adapter package, see the [Cloud Provider Guide](/cloud-provider).
+If you are building an application with Reventless, see the [App Developer Guide](/app). If you are writing a new cloud provider adapter package, see the [Providers Guide](/providers).
 
 ## What the Framework Is
 
