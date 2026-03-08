@@ -19,7 +19,7 @@ This is a Lerna monorepo. Packages are organized by type — **always place new 
 | `rescript/` | ReScript bindings for JS/npm libraries | `rescript-uuid`, `rescript-graphql-yoga` |
 | `reventless/` | Reventless framework + extension packages | `reventless-spec`, `reventless-in-memory` |
 | `examples/` | Example applications | `examples/online-shop-aggregates/`, `examples/online-shop-dcb/` |
-| `packages/` | Build tooling and documentation only | `doc`, `aws-lambda-layer` |
+| `packages/` | Build tooling and documentation only | `doc` |
 
 All four folders are Lerna workspaces (`lerna.json` packages) and npm workspaces (`package.json` workspaces).
 
@@ -197,6 +197,7 @@ From the codebase documentation:
 - `reventless-in-memory` — in-memory platform for local dev and testing
 - `reventless-interop` — JS interop helpers
 - `reventless-gen` — code generation utilities
+- `reventless-layer-builder` — Lambda layer builder (private)
 
 **`rescript/` — ReScript bindings:**
 - `rescript-aws-sdk`, `rescript-pulumi-pulumi`, `rescript-pulumi-aws`
@@ -211,7 +212,6 @@ From the codebase documentation:
 
 **`packages/` — Build tooling and documentation:**
 - `doc` — Docusaurus documentation site
-- `aws-lambda-layer` — Lambda layer builder
 
 **Packages in UI Repo (separate repository):**
 - `reventless-ui`, `routes`

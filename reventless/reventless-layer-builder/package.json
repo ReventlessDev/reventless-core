@@ -1,0 +1,28 @@
+{
+  "name": "@reventlessdev/reventless-layer-builder",
+  "version": "0.1.1-alpha.5",
+  "description": "aws lambda layer to be used in reventless based projects",
+  "private": true,
+  "license": "MIT",
+  "main": "src/index.js",
+  "directories": {
+    "lib": "src"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "node ./builder/index.js"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/ReventlessDev/reventless-core/issues"
+  },
+  "dependencies": {
+    "debug": "^4.3.4",
+    "ora": "^6.3.1",
+    "rimraf": "^6.1.3",
+    "treeverse": "^3.0.0",
+    "zip-a-folder": "^1.1.5"
+  }
+}

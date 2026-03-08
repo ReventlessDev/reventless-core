@@ -1,0 +1,118 @@
+name: Build Lambda Layer
+
+on:
+  push:
+    tags:
+      - "@reventlessdev/reventless-aws@*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version of @reventlessdev/reventless-aws to build the layer for"
+        required: true
+        type: string
+
+concurrency:
+  group: build-lambda-layer
+  cancel-in-progress: false
+
+jobs:
+  build-layer:
+    name: Build and Publish Lambda Layer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    strategy:
+      matrix:
+        region: [eu-west-1]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22.17.1"
+          cache: "npm"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Extract version from tag: @reventlessdev/reventless-aws@1.2.3 -> 1.2.3
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG##*@}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building layer for @reventlessdev/reventless-aws@$VERSION"
+
+      - name: Install dependencies
+        working-directory: reventless/reventless-layer-builder
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build layer
+        working-directory: reventless/reventless-layer-builder
+        run: npm run build
+        env:
+          REVENTLESS_AWS_VERSION: ${{ steps.version.outputs.version }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify artifact
+        working-directory: reventless/reventless-layer-builder/builder
+        run: |
+          if [ ! -f reventless-layer.zip ]; then
+            echo "Error: reventless-layer.zip not found"
+            exit 1
+          fi
+          SIZE=$(stat --printf="%s" reventless-layer.zip 2>/dev/null || stat -f%z reventless-layer.zip)
+          SIZE_MB=$((SIZE / 1024 / 1024))
+          echo "Layer zip size: ${SIZE_MB}MB (${SIZE} bytes)"
+          if [ "$SIZE_MB" -gt 40 ]; then
+            echo "Warning: Layer size exceeds 40MB (approaching 50MB Lambda limit)"
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_LAYER_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_LAYER_SECRET_ACCESS_KEY }}
+          aws-region: ${{ matrix.region }}
+
+      - name: Publish Lambda layer
+        id: publish
+        run: |
+          LAYER_VERSION=$(aws lambda publish-layer-version \
+            --layer-name reventless-aws \
+            --description "reventless-aws v${{ steps.version.outputs.version }}" \
+            --zip-file fileb://reventless/reventless-layer-builder/builder/reventless-layer.zip \
+            --compatible-runtimes nodejs20.x nodejs22.x \
+            --query 'LayerVersionArn' \
+            --output text)
+          echo "layer_arn=$LAYER_VERSION" >> $GITHUB_OUTPUT
+          echo "Published layer: $LAYER_VERSION"
+
+      - name: Upload zip as release asset and append layer ARN
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="@reventlessdev/reventless-aws@${VERSION}"
+          LAYER_ARN="${{ steps.publish.outputs.layer_arn }}"
+          REGION="${{ matrix.region }}"
+
+          # Upload zip as release asset
+          gh release upload "$TAG" \
+            reventless/reventless-layer-builder/builder/reventless-layer.zip#"reventless-layer-${REGION}.zip" \
+            --clobber || echo "Could not upload release asset (release may not exist yet)"
+
+          # Append layer ARN to release notes
+          EXISTING_NOTES=$(gh release view "$TAG" --json body -q .body 2>/dev/null || echo "")
+          NEW_NOTES="${EXISTING_NOTES}
+
+**Lambda Layer ARN (${REGION}):** \`${LAYER_ARN}\`"
+          gh release edit "$TAG" --notes "$NEW_NOTES" || echo "Could not update release notes"

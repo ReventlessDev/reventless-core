@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:PublishLayerVersion",
+        "lambda:GetLayerVersion"
+      ],
+      "Resource": "arn:aws:lambda:*:*:layer:reventless-aws*"
+    }
+  ]
+}
