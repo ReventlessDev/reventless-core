@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.5...@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.6) (2026-03-08)
+
+### Features
+
+* replace explicit queryMode with automatic schema-driven DCB query construction ([8df4350](https://github.com/ReventlessDev/reventless-core/commit/8df4350c37f1f15678f4796f229647eaeb3e8222))
+
+
 # 1.0.0-alpha.5 (2026-03-08)
 
 ### Features
