@@ -1,6 +1,6 @@
 # Platform & Plugin Guide
 
-This guide walks through building platforms with plugins using Reventless. It covers both the **aggregate** and **DCB** (Decision-Causation-Based) approaches, using the **online-shop** examples (`examples/online-shop-aggregates/`, `examples/online-shop-dcb/`).
+This guide walks through building platforms with plugins using Reventless. It covers both the **aggregate** and **DCB** (Dynamic Consistency Boundary) approaches, using the **online-shop** examples (`examples/online-shop-aggregates/`, `examples/online-shop-dcb/`).
 
 ---
 
@@ -868,7 +868,7 @@ These aggregates:
 
 ## DCB Approach
 
-The **DCB** (Decision-Causation-Based) approach is an alternative to the aggregate pattern. Instead of per-entity aggregates with private event streams, DCB uses a **shared event log** per bounded context. Commands are handled by **StateChangeSlices** (write-side) and queries by **StateViewSlices** (read-side). Both slice types read from the same event log, filtering events by tags.
+The **DCB** (Dynamic Consistency Boundary) approach is an alternative to the aggregate pattern. Instead of per-entity aggregates with private event streams, DCB uses a **shared event log** per bounded context. Commands are handled by **StateChangeSlices** (write-side) and queries by **StateViewSlices** (read-side). Both slice types read from the same event log, filtering events by tags.
 
 The DCB example lives in `examples/online-shop-dcb/` and mirrors the same online-shop domain as the aggregate example.
 

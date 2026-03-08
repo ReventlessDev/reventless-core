@@ -180,14 +180,15 @@ Order.OrderCancelled
 
 ## Implementations
 
-The same domain is implemented twice — once using each core Reventless plugin style:
+The same domain is implemented three times — once using each core Reventless plugin style:
 
 | Implementation | Plugin Style | Consistency | Best For |
 |---|---|---|---|
 | [Aggregate-Based](./aggregate-based) | One event log per aggregate instance | Per aggregate instance | Traditional DDD, isolated entity lifecycles |
 | [DCB-Based](./dcb-based) | Single shared event log with tag-filtered reads | Per command (optimistic) | Cross-entity consistency, simpler infrastructure |
+| [Hybrid](./hybrid-based) | Mixed — aggregates for independent entities, DCB for interdependent entities | Per entity type | Best of both — isolated streams where simple, cross-entity decisions where needed |
 
-Both implementations cover the full **Catalog** and **Ordering** Plugins — including cross-plugin integration — and serve as a concrete reference for comparing the two approaches side by side.
+All three implementations cover the full **Catalog** and **Ordering** Plugins — including cross-plugin integration — and serve as a concrete reference for comparing the approaches side by side.
 
 ### Package Structure
 
@@ -277,27 +278,38 @@ The Extension Point name is the only runtime coupling. At deploy time, both Plug
 
 ---
 
-## Comparing the Two Approaches
+## Comparing the Approaches
 
-| Aspect | Aggregate-Based | DCB-Based |
-|---|---|---|
-| Event storage | One log per aggregate instance | Single shared log per Plugin |
-| Consistency boundary | Per aggregate instance (sequential) | Per command (optimistic concurrency) |
-| State for decisions | Full aggregate state | Minimal `decisionModel` per slice |
-| Cross-entity consistency | Not directly supported | Supported — slices can read across items |
-| Read model wiring | Separate projection mapping modules | `project` function inline in the slice |
-| Infrastructure footprint | More event log tables | Fewer tables, more events per table |
+| Aspect | Aggregate-Based | DCB-Based | Hybrid |
+|---|---|---|---|
+| Event storage | One log per aggregate instance | Single shared log per Plugin | Both: per-aggregate logs + shared DCB log |
+| Consistency boundary | Per aggregate instance (sequential) | Per command (optimistic concurrency) | Per entity type — aggregate or optimistic |
+| State for decisions | Full aggregate state | Minimal `decisionModel` per slice | Both patterns coexist |
+| Cross-entity consistency | Not directly supported | Supported — slices can read across items | Supported for DCB entities only |
+| Read model wiring | Separate projection mapping modules | `project` function inline in the slice | Both patterns coexist |
+| Infrastructure footprint | More event log tables | Fewer tables, more events per table | Middle ground |
 
 Choose the aggregate-based approach when entity lifecycles are independent and you want the simplest possible consistency model. Choose DCB when you need consistency across multiple entities in the same command, or when you want to avoid the overhead of per-instance event streams.
+
+### Combining Both Approaches
+
+The framework supports both `~aggregates` and `~dcbSpec` in the same `Plugin.make` call. This lets you model each entity with the approach that fits best:
+
+- **Independent entities** — like Category and Customer — stay as aggregates with isolated event streams and per-instance consistency
+- **Interdependent entities** — like Product + ProductDemand and Order + CatalogProduct — share a DCB event log with tag-filtered reads and per-command optimistic concurrency
+
+The DCB event log in a hybrid Plugin is **smaller** than in the pure DCB approach because it excludes the aggregate entities' events. For example, the hybrid `CatalogEventLog` contains only Product and ProductDemand events — Category events live in the Category aggregate's own event log.
+
+Cross-plugin communication via Extension Points is identical regardless of whether the source entity uses an aggregate or DCB internally. The EP contract abstracts away the internal modeling choice.
 
 ### Automation and Integration Components
 
 The three additional features are implemented with different component types in each approach, highlighting the trade-offs:
 
-| Feature | Aggregate-Based | DCB-Based | Key Difference |
+| Feature | Aggregate-Based | DCB-Based | Hybrid |
 |---|---|---|---|
-| Auto-Ship Order | **EventMapper** | **AutomationSlice** | Stateless fire-and-forget vs. stateful TODO list with resolution tracking and retry |
-| Import Product from Supplier | **Task** (S3 file upload) | **InboundTranslationSlice** (webhook) | File-triggered with CSV parsing vs. API-triggered with schema validation and audit log |
-| Send Order Confirmation Email | **SideEffectHandler** | **OutboundTranslationSlice** | Fire-and-forget vs. per-item retry with status tracking |
+| Auto-Ship Order | **EventMapper** | **AutomationSlice** | **AutomationSlice** (DCB) |
+| Import Product from Supplier | **Task** (S3 file upload) | **InboundTranslationSlice** (webhook) | **InboundTranslationSlice** (DCB) |
+| Send Order Confirmation Email | **SideEffectHandler** | **OutboundTranslationSlice** | **OutboundTranslationSlice** (DCB) |
 
 Aggregate-based components are simpler but offer less built-in reliability. DCB-based slices provide more operational guarantees (retry, audit, status tracking) at the cost of additional infrastructure.

@@ -15,6 +15,11 @@ const sidebars = {
       label: 'DCB based plugin',
     },
     {
+      type: 'doc',
+      id: 'hybrid-based',
+      label: 'Hybrid plugin',
+    },
+    {
       type: 'category',
       label: 'Catalog',
       link: {
