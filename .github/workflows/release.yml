@@ -100,10 +100,10 @@ jobs:
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
-            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --yes --no-push
+            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push
           else
             echo "Creating regular release versions"
-            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --yes --no-push
+            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push
           fi
 
           echo "Lerna version completed successfully"
