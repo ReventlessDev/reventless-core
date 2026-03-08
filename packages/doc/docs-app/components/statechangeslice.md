@@ -124,8 +124,8 @@ DcbEventLog: DcbEventLog { class: dcb-event-log }
 Storage: DynamoDB { class: aws-service }
 
 CommandTopic -> StateChangeSlice: "handleCommands(commands)"
-StateChangeSlice -> StateChangeSlice: Extract DCB tags from command
-StateChangeSlice -> DcbEventLog: "read(~query)"
+StateChangeSlice -> StateChangeSlice: "Build query from command schema"
+StateChangeSlice -> DcbEventLog: "readStream(~query)"
 DcbEventLog -> Storage: Query events by tags
 Storage --> DcbEventLog: events
 StateChangeSlice -> StateChangeSlice: "reduce(events) → decisionModel"
@@ -170,6 +170,15 @@ switch await dcbEventLog.append(newEvents, ~condition) {
 - Uses conditional append: only succeeds if no events were added after `headPosition`
 - Retries up to 3 times on conflict
 - Provides detailed logging for debugging
+
+### Automatic Query Construction
+
+The query is built automatically from the command schema via `DcbTag.buildQueryFromCommand`:
+
+- **Scalar tagged fields** (e.g., `itemId: @s.matches(DcbTag.string) string`) — all tags go into a single AND clause (single-entity query)
+- **Tagged array fields** (e.g., `productId: array<@s.matches(DcbTag.string) string>`) — each element becomes its own OR clause (cross-entity query)
+
+No configuration is needed — the schema determines the query mode automatically. See the [Cross-Entity Queries section in the Platform Guide](/guides/platform-and-plugin-guide#cross-entity-queries-tagged-arrays) for a full example.
 
 ## Error Handling
 

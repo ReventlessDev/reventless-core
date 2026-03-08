@@ -9,11 +9,10 @@ let name = "ChangeProductPrice"
 module DcbEventLogSpec = CatalogEventLog
 
 @schema
-type command =
-  | ChangeProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
+type command = ChangeProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
 
 @schema
-type error = | ProductNotFound
+type error = ProductNotFound
 
 type decisionModel = {exists: bool, currentPrice: float}
 

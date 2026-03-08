@@ -18,7 +18,7 @@ type command =
     })
 
 @schema
-type error = | ProductAlreadyExists
+type error = ProductAlreadyExists
 
 type decisionModel = {exists: bool}
 

@@ -10,14 +10,10 @@ module DcbEventLogSpec = OrderingEventLog
 
 @schema
 type command =
-  | RegisterCustomer({
-      customerId: @s.matches(DcbTag.string) string,
-      email: string,
-      address: string,
-    })
+  | RegisterCustomer({customerId: @s.matches(DcbTag.string) string, email: string, address: string})
 
 @schema
-type error = | CustomerAlreadyRegistered
+type error = CustomerAlreadyRegistered
 
 type decisionModel = {exists: bool}
 

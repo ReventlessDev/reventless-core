@@ -10,13 +10,10 @@ module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | ChangeProductDescription({
-      productId: @s.matches(DcbTag.string) string,
-      description: string,
-    })
+  ChangeProductDescription({productId: @s.matches(DcbTag.string) string, description: string})
 
 @schema
-type error = | ProductNotFound
+type error = ProductNotFound
 
 type decisionModel = {exists: bool, currentDescription: string}
 

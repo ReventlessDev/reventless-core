@@ -35,7 +35,9 @@ let eventLog = OrderingEventLogMaker.make(~name="Ordering")
 // Build StateChangeSlices
 // ─────────────────────────────────────────────────────────────
 
-module SyncCatalogProductMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(SyncCatalogProduct)
+module SyncCatalogProductMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(
+  SyncCatalogProduct,
+)
 module PlaceOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(PlaceOrder)
 module ShipOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ShipOrder)
 module CancelOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(CancelOrder)
@@ -80,12 +82,16 @@ let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => 
 
 let publishJsonsOutput = publishJsons->Pulumi.Output.make
 
-let _syncCatalogProductSlice =
-  SyncCatalogProductMaker.make(~dcbEventLog=eventLog, ~publishJsons=publishJsonsOutput)
+let _syncCatalogProductSlice = SyncCatalogProductMaker.make(
+  ~dcbEventLog=eventLog,
+  ~publishJsons=publishJsonsOutput,
+)
 let _placeOrderSlice = PlaceOrderMaker.make(~dcbEventLog=eventLog, ~publishJsons=publishJsonsOutput)
 let _shipOrderSlice = ShipOrderMaker.make(~dcbEventLog=eventLog, ~publishJsons=publishJsonsOutput)
-let _cancelOrderSlice =
-  CancelOrderMaker.make(~dcbEventLog=eventLog, ~publishJsons=publishJsonsOutput)
+let _cancelOrderSlice = CancelOrderMaker.make(
+  ~dcbEventLog=eventLog,
+  ~publishJsons=publishJsonsOutput,
+)
 
 // ─────────────────────────────────────────────────────────────
 // Test helpers
@@ -119,58 +125,62 @@ describe("Ordering Hybrid E2E:", () => {
   // — CatalogProduct sync —
 
   testPromise("SyncCatalogProduct publishes 1 event", async () => {
-    let cmd =
-      SyncCatalogProduct.SyncNewProduct({
-        productId: "prod-1",
-        name: "Laptop",
-        price: 999.99,
-      })->Message.encode(SyncCatalogProduct.commandSchema)
+    let cmd = SyncCatalogProduct.SyncNewProduct({
+      productId: "prod-1",
+      name: "Laptop",
+      price: 999.99,
+    })->Message.encode(SyncCatalogProduct.commandSchema)
     await dispatch(cmd, "prod-1")
+    expect(capturedEventCount.contents)->toBe(1)
+  })
+
+  testPromise("SyncCatalogProduct for prod-2", async () => {
+    let cmd = SyncCatalogProduct.SyncNewProduct({
+      productId: "prod-2",
+      name: "Mouse",
+      price: 29.99,
+    })->Message.encode(SyncCatalogProduct.commandSchema)
+    await dispatch(cmd, "prod-2")
     expect(capturedEventCount.contents)->toBe(1)
   })
 
   // — Order —
 
-  testPromise("PlaceOrder publishes 1 event", async () => {
-    let cmd =
-      PlaceOrder.PlaceOrder({
-        orderId: "ord-1",
-        customerId: "cust-1",
-        productIds: ["prod-1", "prod-2"],
-      })->Message.encode(PlaceOrder.commandSchema)
+  testPromise("PlaceOrder with synced products publishes 1 event", async () => {
+    let cmd = PlaceOrder.PlaceOrder({
+      orderId: "ord-1",
+      customerId: "cust-1",
+      productId: ["prod-1", "prod-2"],
+    })->Message.encode(PlaceOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
 
   testPromise("duplicate PlaceOrder produces 0 events (OrderAlreadyPlaced)", async () => {
-    let cmd =
-      PlaceOrder.PlaceOrder({
-        orderId: "ord-1",
-        customerId: "cust-1",
-        productIds: ["prod-1"],
-      })->Message.encode(PlaceOrder.commandSchema)
+    let cmd = PlaceOrder.PlaceOrder({
+      orderId: "ord-1",
+      customerId: "cust-1",
+      productId: ["prod-1"],
+    })->Message.encode(PlaceOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
 
   testPromise("ShipOrder on placed order publishes 1 event", async () => {
-    let cmd =
-      ShipOrder.ShipOrder({orderId: "ord-1"})->Message.encode(ShipOrder.commandSchema)
+    let cmd = ShipOrder.ShipOrder({orderId: "ord-1"})->Message.encode(ShipOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(1)
   })
 
   testPromise("duplicate ShipOrder is idempotent (0 events)", async () => {
-    let cmd =
-      ShipOrder.ShipOrder({orderId: "ord-1"})->Message.encode(ShipOrder.commandSchema)
+    let cmd = ShipOrder.ShipOrder({orderId: "ord-1"})->Message.encode(ShipOrder.commandSchema)
     await dispatch(cmd, "ord-1")
     expect(capturedEventCount.contents)->toBe(0)
   })
 
   testPromise("CancelOrder on non-existent order produces 0 events (OrderNotFound)", async () => {
     let cmd =
-      CancelOrder.CancelOrder({orderId: "no-such-order"})
-      ->Message.encode(CancelOrder.commandSchema)
+      CancelOrder.CancelOrder({orderId: "no-such-order"})->Message.encode(CancelOrder.commandSchema)
     await dispatch(cmd, "no-such-order")
     expect(capturedEventCount.contents)->toBe(0)
   })

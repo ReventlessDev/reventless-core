@@ -182,6 +182,8 @@ A lightweight shadow copy of Catalog product data, kept in sync via Catalog's Ex
 
 **Why Order + CatalogProduct share DCB?** Both entities benefit from living in the same event log. The shared log means CatalogProduct sync events and Order events are available together, enabling the framework to deliver both in filtered reads for projections like `AvailableProductsView`.
 
+**Cross-entity validation:** The `PlaceOrder` command uses a tagged array field (`productId: array<@s.matches(DcbTag.string) string>`) to reference product IDs. The runtime automatically builds a multi-clause OR query that fetches both Order events (by `orderId`) and CatalogProduct events (by each `productId`) into the same decision model — enabling PlaceOrder to reject orders referencing unknown products.
+
 ### OrderingEventLog
 
 The DCB event log contains **only Order and CatalogProduct events** — no Customer events. Customer has its own aggregate event log.

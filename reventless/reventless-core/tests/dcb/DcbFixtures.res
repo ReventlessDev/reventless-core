@@ -7,7 +7,10 @@ module TestEventLogSpec = {
   type event =
     | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
     | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
-    | CountUpdated({category: @s.matches(Reventless.DcbTag.string) string, amount: @s.matches(Reventless.DcbTag.int) int})
+    | CountUpdated({
+        category: @s.matches(Reventless.DcbTag.string) string,
+        amount: @s.matches(Reventless.DcbTag.int) int,
+      })
     | SimpleEvent
 }
 
@@ -72,7 +75,6 @@ module TestCommandSpec = {
       }
     | NoOp => Ok([])
     }
-
 }
 
 // --- Mock Storage ---
@@ -100,7 +102,10 @@ let makeMockStorage = (): mockStorage => {
   let publishedEventsRef: ref<array<publishedEvent>> = ref([])
   let failNextAppendsRef = ref(0)
 
-  let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: Reventless.DcbTag.query) =>
+  let matchesQuery = (
+    event: DcbEventLog_Adapter.rawSequencedEvent,
+    query: Reventless.DcbTag.query,
+  ) =>
     if query->Array.length == 0 {
       true
     } else {
@@ -258,3 +263,17 @@ type multiFieldEvent =
       tenantId: @s.matches(Reventless.DcbTag.string) string,
       sessionId: @s.matches(Reventless.DcbTag.string) string,
     })
+
+// --- Cross-entity test schemas (for extractTagsExpanded / buildQuery tests) ---
+
+@schema
+type crossEntityCommand =
+  | PlaceOrder({
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+      customerId: string,
+      productId: array<@s.matches(Reventless.DcbTag.string) string>,
+    })
+
+@schema
+type singleTagCommand =
+  CreateItem({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})

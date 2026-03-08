@@ -9,11 +9,10 @@ let name = "AddCategory"
 module DcbEventLogSpec = CatalogEventLog
 
 @schema
-type command =
-  | AddCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
+type command = AddCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
 
 @schema
-type error = | CategoryAlreadyExists
+type error = CategoryAlreadyExists
 
 type decisionModel = {exists: bool, archived: bool}
 

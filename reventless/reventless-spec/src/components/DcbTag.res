@@ -85,14 +85,22 @@ let dcbTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name
 /**
 A sury string schema annotated as a DCB tag field.
 
-Use with `@s.matches(DcbTag.string)` on event record fields that should
-be extracted as content-based routing tags.
+Use with `@s.matches(DcbTag.string)` on event and command record fields that
+should be extracted as content-based routing tags. Works on both scalar fields
+and array element types.
 
 @example
 ```rescript
-// CatalogEventLog.res
+// Scalar tag (single-entity query)
 @schema type event =
   | ProductAdded({productId: @s.matches(DcbTag.string) string, name: string, price: float})
+
+// Array tag (cross-entity query — automatic per-element OR clauses)
+@schema type command =
+  | PlaceOrder({
+      orderId: @s.matches(DcbTag.string) string,
+      productId: array<@s.matches(DcbTag.string) string>,
+    })
 ```
 */
 let string: S.t<string> = S.string->S.Metadata.set(~id=dcbTagId, true)
@@ -110,6 +118,16 @@ external toUnknownSchema: S.t<'a> => S.t<unknown> = "%identity"
 /** Returns `true` if the schema was annotated with `DcbTag.string` or `DcbTag.int`. */
 let isTagged = (fieldSchema: S.t<unknown>) =>
   S.Metadata.get(fieldSchema, ~id=dcbTagId)->Option.isSome
+
+/**
+Returns `true` if the schema is an array whose item schema is DCB-tagged.
+Used by `extractTagsFromPropertiesExpanded` to detect `array<@s.matches(DcbTag.string) string>`.
+*/
+let isTaggedArray = (fieldSchema: S.t<unknown>) =>
+  switch fieldSchema {
+  | Array({additionalItems: Schema(itemSchema)}) => isTagged(itemSchema)
+  | _ => false
+  }
 
 /** Converts a JSON value to its string representation for use as a tag value. */
 let jsonValueToString = json =>
@@ -245,6 +263,166 @@ let extractEventTypes = (schema: S.t<'event>): array<string> => {
     )
     ->Option.getOr([])
   | _ => []
+  }
+}
+
+// --- Array-expanded tag extraction ---
+
+/**
+Extracts tags from a flat JSON object, expanding array values into per-element tags.
+
+For scalar tagged fields, behaves identically to `extractTagsFromProperties`.
+For array tagged fields, produces one tag per element:
+`productIds: ["p1", "p2"]` → `[{key: "productIds", value: "p1"}, {key: "productIds", value: "p2"}]`
+*/
+let extractTagsFromPropertiesExpanded = (
+  properties: dict<S.t<unknown>>,
+  jsonDict: dict<JSON.t>,
+) =>
+  properties
+  ->Dict.toArray
+  ->Array.flatMap(((fieldName, fieldSchema)) =>
+    if isTagged(fieldSchema) {
+      switch jsonDict->Dict.get(fieldName) {
+      | Some(jsonValue) => [{key: fieldName, value: jsonValue->jsonValueToString}]
+      | None => []
+      }
+    } else if isTaggedArray(fieldSchema) {
+      switch jsonDict->Dict.get(fieldName) {
+      | Some(JSON.Array(elements)) =>
+        elements->Array.map(element => {key: fieldName, value: element->jsonValueToString})
+      | _ => []
+      }
+    } else {
+      []
+    }
+  )
+
+/**
+Extracts DCB tags from an event JSON value, expanding array values into per-element tags.
+
+Like `extractTagsFromJson` but array tagged fields produce one tag per element
+instead of a single tag with the stringified array.
+*/
+let extractTagsFromJsonExpanded = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
+  switch schema {
+  | Union({anyOf}) =>
+    switch json->JSON.Decode.object {
+    | Some(jsonDict) =>
+      let jsonTag = jsonDict->Dict.get("TAG")->Option.flatMap(j =>
+        switch j {
+        | JSON.String(s) => Some(s)
+        | _ => None
+        }
+      )
+      anyOf->Array.reduce([], (acc, variantSchema) =>
+        if acc->Array.length > 0 {
+          acc
+        } else {
+          switch variantSchema {
+          | Object({items, properties}) =>
+            let variantTag = items
+              ->Array.find(item => item.location == "TAG")
+              ->Option.flatMap(item =>
+                switch item.schema {
+                | String({const}) => Some(const)
+                | _ => None
+                }
+              )
+            if variantTag == jsonTag {
+              extractTagsFromPropertiesExpanded(properties, jsonDict)
+            } else {
+              []
+            }
+          | _ => []
+          }
+        }
+      )
+    | None => []
+    }
+  | Object({properties}) =>
+    switch json->JSON.Decode.object {
+    | Some(jsonDict) => extractTagsFromPropertiesExpanded(properties, jsonDict)
+    | None => []
+    }
+  | _ => []
+  }
+
+/**
+Extracts DCB tags from a typed value, expanding array tagged fields into per-element tags.
+
+@example
+```rescript
+let tags = DcbTag.extractTagsExpanded(
+  PlaceOrder.commandSchema,
+  PlaceOrder({orderId: "ord-1", customerId: "c1", productIds: ["p1", "p2"]}),
+)
+// [{key: "orderId", value: "ord-1"}, {key: "productIds", value: "p1"}, {key: "productIds", value: "p2"}]
+```
+*/
+let extractTagsExpanded = (schema: S.t<'a>, value: 'a): array<tag> => {
+  let json = value->S.reverseConvertToJsonOrThrow(schema)
+  extractTagsFromJsonExpanded(schema->toUnknownSchema, json)
+}
+
+// --- Automatic query construction from command schema ---
+
+/**
+Returns `true` if any field in the schema is a tagged array
+(`array<@s.matches(DcbTag.string) string>`).
+Used to automatically determine whether to build single-clause or multi-clause queries.
+*/
+let hasTaggedArrayFields = (schema: S.t<'a>): bool =>
+  switch schema->toUnknownSchema {
+  | Union({anyOf}) =>
+    anyOf->Array.some(variantSchema =>
+      switch variantSchema {
+      | Object({properties}) =>
+        properties->Dict.toArray->Array.some(((_, fieldSchema)) => isTaggedArray(fieldSchema))
+      | _ => false
+      }
+    )
+  | Object({properties}) =>
+    properties->Dict.toArray->Array.some(((_, fieldSchema)) => isTaggedArray(fieldSchema))
+  | _ => false
+  }
+
+/**
+Builds a DCB query from a command value and its schema.
+
+Automatically detects the query mode from the schema:
+- If the schema has tagged array fields → cross-entity mode: each tag becomes
+  its own OR clause (per-element expansion for arrays).
+- Otherwise → single-entity mode: all tags go into one AND clause.
+
+@example
+```rescript
+// Single-entity command → single AND clause
+let query = DcbTag.buildQueryFromCommand(
+  ~eventTypes=["ItemCreated"],
+  ~schema=CreateItem.commandSchema,
+  ~value=CreateItem({itemId: "item-1", name: "Test"}),
+)
+// [{eventTypes: ["ItemCreated"], tags: [{key: "itemId", value: "item-1"}]}]
+
+// Cross-entity command → per-element OR clauses
+let query = DcbTag.buildQueryFromCommand(
+  ~eventTypes=["OrderPlaced", "CatalogProductSynced"],
+  ~schema=PlaceOrder.commandSchema,
+  ~value=PlaceOrder({orderId: "ord-1", customerId: "c1", productId: ["p1", "p2"]}),
+)
+// [{eventTypes: [...], tags: [{key: "orderId", value: "ord-1"}]},
+//  {eventTypes: [...], tags: [{key: "productId", value: "p1"}]},
+//  {eventTypes: [...], tags: [{key: "productId", value: "p2"}]}]
+```
+*/
+let buildQueryFromCommand = (~eventTypes, ~schema: S.t<'a>, ~value: 'a): query => {
+  if hasTaggedArrayFields(schema) {
+    let tags = extractTagsExpanded(schema, value)
+    tags->Array.map(tag => {eventTypes, tags: [{key: tag.key, value: tag.value}]})
+  } else {
+    let tags = extractTags(schema, value)
+    [{eventTypes, tags}]
   }
 }
 

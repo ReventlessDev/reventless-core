@@ -9,7 +9,7 @@ open TestFixtures
 
 module ItemEventLog = {
   @schema
-  type event = | ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
+  type event = ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -21,10 +21,10 @@ module AddItemSpec = {
   module DcbEventLogSpec = ItemEventLog
 
   @schema
-  type command = | AddItem({id: @s.matches(Reventless.DcbTag.string) string, name: string})
+  type command = AddItem({id: @s.matches(Reventless.DcbTag.string) string, name: string})
 
   @schema
-  type error = | ItemAlreadyExists
+  type error = ItemAlreadyExists
 
   type decisionModel = bool // true = item exists
   let initialDecisionModel = false
@@ -128,11 +128,7 @@ let tagQuery = (id: string): Reventless.DcbTag.query => [
   {tags: [{Reventless.DcbTag.key: "id", value: id}]},
 ]
 
-let typeQuery = (eventType: string): Reventless.DcbTag.query => [
-  {eventTypes: [eventType]},
-]
+let typeQuery = (eventType: string): Reventless.DcbTag.query => [{eventTypes: [eventType]}]
 
 let addItemJson = (id, name) =>
-  AddItemSpec.AddItem({id, name})->S.reverseConvertToJsonOrThrow(
-    AddItemSpec.commandSchema,
-  )
+  AddItemSpec.AddItem({id, name})->S.reverseConvertToJsonOrThrow(AddItemSpec.commandSchema)

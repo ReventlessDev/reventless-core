@@ -206,12 +206,23 @@ module MyDcbEventLogSpec = {
 }
 ```
 
-The `@s.matches(DcbTag.string)` and `@s.matches(DcbTag.int)` annotations mark fields as queryable tags.
+The `@s.matches(DcbTag.string)` and `@s.matches(DcbTag.int)` annotations mark fields as queryable tags. Tags can be applied to both scalar fields and array element types:
+
+```rescript
+// Scalar tag (single-entity queries)
+| ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
+
+// Array tag (cross-entity queries — automatic per-element OR clauses)
+| PlaceOrder({
+    orderId: @s.matches(DcbTag.string) string,
+    productId: array<@s.matches(DcbTag.string) string>,
+  })
+```
 
 ### Available Tag Schemas
 
 ```rescript
-// String tag - for textual identifiers
+// String tag - for textual identifiers (scalar or array elements)
 let string: S.t<string> = S.string->S.Metadata.set(~id=dcbTagId, true)
 
 // Integer tag - for numeric identifiers
@@ -223,8 +234,18 @@ let int: S.t<int> = S.int->S.Metadata.set(~id=dcbTagId, true)
 The `DcbTag` module provides functions for working with tags:
 
 ```rescript
-// Extract tags from an event instance
+// Extract tags from an event/command instance
 let extractTags: (schema: S.t<'a>, value: 'a) => array<tag>
+
+// Extract tags with array expansion (per-element tags for tagged arrays)
+let extractTagsExpanded: (schema: S.t<'a>, value: 'a) => array<tag>
+
+// Build a query automatically from a command value and its schema
+// Detects tagged arrays → cross-entity OR clauses; scalar-only → single AND clause
+let buildQueryFromCommand: (~eventTypes: array<string>, ~schema: S.t<'a>, ~value: 'a) => query
+
+// Check if a schema has any tagged array fields
+let hasTaggedArrayFields: (schema: S.t<'a>) => bool
 
 // Extract all tagged field names from a schema
 let extractTaggedFields: (schema: S.t<'event>) => array<string>
@@ -234,6 +255,9 @@ let extractEventTypes: (schema: S.t<'event>) => array<string>
 
 // Check if a schema field is tagged
 let isTagged: (fieldSchema: S.t<unknown>) => bool
+
+// Check if a schema field is a tagged array
+let isTaggedArray: (fieldSchema: S.t<unknown>) => bool
 ```
 
 ## Index Creation

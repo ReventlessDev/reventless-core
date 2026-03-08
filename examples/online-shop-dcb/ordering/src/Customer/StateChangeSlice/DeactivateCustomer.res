@@ -9,11 +9,10 @@ let name = "DeactivateCustomer"
 module DcbEventLogSpec = OrderingEventLog
 
 @schema
-type command =
-  | DeactivateCustomer({customerId: @s.matches(DcbTag.string) string})
+type command = DeactivateCustomer({customerId: @s.matches(DcbTag.string) string})
 
 @schema
-type error = | CustomerNotFound
+type error = CustomerNotFound
 
 type decisionModel = {exists: bool, deactivated: bool}
 

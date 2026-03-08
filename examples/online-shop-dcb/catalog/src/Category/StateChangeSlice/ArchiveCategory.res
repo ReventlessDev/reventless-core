@@ -9,11 +9,10 @@ let name = "ArchiveCategory"
 module DcbEventLogSpec = CatalogEventLog
 
 @schema
-type command =
-  | ArchiveCategory({categoryId: @s.matches(DcbTag.string) string})
+type command = ArchiveCategory({categoryId: @s.matches(DcbTag.string) string})
 
 @schema
-type error = | CategoryNotFound
+type error = CategoryNotFound
 
 type decisionModel = {exists: bool, archived: bool}
 

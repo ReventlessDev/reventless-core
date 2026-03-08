@@ -152,12 +152,22 @@ describe("Ordering Hybrid E2E:", () => {
     await dispatch(cmd, "prod-1");
     expect(capturedEventCount.contents).toBe(1);
   });
-  test("PlaceOrder publishes 1 event", async () => {
+  test("SyncCatalogProduct for prod-2", async () => {
+    let cmd = Message$Reventless.encode({
+      TAG: "SyncNewProduct",
+      productId: "prod-2",
+      name: "Mouse",
+      price: 29.99
+    }, SyncCatalogProduct$OrderingPlugin.commandSchema);
+    await dispatch(cmd, "prod-2");
+    expect(capturedEventCount.contents).toBe(1);
+  });
+  test("PlaceOrder with synced products publishes 1 event", async () => {
     let cmd = Message$Reventless.encode({
       TAG: "PlaceOrder",
       orderId: "ord-1",
       customerId: "cust-1",
-      productIds: [
+      productId: [
         "prod-1",
         "prod-2"
       ]
@@ -170,7 +180,7 @@ describe("Ordering Hybrid E2E:", () => {
       TAG: "PlaceOrder",
       orderId: "ord-1",
       customerId: "cust-1",
-      productIds: ["prod-1"]
+      productId: ["prod-1"]
     }, PlaceOrder$OrderingPlugin.commandSchema);
     await dispatch(cmd, "ord-1");
     expect(capturedEventCount.contents).toBe(0);

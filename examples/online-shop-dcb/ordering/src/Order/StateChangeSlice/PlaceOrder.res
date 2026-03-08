@@ -17,7 +17,7 @@ type command =
     })
 
 @schema
-type error = | OrderAlreadyPlaced
+type error = OrderAlreadyPlaced
 
 type decisionModel = {exists: bool}
 

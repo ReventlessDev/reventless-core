@@ -9,7 +9,7 @@ let name = "ShipOrder"
 module DcbEventLogSpec = OrderingEventLog
 
 @schema
-type command = | ShipOrder({orderId: @s.matches(DcbTag.string) string})
+type command = ShipOrder({orderId: @s.matches(DcbTag.string) string})
 
 @schema
 type error =

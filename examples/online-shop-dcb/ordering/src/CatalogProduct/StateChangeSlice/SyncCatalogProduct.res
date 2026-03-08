@@ -10,15 +10,8 @@ module DcbEventLogSpec = OrderingEventLog
 
 @schema
 type command =
-  | SyncNewProduct({
-      productId: @s.matches(DcbTag.string) string,
-      name: string,
-      price: float,
-    })
-  | ChangeSyncedPrice({
-      productId: @s.matches(DcbTag.string) string,
-      price: float,
-    })
+  | SyncNewProduct({productId: @s.matches(DcbTag.string) string, name: string, price: float})
+  | ChangeSyncedPrice({productId: @s.matches(DcbTag.string) string, price: float})
 
 @schema
 type error = unit // always succeeds — sync is idempotent
@@ -35,8 +28,6 @@ let reduce = (model, event) =>
 
 let decide = (_model, command) =>
   switch command {
-  | SyncNewProduct({productId, name, price}) =>
-    Ok([CatalogProductSynced({productId, name, price})])
-  | ChangeSyncedPrice({productId, price}) =>
-    Ok([CatalogProductPriceChanged({productId, price})])
+  | SyncNewProduct({productId, name, price}) => Ok([CatalogProductSynced({productId, name, price})])
+  | ChangeSyncedPrice({productId, price}) => Ok([CatalogProductPriceChanged({productId, price})])
   }

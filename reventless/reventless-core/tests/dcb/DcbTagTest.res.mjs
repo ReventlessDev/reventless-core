@@ -128,6 +128,18 @@ Jest.describe("DcbTag:", () => {
       Jest.test("handles empty schema gracefully", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.emptyVariantSchema)), []));
       Jest.test("handles schema with int tags", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.intTagEventSchema)), ["count"]));
     });
+    Jest.describe("isTaggedArray", () => {
+      Jest.test("returns true for array of tagged strings", () => {
+        let schema = S.array(DcbTag$Reventless.string);
+        return Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTaggedArray(schema)), true);
+      });
+      Jest.test("returns false for array of plain strings", () => {
+        let schema = S.array(S.string);
+        return Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTaggedArray(schema)), false);
+      });
+      Jest.test("returns false for tagged scalar", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTaggedArray(DcbTag$Reventless.string)), false));
+      Jest.test("returns false for plain string", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTaggedArray(S.string)), false));
+    });
     Jest.describe("Complex schemas", () => {
       Jest.test("extracts from schema with many variants and fields", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTaggedFields(DcbFixtures$ReventlessCore.complexEventSchema)), [
         "orderId",
@@ -141,6 +153,130 @@ Jest.describe("DcbTag:", () => {
         "userId"
       ]));
     });
+  });
+  Jest.describe("extractTagsExpanded (array expansion)", () => {
+    Jest.test("expands array tagged field into per-element tags", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTagsExpanded(DcbFixtures$ReventlessCore.crossEntityCommandSchema, {
+      TAG: "PlaceOrder",
+      orderId: "ord-1",
+      customerId: "cust-1",
+      productId: [
+        "prod-1",
+        "prod-2"
+      ]
+    })), [
+      {
+        key: "orderId",
+        value: "ord-1"
+      },
+      {
+        key: "productId",
+        value: "prod-1"
+      },
+      {
+        key: "productId",
+        value: "prod-2"
+      }
+    ]));
+    Jest.test("handles empty array tagged field", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTagsExpanded(DcbFixtures$ReventlessCore.crossEntityCommandSchema, {
+      TAG: "PlaceOrder",
+      orderId: "ord-1",
+      customerId: "cust-1",
+      productId: []
+    })), [{
+        key: "orderId",
+        value: "ord-1"
+      }]));
+    Jest.test("scalar tagged fields unchanged", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTagsExpanded(DcbFixtures$ReventlessCore.singleTagCommandSchema, {
+      TAG: "CreateItem",
+      itemId: "item-1",
+      name: "Test"
+    })), [{
+        key: "itemId",
+        value: "item-1"
+      }]));
+  });
+  Jest.describe("buildQueryFromCommand", () => {
+    let eventTypes = [
+      "EventA",
+      "EventB"
+    ];
+    Jest.test("scalar-only command produces single AND clause", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.buildQueryFromCommand(eventTypes, DcbFixtures$ReventlessCore.singleTagCommandSchema, {
+      TAG: "CreateItem",
+      itemId: "item-1",
+      name: "Test"
+    })), [{
+        eventTypes: eventTypes,
+        tags: [{
+            key: "itemId",
+            value: "item-1"
+          }]
+      }]));
+    Jest.test("tagged array command produces per-element OR clauses", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.buildQueryFromCommand(eventTypes, DcbFixtures$ReventlessCore.crossEntityCommandSchema, {
+      TAG: "PlaceOrder",
+      orderId: "ord-1",
+      customerId: "cust-1",
+      productId: [
+        "prod-1",
+        "prod-2"
+      ]
+    })), [
+      {
+        eventTypes: eventTypes,
+        tags: [{
+            key: "orderId",
+            value: "ord-1"
+          }]
+      },
+      {
+        eventTypes: eventTypes,
+        tags: [{
+            key: "productId",
+            value: "prod-1"
+          }]
+      },
+      {
+        eventTypes: eventTypes,
+        tags: [{
+            key: "productId",
+            value: "prod-2"
+          }]
+      }
+    ]));
+    Jest.test("tagged array with single element produces two OR clauses", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.buildQueryFromCommand(eventTypes, DcbFixtures$ReventlessCore.crossEntityCommandSchema, {
+      TAG: "PlaceOrder",
+      orderId: "ord-1",
+      customerId: "cust-1",
+      productId: ["prod-1"]
+    })), [
+      {
+        eventTypes: eventTypes,
+        tags: [{
+            key: "orderId",
+            value: "ord-1"
+          }]
+      },
+      {
+        eventTypes: eventTypes,
+        tags: [{
+            key: "productId",
+            value: "prod-1"
+          }]
+      }
+    ]));
+    Jest.test("tagged array with empty array produces single clause for scalar tag", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.buildQueryFromCommand(eventTypes, DcbFixtures$ReventlessCore.crossEntityCommandSchema, {
+      TAG: "PlaceOrder",
+      orderId: "ord-1",
+      customerId: "cust-1",
+      productId: []
+    })), [{
+        eventTypes: eventTypes,
+        tags: [{
+            key: "orderId",
+            value: "ord-1"
+          }]
+      }]));
+    Jest.test("hasTaggedArrayFields detects tagged arrays", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.hasTaggedArrayFields(DcbFixtures$ReventlessCore.crossEntityCommandSchema)), true));
+    Jest.test("hasTaggedArrayFields returns false for scalar-only schemas", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.hasTaggedArrayFields(DcbFixtures$ReventlessCore.singleTagCommandSchema)), false));
   });
 });
 

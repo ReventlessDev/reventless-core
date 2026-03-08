@@ -17,6 +17,18 @@ function isTagged(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbTagId));
 }
 
+function isTaggedArray(fieldSchema) {
+  if (fieldSchema.type !== "array") {
+    return false;
+  }
+  let itemSchema = fieldSchema.additionalItems;
+  if (itemSchema === "strip" || itemSchema === "strict") {
+    return false;
+  } else {
+    return isTagged(itemSchema);
+  }
+}
+
 function jsonValueToString(json) {
   switch (typeof json) {
     case "boolean" :
@@ -131,6 +143,127 @@ function extractEventTypes(schema) {
   }
 }
 
+function extractTagsFromPropertiesExpanded(properties, jsonDict) {
+  return Object.entries(properties).flatMap(param => {
+    let fieldSchema = param[1];
+    let fieldName = param[0];
+    if (isTagged(fieldSchema)) {
+      let jsonValue = jsonDict[fieldName];
+      if (jsonValue !== undefined) {
+        return [{
+            key: fieldName,
+            value: jsonValueToString(jsonValue)
+          }];
+      } else {
+        return [];
+      }
+    }
+    if (!isTaggedArray(fieldSchema)) {
+      return [];
+    }
+    let match = jsonDict[fieldName];
+    if (match !== undefined) {
+      if (Array.isArray(match)) {
+        return match.map(element => ({
+          key: fieldName,
+          value: jsonValueToString(element)
+        }));
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  });
+}
+
+function extractTagsFromJsonExpanded(schema, json) {
+  switch (schema.type) {
+    case "object" :
+      let jsonDict = Stdlib_JSON.Decode.object(json);
+      if (jsonDict !== undefined) {
+        return extractTagsFromPropertiesExpanded(schema.properties, jsonDict);
+      } else {
+        return [];
+      }
+    case "union" :
+      let jsonDict$1 = Stdlib_JSON.Decode.object(json);
+      if (jsonDict$1 === undefined) {
+        return [];
+      }
+      let jsonTag = Stdlib_Option.flatMap(jsonDict$1["TAG"], j => {
+        if (typeof j === "string") {
+          return j;
+        }
+      });
+      return Stdlib_Array.reduce(schema.anyOf, [], (acc, variantSchema) => {
+        if (acc.length !== 0) {
+          return acc;
+        }
+        if (variantSchema.type !== "object") {
+          return [];
+        }
+        let variantTag = Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+          let match = item.schema;
+          if (match.type !== "string") {
+            return;
+          }
+          let $$const = match.const;
+          if ($$const !== undefined) {
+            return $$const;
+          }
+        });
+        if (Primitive_object.equal(variantTag, jsonTag)) {
+          return extractTagsFromPropertiesExpanded(variantSchema.properties, jsonDict$1);
+        } else {
+          return [];
+        }
+      });
+    default:
+      return [];
+  }
+}
+
+function extractTagsExpanded(schema, value) {
+  let json = S.reverseConvertToJsonOrThrow(value, schema);
+  return extractTagsFromJsonExpanded(schema, json);
+}
+
+function hasTaggedArrayFields(schema) {
+  switch (schema.type) {
+    case "object" :
+      return Object.entries(schema.properties).some(param => isTaggedArray(param[1]));
+    case "union" :
+      return schema.anyOf.some(variantSchema => {
+        if (variantSchema.type === "object") {
+          return Object.entries(variantSchema.properties).some(param => isTaggedArray(param[1]));
+        } else {
+          return false;
+        }
+      });
+    default:
+      return false;
+  }
+}
+
+function buildQueryFromCommand(eventTypes, schema, value) {
+  if (hasTaggedArrayFields(schema)) {
+    let tags = extractTagsExpanded(schema, value);
+    return tags.map(tag => ({
+      eventTypes: eventTypes,
+      tags: [{
+          key: tag.key,
+          value: tag.value
+        }]
+    }));
+  }
+  let tags$1 = extractTags(schema, value);
+  return [{
+      eventTypes: eventTypes,
+      tags: tags$1
+    }];
+}
+
 function extractTaggedFields(schema) {
   switch (schema.type) {
     case "object" :
@@ -166,11 +299,17 @@ export {
   string,
   int,
   isTagged,
+  isTaggedArray,
   jsonValueToString,
   extractTagsFromProperties,
   extractTagsFromJson,
   extractTags,
   extractEventTypes,
+  extractTagsFromPropertiesExpanded,
+  extractTagsFromJsonExpanded,
+  extractTagsExpanded,
+  hasTaggedArrayFields,
+  buildQueryFromCommand,
   extractTaggedFields,
 }
 /* dcbTagId Not a pure module */

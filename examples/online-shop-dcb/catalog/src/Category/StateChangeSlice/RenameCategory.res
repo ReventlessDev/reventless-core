@@ -9,8 +9,7 @@ let name = "RenameCategory"
 module DcbEventLogSpec = CatalogEventLog
 
 @schema
-type command =
-  | RenameCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
+type command = RenameCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
 
 @schema
 type error =

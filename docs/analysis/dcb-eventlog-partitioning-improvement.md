@@ -510,3 +510,67 @@ Primary tag partitioning **solves the Cosmos DB 20GB limit** identified in `azur
 | **Core interface changes** | N/A | None (adapter-level only) |
 | **Spec changes** | N/A | New `partitionTag` annotation |
 | **Migration** | N/A | One-time append-only copy |
+
+---
+
+## 10. Relationship to Multi-Clause DCB Queries
+
+The [Multi-Clause DCB Queries plan](../plans/multi-clause-dcb-queries-plan.md) addresses a complementary concern: how `StateChangeSlice_Callback` **constructs queries** for cross-entity decision models. This analysis addresses how the storage layer **executes** those queries. The two concerns interact directly and should be considered together.
+
+### How They Connect
+
+The multi-clause implementation uses automatic schema-driven query construction via `DcbTag.buildQueryFromCommand`. The query mode is determined by inspecting the command schema at runtime:
+
+- **Scalar tagged fields only** (e.g., `itemId: @s.matches(DcbTag.string) string`): All tags AND'd in one clause — targets one entity
+- **Tagged array fields present** (e.g., `productId: array<@s.matches(DcbTag.string) string>`): Each tag becomes a separate OR clause — targets multiple entities
+
+When `PlaceOrder({orderId: "ord-1", productId: ["prod-1", "prod-2"]})` has a tagged array field, the callback automatically produces:
+
+```
+[
+  {tags: [{key: "orderId", value: "ord-1"}]},
+  {tags: [{key: "productId", value: "prod-1"}]},
+  {tags: [{key: "productId", value: "prod-2"}]},
+]
+```
+
+Under **single-partition** storage (current), all three clauses hit the same `id="dcb"` partition via GSI lookups — the existing k-way merge handles this.
+
+Under **primary-tag partitioning** (recommended here), each clause targets a different partition:
+
+| Clause | Partition |
+|--------|-----------|
+| `orderId: "ord-1"` | `"orderId:ord-1"` |
+| `productId: "prod-1"` | `"productId:prod-1"` |
+| `productId: "prod-2"` | `"productId:prod-2"` |
+
+This is exactly the **scatter-gather pattern** described in Section 4.1. The adapter dispatches each clause to its target partition in parallel, then merges results — the k-way merge infrastructure already supports this.
+
+### Impact on Conditional Append Atomicity
+
+Section 6 describes how per-entity partitions enable atomic DynamoDB transactions for conditional appends. However, cross-entity queries span multiple partitions. The implications:
+
+- **The append itself targets one partition** — new Order events go to `"orderId:ord-1"`. The decision model reads from multiple partitions, but the write is still single-partition.
+- **The condition check must cover all read partitions** — if a new `CatalogProductSynced` event appears between the read and write, the decision model used stale data. The condition `{query, after: headPosition}` must verify no new events appeared in ANY of the queried partitions since the read.
+- **DynamoDB transactions can handle this** — `TransactWriteItems` supports `ConditionCheck` on items across partitions (up to 100 items, all within the same table). The append can atomically verify conditions on the Order partition AND the CatalogProduct partitions.
+- **If the number of clauses exceeds DynamoDB's 100-item transaction limit**, the non-atomic retry approach remains as a fallback. For typical cross-entity commands (< 10 referenced entities), transactions are sufficient.
+
+### Implementation Ordering
+
+These two changes are **independent at the spec/core level** but interact at the **adapter level**:
+
+1. **Multi-clause queries can be implemented first** on the current single-partition storage. All clauses hit GSIs on the same partition — no adapter changes needed beyond the query construction in `StateChangeSlice_Callback`.
+2. **Primary-tag partitioning can be implemented second**. The adapter's `read` function already receives `array<queryItem>` — it just needs to route each item to the correct partition instead of the fixed `"dcb"` partition.
+3. When both are in place, cross-entity queries automatically benefit from distributed partition reads — no additional integration work needed.
+
+This ordering means the hybrid example (`online-shop-hybrid`) can implement cross-entity PlaceOrder validation immediately using multi-clause queries on the current single-partition storage, and later benefit from improved scalability when primary-tag partitioning ships.
+
+### Summary
+
+| Concern | Multi-Clause Queries | Partitioning Improvement |
+|---------|---------------------|-------------------------|
+| **Layer** | Spec + Callback (query construction) | Adapter (query execution) |
+| **What changes** | `DcbTag.buildQueryFromCommand` auto-detects tagged arrays; Callback splits tags into OR clauses | Adapter routes queries to entity-specific partitions |
+| **Dependency** | None on partitioning — works on single partition | None on multi-clause — single-clause queries also benefit |
+| **Combined effect** | Cross-entity queries + per-entity partitions = scatter-gather across targeted partitions with k-way merge |
+| **Conditional append** | Multi-clause condition must check all queried partitions | DynamoDB transactions enable atomic cross-partition condition checks |

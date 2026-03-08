@@ -909,6 +909,7 @@ type event =
 Key points:
 - **`@s.matches(DcbTag.string)`** — required on every entity ID field. Without it, queries return ALL events instead of filtering by entity, causing phantom state in decision models
 - **Both command AND event types** need the tag annotation on entity ID fields
+- For cross-entity commands, use `array<@s.matches(DcbTag.string) string>` on array fields that reference other entities (see [Cross-Entity Queries](#cross-entity-queries-tagged-arrays) below)
 - All entity types (Product, Category, etc.) share the same event log
 - The event log file has no `name` or `Id` — it's just a type definition
 
@@ -978,6 +979,40 @@ let decide = (model, command) =>
 - `decide` replaces `create` + `execute` — returns `Result` instead of using an error handler
 - The decision model is typically much smaller than full aggregate state (e.g., `{exists: bool}` vs the entire product record)
 - The `reduce` function receives ALL events from the log (filtered by entity ID tag), so use `| _ => model` to skip irrelevant ones
+
+#### Cross-Entity Queries (Tagged Arrays)
+
+When a command references multiple entities (e.g., PlaceOrder with a list of product IDs), annotate the array field with `@s.matches(DcbTag.string)` on its **elements**:
+
+```rescript
+@schema
+type command =
+  | PlaceOrder({
+      orderId: @s.matches(DcbTag.string) string,
+      customerId: string,
+      productId: array<@s.matches(DcbTag.string) string>,
+    })
+```
+
+The runtime automatically detects tagged array fields via schema introspection and builds a multi-clause OR query — one clause per scalar tag and one clause per array element:
+
+```
+// For PlaceOrder({orderId: "ord-1", productId: ["prod-1", "prod-2"]}):
+[
+  {eventTypes: [...], tags: [{key: "orderId", value: "ord-1"}]},
+  {eventTypes: [...], tags: [{key: "productId", value: "prod-1"}]},
+  {eventTypes: [...], tags: [{key: "productId", value: "prod-2"}]},
+]
+```
+
+This fetches Order events (by `orderId`) AND CatalogProduct events (by each `productId`) into the same decision model, enabling cross-entity validation at command time. No configuration is needed — the schema IS the configuration.
+
+**Key rules for cross-entity commands:**
+- Name the array field to match the tag key on the referenced events (e.g., command field `productId` matches the `productId` tag on `CatalogProductSynced` events)
+- Commands with only scalar tagged fields produce single-clause AND queries (standard behavior, unchanged)
+- The append condition automatically covers all queried entities for optimistic concurrency
+
+See `examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/PlaceOrder.res` for a complete cross-entity example.
 
 ---
 
@@ -1296,3 +1331,158 @@ Platform.makePlatform(
 ```
 
 The **double namespace** pattern applies here too: `CatalogPlugin.CatalogPlugin.Make(Platform)` — the first part is the package namespace, the second is the module name within that namespace.
+
+---
+
+## Part 3: Hybrid Composition
+
+The aggregate and DCB approaches can be mixed within a single plugin. `Plugin.make` accepts both `~aggregates` and `~dcbSpec` as optional parameters — entities that are self-contained use aggregates, while entities that share consistency boundaries use a DCB event log.
+
+### When to Use Each Approach
+
+| Use **aggregates** when | Use **DCB** when |
+|------------------------|------------------|
+| Entity is self-contained — commands only need the entity's own history | A command's validity depends on multiple entity types |
+| Entity has a clear lifecycle state machine | The consistency boundary varies per command |
+| No cross-entity consistency requirements at command time | Tag-based filtering provides a natural scope for events |
+| Entity is high-volume and would create noise in a shared log | Complex cross-entity invariants exist within the plugin |
+
+**Key constraint:** Entities that need cross-entity decisions **must** share the same DCB event log. An aggregate cannot participate in a DCB decision model, and a DCB slice cannot replay aggregate events.
+
+### Hybrid Plugin Composition
+
+A hybrid plugin passes both `~aggregates` and `~dcbSpec` to `Plugin.make`:
+
+```rescript
+// CatalogPlugin.res — hybrid: Category aggregate + Product/Demand DCB
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // --- Aggregate-based: Category (independent entity) ---
+  module CategoryAggregate = Platform.Aggregate.Make(Category, CategoryBehavior)
+  module CategoriesReadModelMaker = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjections)
+
+  // --- DCB-based: Product + ProductDemand (cross-entity consistency) ---
+  module DcbEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
+  // ... more slices
+
+  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
+  module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
+
+  module DcbSpec = {
+    @schema type event = CatalogEventLog.event
+    let stateChangeSlices = [module(AddProductSlice), module(ChangeProductNameSlice)]
+    let stateViewSlices = [module(ProductsViewSlice), module(ProductDemandViewSlice)]
+    let automationSlices = []
+    let outboundTranslationSlices = []
+    let inboundTranslationSlices = []
+  }
+
+  let make = (~scheduler, ~api, ~apiRole) =>
+    Platform.Plugin.make(
+      ~name="Catalog",
+      ~version="1.0.0",
+      ~heartbeatInterval=60,
+      ~aggregates=[module(CategoryAggregate)],      // Aggregate components
+      ~readModels=[module(CategoriesReadModelMaker)], // Aggregate read models
+      ~dcbSpec=module(DcbSpec),                       // DCB slices
+      ~api, ~apiRole, ~scheduler,
+    )
+}
+```
+
+Both contribute to the unified GraphQL schema automatically — aggregate mutations/queries and DCB mutations/queries appear side by side.
+
+### ReadModel Sourcing from DCB EventTopic
+
+A traditional `ReadModel` can subscribe to a DCB event log's EventTopic alongside aggregate EventTopics. The DCB EventTopic is added to the `allEventTopics` dictionary under the key `<pluginName> ++ "DcbEventLog"` (e.g., `"CatalogDcbEventLog"`).
+
+To create a ReadModel that projects events from both an aggregate and the DCB log, define two `Mapping` modules:
+
+```rescript
+module CategoryMapping = {
+  let sourceName = "Category"  // aggregate name
+  @schema type sourceEvent = Category.event
+  type targetState = myState
+  let map = (msg) => switch msg.event {
+  | Added({name}) => Create(msg.id, {categoryName: name})
+  | _ => Ignore
+  }
+}
+
+module CatalogDcbMapping = {
+  let sourceName = "CatalogDcbEventLog"  // <pluginName> ++ "DcbEventLog"
+  @schema type sourceEvent = CatalogEventLog.event
+  type targetState = myState
+  let map = (msg) => switch msg.event {
+  | ProductAdded({productId, name}) => Create(productId, {productName: name})
+  | _ => Ignore
+  }
+}
+
+module MyReadModel = {
+  // ...
+  let mappings = [module(CategoryMapping), module(CatalogDcbMapping)]
+}
+```
+
+### Extension Points in Hybrid Plugins
+
+Extension point mappings work identically for aggregate and DCB events. The existing DCB extension point adapter pattern (shim module) is the same whether the plugin is pure DCB or hybrid:
+
+```rescript
+// ProductsExtensionPointMapping.res — maps DCB events to extension point
+module DcbEventLogSpec = CatalogEventLog
+
+let extensionPointSpec = module(CatalogSpec.ProductsExtensionPoint)
+
+let mapEvent = event =>
+  switch event {
+  | CatalogEventLog.ProductAdded({productId, name, price}) =>
+    Some(CatalogSpec.ProductsExtensionPoint.ProductAdded({productId, name, price}))
+  | _ => None
+  }
+```
+
+Other plugins see the extension point API and never know whether the source is an aggregate or DCB slice.
+
+### Directory Layout
+
+```
+catalog/
+├── src/
+│   ├── Category/
+│   │   ├── Aggregate/
+│   │   │   ├── Category.res          # Aggregate spec
+│   │   │   └── CategoryBehavior.res  # Aggregate behavior
+│   │   └── ReadModel/
+│   │       ├── CategoriesReadModel.res
+│   │       └── CategoriesProjections.res
+│   ├── Product/
+│   │   ├── StateChangeSlice/
+│   │   │   ├── AddProduct.res
+│   │   │   └── ChangeProductName.res
+│   │   └── StateViewSlice/
+│   │       └── ProductsView.res
+│   ├── Plugin/
+│   │   ├── CatalogEventLog.res       # DCB events (excludes Category)
+│   │   └── CatalogPlugin.res         # Hybrid composition
+│   └── ExtensionPoint/
+│       └── ProductsExtensionPointMapping.res
+└── tests/
+    ├── Category/
+    │   └── CategoryBehaviorTest.res   # Aggregate behavior (pure unit test)
+    ├── Product/
+    │   └── ProductDecisionTest.res    # DCB decision logic (pure unit test)
+    └── E2E/
+        └── CatalogE2ETest.res         # Integration test
+```
+
+### Reference Example
+
+See `examples/online-shop-hybrid/` for a complete working example with two hybrid plugins (Catalog and Ordering), demonstrating:
+
+- Category and Customer as aggregates (independent entities)
+- Product/Demand and Order/CatalogProduct as DCB slices (cross-entity consistency)
+- Extension points bridging between plugins regardless of modeling approach
+- Behavior tests (aggregates), decision tests (DCB), and E2E tests

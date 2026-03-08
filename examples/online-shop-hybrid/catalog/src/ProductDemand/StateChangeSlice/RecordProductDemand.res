@@ -10,14 +10,8 @@ module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
-  | RecordDemand({
-      productId: @s.matches(DcbTag.string) string,
-      orderId: string,
-    })
-  | RevokeDemand({
-      productId: @s.matches(DcbTag.string) string,
-      orderId: string,
-    })
+  | RecordDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
+  | RevokeDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
 
 @schema
 type error = unit // always succeeds — demand recording is idempotent

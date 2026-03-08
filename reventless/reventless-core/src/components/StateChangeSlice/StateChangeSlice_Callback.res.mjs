@@ -8,11 +8,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 function Make(Spec) {
   let queryEventTypes = DcbTag$Reventless.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
   let handleSingleCommand = (dcbEventLog, command$p) => {
-    let commandTags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
-    let query = [{
-        eventTypes: queryEventTypes,
-        tags: commandTags
-      }];
+    let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
     let attempt = retries => Effect.Effect.flatMap(Effect.Stream.runFold(dcbEventLog.readStream(query, undefined), [
       Spec.initialDecisionModel,
       undefined

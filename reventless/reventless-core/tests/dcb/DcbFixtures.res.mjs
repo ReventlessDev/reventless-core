@@ -335,6 +335,19 @@ let multiFieldEventSchema = S.schema(s => ({
   sessionId: s.m(DcbTag$Reventless.string)
 }));
 
+let crossEntityCommandSchema = S.schema(s => ({
+  TAG: "PlaceOrder",
+  orderId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(S.string),
+  productId: s.m(S.array(DcbTag$Reventless.string))
+}));
+
+let singleTagCommandSchema = S.schema(s => ({
+  TAG: "CreateItem",
+  itemId: s.m(DcbTag$Reventless.string),
+  name: s.m(S.string)
+}));
+
 let testMeta = {
   service: "test",
   time: "2024-01-01T00:00:00Z",
@@ -359,5 +372,7 @@ export {
   mixedEventSchema,
   complexEventSchema,
   multiFieldEventSchema,
+  crossEntityCommandSchema,
+  singleTagCommandSchema,
 }
 /*  Not a pure module */

@@ -159,7 +159,7 @@ StateChangeSlice uses DCB tags for efficient event queries. Tags are extracted f
 
 ```rescript
 @schema
-type command = 
+type command =
   | CreateItem({itemId: @s.matches(DcbTag.string) string, name: string})
   | RenameItem({itemId: @s.matches(DcbTag.string) string, newName: string})
 ```
@@ -168,6 +168,23 @@ The `@s.matches(DcbTag.string)` annotation:
 1. Marks the field as a DCB tag
 2. Automatically extracts tag values from commands
 3. Enables efficient querying of relevant events from DcbEventLog
+
+### Cross-Entity Queries with Tagged Arrays
+
+When a command references multiple entities, annotate array element types with `@s.matches(DcbTag.string)`:
+
+```rescript
+@schema
+type command =
+  | PlaceOrder({
+      orderId: @s.matches(DcbTag.string) string,
+      productId: array<@s.matches(DcbTag.string) string>,
+    })
+```
+
+The runtime automatically detects tagged array fields and builds multi-clause OR queries — one clause per scalar tag, one per array element. This fetches events for all referenced entities into the same decision model, enabling cross-entity validation at command time.
+
+**Key rule:** name the array field to match the tag key on the referenced events (e.g., command field `productId` matches the `productId` tag on `CatalogProductSynced` events).
 
 ## Best Practices
 

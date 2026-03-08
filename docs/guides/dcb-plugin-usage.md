@@ -368,9 +368,11 @@ let filteringHandler: jsonCommandsHandler = async jsonItems => {
 
 `handleCommands(dcbEventLog, topicItems)` processes each command:
 
-1. Extracts DCB tags from the command using `DcbTag.extractTags(Spec.commandSchema, command)`
-2. Queries the event log: `dcbEventLog.read(~query={eventTypes: queryEventTypes, tags: commandTags})` where `queryEventTypes` is derived at module init from `DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)`
-3. Reduces events into a decision model: `events->Array.reduce(Spec.initialDecisionModel, Spec.reduce)`
+1. Builds the query automatically using `DcbTag.buildQueryFromCommand(~eventTypes=queryEventTypes, ~schema=Spec.commandSchema, ~value=command)` where `queryEventTypes` is derived at module init from `DcbTag.extractEventTypes(Spec.DcbEventLogSpec.eventSchema)`. The query mode is determined by schema introspection:
+   - **Scalar tags only** (e.g., `itemId: @s.matches(DcbTag.string) string`) → single AND clause (standard single-entity query)
+   - **Tagged array fields** (e.g., `productId: array<@s.matches(DcbTag.string) string>`) → per-element OR clauses (cross-entity query for commands referencing multiple entities)
+2. Queries the event log: `dcbEventLog.readStream(~query)`
+3. Reduces events into a decision model: fold with `Spec.reduce` starting from `Spec.initialDecisionModel`
 4. Calls `Spec.decide(decisionModel, command)` to produce new events or an error
 5. Appends with optimistic concurrency: `dcbEventLog.append(newEvents, ~condition={query, after: headPosition})`
 6. Retries up to 3 times on append conflict (position changed between read and write)

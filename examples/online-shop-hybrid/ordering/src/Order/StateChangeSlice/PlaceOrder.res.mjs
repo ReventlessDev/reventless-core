@@ -7,18 +7,36 @@ let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(S.string),
-  productIds: s.m(S.array(S.string))
+  productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 
-let errorSchema = S.literal("OrderAlreadyPlaced");
+let errorSchema = S.union([
+  S.literal("OrderAlreadyPlaced"),
+  S.schema(s => ({
+    TAG: "ProductsNotAvailable",
+    missing: s.m(S.array(S.string))
+  }))
+]);
+
+let initialDecisionModel_availableProductIds = new Set();
+
+let initialDecisionModel = {
+  exists: false,
+  availableProductIds: initialDecisionModel_availableProductIds
+};
 
 function reduce(model, event) {
-  if (event.TAG === "OrderPlaced") {
-    return {
-      exists: true
-    };
-  } else {
-    return model;
+  switch (event.TAG) {
+    case "OrderPlaced" :
+      return {
+        exists: true,
+        availableProductIds: model.availableProductIds
+      };
+    case "CatalogProductSynced" :
+      model.availableProductIds.add(event.productId);
+      return model;
+    default:
+      return model;
   }
 }
 
@@ -28,6 +46,17 @@ function decide(model, command) {
       TAG: "Error",
       _0: "OrderAlreadyPlaced"
     };
+  }
+  let productIds = command.productId;
+  let missing = productIds.filter(pid => !model.availableProductIds.has(pid));
+  if (missing.length !== 0) {
+    return {
+      TAG: "Error",
+      _0: {
+        TAG: "ProductsNotAvailable",
+        missing: missing
+      }
+    };
   } else {
     return {
       TAG: "Ok",
@@ -35,7 +64,7 @@ function decide(model, command) {
           TAG: "OrderPlaced",
           orderId: command.orderId,
           customerId: command.customerId,
-          productIds: command.productIds
+          productIds: productIds
         }]
     };
   }
@@ -44,10 +73,6 @@ function decide(model, command) {
 let name = "PlaceOrder";
 
 let DcbEventLogSpec;
-
-let initialDecisionModel = {
-  exists: false
-};
 
 export {
   name,

@@ -6,26 +6,52 @@ import * as PlaceOrder$OrderingPlugin from "../../src/Order/StateChangeSlice/Pla
 import * as CancelOrder$OrderingPlugin from "../../src/Order/StateChangeSlice/CancelOrder.res.mjs";
 
 Jest.describe("PlaceOrder:", () => {
+  let withProducts = productIds => {
+    let s = new Set();
+    productIds.forEach(id => {
+      s.add(id);
+    });
+    return {
+      exists: false,
+      availableProductIds: s
+    };
+  };
   Jest.describe("reduce", () => {
-    Jest.test("OrderPlaced sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.reduce(PlaceOrder$OrderingPlugin.initialDecisionModel, {
-      TAG: "OrderPlaced",
-      orderId: "ord-1",
-      customerId: "cust-1",
-      productIds: ["prod-1"]
-    })), {
-      exists: true
-    }));
-    Jest.test("other events do not change model", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.reduce(PlaceOrder$OrderingPlugin.initialDecisionModel, {
-      TAG: "OrderShipped",
-      orderId: "ord-1"
-    })), PlaceOrder$OrderingPlugin.initialDecisionModel));
+    Jest.test("OrderPlaced sets exists=true", () => {
+      let model = PlaceOrder$OrderingPlugin.reduce(withProducts(["prod-1"]), {
+        TAG: "OrderPlaced",
+        orderId: "ord-1",
+        customerId: "cust-1",
+        productIds: ["prod-1"]
+      });
+      return Jest.Expect.toBe(Jest.Expect.expect(model.exists), true);
+    });
+    Jest.test("CatalogProductSynced adds to availableProductIds", () => {
+      let model = PlaceOrder$OrderingPlugin.reduce(PlaceOrder$OrderingPlugin.initialDecisionModel, {
+        TAG: "CatalogProductSynced",
+        productId: "prod-1",
+        name: "Widget",
+        price: 9.99
+      });
+      return Jest.Expect.toBe(Jest.Expect.expect(model.availableProductIds.has("prod-1")), true);
+    });
+    Jest.test("other events do not change model", () => {
+      let model = PlaceOrder$OrderingPlugin.reduce(PlaceOrder$OrderingPlugin.initialDecisionModel, {
+        TAG: "OrderShipped",
+        orderId: "ord-1"
+      });
+      return Jest.Expect.toBe(Jest.Expect.expect(model.exists), false);
+    });
   });
   Jest.describe("decide", () => {
-    Jest.test("on non-existent order produces OrderPlaced", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.decide(PlaceOrder$OrderingPlugin.initialDecisionModel, {
+    Jest.test("with available products produces OrderPlaced", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.decide(withProducts([
+      "prod-1",
+      "prod-2"
+    ]), {
       TAG: "PlaceOrder",
       orderId: "ord-1",
       customerId: "cust-1",
-      productIds: [
+      productId: [
         "prod-1",
         "prod-2"
       ]
@@ -41,17 +67,36 @@ Jest.describe("PlaceOrder:", () => {
           ]
         }]
     }));
-    Jest.test("on existing order returns OrderAlreadyPlaced", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.decide({
-      exists: true
-    }, {
+    Jest.test("with missing products returns ProductsNotAvailable", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.decide(withProducts(["prod-1"]), {
       TAG: "PlaceOrder",
       orderId: "ord-1",
       customerId: "cust-1",
-      productIds: ["prod-1"]
+      productId: [
+        "prod-1",
+        "prod-2"
+      ]
     })), {
       TAG: "Error",
-      _0: "OrderAlreadyPlaced"
+      _0: {
+        TAG: "ProductsNotAvailable",
+        missing: ["prod-2"]
+      }
     }));
+    Jest.test("on existing order returns OrderAlreadyPlaced", () => {
+      let model = withProducts(["prod-1"]);
+      return Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.decide({
+        exists: true,
+        availableProductIds: model.availableProductIds
+      }, {
+        TAG: "PlaceOrder",
+        orderId: "ord-1",
+        customerId: "cust-1",
+        productId: ["prod-1"]
+      })), {
+        TAG: "Error",
+        _0: "OrderAlreadyPlaced"
+      });
+    });
   });
 });
 

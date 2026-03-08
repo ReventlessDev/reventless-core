@@ -26,13 +26,11 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
     dcbEventLog: DcbEventLog.operations<Spec.DcbEventLogSpec.event>,
     command': Message.command'<Reventless.Id.String.t, Spec.command>,
   ) => {
-    let commandTags = Reventless.DcbTag.extractTags(Spec.commandSchema, command'.command)
-    let query: Reventless.DcbTag.query = [
-      {
-        eventTypes: queryEventTypes,
-        tags: commandTags,
-      },
-    ]
+    let query = Reventless.DcbTag.buildQueryFromCommand(
+      ~eventTypes=queryEventTypes,
+      ~schema=Spec.commandSchema,
+      ~value=command'.command,
+    )
 
     let rec attempt = (~retries) =>
       dcbEventLog.readStream(~query)
@@ -43,34 +41,35 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
       ->Effect.flatMap(((decisionModel, headPosition)) =>
         switch Spec.decide(decisionModel, command'.command) {
         | Ok(newEvents) if newEvents->Array.length == 0 =>
-          Effect.logInfo(
-            `StateChangeSlice(${Spec.name}): no events generated`,
-          )->Effect.map(_ => Ok("ok"))
+          Effect.logInfo(`StateChangeSlice(${Spec.name}): no events generated`)->Effect.map(_ => Ok(
+            "ok",
+          ))
         | Ok(newEvents) =>
           let condition: Reventless.DcbTag.appendCondition = {
             query,
             after: ?headPosition,
           }
-          Effect.promise(() => dcbEventLog.append(newEvents, ~condition))->Effect.flatMap(
-            appendResult =>
-              switch appendResult {
-              | Ok(_position) =>
+          Effect.promise(() =>
+            dcbEventLog.append(newEvents, ~condition)
+          )->Effect.flatMap(appendResult =>
+            switch appendResult {
+            | Ok(_position) =>
+              Effect.logInfo(
+                `StateChangeSlice(${Spec.name}): ${newEvents
+                  ->Array.length
+                  ->Int.toString} event(s) appended`,
+              )->Effect.map(_ => Ok("ok"))
+            | Error(_err) =>
+              if retries > 0 {
                 Effect.logInfo(
-                  `StateChangeSlice(${Spec.name}): ${newEvents
-                    ->Array.length
-                    ->Int.toString} event(s) appended`,
-                )->Effect.map(_ => Ok("ok"))
-              | Error(_err) =>
-                if retries > 0 {
-                  Effect.logInfo(
-                    `StateChangeSlice(${Spec.name}): conflict, retrying`,
-                  )->Effect.flatMap(_ => attempt(~retries=retries - 1))
-                } else {
-                  Effect.logError(
-                    `StateChangeSlice(${Spec.name}): conflict, retries exhausted`,
-                  )->Effect.map(_ => Error("conflict: retries exhausted"))
-                }
-              },
+                  `StateChangeSlice(${Spec.name}): conflict, retrying`,
+                )->Effect.flatMap(_ => attempt(~retries=retries - 1))
+              } else {
+                Effect.logError(
+                  `StateChangeSlice(${Spec.name}): conflict, retries exhausted`,
+                )->Effect.map(_ => Error("conflict: retries exhausted"))
+              }
+            }
           )
         | Error(error) =>
           let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)->JSON.stringify
@@ -96,6 +95,6 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
           }
         )
       )
-      ->Stream.runCollect
+      ->Stream.runCollect,
     )
 }

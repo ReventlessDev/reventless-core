@@ -9,8 +9,7 @@ let name = "ChangeAddress"
 module DcbEventLogSpec = OrderingEventLog
 
 @schema
-type command =
-  | ChangeAddress({customerId: @s.matches(DcbTag.string) string, address: string})
+type command = ChangeAddress({customerId: @s.matches(DcbTag.string) string, address: string})
 
 @schema
 type error =

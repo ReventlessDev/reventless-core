@@ -108,7 +108,7 @@ module MyDcbEventLogSpec = {
 }
 ```
 
-Fields marked `@s.matches(DcbTag.string)` become DCB tags — the event log is queried by these values to build the decision model.
+Fields marked `@s.matches(DcbTag.string)` become DCB tags — the event log is queried by these values to build the decision model. Tags can also be applied to array element types for cross-entity queries (e.g., `productId: array<@s.matches(DcbTag.string) string>`) — the runtime automatically builds per-element OR clauses.
 
 ### 2. Define state change slice specs
 
