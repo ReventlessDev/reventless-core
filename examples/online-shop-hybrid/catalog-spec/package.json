@@ -1,0 +1,22 @@
+{
+  "name": "@reventlessdev/online-shop-hybrid-catalog-spec",
+  "version": "0.0.0",
+  "description": "Online Shop Hybrid example — Catalog plugin specification (extension point specs)",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "rescript build",
+    "clean": "rescript clean"
+  },
+  "dependencies": {
+    "@reventlessdev/reventless-spec": "*",
+    "sury": "^11.0.0-alpha.4"
+  },
+  "devDependencies": {
+    "rescript": "^12.1.0",
+    "sury-ppx": "^11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "^12.1.0"
+  }
+}

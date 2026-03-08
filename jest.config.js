@@ -103,5 +103,35 @@ module.exports = {
           "<rootDir>/../../../node_modules/spdx-exceptions/index.json",
       },
     },
+    {
+      displayName: "online-shop-hybrid-catalog",
+      rootDir: "./examples/online-shop-hybrid/catalog",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      moduleNameMapper: {
+        "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+        "^spdx-license-ids$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
+        "^spdx-license-ids/deprecated$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/deprecated.json",
+        "^spdx-exceptions$":
+          "<rootDir>/../../../node_modules/spdx-exceptions/index.json",
+      },
+    },
+    {
+      displayName: "online-shop-hybrid-ordering",
+      rootDir: "./examples/online-shop-hybrid/ordering",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      moduleNameMapper: {
+        "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+        "^spdx-license-ids$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
+        "^spdx-license-ids/deprecated$":
+          "<rootDir>/../../../node_modules/spdx-license-ids/deprecated.json",
+        "^spdx-exceptions$":
+          "<rootDir>/../../../node_modules/spdx-exceptions/index.json",
+      },
+    },
   ],
 };

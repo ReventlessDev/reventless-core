@@ -19,7 +19,8 @@
     "@reventlessdev/reventless-interop",
     "@reventlessdev/reventless-core",
     "@reventlessdev/reventless-in-memory",
-    "@reventlessdev/reventless-aws"
+    "@reventlessdev/reventless-aws",
+    "@reventlessdev/online-shop-hybrid"
   ],
   "sources": [],
   "package-specs": {

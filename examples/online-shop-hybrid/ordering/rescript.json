@@ -1,0 +1,21 @@
+{
+  "name": "@reventlessdev/online-shop-hybrid-ordering",
+  "namespace": "OrderingPlugin",
+  "ppx-flags": ["sury-ppx/bin"],
+  "warnings": { "error": "-44+101" },
+  "sources": [
+    { "dir": "src", "subdirs": true },
+    { "dir": "tests", "subdirs": true }
+  ],
+  "dependencies": [
+    "sury",
+    "@glennsl/rescript-jest",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/online-shop-hybrid-ordering-spec",
+    "@reventlessdev/online-shop-hybrid-catalog-spec"
+  ],
+  "compiler-flags": []
+}
