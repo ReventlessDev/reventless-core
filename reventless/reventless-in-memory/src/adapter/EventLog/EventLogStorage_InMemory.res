@@ -8,11 +8,16 @@ let makeStorage = (~name as _name, ~opts as _) => {
     ->Stm.commit
     ->Effect.runSync
 
-  let append: ReventlessCore.EventLog.append<string, JSON.t> = (_seqNr, id, jsons) =>
+  let append: ReventlessCore.EventLog.append<string, JSON.t> = (seqNr, id, jsons) =>
     Stm.TRef.modify(eventsRef, events => {
       let existing = events->Dict.get(id)->Option.getOr([])
-      events->Dict.set(id, existing->Array.concat(jsons))
-      (Ok(), events)
+      let currentCount = existing->Array.length
+      if seqNr != currentCount {
+        (Error("conflict"), events)
+      } else {
+        events->Dict.set(id, existing->Array.concat(jsons))
+        (Ok(), events)
+      }
     })
     ->Stm.commit
     ->Effect.runPromise
@@ -37,8 +42,13 @@ let makeStorage = (~name as _name, ~opts as _) => {
     stream->Stream.runForEach(json =>
       Stm.TRef.modify(eventsRef, events => {
         let existing = events->Dict.get(id)->Option.getOr([])
-        events->Dict.set(id, existing->Array.concat([json]))
-        (Ok(), events)
+        let currentCount = existing->Array.length
+        if seqNrRef.contents != currentCount {
+          (Error("conflict"), events)
+        } else {
+          events->Dict.set(id, existing->Array.concat([json]))
+          (Ok(), events)
+        }
       })
       ->Stm.commit
       ->Effect.flatMap(result =>

@@ -3,28 +3,83 @@
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect";
-import * as Util_Error$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Error.res.mjs";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
+import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
-function append(table) {
-  return (_sequenceNr, _id, jsons) => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(jsons.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)), result => {
+function putItemConditional(tableName, json) {
+  return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+    Item: json,
+    TableName: tableName,
+    ConditionExpression: "attribute_not_exists(sequenceNr)"
+  }));
+}
+
+function putItemsSequentialConditional(tableName, jsons) {
+  return Stdlib_Array.reduce(jsons, Effect$1.Effect.succeed({
+    TAG: "Ok",
+    _0: undefined
+  }), (acc, json) => Effect$1.Effect.flatMap(acc, result => {
     if (result.TAG === "Ok") {
-      return Effect$1.Effect.succeed({
+      return Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, json)), param => ({
         TAG: "Ok",
         _0: undefined
-      });
-    } else {
-      return Effect$1.Effect.map(Effect$1.Effect.logError("Error: unprocessed items: " + result._0), () => ({
-        TAG: "Error",
-        _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !"
       }));
+    } else {
+      return Effect$1.Effect.succeed(result);
     }
-  }), err => {
+  }));
+}
+
+function transactWriteConditional(tableName, jsons) {
+  let transactItems = jsons.map(json => ({
+    Put: {
+      Item: json,
+      TableName: tableName,
+      ConditionExpression: "attribute_not_exists(sequenceNr)"
+    }
+  }));
+  let input = {
+    TransactItems: transactItems
+  };
+  return Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
+    TAG: "Ok",
+    _0: undefined
+  }));
+}
+
+function appendWithCondition(tableName, jsons) {
+  let count = jsons.length;
+  if (count === 1) {
+    return Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, jsons[0])), param => ({
+      TAG: "Ok",
+      _0: undefined
+    }));
+  } else if (count <= 5) {
+    return putItemsSequentialConditional(tableName, jsons);
+  } else {
+    return transactWriteConditional(tableName, jsons);
+  }
+}
+
+function append(table) {
+  return (_sequenceNr, _id, jsons) => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(appendWithCondition(table.name, jsons), err => {
+    switch (err.TAG) {
+      case "StaleState" :
+        return Effect$1.Effect.succeed({
+          TAG: "Error",
+          _0: "conflict"
+        });
+      case "Transient" :
+      case "Permanent" :
+        break;
+    }
     let msg = DynamoDb_Error$ReventlessAws.message(err);
     return Effect$1.Effect.succeed({
       TAG: "Error",
-      _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed: " + msg
+      _0: `DynamoDB conditional append failed: ` + msg
     });
   }));
 }
@@ -49,21 +104,31 @@ function replay(table) {
 }
 
 function appendStream(table) {
-  return (startingSeqNr, id, stream) => {
+  return (startingSeqNr, _id, stream) => {
     let seqNrRef = {
       contents: startingSeqNr
     };
-    return Effect$1.Stream.runForEach(stream, json => Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "DynamoDB appendStream error"), () => append(table)(seqNrRef.contents, id, [json])), result => {
-      if (result.TAG !== "Ok") {
-        return Effect$1.Effect.fail(result._0);
-      }
+    return Effect$1.Stream.runForEach(stream, json => Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(table.name, json)), param => {
       seqNrRef.contents = seqNrRef.contents + 1 | 0;
-      return Effect$1.Effect.succeed();
+    }), err => {
+      switch (err.TAG) {
+        case "StaleState" :
+          return Effect$1.Effect.fail("conflict");
+        case "Transient" :
+        case "Permanent" :
+          break;
+      }
+      let msg = DynamoDb_Error$ReventlessAws.message(err);
+      return Effect$1.Effect.fail(`DynamoDB appendStream error: ` + msg);
     }));
   };
 }
 
 export {
+  putItemConditional,
+  putItemsSequentialConditional,
+  transactWriteConditional,
+  appendWithCondition,
   append,
   replayStream,
   replay,

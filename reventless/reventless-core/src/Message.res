@@ -149,8 +149,10 @@ exception InvalidCommand(JSON.t)
 external stringify: _ => string = "stringify"
 
 type hrtime = (int, int)
-@val @scope("process") external hrtime: unit => hrtime = "hrtime"
+@val @scope("process") @deprecated("No longer used — sequenceNr is now an integer counter")
+external hrtime: unit => hrtime = "hrtime"
 
+@deprecated("No longer used — sequenceNr is now an integer counter")
 let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) => {
   let (_, mil) = hrtime
   let milString = mil->Int.toString

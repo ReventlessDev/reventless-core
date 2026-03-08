@@ -34,14 +34,14 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
 ) => {
   module Spec = Spec
 
-  let encodeEvent' = (id, event') => {
+  let encodeEvent' = (id, sequenceNr, event') => {
     let json = event'.Reventless.Message.event->Message.encode(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
     [
       ("id", id->Message.encode(Spec.Id.schema)),
       (
         "sequenceNr",
-        JSON.Encode.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
+        JSON.Encode.string(sequenceNr->Int.toString->String.padStart(9, "0")),
       ),
       ("type", JSON.String(eventType)),
       ("data", JSON.Object(data)),
@@ -51,7 +51,8 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     ->JSON.Encode.object
   }
 
-  let encodeEvents' = (events', id) => events'->Array.map(event => encodeEvent'(id, event))
+  let encodeEvents' = (events', id, startingSeqNr) =>
+    events'->Array.mapWithIndex((event, i) => encodeEvent'(id, startingSeqNr + i, event))
 
   // Returns result<unit, string> — never throws. Publish failures are surfaced as Error.
   let publishToEventTopic = async (id, events') => {
@@ -70,8 +71,10 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
   // append returns result<unit, string> — never throws.
   // Storage errors are retried with exponential backoff (up to 5 times for transient errors).
   // After exhausting retries, or on permanent errors, returns Error.
+  let isConflict = (msg: string) => msg->String.includes("conflict")
+
   let append = async (sequenceNr, id, events') => {
-    let eventsJson = events'->encodeEvents'(id)
+    let eventsJson = events'->encodeEvents'(id, sequenceNr)
     let idStr = id->Spec.Id.toString
     // Build an Effect that fails with a string on storage error (enabling retry)
     let storageEffect =
@@ -95,7 +98,12 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
         ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("storage error"),
         ~onSuccess=_ => "storage error", // unreachable: we are in the isFailure branch
       )
-      Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${failMsg}`)
+      // Propagate conflict errors without wrapping so callers can detect them
+      if isConflict(failMsg) {
+        Error("conflict")
+      } else {
+        Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${failMsg}`)
+      }
     }
   }
 

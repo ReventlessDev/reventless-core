@@ -7,16 +7,27 @@ import * as Pulumi from "@pulumi/pulumi";
 
 function makeStorage(_name, param) {
   let eventsRef = Effect.Effect.runSync(Effect.STM.commit(Effect.TRef.make({})));
-  let append = (_seqNr, id, jsons) => Effect.Effect.runPromise(Effect.STM.commit(Effect.TRef.modify(eventsRef, events => {
+  let append = (seqNr, id, jsons) => Effect.Effect.runPromise(Effect.STM.commit(Effect.TRef.modify(eventsRef, events => {
     let existing = Stdlib_Option.getOr(events[id], []);
-    events[id] = existing.concat(jsons);
-    return [
-      {
-        TAG: "Ok",
-        _0: undefined
-      },
-      events
-    ];
+    let currentCount = existing.length;
+    if (seqNr !== currentCount) {
+      return [
+        {
+          TAG: "Error",
+          _0: "conflict"
+        },
+        events
+      ];
+    } else {
+      events[id] = existing.concat(jsons);
+      return [
+        {
+          TAG: "Ok",
+          _0: undefined
+        },
+        events
+      ];
+    }
   })));
   let replayStream = id => Effect.Stream.flatMap(Effect.Stream.fromEffect(Effect.Effect.map(Effect.STM.commit(Effect.TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], []))), arr => Effect.Stream.fromIterable(arr));
   let replay = id => Effect.Effect.runPromise(Stream.runCollect(replayStream(id)));
@@ -26,14 +37,25 @@ function makeStorage(_name, param) {
     };
     return Effect.Stream.runForEach(stream, json => Effect.Effect.flatMap(Effect.STM.commit(Effect.TRef.modify(eventsRef, events => {
       let existing = Stdlib_Option.getOr(events[id], []);
-      events[id] = existing.concat([json]);
-      return [
-        {
-          TAG: "Ok",
-          _0: undefined
-        },
-        events
-      ];
+      let currentCount = existing.length;
+      if (seqNrRef.contents !== currentCount) {
+        return [
+          {
+            TAG: "Error",
+            _0: "conflict"
+          },
+          events
+        ];
+      } else {
+        events[id] = existing.concat([json]);
+        return [
+          {
+            TAG: "Ok",
+            _0: undefined
+          },
+          events
+        ];
+      }
     })), result => {
       if (result.TAG !== "Ok") {
         return Effect.Effect.fail(result._0);

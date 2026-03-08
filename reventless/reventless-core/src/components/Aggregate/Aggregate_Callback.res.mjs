@@ -46,26 +46,22 @@ function Make(Spec) {
         correlationId: init.correlationId
       };
     };
-    let handleCommands = stream => Effect.Effect.flatMap(Effect.Effect.tap(groupTopicItemsByIdStream(stream), param => Effect.Effect.logInfo("starting Aggregate.execCommands")), groups => Effect.Effect.map(Effect.Effect.all(groups.map(param => {
-      let topicItemsForId = param[1];
-      let id = param[0];
-      return Effect.Effect.flatMap(Effect.Effect.tap(Effect.Effect.tap(Effect.Stream.runFold(Ops.eventLog.replayStream(id), [
+    let replayProcessAppend = (id, topicItemsForId) => {
+      let match = Belt_Array.unzip(topicItemsForId.map(param => [
+        param.reference,
+        param.command
+      ]));
+      let commands$p = match[1];
+      let references = match[0];
+      return Effect.Effect.flatMap(Effect.Effect.tap(Effect.Stream.runFold(Ops.eventLog.replayStream(id), [
         undefined,
         0
       ], (param, ev) => [
         apply$p(param[0], ev),
         param[1] + 1 | 0
       ]), param => Effect.Effect.logInfo(`finished eventLogReplayStream for id ` + Spec.Id.toString(id))), param => {
-        LogFormat$ReventlessCore.commandJsonsToLogMessages(topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command))).forEach(msg => Effect.Effect.runSync(Effect.Effect.logInfo("Handling command: " + msg)));
-        return Effect.Effect.succeed();
-      }), param => {
         let sequenceNr = param[1];
-        let match = Belt_Array.unzip(topicItemsForId.map(param => [
-          param.reference,
-          param.command
-        ]));
-        let references = match[0];
-        return Effect.Effect.flatMap(Stdlib_Array.reduce(match[1], Effect.Effect.succeed({
+        return Effect.Effect.flatMap(Stdlib_Array.reduce(commands$p, Effect.Effect.succeed({
           TAG: "Ok",
           _0: [
             param[0],
@@ -133,28 +129,61 @@ function Make(Spec) {
               }));
             }).flat() : Stdlib_JsError.throwWithMessage(result._0);
           if (events.length === 0) {
-            return Effect.Effect.map(Effect.Effect.logInfo(`handleCommands(` + Spec.Id.toString(id) + `): no Event generated`), () => references.map(reference => ({
+            return Effect.Effect.map(Effect.Effect.logInfo(`handleCommands(` + Spec.Id.toString(id) + `): no Event generated`), () => ({
               TAG: "Ok",
-              _0: reference
-            })));
+              _0: references.map(reference => ({
+                TAG: "Ok",
+                _0: reference
+              }))
+            }));
           }
           let eventCount = events.length.toString();
           let eventNames = events.map(event$p => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(event$p.event, Spec.eventSchema))).join(", ");
           return Effect.Effect.flatMap(Effect.Effect.flatMap(Effect.Effect.logInfo(`Aggregate.handleCommands(` + Spec.Id.toString(id) + `): ` + eventCount + ` Event(s) generated: ` + eventNames), () => Effect.Effect.promise(() => Ops.eventLog.append(sequenceNr, id, events))), appendResult => {
             if (appendResult.TAG === "Ok") {
-              return Effect.Effect.map(Effect.Effect.logInfo(`finished eventLogAppend for id ` + Spec.Id.toString(id)), () => references.map(reference => ({
+              return Effect.Effect.map(Effect.Effect.logInfo(`finished eventLogAppend for id ` + Spec.Id.toString(id)), () => ({
                 TAG: "Ok",
-                _0: reference
-              })));
-            } else {
-              return Effect.Effect.map(Effect.Effect.logError(`failed eventLogAppend for id ` + Spec.Id.toString(id)), () => references.map(reference => ({
+                _0: references.map(reference => ({
+                  TAG: "Ok",
+                  _0: reference
+                }))
+              }));
+            } else if (appendResult._0.includes("conflict")) {
+              return Effect.Effect.map(Effect.Effect.logWarning(`conflict detected for id ` + Spec.Id.toString(id) + `, will retry`), () => ({
                 TAG: "Error",
-                _0: reference
-              })));
+                _0: "conflict"
+              }));
+            } else {
+              return Effect.Effect.map(Effect.Effect.logError(`failed eventLogAppend for id ` + Spec.Id.toString(id)), () => ({
+                TAG: "Ok",
+                _0: references.map(reference => ({
+                  TAG: "Error",
+                  _0: reference
+                }))
+              }));
             }
           });
         });
       });
+    };
+    let handleCommands = stream => Effect.Effect.flatMap(Effect.Effect.tap(Effect.Effect.tap(groupTopicItemsByIdStream(stream), param => Effect.Effect.logInfo("starting Aggregate.execCommands")), param => Effect.Effect.succeed()), groups => Effect.Effect.map(Effect.Effect.all(groups.map(param => {
+      let topicItemsForId = param[1];
+      let id = param[0];
+      LogFormat$ReventlessCore.commandJsonsToLogMessages(topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command))).forEach(msg => Effect.Effect.runSync(Effect.Effect.logInfo("Handling command: " + msg)));
+      let references = topicItemsForId.map(item => item.reference);
+      let attempt = retryCount => Effect.Effect.flatMap(replayProcessAppend(id, topicItemsForId), result => {
+        if (result.TAG === "Ok") {
+          return Effect.Effect.succeed(result._0);
+        } else if (retryCount < 3) {
+          return Effect.Effect.flatMap(Effect.Effect.logWarning(`Aggregate(` + Spec.Id.toString(id) + `): conflict retry ` + (retryCount + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retryCount + 1 | 0));
+        } else {
+          return Effect.Effect.map(Effect.Effect.logError(`Aggregate(` + Spec.Id.toString(id) + `): max conflict retries exhausted`), () => references.map(reference => ({
+            TAG: "Error",
+            _0: reference
+          })));
+        }
+      });
+      return attempt(0);
     }), {
       concurrency: "unbounded"
     }), prim => prim.flat()));

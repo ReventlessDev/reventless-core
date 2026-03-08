@@ -50,7 +50,7 @@ describe("EventLogStorage_InMemory", () => {
     let opts: Pulumi.CustomResourceOptions.t = {}
     let storage = EventLogStorage_InMemory.make(~name="test-log", ~opts)
     let ops = await storage.operations->TestRunner.resolve
-    let _ = await ops.append(1, "agg-1", [JSON.Encode.string("e1"), JSON.Encode.string("e2")])
+    let _ = await ops.append(0, "agg-1", [JSON.Encode.string("e1"), JSON.Encode.string("e2")])
     let events = await ops.replay("agg-1")
     expect(events->Array.length)->toBe(2)
   })
@@ -67,8 +67,8 @@ describe("EventLogStorage_InMemory", () => {
     let opts: Pulumi.CustomResourceOptions.t = {}
     let storage = EventLogStorage_InMemory.make(~name="test-log-3", ~opts)
     let ops = await storage.operations->TestRunner.resolve
-    let _ = await ops.append(1, "agg-2", [JSON.Encode.string("e1")])
-    let _ = await ops.append(2, "agg-2", [JSON.Encode.string("e2"), JSON.Encode.string("e3")])
+    let _ = await ops.append(0, "agg-2", [JSON.Encode.string("e1")])
+    let _ = await ops.append(1, "agg-2", [JSON.Encode.string("e2"), JSON.Encode.string("e3")])
     let events = await ops.replay("agg-2")
     expect(events->Array.length)->toBe(3)
   })

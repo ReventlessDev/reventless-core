@@ -52,7 +52,7 @@ describe("EventLogStorage_InMemory", () => {
   test("append stores events and replay returns them", async () => {
     let storage = EventLogStorage_InMemory$ReventlessInMemory.make("test-log", {});
     let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
-    await ops.append(1, "agg-1", [
+    await ops.append(0, "agg-1", [
       "e1",
       "e2"
     ]);
@@ -68,8 +68,8 @@ describe("EventLogStorage_InMemory", () => {
   test("multiple appends accumulate events", async () => {
     let storage = EventLogStorage_InMemory$ReventlessInMemory.make("test-log-3", {});
     let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
-    await ops.append(1, "agg-2", ["e1"]);
-    await ops.append(2, "agg-2", [
+    await ops.append(0, "agg-2", ["e1"]);
+    await ops.append(1, "agg-2", [
       "e2",
       "e3"
     ]);

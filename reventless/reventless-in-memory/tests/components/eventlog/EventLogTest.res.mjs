@@ -16,7 +16,7 @@ describe("EventLog (in-memory)", () => {
       name: "Widget"
     };
     let event$p = EventLogFixtures$ReventlessInMemory.makeEvent$p("item-1", event);
-    await ops.append(1, "item-1", [event$p]);
+    await ops.append(0, "item-1", [event$p]);
     let replayed = await ops.replay("item-1");
     expect(replayed.length).toBe(1);
     let first = replayed[0];
@@ -24,11 +24,11 @@ describe("EventLog (in-memory)", () => {
   });
   test("append publishes event to event topic", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessInMemory.eventLog));
-    let event$p = EventLogFixtures$ReventlessInMemory.makeEvent$p("item-1", {
+    let event$p = EventLogFixtures$ReventlessInMemory.makeEvent$p("pub-1", {
       TAG: "ItemCreated",
       name: "Widget"
     });
-    await ops.append(1, "item-1", [event$p]);
+    await ops.append(0, "pub-1", [event$p]);
     expect(EventLogFixtures$ReventlessInMemory.capturedTopicEventCount.contents).toBe(1);
   });
   test("replay returns empty array for unknown id", async () => {
@@ -38,11 +38,11 @@ describe("EventLog (in-memory)", () => {
   });
   test("multiple appends accumulate events", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessInMemory.eventLog));
-    await ops.append(1, "agg-1", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-1", {
+    await ops.append(0, "agg-1", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-1", {
         TAG: "ItemCreated",
         name: "First"
       })]);
-    await ops.append(2, "agg-1", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-1", {
+    await ops.append(1, "agg-1", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-1", {
         TAG: "ItemDeleted",
         id: "agg-1"
       })]);
@@ -51,11 +51,11 @@ describe("EventLog (in-memory)", () => {
   });
   test("separate aggregates have independent event logs", async () => {
     let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessInMemory.eventLog));
-    await ops.append(1, "agg-A", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-A", {
+    await ops.append(0, "agg-A", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-A", {
         TAG: "ItemCreated",
         name: "A"
       })]);
-    await ops.append(1, "agg-B", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-B", {
+    await ops.append(0, "agg-B", [EventLogFixtures$ReventlessInMemory.makeEvent$p("agg-B", {
         TAG: "ItemDeleted",
         id: "B"
       })]);

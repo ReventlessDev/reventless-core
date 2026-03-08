@@ -23,7 +23,8 @@ let storageRetrySchedule = Effect$1.Schedule.whileInput(Effect$1.Schedule.inters
 
 function Make(Spec) {
   return Ops => {
-    let encodeEvents$p = (events$p, id) => events$p.map(event => {
+    let encodeEvents$p = (events$p, id, startingSeqNr) => events$p.map((event, i) => {
+      let sequenceNr = startingSeqNr + i | 0;
       let json = Message$ReventlessCore.encode(event.event, Spec.eventSchema);
       let match = Message$ReventlessCore.splitMessage(json);
       return Object.fromEntries([
@@ -33,7 +34,7 @@ function Make(Spec) {
         ],
         [
           "sequenceNr",
-          Message$ReventlessCore.hrtimeToString(process.hrtime(), Message$ReventlessCore.now())
+          sequenceNr.toString().padStart(9, "0")
         ],
         [
           "type",
@@ -65,7 +66,7 @@ function Make(Spec) {
       }
     };
     let append = async (sequenceNr, id, events$p) => {
-      let eventsJson = encodeEvents$p(events$p, id);
+      let eventsJson = encodeEvents$p(events$p, id, sequenceNr);
       let idStr = Spec.Id.toString(id);
       let storageEffect = Effect$1.Effect.retry(Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "storage error"), () => Ops.storage.append(sequenceNr, idStr, eventsJson)), result => {
         if (result.TAG === "Ok") {
@@ -79,10 +80,17 @@ function Make(Spec) {
         return await publishToEventTopic(id, events$p);
       }
       let failMsg = Exit.match(exit, cause => Stdlib_Option.getOr(Effect$1.Cause.failures(cause)[0], "storage error"), () => "storage error");
-      return {
-        TAG: "Error",
-        _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + idStr + `): ` + failMsg
-      };
+      if (failMsg.includes("conflict")) {
+        return {
+          TAG: "Error",
+          _0: "conflict"
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: `EventLog: Error: Couldn't append for ` + Spec.name + `(` + idStr + `): ` + failMsg
+        };
+      }
     };
     let decodeEvent = (id, json) => {
       try {
