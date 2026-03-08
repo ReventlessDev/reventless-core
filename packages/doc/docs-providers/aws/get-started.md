@@ -85,6 +85,41 @@ let plugin = Plugin.make(
 )
 ```
 
+## Lambda Layer
+
+Reventless applications use a shared Lambda layer containing `@reventlessdev/reventless-aws` and all its dependencies. This keeps individual Lambda deployment packages small and speeds up cold starts.
+
+### Finding the Layer ARN
+
+Each release of `@reventlessdev/reventless-aws` automatically builds and publishes a Lambda layer. The layer ARN is appended to the GitHub release notes:
+
+1. Go to the [reventless-core releases](https://github.com/ReventlessDev/reventless-core/releases)
+2. Find the release for your `@reventlessdev/reventless-aws` version
+3. Copy the **Lambda Layer ARN** from the release notes
+
+### Configuring the Layer
+
+Set the `REVENTLESS_LAYER_ARN` environment variable when running `pulumi up`. All Lambda functions created by Reventless will automatically include this layer:
+
+```bash
+REVENTLESS_LAYER_ARN="arn:aws:lambda:eu-west-1:123456789:layer:reventless-aws:1" pulumi up
+```
+
+For a more permanent setup, add it to your Pulumi stack configuration:
+
+```yaml
+# Pulumi.<stack>.yaml
+config:
+  aws:region: eu-west-1
+```
+
+```bash
+# Set in your shell profile or CI environment
+export REVENTLESS_LAYER_ARN="arn:aws:lambda:eu-west-1:123456789:layer:reventless-aws:1"
+```
+
+The layer ARN is read at deploy-time by `rescript-pulumi-aws` and passed to every Lambda function's `layers` configuration. If `REVENTLESS_LAYER_ARN` is not set, Lambda functions are deployed without a layer (all dependencies bundled in the deployment package).
+
 ## Deploy
 
 ```bash

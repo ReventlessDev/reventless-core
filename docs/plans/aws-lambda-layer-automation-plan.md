@@ -41,7 +41,7 @@ Create `.github/workflows/build-lambda-layer.yml` that triggers on `@reventlessd
 - [x] Configure AWS credentials (`AWS_LAYER_ACCESS_KEY_ID`, `AWS_LAYER_SECRET_ACCESS_KEY` secrets)
 - [x] Publish layer via `aws lambda publish-layer-version` (start with `eu-west-1`, use matrix for future regions)
 - [x] Upload zip as GitHub release asset and append layer ARN to release notes
-- [ ] Test with `workflow_dispatch` before relying on tag triggers
+- [x] Test with `workflow_dispatch` before relying on tag triggers
 
 ## Step 3: AWS IAM Setup
 
@@ -55,9 +55,9 @@ Create a dedicated IAM user/role with minimal permissions for CI layer publishin
 
 Document how applications use the layer via Pulumi stack config.
 
-- [ ] Add deployment guide section to `packages/doc/docs/` explaining `REVENTLESS_LAYER_ARN` env var
-- [ ] Document Pulumi stack config pattern: `reventless:layerArn` in `Pulumi.<stack>.yaml`
-- [ ] Document how to find the correct layer ARN from GitHub release notes
+- [x] Add deployment guide section to `packages/doc/docs/` explaining `REVENTLESS_LAYER_ARN` env var
+- [x] Document Pulumi stack config pattern: `reventless:layerArn` in `Pulumi.<stack>.yaml`
+- [x] Document how to find the correct layer ARN from GitHub release notes
 
 ## Step 5: Move Package
 
