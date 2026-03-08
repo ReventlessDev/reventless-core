@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-dcb-catalog-spec",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-alpha.5",
   "description": "Online Shop DCB example — Catalog plugin specification (extension point specs)",
   "private": true,
   "license": "MIT",
@@ -9,8 +9,8 @@
     "clean": "rescript clean"
   },
   "dependencies": {
-    "sury": "^11.0.0-alpha.4",
-    "@reventlessdev/reventless-spec": "*"
+    "@reventlessdev/reventless-spec": "*",
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
     "rescript": "^12.1.0",

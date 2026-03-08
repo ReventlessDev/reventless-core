@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.2.0-alpha.0 (2026-03-08)
+
+### Features
+
+* automate Lambda layer build, move to reventless/ ([381650d](https://github.com/ReventlessDev/reventless-core/commit/381650d1e080c030730d5736e01c4c535c42deb3))
+
+
 ## [0.1.1-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/aws-lambda-layer@0.1.1-alpha.3...aws-lambda-layer@0.1.1-alpha.5) (2026-03-01)
 
 **Note:** Version bump only for package aws-lambda-layer

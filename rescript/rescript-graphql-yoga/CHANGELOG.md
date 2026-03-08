@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.2...@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.3) (2026-03-08)
+
+### Bug Fixes
+
+* **deps:** deduplicate graphql package to resolve schema conflict ([c33b030](https://github.com/ReventlessDev/reventless-core/commit/c33b030c14993e27700c5f0ec44a8a6ebe582468))
+### Features
+
+* **graphql:** add GRAPHQL_DEBUG mode, schema inspector, and debugging guide ([61fcbee](https://github.com/ReventlessDev/reventless-core/commit/61fcbee6ee68337e95b5934a14279420e8ab8eca))
+
+
 # [1.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.1...@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.2) (2026-03-02)
 
 ### Bug Fixes

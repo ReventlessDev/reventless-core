@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-dcb",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
   "private": true,
   "license": "MIT",
@@ -13,10 +13,10 @@
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs"
   },
   "dependencies": {
-    "@reventlessdev/online-shop-dcb-catalog-spec": "*",
-    "@reventlessdev/online-shop-dcb-ordering-spec": "*",
     "@reventlessdev/online-shop-dcb-catalog": "*",
+    "@reventlessdev/online-shop-dcb-catalog-spec": "*",
     "@reventlessdev/online-shop-dcb-ordering": "*",
+    "@reventlessdev/online-shop-dcb-ordering-spec": "*",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*"
   },

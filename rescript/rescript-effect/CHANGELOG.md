@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.1.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-effect@0.1.0-alpha.2...@reventlessdev/rescript-effect@0.1.0-alpha.3) (2026-03-08)
+
+### Bug Fixes
+
+* remove 26 Obj.magic usages, improve type safety across codebase ([ebb8925](https://github.com/ReventlessDev/reventless-core/commit/ebb8925b760a0f070b1aaf3ef2d4bf3fdc7282a3))
+### Features
+
+* add effect-based handlers with Effect service injection at dispatch ([7ab3b3e](https://github.com/ReventlessDev/reventless-core/commit/7ab3b3e8a48890f2248b113328914755f604c07e))
+* migrate logging to Effect built-in logger and provide RequestContext ([e9ec682](https://github.com/ReventlessDev/reventless-core/commit/e9ec6822ea924fc1561bfd886e4232cb5e2a8250))
+
+
 # [0.1.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-effect@0.1.0-alpha.1...@reventlessdev/rescript-effect@0.1.0-alpha.2) (2026-03-02)
 
 ### Bug Fixes

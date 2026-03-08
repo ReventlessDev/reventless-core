@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-ordering",
-  "version": "3.0.0-alpha.3",
+  "version": "3.0.0-alpha.4",
   "description": "Online Shop example — Ordering plugin (Customer & Order aggregates)",
   "private": true,
   "license": "MIT",
@@ -27,11 +27,11 @@
     }
   },
   "dependencies": {
-    "sury": "^11.0.0-alpha.4",
-    "@reventlessdev/reventless-spec": "*",
-    "@reventlessdev/reventless-in-memory": "*",
+    "@reventlessdev/online-shop-aggregates-catalog-spec": "*",
     "@reventlessdev/online-shop-aggregates-ordering-spec": "*",
-    "@reventlessdev/online-shop-aggregates-catalog-spec": "*"
+    "@reventlessdev/reventless-in-memory": "*",
+    "@reventlessdev/reventless-spec": "*",
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",

@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-mcp-sdk",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "ReScript bindings for @modelcontextprotocol/sdk",
   "license": "MIT",
   "scripts": {

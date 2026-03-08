@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.2.1-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-pulumi-pulumi@2.2.1-alpha.5...@reventlessdev/rescript-pulumi-pulumi@2.2.1-alpha.6) (2026-03-08)
+
+**Note:** Version bump only for package @reventlessdev/rescript-pulumi-pulumi
+
+
+
+
+
 ## [2.2.1-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-pulumi-pulumi@2.2.1-alpha.4...@reventlessdev/rescript-pulumi-pulumi@2.2.1-alpha.5) (2026-03-02)
 
 ### Bug Fixes

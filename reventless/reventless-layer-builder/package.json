@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-layer-builder",
-  "version": "0.1.1-alpha.5",
+  "version": "0.2.0-alpha.0",
   "description": "aws lambda layer to be used in reventless based projects",
   "private": true,
   "license": "MIT",

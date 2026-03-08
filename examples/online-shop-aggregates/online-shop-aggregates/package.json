@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-aggregates",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Online Shop example — full aggregate platform with Catalog + Ordering plugins (in-memory)",
   "private": true,
   "scripts": {
@@ -12,9 +12,9 @@
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs"
   },
   "dependencies": {
-    "@reventlessdev/reventless-spec": "*",
-    "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/online-shop-aggregates-catalog": "*",
-    "@reventlessdev/online-shop-aggregates-ordering": "*"
+    "@reventlessdev/online-shop-aggregates-ordering": "*",
+    "@reventlessdev/reventless-in-memory": "*",
+    "@reventlessdev/reventless-spec": "*"
   }
 }
