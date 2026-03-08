@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.2.0-alpha.1](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@0.2.0-alpha.0...@reventlessdev/reventless-layer-builder@0.2.0-alpha.1) (2026-03-08)
+
+### Bug Fixes
+
+* **deps:** add missing arborist and pacote dependencies to layer builder ([93bafa0](https://github.com/ReventlessDev/reventless-core/commit/93bafa099bbb477cca31dc41ced04f3361e4a785))
+
+
 # 0.2.0-alpha.0 (2026-03-08)
 
 ### Features
