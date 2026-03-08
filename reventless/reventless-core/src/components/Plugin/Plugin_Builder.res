@@ -37,7 +37,9 @@ module Make = (
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPoint.T)>,
     ~extensions: array<module(ReventlessInfra.Extension.T)>,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>,
+    ~readModels: array<
+      module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    >,
     ~tasks: array<module(ReventlessInfra.Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~dcbSpec: option<module(Plugin.DcbSpec)>,
@@ -59,7 +61,9 @@ module Make = (
         n->String.slice(~start=0, ~end=n->String.length - 3) ++ "y"
       } else if n->String.endsWith("s") {
         n->String.slice(~start=0, ~end=n->String.length - 1)
-      } else { n }
+      } else {
+        n
+      }
 
     // Create DcbEventLog and StateChangeSlices if DcbSpec provided
     // Also captures handler and connect function for runtime setup
@@ -159,9 +163,7 @@ module Make = (
         // Create AutomationSlices — each gets its own QueryDb and subscribes to DcbEventLog events
         let automationSlicesOutputs =
           DcbSpec.automationSlices
-          ->Array.map((
-            module(AutoSlice: AutomationSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
+          ->Array.map((module(AutoSlice: AutomationSlice.T with type dcbEvent = DcbSpec.event)) => {
             let as_ = AutoSlice.make(~dcbEventLog, ~publishJsons, ~opts)
             (AutoSlice.Spec.name, as_->Component.outputs)
           })
@@ -181,8 +183,7 @@ module Make = (
         // Create InboundTranslationSlices — each receives external input and publishes commands.
         // Capture both outputs (for plugin result) and components (for operations access).
         let inboundTranslationSliceData =
-          DcbSpec.inboundTranslationSlices
-          ->Array.map((
+          DcbSpec.inboundTranslationSlices->Array.map((
             module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
           ) => {
             let its = ITS.make(~publishJsons, ~opts)
@@ -208,12 +209,7 @@ module Make = (
             | None => ()
             }
 
-            (
-              ITS.Spec.name,
-              fieldName,
-              its,
-              ITS.Spec.externalInputSchema->S.castToUnknown,
-            )
+            (ITS.Spec.name, fieldName, its, ITS.Spec.externalInputSchema->S.castToUnknown)
           })
 
         let inboundTranslationSlicesOutputs =
@@ -284,8 +280,7 @@ module Make = (
         // Collect InboundTranslation field names and schemas for AppSync resolver hook
         let inboundFieldNames =
           inboundTranslationSliceData->Array.map(((_, fieldName, _, _)) => fieldName)
-        let inboundSchemas =
-          inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
+        let inboundSchemas = inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
 
         let dcbConnectFn = (~runtime) => {
           DcbCommandTopic.connect(~runtime, ~resources=dcbResources, dcbCommandTopic)
@@ -346,9 +341,12 @@ module Make = (
 
     let mutationEntriesFromSlices = switch dcbSpec {
     | Some(module(DcbSpec)) =>
-      DcbSpec.stateChangeSlices->Array.map((module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event)) =>
-        {ReventlessInfra.Api.fieldNames: [`${name}_${S.Spec.name}`], commandSchema: S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema}
-      )
+      DcbSpec.stateChangeSlices->Array.map((
+        module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+      ) => {
+        ReventlessInfra.Api.fieldNames: [`${name}_${S.Spec.name}`],
+        commandSchema: S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
+      })
     | None => []
     }
 
@@ -356,12 +354,10 @@ module Make = (
     | Some(module(DcbSpec)) =>
       DcbSpec.inboundTranslationSlices->Array.map((
         module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-      ) =>
-        {
-          ReventlessInfra.Api.fieldNames: [`${name}_${ITS.Spec.name}`],
-          commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
-        }
-      )
+      ) => {
+        ReventlessInfra.Api.fieldNames: [`${name}_${ITS.Spec.name}`],
+        commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
+      })
     | None => []
     }
 
@@ -371,19 +367,21 @@ module Make = (
       )
 
     let queryEntriesFromReadModels =
-      readModels->Array.map((module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role)) =>
-        {
-          ReventlessInfra.Api.singleFieldName: `${name}_${singularize(R.Spec.name)}`,
-          listFieldName: Some(`${name}_${pluralize(R.Spec.name)}`),
-          returnTypeName: `${name}_${singularize(R.Spec.name)}`,
-          stateSchema: R.Spec.stateSchema->S.castToUnknown,
-          authorization: None,
-        }
-      )
+      readModels->Array.map((
+        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+      ) => {
+        ReventlessInfra.Api.singleFieldName: `${name}_${singularize(R.Spec.name)}`,
+        listFieldName: Some(`${name}_${pluralize(R.Spec.name)}`),
+        returnTypeName: `${name}_${singularize(R.Spec.name)}`,
+        stateSchema: R.Spec.stateSchema->S.castToUnknown,
+        authorization: None,
+      })
 
     let queryEntriesFromSlices = switch dcbSpec {
     | Some(module(DcbSpec)) =>
-      DcbSpec.stateViewSlices->Array.map((module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event)) => {
+      DcbSpec.stateViewSlices->Array.map((
+        module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
+      ) => {
         let entity = V.Spec.name->stripViewSuffix
         let singular = singularize(entity)
         {
@@ -423,7 +421,9 @@ module Make = (
     // Keyed by the Spec.name that each component uses for its QueryDb.
     // (StateViewSlice registry is populated earlier, inside the dcbSpec match block,
     // before StateViewSlice.make calls — see above.)
-    readModels->Array.forEach((module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role)) =>
+    readModels->Array.forEach((
+      module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    ) =>
       Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
         R.Spec.name,
         {
@@ -459,6 +459,12 @@ module Make = (
 
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
+    // Merge DCB EventTopic into allEventTopics so ReadModels can subscribe to DCB events.
+    // Uses the same key as the eventLogEntries busKey (name ++ "DcbEventLog").
+    switch dcbEventLogOutputs {
+    | Some(dcbOutputs) => allEventTopics->Dict.set(name ++ "DcbEventLog", dcbOutputs.eventTopic)
+    | None => ()
+    }
 
     let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
@@ -504,16 +510,19 @@ module Make = (
         | Some(coreExtensionPoints) => {
             let corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
               (
-                coreExtensionPoints->Pulumi.StackReference.get(
-                  PluginExtensionPointSpec.name,
-                )->Obj.magic: JSON.t
+                coreExtensionPoints
+                ->Pulumi.StackReference.get(PluginExtensionPointSpec.name)
+                ->Obj.magic: JSON.t
               )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
             let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
               corePluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
                 Adapter.fromInteropResolved,
               ),
             )
-            Some((corePluginExtensionPointUnwrapped, corePluginExtensionPointCommandTopicRemoteChannel))
+            Some((
+              corePluginExtensionPointUnwrapped,
+              corePluginExtensionPointCommandTopicRemoteChannel,
+            ))
           }
         | None => None
         }
@@ -670,9 +679,8 @@ module Make = (
             ),
           )
         | None =>
-          heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(
-            ~handler,
-            ~connect=(~runtime as _) => (),
+          heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(~handler, ~connect=(~runtime as _) =>
+            ()
           )
         }
 
@@ -712,8 +720,12 @@ module Make = (
       stateChangeSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateChangeSlices),
       stateViewSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.stateViewSlices),
       automationSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.automationSlices),
-      outboundTranslationSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.outboundTranslationSlices),
-      inboundTranslationSlices: builderOutputs->Pulumi.Output.apply(outputs => outputs.inboundTranslationSlices),
+      outboundTranslationSlices: builderOutputs->Pulumi.Output.apply(outputs =>
+        outputs.outboundTranslationSlices
+      ),
+      inboundTranslationSlices: builderOutputs->Pulumi.Output.apply(outputs =>
+        outputs.inboundTranslationSlices
+      ),
       readModels: builderOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
       tasks: builderOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
       resolvers: builderOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
@@ -735,7 +747,9 @@ module Make = (
     ~extensionPoints=[],
     ~extensions=[],
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=[],
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=[],
+    ~readModels: array<
+      module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    >=[],
     ~tasks=[],
     ~api: api,
     ~apiRole: role,

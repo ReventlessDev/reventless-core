@@ -292,6 +292,9 @@ function Make(Spec) {
         }
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
+        if (dcbEventLogOutputs !== undefined) {
+          allEventTopics[extra$1 + "DcbEventLog"] = dcbEventLogOutputs.eventTopic;
+        }
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);

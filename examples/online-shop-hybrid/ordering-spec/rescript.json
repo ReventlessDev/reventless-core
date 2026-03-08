@@ -9,5 +9,10 @@
   "dependencies": [
     "sury"
   ],
-  "compiler-flags": []
+  "compiler-flags": [],
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs"
 }

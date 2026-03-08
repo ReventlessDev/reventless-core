@@ -184,4 +184,43 @@ describe("Ordering Hybrid E2E:", () => {
     await dispatch(cmd, "no-such-order")
     expect(capturedEventCount.contents)->toBe(0)
   })
+
+  // — Cross-entity DCB decision model filtering (Step 3.2) —
+  // PlaceOrder's multi-clause query fetches both Order events (via orderId tag)
+  // AND CatalogProduct events (via productId tag). These tests verify that
+  // the decision model correctly aggregates events across entity types.
+
+  testPromise("PlaceOrder with un-synced product produces 0 events (ProductsNotAvailable)", async () => {
+    let cmd = PlaceOrder.PlaceOrder({
+      orderId: "ord-cross-1",
+      customerId: "cust-1",
+      productId: ["prod-1", "prod-UNSYNCED"],
+    })->Message.encode(PlaceOrder.commandSchema)
+    await dispatch(cmd, "ord-cross-1")
+    // prod-UNSYNCED was never synced, so PlaceOrder rejects with ProductsNotAvailable
+    expect(capturedEventCount.contents)->toBe(0)
+  })
+
+  testPromise("after syncing missing product, PlaceOrder succeeds", async () => {
+    // Sync the previously missing product
+    let syncCmd = SyncCatalogProduct.SyncNewProduct({
+      productId: "prod-UNSYNCED",
+      name: "Keyboard",
+      price: 49.99,
+    })->Message.encode(SyncCatalogProduct.commandSchema)
+    await dispatch(syncCmd, "prod-UNSYNCED")
+    expect(capturedEventCount.contents)->toBe(1)
+
+    capturedEventCount := 0
+
+    // Now PlaceOrder should succeed — multi-clause query fetches both
+    // CatalogProductSynced events (prod-1 and prod-UNSYNCED)
+    let cmd = PlaceOrder.PlaceOrder({
+      orderId: "ord-cross-1",
+      customerId: "cust-1",
+      productId: ["prod-1", "prod-UNSYNCED"],
+    })->Message.encode(PlaceOrder.commandSchema)
+    await dispatch(cmd, "ord-cross-1")
+    expect(capturedEventCount.contents)->toBe(1)
+  })
 })

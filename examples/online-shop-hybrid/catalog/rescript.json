@@ -17,5 +17,10 @@
     "@reventlessdev/online-shop-hybrid-catalog-spec",
     "@reventlessdev/online-shop-hybrid-ordering-spec"
   ],
-  "compiler-flags": []
+  "compiler-flags": [],
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs"
 }

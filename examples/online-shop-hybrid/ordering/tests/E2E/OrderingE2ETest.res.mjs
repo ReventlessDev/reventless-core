@@ -209,6 +209,41 @@ describe("Ordering Hybrid E2E:", () => {
     await dispatch(cmd, "no-such-order");
     expect(capturedEventCount.contents).toBe(0);
   });
+  test("PlaceOrder with un-synced product produces 0 events (ProductsNotAvailable)", async () => {
+    let cmd = Message$Reventless.encode({
+      TAG: "PlaceOrder",
+      orderId: "ord-cross-1",
+      customerId: "cust-1",
+      productId: [
+        "prod-1",
+        "prod-UNSYNCED"
+      ]
+    }, PlaceOrder$OrderingPlugin.commandSchema);
+    await dispatch(cmd, "ord-cross-1");
+    expect(capturedEventCount.contents).toBe(0);
+  });
+  test("after syncing missing product, PlaceOrder succeeds", async () => {
+    let syncCmd = Message$Reventless.encode({
+      TAG: "SyncNewProduct",
+      productId: "prod-UNSYNCED",
+      name: "Keyboard",
+      price: 49.99
+    }, SyncCatalogProduct$OrderingPlugin.commandSchema);
+    await dispatch(syncCmd, "prod-UNSYNCED");
+    expect(capturedEventCount.contents).toBe(1);
+    capturedEventCount.contents = 0;
+    let cmd = Message$Reventless.encode({
+      TAG: "PlaceOrder",
+      orderId: "ord-cross-1",
+      customerId: "cust-1",
+      productId: [
+        "prod-1",
+        "prod-UNSYNCED"
+      ]
+    }, PlaceOrder$OrderingPlugin.commandSchema);
+    await dispatch(cmd, "ord-cross-1");
+    expect(capturedEventCount.contents).toBe(1);
+  });
 });
 
 export {
