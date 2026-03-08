@@ -112,7 +112,5 @@ jobs:
 
           # Append layer ARN to release notes
           EXISTING_NOTES=$(gh release view "$TAG" --json body -q .body 2>/dev/null || echo "")
-          NEW_NOTES="${EXISTING_NOTES}
-
-**Lambda Layer ARN (${REGION}):** \`${LAYER_ARN}\`"
+          NEW_NOTES=$(printf '%s\n\n**Lambda Layer ARN (%s):** `%s`' "$EXISTING_NOTES" "$REGION" "$LAYER_ARN")
           gh release edit "$TAG" --notes "$NEW_NOTES" || echo "Could not update release notes"

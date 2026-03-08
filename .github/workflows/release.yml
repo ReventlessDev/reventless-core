@@ -200,6 +200,14 @@ jobs:
           npm run clean
           npm run build
 
+      - name: Restore deleted dev sources
+        run: |
+          # rescript clean deletes compiled test files (dev sources)
+          # that are checked into git. rescript build from root skips
+          # dev sources, so they aren't regenerated. Restore them
+          # before lerna publish, which requires a clean working tree.
+          git checkout -- .
+
       - name: Publish to GitHub Package Registry
         run: |
           npx lerna publish from-package \
