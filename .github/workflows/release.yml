@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     branches: [main, beta, alpha]
+    paths-ignore:
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
