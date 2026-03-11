@@ -6,7 +6,7 @@ let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((hashKey, rangeKey)) => hashKey ++ ("," ++ rangeKey->Option.getOr("")))
 
-let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
+let toResolvedTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   (name, id, arn, hashKey, rangeKey)
   ->Pulumi.Output.all5
   ->Pulumi.Output.apply(((name, id, arn, hashKey, rangeKey)) => {

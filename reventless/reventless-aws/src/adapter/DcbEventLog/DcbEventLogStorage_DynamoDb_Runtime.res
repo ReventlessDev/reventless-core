@@ -111,7 +111,7 @@ let fromItem = (item: JSON.t): ReventlessCore.DcbEventLog_Adapter.rawSequencedEv
 // --- Query Operations ---
 
 let queryBySingleTag = async (
-  table: runtimeTable,
+  table: resolvedTable,
   tagKey: string,
   tagValue: string,
   ~after: option<string>=?,
@@ -144,7 +144,7 @@ let queryBySingleTag = async (
 }
 
 let queryByCompositeTags = async (
-  table: runtimeTable,
+  table: resolvedTable,
   tags: array<Reventless.DcbTag.tag>,
   ~after: option<string>=?,
 ) => {
@@ -177,7 +177,7 @@ let queryByCompositeTags = async (
 }
 
 let scanWithFilter = async (
-  table: runtimeTable,
+  table: resolvedTable,
   ~eventTypes: option<array<string>>=?,
   ~after: option<string>=?,
 ) => {
@@ -231,7 +231,7 @@ let scanWithFilter = async (
 // --- Query Item Execution ---
 
 let executeQueryItem = async (
-  table: runtimeTable,
+  table: resolvedTable,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
 ) => {
@@ -373,7 +373,7 @@ let mergeSortedEvents = (
 
 // --- Main Operations ---
 
-let read = (table: runtimeTable) =>
+let read = (table: resolvedTable) =>
   async (
     ~query: Reventless.DcbTag.query,
     ~after=?,
@@ -406,7 +406,7 @@ let read = (table: runtimeTable) =>
   }
 
 let writeEventsWithPosition = async (
-  table: runtimeTable,
+  table: resolvedTable,
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   basePosition: string,
 ) => {
@@ -422,7 +422,7 @@ let writeEventsWithPosition = async (
   ->Effect.runPromise
 }
 
-let append = (table: runtimeTable) =>
+let append = (table: resolvedTable) =>
   async (
     events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
     ~condition=?,
@@ -459,7 +459,7 @@ let append = (table: runtimeTable) =>
 // --- Stream Query Operations (lazy pagination via Stream.paginateEffect) ---
 
 let queryBySingleTagStream = (
-  table: runtimeTable,
+  table: resolvedTable,
   tagKey: string,
   tagValue: string,
   ~after: option<string>=?,
@@ -502,7 +502,7 @@ let queryBySingleTagStream = (
 }
 
 let queryByCompositeTagsStream = (
-  table: runtimeTable,
+  table: resolvedTable,
   tags: array<Reventless.DcbTag.tag>,
   ~after: option<string>=?,
 ) => {
@@ -546,7 +546,7 @@ let queryByCompositeTagsStream = (
 }
 
 let scanWithFilterStream = (
-  table: runtimeTable,
+  table: resolvedTable,
   ~eventTypes: option<array<string>>=?,
   ~after: option<string>=?,
 ) => {
@@ -612,7 +612,7 @@ let scanWithFilterStream = (
 }
 
 let executeQueryItemStream = (
-  table: runtimeTable,
+  table: resolvedTable,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
 ) =>
@@ -628,7 +628,7 @@ let executeQueryItemStream = (
     }
   }
 
-let readStream = (table: runtimeTable) =>
+let readStream = (table: resolvedTable) =>
   (~query: Reventless.DcbTag.query, ~after=?) => {
     let streams = query->Array.map(qi => executeQueryItemStream(table, qi, ~after?))
     switch streams->Array.length {

@@ -53,16 +53,16 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
     ~opts?,
   )
 
-  let runtimeQueueOutput = queue->Util_SQS.toRuntimeQueueOutput
+  let resolvedQueueOutput = queue->Util_SQS.toResolvedQueueOutput
 
   {
     ReventlessCore.CommandTopic_Adapter.parts: {queue: queue},
     resources: [queue->Util_SQS.toResource],
-    publishJsons: runtimeQueueOutput->Pulumi.Output.apply(runtimeQueue =>
-      runtimeQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS, ...)
+    publishJsons: resolvedQueueOutput->Pulumi.Output.apply(resolvedQueue =>
+      resolvedQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS, ...)
     ),
-    publishJsonsStream: runtimeQueueOutput->Pulumi.Output.apply(runtimeQueue => {
-      let publishJsons = runtimeQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS, ...)
+    publishJsonsStream: resolvedQueueOutput->Pulumi.Output.apply(resolvedQueue => {
+      let publishJsons = resolvedQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS, ...)
       stream =>
         stream
         ->Stream.grouped(10)
@@ -72,8 +72,8 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
     }),
     connect,
     handleChannelEvent: handleCommands =>
-      runtimeQueueOutput->Pulumi.Output.apply(runtimeQueue =>
-        runtimeQueue->CommandTopicChannel_SQS_Runtime.handleQueueEvent(handleCommands, ...)
+      resolvedQueueOutput->Pulumi.Output.apply(resolvedQueue =>
+        resolvedQueue->CommandTopicChannel_SQS_Runtime.handleQueueEvent(handleCommands, ...)
       ),
   }
 }

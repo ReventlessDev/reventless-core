@@ -1,6 +1,6 @@
 open AwsSdk.DynamoDb.DocumentClient
 
-type runtimeTable = {
+type resolvedTable = {
   id: string,
   name: string,
   arn: string,

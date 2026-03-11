@@ -32,16 +32,16 @@ let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'con
 
   let enqueueEvent =
     queue
-    ->Util_SQS.toRuntimeQueueOutput
-    ->Pulumi.Output.apply(runtimeQueue =>
-      EventCollectorChannel_SQS_Runtime.enqueueEvent(runtimeQueue, ...)
+    ->Util_SQS.toResolvedQueueOutput
+    ->Pulumi.Output.apply(resolvedQueue =>
+      EventCollectorChannel_SQS_Runtime.enqueueEvent(resolvedQueue, ...)
     )
 
   let handleChannelEvent = handleEvents =>
     queue
-    ->Util_SQS.toRuntimeQueueOutput
-    ->Pulumi.Output.apply(runtimeQueue =>
-      runtimeQueue->EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...)
+    ->Util_SQS.toResolvedQueueOutput
+    ->Pulumi.Output.apply(resolvedQueue =>
+      resolvedQueue->EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...)
     )
 
   let eventTopicResources =

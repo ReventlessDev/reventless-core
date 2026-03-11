@@ -14,7 +14,7 @@ function toResource(param) {
   };
 }
 
-function toRuntimeBucketOutput(param) {
+function toResolvedBucketOutput(param) {
   return Pulumi.all([
     param.id,
     param.arn
@@ -30,6 +30,6 @@ function toRuntimeBucketOutput(param) {
 
 export {
   toResource,
-  toRuntimeBucketOutput,
+  toResolvedBucketOutput,
 }
 /* @pulumi/pulumi Not a pure module */

@@ -6,7 +6,7 @@ let toResource: PulumiAws.S3.Bucket.t => ReventlessInfra.Adapter.resource = ({id
   info: id->Pulumi.Output.apply(_ => ""),
 }
 
-let toRuntimeBucketOutput = ({id, arn}: PulumiAws.S3.Bucket.t) =>
+let toResolvedBucketOutput = ({id, arn}: PulumiAws.S3.Bucket.t) =>
   (id, arn)
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((id, arn)) => {

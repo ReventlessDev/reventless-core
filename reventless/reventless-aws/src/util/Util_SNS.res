@@ -1,4 +1,4 @@
-let toRuntimeTopicOutput = ({name, id, arn}: PulumiAws.SNS.Topic.t) =>
+let toResolvedTopicOutput = ({name, id, arn}: PulumiAws.SNS.Topic.t) =>
   (name, id, arn)
   ->Pulumi.Output.all3
   ->Pulumi.Output.apply(((name, id, arn)) => {

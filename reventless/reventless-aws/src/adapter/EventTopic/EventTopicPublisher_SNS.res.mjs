@@ -12,16 +12,16 @@ function make(name, param, opts) {
   let topic = new (Aws.sns.Topic)(name, {
     tags: AWS_Tags$ReventlessAws.make(name, EventTopic$ReventlessCore.componentType)
   }, opts);
-  let runtimeTopicOutput = Util_SNS$ReventlessAws.toRuntimeTopicOutput(topic);
+  let resolvedTopicOutput = Util_SNS$ReventlessAws.toResolvedTopicOutput(topic);
   return {
     resources: [Util_SNS$ReventlessAws.toResource(topic)],
-    publishJson: runtimeTopicOutput.apply(runtimeTopic => ((extra, extra$1, extra$2) => EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(runtimeTopic, extra, extra$1, extra$2))),
-    publishJsonStream: runtimeTopicOutput.apply(runtimeTopic => {
+    publishJson: resolvedTopicOutput.apply(resolvedTopic => ((extra, extra$1, extra$2) => EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(resolvedTopic, extra, extra$1, extra$2))),
+    publishJsonStream: resolvedTopicOutput.apply(resolvedTopic => {
       return stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), items => Effect.Effect.promise(() => Promise.all(items.map(param => {
         let extra = param.service;
         let extra$1 = param.meta;
         let extra$2 = param.json;
-        return EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(runtimeTopic, extra, extra$1, extra$2);
+        return EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(resolvedTopic, extra, extra$1, extra$2);
       })).then(param => {})));
     })
   };

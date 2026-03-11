@@ -7,7 +7,7 @@ import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Ut
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as Util_AdapterRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
 
-function toRuntimeQueueOutput(param) {
+function toResolvedQueueOutput(param) {
   return Pulumi.all([
     param.name,
     param.id,
@@ -81,7 +81,7 @@ let Subscription = {
 };
 
 export {
-  toRuntimeQueueOutput,
+  toResolvedQueueOutput,
   toResource,
   fromResource,
   arn2Account,

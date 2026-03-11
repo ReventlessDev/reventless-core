@@ -27,15 +27,15 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
     resources: [table->Util_DynamoDbStream.toResource],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     operations: table
-    ->Util_DynamoDb.toRuntimeTableOutput
-    ->Pulumi.Output.apply(runtimeTable => {
-      ReventlessCore.QueryDb.load: runtimeTable->load,
-      loadStream: runtimeTable->loadStream,
-      save: runtimeTable->save,
-      saveBatch: runtimeTable->saveBatch,
-      count: runtimeTable->count,
-      delete: runtimeTable->delete,
-      deleteBatch: runtimeTable->deleteBatch,
+    ->Util_DynamoDb.toResolvedTableOutput
+    ->Pulumi.Output.apply(resolvedTable => {
+      ReventlessCore.QueryDb.load: resolvedTable->load,
+      loadStream: resolvedTable->loadStream,
+      save: resolvedTable->save,
+      saveBatch: resolvedTable->saveBatch,
+      count: resolvedTable->count,
+      delete: resolvedTable->delete,
+      deleteBatch: resolvedTable->deleteBatch,
     }),
   }
 }

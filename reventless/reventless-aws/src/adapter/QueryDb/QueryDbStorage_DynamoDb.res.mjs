@@ -78,14 +78,14 @@ function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
   return {
     resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
-    operations: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(runtimeTable => ({
-      load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(runtimeTable),
-      loadStream: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.loadStream(runtimeTable),
-      save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(runtimeTable),
-      saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(runtimeTable),
-      count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(runtimeTable),
-      delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(runtimeTable),
-      deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(runtimeTable)
+    operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => ({
+      load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(resolvedTable),
+      loadStream: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.loadStream(resolvedTable),
+      save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(resolvedTable),
+      saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(resolvedTable),
+      count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(resolvedTable),
+      delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(resolvedTable),
+      deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(resolvedTable)
     }))
   };
 }

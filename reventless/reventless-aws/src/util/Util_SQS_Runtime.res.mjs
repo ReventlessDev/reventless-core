@@ -8,7 +8,7 @@ import * as ClientSqs from "@aws-sdk/client-sqs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as SQS_Error$ReventlessAws from "../errors/SQS_Error.res.mjs";
 
-function toRuntimeQueue(param) {
+function toResolvedQueue(param) {
   return {
     id: param.id,
     name: param.name,
@@ -124,7 +124,7 @@ let sendMessagesMaxRetries = 5;
 let deleteMessagesMaxRetries = 5;
 
 export {
-  toRuntimeQueue,
+  toResolvedQueue,
   sendMessage,
   sendFifoMessage,
   send,

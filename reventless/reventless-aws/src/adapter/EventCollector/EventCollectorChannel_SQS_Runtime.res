@@ -66,7 +66,7 @@ let handleDynamoDbEvent = handleEvents =>
     Stream.fromIterable(jsons)->handleEvents->Effect.map(_ => ())
   }
 
-let enqueueEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, _id, messageBody) =>
+let enqueueEvent = (queue: Util_SQS_Runtime.resolvedQueue, delay, _id, messageBody) =>
   Effect.logInfo(
     __MODULE__ ++ ".enqueueEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
   )
@@ -76,7 +76,7 @@ let enqueueEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, _id, messageBod
   ->Effect.map(_ => ())
   ->Effect.runPromise
 
-let enqueueFifoEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, id, messageBody) =>
+let enqueueFifoEvent = (queue: Util_SQS_Runtime.resolvedQueue, delay, id, messageBody) =>
   Effect.logInfo(
     __MODULE__ ++ ".enqueueFifoEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
   )

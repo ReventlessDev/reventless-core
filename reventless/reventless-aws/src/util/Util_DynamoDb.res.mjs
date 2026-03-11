@@ -19,7 +19,7 @@ function toInfo(param) {
   ]).apply(param => param[0] + ("," + Stdlib_Option.getOr(param[1], "")));
 }
 
-function toRuntimeTableOutput(param) {
+function toResolvedTableOutput(param) {
   return Pulumi.all([
     param.name,
     param.id,
@@ -197,7 +197,7 @@ function findResourceInOutput(resourcesOutput) {
 
 export {
   toInfo,
-  toRuntimeTableOutput,
+  toResolvedTableOutput,
   toResource,
   arn2tableName,
   enableTtl,

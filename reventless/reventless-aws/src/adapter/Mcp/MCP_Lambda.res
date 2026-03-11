@@ -148,7 +148,7 @@ let readEventLogHistory = async (
   ~limit: option<int>=?,
   ~after: option<string>=?,
 ) => {
-  let table: Util_DynamoDb_Runtime.runtimeTable = {
+  let table: Util_DynamoDb_Runtime.resolvedTable = {
     id: "",
     name: tableName,
     arn: "",
@@ -212,7 +212,7 @@ let readDcbEventLogHistory = async (
   ~limit: option<int>=?,
   ~after: option<string>=?,
 ) => {
-  let table: Util_DynamoDb_Runtime.runtimeTable = {
+  let table: Util_DynamoDb_Runtime.resolvedTable = {
     id: "",
     name: tableName,
     arn: "",

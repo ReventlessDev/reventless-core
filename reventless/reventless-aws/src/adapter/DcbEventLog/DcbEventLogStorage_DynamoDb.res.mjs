@@ -29,12 +29,12 @@ function make(name, indexes, opts) {
   let table = Util_DynamoDb$ReventlessAws.makeTable(attributes, globalSecondaryIndexes, undefined, "position", AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType), opts, name);
   return {
     resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
-    operations: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(runtimeTable => {
-      let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(runtimeTable);
+    operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => {
+      let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(resolvedTable);
       return {
         read: readFn,
-        append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(runtimeTable),
-        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(runtimeTable)
+        append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(resolvedTable),
+        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(resolvedTable)
       };
     })
   };

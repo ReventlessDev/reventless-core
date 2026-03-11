@@ -10,15 +10,15 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
   {
     resources: [table->Util_DynamoDb.toResource],
     operations: table
-    ->Util_DynamoDb.toRuntimeTableOutput
-    ->Pulumi.Output.apply(runtimeTable => {
+    ->Util_DynamoDb.toResolvedTableOutput
+    ->Pulumi.Output.apply(resolvedTable => {
       ReventlessCore.EventLog_Adapter.append: EventLogStorage_DynamoDb_Runtime.append(
-        runtimeTable,
+        resolvedTable,
         ...
       ),
-      replay: EventLogStorage_DynamoDb_Runtime.replay(runtimeTable, ...),
-      replayStream: EventLogStorage_DynamoDb_Runtime.replayStream(runtimeTable, ...),
-      appendStream: EventLogStorage_DynamoDb_Runtime.appendStream(runtimeTable, ...),
+      replay: EventLogStorage_DynamoDb_Runtime.replay(resolvedTable, ...),
+      replayStream: EventLogStorage_DynamoDb_Runtime.replayStream(resolvedTable, ...),
+      appendStream: EventLogStorage_DynamoDb_Runtime.appendStream(resolvedTable, ...),
     }),
   }
 }

@@ -32,18 +32,18 @@ function make(name, opts) {
     visibilityTimeoutSeconds: 180,
     sqsManagedSseEnabled: false
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  let runtimeQueueOutput = Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue);
+  let resolvedQueueOutput = Util_SQS$ReventlessAws.toResolvedQueueOutput(queue);
   return {
     parts: {
       queue: queue
     },
     resources: [Util_SQS$ReventlessAws.toResource(queue)],
-    publishJsons: runtimeQueueOutput.apply(runtimeQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS")),
-    publishJsonsStream: runtimeQueueOutput.apply(runtimeQueue => {
-      let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS");
+    publishJsons: resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS")),
+    publishJsonsStream: resolvedQueueOutput.apply(resolvedQueue => {
+      let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS");
       return stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
     }),
-    handleChannelEvent: handleCommands => runtimeQueueOutput.apply(runtimeQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(runtimeQueue, handleCommands)),
+    handleChannelEvent: handleCommands => resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(resolvedQueue, handleCommands)),
     connect: connect
   };
 }

@@ -7,15 +7,15 @@ let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageRes
     ~opts,
   )
 
-  let runtimeTopicOutput = topic->Util_SNS.toRuntimeTopicOutput
+  let resolvedTopicOutput = topic->Util_SNS.toResolvedTopicOutput
 
   {
     resources: [topic->Util_SNS.toResource],
-    publishJson: runtimeTopicOutput->Pulumi.Output.apply(runtimeTopic =>
-      EventTopicPublisher_SNS_Runtime.publish(runtimeTopic, ...)
+    publishJson: resolvedTopicOutput->Pulumi.Output.apply(resolvedTopic =>
+      EventTopicPublisher_SNS_Runtime.publish(resolvedTopic, ...)
     ),
-    publishJsonStream: runtimeTopicOutput->Pulumi.Output.apply(runtimeTopic => {
-      let publishJson = EventTopicPublisher_SNS_Runtime.publish(runtimeTopic, ...)
+    publishJsonStream: resolvedTopicOutput->Pulumi.Output.apply(resolvedTopic => {
+      let publishJson = EventTopicPublisher_SNS_Runtime.publish(resolvedTopic, ...)
       stream =>
         stream
         ->Stream.grouped(10)

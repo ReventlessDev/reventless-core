@@ -1,4 +1,4 @@
-type runtimeTopic = {
+type resolvedTopic = {
   id: string,
   name: string,
   arn: string,

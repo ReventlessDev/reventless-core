@@ -1,13 +1,13 @@
 open ReventlessCore.Message
 open AwsSdk
 
-type runtimeQueue = {
+type resolvedQueue = {
   id: string,
   name: string,
   arn: string,
 }
 
-let toRuntimeQueue = ({id, name, urn}: ReventlessCore.Adapter.resolvedResource) => {
+let toResolvedQueue = ({id, name, urn}: ReventlessCore.Adapter.resolvedResource) => {
   id,
   name,
   arn: urn,

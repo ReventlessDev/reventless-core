@@ -44,13 +44,13 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~o
   {
     resources: [table->Util_DynamoDb.toResource],
     operations: table
-    ->Util_DynamoDb.toRuntimeTableOutput
-    ->Pulumi.Output.apply(runtimeTable => {
-      let readFn = DcbEventLogStorage_DynamoDb_Runtime.read(runtimeTable)
+    ->Util_DynamoDb.toResolvedTableOutput
+    ->Pulumi.Output.apply(resolvedTable => {
+      let readFn = DcbEventLogStorage_DynamoDb_Runtime.read(resolvedTable)
       {
         ReventlessCore.DcbEventLog_Adapter.read: readFn,
-        append: DcbEventLogStorage_DynamoDb_Runtime.append(runtimeTable),
-        readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(runtimeTable),
+        append: DcbEventLogStorage_DynamoDb_Runtime.append(resolvedTable),
+        readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(resolvedTable),
       }
     }),
   }

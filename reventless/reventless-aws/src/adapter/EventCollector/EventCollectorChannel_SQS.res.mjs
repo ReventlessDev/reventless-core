@@ -33,8 +33,8 @@ function make(name, eventTopics, opts) {
     visibilityTimeoutSeconds: 120,
     sqsManagedSseEnabled: false
   }, opts$1);
-  let enqueueEvent = Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(runtimeQueue => ((extra, extra$1, extra$2) => EventCollectorChannel_SQS_Runtime$ReventlessAws.enqueueEvent(runtimeQueue, extra, extra$1, extra$2)));
-  let handleChannelEvent = handleEvents => Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(runtimeQueue => EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(runtimeQueue, handleEvents));
+  let enqueueEvent = Util_SQS$ReventlessAws.toResolvedQueueOutput(queue).apply(resolvedQueue => ((extra, extra$1, extra$2) => EventCollectorChannel_SQS_Runtime$ReventlessAws.enqueueEvent(resolvedQueue, extra, extra$1, extra$2)));
+  let handleChannelEvent = handleEvents => Util_SQS$ReventlessAws.toResolvedQueueOutput(queue).apply(resolvedQueue => EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(resolvedQueue, handleEvents));
   let eventTopicResources = Object.values(eventTopics).map(outputs => outputs.resources[0]);
   return {
     parts: {

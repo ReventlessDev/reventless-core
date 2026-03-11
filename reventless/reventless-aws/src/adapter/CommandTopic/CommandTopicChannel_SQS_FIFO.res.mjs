@@ -27,18 +27,18 @@ function make(name, opts) {
     fifoThroughputLimit: "perMessageGroupId",
     sqsManagedSseEnabled: false
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  let runtimeQueueOutput = Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue);
+  let resolvedQueueOutput = Util_SQS$ReventlessAws.toResolvedQueueOutput(queue);
   return {
     parts: {
       queue: queue
     },
     resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
-    publishJsons: runtimeQueueOutput.apply(runtimeQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS_FIFO")),
-    publishJsonsStream: runtimeQueueOutput.apply(runtimeQueue => {
-      let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS_FIFO");
+    publishJsons: resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS_FIFO")),
+    publishJsonsStream: resolvedQueueOutput.apply(resolvedQueue => {
+      let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS_FIFO");
       return stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
     }),
-    handleChannelEvent: handleCommands => runtimeQueueOutput.apply(runtimeQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(runtimeQueue, handleCommands)),
+    handleChannelEvent: handleCommands => resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(resolvedQueue, handleCommands)),
     connect: CommandTopicChannel_SQS$ReventlessAws.connect
   };
 }

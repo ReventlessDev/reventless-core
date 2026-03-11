@@ -2,7 +2,7 @@ open PulumiAws
 
 type channelParts = {queue: PulumiAws.SQS.Queue.t}
 
-let toRuntimeQueueOutput = ({name, id, arn}: PulumiAws.SQS.Queue.t) =>
+let toResolvedQueueOutput = ({name, id, arn}: PulumiAws.SQS.Queue.t) =>
   (name, id, arn)
   ->Pulumi.Output.all3
   ->Pulumi.Output.apply(((name, id, arn)) => {
