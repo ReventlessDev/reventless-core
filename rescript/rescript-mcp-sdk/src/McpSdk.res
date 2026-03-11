@@ -171,49 +171,11 @@ type readResourceResult = {contents: array<resourceContent>}
 external setRequestHandler: (server, zodSchema, 'request => promise<'response>) => unit =
   "setRequestHandler"
 
-// ─── Typed handler registration helpers ────────────────────────────────────
-
-/** Register a handler for tools/list requests. */
-let onListTools = (server: server, handler: unit => promise<listToolsResult>) =>
-  server->setRequestHandler(listToolsRequestSchema, _ => handler())
-
-/** Register a handler for tools/call requests. */
-let onCallTool = (server: server, handler: callToolRequest => promise<callToolResult>) =>
-  server->setRequestHandler(callToolRequestSchema, handler)
-
-/** Register a handler for resources/list requests. */
-let onListResources = (server: server, handler: unit => promise<listResourcesResult>) =>
-  server->setRequestHandler(listResourcesRequestSchema, _ => handler())
-
-/** Register a handler for resources/read requests. */
-let onReadResource = (server: server, handler: readResourceRequest => promise<readResourceResult>) =>
-  server->setRequestHandler(readResourceRequestSchema, handler)
-
-/** Register a handler for resources/templates/list requests. */
-let onListResourceTemplates = (
-  server: server,
-  handler: unit => promise<listResourceTemplatesResult>,
-) => server->setRequestHandler(listResourceTemplatesRequestSchema, _ => handler())
-
 // ─── Utility ───────────────────────────────────────────────────────────────
 
 /** Check if a request body is an MCP initialize request. */
 @module("@modelcontextprotocol/sdk/server/streamableHttp.js")
 external isInitializeRequest: JSON.t => bool = "isInitializeRequest"
-
-/** Create a text content item for tool results. */
-let textContent = (text: string): contentItem => {type_: "text", text}
-
-/** Create a successful tool result. */
-let toolResult = (text: string): callToolResult => {
-  content: [textContent(text)],
-}
-
-/** Create an error tool result. */
-let toolError = (message: string): callToolResult => {
-  content: [textContent(message)],
-  isError: true,
-}
 
 // ─── Node.js HTTP server ───────────────────────────────────────────────────
 
@@ -254,25 +216,10 @@ external endResponse: (serverResponse, string) => unit = "end"
 @send
 external endResponseNoBody: serverResponse => unit = "end"
 
-// ─── JSON body parsing helper ──────────────────────────────────────────────
+// ─── IncomingMessage event bindings ──────────────────────────────────────────
 
 @send
 external onData: (incomingMessage, @as("data") _, string => unit) => incomingMessage = "on"
 
 @send
 external onEnd: (incomingMessage, @as("end") _, unit => unit) => incomingMessage = "on"
-
-/** Read and parse the JSON body from an IncomingMessage. Returns a promise. */
-let parseJsonBody: incomingMessage => promise<JSON.t> = req => {
-  Promise.make((resolve, _reject) => {
-    let chunks: array<string> = []
-    let _ = req->onData(chunk => chunks->Array.push(chunk))
-    let _ = req->onEnd(() => {
-      let body = chunks->Array.join("")
-      let json = try JSON.parseOrThrow(body) catch {
-      | _ => JSON.Encode.null
-      }
-      resolve(json)
-    })
-  })
-}

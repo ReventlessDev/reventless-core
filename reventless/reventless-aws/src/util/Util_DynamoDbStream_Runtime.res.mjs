@@ -3,8 +3,8 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
-import * as DynamoDb_Util$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_Util.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as DynamoDb_Util_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_Util_Helpers.res.mjs";
 import * as Util_AdapterRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
 
 function buildJsonEvent$p(dict) {
@@ -40,9 +40,9 @@ function buildJsonState(dict) {
 
 function parseDynamoDbStreamRecord(buildJson, record) {
   let record$1 = record.dynamodb;
-  let id = Stdlib_Option.flatMap(record$1, record => DynamoDb_Util$AwsSdk.unmarshall(undefined, record.Keys.id));
-  let newImageJson = Stdlib_Option.map(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.NewImage), newImage => DynamoDb_Util$AwsSdk.unmarshallDict(undefined, newImage)), buildJson);
-  let oldImageJson = Stdlib_Option.map(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.OldImage), oldImage => DynamoDb_Util$AwsSdk.unmarshallDict(undefined, oldImage)), buildJson);
+  let id = Stdlib_Option.flatMap(record$1, record => DynamoDb_Util_Helpers$AwsSdk.unmarshall(undefined, record.Keys.id));
+  let newImageJson = Stdlib_Option.map(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.NewImage), newImage => DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, newImage)), buildJson);
+  let oldImageJson = Stdlib_Option.map(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.OldImage), oldImage => DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, oldImage)), buildJson);
   if (id === undefined) {
     return "Invalid";
   }
@@ -93,4 +93,4 @@ export {
   parseDynamoDbStreamRecordState,
   findResource,
 }
-/* DynamoDb_Util-AwsSdk Not a pure module */
+/* Message-ReventlessCore Not a pure module */

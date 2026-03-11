@@ -39,13 +39,9 @@ module Duration = {
   ) => float = "as"
 }
 
-@module("moment") @scope("default") external _duration: (float, 'a) => Duration.t = "duration"
-@module("moment") @scope("default") external _durationMillis: float => Duration.t = "duration"
-@module("moment") @scope("default") external _durationFormat: string => Duration.t = "duration"
-
-let duration = (value, unit) => _duration(value, unit)
-let durationMillis = value => _durationMillis(value)
-let durationFormat = format => _durationFormat(format)
+@module("moment") @scope("default") external duration: (float, 'a) => Duration.t = "duration"
+@module("moment") @scope("default") external durationMillis: float => Duration.t = "duration"
+@module("moment") @scope("default") external durationFormat: string => Duration.t = "duration"
 
 module Moment = {
   type t
@@ -290,27 +286,15 @@ module Moment = {
 }
 
 /* parse */
-@module("moment") external _momentNow: unit => Moment.t = "default"
-@module("moment") external _momentDefaultFormat: string => Moment.t = "default"
-@module("moment") external _momentWithFormat: (string, string) => Moment.t = "default"
-@module("moment") external _momentWithDate: Date.t => Moment.t = "default"
-@module("moment") external _momentWithFormats: (string, array<string>) => Moment.t = "default"
-@module("moment") external _momentWithTimestampMS: float => Moment.t = "default"
-@module("moment") external _momentWithComponents: list<int> => Moment.t = "default"
-@module("moment") @scope("default") external _momentUtcWithFormats: (string, array<string>) => Moment.t = "utc"
-@module("moment") @scope("default") external _momentUtcDefaultFormat: string => Moment.t = "utc"
-
-let momentNow = () => _momentNow()
-let momentDefaultFormat = value => _momentDefaultFormat(value)
-let momentWithFormat = (value, format) => _momentWithFormat(value, format)
-let momentWithDate = date => _momentWithDate(date)
-let momentWithFormats = (value, formats) => _momentWithFormats(value, formats)
-let momentWithTimestampMS = timestamp => _momentWithTimestampMS(timestamp)
-let momentWithComponents = components => _momentWithComponents(components)
-let momentUtcWithFormats = (value, formats) => _momentUtcWithFormats(value, formats)
-let momentUtcDefaultFormat = value => _momentUtcDefaultFormat(value)
-
-let momentWithUnix = (timestamp: int) => momentWithTimestampMS(Int.toFloat(timestamp) *. 1000.0)
+@module("moment") external momentNow: unit => Moment.t = "default"
+@module("moment") external momentDefaultFormat: string => Moment.t = "default"
+@module("moment") external momentWithFormat: (string, string) => Moment.t = "default"
+@module("moment") external momentWithDate: Date.t => Moment.t = "default"
+@module("moment") external momentWithFormats: (string, array<string>) => Moment.t = "default"
+@module("moment") external momentWithTimestampMS: float => Moment.t = "default"
+@module("moment") external momentWithComponents: list<int> => Moment.t = "default"
+@module("moment") @scope("default") external momentUtcWithFormats: (string, array<string>) => Moment.t = "utc"
+@module("moment") @scope("default") external momentUtcDefaultFormat: string => Moment.t = "utc"
 
 @send
 external diff: (
@@ -347,14 +331,3 @@ external diffWithPrecision: (
   bool,
 ) => float = "diff"
 
-let momentUtc = (~format=?, value) =>
-  switch format {
-  | Some(f) => momentUtcWithFormats(value, f)
-  | None => momentUtcDefaultFormat(value)
-  }
-
-let moment = (~format=?, value) =>
-  switch format {
-  | Some(f) => momentWithFormats(value, f)
-  | None => momentDefaultFormat(value)
-  }

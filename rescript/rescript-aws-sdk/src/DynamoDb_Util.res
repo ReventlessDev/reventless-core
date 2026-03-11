@@ -126,10 +126,3 @@ module Raw = {
   external unmarshall: ('data, ~options: unmarshallOptions) => 'output = "unmarshall"
 }
 
-let unmarshallDict: (~wrapNumbers: bool=?, dict<attributeValue>) => 'output = (
-  ~wrapNumbers=?,
-  data,
-) => Raw.unmarshall(data, ~options={?wrapNumbers, convertWithoutMapWrapper: false})
-
-let unmarshall: (~wrapNumbers: bool=?, attributeValue) => 'output = (~wrapNumbers=?, data) =>
-  Raw.unmarshall(data, ~options={?wrapNumbers, convertWithoutMapWrapper: true})

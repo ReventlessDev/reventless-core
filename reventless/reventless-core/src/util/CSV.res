@@ -1,5 +1,6 @@
 /** FastCSV bindings with added helper functions to handle Validation.t as well */
 include FastCSV
+include FastCSV_Helpers
 
 /** Add correct callback for validation to Validation.t - to be used in validation function
    TODO: hide behind an interface definition

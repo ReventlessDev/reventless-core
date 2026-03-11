@@ -1,19 +1,5 @@
 open FastCSV
-
-/*
-let validationsWithResult: array<'a => result<unit, string>> = [
-  _row => Ok(),
-  _row => Error("something is invalid"),
-]
-*/
-
-/*
-let validations = [
-  (_row, cb) => cb->toValid,
-  (_row, cb) => cb->toInvalid("invalid"),
-  (_row, cb) => cb->toError("something went wrong"),
-]
-*/
+open FastCSV_Helpers
 
 parseFile(
   ~path="x.csv",
@@ -24,19 +10,6 @@ parseFile(
     //~discardUnmappedColumns=false, ~strictColumnHandling=true,
   },
 )
-/*
-   |> validate((_row, result) => result |> toInvalid("test"))
-   |> validate((_row, result) => result |> toValid)
-   |> validate((_, result) => {
-        Console.log("x");
-        result |> toValid;
-      })
-   |> validate((_row, result) => result |> toError("This is not allowed"))
-   |> validateResult(_row => Ok())  /* helper function */
-   |> validateMultiple(validations)  /* helper function */
-   |> validateMultipleResults(validationsWithResult)  /* helper function */
-   				*/
-//|> validate((_row, result) => result |> toInvalid("test"))
 ->transform((row, cb) => {
   Dict.delete(row, "")
   cb->toValidTransformation(row)

@@ -1,7 +1,7 @@
 let sendMessage = (~channelId, ~messageBody) =>
   Effect.tryPromise(
     ~catch=SQS_Error.classify,
-    () => AwsSdk.SQS.sendMessage(~queueId=channelId, ~messageBody),
+    () => AwsSdk.SQS_Helpers.sendMessage(~queueId=channelId, ~messageBody),
   )
   ->Effect.map(_ => ())
   ->Effect.retry(SQS_Error.retrySchedule)

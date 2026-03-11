@@ -1,4 +1,5 @@
 open MomentRe
+open MomentRe_Helpers
 open Jest
 open ExpectJs
 

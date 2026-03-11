@@ -146,29 +146,7 @@ module Upload = {
     external make: options => t = "Upload"
   }
 
-  type options = {
-    leavePartsOnError?: bool,
-    partSize?: int,
-    queueSize?: int,
-    tags?: array<dict<string>>, // NOTE: not sure if this type is correct
-    // TODO: abortController?: Node.AbortController.t // There are no bindings for AbortController yet!
-    client?: client,
-    params: PutObjectCommand.input,
-  }
-  let make: options => t = options => {
-    {
-      leavePartsOnError: ?options.leavePartsOnError,
-      partSize: ?options.partSize,
-      queueSize: ?options.queueSize,
-      tags: ?options.tags,
-      client: options.client->Option.getOr(client()),
-      params: options.params,
-    }->Raw.make
-  }
-
   type done = promise<CompleteMultipartUploadCommand.output>
   @send
   external done: t => done = "done"
 }
-
-let upload: Upload.options => Upload.done = options => Upload.make(options)->Upload.done

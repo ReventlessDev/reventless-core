@@ -1,7 +1,7 @@
 let subscribe = (~channelId, ~topicId) =>
   Effect.tryPromise(
     ~catch=SQS_Error.classify,
-    () => AwsSdk.SNS.subscribeQueueToTopic(channelId, topicId),
+    () => AwsSdk.SNS_Helpers.subscribeQueueToTopic(channelId, topicId),
   )
   ->Effect.map(_ => ())
   ->Effect.retry(SQS_Error.retrySchedule)
@@ -15,7 +15,7 @@ let subscribe = (~channelId, ~topicId) =>
 let unsubscribe = (~channelId, ~topicId) =>
   Effect.tryPromise(
     ~catch=SQS_Error.classify,
-    () => AwsSdk.SNS.unsubscribeQueueFromTopic(channelId, topicId),
+    () => AwsSdk.SNS_Helpers.unsubscribeQueueFromTopic(channelId, topicId),
   )
   ->Effect.map(_ => ())
   ->Effect.retry(SQS_Error.retrySchedule)

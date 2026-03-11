@@ -49,7 +49,7 @@ let registerToolsFromEntries = (
     let handler: toolHandler = async args => {
       try {
         let result = await commandHandler(def.name, args)
-        McpSdk.toolResult(result)
+        McpSdk_Helpers.toolResult(result)
       } catch {
       | exn =>
         let msg =
@@ -57,7 +57,7 @@ let registerToolsFromEntries = (
           ->JsExn.fromException
           ->Option.flatMap(JsExn.message)
           ->Option.getOr("Command failed")
-        McpSdk.toolError(msg)
+        McpSdk_Helpers.toolError(msg)
       }
     }
     registerTool(~name=def.name, ~definition=def, ~handler)
@@ -138,7 +138,7 @@ let createServerInstance = () => {
     {capabilities: {tools: {_placeholder: false}, resources: {_placeholder: false}}},
   )
 
-  server->McpSdk.onListTools(async () => {
+  server->McpSdk_Helpers.onListTools(async () => {
     let toolDefs =
       tools.contents
       ->Dict.valuesToArray
@@ -150,7 +150,7 @@ let createServerInstance = () => {
     {McpSdk.tools: toolDefs}
   })
 
-  server->McpSdk.onCallTool(async req => {
+  server->McpSdk_Helpers.onCallTool(async req => {
     let toolName = req.params.name
     let args = req.params.arguments->Option.getOr(JSON.Encode.null)
     if debug {
@@ -158,11 +158,11 @@ let createServerInstance = () => {
     }
     switch tools.contents->Dict.get(toolName) {
     | Some({handler}) => await handler(args)
-    | None => McpSdk.toolError(`Unknown tool: ${toolName}`)
+    | None => McpSdk_Helpers.toolError(`Unknown tool: ${toolName}`)
     }
   })
 
-  server->McpSdk.onListResources(async () => {
+  server->McpSdk_Helpers.onListResources(async () => {
     let resourceDefs =
       resources.contents
       ->Dict.valuesToArray
@@ -175,7 +175,7 @@ let createServerInstance = () => {
     {McpSdk.resources: resourceDefs}
   })
 
-  server->McpSdk.onListResourceTemplates(async () => {
+  server->McpSdk_Helpers.onListResourceTemplates(async () => {
     let templateDefs =
       resourceTemplates.contents
       ->Dict.valuesToArray
@@ -188,7 +188,7 @@ let createServerInstance = () => {
     {McpSdk.resourceTemplates: templateDefs}
   })
 
-  server->McpSdk.onReadResource(async req => {
+  server->McpSdk_Helpers.onReadResource(async req => {
     let uri = req.params.uri
     if debug {
       Console.log(`[MCP] resources/read: ${uri}`)
@@ -244,7 +244,7 @@ let start = (~port: int=3001, ()) => {
           res->McpSdk.setStatusCode(204)
           res->McpSdk.endResponseNoBody
         | "POST" =>
-          let body = await McpSdk.parseJsonBody(req)
+          let body = await McpSdk_Helpers.parseJsonBody(req)
           // Stateless mode: fresh server + transport per request
           let server = createServerInstance()
           let transport = McpSdk.newStreamableHTTPTransport({

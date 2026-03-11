@@ -2,18 +2,18 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
-import * as SNS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SNS.res.mjs";
+import * as SNS_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
 import * as SNS_Error$ReventlessAws from "../errors/SNS_Error.res.mjs";
 
 function publish(topic, message) {
-  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(SNS_Error$ReventlessAws.classify, () => SNS$AwsSdk.publish(topic.arn, undefined, message)), param => {}), SNS_Error$ReventlessAws.retrySchedule), err => {
+  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(SNS_Error$ReventlessAws.classify, () => SNS_Helpers$AwsSdk.publish(topic.arn, undefined, message)), param => {}), SNS_Error$ReventlessAws.retrySchedule), err => {
     let msg = SNS_Error$ReventlessAws.message(err);
     return Effect$1.Effect.flatMap(Effect$1.Effect.logError("Util_SNS_Runtime.publish: " + msg), () => Effect$1.Effect.fail(msg));
   }));
 }
 
 function publishFifo(topic, messageGroupId, message) {
-  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(SNS_Error$ReventlessAws.classify, () => SNS$AwsSdk.publish(topic.arn, messageGroupId, message)), param => {}), SNS_Error$ReventlessAws.retrySchedule), err => {
+  return Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect$1.Effect.map(Effect.tryPromise(SNS_Error$ReventlessAws.classify, () => SNS_Helpers$AwsSdk.publish(topic.arn, messageGroupId, message)), param => {}), SNS_Error$ReventlessAws.retrySchedule), err => {
     let msg = SNS_Error$ReventlessAws.message(err);
     return Effect$1.Effect.flatMap(Effect$1.Effect.logError("Util_SNS_Runtime.publishFifo: " + msg), () => Effect$1.Effect.fail(msg));
   }));

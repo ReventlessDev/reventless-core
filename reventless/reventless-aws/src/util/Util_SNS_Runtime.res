@@ -7,7 +7,7 @@ type runtimeTopic = {
 let publish = (topic, message) =>
   Effect.tryPromise(
     ~catch=SNS_Error.classify,
-    () => AwsSdk.SNS.publish(~topicArn=topic.arn, message),
+    () => AwsSdk.SNS_Helpers.publish(~topicArn=topic.arn, message),
   )
   ->Effect.map(_ => ())
   ->Effect.retry(SNS_Error.retrySchedule)
@@ -21,7 +21,7 @@ let publish = (topic, message) =>
 let publishFifo = (topic, ~messageGroupId, ~message) =>
   Effect.tryPromise(
     ~catch=SNS_Error.classify,
-    () => AwsSdk.SNS.publish(~topicArn=topic.arn, ~messageGroupId, message),
+    () => AwsSdk.SNS_Helpers.publish(~topicArn=topic.arn, ~messageGroupId, message),
   )
   ->Effect.map(_ => ())
   ->Effect.retry(SNS_Error.retrySchedule)

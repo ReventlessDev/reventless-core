@@ -3,6 +3,7 @@
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
 import * as SQS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS.res.mjs";
+import * as SQS_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS_Helpers.res.mjs";
 import * as ClientSqs from "@aws-sdk/client-sqs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as SQS_Error$ReventlessAws from "../errors/SQS_Error.res.mjs";
@@ -16,11 +17,11 @@ function toRuntimeQueue(param) {
 }
 
 function sendMessage(queue, delay, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id, messageBody, undefined, undefined, delay);
+  return SQS_Helpers$AwsSdk.sendMessage(queue.id, messageBody, undefined, undefined, delay);
 }
 
 function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id, messageBody, messageGroupId, undefined, delay);
+  return SQS_Helpers$AwsSdk.sendMessage(queue.id, messageBody, messageGroupId, undefined, delay);
 }
 
 function send(queue, queueService, commandJson) {
@@ -41,14 +42,14 @@ function makeEntry(queueService, commandJson) {
   let messageId = commandJson.meta.msgId;
   let messageBody = Message$ReventlessCore.toMessageBody(commandJson);
   if (queueService === "SQS_FIFO") {
-    return SQS$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, commandJson.delay);
+    return SQS_Helpers$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, commandJson.delay);
   } else {
-    return SQS$AwsSdk.makeBatchEntry(messageBody, messageId, commandJson.delay);
+    return SQS_Helpers$AwsSdk.makeBatchEntry(messageBody, messageId, commandJson.delay);
   }
 }
 
 function sendMessages(queue, queueService, commandJsons) {
-  let attempt = (retry, toSend) => Effect$1.Effect.flatMap(Effect$1.Effect.retry(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS$AwsSdk.sendMessagesParallel(queue.id, toSend.map(commandJson => makeEntry(queueService, commandJson)))), SQS_Error$ReventlessAws.retrySchedule), result => {
+  let attempt = (retry, toSend) => Effect$1.Effect.flatMap(Effect$1.Effect.retry(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS_Helpers$AwsSdk.sendMessagesParallel(queue.id, toSend.map(commandJson => makeEntry(queueService, commandJson)))), SQS_Error$ReventlessAws.retrySchedule), result => {
     if (result.TAG === "Ok") {
       return Effect$1.Effect.succeed();
     }
@@ -80,7 +81,7 @@ async function deleteMessage(queue, receiptHandle) {
 }
 
 function deleteMessages(entries, queue) {
-  let attempt = (retry, toDelete) => Effect$1.Effect.flatMap(Effect$1.Effect.retry(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS$AwsSdk.deleteMessagesParallel(queue.id, toDelete)), SQS_Error$ReventlessAws.retrySchedule), result => {
+  let attempt = (retry, toDelete) => Effect$1.Effect.flatMap(Effect$1.Effect.retry(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS_Helpers$AwsSdk.deleteMessagesParallel(queue.id, toDelete)), SQS_Error$ReventlessAws.retrySchedule), result => {
     if (result.TAG === "Ok") {
       return Effect$1.Effect.succeed();
     }

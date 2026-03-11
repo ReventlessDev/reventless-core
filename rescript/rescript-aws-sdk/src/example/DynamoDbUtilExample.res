@@ -1,4 +1,5 @@
 open DynamoDb_Util
+open DynamoDb_Util_Helpers
 
 Console.log("----MARSHALL----")
 type a = {a: int, b: bool}

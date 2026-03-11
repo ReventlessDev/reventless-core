@@ -14,10 +14,10 @@ let toRuntimeQueue = ({id, name, urn}: ReventlessCore.Adapter.resolvedResource) 
 }
 
 let sendMessage = (queue, ~delay=?, messageBody) =>
-  SQS.sendMessage(~queueId=queue.id, ~messageBody, ~delay?)
+  SQS_Helpers.sendMessage(~queueId=queue.id, ~messageBody, ~delay?)
 
 let sendFifoMessage = (queue, ~delay=?, ~messageGroupId, messageBody) =>
-  SQS.sendMessage(~queueId=queue.id, ~messageBody, ~messageGroupId, ~delay?)
+  SQS_Helpers.sendMessage(~queueId=queue.id, ~messageBody, ~messageGroupId, ~delay?)
 
 let send = (queue, queueService, commandJson) => {
   let messageBody = commandJson->toMessageBody
@@ -48,9 +48,9 @@ let makeEntry = (queueService, commandJson) => {
   let messageBody = commandJson->toMessageBody
 
   if queueService == AWS.SQS_FIFO {
-    SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay=?commandJson.delay)
+    SQS_Helpers.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay=?commandJson.delay)
   } else {
-    SQS.makeBatchEntry(~messageId, ~messageBody, ~delay=?commandJson.delay)
+    SQS_Helpers.makeBatchEntry(~messageId, ~messageBody, ~delay=?commandJson.delay)
   }
 }
 
@@ -63,7 +63,7 @@ let sendMessages = (queue, queueService, commandJsons) => {
       () =>
         toSend
         ->Array.map(commandJson => makeEntry(queueService, commandJson))
-        ->SQS.sendMessagesParallel(~queueId=queue.id),
+        ->SQS_Helpers.sendMessagesParallel(~queueId=queue.id),
     )
     ->Effect.retry(SQS_Error.retrySchedule)
     ->Effect.flatMap(result =>
@@ -108,7 +108,7 @@ let deleteMessages = (entries, queue) => {
   let rec attempt = (retry, toDelete) =>
     Effect.tryPromise(
       ~catch=SQS_Error.classify,
-      () => SQS.deleteMessagesParallel(~queueId=queue.id, toDelete),
+      () => SQS_Helpers.deleteMessagesParallel(~queueId=queue.id, toDelete),
     )
     ->Effect.retry(SQS_Error.retrySchedule)
     ->Effect.flatMap(result =>
