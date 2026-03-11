@@ -9,9 +9,9 @@ let filterSupportedResources: (
   ->Pulumi.Output.all
   ->Pulumi.Output.apply(services =>
     resources
-    ->Belt.Array.zip(services)
+    ->Array.zip(services)
     ->Array.filter(((_resource, service)) =>
-      supportedServices->Belt.Array.some(supportedService => service == supportedService)
+      supportedServices->Array.some(supportedService => service == supportedService)
     )
     ->Array.map(((resource, _)) => resource)
   )
@@ -21,7 +21,7 @@ let filterSupportedResolvedResources: (
   array<string>,
 ) => array<Adapter.resolvedResource> = (resources, supportedServices) =>
   resources->Array.filter(resource =>
-    supportedServices->Belt.Array.some(supportedService => resource.service == supportedService)
+    supportedServices->Array.some(supportedService => resource.service == supportedService)
   )
 
 let findResource = (resources, service) =>
@@ -65,15 +65,15 @@ let partitionSupportedResources = (allResources, supportedServices) => {
       name,
       resources->filterSupportedResources(supportedServices),
     ))
-    ->Belt.Array.unzip
+    ->Array.unzip
 
   resourceOutputs // TODO: Avoid waiting for all resourceOutputs, call apply only on needed Outputs
   ->Pulumi.Output.all // Outputs are unwrapped within Pulumi.Output.all !
   ->Pulumi.Output.apply(resources => {
     let (supported, unsupported) =
       names
-      ->Belt.Array.zip(resources)
-      ->Belt.Array.partition(((_, resources)) => resources->Array.length > 0)
+      ->Array.zip(resources)
+      ->Array.partition(((_, resources)) => resources->Array.length > 0)
     (
       supported->Array.map(((name, resources)) => (
         name,
@@ -90,6 +90,6 @@ let partitionResolvedResourcesByService: (
   resolvedResources,
   string,
 ) => (resolvedResources, resolvedResources) = (resources, supportedService) =>
-  resources->Belt.Array.partition(((_, resources)) =>
-    resources->Belt.Array.some(resource => resource.service == supportedService)
+  resources->Array.partition(((_, resources)) =>
+    resources->Array.some(resource => resource.service == supportedService)
   )

@@ -15,7 +15,7 @@ let handleDeleteResult = result => {
   if mode == #debug {
     Console.log("Handle delete result")
   }
-  open Belt.Result
+  // Belt.Result removed — Ok/Error are global in RescriptCore
   switch result {
   | Error(err) =>
     Console.log2("Couldn't delete item:", err)

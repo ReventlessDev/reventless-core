@@ -9,7 +9,7 @@ type t<'a, 'b> =
 type async<'a, 'b> = promise<t<'a, 'b>>
 
 let merge: (t<'a, 'b>, t<'a, 'b>) => t<'a, 'b> = (v1, v2) => {
-  open Belt.Array
+  open Array
   switch (v1, v2) {
   | (Successes(as1), Successes(as2)) => Successes(as1->concat(as2))
   | (Successes(as1), Success(a2)) => Successes(as1->concat([a2]))
@@ -64,7 +64,7 @@ let mergeAsyncRight: (t<'a, 'b>, async<'a, 'b>, exn => t<'a, 'b>) => async<'a, '
 
 let \"<+?>" = (v1, a2) => mergeAsyncRight(v1, a2, defaultErrorHandler)
 
-open Belt.Result
+// Belt.Result removed — Ok/Error are global in RescriptCore
 
 let toResult = x =>
   switch x {

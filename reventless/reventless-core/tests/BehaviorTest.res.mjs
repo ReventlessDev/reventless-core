@@ -2,7 +2,6 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -61,7 +60,7 @@ function Make(Spec) {
     let thenCompareEvents = (events, expectedEvents, cmp) => Jest.Expect.toEqual(Jest.Expect.expect([
       errors.contents.length,
       events.length,
-      Belt_Array.zip(events, expectedEvents).map(param => compare(cmp, param[0], param[1])).every(result => result)
+      Stdlib_Array.zip(events, expectedEvents).map(param => compare(cmp, param[0], param[1])).every(result => result)
     ]), [
       0,
       expectedEvents.length,

@@ -15,12 +15,12 @@
     "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.6"
   },
   "devDependencies": {
-    "rescript": "^12.1.0",
+    "rescript": "^12.2.0",
     "sury": "^11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
-    "rescript": "^12.1.0"
+    "rescript": "^12.2.0"
   },
   "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
   "publishConfig": {

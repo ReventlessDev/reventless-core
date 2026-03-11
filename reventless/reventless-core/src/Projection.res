@@ -1,6 +1,6 @@
 open Reventless.Projection // FIXME: open locally
 open Reventless.ReadModel // FIXME: open locally
-open Belt.Result // FIXME: open locally
+// Belt.Result removed — Ok/Error are global in RescriptCore
 
 module Set = Belt.Set.String
 
@@ -41,7 +41,7 @@ let applyChanges = async (
   let changedCount = changedStates->Array.length
 
   let batchToSave =
-    changedStates->Belt.Array.concat(addedStates)->Belt.Array.map(state => (id, state, None))
+    changedStates->Array.concat(addedStates)->Array.map(state => (id, state, None))
 
   let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray
   let batchToDelete = deletedSubIds->Array.map(subId => (id, Some((subIdField, subId))))

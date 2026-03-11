@@ -108,7 +108,7 @@ let serviceNameToJsonEventsHandlers: (
   jsonEventsHandlers => option<jsonEventsHandler>,
 ) => dict<array<jsonEventsHandler>> = (outputs, getServiceNames, handlers, getEventHandler) => {
   let dict = Dict.make()
-  Belt.Array.zip(outputs, handlers)->Array.forEach(((outputs, jsonEventsHandlers)) => {
+  Array.zip(outputs, handlers)->Array.forEach(((outputs, jsonEventsHandlers)) => {
     jsonEventsHandlers
     ->getEventHandler
     ->Option.forEach(jsonEventsHandler =>
@@ -182,7 +182,7 @@ let finishAggregates = (
       ))
     )
     ->Array.keepSome
-    ->Belt.Array.unzip
+    ->Array.unzip
   let _ =
     (eventMapperOutputs->Pulumi.Output.all, commandTopicOutputs->Pulumi.Output.all)
     ->Pulumi.Output.all2
@@ -293,7 +293,7 @@ let createExtensionPoints = (
       ops->Pulumi.Output.apply(({outgoingJsonEventsHandler}) => outgoingJsonEventsHandler),
     )
   })
-  ->Belt.Array.unzip
+  ->Array.unzip
 
 let createExtensions = (
   extensions,
@@ -325,7 +325,7 @@ let createExtensions = (
       }),
     )
   })
-  ->Belt.Array.unzip
+  ->Array.unzip
 
 let extractExtensionPointDefinitions = (extensionPointsOutputs: array<ExtensionPoint.outputs>) =>
   extensionPointsOutputs

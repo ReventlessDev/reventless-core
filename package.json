@@ -19,7 +19,7 @@
     "concurrently": "^9.2.1",
     "conventional-changelog-reventless": "file:./packages/conventional-changelog-reventless",
     "lerna": "^8.1.8",
-    "rescript": "^12.1.0"
+    "rescript": "^12.2.0"
   },
   "scripts": {
     "build": "rescript build && rescript build examples/online-shop-aggregates/online-shop-aggregates && rescript build examples/online-shop-dcb/online-shop-dcb && rescript build examples/online-shop-hybrid/online-shop-hybrid",

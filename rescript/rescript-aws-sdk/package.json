@@ -26,10 +26,10 @@
     "@reventlessdev/rescript-node-streams": "^1.0.2-alpha.4"
   },
   "devDependencies": {
-    "rescript": "^12.1.0"
+    "rescript": "^12.2.0"
   },
   "peerDependencies": {
-    "rescript": "^12.1.0"
+    "rescript": "^12.2.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

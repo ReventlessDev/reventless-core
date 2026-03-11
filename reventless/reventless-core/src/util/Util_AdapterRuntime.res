@@ -2,7 +2,7 @@ open Adapter
 
 let filterSupportedResources = (resources, supportedServices) =>
   resources->Array.filter((resource: ReventlessInfra.Adapter.resource) =>
-    supportedServices->Belt.Array.some(supportedService =>
+    supportedServices->Array.some(supportedService =>
       resource.service->Pulumi.Output.get == supportedService
     )
   )
@@ -12,7 +12,7 @@ let filterSupportedResolvedResources: (
   array<string>,
 ) => array<resolvedResource> = (resources, supportedServices) =>
   resources->Array.filter(resource =>
-    supportedServices->Belt.Array.some(supportedService => resource.service == supportedService)
+    supportedServices->Array.some(supportedService => resource.service == supportedService)
   )
 
 let findResource = (resources, service) =>

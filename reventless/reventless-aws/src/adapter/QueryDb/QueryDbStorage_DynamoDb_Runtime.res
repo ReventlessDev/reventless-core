@@ -1,6 +1,6 @@
 open AwsSdk.DynamoDb.DocumentClient
 open Util_DynamoDb_Runtime
-open Belt.Result
+// Belt.Result removed — Ok/Error are global in RescriptCore
 
 // True lazy pagination: each DynamoDB page is fetched on demand.
 // Per-page retry is handled inside the paginateEffect callback.

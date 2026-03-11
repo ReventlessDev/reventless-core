@@ -126,7 +126,7 @@ module Make = (
     let (references, commands') =
       topicItemsForId
       ->Array.map(({reference, command}) => (reference, command))
-      ->Belt.Array.unzip
+      ->Array.unzip
 
     Ops.eventLog.replayStream(id)
     ->Stream.runFold((None, 0), ((st, n), ev) => (apply'(st, ev), n + 1))

@@ -224,7 +224,7 @@ let commandJsonOfCommand': (
 let splitMessage = json =>
   switch json->JSON.Decode.object {
   | Some(dict) =>
-    let (tags, payload) = dict->Dict.toArray->Belt.Array.partition(((key, _)) => key == "TAG")
+    let (tags, payload) = dict->Dict.toArray->Array.partition(((key, _)) => key == "TAG")
     let typ = switch tags[0] {
     | Some((_, String(t))) => t
     | _ => "Unknown"

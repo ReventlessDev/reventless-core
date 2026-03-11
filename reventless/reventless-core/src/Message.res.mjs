@@ -2,8 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -110,6 +110,9 @@ function serviceNameOfMsg(msgJson) {
 }
 
 function variantNameOfJson(json) {
+  if (json === null || Array.isArray(json)) {
+    return "unknown";
+  }
   switch (typeof json) {
     case "string" :
       return json;
@@ -241,7 +244,7 @@ function commandJsonOfCommand$p(idToString, commandSchema, cmd) {
 function splitMessage(json) {
   let dict = Stdlib_JSON.Decode.object(json);
   if (dict !== undefined) {
-    let match = Belt_Array.partition(Object.entries(dict), param => param[0] === "TAG");
+    let match = Stdlib_Array.partition(Object.entries(dict), param => param[0] === "TAG");
     let match$1 = match[0][0];
     let typ;
     if (match$1 !== undefined) {

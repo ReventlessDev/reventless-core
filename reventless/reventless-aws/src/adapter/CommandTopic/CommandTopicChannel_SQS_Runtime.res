@@ -14,7 +14,7 @@ let handleQueueEvent = (
     let topicItems =
       records
       ->Array.map(record => record.receiptHandle)
-      ->Belt.Array.zip(jsons)
+      ->Array.zip(jsons)
       ->Array.map(((reference, command)) => {
         ReventlessInfra.CommandTopic.reference,
         command,

@@ -2,7 +2,6 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
@@ -116,7 +115,7 @@ function MakeCounterHandler(Target) {
     });
     let commonEventsHandler = async eventsJson$p => {
       let eventsCount = eventsJson$p.length;
-      let match = Belt_Array.partition(Stdlib_Array.filterMap(eventsJson$p.map((eventJson$p, idx) => {
+      let match = Stdlib_Array.partition(Stdlib_Array.filterMap(eventsJson$p.map((eventJson$p, idx) => {
         let idx$1 = idx + 1 | 0;
         Effect$1.Effect.runSync(Effect$1.Effect.logInfo(`EventMapper.eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
         let match = findMapping(Mappings.mappings, eventJson$p);
@@ -188,7 +187,7 @@ function MakeEventCollectorHandler(Ops) {
   let countRetrySchedule = Effect$1.Schedule.intersect(Effect$1.Schedule.jittered(Effect$1.Schedule.exponential(Effect$1.Duration.millis(1000))), Effect$1.Schedule.recurs(10));
   let handleJsonEvents = stream => Effect$1.Stream.runForEach(stream, eventJson$p => Effect$1.Effect.flatMap(Effect$1.Effect.promise(() => Ops.commonEventsHandler([eventJson$p])), param => {
     let publisherEntries = param[0];
-    let match = Belt_Array.partition(param[1], x => x.TAG === "Count");
+    let match = Stdlib_Array.partition(param[1], x => x.TAG === "Count");
     let addToCounterTargetActions = match[1];
     let countItems = Stdlib_Array.filterMap(match[0], countAction => {
       if (countAction.TAG === "Count") {

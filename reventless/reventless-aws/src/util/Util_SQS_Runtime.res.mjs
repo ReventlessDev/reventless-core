@@ -2,7 +2,6 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as SQS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS.res.mjs";
 import * as ClientSqs from "@aws-sdk/client-sqs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
@@ -56,7 +55,7 @@ function sendMessages(queue, queueService, commandJsons) {
     let failedIds = result._0;
     let commandJsonsToRetry = toSend.filter(param => {
       let msgId = param.meta.msgId;
-      return Belt_Array.some(failedIds, failedId => failedId === msgId);
+      return failedIds.some(failedId => failedId === msgId);
     });
     if (retry < 5) {
       return Effect$1.Effect.flatMap(Effect$1.Effect.logInfo(`Util.SQS_Runtime.sendMessages: ` + failedIds.length.toString() + ` failed ids, retrying subset`), () => attempt(retry + 1 | 0, commandJsonsToRetry));
@@ -86,9 +85,9 @@ function deleteMessages(entries, queue) {
       return Effect$1.Effect.succeed();
     }
     let failedIds = result._0;
-    let entriesToRetry = Belt_Array.keepWithIndex(toDelete, (param, idx) => {
+    let entriesToRetry = toDelete.filter((param, idx) => {
       let id = idx.toString();
-      return Belt_Array.some(failedIds, failedId => failedId === id);
+      return failedIds.some(failedId => failedId === id);
     }).map((entry, idx) => ({
       Id: idx.toString(),
       ReceiptHandle: entry.ReceiptHandle

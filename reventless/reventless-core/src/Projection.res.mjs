@@ -3,7 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
@@ -50,7 +49,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
     });
   });
   let changedCount = changedStates.length;
-  let batchToSave = Belt_Array.map(Belt_Array.concat(changedStates, addedStates), state => [
+  let batchToSave = changedStates.concat(addedStates).map(state => [
     id,
     state,
     undefined

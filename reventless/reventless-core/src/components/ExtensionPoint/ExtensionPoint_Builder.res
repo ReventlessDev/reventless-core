@@ -25,7 +25,7 @@ module Make = (
     aggregateResources
     ->Dict.toArray
     ->Array.filter(((name, _)) =>
-      aggregateNames->Belt.Array.some(aggregateName => aggregateName == name)
+      aggregateNames->Array.some(aggregateName => aggregateName == name)
     )
     ->Array.map(((_, resources)) => resources)
     ->Array.flat

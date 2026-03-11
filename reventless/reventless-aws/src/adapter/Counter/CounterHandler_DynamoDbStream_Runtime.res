@@ -71,7 +71,7 @@ let handleStreamEvent = (
   let countsARN = countsStream.urn->Pulumi.Output.get
 
   let (dynamoDbRecords, ignoredRecords) =
-    streamEvent.records->Belt.Array.partition(record =>
+    streamEvent.records->Array.partition(record =>
       record.eventSource == "aws:dynamodb" &&
         (record.eventSourceARN == referencesARN || record.eventSourceARN == countsARN)
     )
@@ -87,7 +87,7 @@ let handleStreamEvent = (
   )
 
   let (referenceRecords, countRecords) =
-    dynamoDbRecords->Belt.Array.partition(record => record.eventSourceARN == referencesARN)
+    dynamoDbRecords->Array.partition(record => record.eventSourceARN == referencesARN)
 
   let references = referenceRecords->Array.filterMap(record =>
     switch record->parseDynamoDbStreamRecordState {

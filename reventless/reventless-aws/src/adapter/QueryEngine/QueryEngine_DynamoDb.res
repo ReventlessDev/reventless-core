@@ -48,7 +48,7 @@ let createFilterExprNamesValues = filterConfigs =>
       ((`#${fieldName}`, fieldName), (`:${valueName}`, value->toJson)),
     )
   })
-  ->Belt.Array.unzip
+  ->Array.unzip
 
 let queryByTableName = (
   ~tableName,
@@ -70,7 +70,7 @@ let queryByTableName = (
   | filterExpressions => Some(filterExpressions->Array.joinUnsafe(" AND "))
   }
 
-  let (names, values) = subIdNamesValues->Array.concat(filterNamesValues)->Belt.Array.unzip
+  let (names, values) = subIdNamesValues->Array.concat(filterNamesValues)->Array.unzip
   let attributeValues =
     Array.flat([[(":value", id->toJson)], values])
     ->Dict.fromArray
@@ -113,7 +113,7 @@ let queryByTableName = (
 
 let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilterExprNamesValues
-  let (filterNames, filterValues) = filterNamesValues->Belt.Array.unzip
+  let (filterNames, filterValues) = filterNamesValues->Array.unzip
   let (filterExpression, attributeNames, attributeValues) = switch filterExpressions {
   | [] => (None, None, None)
   | filterExpressions => (

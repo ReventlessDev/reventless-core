@@ -3,7 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
@@ -76,7 +75,7 @@ let referencesViewSchema = S.schema(s => ({
 function handleStreamEvent(referencesStream, countsStream, counterHandler, streamEvent, param) {
   let referencesARN = referencesStream.urn.get();
   let countsARN = countsStream.urn.get();
-  let match = Belt_Array.partition(streamEvent.Records, record => {
+  let match = Stdlib_Array.partition(streamEvent.Records, record => {
     if (record.eventSource === "aws:dynamodb") {
       if (record.eventSourceARN === referencesARN) {
         return true;
@@ -88,7 +87,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
     }
   });
   match[1].forEach(record => Effect$1.Effect.runSync(Effect$1.Effect.logWarning("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource: " + record.eventSource + " " + record.eventSourceARN)));
-  let match$1 = Belt_Array.partition(match[0], record => record.eventSourceARN === referencesARN);
+  let match$1 = Stdlib_Array.partition(match[0], record => record.eventSourceARN === referencesARN);
   let references = Stdlib_Array.filterMap(match$1[0], record => {
     let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
     if (typeof match !== "object") {

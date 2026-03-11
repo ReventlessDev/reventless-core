@@ -2,8 +2,8 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -66,7 +66,7 @@ function createSubIdExprNamesValues(subIdConfig) {
 }
 
 function createFilterExprNamesValues(filterConfigs) {
-  return Belt_Array.unzip(filterConfigs.map((param, idx) => {
+  return Stdlib_Array.unzip(filterConfigs.map((param, idx) => {
     let fieldName = param[0];
     let valueName = fieldName + idx.toString();
     let tmp;
@@ -134,7 +134,7 @@ function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, 
   let filterExpressions = match$1[0];
   let keyConditionExpression = ["#key = :value"].concat(match[0]).join(" AND ");
   let filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
-  let match$2 = Belt_Array.unzip(match[1].concat(match$1[1]));
+  let match$2 = Stdlib_Array.unzip(match[1].concat(match$1[1]));
   let attributeValues = JSON.parse(JSON.stringify(Object.fromEntries([
     [[
         ":value",
@@ -174,7 +174,7 @@ function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, 
 function scanByTableName(tableName, filterConfigs, limit) {
   let match = createFilterExprNamesValues(filterConfigs);
   let filterExpressions = match[0];
-  let match$1 = Belt_Array.unzip(match[1]);
+  let match$1 = Stdlib_Array.unzip(match[1]);
   let match$2 = filterExpressions.length !== 0 ? [
       filterExpressions.join(" AND "),
       Object.fromEntries(match$1[0]),

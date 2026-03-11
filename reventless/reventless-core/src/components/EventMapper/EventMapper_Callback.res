@@ -151,7 +151,7 @@ module MakeCounterHandler = (
       })
       ->Array.filterMap(entry => entry)
       ->Array.flat
-      ->Belt.Array.partition(resultType =>
+      ->Array.partition(resultType =>
         switch resultType {
         | Publisher(_) => true
         | Counter(_) => false
@@ -243,7 +243,7 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
     stream->Stream.runForEach(eventJson' =>
       Effect.promise(() => Ops.commonEventsHandler([eventJson']))
       ->Effect.flatMap(((publisherEntries, counterActions)) => {
-        let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(
+        let (countActions, addToCounterTargetActions) = counterActions->Array.partition(
           x =>
             switch x {
             | Counter.Count(_) => true

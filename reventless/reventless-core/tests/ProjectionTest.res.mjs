@@ -3,8 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Effect from "effect";
-import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
-import * as Belt_Option from "@rescript/runtime/lib/es6/Belt_Option.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -30,13 +28,13 @@ function Make(Projection) {
     testId.contents = id;
     Jest.describe(description, fn);
   };
-  let getSubId = state => Belt_Option.map(Projection.subIdConfig, param => param.getSubId(state));
-  let hasSubId = (state, subId) => Belt_Option.getExn(getSubId(state)) === subId;
-  let states = (store, id) => Belt_Option.getWithDefault(store[id], []);
+  let getSubId = state => Stdlib_Option.map(Projection.subIdConfig, param => param.getSubId(state));
+  let hasSubId = (state, subId) => Stdlib_Option.getOrThrow(getSubId(state), undefined) === subId;
+  let states = (store, id) => Stdlib_Option.getOr(store[id], []);
   let setStates = (store, id, states) => {
     store[id] = states;
   };
-  let updateState = (store, id, subId, newState) => Belt_Array.map(states(store, id), state => {
+  let updateState = (store, id, subId, newState) => states(store, id).map(state => {
     if (hasSubId(state, subId)) {
       return newState;
     } else {
@@ -102,7 +100,7 @@ function Make(Projection) {
           let newState = param[1];
           let subId = getSubId(newState);
           let match = subId !== undefined ? (
-              Belt_Array.some(states(store, id), state => hasSubId(state, subId)) ? [
+              states(store, id).some(state => hasSubId(state, subId)) ? [
                   updateState(store, id, subId, newState),
                   []
                 ] : [

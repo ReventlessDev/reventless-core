@@ -105,7 +105,7 @@ module Make = (
     expect((
       errors.contents->Array.length,
       events->Array.length,
-      Belt.Array.zip(events, expectedEvents)
+      Array.zip(events, expectedEvents)
       ->Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
       ->Array.every(result => result),
     ))->toEqual((0, expectedEvents->Array.length, true))

@@ -13,10 +13,10 @@
     "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
-    "rescript": "^12.1.0",
+    "rescript": "^12.2.0",
     "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
-    "rescript": "^12.1.0"
+    "rescript": "^12.2.0"
   }
 }

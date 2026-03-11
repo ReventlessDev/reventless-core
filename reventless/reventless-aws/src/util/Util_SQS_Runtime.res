@@ -72,7 +72,7 @@ let sendMessages = (queue, queueService, commandJsons) => {
       | Error(failedIds) =>
         let commandJsonsToRetry =
           toSend->Array.filter(({meta: {msgId}}) =>
-            failedIds->Belt.Array.some(failedId => failedId == msgId)
+            failedIds->Array.some(failedId => failedId == msgId)
           )
         if retry < sendMessagesMaxRetries {
           Effect.logInfo(
@@ -117,9 +117,9 @@ let deleteMessages = (entries, queue) => {
       | Error(failedIds) =>
         let entriesToRetry =
           toDelete
-          ->Belt.Array.keepWithIndex((_, idx) => {
+          ->Array.filterWithIndex((_, idx) => {
             let id = idx->Int.toString
-            failedIds->Belt.Array.some(failedId => failedId == id)
+            failedIds->Array.some(failedId => failedId == id)
           })
           ->Array.mapWithIndex((entry, idx) => {
             AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Int.toString,

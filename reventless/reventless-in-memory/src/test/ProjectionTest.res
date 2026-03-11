@@ -77,16 +77,16 @@ module Make = (Projection: Reventless.Projection.Mapping): (
 
   type store = dict<array<Projection.targetState>>
 
-  let getSubId = state => Projection.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId)
-  let hasSubId = (state, subId) => state->getSubId->Belt.Option.getExn == subId
-  let states = (store, id) => store->Dict.get(id)->Belt.Option.getWithDefault([])
+  let getSubId = state => Projection.subIdConfig->Option.map(({getSubId}) => state->getSubId)
+  let hasSubId = (state, subId) => state->getSubId->Option.getOrThrow == subId
+  let states = (store, id) => store->Dict.get(id)->Option.getOr([])
   let setStates = (store, id, states) => store->Dict.set(id, states)
   let updateState = (store, id, subId, newState) =>
-    store->states(id)->Belt.Array.map(state => state->hasSubId(subId) ? newState : state)
+    store->states(id)->Array.map(state => state->hasSubId(subId) ? newState : state)
   let addState = (store, id, newState) => {
     let (updatedStates, newStates) = switch newState->getSubId {
     | Some(subId) =>
-      store->states(id)->Belt.Array.some(state => state->hasSubId(subId))
+      store->states(id)->Array.some(state => state->hasSubId(subId))
         ? (store->updateState(id, subId, newState), [])
         : (store->states(id), [newState])
     | None => (store->states(id), [newState])
@@ -103,7 +103,7 @@ module Make = (Projection: Reventless.Projection.Mapping): (
       ->Option.getOr([]),
     )
 
-  open Belt.Result
+  // Belt.Result removed — Ok/Error are global in RescriptCore
   //open QueryDb
   let load = (store, id) => store->states(id)->Ok->Promise.resolve
   let save = (store, id, state, saveMode: QueryDb.saveMode, _ttl) =>
