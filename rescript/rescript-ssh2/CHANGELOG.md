@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.1.0-alpha.0](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-ssh2@1.0.3-alpha.5...@reventlessdev/rescript-ssh2@1.1.0-alpha.0) (2026-03-12)
+
+### Features
+
+* **deps:** upgrade rescript to 12.2 and migrate Belt usages to stdlib ([eaa96ea](https://github.com/ReventlessDev/reventless-core/commit/eaa96ea61ca40d61573fb5fe2002a1f73d43ce3e))
+
+
 ## [1.0.3-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-ssh2@1.0.3-alpha.4...@reventlessdev/rescript-ssh2@1.0.3-alpha.5) (2026-03-02)
 
 ### Bug Fixes

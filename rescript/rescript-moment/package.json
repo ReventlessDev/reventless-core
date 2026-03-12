@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-moment",
-  "version": "0.9.1-alpha.4",
+  "version": "0.10.0-alpha.0",
   "description": "ReScript bindings for Moment.js",
   "jest": {
     "testMatch": [

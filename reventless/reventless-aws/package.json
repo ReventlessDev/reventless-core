@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-aws",
-  "version": "3.0.0-alpha.11",
+  "version": "3.0.0-alpha.12",
   "description": "AWS adapters for Reventless",
   "license": "MIT",
   "scripts": {
@@ -18,14 +18,14 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
-    "@reventlessdev/rescript-aws-sdk": "^2.2.0-alpha.1",
+    "@reventlessdev/rescript-aws-sdk": "^2.2.0-alpha.2",
     "@reventlessdev/rescript-effect": "*",
-    "@reventlessdev/rescript-pulumi-aws": "^2.3.1-alpha.7",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.2.1-alpha.6",
-    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.1",
-    "@reventlessdev/reventless-core": "^3.0.0-alpha.11",
-    "@reventlessdev/reventless-infra": "^3.0.0-alpha.4",
-    "@reventlessdev/reventless-spec": "^3.0.0-alpha.7"
+    "@reventlessdev/rescript-pulumi-aws": "^2.4.0-alpha.0",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.0",
+    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.2",
+    "@reventlessdev/reventless-core": "^3.0.0-alpha.12",
+    "@reventlessdev/reventless-infra": "^3.0.0-alpha.5",
+    "@reventlessdev/reventless-spec": "^3.0.0-alpha.8"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
