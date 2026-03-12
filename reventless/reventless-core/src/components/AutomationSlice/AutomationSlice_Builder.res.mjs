@@ -20,11 +20,11 @@ function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
     let Make = Spec => {
       let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec);
-      let name = Spec.name + "Todo";
+      let queryDbName = Spec.name + "Todo";
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
-        name: name,
+        name: queryDbName,
         stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchema,
         config: config,
         subIdConfig: undefined
@@ -99,6 +99,7 @@ function Make(RuntimeEnvironment) {
       }, opts);
       return {
         Spec: Spec,
+        queryDbName: queryDbName,
         make: make
       };
     };

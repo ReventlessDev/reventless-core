@@ -5,11 +5,23 @@ open ReventlessInfra.Api
 
 // ── Granular Level ──────────────────────────────────────────────────────────
 
-let inspectScalar = (schema: S.t<'a>): string =>
-  GraphQL_FragmentGenerator.deriveScalarType(schema->S.castToUnknown)
+let inspectScalar = (schema: S.t<'a>): string => {
+  let collectedTypes: array<string> = []
+  let seenTypes = Set.make()
+  GraphQL_FragmentGenerator.deriveFieldType(
+    ~parentTypeName="",
+    ~fieldName="",
+    ~required=false,
+    schema->S.castToUnknown,
+    collectedTypes,
+    seenTypes,
+  )
+}
 
-let inspectObjectType = (~typeName: string, schema: S.t<'a>): option<string> =>
-  GraphQL_FragmentGenerator.deriveObjectType(~typeName, schema->S.castToUnknown)
+let inspectObjectType = (~typeName: string, schema: S.t<'a>): option<string> => {
+  let types = GraphQL_FragmentGenerator.deriveObjectTypeWithNested(~typeName, schema->S.castToUnknown)
+  types->Array.get(types->Array.length - 1)
+}
 
 let inspectMutationFields = (~fieldPrefix: string, commandSchema: S.t<'a>): array<string> => {
   let schema = commandSchema->S.castToUnknown
@@ -49,7 +61,8 @@ let inspectQueryFields = (
   stateSchema: S.t<'a>,
 ): queryFieldInspection => {
   let schema = stateSchema->S.castToUnknown
-  let typeDef = GraphQL_FragmentGenerator.deriveObjectType(~typeName, schema)
+  let types = GraphQL_FragmentGenerator.deriveObjectTypeWithNested(~typeName, schema)
+  let typeDef = types->Array.get(types->Array.length - 1)
   let singleQuery = GraphQL_FragmentGenerator.deriveObjectQueryField(
     ~singleFieldName=name,
     ~typeName,

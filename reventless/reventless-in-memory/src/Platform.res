@@ -574,68 +574,20 @@ module MakeWithConfig = (
       ~queryHandler=pluginQueryHandler,
     )
 
-    // Register core mutations as MCP tools.
-    MCP_Server.registerTool(
-      ~name="Core_Plugin_Activate",
-      ~definition={
-        name: "Core_Plugin_Activate",
-        description: "Activate a plugin by ID",
-        inputSchema: ReventlessCore.SuryToJsonSchema.jsonObject([
-          ("type", ReventlessCore.SuryToJsonSchema.str("object")),
-          ("properties", ReventlessCore.SuryToJsonSchema.jsonObject([
-            ("id", ReventlessCore.SuryToJsonSchema.jsonObject([("type", ReventlessCore.SuryToJsonSchema.str("string"))])),
-          ])),
-          ("required", JSON.Encode.array([JSON.Encode.string("id")])),
-        ]),
-      },
-      ~handler=async args => {
-        let id =
-          args
-          ->JSON.Decode.object
-          ->Option.flatMap(d => d->Dict.get("id"))
-          ->Option.flatMap(JSON.Decode.string)
-          ->Option.getOr("")
-        // No-op in in-memory — real logic runs in AWS Lambda
-        McpSdk_Helpers.toolResult(`Plugin ${id} activated`)
-      },
-    )
-    MCP_Server.registerTool(
-      ~name="Core_Plugin_Deactivate",
-      ~definition={
-        name: "Core_Plugin_Deactivate",
-        description: "Deactivate a plugin by ID",
-        inputSchema: ReventlessCore.SuryToJsonSchema.jsonObject([
-          ("type", ReventlessCore.SuryToJsonSchema.str("object")),
-          ("properties", ReventlessCore.SuryToJsonSchema.jsonObject([
-            ("id", ReventlessCore.SuryToJsonSchema.jsonObject([("type", ReventlessCore.SuryToJsonSchema.str("string"))])),
-          ])),
-          ("required", JSON.Encode.array([JSON.Encode.string("id")])),
-        ]),
-      },
-      ~handler=async args => {
-        let id =
-          args
-          ->JSON.Decode.object
-          ->Option.flatMap(d => d->Dict.get("id"))
-          ->Option.flatMap(JSON.Decode.string)
-          ->Option.getOr("")
-        McpSdk_Helpers.toolResult(`Plugin ${id} deactivated`)
-      },
-    )
-    MCP_Server.registerTool(
-      ~name="Core_Clone",
-      ~definition={
-        name: "Core_Clone",
-        description: "Clone the system to a specific point in time",
-        inputSchema: ReventlessCore.SuryToJsonSchema.jsonObject([
-          ("type", ReventlessCore.SuryToJsonSchema.str("object")),
-          ("properties", ReventlessCore.SuryToJsonSchema.jsonObject([
-            ("restoreDateTime", ReventlessCore.SuryToJsonSchema.jsonObject([("type", ReventlessCore.SuryToJsonSchema.str("string"))])),
-          ])),
-        ]),
-      },
-      ~handler=async _args => {
-        McpSdk_Helpers.toolError("clone not supported in-memory")
+    // Register core mutations as MCP tools using the same entry-based path as plugins.
+    MCP_Server.registerToolsFromEntries(
+      ~pluginName="Core",
+      ~mutationEntries=ReventlessCore.CoreApi.mutationEntries,
+      ~commandHandler=async (toolName, args) => {
+        switch GraphQL_Server.getMutationResolver(toolName) {
+        | Some(resolver) =>
+          let result = await resolver(JSON.Encode.null, args)
+          switch result->JSON.Decode.string {
+          | Some(s) => s
+          | None => result->JSON.stringify
+          }
+        | None => `error: no handler found for tool ${toolName}`
+        }
       },
     )
 

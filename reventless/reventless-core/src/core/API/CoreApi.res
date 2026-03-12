@@ -1,19 +1,19 @@
-let baseFragment = {
-  // Start with the auto-generated Plugin aggregate fragment
-  let parts = GraphQL_Stitcher.decode(PluginBaseFragment.fragment)
+open ReventlessInfra.Api
 
-  // Add the clone mutation (core-level operation, not part of any aggregate)
-  let cloneMutation = `  Core_Clone(restoreDateTime: String): String!`
-  let allMutations = Array.concat(parts.mutations, [cloneMutation])
+@schema
+type cloneArgs = {restoreDateTime?: string}
 
-  let encoded =
-    JSON.Encode.object(
-      Dict.fromArray([
-        ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
-        ("mutations", JSON.Encode.array(allMutations->Array.map(JSON.Encode.string))),
-        ("queries", JSON.Encode.array(parts.queries->Array.map(JSON.Encode.string))),
-      ]),
-    )->JSON.stringify
+let mutationEntries: array<mutationSchemaEntry> = Array.concat(
+  PluginBaseFragment.mutationEntries,
+  [
+    {
+      fieldNames: [Api_Naming.coreField(~name="Clone")],
+      commandSchema: cloneArgsSchema->S.castToUnknown,
+      description: "Clone the system to a specific point in time",
+    },
+  ],
+)
 
-  {Reventless.Plugin.encoded, protocol: "graphql"}
-}
+let queryEntries = PluginBaseFragment.queryEntries
+
+let baseFragment = GraphQL_FragmentGenerator.generate(~mutationEntries, ~queryEntries)

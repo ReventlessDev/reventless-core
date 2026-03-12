@@ -23,10 +23,12 @@ module Make = (
 
     module Callback = InboundTranslationSlice_Callback.Make(Spec)
 
+    let queryDbName = Spec.name ++ "Audit"
+
     // QueryDb for audit log — stores auditRow keyed by request ID
     module AuditQueryDbSpec = {
       module Id = Reventless.Id.String
-      let name = Spec.name ++ "Audit"
+      let name = queryDbName
       type state = InboundTranslationSlice_Callback.auditRow
       let stateSchema = InboundTranslationSlice_Callback.auditRowSchema
       let config = Reventless.ReadModel.config()

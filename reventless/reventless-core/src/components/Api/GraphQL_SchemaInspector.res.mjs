@@ -5,9 +5,16 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as GraphQL_Stitcher$ReventlessCore from "./GraphQL_Stitcher.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "./GraphQL_FragmentGenerator.res.mjs";
 
-let inspectScalar = GraphQL_FragmentGenerator$ReventlessCore.deriveScalarType;
+function inspectScalar(schema) {
+  let collectedTypes = [];
+  let seenTypes = new Set();
+  return GraphQL_FragmentGenerator$ReventlessCore.deriveFieldType("", "", false, schema, collectedTypes, seenTypes);
+}
 
-let inspectObjectType = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectType;
+function inspectObjectType(typeName, schema) {
+  let types = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectTypeWithNested(typeName, undefined, schema);
+  return types[types.length - 1 | 0];
+}
 
 function inspectMutationFields(fieldPrefix, commandSchema) {
   let fields = [];
@@ -32,7 +39,8 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
 }
 
 function inspectQueryFields(name, typeName, stateSchema) {
-  let typeDef = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectType(typeName, stateSchema);
+  let types = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectTypeWithNested(typeName, undefined, stateSchema);
+  let typeDef = types[types.length - 1 | 0];
   let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName);
   let pluralName = name + "s";
   let listQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveListQueryField(pluralName, pluralName);

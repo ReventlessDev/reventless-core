@@ -14,7 +14,7 @@ function Make(Bus) {
     let singleQueryName = registryEntry !== undefined ? registryEntry.singleFieldName : name.charAt(0).toLowerCase() + name.slice(1);
     let listQueryName = registryEntry !== undefined ? registryEntry.listFieldName : name + "s";
     let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : "String";
-    let pluralTypeName = registryEntry !== undefined ? registryEntry.pluralTypeName : name + "s";
+    let pluralTypeName = registryEntry !== undefined ? registryEntry.pluralTypeName : "[String]";
     let byIdSdl = subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName;
     let byIdResolver = async (_root, args) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");

@@ -28,10 +28,12 @@ module Make = (
 
     module Callback = AutomationSlice_Callback.Make(Spec)
 
+    let queryDbName = Spec.name ++ "Todo"
+
     // QueryDb for TODO list — stores todoRow keyed by string ID
     module TodoQueryDbSpec = {
       module Id = Reventless.Id.String
-      let name = Spec.name ++ "Todo"
+      let name = queryDbName
       type state = AutomationSlice_Callback.todoRow
       let stateSchema = AutomationSlice_Callback.todoRowSchema
       let config = Reventless.ReadModel.config()

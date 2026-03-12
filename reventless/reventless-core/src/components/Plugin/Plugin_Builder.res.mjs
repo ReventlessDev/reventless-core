@@ -14,6 +14,7 @@ import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../ReadModel/ReadModel.res.mjs";
+import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as Interstack$ReventlessCore from "../../util/Interstack.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "./Plugin_Helpers.res.mjs";
@@ -44,29 +45,6 @@ function Make(Spec) {
           parent: opts_parent
         };
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
-        let pluralize = n => {
-          if (n.endsWith("s")) {
-            return n;
-          } else {
-            return n + "s";
-          }
-        };
-        let stripViewSuffix = n => {
-          if (n.endsWith("View")) {
-            return n.slice(0, n.length - 4 | 0);
-          } else {
-            return n;
-          }
-        };
-        let singularize = n => {
-          if (n.endsWith("ies")) {
-            return n.slice(0, n.length - 3 | 0) + "y";
-          } else if (n.endsWith("s")) {
-            return n.slice(0, n.length - 1 | 0);
-          } else {
-            return n;
-          }
-        };
         let match;
         if (dcbSpec !== undefined) {
           let DcbEventLogSpec = dcbSpec;
@@ -87,44 +65,23 @@ function Make(Spec) {
           }));
           let registerResolver = Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents;
           if (registerResolver !== undefined) {
-            dcbSpec.stateChangeSlices.forEach(S => registerResolver(extra$1 + `_` + S.Spec.name, S.Spec.commandSchema));
+            dcbSpec.stateChangeSlices.forEach(S => registerResolver(Api_Naming$ReventlessCore.sliceMutationField(extra$1, S.Spec.name), S.Spec.commandSchema));
           }
           dcbSpec.stateViewSlices.forEach(V => {
-            let entity = stripViewSuffix(V.Spec.name);
-            let singular = singularize(entity);
-            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[V.Spec.name] = {
-              singleFieldName: extra$1 + `_` + singular,
-              listFieldName: extra$1 + `_` + pluralize(entity),
-              returnTypeName: extra$1 + `_` + singular,
-              pluralTypeName: extra$1 + `_` + pluralize(entity)
-            };
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(extra$1, V.Spec.name);
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[V.Spec.name] = qn;
           });
           dcbSpec.automationSlices.forEach(A => {
-            let todoName = A.Spec.name + "Todo";
-            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[todoName] = {
-              singleFieldName: extra$1 + `_` + todoName,
-              listFieldName: extra$1 + `_` + todoName + `s`,
-              returnTypeName: extra$1 + `_` + todoName,
-              pluralTypeName: extra$1 + `_` + todoName + `s`
-            };
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(extra$1, A.queryDbName);
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[A.queryDbName] = qn;
           });
           dcbSpec.outboundTranslationSlices.forEach(O => {
-            let todoName = O.Spec.name + "Todo";
-            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[todoName] = {
-              singleFieldName: extra$1 + `_` + todoName,
-              listFieldName: extra$1 + `_` + todoName + `s`,
-              returnTypeName: extra$1 + `_` + todoName,
-              pluralTypeName: extra$1 + `_` + todoName + `s`
-            };
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(extra$1, O.queryDbName);
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[O.queryDbName] = qn;
           });
           dcbSpec.inboundTranslationSlices.forEach(I => {
-            let auditName = I.Spec.name + "Audit";
-            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[auditName] = {
-              singleFieldName: extra$1 + `_` + auditName,
-              listFieldName: extra$1 + `_` + auditName + `s`,
-              returnTypeName: extra$1 + `_` + auditName,
-              pluralTypeName: extra$1 + `_` + auditName + `s`
-            };
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(extra$1, I.queryDbName);
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[I.queryDbName] = qn;
           });
           let stateViewSlicesOutputs = Object.fromEntries(dcbSpec.stateViewSlices.map(StateViewSlice => {
             let sv = StateViewSlice.make(dcbEventLog, opts);
@@ -149,7 +106,7 @@ function Make(Spec) {
           }));
           let inboundTranslationSliceData = dcbSpec.inboundTranslationSlices.map(ITS => {
             let its = ITS.make(publishJsons, opts);
-            let fieldName = extra$1 + `_` + ITS.Spec.name;
+            let fieldName = Api_Naming$ReventlessCore.sliceMutationField(extra$1, ITS.Spec.name);
             let registerResolver = Plugin_Helpers$ReventlessCore.inboundMutationResolverHook.contents;
             if (registerResolver !== undefined) {
               registerResolver(fieldName, ITS.Spec.externalInputSchema);
@@ -247,7 +204,7 @@ function Make(Spec) {
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
-          let fieldNames = constructorNames.map(cname => extra$1 + `_` + M.Spec.name + `_` + cname);
+          let fieldNames = constructorNames.map(cname => Api_Naming$ReventlessCore.aggregateMutationField(extra$1, M.Spec.name, cname));
           Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[M.Spec.name] = fieldNames;
           let registerResolver = Plugin_Helpers$ReventlessCore.aggregateMutationResolverHook.contents;
           if (registerResolver !== undefined) {
@@ -259,60 +216,62 @@ function Make(Spec) {
             }];
         });
         let mutationEntriesFromSlices = dcbSpec !== undefined ? dcbSpec.stateChangeSlices.map(S => ({
-            fieldNames: [extra$1 + `_` + S.Spec.name],
+            fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(extra$1, S.Spec.name)],
             commandSchema: S.Spec.commandSchema
           })) : [];
         let mutationEntriesFromInboundSlices = dcbSpec !== undefined ? dcbSpec.inboundTranslationSlices.map(ITS => ({
-            fieldNames: [extra$1 + `_` + ITS.Spec.name],
+            fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(extra$1, ITS.Spec.name)],
             commandSchema: ITS.Spec.externalInputSchema
           })) : [];
         let mutationEntries = mutationEntriesFromAggregates.concat(mutationEntriesFromSlices).concat(mutationEntriesFromInboundSlices);
-        let queryEntriesFromReadModels = readModels.map(R => ({
-          singleFieldName: extra$1 + `_` + singularize(R.Spec.name),
-          listFieldName: extra$1 + `_` + pluralize(R.Spec.name),
-          returnTypeName: extra$1 + `_` + singularize(R.Spec.name),
-          stateSchema: R.Spec.stateSchema,
-          authorization: undefined
-        }));
+        let queryEntriesFromReadModels = readModels.map(R => {
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name);
+          return {
+            singleFieldName: qn.singleFieldName,
+            listFieldName: qn.listFieldName,
+            returnTypeName: qn.returnTypeName,
+            stateSchema: R.Spec.stateSchema,
+            authorization: undefined
+          };
+        });
         let queryEntriesFromSlices;
         if (dcbSpec !== undefined) {
           let stateViewEntries = dcbSpec.stateViewSlices.map(V => {
-            let entity = stripViewSuffix(V.Spec.name);
-            let singular = singularize(entity);
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(extra$1, V.Spec.name);
             return {
-              singleFieldName: extra$1 + `_` + singular,
-              listFieldName: extra$1 + `_` + pluralize(entity),
-              returnTypeName: extra$1 + `_` + singular,
+              singleFieldName: qn.singleFieldName,
+              listFieldName: qn.listFieldName,
+              returnTypeName: qn.returnTypeName,
               stateSchema: V.Spec.stateSchema,
               authorization: undefined
             };
           });
           let automationEntries = dcbSpec.automationSlices.map(A => {
-            let todoName = A.Spec.name + "Todo";
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(extra$1, A.queryDbName);
             return {
-              singleFieldName: extra$1 + `_` + todoName,
-              listFieldName: extra$1 + `_` + todoName + `s`,
-              returnTypeName: extra$1 + `_` + todoName,
+              singleFieldName: qn.singleFieldName,
+              listFieldName: qn.listFieldName,
+              returnTypeName: qn.returnTypeName,
               stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchema,
               authorization: undefined
             };
           });
           let outboundEntries = dcbSpec.outboundTranslationSlices.map(O => {
-            let todoName = O.Spec.name + "Todo";
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(extra$1, O.queryDbName);
             return {
-              singleFieldName: extra$1 + `_` + todoName,
-              listFieldName: extra$1 + `_` + todoName + `s`,
-              returnTypeName: extra$1 + `_` + todoName,
+              singleFieldName: qn.singleFieldName,
+              listFieldName: qn.listFieldName,
+              returnTypeName: qn.returnTypeName,
               stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema,
               authorization: undefined
             };
           });
           let inboundEntries = dcbSpec.inboundTranslationSlices.map(I => {
-            let auditName = I.Spec.name + "Audit";
+            let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(extra$1, I.queryDbName);
             return {
-              singleFieldName: extra$1 + `_` + auditName,
-              listFieldName: extra$1 + `_` + auditName + `s`,
-              returnTypeName: extra$1 + `_` + auditName,
+              singleFieldName: qn.singleFieldName,
+              listFieldName: qn.listFieldName,
+              returnTypeName: qn.returnTypeName,
               stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
               authorization: undefined
             };
@@ -334,12 +293,8 @@ function Make(Spec) {
             }] : [];
         let eventLogEntries = eventLogEntriesFromAggregates.concat(eventLogEntriesFromDcb);
         readModels.forEach(R => {
-          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = {
-            singleFieldName: extra$1 + `_` + singularize(R.Spec.name),
-            listFieldName: extra$1 + `_` + pluralize(R.Spec.name),
-            returnTypeName: extra$1 + `_` + singularize(R.Spec.name),
-            pluralTypeName: extra$1 + `_` + pluralize(R.Spec.name)
-          };
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name);
+          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = qn;
         });
         let apiSchemaFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
         let registerTypes = Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents;

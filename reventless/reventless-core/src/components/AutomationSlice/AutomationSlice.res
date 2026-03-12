@@ -10,6 +10,7 @@ module type T = {
   module Spec: Reventless.AutomationSlice.Spec
   type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
   type component = Component.t<t, outputs, operations>
+  let queryDbName: string
 
   let make: (
     ~dcbEventLog: dcbEventLogComponent,

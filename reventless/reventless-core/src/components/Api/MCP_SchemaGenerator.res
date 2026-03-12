@@ -43,7 +43,7 @@ let generateTools = (
       anyOf->Array.forEachWithIndex((variantSchema, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
-          let inputSchema = SuryToJsonSchema.deriveVariantSchema(variantSchema)
+          let inputSchema = SuryToJsonSchema.deriveObjectSchema(variantSchema)
           // Add "id" to the JSON Schema properties and required list
           let withId = switch inputSchema->JSON.Decode.object {
           | Some(obj) =>
@@ -88,7 +88,7 @@ let generateTools = (
       // Single command (e.g. DCB StateChangeSlice)
       let fieldName = entry.fieldNames->Array.get(0)->Option.getOr("")
       if fieldName->String.length > 0 {
-        let inputSchema = SuryToJsonSchema.deriveVariantSchema(schema)
+        let inputSchema = SuryToJsonSchema.deriveObjectSchema(schema)
         let desc =
           entryDescription->String.length > 0
             ? entryDescription

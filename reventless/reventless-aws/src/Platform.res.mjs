@@ -97,6 +97,9 @@ function Make(Api) {
   };
   let makeScheduler = () => Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
   let makePlatform = (param, param$1, param$2) => {};
+  let $$let = AutomationSlice.Make;
+  let $$let$1 = OutboundTranslationSlice.Make;
+  let $$let$2 = InboundTranslationSlice.Make;
   return {
     Aggregate: Aggregate,
     ReadModel: ReadModel,
@@ -106,9 +109,33 @@ function Make(Api) {
     Counter: Counter,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
-    AutomationSlice: AutomationSlice,
-    OutboundTranslationSlice: OutboundTranslationSlice,
-    InboundTranslationSlice: InboundTranslationSlice,
+    AutomationSlice: {
+      Make: funarg => {
+        let $$let$3 = $$let(funarg);
+        return {
+          Spec: $$let$3.Spec,
+          make: $$let$3.make
+        };
+      }
+    },
+    OutboundTranslationSlice: {
+      Make: funarg => {
+        let $$let$3 = $$let$1(funarg);
+        return {
+          Spec: $$let$3.Spec,
+          make: $$let$3.make
+        };
+      }
+    },
+    InboundTranslationSlice: {
+      Make: funarg => {
+        let $$let$3 = $$let$2(funarg);
+        return {
+          Spec: $$let$3.Spec,
+          make: $$let$3.make
+        };
+      }
+    },
     DcbEventLog: DcbEventLog,
     Api: Api$1,
     mcpSupported: false,

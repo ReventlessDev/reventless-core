@@ -4,6 +4,27 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
+function encode(parts) {
+  let encoded = JSON.stringify(Object.fromEntries([
+    [
+      "types",
+      parts.types.map(prim => prim)
+    ],
+    [
+      "mutations",
+      parts.mutations.map(prim => prim)
+    ],
+    [
+      "queries",
+      parts.queries.map(prim => prim)
+    ]
+  ]));
+  return {
+    encoded: encoded,
+    protocol: "graphql"
+  };
+}
+
 function decode(fragment) {
   let dict = Stdlib_JSON.Decode.object(JSON.parse(fragment.encoded));
   if (dict === undefined) {
@@ -98,6 +119,7 @@ function stitch(baseFragment, pluginFragments) {
 }
 
 export {
+  encode,
   decode,
   extractLeadingName,
   stitch,

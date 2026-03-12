@@ -682,13 +682,7 @@ let schemaTypeRegistrationHook: ref<option<array<string> => unit>> = ref(None)
 // to map QueryDb component names → plugin-prefixed GraphQL query field names.
 // Read by QueryDbResolvers_GraphQL.make() to align resolver SDL with fragment SDL.
 // ---------------------------------------------------------------------------
-type queryFieldNames = {
-  singleFieldName: string,
-  listFieldName: string,
-  returnTypeName: string,
-  pluralTypeName: string,
-}
-let queryFieldNamesRegistry: ref<dict<queryFieldNames>> = ref(Dict.make())
+let queryFieldNamesRegistry: ref<dict<Api_Naming.queryNames>> = ref(Dict.make())
 
 // ---------------------------------------------------------------------------
 // Aggregate mutation field names registry — populated by Plugin_Builder during

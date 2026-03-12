@@ -14,11 +14,11 @@ function Make(QueryDbStorage) {
   return QueryDbResolvers => (Api => {
     let Make = Spec => {
       let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(Spec);
-      let name = Spec.name + "Audit";
+      let queryDbName = Spec.name + "Audit";
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
-        name: name,
+        name: queryDbName,
         stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
         config: config,
         subIdConfig: undefined
@@ -66,6 +66,7 @@ function Make(QueryDbStorage) {
       }, opts);
       return {
         Spec: Spec,
+        queryDbName: queryDbName,
         make: make
       };
     };

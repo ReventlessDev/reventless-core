@@ -40,8 +40,8 @@ describe("GraphQL_SchemaInspector", () => {
     test("plain string derives to String", async () => {
       expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.string)).toBe("String");
     });
-    test("tagged string derives to ID!", async () => {
-      expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(DcbTag$Reventless.string)).toBe("ID!");
+    test("tagged string derives to ID", async () => {
+      expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(DcbTag$Reventless.string)).toBe("ID");
     });
     test("float derives to Float", async () => {
       expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.float)).toBe("Float");

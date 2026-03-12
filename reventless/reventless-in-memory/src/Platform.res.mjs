@@ -8,7 +8,6 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as McpSdk_Helpers from "@reventlessdev/rescript-mcp-sdk/src/McpSdk_Helpers.res.mjs";
 import * as CoreApi$ReventlessCore from "@reventlessdev/reventless-core/src/core/API/CoreApi.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
@@ -17,7 +16,6 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as Core_Builder$ReventlessInMemory from "./components/Core_Builder.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
-import * as SuryToJsonSchema$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/SuryToJsonSchema.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
@@ -102,15 +100,33 @@ function MakeWithConfig(Config) {
   let StateViewSlice = {
     Make: Make$6
   };
-  let Make$7 = Spec => AutomationSliceMaker.Make(Spec);
+  let Make$7 = Spec => {
+    let $$let = AutomationSliceMaker.Make(Spec);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make
+    };
+  };
   let AutomationSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Make$8 = Spec => {
+    let $$let = OutboundTranslationSliceMaker.Make(Spec);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make
+    };
+  };
   let OutboundTranslationSlice = {
     Make: Make$8
   };
-  let Make$9 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let Make$9 = Spec => {
+    let $$let = InboundTranslationSliceMaker.Make(Spec);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make
+    };
+  };
   let InboundTranslationSlice = {
     Make: Make$9
   };
@@ -491,80 +507,19 @@ function MakeWithConfig(Config) {
       }
     };
     MCP_Server$ReventlessInMemory.registerResourcesFromEntries("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Activate", {
-      name: "Core_Plugin_Activate",
-      description: "Activate a plugin by ID",
-      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
-        [
-          "type",
-          SuryToJsonSchema$ReventlessCore.str("object")
-        ],
-        [
-          "properties",
-          SuryToJsonSchema$ReventlessCore.jsonObject([[
-              "id",
-              SuryToJsonSchema$ReventlessCore.jsonObject([[
-                  "type",
-                  SuryToJsonSchema$ReventlessCore.str("string")
-                ]])
-            ]])
-        ],
-        [
-          "required",
-          ["id"]
-        ]
-      ])
-    }, async args => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` activated`);
+    MCP_Server$ReventlessInMemory.registerToolsFromEntries("Core", CoreApi$ReventlessCore.mutationEntries, async (toolName, args) => {
+      let resolver = GraphQL_Server$ReventlessInMemory.getMutationResolver(toolName);
+      if (resolver === undefined) {
+        return `error: no handler found for tool ` + toolName;
+      }
+      let result = await resolver(null, args);
+      let s = Stdlib_JSON.Decode.string(result);
+      if (s !== undefined) {
+        return s;
+      } else {
+        return JSON.stringify(result);
+      }
     });
-    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Deactivate", {
-      name: "Core_Plugin_Deactivate",
-      description: "Deactivate a plugin by ID",
-      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
-        [
-          "type",
-          SuryToJsonSchema$ReventlessCore.str("object")
-        ],
-        [
-          "properties",
-          SuryToJsonSchema$ReventlessCore.jsonObject([[
-              "id",
-              SuryToJsonSchema$ReventlessCore.jsonObject([[
-                  "type",
-                  SuryToJsonSchema$ReventlessCore.str("string")
-                ]])
-            ]])
-        ],
-        [
-          "required",
-          ["id"]
-        ]
-      ])
-    }, async args => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` deactivated`);
-    });
-    MCP_Server$ReventlessInMemory.registerTool("Core_Clone", {
-      name: "Core_Clone",
-      description: "Clone the system to a specific point in time",
-      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
-        [
-          "type",
-          SuryToJsonSchema$ReventlessCore.str("object")
-        ],
-        [
-          "properties",
-          SuryToJsonSchema$ReventlessCore.jsonObject([[
-              "restoreDateTime",
-              SuryToJsonSchema$ReventlessCore.jsonObject([[
-                  "type",
-                  SuryToJsonSchema$ReventlessCore.str("string")
-                ]])
-            ]])
-        ]
-      ])
-    }, async _args => McpSdk_Helpers.toolError("clone not supported in-memory"));
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
   };
@@ -655,15 +610,33 @@ function Make($star) {
   let StateViewSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
+  let Make$8 = Spec => {
+    let $$let = AutomationSliceMaker.Make(Spec);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make
+    };
+  };
   let AutomationSlice = {
     Make: Make$8
   };
-  let Make$9 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Make$9 = Spec => {
+    let $$let = OutboundTranslationSliceMaker.Make(Spec);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make
+    };
+  };
   let OutboundTranslationSlice = {
     Make: Make$9
   };
-  let Make$10 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let Make$10 = Spec => {
+    let $$let = InboundTranslationSliceMaker.Make(Spec);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make
+    };
+  };
   let InboundTranslationSlice = {
     Make: Make$10
   };
@@ -1044,80 +1017,19 @@ function Make($star) {
       }
     };
     MCP_Server$ReventlessInMemory.registerResourcesFromEntries("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Activate", {
-      name: "Core_Plugin_Activate",
-      description: "Activate a plugin by ID",
-      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
-        [
-          "type",
-          SuryToJsonSchema$ReventlessCore.str("object")
-        ],
-        [
-          "properties",
-          SuryToJsonSchema$ReventlessCore.jsonObject([[
-              "id",
-              SuryToJsonSchema$ReventlessCore.jsonObject([[
-                  "type",
-                  SuryToJsonSchema$ReventlessCore.str("string")
-                ]])
-            ]])
-        ],
-        [
-          "required",
-          ["id"]
-        ]
-      ])
-    }, async args => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` activated`);
+    MCP_Server$ReventlessInMemory.registerToolsFromEntries("Core", CoreApi$ReventlessCore.mutationEntries, async (toolName, args) => {
+      let resolver = GraphQL_Server$ReventlessInMemory.getMutationResolver(toolName);
+      if (resolver === undefined) {
+        return `error: no handler found for tool ` + toolName;
+      }
+      let result = await resolver(null, args);
+      let s = Stdlib_JSON.Decode.string(result);
+      if (s !== undefined) {
+        return s;
+      } else {
+        return JSON.stringify(result);
+      }
     });
-    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Deactivate", {
-      name: "Core_Plugin_Deactivate",
-      description: "Deactivate a plugin by ID",
-      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
-        [
-          "type",
-          SuryToJsonSchema$ReventlessCore.str("object")
-        ],
-        [
-          "properties",
-          SuryToJsonSchema$ReventlessCore.jsonObject([[
-              "id",
-              SuryToJsonSchema$ReventlessCore.jsonObject([[
-                  "type",
-                  SuryToJsonSchema$ReventlessCore.str("string")
-                ]])
-            ]])
-        ],
-        [
-          "required",
-          ["id"]
-        ]
-      ])
-    }, async args => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` deactivated`);
-    });
-    MCP_Server$ReventlessInMemory.registerTool("Core_Clone", {
-      name: "Core_Clone",
-      description: "Clone the system to a specific point in time",
-      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
-        [
-          "type",
-          SuryToJsonSchema$ReventlessCore.str("object")
-        ],
-        [
-          "properties",
-          SuryToJsonSchema$ReventlessCore.jsonObject([[
-              "restoreDateTime",
-              SuryToJsonSchema$ReventlessCore.jsonObject([[
-                  "type",
-                  SuryToJsonSchema$ReventlessCore.str("string")
-                ]])
-            ]])
-        ]
-      ])
-    }, async _args => McpSdk_Helpers.toolError("clone not supported in-memory"));
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
   };

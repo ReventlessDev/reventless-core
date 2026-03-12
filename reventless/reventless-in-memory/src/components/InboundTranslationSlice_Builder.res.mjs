@@ -17,6 +17,7 @@ function Make(Bus) {
     let include = CoreMaker.Make(Spec);
     return {
       Spec: include.Spec,
+      queryDbName: include.queryDbName,
       make: include.make,
       operations: Component$ReventlessCore.operations
     };

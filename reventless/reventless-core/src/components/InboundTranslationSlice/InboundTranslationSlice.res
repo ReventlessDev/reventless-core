@@ -9,6 +9,7 @@ module type T = {
   type dcbEvent
   module Spec: Reventless.InboundTranslationSlice.Spec
   type component = Component.t<t, outputs, operations>
+  let queryDbName: string
 
   let make: (
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,

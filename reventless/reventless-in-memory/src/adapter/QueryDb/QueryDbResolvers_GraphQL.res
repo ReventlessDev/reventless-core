@@ -25,7 +25,8 @@ module Make = (Bus: InMemory_Bus.T) => {
   ) => {
     let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
-    // Resolve query field names: check registry first, fall back to legacy camelCase
+    // Resolve query field names: check registry first, fall back to safe defaults.
+    // Fallbacks use simple GraphQL built-in types to avoid referencing non-existent custom types.
     let registryEntry = Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.get(name)
     let singleQueryName = switch registryEntry {
     | Some({singleFieldName}) => singleFieldName
@@ -41,7 +42,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
     let pluralTypeName = switch registryEntry {
     | Some({pluralTypeName}) => pluralTypeName
-    | None => name ++ "s"
+    | None => "[String]"
     }
 
     // -- Main query: getById ---------------------------------------------------

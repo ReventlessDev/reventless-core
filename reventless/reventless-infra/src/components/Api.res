@@ -2,8 +2,8 @@
 type schemaFragment = Reventless.Plugin.apiSchemaFragment
 
 /**
-Schema entry for a GraphQL mutation field, derived from an aggregate command schema
-or a DCB StateChangeSlice command schema.
+Schema entry for a mutation field, derived from an aggregate command schema
+or a DCB StateChangeSlice command schema. Consumed by GraphQL, MCP, and (future) OpenAPI generators.
 `S.t<unknown>` is used for type-erasure — build entries with `Obj.magic`.
 */
 type mutationSchemaEntry = {
@@ -14,7 +14,8 @@ type mutationSchemaEntry = {
 }
 
 /**
-Schema entry for a GraphQL query field, derived from a ReadModel or StateViewSlice state schema.
+Schema entry for a query field, derived from a ReadModel or StateViewSlice state schema.
+Consumed by GraphQL, MCP, and (future) OpenAPI generators.
 `S.t<unknown>` is used for type-erasure — build entries with `Obj.magic`.
 */
 type querySchemaEntry = {
@@ -29,7 +30,8 @@ type querySchemaEntry = {
 
 /**
 Schema entry for an event log, derived from an aggregate EventLog or DCB EventLog.
-Used by MCP to expose event history as resources.
+Consumed by MCP (event history resources), GraphQL (future subscriptions),
+and (future) OpenAPI/REST event endpoints.
 */
 type eventLogSchemaEntry = {
   busKey: string,

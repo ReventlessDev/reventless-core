@@ -8,6 +8,18 @@ type fragmentParts = {
   queries: array<string>,
 }
 
+let encode = (parts: fragmentParts): Reventless.Plugin.apiSchemaFragment => {
+  let encoded =
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
+        ("mutations", JSON.Encode.array(parts.mutations->Array.map(JSON.Encode.string))),
+        ("queries", JSON.Encode.array(parts.queries->Array.map(JSON.Encode.string))),
+      ]),
+    )->JSON.stringify
+  {Reventless.Plugin.encoded, protocol: "graphql"}
+}
+
 let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
   switch fragment.encoded->JSON.parseOrThrow->JSON.Decode.object {
   | None => {types: [], mutations: [], queries: []}

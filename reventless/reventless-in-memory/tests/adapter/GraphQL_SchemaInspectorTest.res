@@ -40,8 +40,8 @@ describe("GraphQL_SchemaInspector", () => {
       expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(stringSchema))->toBe("String")
     })
 
-    testPromise("tagged string derives to ID!", async () => {
-      expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(taggedSchema))->toBe("ID!")
+    testPromise("tagged string derives to ID", async () => {
+      expect(ReventlessCore.GraphQL_SchemaInspector.inspectScalar(taggedSchema))->toBe("ID")
     })
 
     testPromise("float derives to Float", async () => {

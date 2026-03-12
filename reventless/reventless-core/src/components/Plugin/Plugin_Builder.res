@@ -52,19 +52,6 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let childName = name->ComponentType.name(Plugin.componentType)
 
-    // Naming helpers for GraphQL query/type derivation
-    let pluralize = (n: string) => n->String.endsWith("s") ? n : n ++ "s"
-    let stripViewSuffix = (n: string) =>
-      n->String.endsWith("View") ? n->String.slice(~start=0, ~end=n->String.length - 4) : n
-    let singularize = (n: string) =>
-      if n->String.endsWith("ies") {
-        n->String.slice(~start=0, ~end=n->String.length - 3) ++ "y"
-      } else if n->String.endsWith("s") {
-        n->String.slice(~start=0, ~end=n->String.length - 1)
-      } else {
-        n
-      }
-
     // Create DcbEventLog and StateChangeSlices if DcbSpec provided
     // Also captures handler and connect function for runtime setup
     let (
@@ -124,7 +111,7 @@ module Make = (
             module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
           ) => {
             registerResolver(
-              ~fieldName=`${name}_${S.Spec.name}`,
+              ~fieldName=Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name),
               ~commandSchema=S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
             )
           })
@@ -136,65 +123,32 @@ module Make = (
         DcbSpec.stateViewSlices->Array.forEach((
           module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
         ) => {
-          let entity = V.Spec.name->stripViewSuffix
-          let singular = singularize(entity)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
-            V.Spec.name,
-            {
-              Plugin_Helpers.singleFieldName: `${name}_${singular}`,
-              listFieldName: `${name}_${pluralize(entity)}`,
-              returnTypeName: `${name}_${singular}`,
-              pluralTypeName: `${name}_${pluralize(entity)}`,
-            },
-          )
+          let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
+          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(V.Spec.name, qn)
         })
 
         // Populate query field names registry for AutomationSlices BEFORE creating them.
         DcbSpec.automationSlices->Array.forEach((
           module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
         ) => {
-          let todoName = A.Spec.name ++ "Todo"
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
-            todoName,
-            {
-              Plugin_Helpers.singleFieldName: `${name}_${todoName}`,
-              listFieldName: `${name}_${todoName}s`,
-              returnTypeName: `${name}_${todoName}`,
-              pluralTypeName: `${name}_${todoName}s`,
-            },
-          )
+          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
+          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(A.queryDbName, qn)
         })
 
         // Populate query field names registry for OutboundTranslationSlices BEFORE creating them.
         DcbSpec.outboundTranslationSlices->Array.forEach((
           module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
         ) => {
-          let todoName = O.Spec.name ++ "Todo"
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
-            todoName,
-            {
-              Plugin_Helpers.singleFieldName: `${name}_${todoName}`,
-              listFieldName: `${name}_${todoName}s`,
-              returnTypeName: `${name}_${todoName}`,
-              pluralTypeName: `${name}_${todoName}s`,
-            },
-          )
+          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=O.queryDbName)
+          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(O.queryDbName, qn)
         })
 
         // Populate query field names registry for InboundTranslationSlices BEFORE creating them.
         DcbSpec.inboundTranslationSlices->Array.forEach((
           module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
         ) => {
-          let auditName = I.Spec.name ++ "Audit"
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
-            auditName,
-            {
-              Plugin_Helpers.singleFieldName: `${name}_${auditName}`,
-              listFieldName: `${name}_${auditName}s`,
-              returnTypeName: `${name}_${auditName}`,
-              pluralTypeName: `${name}_${auditName}s`,
-            },
-          )
+          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
+          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(I.queryDbName, qn)
         })
 
         // Create StateViewSlices - each gets its own QueryDb and subscribes to DcbEventLog events
@@ -235,7 +189,7 @@ module Make = (
             module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
           ) => {
             let its = ITS.make(~publishJsons, ~opts)
-            let fieldName = `${name}_${ITS.Spec.name}`
+            let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
 
             // Phase 1: Register SDL + resolver stub synchronously (before server starts).
             switch inboundMutationResolverHook.contents {
@@ -374,7 +328,9 @@ module Make = (
       aggregates->Array.flatMap((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
         let commandSchema = M.Spec.commandSchema->S.castToUnknown
         let constructorNames = Reventless.DcbTag.extractEventTypes(M.Spec.commandSchema)
-        let fieldNames = constructorNames->Array.map(cname => `${name}_${M.Spec.name}_${cname}`)
+        let fieldNames = constructorNames->Array.map(cname =>
+          Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
+        )
         // Register plugin-prefixed field names so CommandGenerator_Builder can use them
         // instead of the empty Behavior.resolverConfig.fields.
         Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.set(M.Spec.name, fieldNames)
@@ -392,7 +348,7 @@ module Make = (
       DcbSpec.stateChangeSlices->Array.map((
         module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
       ) => {
-        ReventlessInfra.Api.fieldNames: [`${name}_${S.Spec.name}`],
+        ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
         commandSchema: S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
       })
     | None => []
@@ -403,7 +359,7 @@ module Make = (
       DcbSpec.inboundTranslationSlices->Array.map((
         module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
       ) => {
-        ReventlessInfra.Api.fieldNames: [`${name}_${ITS.Spec.name}`],
+        ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)],
         commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
       })
     | None => []
@@ -418,11 +374,14 @@ module Make = (
       readModels->Array.map((
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
       ) => {
-        ReventlessInfra.Api.singleFieldName: `${name}_${singularize(R.Spec.name)}`,
-        listFieldName: `${name}_${pluralize(R.Spec.name)}`,
-        returnTypeName: `${name}_${singularize(R.Spec.name)}`,
-        stateSchema: R.Spec.stateSchema->S.castToUnknown,
-        authorization: None,
+        let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+        {
+          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
+          listFieldName: qn.listFieldName,
+          returnTypeName: qn.returnTypeName,
+          stateSchema: R.Spec.stateSchema->S.castToUnknown,
+          authorization: None,
+        }
       })
 
     let queryEntriesFromSlices = switch dcbSpec {
@@ -430,12 +389,11 @@ module Make = (
       let stateViewEntries = DcbSpec.stateViewSlices->Array.map((
         module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
       ) => {
-        let entity = V.Spec.name->stripViewSuffix
-        let singular = singularize(entity)
+        let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
         {
-          ReventlessInfra.Api.singleFieldName: `${name}_${singular}`,
-          listFieldName: `${name}_${pluralize(entity)}`,
-          returnTypeName: `${name}_${singular}`,
+          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
+          listFieldName: qn.listFieldName,
+          returnTypeName: qn.returnTypeName,
           stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
           authorization: None,
         }
@@ -444,11 +402,11 @@ module Make = (
       let automationEntries = DcbSpec.automationSlices->Array.map((
         module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
       ) => {
-        let todoName = A.Spec.name ++ "Todo"
+        let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
         {
-          ReventlessInfra.Api.singleFieldName: `${name}_${todoName}`,
-          listFieldName: `${name}_${todoName}s`,
-          returnTypeName: `${name}_${todoName}`,
+          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
+          listFieldName: qn.listFieldName,
+          returnTypeName: qn.returnTypeName,
           stateSchema: AutomationSlice_Callback.todoRowSchema->S.castToUnknown,
           authorization: None,
         }
@@ -457,11 +415,11 @@ module Make = (
       let outboundEntries = DcbSpec.outboundTranslationSlices->Array.map((
         module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
       ) => {
-        let todoName = O.Spec.name ++ "Todo"
+        let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=O.queryDbName)
         {
-          ReventlessInfra.Api.singleFieldName: `${name}_${todoName}`,
-          listFieldName: `${name}_${todoName}s`,
-          returnTypeName: `${name}_${todoName}`,
+          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
+          listFieldName: qn.listFieldName,
+          returnTypeName: qn.returnTypeName,
           stateSchema: OutboundTranslationSlice_Callback.todoRowSchema->S.castToUnknown,
           authorization: None,
         }
@@ -470,11 +428,11 @@ module Make = (
       let inboundEntries = DcbSpec.inboundTranslationSlices->Array.map((
         module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
       ) => {
-        let auditName = I.Spec.name ++ "Audit"
+        let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
         {
-          ReventlessInfra.Api.singleFieldName: `${name}_${auditName}`,
-          listFieldName: `${name}_${auditName}s`,
-          returnTypeName: `${name}_${auditName}`,
+          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
+          listFieldName: qn.listFieldName,
+          returnTypeName: qn.returnTypeName,
           stateSchema: InboundTranslationSlice_Callback.auditRowSchema->S.castToUnknown,
           authorization: None,
         }
@@ -515,17 +473,10 @@ module Make = (
     // before StateViewSlice.make calls — see above.)
     readModels->Array.forEach((
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-    ) =>
-      Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
-        R.Spec.name,
-        {
-          Plugin_Helpers.singleFieldName: `${name}_${singularize(R.Spec.name)}`,
-          listFieldName: `${name}_${pluralize(R.Spec.name)}`,
-          returnTypeName: `${name}_${singularize(R.Spec.name)}`,
-          pluralTypeName: `${name}_${pluralize(R.Spec.name)}`,
-        },
-      )
-    )
+    ) => {
+      let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+      Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(R.Spec.name, qn)
+    })
 
     let apiSchemaFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
 
