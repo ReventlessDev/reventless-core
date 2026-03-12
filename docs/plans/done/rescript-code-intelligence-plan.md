@@ -173,7 +173,7 @@ Key fields: `module_binding` has `name` field; `type_binding` has `name` and `bo
 - [x] 3.9 — Add `**/*.res`, `**/*.resi` to default include; `**/lib/bs/**`, `**/lib/ocaml/**`, `**/.rescript/**` to exclude
 - [x] 3.10 — Write 12 extraction tests in `__tests__/extraction.test.ts` (all pass, 197 total pass, 0 regressions)
 - [x] 3.11 — Tested against reventless-core: 75 nodes, 71 edges, 28 call refs from 4 core files
-- [ ] 3.12 — Open upstream PR to `@colbymchenry/codegraph` (branch: `feat/rescript-support` at `/tmp/codegraph`)
+- [x] 3.12 — Open upstream PR to `@colbymchenry/codegraph` (branch: `feat/rescript-support` at `/tmp/codegraph`)
 
 ### Known Challenges
 
