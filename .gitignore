@@ -26,3 +26,6 @@ rescript/**/examples/*.res.mjs
 .worktrees/
 .security-key
 logs/security/
+
+# ast-grep tree-sitter grammar (compiled binary, rebuild with gcc)
+rescript.dylib

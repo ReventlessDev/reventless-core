@@ -153,6 +153,18 @@ Packages use `rescript.json` with:
 - `-open RescriptCore` flag
 - CommonJS output with `.res.js` suffix
 
+### ReScript LSP
+
+A ReScript language server plugin is configured for Claude Code, providing type-aware code intelligence for `.res` and `.resi` files:
+- **hover**: Full type signatures with expanded type definitions
+- **goToDefinition**: Cross-file symbol resolution within the monorepo
+- **findReferences**: Find all usages of a symbol
+- **documentSymbol**: List all symbols in a file
+
+Prerequisite: `npm install -g @rescript/language-server` (v1.72.0+). The plugin lives at `~/.claude/plugins/marketplaces/claude-code-lsps/rescript-lsp/`.
+
+Not supported by the ReScript LSP: `workspaceSymbol`, `goToImplementation`, `callHierarchy`.
+
 ## Documentation
 
 The `packages/doc/` directory contains a Docusaurus-based documentation site.

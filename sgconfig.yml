@@ -1,0 +1,5 @@
+customLanguages:
+  rescript:
+    libraryPath: ./rescript.dylib
+    extensions: [res, resi]
+    expandoChar: _
