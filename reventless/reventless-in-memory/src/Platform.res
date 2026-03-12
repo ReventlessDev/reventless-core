@@ -383,7 +383,10 @@ module MakeWithConfig = (
   module PluginMaker = Plugin_Builder.Make(Bus)
   // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
   // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
-  module Plugin: ReventlessInfra.Plugin.T with type api = unit and type role = unit = {
+  module Plugin: ReventlessInfra.Plugin.T
+    with type api = unit
+    and type role = unit
+    and type component = ReventlessCore.Plugin.component = {
     type api = unit
     type role = unit
     type component = ReventlessCore.Plugin.component
@@ -408,7 +411,189 @@ module MakeWithConfig = (
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpSupported
 
-  let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
+  let makePlatform = (~api as _, ~core as _, ~plugins) => {
+    // Create an in-memory Plugin QueryDb in the Bus.
+    // This mirrors what QueryDbStorage_InMemory does for user read models,
+    // providing the runtime store that backs plugin/everyPlugin queries.
+    let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
+    let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
+    let allItems: ref<array<JSON.t>> = ref([])
+    let syncAll = () => {
+      allItems.contents = store.contents->Dict.valuesToArray->Array.flatMap(v => v)
+    }
+    let pluginOps: ReventlessCore.QueryDb_Adapter.operations = {
+      load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
+      loadStream: id => store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
+      save: async (id, state, _, _) => {
+        store.contents->Dict.set(id, [state])
+        syncAll()
+        Ok()
+      },
+      saveBatch: async batch => {
+        batch->Array.forEach(((id, state, _)) => store.contents->Dict.set(id, [state]))
+        syncAll()
+        Ok()
+      },
+      count: async (_, _, inc) => Ok(inc),
+      delete: async (id, _) => {
+        store.contents->Dict.delete(id)
+        syncAll()
+        Ok()
+      },
+      deleteBatch: async ids => {
+        ids->Array.forEach(((id, _)) => store.contents->Dict.delete(id))
+        syncAll()
+        Ok()
+      },
+    }
+    Bus.registerQueryDb(pluginQueryDbName, pluginOps)
+    Bus.registerQueryDbScan(pluginQueryDbName, () => allItems.contents)
+    Bus.registerQueryDbStream(pluginQueryDbName, () => allItems.contents->Stream.fromIterable)
+
+    // Seed the Plugin QueryDb from constructed plugin component outputs.
+    // Uses the real output values and serializes via PluginReadModelSpec.stateSchema
+    // so the JSON shape stays in sync with the GraphQL type automatically.
+    plugins->Array.forEach(plugin => {
+      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
+      let _ =
+        (outputs.id, outputs.version, outputs.eventCollector, outputs.extensionPoints, outputs.extensions)
+        ->Pulumi.Output.all5
+        ->Pulumi.Output.apply(((id, version, eventCollector, extensionPoints, extensions)) => {
+          let state: ReventlessCore.PluginReadModelSpec.state = {
+            name: id->String.split("@")->Array.get(0)->Option.getOr(id),
+            version,
+            eventCollector: eventCollector.name,
+            extensionPoints: extensionPoints
+              ->Dict.toArray
+              ->Array.map(((epName, ep: ReventlessInfra.ExtensionPoint.outputs)) => {
+                Reventless.Plugin.name: epName,
+                commandTopic: epName,
+                eventTopic: ep.name,
+              }),
+            extensionPointNames: extensionPoints->Dict.keysToArray,
+            extensionNames: extensions->Dict.keysToArray,
+            extensions: extensions
+              ->Dict.toArray
+              ->Array.map(((_, ext: ReventlessInfra.Extension.outputs)) => {
+                Reventless.Plugin.name: ext.name,
+                extensionPointName: ext.extensionPointName,
+              }),
+            status: Connected,
+            statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
+            apiSchemaFragment: None,
+          }
+          let entry = state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+          let _ = pluginOps.save(id, entry, Any, None)
+        })
+    })
+
+    // Register the core Plugin aggregate's types/queries/mutations from the base fragment
+    // into the GraphQL server. User plugin schemas are registered via hooks during
+    // Plugin_Builder.construct(), but the core's own schema needs explicit registration.
+    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.CoreApi.baseFragment)
+    GraphQL_Server.registerTypes(~sdlTypes=baseParts.types)
+
+    // Resolvers for the core Plugin queries — backed by Bus Plugin QueryDb.
+    let queryResolvers = Dict.make()
+    queryResolvers->Dict.set("plugin", (async (_root, args): JSON.t => {
+      let id =
+        args
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get("id"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr("")
+      switch Bus.getQueryDb(pluginQueryDbName) {
+      | Some(ops) =>
+        let items =
+          await ops.loadStream(id)
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
+        items->Array.get(0)->Option.getOr(JSON.Encode.null)
+      | None => JSON.Encode.null
+      }
+    }))
+    queryResolvers->Dict.set("everyPlugin", (async (_root, _args): JSON.t => {
+      let items = switch Bus.getQueryDbScan(pluginQueryDbName) {
+      | Some(scanAll) => scanAll()
+      | None => []
+      }
+      Dict.fromArray([
+        ("nextToken", JSON.Encode.null),
+        ("scannedCount", JSON.Encode.int(items->Array.length)),
+        ("items", items->JSON.Encode.array),
+      ])->JSON.Encode.object
+    }))
+    GraphQL_Server.registerQueries(
+      ~sdlFields=baseParts.queries,
+      ~resolvers=queryResolvers,
+    )
+
+    // Stub resolvers for core mutations (Plugin_Activate, Plugin_Deactivate, clone).
+    // These are no-ops in the in-memory platform — the real logic runs in AWS Lambda.
+    let mutationResolvers = Dict.make()
+    mutationResolvers->Dict.set("Plugin_Activate", (async (_root, _args): JSON.t =>
+      JSON.Encode.string("ok")
+    ))
+    mutationResolvers->Dict.set("Plugin_Deactivate", (async (_root, _args): JSON.t =>
+      JSON.Encode.string("ok")
+    ))
+    mutationResolvers->Dict.set("clone", (async (_root, _args): JSON.t =>
+      JSON.Encode.string("clone not supported in-memory")
+    ))
+    GraphQL_Server.registerMutations(
+      ~sdlFields=baseParts.mutations,
+      ~resolvers=mutationResolvers,
+    )
+
+    // Register core Plugin queries/mutations as MCP resources and tools.
+    // queryEntries has listFieldName: None, so registerResourcesFromEntries only
+    // creates a single-item template (core/plugin/{id}). We add the list resource separately.
+    let pluginQueryHandler = async (_resourceName, uri) => {
+      let segments = uri->String.split("/")
+      let id = segments->Array.at(-1)->Option.getOr("")
+      switch Bus.getQueryDb(pluginQueryDbName) {
+      | Some(ops) =>
+        if id->String.length > 0 && id != "plugin" && id != "everyPlugin" {
+          let items =
+            await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
+          items->Array.get(0)->Option.getOr(JSON.Encode.null)
+        } else {
+          switch Bus.getQueryDbScan(pluginQueryDbName) {
+          | Some(scanAll) => scanAll()->JSON.Encode.array
+          | None => []->JSON.Encode.array
+          }
+        }
+      | None => JSON.Encode.null
+      }
+    }
+    MCP_Server.registerResourcesFromEntries(
+      ~pluginName="Core",
+      ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
+      ~queryHandler=pluginQueryHandler,
+    )
+    // Register the plugin list resource explicitly (queryEntries lacks listFieldName).
+    MCP_Server.registerResource(
+      ~name="everyPlugin",
+      ~definition={
+        uriTemplate: "core/everyPlugin",
+        name: "everyPlugin",
+        description: "List all connected plugins",
+        mimeType: "application/json",
+      },
+      ~handler=async uri => {
+        let result = await pluginQueryHandler("everyPlugin", uri)
+        {
+          McpSdk.contents: [
+            {McpSdk.uri, text: result->JSON.stringify},
+          ],
+        }
+      },
+    )
+
     // Start the shared GraphQL server after all plugins have been built.
     // All Output.apply chains have fired synchronously by this point,
     // so all mutation and query resolvers are already registered in GraphQL_Server.

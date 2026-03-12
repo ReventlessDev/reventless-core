@@ -35,6 +35,95 @@ let getClient = () =>
     c
   }
 
+// ── @aws_auth directive injection ─────────────────────────────────────────
+// Injects @aws_auth(cognito_groups: [...]) directives into SDL field strings
+// based on authorization metadata from schema entries.
+
+let injectAwsAuth = (
+  fragment: Reventless.Plugin.apiSchemaFragment,
+  ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
+  ~queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
+): Reventless.Plugin.apiSchemaFragment => {
+  let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
+
+  // Build authorization lookup from mutation entries: fieldName -> group
+  let mutationAuthMap: Dict.t<string> = Dict.make()
+  mutationEntries->Array.forEach(entry => {
+    switch entry.authorization {
+    | Some({group}) =>
+      entry.fieldNames->Array.forEach(fieldName =>
+        mutationAuthMap->Dict.set(fieldName, group)
+      )
+    | None => ()
+    }
+  })
+
+  // Build authorization lookup from query entries: fieldName -> group
+  let queryAuthMap: Dict.t<string> = Dict.make()
+  queryEntries->Array.forEach(entry => {
+    switch entry.authorization {
+    | Some({group}) =>
+      queryAuthMap->Dict.set(entry.singleFieldName, group)
+      entry.listFieldName->Option.forEach(ln => queryAuthMap->Dict.set(ln, group))
+    | None => ()
+    }
+  })
+
+  let augmentedMutations = parts.mutations->Array.map(field => {
+    let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
+    switch mutationAuthMap->Dict.get(fieldName) {
+    | Some(group) => `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
+    | None => field
+    }
+  })
+
+  let augmentedQueries = parts.queries->Array.map(field => {
+    let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
+    switch queryAuthMap->Dict.get(fieldName) {
+    | Some(group) => `${field} @aws_auth(cognito_groups: ["${group}"])`
+    | None => field
+    }
+  })
+
+  let encoded =
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
+        ("mutations", JSON.Encode.array(augmentedMutations->Array.map(JSON.Encode.string))),
+        ("queries", JSON.Encode.array(augmentedQueries->Array.map(JSON.Encode.string))),
+      ]),
+    )->JSON.stringify
+
+  {Reventless.Plugin.encoded, protocol: "graphql"}
+}
+
+// Injects @aws_auth with the given group on ALL mutation and query fields in a fragment.
+// Used for the base fragment where all fields share the same authorization group.
+let injectAwsAuthAll = (
+  fragment: Reventless.Plugin.apiSchemaFragment,
+  ~group: string,
+): Reventless.Plugin.apiSchemaFragment => {
+  let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
+
+  let augmentedMutations = parts.mutations->Array.map(field =>
+    `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
+  )
+  let augmentedQueries = parts.queries->Array.map(field =>
+    `${field} @aws_auth(cognito_groups: ["${group}"])`
+  )
+
+  let encoded =
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
+        ("mutations", JSON.Encode.array(augmentedMutations->Array.map(JSON.Encode.string))),
+        ("queries", JSON.Encode.array(augmentedQueries->Array.map(JSON.Encode.string))),
+      ]),
+    )->JSON.stringify
+
+  {Reventless.Plugin.encoded, protocol: "graphql"}
+}
+
 // ── Provider implementation ────────────────────────────────────────────────
 
 type api = AppSync.GraphQLApi.t
@@ -74,15 +163,21 @@ let makeApiResource = (
 let generateFragment = (
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   ~queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
-): Reventless.Plugin.apiSchemaFragment =>
-  ReventlessCore.GraphQL_FragmentGenerator.generate(~mutationEntries, ~queryEntries)
+): Reventless.Plugin.apiSchemaFragment => {
+  let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(~mutationEntries, ~queryEntries)
+  injectAwsAuth(fragment, ~mutationEntries, ~queryEntries)
+}
 
 let updateSchema = (
   ~api: Pulumi.Output.t<api>,
   ~baseFragment: Reventless.Plugin.apiSchemaFragment,
   ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
 ): promise<unit> => {
-  let sdl = ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment, ~pluginFragments)
+  // Inject @aws_auth(cognito_groups: ["Admin"]) into all base fragment fields.
+  // The base fragment contains core Plugin aggregate queries/mutations — all Admin-only.
+  // Plugin fragments already have @aws_auth injected via generateFragment.
+  let augmentedBaseFragment = injectAwsAuthAll(baseFragment, ~group="Admin")
+  let sdl = ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment=augmentedBaseFragment, ~pluginFragments)
   // Resolve the API ID from the Output chain. In mock mode (tests) and in Lambda runtime
   // (where the Output is backed by already-known values), this completes synchronously.
   // The resulting promise wraps the AppSync SDK call.

@@ -9,6 +9,7 @@ or a DCB StateChangeSlice command schema.
 type mutationSchemaEntry = {
   fieldNames: array<string>,
   commandSchema: S.t<unknown>,
+  authorization?: Reventless.ReadModel.authorization,
   description?: string,
 }
 
@@ -22,6 +23,7 @@ type querySchemaEntry = {
   returnTypeName: string,
   stateSchema: S.t<unknown>,
   authorization: option<Reventless.ReadModel.authorization>,
+  excludeFields?: array<string>,
   description?: string,
 }
 

@@ -6,7 +6,7 @@ import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/revent
 let receiveRegistry = {};
 
 function register(fieldName, externalInputSchema) {
-  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, externalInputSchema, undefined);
+  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, externalInputSchema);
   let sdlFields = field !== undefined ? [field] : [`  ` + fieldName + `: String!`];
   let resolver = async (_root, args) => {
     let receive = receiveRegistry[fieldName];

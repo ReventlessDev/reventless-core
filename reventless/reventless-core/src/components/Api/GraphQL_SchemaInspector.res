@@ -25,14 +25,12 @@ let inspectMutationFields = (~fieldPrefix: string, commandSchema: S.t<'a>): arra
       GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
         ~fieldName,
         variantSchema,
-        ~authorization=None,
       )->Option.forEach(field => fields->Array.push(field))
     })
   | Object(_) =>
     GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
       ~fieldName=fieldPrefix,
       schema,
-      ~authorization=None,
     )->Option.forEach(field => fields->Array.push(field))
   | _ => ()
   }
@@ -55,14 +53,12 @@ let inspectQueryFields = (
   let singleQuery = GraphQL_FragmentGenerator.deriveObjectQueryField(
     ~singleFieldName=name,
     ~typeName,
-    ~authorization=None,
   )
   let pluralName = name ++ "s"
   let listQuery = Some(
     GraphQL_FragmentGenerator.deriveListQueryField(
       ~listFieldName=pluralName,
       ~pluralTypeName=pluralName,
-      ~authorization=None,
     ),
   )
   {typeDef, singleQuery, listQuery}

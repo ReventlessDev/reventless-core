@@ -23,7 +23,7 @@ function register(fields, commandSchema) {
   anyOf = commandSchema.type === "union" ? commandSchema.anyOf : [];
   let sdlFields = fields.map((field, i) => {
     let variantSchema = Stdlib_Option.getOr(anyOf[i], commandSchema);
-    let sdl = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(field, variantSchema, undefined);
+    let sdl = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(field, variantSchema);
     if (sdl !== undefined) {
       if (sdl.includes("(")) {
         return sdl.replace(field + `(`, field + `(id: ID!, `);

@@ -13,7 +13,7 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
   let fields = [];
   switch (commandSchema.type) {
     case "object" :
-      Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldPrefix, commandSchema, undefined), field => {
+      Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldPrefix, commandSchema), field => {
         fields.push(field);
       });
       break;
@@ -22,7 +22,7 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
       commandSchema.anyOf.forEach((variantSchema, i) => {
         let name = constructorNames[i];
         let fieldName = name !== undefined ? fieldPrefix + `_` + name : fieldPrefix + `_Variant` + i.toString();
-        Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema, undefined), field => {
+        Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema), field => {
           fields.push(field);
         });
       });
@@ -33,9 +33,9 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
 
 function inspectQueryFields(name, typeName, stateSchema) {
   let typeDef = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectType(typeName, stateSchema);
-  let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName, undefined);
+  let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName);
   let pluralName = name + "s";
-  let listQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveListQueryField(pluralName, pluralName, undefined);
+  let listQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveListQueryField(pluralName, pluralName);
   return {
     typeDef: typeDef,
     singleQuery: singleQuery,

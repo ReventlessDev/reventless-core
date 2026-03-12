@@ -15,7 +15,6 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
   let sdlFields = switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
     ~fieldName,
     externalInputSchema,
-    ~authorization=None,
   ) {
   | Some(field) => [field]
   | None => [`  ${fieldName}: String!`]

@@ -11,7 +11,7 @@ import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/revent
 function register(fieldName, commandSchema) {
   let variantSchema;
   variantSchema = commandSchema.type === "union" ? Stdlib_Option.getOr(commandSchema.anyOf[0], commandSchema) : commandSchema;
-  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema, undefined);
+  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema);
   let sdlFields = field !== undefined ? [field] : [`  ` + fieldName + `: String!`];
   let constructorNames = DcbTag$Reventless.extractEventTypes(commandSchema);
   let tag = Stdlib_Option.getOr(constructorNames[0], fieldName);

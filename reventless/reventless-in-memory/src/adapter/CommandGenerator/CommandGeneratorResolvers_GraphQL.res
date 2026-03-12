@@ -42,7 +42,6 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
     switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
       ~fieldName=field,
       variantSchema,
-      ~authorization=None,
     ) {
     | Some(sdl) =>
       if sdl->String.includes("(") {
