@@ -197,15 +197,14 @@ function generate(mutationEntries, queryEntries) {
     }
     let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName);
     queries.push(singleField);
-    Stdlib_Option.forEach(entry.listFieldName, listFieldName => {
-      if (!seenTypes.has(listFieldName)) {
-        seenTypes.add(listFieldName);
-        let pluralType = derivePluralWrapperType(listFieldName, entry.returnTypeName);
-        types.push(pluralType);
-      }
-      let listField = deriveListQueryField(listFieldName, listFieldName);
-      queries.push(listField);
-    });
+    let listFieldName = entry.listFieldName;
+    if (!seenTypes.has(listFieldName)) {
+      seenTypes.add(listFieldName);
+      let pluralType = derivePluralWrapperType(listFieldName, entry.returnTypeName);
+      types.push(pluralType);
+    }
+    let listField = deriveListQueryField(listFieldName, listFieldName);
+    queries.push(listField);
   });
   let encoded = JSON.stringify(Object.fromEntries([
     [

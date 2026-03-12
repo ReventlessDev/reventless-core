@@ -19,7 +19,7 @@ Schema entry for a GraphQL query field, derived from a ReadModel or StateViewSli
 */
 type querySchemaEntry = {
   singleFieldName: string,
-  listFieldName: option<string>,
+  listFieldName: string,
   returnTypeName: string,
   stateSchema: S.t<unknown>,
   authorization: option<Reventless.ReadModel.authorization>,

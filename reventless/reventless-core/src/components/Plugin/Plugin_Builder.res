@@ -142,9 +142,57 @@ module Make = (
             V.Spec.name,
             {
               Plugin_Helpers.singleFieldName: `${name}_${singular}`,
-              listFieldName: Some(`${name}_${pluralize(entity)}`),
+              listFieldName: `${name}_${pluralize(entity)}`,
               returnTypeName: `${name}_${singular}`,
-              pluralTypeName: Some(`${name}_${pluralize(entity)}`),
+              pluralTypeName: `${name}_${pluralize(entity)}`,
+            },
+          )
+        })
+
+        // Populate query field names registry for AutomationSlices BEFORE creating them.
+        DcbSpec.automationSlices->Array.forEach((
+          module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
+        ) => {
+          let todoName = A.Spec.name ++ "Todo"
+          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
+            todoName,
+            {
+              Plugin_Helpers.singleFieldName: `${name}_${todoName}`,
+              listFieldName: `${name}_${todoName}s`,
+              returnTypeName: `${name}_${todoName}`,
+              pluralTypeName: `${name}_${todoName}s`,
+            },
+          )
+        })
+
+        // Populate query field names registry for OutboundTranslationSlices BEFORE creating them.
+        DcbSpec.outboundTranslationSlices->Array.forEach((
+          module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+        ) => {
+          let todoName = O.Spec.name ++ "Todo"
+          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
+            todoName,
+            {
+              Plugin_Helpers.singleFieldName: `${name}_${todoName}`,
+              listFieldName: `${name}_${todoName}s`,
+              returnTypeName: `${name}_${todoName}`,
+              pluralTypeName: `${name}_${todoName}s`,
+            },
+          )
+        })
+
+        // Populate query field names registry for InboundTranslationSlices BEFORE creating them.
+        DcbSpec.inboundTranslationSlices->Array.forEach((
+          module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+        ) => {
+          let auditName = I.Spec.name ++ "Audit"
+          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(
+            auditName,
+            {
+              Plugin_Helpers.singleFieldName: `${name}_${auditName}`,
+              listFieldName: `${name}_${auditName}s`,
+              returnTypeName: `${name}_${auditName}`,
+              pluralTypeName: `${name}_${auditName}s`,
             },
           )
         })
@@ -371,7 +419,7 @@ module Make = (
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
       ) => {
         ReventlessInfra.Api.singleFieldName: `${name}_${singularize(R.Spec.name)}`,
-        listFieldName: Some(`${name}_${pluralize(R.Spec.name)}`),
+        listFieldName: `${name}_${pluralize(R.Spec.name)}`,
         returnTypeName: `${name}_${singularize(R.Spec.name)}`,
         stateSchema: R.Spec.stateSchema->S.castToUnknown,
         authorization: None,
@@ -379,19 +427,63 @@ module Make = (
 
     let queryEntriesFromSlices = switch dcbSpec {
     | Some(module(DcbSpec)) =>
-      DcbSpec.stateViewSlices->Array.map((
+      let stateViewEntries = DcbSpec.stateViewSlices->Array.map((
         module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
       ) => {
         let entity = V.Spec.name->stripViewSuffix
         let singular = singularize(entity)
         {
           ReventlessInfra.Api.singleFieldName: `${name}_${singular}`,
-          listFieldName: Some(`${name}_${pluralize(entity)}`),
+          listFieldName: `${name}_${pluralize(entity)}`,
           returnTypeName: `${name}_${singular}`,
           stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
           authorization: None,
         }
       })
+
+      let automationEntries = DcbSpec.automationSlices->Array.map((
+        module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
+      ) => {
+        let todoName = A.Spec.name ++ "Todo"
+        {
+          ReventlessInfra.Api.singleFieldName: `${name}_${todoName}`,
+          listFieldName: `${name}_${todoName}s`,
+          returnTypeName: `${name}_${todoName}`,
+          stateSchema: AutomationSlice_Callback.todoRowSchema->S.castToUnknown,
+          authorization: None,
+        }
+      })
+
+      let outboundEntries = DcbSpec.outboundTranslationSlices->Array.map((
+        module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+      ) => {
+        let todoName = O.Spec.name ++ "Todo"
+        {
+          ReventlessInfra.Api.singleFieldName: `${name}_${todoName}`,
+          listFieldName: `${name}_${todoName}s`,
+          returnTypeName: `${name}_${todoName}`,
+          stateSchema: OutboundTranslationSlice_Callback.todoRowSchema->S.castToUnknown,
+          authorization: None,
+        }
+      })
+
+      let inboundEntries = DcbSpec.inboundTranslationSlices->Array.map((
+        module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+      ) => {
+        let auditName = I.Spec.name ++ "Audit"
+        {
+          ReventlessInfra.Api.singleFieldName: `${name}_${auditName}`,
+          listFieldName: `${name}_${auditName}s`,
+          returnTypeName: `${name}_${auditName}`,
+          stateSchema: InboundTranslationSlice_Callback.auditRowSchema->S.castToUnknown,
+          authorization: None,
+        }
+      })
+
+      stateViewEntries
+      ->Array.concat(automationEntries)
+      ->Array.concat(outboundEntries)
+      ->Array.concat(inboundEntries)
     | None => []
     }
 
@@ -428,9 +520,9 @@ module Make = (
         R.Spec.name,
         {
           Plugin_Helpers.singleFieldName: `${name}_${singularize(R.Spec.name)}`,
-          listFieldName: Some(`${name}_${pluralize(R.Spec.name)}`),
+          listFieldName: `${name}_${pluralize(R.Spec.name)}`,
           returnTypeName: `${name}_${singularize(R.Spec.name)}`,
-          pluralTypeName: Some(`${name}_${pluralize(R.Spec.name)}`),
+          pluralTypeName: `${name}_${pluralize(R.Spec.name)}`,
         },
       )
     )

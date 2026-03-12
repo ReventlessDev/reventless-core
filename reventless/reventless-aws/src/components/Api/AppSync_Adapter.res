@@ -64,7 +64,7 @@ let injectAwsAuth = (
     switch entry.authorization {
     | Some({group}) =>
       queryAuthMap->Dict.set(entry.singleFieldName, group)
-      entry.listFieldName->Option.forEach(ln => queryAuthMap->Dict.set(ln, group))
+      queryAuthMap->Dict.set(entry.listFieldName, group)
     | None => ()
     }
   })

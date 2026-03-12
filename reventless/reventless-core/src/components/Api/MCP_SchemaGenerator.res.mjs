@@ -88,24 +88,22 @@ function generateTools(pluginName, mutationEntries) {
 
 function generateResources(pluginName, queryEntries) {
   let resources = [];
-  let pluginLower = pluginName.toLowerCase();
   queryEntries.forEach(entry => {
     let entryDescription = Stdlib_Option.getOr(entry.description, "");
     let singleDesc = entryDescription.length > 0 ? entryDescription : `Read a single ` + entry.returnTypeName + ` by ID`;
     resources.push({
-      uriTemplate: pluginLower + `/` + entry.singleFieldName + `/{id}`,
+      uriTemplate: pluginName + `/` + entry.singleFieldName + `/{id}`,
       name: entry.returnTypeName,
       description: singleDesc,
       mimeType: "application/json"
     });
-    Stdlib_Option.forEach(entry.listFieldName, listFieldName => {
-      let listDesc = `List all ` + listFieldName;
-      resources.push({
-        uriTemplate: pluginLower + `/` + listFieldName,
-        name: listFieldName,
-        description: listDesc,
-        mimeType: "application/json"
-      });
+    let listFieldName = entry.listFieldName;
+    let listDesc = `List all ` + listFieldName;
+    resources.push({
+      uriTemplate: pluginName + `/` + listFieldName,
+      name: listFieldName,
+      description: listDesc,
+      mimeType: "application/json"
     });
   });
   return resources;
@@ -113,14 +111,12 @@ function generateResources(pluginName, queryEntries) {
 
 function generateEventHistoryResources(pluginName, eventLogEntries) {
   let resources = [];
-  let pluginLower = pluginName.toLowerCase();
   eventLogEntries.forEach(entry => {
     let eventTypes = DcbTag$Reventless.extractEventTypes(entry.eventSchema);
     let typeList = eventTypes.join(", ");
-    let nameLower = entry.displayName.toLowerCase();
     resources.push({
-      uriTemplate: pluginLower + `/` + nameLower + `_events/{entityId}`,
-      name: nameLower + `_events`,
+      uriTemplate: pluginName + `/` + entry.displayName + `_events/{entityId}`,
+      name: entry.displayName + `_events`,
       description: `Event history for ` + entry.displayName + `. Event types: ` + typeList,
       mimeType: "application/json"
     });

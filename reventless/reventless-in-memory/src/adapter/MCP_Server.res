@@ -274,10 +274,13 @@ let start = (~port: int=3001, ()) => {
     if debug {
       let toolNames = tools.contents->Dict.keysToArray
       let resourceNames = resources.contents->Dict.keysToArray
+      let templateNames = resourceTemplates.contents->Dict.keysToArray
       Console.log(`[MCP]   Tools (${toolNames->Array.length->Int.toString}):`)
       toolNames->Array.forEach(t => Console.log(`[MCP]     - ${t}`))
       Console.log(`[MCP]   Resources (${resourceNames->Array.length->Int.toString}):`)
       resourceNames->Array.forEach(r => Console.log(`[MCP]     - ${r}`))
+      Console.log(`[MCP]   Resource Templates (${templateNames->Array.length->Int.toString}):`)
+      templateNames->Array.forEach(r => Console.log(`[MCP]     - ${r}`))
     }
   })
   activeServer.contents = Some(httpServer)

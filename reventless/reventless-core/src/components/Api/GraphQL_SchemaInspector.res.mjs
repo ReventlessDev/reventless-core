@@ -93,11 +93,7 @@ function printFragment(fragment) {
 
 function inspectPluginEntries(mutationEntries, queryEntries) {
   let mutationNames = mutationEntries.flatMap(entry => entry.fieldNames).join(", ");
-  let queryNames = queryEntries.map(entry => {
-    let ln = entry.listFieldName;
-    let listPart = ln !== undefined ? `, ` + ln + ` -> [` + entry.returnTypeName + `]` : "";
-    return entry.singleFieldName + `(id) -> ` + entry.returnTypeName + listPart;
-  }).join(", ");
+  let queryNames = queryEntries.map(entry => entry.singleFieldName + `(id) -> ` + entry.returnTypeName + `, ` + entry.listFieldName + ` -> [` + entry.returnTypeName + `]`).join(", ");
   let mutCount = mutationEntries.flatMap(e => e.fieldNames).length.toString();
   let queryCount = queryEntries.length.toString();
   return `Mutations (` + mutCount + `): ` + mutationNames + `\nQueries (` + queryCount + `): ` + queryNames;

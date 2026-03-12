@@ -5,7 +5,7 @@ import * as PluginBaseFragment$ReventlessCore from "./PluginBaseFragment.res.mjs
 
 let parts = GraphQL_Stitcher$ReventlessCore.decode(PluginBaseFragment$ReventlessCore.fragment);
 
-let allMutations = parts.mutations.concat([`  clone(restoreDateTime: String): String!`]);
+let allMutations = parts.mutations.concat([`  Core_Clone(restoreDateTime: String): String!`]);
 
 let encoded = JSON.stringify(Object.fromEntries([
   [

@@ -145,7 +145,7 @@ describe("GraphQL_SchemaInspector", () => {
         ~queryEntries=[
           {
             singleFieldName: "Test_State",
-            listFieldName: Some("Test_States"),
+            listFieldName: "Test_States",
             returnTypeName: "TestState",
             stateSchema: testStateSchema->S.castToUnknown,
             authorization: None,
@@ -177,7 +177,7 @@ describe("GraphQL_SchemaInspector", () => {
         ~queryEntries=[
           {
             singleFieldName: "Plugin_Item",
-            listFieldName: Some("Plugin_Items"),
+            listFieldName: "Plugin_Items",
             returnTypeName: "PluginItem",
             stateSchema: testStateSchema->S.castToUnknown,
             authorization: None,

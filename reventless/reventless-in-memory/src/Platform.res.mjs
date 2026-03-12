@@ -8,7 +8,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as McpSdk_Helpers from "@reventlessdev/rescript-mcp-sdk/src/McpSdk_Helpers.res.mjs";
 import * as CoreApi$ReventlessCore from "@reventlessdev/reventless-core/src/core/API/CoreApi.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
@@ -17,6 +17,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as Core_Builder$ReventlessInMemory from "./components/Core_Builder.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
+import * as SuryToJsonSchema$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/SuryToJsonSchema.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
@@ -156,7 +157,7 @@ function MakeWithConfig(Config) {
         if (entry.singleFieldName === resourceName) {
           return true;
         } else {
-          return Primitive_object.equal(entry.listFieldName, resourceName);
+          return entry.listFieldName === resourceName;
         }
       }), param => param[0]), resourceName);
       let ops = Bus.getQueryDb(queryDbName);
@@ -438,7 +439,7 @@ function MakeWithConfig(Config) {
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(CoreApi$ReventlessCore.baseFragment);
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
-    queryResolvers["plugin"] = async (_root, args) => {
+    queryResolvers["Core_Plugin"] = async (_root, args) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops === undefined) {
@@ -447,7 +448,7 @@ function MakeWithConfig(Config) {
       let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
       return Stdlib_Option.getOr(items[0], null);
     };
-    queryResolvers["everyPlugin"] = async (_root, _args) => {
+    queryResolvers["Core_Plugins"] = async (_root, _args) => {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
       return Object.fromEntries([
@@ -467,9 +468,9 @@ function MakeWithConfig(Config) {
     };
     GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
-    mutationResolvers["Plugin_Activate"] = async (_root, _args) => "ok";
-    mutationResolvers["Plugin_Deactivate"] = async (_root, _args) => "ok";
-    mutationResolvers["clone"] = async (_root, _args) => "clone not supported in-memory";
+    mutationResolvers["Core_Plugin_Activate"] = async (_root, _args) => "ok";
+    mutationResolvers["Core_Plugin_Deactivate"] = async (_root, _args) => "ok";
+    mutationResolvers["Core_Clone"] = async (_root, _args) => "clone not supported in-memory";
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
@@ -478,7 +479,7 @@ function MakeWithConfig(Config) {
       if (ops === undefined) {
         return null;
       }
-      if (id.length > 0 && id !== "plugin" && id !== "everyPlugin") {
+      if (id.length > 0 && id !== "Core_Plugins") {
         let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
         return Stdlib_Option.getOr(items[0], null);
       }
@@ -490,20 +491,80 @@ function MakeWithConfig(Config) {
       }
     };
     MCP_Server$ReventlessInMemory.registerResourcesFromEntries("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    MCP_Server$ReventlessInMemory.registerResource("everyPlugin", {
-      uriTemplate: "core/everyPlugin",
-      name: "everyPlugin",
-      description: "List all connected plugins",
-      mimeType: "application/json"
-    }, async uri => {
-      let result = await pluginQueryHandler("everyPlugin", uri);
-      return {
-        contents: [{
-            uri: uri,
-            text: JSON.stringify(result)
-          }]
-      };
+    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Activate", {
+      name: "Core_Plugin_Activate",
+      description: "Activate a plugin by ID",
+      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
+        [
+          "type",
+          SuryToJsonSchema$ReventlessCore.str("object")
+        ],
+        [
+          "properties",
+          SuryToJsonSchema$ReventlessCore.jsonObject([[
+              "id",
+              SuryToJsonSchema$ReventlessCore.jsonObject([[
+                  "type",
+                  SuryToJsonSchema$ReventlessCore.str("string")
+                ]])
+            ]])
+        ],
+        [
+          "required",
+          ["id"]
+        ]
+      ])
+    }, async args => {
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` activated`);
     });
+    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Deactivate", {
+      name: "Core_Plugin_Deactivate",
+      description: "Deactivate a plugin by ID",
+      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
+        [
+          "type",
+          SuryToJsonSchema$ReventlessCore.str("object")
+        ],
+        [
+          "properties",
+          SuryToJsonSchema$ReventlessCore.jsonObject([[
+              "id",
+              SuryToJsonSchema$ReventlessCore.jsonObject([[
+                  "type",
+                  SuryToJsonSchema$ReventlessCore.str("string")
+                ]])
+            ]])
+        ],
+        [
+          "required",
+          ["id"]
+        ]
+      ])
+    }, async args => {
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` deactivated`);
+    });
+    MCP_Server$ReventlessInMemory.registerTool("Core_Clone", {
+      name: "Core_Clone",
+      description: "Clone the system to a specific point in time",
+      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
+        [
+          "type",
+          SuryToJsonSchema$ReventlessCore.str("object")
+        ],
+        [
+          "properties",
+          SuryToJsonSchema$ReventlessCore.jsonObject([[
+              "restoreDateTime",
+              SuryToJsonSchema$ReventlessCore.jsonObject([[
+                  "type",
+                  SuryToJsonSchema$ReventlessCore.str("string")
+                ]])
+            ]])
+        ]
+      ])
+    }, async _args => McpSdk_Helpers.toolError("clone not supported in-memory"));
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
   };
@@ -649,7 +710,7 @@ function Make($star) {
         if (entry.singleFieldName === resourceName) {
           return true;
         } else {
-          return Primitive_object.equal(entry.listFieldName, resourceName);
+          return entry.listFieldName === resourceName;
         }
       }), param => param[0]), resourceName);
       let ops = Bus.getQueryDb(queryDbName);
@@ -931,7 +992,7 @@ function Make($star) {
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(CoreApi$ReventlessCore.baseFragment);
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
-    queryResolvers["plugin"] = async (_root, args) => {
+    queryResolvers["Core_Plugin"] = async (_root, args) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops === undefined) {
@@ -940,7 +1001,7 @@ function Make($star) {
       let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
       return Stdlib_Option.getOr(items[0], null);
     };
-    queryResolvers["everyPlugin"] = async (_root, _args) => {
+    queryResolvers["Core_Plugins"] = async (_root, _args) => {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
       return Object.fromEntries([
@@ -960,9 +1021,9 @@ function Make($star) {
     };
     GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
-    mutationResolvers["Plugin_Activate"] = async (_root, _args) => "ok";
-    mutationResolvers["Plugin_Deactivate"] = async (_root, _args) => "ok";
-    mutationResolvers["clone"] = async (_root, _args) => "clone not supported in-memory";
+    mutationResolvers["Core_Plugin_Activate"] = async (_root, _args) => "ok";
+    mutationResolvers["Core_Plugin_Deactivate"] = async (_root, _args) => "ok";
+    mutationResolvers["Core_Clone"] = async (_root, _args) => "clone not supported in-memory";
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
@@ -971,7 +1032,7 @@ function Make($star) {
       if (ops === undefined) {
         return null;
       }
-      if (id.length > 0 && id !== "plugin" && id !== "everyPlugin") {
+      if (id.length > 0 && id !== "Core_Plugins") {
         let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
         return Stdlib_Option.getOr(items[0], null);
       }
@@ -983,20 +1044,80 @@ function Make($star) {
       }
     };
     MCP_Server$ReventlessInMemory.registerResourcesFromEntries("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    MCP_Server$ReventlessInMemory.registerResource("everyPlugin", {
-      uriTemplate: "core/everyPlugin",
-      name: "everyPlugin",
-      description: "List all connected plugins",
-      mimeType: "application/json"
-    }, async uri => {
-      let result = await pluginQueryHandler("everyPlugin", uri);
-      return {
-        contents: [{
-            uri: uri,
-            text: JSON.stringify(result)
-          }]
-      };
+    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Activate", {
+      name: "Core_Plugin_Activate",
+      description: "Activate a plugin by ID",
+      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
+        [
+          "type",
+          SuryToJsonSchema$ReventlessCore.str("object")
+        ],
+        [
+          "properties",
+          SuryToJsonSchema$ReventlessCore.jsonObject([[
+              "id",
+              SuryToJsonSchema$ReventlessCore.jsonObject([[
+                  "type",
+                  SuryToJsonSchema$ReventlessCore.str("string")
+                ]])
+            ]])
+        ],
+        [
+          "required",
+          ["id"]
+        ]
+      ])
+    }, async args => {
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` activated`);
     });
+    MCP_Server$ReventlessInMemory.registerTool("Core_Plugin_Deactivate", {
+      name: "Core_Plugin_Deactivate",
+      description: "Deactivate a plugin by ID",
+      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
+        [
+          "type",
+          SuryToJsonSchema$ReventlessCore.str("object")
+        ],
+        [
+          "properties",
+          SuryToJsonSchema$ReventlessCore.jsonObject([[
+              "id",
+              SuryToJsonSchema$ReventlessCore.jsonObject([[
+                  "type",
+                  SuryToJsonSchema$ReventlessCore.str("string")
+                ]])
+            ]])
+        ],
+        [
+          "required",
+          ["id"]
+        ]
+      ])
+    }, async args => {
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      return McpSdk_Helpers.toolResult(`Plugin ` + id + ` deactivated`);
+    });
+    MCP_Server$ReventlessInMemory.registerTool("Core_Clone", {
+      name: "Core_Clone",
+      description: "Clone the system to a specific point in time",
+      inputSchema: SuryToJsonSchema$ReventlessCore.jsonObject([
+        [
+          "type",
+          SuryToJsonSchema$ReventlessCore.str("object")
+        ],
+        [
+          "properties",
+          SuryToJsonSchema$ReventlessCore.jsonObject([[
+              "restoreDateTime",
+              SuryToJsonSchema$ReventlessCore.jsonObject([[
+                  "type",
+                  SuryToJsonSchema$ReventlessCore.str("string")
+                ]])
+            ]])
+        ]
+      ])
+    }, async _args => McpSdk_Helpers.toolError("clone not supported in-memory"));
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
   };

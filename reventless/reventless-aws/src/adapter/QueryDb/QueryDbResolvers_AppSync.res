@@ -47,7 +47,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     )
 
-  let fieldNameForAll = "every" ++ name
+  let registryEntry = ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.get(name)
+  let fieldNameForAll = switch registryEntry {
+  | Some({listFieldName}) => listFieldName
+  | None => name ++ "s"
+  }
   let resolverAll = Resolver.makeUnitResolver(
     ~name=fieldNameForAll->String.capitalize,
     ~api,

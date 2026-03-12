@@ -24,7 +24,10 @@ import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-int
 import * as Heartbeat_Builder$ReventlessCore from "../Heartbeat/Heartbeat_Builder.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
+import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
+import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
+import * as OutboundTranslationSlice_Callback$ReventlessCore from "../OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
 
 function Make(Spec) {
   return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
@@ -94,6 +97,33 @@ function Make(Spec) {
               listFieldName: extra$1 + `_` + pluralize(entity),
               returnTypeName: extra$1 + `_` + singular,
               pluralTypeName: extra$1 + `_` + pluralize(entity)
+            };
+          });
+          dcbSpec.automationSlices.forEach(A => {
+            let todoName = A.Spec.name + "Todo";
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[todoName] = {
+              singleFieldName: extra$1 + `_` + todoName,
+              listFieldName: extra$1 + `_` + todoName + `s`,
+              returnTypeName: extra$1 + `_` + todoName,
+              pluralTypeName: extra$1 + `_` + todoName + `s`
+            };
+          });
+          dcbSpec.outboundTranslationSlices.forEach(O => {
+            let todoName = O.Spec.name + "Todo";
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[todoName] = {
+              singleFieldName: extra$1 + `_` + todoName,
+              listFieldName: extra$1 + `_` + todoName + `s`,
+              returnTypeName: extra$1 + `_` + todoName,
+              pluralTypeName: extra$1 + `_` + todoName + `s`
+            };
+          });
+          dcbSpec.inboundTranslationSlices.forEach(I => {
+            let auditName = I.Spec.name + "Audit";
+            Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[auditName] = {
+              singleFieldName: extra$1 + `_` + auditName,
+              listFieldName: extra$1 + `_` + auditName + `s`,
+              returnTypeName: extra$1 + `_` + auditName,
+              pluralTypeName: extra$1 + `_` + auditName + `s`
             };
           });
           let stateViewSlicesOutputs = Object.fromEntries(dcbSpec.stateViewSlices.map(StateViewSlice => {
@@ -244,7 +274,9 @@ function Make(Spec) {
           stateSchema: R.Spec.stateSchema,
           authorization: undefined
         }));
-        let queryEntriesFromSlices = dcbSpec !== undefined ? dcbSpec.stateViewSlices.map(V => {
+        let queryEntriesFromSlices;
+        if (dcbSpec !== undefined) {
+          let stateViewEntries = dcbSpec.stateViewSlices.map(V => {
             let entity = stripViewSuffix(V.Spec.name);
             let singular = singularize(entity);
             return {
@@ -254,7 +286,41 @@ function Make(Spec) {
               stateSchema: V.Spec.stateSchema,
               authorization: undefined
             };
-          }) : [];
+          });
+          let automationEntries = dcbSpec.automationSlices.map(A => {
+            let todoName = A.Spec.name + "Todo";
+            return {
+              singleFieldName: extra$1 + `_` + todoName,
+              listFieldName: extra$1 + `_` + todoName + `s`,
+              returnTypeName: extra$1 + `_` + todoName,
+              stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchema,
+              authorization: undefined
+            };
+          });
+          let outboundEntries = dcbSpec.outboundTranslationSlices.map(O => {
+            let todoName = O.Spec.name + "Todo";
+            return {
+              singleFieldName: extra$1 + `_` + todoName,
+              listFieldName: extra$1 + `_` + todoName + `s`,
+              returnTypeName: extra$1 + `_` + todoName,
+              stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema,
+              authorization: undefined
+            };
+          });
+          let inboundEntries = dcbSpec.inboundTranslationSlices.map(I => {
+            let auditName = I.Spec.name + "Audit";
+            return {
+              singleFieldName: extra$1 + `_` + auditName,
+              listFieldName: extra$1 + `_` + auditName + `s`,
+              returnTypeName: extra$1 + `_` + auditName,
+              stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
+              authorization: undefined
+            };
+          });
+          queryEntriesFromSlices = stateViewEntries.concat(automationEntries).concat(outboundEntries).concat(inboundEntries);
+        } else {
+          queryEntriesFromSlices = [];
+        }
         let queryEntries = queryEntriesFromReadModels.concat(queryEntriesFromSlices);
         let eventLogEntriesFromAggregates = aggregates.map(M => ({
           busKey: M.Spec.name + "AggrEventLog",

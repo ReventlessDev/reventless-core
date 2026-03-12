@@ -313,25 +313,24 @@ let generate = (
     )
     queries->Array.push(singleField)
 
-    // Optional list query field with plural wrapper type
-    entry.listFieldName->Option.forEach(listFieldName => {
-      // Generate plural wrapper type (deduplicated)
-      if !(seenTypes->Set.has(listFieldName)) {
-        seenTypes->Set.add(listFieldName)
-        let pluralType = derivePluralWrapperType(
-          ~pluralTypeName=listFieldName,
-          ~singularTypeName=entry.returnTypeName,
-        )
-        types->Array.push(pluralType)
-      }
-
-      // List query returns the plural wrapper type
-      let listField = deriveListQueryField(
-        ~listFieldName,
+    // List query field with plural wrapper type
+    let listFieldName = entry.listFieldName
+    // Generate plural wrapper type (deduplicated)
+    if !(seenTypes->Set.has(listFieldName)) {
+      seenTypes->Set.add(listFieldName)
+      let pluralType = derivePluralWrapperType(
         ~pluralTypeName=listFieldName,
+        ~singularTypeName=entry.returnTypeName,
       )
-      queries->Array.push(listField)
-    })
+      types->Array.push(pluralType)
+    }
+
+    // List query returns the plural wrapper type
+    let listField = deriveListQueryField(
+      ~listFieldName,
+      ~pluralTypeName=listFieldName,
+    )
+    queries->Array.push(listField)
   })
 
   let encoded =

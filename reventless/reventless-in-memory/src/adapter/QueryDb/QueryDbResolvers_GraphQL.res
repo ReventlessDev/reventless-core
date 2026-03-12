@@ -32,17 +32,16 @@ module Make = (Bus: InMemory_Bus.T) => {
     | None => name->String.charAt(0)->String.toLowerCase ++ name->String.slice(~start=1)
     }
     let listQueryName = switch registryEntry {
-    | Some({listFieldName: Some(ln)}) => Some(ln)
-    | Some({listFieldName: None}) => None
-    | None => Some("every" ++ name)
+    | Some({listFieldName}) => listFieldName
+    | None => name ++ "s"
     }
     let returnTypeName = switch registryEntry {
     | Some({returnTypeName: rt}) => rt
     | None => "String"
     }
     let pluralTypeName = switch registryEntry {
-    | Some({pluralTypeName: Some(pt)}) => pt
-    | _ => "[String]"
+    | Some({pluralTypeName}) => pluralTypeName
+    | None => name ++ "s"
     }
 
     // -- Main query: getById ---------------------------------------------------
@@ -68,25 +67,21 @@ module Make = (Bus: InMemory_Bus.T) => {
       }
     }
 
-    // -- List query (when listQueryName is provided) --------------------------
-    let (listSdl, listResolvers) = switch listQueryName {
-    | Some(listName) =>
-      let sdl = [`  ${listName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
-      let resolver: GraphQL_Server.resolverFn = async (_root, _args) => {
-        let items = switch Bus.getQueryDbStream(name) {
-        | Some(makeStream) =>
-          await makeStream()->Stream.runCollect->Effect.runPromise
-        | None =>
-          switch Bus.getQueryDbScan(name) {
-          | Some(scanAll) => scanAll()
-          | None => []
-          }
+    // -- List query -------------------------------------------------------------
+    let listSdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
+    let listResolver: GraphQL_Server.resolverFn = async (_root, _args) => {
+      let items = switch Bus.getQueryDbStream(name) {
+      | Some(makeStream) =>
+        await makeStream()->Stream.runCollect->Effect.runPromise
+      | None =>
+        switch Bus.getQueryDbScan(name) {
+        | Some(scanAll) => scanAll()
+        | None => []
         }
-        Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
       }
-      (sdl, [(listName, resolver)])
-    | None => ([], [])
+      Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
     }
+    let listResolvers = [(listQueryName, listResolver)]
 
     // -- By-id-list: {name}ById (only when subId configured) ------------------
     let byIdListSdl = switch subIdField {

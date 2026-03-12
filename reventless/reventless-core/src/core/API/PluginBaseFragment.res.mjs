@@ -10,9 +10,9 @@ let adminAuth = {
 };
 
 let queryEntries = [{
-    singleFieldName: "plugin",
-    listFieldName: undefined,
-    returnTypeName: "Plugin",
+    singleFieldName: "Core_Plugin",
+    listFieldName: "Core_Plugins",
+    returnTypeName: "Core_Plugin",
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     authorization: adminAuth,
     excludeFields: [
@@ -27,21 +27,15 @@ let typesAndQueries = GraphQL_FragmentGenerator$ReventlessCore.generate([], quer
 
 let parts = GraphQL_Stitcher$ReventlessCore.decode(typesAndQueries);
 
-let pluralWrapperType = GraphQL_FragmentGenerator$ReventlessCore.derivePluralWrapperType("Plugins", "Plugin");
-
-let allTypes = parts.types.concat([pluralWrapperType]);
-
-let allQueries = parts.queries.concat([`  everyPlugin(nextToken: String, limit: Int): Plugins!`]);
-
 let pluginMutations = [
-  `  Plugin_Activate(id: ID!): String!`,
-  `  Plugin_Deactivate(id: ID!): String!`
+  `  Core_Plugin_Activate(id: ID!): String!`,
+  `  Core_Plugin_Deactivate(id: ID!): String!`
 ];
 
 let encoded = JSON.stringify(Object.fromEntries([
   [
     "types",
-    allTypes.map(prim => prim)
+    parts.types.map(prim => prim)
   ],
   [
     "mutations",
@@ -49,7 +43,7 @@ let encoded = JSON.stringify(Object.fromEntries([
   ],
   [
     "queries",
-    allQueries.map(prim => prim)
+    parts.queries.map(prim => prim)
   ]
 ]));
 

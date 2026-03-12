@@ -202,7 +202,7 @@ module MakeWithConfig = (
           ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
           ->Dict.toArray
           ->Array.find(((_, entry)) =>
-            entry.singleFieldName == resourceName || entry.listFieldName == Some(resourceName)
+            entry.singleFieldName == resourceName || entry.listFieldName == resourceName
           )
           ->Option.map(((name, _)) => name)
           ->Option.getOr(resourceName)
@@ -495,7 +495,7 @@ module MakeWithConfig = (
 
     // Resolvers for the core Plugin queries — backed by Bus Plugin QueryDb.
     let queryResolvers = Dict.make()
-    queryResolvers->Dict.set("plugin", (async (_root, args): JSON.t => {
+    queryResolvers->Dict.set("Core_Plugin", (async (_root, args): JSON.t => {
       let id =
         args
         ->JSON.Decode.object
@@ -513,7 +513,7 @@ module MakeWithConfig = (
       | None => JSON.Encode.null
       }
     }))
-    queryResolvers->Dict.set("everyPlugin", (async (_root, _args): JSON.t => {
+    queryResolvers->Dict.set("Core_Plugins", (async (_root, _args): JSON.t => {
       let items = switch Bus.getQueryDbScan(pluginQueryDbName) {
       | Some(scanAll) => scanAll()
       | None => []
@@ -532,13 +532,13 @@ module MakeWithConfig = (
     // Stub resolvers for core mutations (Plugin_Activate, Plugin_Deactivate, clone).
     // These are no-ops in the in-memory platform — the real logic runs in AWS Lambda.
     let mutationResolvers = Dict.make()
-    mutationResolvers->Dict.set("Plugin_Activate", (async (_root, _args): JSON.t =>
+    mutationResolvers->Dict.set("Core_Plugin_Activate", (async (_root, _args): JSON.t =>
       JSON.Encode.string("ok")
     ))
-    mutationResolvers->Dict.set("Plugin_Deactivate", (async (_root, _args): JSON.t =>
+    mutationResolvers->Dict.set("Core_Plugin_Deactivate", (async (_root, _args): JSON.t =>
       JSON.Encode.string("ok")
     ))
-    mutationResolvers->Dict.set("clone", (async (_root, _args): JSON.t =>
+    mutationResolvers->Dict.set("Core_Clone", (async (_root, _args): JSON.t =>
       JSON.Encode.string("clone not supported in-memory")
     ))
     GraphQL_Server.registerMutations(
@@ -546,15 +546,13 @@ module MakeWithConfig = (
       ~resolvers=mutationResolvers,
     )
 
-    // Register core Plugin queries/mutations as MCP resources and tools.
-    // queryEntries has listFieldName: None, so registerResourcesFromEntries only
-    // creates a single-item template (core/plugin/{id}). We add the list resource separately.
+    // Register core Plugin queries and mutations as MCP resources and tools.
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri->String.split("/")
       let id = segments->Array.at(-1)->Option.getOr("")
       switch Bus.getQueryDb(pluginQueryDbName) {
       | Some(ops) =>
-        if id->String.length > 0 && id != "plugin" && id != "everyPlugin" {
+        if id->String.length > 0 && id != "Core_Plugins" {
           let items =
             await ops.loadStream(id)
             ->Stream.runCollect
@@ -575,22 +573,69 @@ module MakeWithConfig = (
       ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
       ~queryHandler=pluginQueryHandler,
     )
-    // Register the plugin list resource explicitly (queryEntries lacks listFieldName).
-    MCP_Server.registerResource(
-      ~name="everyPlugin",
+
+    // Register core mutations as MCP tools.
+    MCP_Server.registerTool(
+      ~name="Core_Plugin_Activate",
       ~definition={
-        uriTemplate: "core/everyPlugin",
-        name: "everyPlugin",
-        description: "List all connected plugins",
-        mimeType: "application/json",
+        name: "Core_Plugin_Activate",
+        description: "Activate a plugin by ID",
+        inputSchema: ReventlessCore.SuryToJsonSchema.jsonObject([
+          ("type", ReventlessCore.SuryToJsonSchema.str("object")),
+          ("properties", ReventlessCore.SuryToJsonSchema.jsonObject([
+            ("id", ReventlessCore.SuryToJsonSchema.jsonObject([("type", ReventlessCore.SuryToJsonSchema.str("string"))])),
+          ])),
+          ("required", JSON.Encode.array([JSON.Encode.string("id")])),
+        ]),
       },
-      ~handler=async uri => {
-        let result = await pluginQueryHandler("everyPlugin", uri)
-        {
-          McpSdk.contents: [
-            {McpSdk.uri, text: result->JSON.stringify},
-          ],
-        }
+      ~handler=async args => {
+        let id =
+          args
+          ->JSON.Decode.object
+          ->Option.flatMap(d => d->Dict.get("id"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.getOr("")
+        // No-op in in-memory — real logic runs in AWS Lambda
+        McpSdk_Helpers.toolResult(`Plugin ${id} activated`)
+      },
+    )
+    MCP_Server.registerTool(
+      ~name="Core_Plugin_Deactivate",
+      ~definition={
+        name: "Core_Plugin_Deactivate",
+        description: "Deactivate a plugin by ID",
+        inputSchema: ReventlessCore.SuryToJsonSchema.jsonObject([
+          ("type", ReventlessCore.SuryToJsonSchema.str("object")),
+          ("properties", ReventlessCore.SuryToJsonSchema.jsonObject([
+            ("id", ReventlessCore.SuryToJsonSchema.jsonObject([("type", ReventlessCore.SuryToJsonSchema.str("string"))])),
+          ])),
+          ("required", JSON.Encode.array([JSON.Encode.string("id")])),
+        ]),
+      },
+      ~handler=async args => {
+        let id =
+          args
+          ->JSON.Decode.object
+          ->Option.flatMap(d => d->Dict.get("id"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.getOr("")
+        McpSdk_Helpers.toolResult(`Plugin ${id} deactivated`)
+      },
+    )
+    MCP_Server.registerTool(
+      ~name="Core_Clone",
+      ~definition={
+        name: "Core_Clone",
+        description: "Clone the system to a specific point in time",
+        inputSchema: ReventlessCore.SuryToJsonSchema.jsonObject([
+          ("type", ReventlessCore.SuryToJsonSchema.str("object")),
+          ("properties", ReventlessCore.SuryToJsonSchema.jsonObject([
+            ("restoreDateTime", ReventlessCore.SuryToJsonSchema.jsonObject([("type", ReventlessCore.SuryToJsonSchema.str("string"))])),
+          ])),
+        ]),
+      },
+      ~handler=async _args => {
+        McpSdk_Helpers.toolError("clone not supported in-memory")
       },
     )
 

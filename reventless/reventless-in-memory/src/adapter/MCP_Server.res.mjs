@@ -249,12 +249,17 @@ function start(portOpt, param) {
     }
     let toolNames = Object.keys(tools.contents);
     let resourceNames = Object.keys(resources.contents);
+    let templateNames = Object.keys(resourceTemplates.contents);
     console.log(`[MCP]   Tools (` + toolNames.length.toString() + `):`);
     toolNames.forEach(t => {
       console.log(`[MCP]     - ` + t);
     });
     console.log(`[MCP]   Resources (` + resourceNames.length.toString() + `):`);
     resourceNames.forEach(r => {
+      console.log(`[MCP]     - ` + r);
+    });
+    console.log(`[MCP]   Resource Templates (` + templateNames.length.toString() + `):`);
+    templateNames.forEach(r => {
       console.log(`[MCP]     - ` + r);
     });
   });

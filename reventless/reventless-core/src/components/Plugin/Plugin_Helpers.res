@@ -684,9 +684,9 @@ let schemaTypeRegistrationHook: ref<option<array<string> => unit>> = ref(None)
 // ---------------------------------------------------------------------------
 type queryFieldNames = {
   singleFieldName: string,
-  listFieldName: option<string>,
+  listFieldName: string,
   returnTypeName: string,
-  pluralTypeName: option<string>,
+  pluralTypeName: string,
 }
 let queryFieldNamesRegistry: ref<dict<queryFieldNames>> = ref(Dict.make())
 

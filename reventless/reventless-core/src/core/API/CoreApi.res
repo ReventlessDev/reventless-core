@@ -3,7 +3,7 @@ let baseFragment = {
   let parts = GraphQL_Stitcher.decode(PluginBaseFragment.fragment)
 
   // Add the clone mutation (core-level operation, not part of any aggregate)
-  let cloneMutation = `  clone(restoreDateTime: String): String!`
+  let cloneMutation = `  Core_Clone(restoreDateTime: String): String!`
   let allMutations = Array.concat(parts.mutations, [cloneMutation])
 
   let encoded =

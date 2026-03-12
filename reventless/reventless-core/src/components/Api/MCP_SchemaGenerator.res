@@ -111,7 +111,6 @@ let generateResources = (
   ~queryEntries: array<querySchemaEntry>,
 ): array<mcpResourceDefinition> => {
   let resources: array<mcpResourceDefinition> = []
-  let pluginLower = pluginName->String.toLowerCase
 
   queryEntries->Array.forEach(entry => {
     let entryDescription = entry.description->Option.getOr("")
@@ -122,21 +121,20 @@ let generateResources = (
         ? entryDescription
         : `Read a single ${entry.returnTypeName} by ID`
     resources->Array.push({
-      uriTemplate: `${pluginLower}/${entry.singleFieldName}/{id}`,
+      uriTemplate: `${pluginName}/${entry.singleFieldName}/{id}`,
       name: entry.returnTypeName,
       description: singleDesc,
       mimeType: "application/json",
     })
 
-    // List resource (if listFieldName is provided)
-    entry.listFieldName->Option.forEach(listFieldName => {
-      let listDesc = `List all ${listFieldName}`
-      resources->Array.push({
-        uriTemplate: `${pluginLower}/${listFieldName}`,
-        name: listFieldName,
-        description: listDesc,
-        mimeType: "application/json",
-      })
+    // List resource
+    let listFieldName = entry.listFieldName
+    let listDesc = `List all ${listFieldName}`
+    resources->Array.push({
+      uriTemplate: `${pluginName}/${listFieldName}`,
+      name: listFieldName,
+      description: listDesc,
+      mimeType: "application/json",
     })
   })
 
@@ -152,16 +150,14 @@ let generateEventHistoryResources = (
   ~eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
 ): array<mcpResourceDefinition> => {
   let resources: array<mcpResourceDefinition> = []
-  let pluginLower = pluginName->String.toLowerCase
 
   eventLogEntries->Array.forEach(entry => {
     let eventTypes = extractEventTypes(entry.eventSchema)
     let typeList = eventTypes->Array.join(", ")
-    let nameLower = entry.displayName->String.toLowerCase
 
     resources->Array.push({
-      uriTemplate: `${pluginLower}/${nameLower}_events/{entityId}`,
-      name: `${nameLower}_events`,
+      uriTemplate: `${pluginName}/${entry.displayName}_events/{entityId}`,
+      name: `${entry.displayName}_events`,
       description: `Event history for ${entry.displayName}. Event types: ${typeList}`,
       mimeType: "application/json",
     })

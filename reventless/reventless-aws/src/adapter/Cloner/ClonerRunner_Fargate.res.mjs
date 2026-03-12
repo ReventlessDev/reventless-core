@@ -146,7 +146,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       },
       serviceRoleArn: dataSourceRole.arn
     }, opts);
-    let field = "clone";
+    let field = "Core_Clone";
     let resolver = AppSync_Resolver$PulumiAws.makeUnitResolver(field, api, dataSource.name, "Mutation", field, `{
             "version": "2017-02-28",
             "operation": "Invoke",

@@ -127,11 +127,7 @@ let inspectPluginEntries = (
   let queryNames =
     queryEntries
     ->Array.map(entry => {
-      let listPart = switch entry.listFieldName {
-      | Some(ln) => `, ${ln} -> [${entry.returnTypeName}]`
-      | None => ""
-      }
-      `${entry.singleFieldName}(id) -> ${entry.returnTypeName}${listPart}`
+      `${entry.singleFieldName}(id) -> ${entry.returnTypeName}, ${entry.listFieldName} -> [${entry.returnTypeName}]`
     })
     ->Array.join(", ")
   let mutCount = mutationEntries->Array.flatMap(e => e.fieldNames)->Array.length->Int.toString
