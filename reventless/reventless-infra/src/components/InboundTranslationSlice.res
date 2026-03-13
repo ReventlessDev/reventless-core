@@ -27,11 +27,14 @@ module PaymentWebhookSlice = Platform.InboundTranslationSlice.Make(PaymentWebhoo
 let slice = PaymentWebhookSlice.make(~publishJsons=publishJsonsOutput)
 ```
 */
+type t
+
 module type T = {
   /** The DCB event type this slice operates on (fixed by `Spec.DcbEventLogSpec.event`). */
   type dcbEvent
   module Spec: Reventless.InboundTranslationSlice.Spec
-  type component
+  type component = Component.t<t, outputs, operations>
+  let queryDbName: string
   let make: (
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~opts: Pulumi.ComponentResource.options=?,

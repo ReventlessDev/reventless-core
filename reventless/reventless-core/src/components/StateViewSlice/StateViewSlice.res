@@ -1,6 +1,6 @@
 let componentType = ComponentType.StateViewSlice
 
-type t
+type t = ReventlessInfra.StateViewSlice.t
 type outputs = ReventlessInfra.StateViewSlice.outputs
 type operations = ReventlessInfra.StateViewSlice.operations
 type component = Component.t<t, outputs, operations>

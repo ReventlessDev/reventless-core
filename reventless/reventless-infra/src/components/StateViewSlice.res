@@ -15,6 +15,8 @@ Used to push events into the slice's projection queue.
 */
 type operations = {enqueueEvent: EventCollector.enqueueEvent}
 
+type t
+
 /**
 Module type produced by `Platform.StateViewSlice.Make(Spec)`.
 
@@ -29,8 +31,8 @@ module type T = {
   /** The DCB event type this slice subscribes to (fixed by `Spec.DcbEventLogSpec.event`). */
   type dcbEvent
   module Spec: Reventless.StateViewSlice.Spec
-  type dcbEventLogComponent
-  type component
+  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
+  type component = Component.t<t, outputs, operations>
   let make: (
     ~dcbEventLog: dcbEventLogComponent,
     ~opts: Pulumi.ComponentResource.options=?,

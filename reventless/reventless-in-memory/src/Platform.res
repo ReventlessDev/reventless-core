@@ -381,8 +381,6 @@ module MakeWithConfig = (
   )
 
   module PluginMaker = Plugin_Builder.Make(Bus)
-  // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
-  // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
   module Plugin: ReventlessInfra.Plugin.T
     with type api = unit
     and type role = unit
@@ -390,17 +388,15 @@ module MakeWithConfig = (
     type api = unit
     type role = unit
     type component = ReventlessCore.Plugin.component
-    let make = Obj.magic(PluginMaker.make)
+    let make = PluginMaker.make
   }
 
   module CoreMaker = Core_Builder.Make(Bus)
-  // Obj.magic: ReventlessCore.Core.T.make is structurally identical to
-  // ReventlessInfra.Core.T.make — only the DcbSpec module-type path differs nominally.
   module Core: ReventlessInfra.Core.T with type api = unit and type role = unit = {
     type api = unit
     type role = unit
     type component = ReventlessCore.Core.component
-    let make = Obj.magic(CoreMaker.make)
+    let make = CoreMaker.make
   }
 
   let makeScheduler = () => {

@@ -29,12 +29,15 @@ module ShipOrderSlice = Platform.AutomationSlice.Make(ShipOrder)
 let slice = ShipOrderSlice.make(~dcbEventLog=log, ~publishJsons=publishJsonsOutput)
 ```
 */
+type t
+
 module type T = {
   /** The DCB event type this slice operates on (fixed by `Spec.DcbEventLogSpec.event`). */
   type dcbEvent
   module Spec: Reventless.AutomationSlice.Spec
-  type dcbEventLogComponent
-  type component
+  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
+  type component = Component.t<t, outputs, operations>
+  let queryDbName: string
   let make: (
     ~dcbEventLog: dcbEventLogComponent,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,

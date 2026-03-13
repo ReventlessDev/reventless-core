@@ -1,6 +1,6 @@
 let componentType = ComponentType.AutomationSlice
 
-type t
+type t = ReventlessInfra.AutomationSlice.t
 type outputs = ReventlessInfra.AutomationSlice.outputs
 type operations = ReventlessInfra.AutomationSlice.operations
 type component = Component.t<t, outputs, operations>

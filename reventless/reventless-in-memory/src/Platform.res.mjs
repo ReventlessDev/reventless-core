@@ -100,33 +100,15 @@ function MakeWithConfig(Config) {
   let StateViewSlice = {
     Make: Make$6
   };
-  let Make$7 = Spec => {
-    let $$let = AutomationSliceMaker.Make(Spec);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make
-    };
-  };
+  let Make$7 = Spec => AutomationSliceMaker.Make(Spec);
   let AutomationSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => {
-    let $$let = OutboundTranslationSliceMaker.Make(Spec);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make
-    };
-  };
+  let Make$8 = Spec => OutboundTranslationSliceMaker.Make(Spec);
   let OutboundTranslationSlice = {
     Make: Make$8
   };
-  let Make$9 = Spec => {
-    let $$let = InboundTranslationSliceMaker.Make(Spec);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make
-    };
-  };
+  let Make$9 = Spec => InboundTranslationSliceMaker.Make(Spec);
   let InboundTranslationSlice = {
     Make: Make$9
   };
@@ -610,33 +592,15 @@ function Make($star) {
   let StateViewSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => {
-    let $$let = AutomationSliceMaker.Make(Spec);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make
-    };
-  };
+  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
   let AutomationSlice = {
     Make: Make$8
   };
-  let Make$9 = Spec => {
-    let $$let = OutboundTranslationSliceMaker.Make(Spec);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make
-    };
-  };
+  let Make$9 = Spec => OutboundTranslationSliceMaker.Make(Spec);
   let OutboundTranslationSlice = {
     Make: Make$9
   };
-  let Make$10 = Spec => {
-    let $$let = InboundTranslationSliceMaker.Make(Spec);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make
-    };
-  };
+  let Make$10 = Spec => InboundTranslationSliceMaker.Make(Spec);
   let InboundTranslationSlice = {
     Make: Make$10
   };

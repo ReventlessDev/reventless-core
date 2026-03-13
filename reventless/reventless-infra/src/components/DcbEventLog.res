@@ -1,20 +1,4 @@
 /**
-Module type produced by `Platform.DcbEventLog.Make(Spec)`.
-
-@example
-```rescript
-// CatalogPlugin.res
-module CatalogLog = Platform.DcbEventLog.Make(CatalogEventLog)
-let log = CatalogLog.make(~name="CatalogEventLog")
-```
-*/
-module type T = {
-  module Spec: Reventless.DcbEventLog.Spec
-  type component
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
-}
-
-/**
 Deploy-time outputs produced when a `DcbEventLog` is provisioned.
 
 - `resources` — the underlying storage infrastructure (e.g. DynamoDB table)
@@ -95,4 +79,23 @@ type operations<'event> = {
   append: append<'event>,
   readStream: readStream<'event>,
   appendStream: appendStream<'event>,
+}
+
+type t
+type component<'operations> = Component.t<t, outputs, 'operations>
+
+/**
+Module type produced by `Platform.DcbEventLog.Make(Spec)`.
+
+@example
+```rescript
+// CatalogPlugin.res
+module CatalogLog = Platform.DcbEventLog.Make(CatalogEventLog)
+let log = CatalogLog.make(~name="CatalogEventLog")
+```
+*/
+module type T = {
+  module Spec: Reventless.DcbEventLog.Spec
+  type component = component<operations<Spec.event>>
+  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }

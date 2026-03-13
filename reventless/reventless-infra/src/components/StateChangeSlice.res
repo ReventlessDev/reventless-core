@@ -12,6 +12,8 @@ Used to publish commands to this slice's command topic.
 */
 type operations = {publishJsons: CommandTopic.publishJsons}
 
+type t
+
 /**
 Module type produced by `Platform.StateChangeSlice.Make(Spec)`.
 
@@ -26,8 +28,8 @@ module type T = {
   /** The DCB event type this slice operates on (fixed by `Spec.DcbEventLogSpec.event`). */
   type dcbEvent
   module Spec: Reventless.StateChangeSlice.Spec
-  type dcbEventLogComponent
-  type component
+  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
+  type component = Component.t<t, outputs, operations>
   let make: (
     ~dcbEventLog: dcbEventLogComponent,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,

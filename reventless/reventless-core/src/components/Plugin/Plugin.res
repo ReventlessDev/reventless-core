@@ -5,18 +5,10 @@ type outputs = ReventlessInfra.Plugin.outputs
 type t
 type component = Component.t<t, outputs, unit>
 
-// DCB spec for plugin-wide event/command types and state change slices
-// Bundled together so the event type is shared between the DcbEventLog and all StateChangeSlices
-module type DcbSpec = {
-  @schema
-  type event
-
-  let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
-  let stateViewSlices: array<module(StateViewSlice.T with type dcbEvent = event)>
-  let automationSlices: array<module(AutomationSlice.T with type dcbEvent = event)>
-  let outboundTranslationSlices: array<module(OutboundTranslationSlice.T with type dcbEvent = event)>
-  let inboundTranslationSlices: array<module(InboundTranslationSlice.T with type dcbEvent = event)>
-}
+// DCB spec for plugin-wide event/command types and state change slices.
+// Aliased from ReventlessInfra so the DcbSpec module type is nominally identical
+// across packages — this eliminates Obj.magic at the Platform boundary.
+module type DcbSpec = ReventlessInfra.Plugin.DcbSpec
 
 module type T = {
   type api

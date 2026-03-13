@@ -1,6 +1,6 @@
 let componentType = ComponentType.OutboundTranslationSlice
 
-type t
+type t = ReventlessInfra.OutboundTranslationSlice.t
 type outputs = ReventlessInfra.OutboundTranslationSlice.outputs
 type operations = ReventlessInfra.OutboundTranslationSlice.operations
 type component = Component.t<t, outputs, operations>

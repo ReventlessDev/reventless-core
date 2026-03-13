@@ -2,7 +2,7 @@ let componentType = ComponentType.DcbEventLog
 
 type outputs = ReventlessInfra.DcbEventLog.outputs
 
-type t
+type t = ReventlessInfra.DcbEventLog.t
 type component<'operations> = Component.t<t, outputs, 'operations>
 
 type sequencedEvent<'event> = ReventlessInfra.DcbEventLog.sequencedEvent<'event>

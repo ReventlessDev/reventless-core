@@ -109,8 +109,6 @@ module Make = (Api: {
 
   // Alias before defining module Plugin to avoid self-reference.
   module PluginBuilder = Plugin
-  // Obj.magic: ReventlessCore.Plugin.T.make is structurally identical to
-  // ReventlessInfra.Plugin.T.make — only the DcbSpec module-type path differs nominally.
   module Plugin: (ReventlessInfra.Plugin.T
     with type api = Types.AppSync.api
     and type role = Types.AppSync.role
@@ -118,11 +116,9 @@ module Make = (Api: {
     type api = Types.AppSync.api
     type role = Types.AppSync.role
     type component = ReventlessCore.Plugin.component
-    let make = Obj.magic(PluginBuilder.make)
+    let make = PluginBuilder.make
   }
 
-  // Obj.magic: ReventlessCore.Core.T.make is structurally identical to
-  // ReventlessInfra.Core.T.make — only the DcbSpec module-type path differs nominally.
   module Core: (ReventlessInfra.Core.T
     with type api = Types.AppSync.api
     and type role = Types.AppSync.role
@@ -130,7 +126,7 @@ module Make = (Api: {
     type api = Types.AppSync.api
     type role = Types.AppSync.role
     type component = ReventlessCore.Core.component
-    let make = Obj.magic(Core_Builder.make)
+    let make = Core_Builder.make
   }
 
   let makeScheduler = () => {
