@@ -17,6 +17,12 @@ let mutationEntries = PluginBaseFragment$ReventlessCore.mutationEntries.concat([
 
 let baseFragment = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries);
 
+function generateFragment(dcbMutationEntries, dcbQueryEntries, dcbEventLogEntries) {
+  let allMutationEntries = mutationEntries.concat(dcbMutationEntries);
+  let allQueryEntries = PluginBaseFragment$ReventlessCore.queryEntries.concat(dcbQueryEntries);
+  return GraphQL_FragmentGenerator$ReventlessCore.generate(allMutationEntries, allQueryEntries);
+}
+
 let queryEntries = PluginBaseFragment$ReventlessCore.queryEntries;
 
 export {
@@ -24,5 +30,6 @@ export {
   mutationEntries,
   queryEntries,
   baseFragment,
+  generateFragment,
 }
 /* cloneArgsSchema Not a pure module */

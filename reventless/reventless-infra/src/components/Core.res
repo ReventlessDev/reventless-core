@@ -13,6 +13,12 @@ type outputs = {
   aggregates: Pulumi.Output.t<dict<Aggregate.outputs>>,
   readModels: dict<ReadModel.outputs>,
   api?: Api.component,
+  dcbEventLog?: DcbEventLog.outputs,
+  stateChangeSlices?: dict<StateChangeSlice.outputs>,
+  stateViewSlices?: dict<StateViewSlice.outputs>,
+  automationSlices?: dict<AutomationSlice.outputs>,
+  outboundTranslationSlices?: dict<OutboundTranslationSlice.outputs>,
+  inboundTranslationSlices?: dict<InboundTranslationSlice.outputs>,
 }
 
 type t
@@ -38,5 +44,6 @@ module type T = {
     ~apiRole: role,
     ~resourceNaming: ResourceNaming.operations,
     ~apiComponent: Api.component=?,
+    ~dcbSpec: module(Plugin.DcbSpec)=?,
   ) => component
 }

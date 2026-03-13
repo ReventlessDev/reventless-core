@@ -1,6 +1,6 @@
 # Plan: Optional DCB Spec Support for Core Module
 
-**Status:** Not started
+**Status:** All phases complete.
 **Analysis:** `docs/analysis/core-dcb-spec-support.md`
 
 ## Goal
@@ -11,7 +11,7 @@ Add optional `~dcbSpec` support to the Core module (matching the existing Plugin
 
 ### Phase 1 — Consolidate Existing Builder Duplication (no behavior change)
 
-#### Step 1 — Create `Builder_Helpers.res`
+#### Step 1 — Create `Builder_Helpers.res` ✅
 
 File: `reventless/reventless-core/src/components/Builder_Helpers.res`
 
@@ -27,15 +27,15 @@ Extract shared builder functions that are currently duplicated or aliased betwee
 - `Plugin_Builder.res` — Update imports
 - `Core_Builder.res` — Update imports
 
-#### Step 2 — Verify all existing tests pass
+#### Step 2 — Verify all existing tests pass ✅
 
-Run full test suite. No behavior change expected — pure refactor.
+94 suites, 783 tests pass. No behavior change — pure refactor.
 
 ---
 
 ### Phase 2 — Extract DCB Construction Logic (no behavior change)
 
-#### Step 3 — Create `Dcb_Builder.res`
+#### Step 3 — Create `Dcb_Builder.res` ✅
 
 File: `reventless/reventless-core/src/components/Dcb/Dcb_Builder.res`
 
@@ -79,7 +79,7 @@ The module should:
 **Files changed:**
 - `reventless-core/src/components/Dcb/Dcb_Builder.res` — New
 
-#### Step 4 — Update `Plugin_Builder.res` to use `Dcb_Builder`
+#### Step 4 — Update `Plugin_Builder.res` to use `Dcb_Builder` ✅
 
 Replace inline DCB construction in `Plugin_Builder.res` with:
 
@@ -96,67 +96,54 @@ Consume `dcbResult` fields where the existing code uses the 7-tuple values.
 **Files changed:**
 - `Plugin_Builder.res` — Replace inline DCB logic with `Dcb_Builder` call
 
-#### Step 5 — Verify all existing tests pass
+#### Step 5 — Verify all existing tests pass ✅
 
-Run full test suite. No behavior change expected — pure extraction refactor.
+94 suites, 783 tests pass. No behavior change.
 
 ---
 
 ### Phase 3 — Wire Core Properly in In-Memory Platform (eliminate `connectWithoutCore`)
 
-#### Step 6 — Introduce local Core reference mechanism
+#### Step 6 — Introduce local Core reference mechanism ✅
 
-The in-memory platform currently creates a Core module but never wires plugins to it (`makePlatform` receives `~core` and ignores it). Introduce a mechanism for Plugin_Builder to accept local Core outputs (specifically PluginExtensionPoint outputs) as an alternative to `Interstack.coreStackReference`.
+Core_Builder.construct() now stores its outputs in `Plugin_Helpers.localCoreOutputs` during construction. Plugin_Builder reads this ref when `Interstack.coreStackReference` is `None` (e.g. in-memory), extracts the PluginExtensionPoint, converts to resolved format via `ExtensionPoint.toResolvedOutputs`, and creates a local RemoteChannel. This gives the in-memory platform the same Core→Plugin connection path as AWS.
 
 Key changes:
-- Plugin_Builder `connect` path should accept either local Core outputs or cross-stack interop outputs
-- In-memory platform passes Core's outputs directly to Plugin_Builder
+- `Plugin_Helpers.localCoreOutputs: ref<option<Core.outputs>>` — set by Core_Builder during construction
+- Plugin_Builder derives `localCoreResolvedEP` from local Core outputs as Interstack fallback
+- `connect` unified to handle both with-Core and without-Core cases via optional parameters
 
 **Files changed:**
-- `Plugin_Builder.res` — Accept local Core reference
-- `Plugin_Helpers.res` — Update `connect` to handle local Core outputs
+- `Plugin_Helpers.res` — Add `localCoreOutputs` ref, unify `connect` with optional Core params, remove `connectWithoutCore`
+- `Plugin_Builder.res` — Add `localCoreResolvedEP` computation, use as fallback when Interstack is None
+- `Core_Builder.res` — Set `Plugin_Helpers.localCoreOutputs` during construction
 
-#### Step 7 — Wire in-memory `makePlatform` to pass Core outputs to plugins
+#### Step 7 — Wire in-memory `makePlatform` to pass Core outputs to plugins (skipped)
 
-Update the in-memory platform to pass Core's outputs to plugins instead of ignoring the `~core` parameter.
+Not needed — Core_Builder.construct() sets `localCoreOutputs` directly during construction, before Plugin_Builder runs. No changes needed in Platform.res makePlatform for the Core→Plugin connection.
 
-**Files changed:**
-- `reventless-in-memory/src/Platform.res` — Wire `~core` to plugin construction
+#### Step 8 — Remove `connectWithoutCore` ✅
 
-#### Step 8 — Remove `connectWithoutCore` and manual Core registration
-
-- Remove `connectWithoutCore` from `Plugin_Helpers` (54 lines)
-- Remove manual Core schema/query/mutation registration from in-memory `makePlatform` (lines 490–547)
-- Both Plugin and Core use the same `connect` path in AWS and in-memory
+- Removed `connectWithoutCore` from `Plugin_Helpers.MakeEventCollectorHelper` (72 lines)
+- Unified `connect` to handle both cases via optional `~corePluginExtensionPointUnwrapped`, `~connectPluginExtensionIncomingEventHandler`, and `~connectPluginExtensionOutputs` parameters
+- Manual Core schema/query/mutation registration in `makePlatform` retained — it's platform-specific (in-memory GraphQL server) and cannot move to Core_Builder
 
 **Files changed:**
-- `Plugin_Helpers.res` — Remove `connectWithoutCore`
-- `Core_Helpers.res` — Remove simplified `MakeEventCollectorHelper` if no longer needed
-- `reventless-in-memory/src/Platform.res` — Remove manual Core registration
+- `Plugin_Helpers.res` — Remove `connectWithoutCore`, unify `connect`
 
-#### Step 9 — Verify all existing tests pass
+#### Step 9 — Verify all existing tests pass ✅
 
-Run full test suite. Behavior should be identical but exercising more production code paths in-memory.
+94 suites, 783 tests pass. In-memory plugins now use the same `connect` path with local Core outputs.
 
 ---
 
 ### Phase 4 — Add Core DCB Support (new capability)
 
-#### Step 10 — Move `DcbSpec` to shared location
+#### Step 10 — Move `DcbSpec` to shared location (skipped)
 
-Move `DcbSpec` module type from `Plugin.res` to a shared location:
+DcbSpec already exists in both `ReventlessInfra.Plugin.DcbSpec` (reventless-infra) and `ReventlessCore.Plugin.DcbSpec` (reventless-core). Both Core.T and Plugin.T reference DcbSpec from their respective packages. No move needed — the `Obj.magic` bridge handles the nominal type path difference at the Platform boundary.
 
-```
-reventless/reventless-core/src/components/Dcb/DcbSpec.res
-```
-
-Add backward-compatible alias in `Plugin.res`: `module DcbSpec = DcbSpec`.
-
-**Files changed:**
-- `reventless-core/src/components/Dcb/DcbSpec.res` — New (moved from Plugin.res)
-- `Plugin.res` — Replace inline DcbSpec with alias
-
-#### Step 11 — Add DCB adapter modules to `Core_Builder.Make`
+#### Step 11 — Add DCB adapter modules to `Core_Builder.Make` ✅
 
 Add the 3 DCB adapter modules to Core_Builder's functor signature:
 
@@ -178,7 +165,7 @@ Call `Dcb_Builder.Make(...)`.construct(...) and wire results:
 **Files changed:**
 - `Core_Builder.res` — Add DCB functor args, call Dcb_Builder
 
-#### Step 12 — Update `Core.res` outputs type
+#### Step 12 — Update `Core.res` outputs type ✅
 
 Add DCB-related optional fields to `Core.outputs`:
 
@@ -196,7 +183,7 @@ Add `~dcbSpec` to the `T` module type's `make` signature.
 **Files changed:**
 - `Core.res` — Add DCB output fields and `~dcbSpec` to module type
 
-#### Step 13 — Wire DCB entries into CoreApi
+#### Step 13 — Wire DCB entries into CoreApi ✅
 
 Update `CoreApi.res` to accept and merge DCB mutation/query/eventLog entries into the Core API fragment:
 
@@ -213,7 +200,7 @@ CoreApi.generate(~dcbMutationEntries, ~dcbQueryEntries, ~dcbEventLogEntries) =>
 **Files changed:**
 - `CoreApi.res` — Accept DCB entries as parameters
 
-#### Step 14 — Update platform implementations
+#### Step 14 — Update platform implementations ✅
 
 Each platform must supply the 3 new DCB adapter modules to Core:
 - **reventless-aws**: Reuse existing `DcbEventLogStorage`, `DcbEventTopicPublisher`, `DcbCommandTopicChannel` (already provided for plugins)

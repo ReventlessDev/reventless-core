@@ -5,7 +5,10 @@ import * as ClonerRunner_Fargate$ReventlessAws from "../adapter/Cloner/ClonerRun
 import * as QueryEngine_DynamoDb$ReventlessAws from "../adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
+import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "../adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
+import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
+import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 
 let include = Core_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
@@ -27,7 +30,9 @@ let include = Core_Builder$ReventlessCore.Make({
 })({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
-}));
+}))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+  make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+});
 
 let RuntimeEnvironment;
 

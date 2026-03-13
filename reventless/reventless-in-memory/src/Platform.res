@@ -394,11 +394,13 @@ module MakeWithConfig = (
   }
 
   module CoreMaker = Core_Builder.Make(Bus)
+  // Obj.magic: ReventlessCore.Core.T.make is structurally identical to
+  // ReventlessInfra.Core.T.make — only the DcbSpec module-type path differs nominally.
   module Core: ReventlessInfra.Core.T with type api = unit and type role = unit = {
     type api = unit
     type role = unit
     type component = ReventlessCore.Core.component
-    let make = CoreMaker.make
+    let make = Obj.magic(CoreMaker.make)
   }
 
   let makeScheduler = () => {

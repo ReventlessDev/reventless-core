@@ -121,6 +121,8 @@ module Make = (Api: {
     let make = Obj.magic(PluginBuilder.make)
   }
 
+  // Obj.magic: ReventlessCore.Core.T.make is structurally identical to
+  // ReventlessInfra.Core.T.make — only the DcbSpec module-type path differs nominally.
   module Core: (ReventlessInfra.Core.T
     with type api = Types.AppSync.api
     and type role = Types.AppSync.role
@@ -128,7 +130,7 @@ module Make = (Api: {
     type api = Types.AppSync.api
     type role = Types.AppSync.role
     type component = ReventlessCore.Core.component
-    let make = Core_Builder.make
+    let make = Obj.magic(Core_Builder.make)
   }
 
   let makeScheduler = () => {

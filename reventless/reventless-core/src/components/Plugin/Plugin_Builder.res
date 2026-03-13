@@ -52,276 +52,14 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let childName = name->ComponentType.name(Plugin.componentType)
 
-    // Create DcbEventLog and StateChangeSlices if DcbSpec provided
-    // Also captures handler and connect function for runtime setup
-    let (
-      dcbEventLogOutputs,
-      stateChangeSlicesOutputs,
-      stateViewSlicesOutputs,
-      automationSlicesOutputs,
-      outboundTranslationSlicesOutputs,
-      inboundTranslationSlicesOutputs,
-      dcbRuntimeOpt,
-    ) = switch dcbSpec {
-    | Some(module(DcbSpec)) => {
-        module DcbEventLogSpec = {
-          @schema
-          type event = DcbSpec.event
-        }
-
-        module DcbEventLog = DcbEventLog_Builder.Make(
-          DcbEventLogSpec,
-          DcbEventLogStorage,
-          DcbEventTopicPublisher,
-        )
-        let dcbEventLog = DcbEventLog.make(~name, ~opts)
-
-        // Create shared CommandTopic for all StateChangeSlices
-        module DcbCommandTopicSpec = {
-          module Id = Reventless.Id.String
-          // Accept any command - filtering happens via schema-based registration
-          @schema
-          type command = JSON.t
-        }
-        module DcbCommandTopic = CommandTopic_Builder.Make(
-          DcbCommandTopicSpec,
-          DcbCommandTopicChannel,
-        )
-        let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
-
-        let publishJsons =
-          dcbCommandTopic
-          ->Component.operations
-          ->Pulumi.Output.apply(ops => ops.publishJsons)
-
-        let stateChangeSlicesOutputs =
-          DcbSpec.stateChangeSlices
-          ->Array.map((
-            module(StateChangeSlice: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
-            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~opts)
-            (StateChangeSlice.Spec.name, ch->Component.outputs)
-          })
-          ->Dict.fromArray
-
-        // Register DCB mutation resolvers via platform hook (e.g. GraphQL in-memory)
-        switch dcbMutationResolverHook.contents {
-        | Some(registerResolver) =>
-          DcbSpec.stateChangeSlices->Array.forEach((
-            module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
-            registerResolver(
-              ~fieldName=Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name),
-              ~commandSchema=S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
-            )
-          })
-        | None => ()
-        }
-
-        // Populate query field names registry for StateViewSlices BEFORE creating them,
-        // so QueryDbResolvers can read the registry during component construction.
-        DcbSpec.stateViewSlices->Array.forEach((
-          module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
-        ) => {
-          let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(V.Spec.name, qn)
-        })
-
-        // Populate query field names registry for AutomationSlices BEFORE creating them.
-        DcbSpec.automationSlices->Array.forEach((
-          module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
-        ) => {
-          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(A.queryDbName, qn)
-        })
-
-        // Populate query field names registry for OutboundTranslationSlices BEFORE creating them.
-        DcbSpec.outboundTranslationSlices->Array.forEach((
-          module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-        ) => {
-          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=O.queryDbName)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(O.queryDbName, qn)
-        })
-
-        // Populate query field names registry for InboundTranslationSlices BEFORE creating them.
-        DcbSpec.inboundTranslationSlices->Array.forEach((
-          module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-        ) => {
-          let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(I.queryDbName, qn)
-        })
-
-        // Create StateViewSlices - each gets its own QueryDb and subscribes to DcbEventLog events
-        let stateViewSlicesOutputs =
-          DcbSpec.stateViewSlices
-          ->Array.map((
-            module(StateViewSlice: StateViewSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
-            let sv = StateViewSlice.make(~dcbEventLog, ~opts)
-            (StateViewSlice.Spec.name, sv->Component.outputs)
-          })
-          ->Dict.fromArray
-
-        // Create AutomationSlices — each gets its own QueryDb and subscribes to DcbEventLog events
-        let automationSlicesOutputs =
-          DcbSpec.automationSlices
-          ->Array.map((module(AutoSlice: AutomationSlice.T with type dcbEvent = DcbSpec.event)) => {
-            let as_ = AutoSlice.make(~dcbEventLog, ~publishJsons, ~opts)
-            (AutoSlice.Spec.name, as_->Component.outputs)
-          })
-          ->Dict.fromArray
-
-        // Create OutboundTranslationSlices — each subscribes to events and translates to external calls
-        let outboundTranslationSlicesOutputs =
-          DcbSpec.outboundTranslationSlices
-          ->Array.map((
-            module(OTS: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
-            let ots = OTS.make(~dcbEventLog, ~publishJsons, ~opts)
-            (OTS.Spec.name, ots->Component.outputs)
-          })
-          ->Dict.fromArray
-
-        // Create InboundTranslationSlices — each receives external input and publishes commands.
-        // Capture both outputs (for plugin result) and components (for operations access).
-        let inboundTranslationSliceData =
-          DcbSpec.inboundTranslationSlices->Array.map((
-            module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
-            let its = ITS.make(~publishJsons, ~opts)
-            let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
-
-            // Phase 1: Register SDL + resolver stub synchronously (before server starts).
-            switch inboundMutationResolverHook.contents {
-            | Some(registerResolver) =>
-              registerResolver(
-                ~fieldName,
-                ~externalInputSchema=ITS.Spec.externalInputSchema->S.castToUnknown,
-              )
-            | None => ()
-            }
-
-            // Phase 2: Bind `receive` when Output.apply resolves.
-            switch inboundMutationBindReceiveHook.contents {
-            | Some(bindReceive) =>
-              let _ =
-                its
-                ->Component.operations
-                ->Pulumi.Output.apply(ops => bindReceive(~fieldName, ~receive=ops.receive))
-            | None => ()
-            }
-
-            (ITS.Spec.name, fieldName, its, ITS.Spec.externalInputSchema->S.castToUnknown)
-          })
-
-        let inboundTranslationSlicesOutputs =
-          inboundTranslationSliceData
-          ->Array.map(((specName, _, its, _)) => (specName, its->Component.outputs))
-          ->Dict.fromArray
-
-        // Collect InboundTranslationSlice receive functions from Component.operations.
-        // These are Output.t values — we resolve them and build a dict for the composite
-        // DCB handler to route direct invocations (AppSync on AWS).
-        let inboundReceiversOutput =
-          inboundTranslationSliceData
-          ->Array.map(((_, fieldName, its, _)) =>
-            its
-            ->Component.operations
-            ->Pulumi.Output.apply(ops => (fieldName, ops.receive))
-          )
-          ->Pulumi.Output.all
-          ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray)
-
-        // Filtering handler for the shared DCB command topic Lambda.
-        // Wrap with InboundTranslation routing so the same Lambda handles both
-        // SQS commands (StateChangeSlice) and direct invocations (InboundTranslation).
-        let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
-
-        let dcbHandler =
-          (dcbHandlerBase, inboundReceiversOutput)
-          ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((baseHandler, receivers)) => {
-            let composite = (event, ctx) => {
-              // At runtime: check if this is a direct AppSync invocation
-              // for an InboundTranslationSlice mutation.
-              let raw: dict<JSON.t> = event->Obj.magic
-              switch raw->Dict.get("__inboundTranslation") {
-              | Some(_) =>
-                let fieldName =
-                  raw
-                  ->Dict.get("fieldName")
-                  ->Option.flatMap(JSON.Decode.string)
-                  ->Option.getOr("")
-                let args = raw->Dict.get("arguments")->Option.getOr(JSON.Encode.null)
-                switch receivers->Dict.get(fieldName) {
-                | Some(receiveFn) =>
-                  Effect.promise(async () => {
-                    let result = await receiveFn(args)
-                    let response = switch result {
-                    | Ok(id) => id
-                    | Error(msg) => msg
-                    }
-                    response->Obj.magic
-                  })
-                | None => baseHandler(event, ctx)
-                }
-              | None => baseHandler(event, ctx)
-              }
-            }
-            composite->Obj.magic
-          })
-
-        // Resources the Lambda needs access to (DcbEventLog + InboundTranslation audit logs)
-        let dcbResources = Array.concat(
-          stateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources),
-          inboundTranslationSlicesOutputs
-          ->Dict.valuesToArray
-          ->Array.flatMap(outputs => outputs.resources),
-        )
-
-        // Collect InboundTranslation field names and schemas for AppSync resolver hook
-        let inboundFieldNames =
-          inboundTranslationSliceData->Array.map(((_, fieldName, _, _)) => fieldName)
-        let inboundSchemas = inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
-
-        let dcbConnectFn = (~runtime) => {
-          DcbCommandTopic.connect(~runtime, ~resources=dcbResources, dcbCommandTopic)
-
-          // Create AppSync resolvers for InboundTranslationSlice mutations
-          // pointing to the shared DCB CommandTopic Lambda (Option A).
-          if inboundFieldNames->Array.length > 0 {
-            switch inboundAppSyncResolverHook.contents {
-            | Some(hook) =>
-              hook({
-                runtime: runtime->Obj.magic,
-                fieldNames: inboundFieldNames,
-                externalInputSchemas: inboundSchemas,
-                opts,
-              })
-            | None => ()
-            }
-          }
-        }
-
-        // Capture the forDcbCommandTopic call in a closure while DcbCommandTopic is in scope
-        let dcbRuntimeSetup = () =>
-          dcbCommandTopic->PluginRuntimeBuilder.forDcbCommandTopic(
-            ~handler=dcbHandler,
-            ~connect=dcbConnectFn,
-          )
-
-        (
-          Some(dcbEventLog->Component.outputs),
-          stateChangeSlicesOutputs,
-          stateViewSlicesOutputs,
-          automationSlicesOutputs,
-          outboundTranslationSlicesOutputs,
-          inboundTranslationSlicesOutputs,
-          Some(dcbRuntimeSetup),
-        )
-      }
-    | None => (None, Dict.make(), Dict.make(), Dict.make(), Dict.make(), Dict.make(), None)
-    }
+    // Construct DCB components and derive DCB-specific API schema entries
+    module DcbBuilder = Dcb_Builder.Make(
+      DcbEventLogStorage,
+      DcbEventTopicPublisher,
+      DcbCommandTopicChannel,
+      PluginRuntimeBuilder,
+    )
+    let dcbResult = DcbBuilder.construct(~name, ~childName, ~dcbSpec, ~opts)
 
     // Derive GraphQL schema fragment for this plugin
     let mutationEntriesFromAggregates =
@@ -343,32 +81,8 @@ module Make = (
         [{ReventlessInfra.Api.fieldNames, commandSchema}]
       })
 
-    let mutationEntriesFromSlices = switch dcbSpec {
-    | Some(module(DcbSpec)) =>
-      DcbSpec.stateChangeSlices->Array.map((
-        module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
-      ) => {
-        ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
-        commandSchema: S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
-      })
-    | None => []
-    }
-
-    let mutationEntriesFromInboundSlices = switch dcbSpec {
-    | Some(module(DcbSpec)) =>
-      DcbSpec.inboundTranslationSlices->Array.map((
-        module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-      ) => {
-        ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)],
-        commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
-      })
-    | None => []
-    }
-
     let mutationEntries =
-      Array.concat(mutationEntriesFromAggregates, mutationEntriesFromSlices)->Array.concat(
-        mutationEntriesFromInboundSlices,
-      )
+      Array.concat(mutationEntriesFromAggregates, dcbResult.mutationEntries)
 
     let queryEntriesFromReadModels =
       readModels->Array.map((
@@ -384,68 +98,7 @@ module Make = (
         }
       })
 
-    let queryEntriesFromSlices = switch dcbSpec {
-    | Some(module(DcbSpec)) =>
-      let stateViewEntries = DcbSpec.stateViewSlices->Array.map((
-        module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
-      ) => {
-        let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
-        {
-          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
-          listFieldName: qn.listFieldName,
-          returnTypeName: qn.returnTypeName,
-          stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
-          authorization: None,
-        }
-      })
-
-      let automationEntries = DcbSpec.automationSlices->Array.map((
-        module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
-      ) => {
-        let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
-        {
-          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
-          listFieldName: qn.listFieldName,
-          returnTypeName: qn.returnTypeName,
-          stateSchema: AutomationSlice_Callback.todoRowSchema->S.castToUnknown,
-          authorization: None,
-        }
-      })
-
-      let outboundEntries = DcbSpec.outboundTranslationSlices->Array.map((
-        module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-      ) => {
-        let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=O.queryDbName)
-        {
-          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
-          listFieldName: qn.listFieldName,
-          returnTypeName: qn.returnTypeName,
-          stateSchema: OutboundTranslationSlice_Callback.todoRowSchema->S.castToUnknown,
-          authorization: None,
-        }
-      })
-
-      let inboundEntries = DcbSpec.inboundTranslationSlices->Array.map((
-        module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-      ) => {
-        let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
-        {
-          ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
-          listFieldName: qn.listFieldName,
-          returnTypeName: qn.returnTypeName,
-          stateSchema: InboundTranslationSlice_Callback.auditRowSchema->S.castToUnknown,
-          authorization: None,
-        }
-      })
-
-      stateViewEntries
-      ->Array.concat(automationEntries)
-      ->Array.concat(outboundEntries)
-      ->Array.concat(inboundEntries)
-    | None => []
-    }
-
-    let queryEntries = Array.concat(queryEntriesFromReadModels, queryEntriesFromSlices)
+    let queryEntries = Array.concat(queryEntriesFromReadModels, dcbResult.queryEntries)
 
     let eventLogEntriesFromAggregates =
       aggregates->Array.map((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
@@ -454,18 +107,7 @@ module Make = (
         eventSchema: M.Spec.eventSchema->S.castToUnknown,
       })
 
-    let eventLogEntriesFromDcb = switch dcbSpec {
-    | Some(module(DcbSpec)) => [
-        {
-          ReventlessInfra.Api.busKey: name ++ "DcbEventLog",
-          displayName: name,
-          eventSchema: DcbSpec.eventSchema->S.castToUnknown,
-        },
-      ]
-    | None => []
-    }
-
-    let eventLogEntries = Array.concat(eventLogEntriesFromAggregates, eventLogEntriesFromDcb)
+    let eventLogEntries = Array.concat(eventLogEntriesFromAggregates, dcbResult.eventLogEntries)
 
     // Populate query field names registry so resolvers align with fragment SDL.
     // Keyed by the Spec.name that each component uses for its QueryDb.
@@ -504,7 +146,7 @@ module Make = (
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
     // Merge DCB EventTopic into allEventTopics so ReadModels can subscribe to DCB events.
     // Uses the same key as the eventLogEntries busKey (name ++ "DcbEventLog").
-    switch dcbEventLogOutputs {
+    switch dcbResult.dcbEventLogOutputs {
     | Some(dcbOutputs) => allEventTopics->Dict.set(name ++ "DcbEventLog", dcbOutputs.eventTopic)
     | None => ()
     }
@@ -514,13 +156,27 @@ module Make = (
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let builderOutputs = {
+      // Resolve Core extension point data — from Interstack (AWS cross-stack) or local Core outputs.
       let coreExtensionPoints =
         Interstack.coreStackReference->Option.mapOr(Pulumi.Output.make(None), coreStack =>
           coreStack->Pulumi.StackReference.getOutput("extensionPoints")
         )
 
+      // Derive local Core extension point resolved data (set by Core_Builder during construction).
+      let localCoreResolvedEP =
+        switch Plugin_Helpers.localCoreOutputs.contents {
+        | Some(coreOutputs) =>
+          coreOutputs.extensionPoints->Pulumi.Output.flatMap(eps =>
+            switch eps->Dict.get(PluginExtensionPointSpec.name) {
+            | Some(ep) => ep->ExtensionPoint.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
+            | None => Pulumi.Output.make(None)
+            }
+          )
+        | None => Pulumi.Output.make(None)
+        }
+
       (
-        coreExtensionPoints,
+        (coreExtensionPoints, localCoreResolvedEP)->Pulumi.Output.all2,
         aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
         publishToReadModels->Pulumi.Output.allDict,
@@ -529,7 +185,7 @@ module Make = (
       )
       ->Pulumi.Output.all6
       ->Pulumi.Output.apply(((
-        coreExtensionPoints,
+        (coreExtensionPoints, localCoreResolvedEP),
         aggregateResources,
         publishToAggregates,
         publishToReadModels,
@@ -548,7 +204,7 @@ module Make = (
             ~opts,
           )
 
-        // Resolve Core stack reference (None when running without a Core stack, e.g. in-memory)
+        // Resolve Core connection — from Interstack (AWS), local Core (in-memory), or None
         let coreSetup = switch coreExtensionPoints {
         | Some(coreExtensionPoints) => {
             let corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
@@ -567,7 +223,16 @@ module Make = (
               corePluginExtensionPointCommandTopicRemoteChannel,
             ))
           }
-        | None => None
+        | None =>
+          // Fallback: use local Core extension point data (e.g. in-memory platform)
+          switch localCoreResolvedEP {
+          | Some(resolvedEP) =>
+            let remoteChannel = CorePluginExtensionPointRemoteChannel.make(
+              resolvedEP.commandTopic.resources->Array.map(Adapter.fromInteropResolved),
+            )
+            Some((resolvedEP, remoteChannel))
+          | None => None
+          }
         }
 
         let publishToCorePluginExtensionPoint: ReventlessInfra.CommandTopic.publishJsons = switch coreSetup {
@@ -680,7 +345,8 @@ module Make = (
             )
           }
         | None =>
-          let _ = EventCollectorHelper.connectWithoutCore(
+          // No Core connection — connect EventCollector without ConnectPluginExtension
+          let _ = EventCollectorHelper.connect(
             ~eventCollector,
             ~eventTopics,
             ~extensionPointsOutputs,
@@ -728,7 +394,7 @@ module Make = (
         }
 
         // Connect DCB command topic to its Lambda runtime (if DCB is configured)
-        dcbRuntimeOpt->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
+        dcbResult.dcbRuntimeSetup->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
 
         {
           id,
@@ -738,16 +404,16 @@ module Make = (
           extensionPoints: extensionPointsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           extensions: extensionsOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           aggregates: aggregatesOutputs,
-          stateChangeSlices: stateChangeSlicesOutputs,
-          stateViewSlices: stateViewSlicesOutputs,
-          automationSlices: automationSlicesOutputs,
-          outboundTranslationSlices: outboundTranslationSlicesOutputs,
-          inboundTranslationSlices: inboundTranslationSlicesOutputs,
+          stateChangeSlices: dcbResult.stateChangeSlicesOutputs,
+          stateViewSlices: dcbResult.stateViewSlicesOutputs,
+          automationSlices: dcbResult.automationSlicesOutputs,
+          outboundTranslationSlices: dcbResult.outboundTranslationSlicesOutputs,
+          inboundTranslationSlices: dcbResult.inboundTranslationSlicesOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs->Array.map(el => (el.name, el))->Dict.fromArray,
           resolvers,
           heartbeat: heartbeat->Component.outputs,
-          dcbEventLog: dcbEventLogOutputs,
+          dcbEventLog: dcbResult.dcbEventLogOutputs,
         }
       })
     }

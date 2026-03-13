@@ -1,17 +1,4 @@
-let addEventMapperFns = Plugin_Helpers.addEventMapperFns
-let aggregateResources = Plugin_Helpers.aggregateResources
-let publishToAggregates = Plugin_Helpers.publishToAggregates
-
-let createAggregatesWithoutEventMappers = Plugin_Helpers.createAggregatesWithoutEventMappers
-let addEventMappers = Plugin_Helpers.addEventMappers
-let createReadModels = Plugin_Helpers.createReadModels
-let createExtensionPoints = Plugin_Helpers.createExtensionPoints
-
-let createResolvers = allQueryDbs =>
-  allQueryDbs
-  ->QueryDb.allResolversMakers
-  ->Array.map(resolverMaker => resolverMaker(allQueryDbs))
-  ->Array.flat
+include Builder_Helpers
 
 module MakeEventCollectorHelper = (
   RuntimeEnvironment: Runtime.Environment,

@@ -2,27 +2,55 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Core$ReventlessCore from "./Core.res.mjs";
 import * as Cloner$ReventlessCore from "../../components/Cloner.res.mjs";
+import * as CoreApi$ReventlessCore from "../API/CoreApi.res.mjs";
 import * as Aggregate$ReventlessCore from "../../components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../../components/ReadModel/ReadModel.res.mjs";
+import * as Dcb_Builder$ReventlessCore from "../../components/Dcb/Dcb_Builder.res.mjs";
 import * as Core_Helpers$ReventlessCore from "./Core_Helpers.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "../../components/Plugin/Plugin_Helpers.res.mjs";
+import * as GraphQL_Stitcher$ReventlessCore from "../../components/Api/GraphQL_Stitcher.res.mjs";
 
 function Make(RuntimeEnvironment) {
-  return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (CoreRuntimeBuilder => {
-    let construct = (version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, apiComponent, self, param) => {
+  return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (CoreRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
+    let construct = (version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, apiComponent, dcbSpec, self, param) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(self);
       let opts = {
         parent: opts_parent
       };
       let name = ComponentType$ReventlessCore.toName(Core$ReventlessCore.componentType);
+      let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(CoreRuntimeBuilder);
+      let dcbResult = DcbBuilder.construct(name, name, dcbSpec, opts);
+      if (dcbResult.mutationEntries.length !== 0 || dcbResult.queryEntries.length !== 0) {
+        let fragment = CoreApi$ReventlessCore.generateFragment(dcbResult.mutationEntries, dcbResult.queryEntries, dcbResult.eventLogEntries);
+        let registerTypes = Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents;
+        if (registerTypes !== undefined) {
+          let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
+          registerTypes(parts.types);
+        }
+        let registerMcp = Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents;
+        if (registerMcp !== undefined) {
+          registerMcp({
+            pluginName: "Core",
+            mutationEntries: CoreApi$ReventlessCore.mutationEntries.concat(dcbResult.mutationEntries),
+            queryEntries: CoreApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries),
+            eventLogEntries: dcbResult.eventLogEntries
+          });
+        }
+      }
       let aggregatesWithoutEventMappers = Core_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
       let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
+      let dcbOutputs = dcbResult.dcbEventLogOutputs;
+      if (dcbOutputs !== undefined) {
+        allEventTopics[name + "DcbEventLog"] = dcbOutputs.eventTopic;
+      }
       let readModelsOutputs = Core_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
@@ -42,6 +70,7 @@ function Make(RuntimeEnvironment) {
         let match$1 = EventCollectorHelper.make(name, eventTopics, opts);
         let eventCollector = match$1[0];
         Output$Pulumi.flatMap(Pulumi.all(match[1]), extensionPointsOutgoingJsonEventsHandlers => EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers));
+        Stdlib_Option.forEach(dcbResult.dcbRuntimeSetup, dcbRuntimeSetup => dcbRuntimeSetup());
         return [
           aggregatesOutputs,
           extensionPointsOutputs,
@@ -65,22 +94,37 @@ function Make(RuntimeEnvironment) {
         readModels: readModelsOutputs,
         cloner: baseOutputs_cloner
       };
-      let outputs;
+      let withApi;
       if (apiComponent !== undefined) {
         let newrecord = {...baseOutputs};
         newrecord.api = Primitive_option.some(Primitive_option.valFromOption(apiComponent));
-        outputs = newrecord;
+        withApi = newrecord;
       } else {
-        outputs = baseOutputs;
+        withApi = baseOutputs;
       }
-      return Component$ReventlessCore.setOutputs(self, outputs);
+      let dcbEventLogOutputs = dcbResult.dcbEventLogOutputs;
+      let withDcb;
+      if (dcbEventLogOutputs !== undefined) {
+        let newrecord$1 = {...withApi};
+        newrecord$1.inboundTranslationSlices = dcbResult.inboundTranslationSlicesOutputs;
+        newrecord$1.outboundTranslationSlices = dcbResult.outboundTranslationSlicesOutputs;
+        newrecord$1.automationSlices = dcbResult.automationSlicesOutputs;
+        newrecord$1.stateViewSlices = dcbResult.stateViewSlicesOutputs;
+        newrecord$1.stateChangeSlices = dcbResult.stateChangeSlicesOutputs;
+        newrecord$1.dcbEventLog = dcbEventLogOutputs;
+        withDcb = newrecord$1;
+      } else {
+        withDcb = withApi;
+      }
+      Plugin_Helpers$ReventlessCore.localCoreOutputs.contents = withDcb;
+      return Component$ReventlessCore.setOutputs(self, withDcb);
     };
-    let make = (version, extensionPoints, aggregates, readModels, scheduler, api, apiRole, resourceNaming, apiComponent) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Core$ReventlessCore.componentType), "Core", (extra, extra$1) => construct(version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, apiComponent, extra, extra$1), undefined);
+    let make = (version, extensionPoints, aggregates, readModels, scheduler, api, apiRole, resourceNaming, apiComponent, dcbSpec) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Core$ReventlessCore.componentType), "Core", (extra, extra$1) => construct(version, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, apiComponent, dcbSpec, extra, extra$1), undefined);
     return {
       construct: construct,
       make: make
     };
-  })));
+  }))))));
 }
 
 export {

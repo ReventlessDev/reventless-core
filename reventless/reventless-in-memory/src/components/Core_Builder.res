@@ -11,5 +11,8 @@ module Make = (Bus: InMemory_Bus.T) => {
     QE,
     ClonerRunner_InMemory,
     ReventlessCore.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment_InMemory, EventCollectorChannel),
+    DcbEventLogStorage_InMemory.Make(Bus),
+    EventTopicPublisher_InMemory.Make(Bus),
+    CommandTopicChannel_InMemory.Make(Bus),
   )
 }

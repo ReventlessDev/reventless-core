@@ -7,4 +7,7 @@ include ReventlessCore.Core_Builder.Make(
   QueryEngine.DynamoDb,
   ClonerRunner.Fargate,
   ReventlessCore.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment_Lambda, EventCollectorChannel),
+  DcbEventLogStorage.DynamoDb,
+  EventTopicPublisher.DynamoDbStream,
+  CommandTopicChannel.SQS_FIFO,
 )

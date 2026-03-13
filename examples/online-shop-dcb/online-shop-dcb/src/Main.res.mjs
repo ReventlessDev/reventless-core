@@ -22,7 +22,7 @@ let catalogPlugin = Catalog.make(scheduler, undefined, undefined);
 
 let orderingPlugin = Ordering.make(scheduler, undefined, undefined);
 
-let core = Platform.Core.make("1.0.0", [], [], [], scheduler, undefined, undefined, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined);
+let core = Platform.Core.make("1.0.0", [], [], [], scheduler, undefined, undefined, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined);
 
 Platform.makePlatform(undefined, core, [
   catalogPlugin,

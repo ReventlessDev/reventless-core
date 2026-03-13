@@ -8,6 +8,12 @@ type outputs = {
   readModels: dict<ReadModel.outputs>,
   cloner: Cloner.outputs,
   api?: ReventlessInfra.Api.component,
+  dcbEventLog?: DcbEventLog.outputs,
+  stateChangeSlices?: dict<StateChangeSlice.outputs>,
+  stateViewSlices?: dict<StateViewSlice.outputs>,
+  automationSlices?: dict<AutomationSlice.outputs>,
+  outboundTranslationSlices?: dict<OutboundTranslationSlice.outputs>,
+  inboundTranslationSlices?: dict<InboundTranslationSlice.outputs>,
 }
 
 type t
@@ -20,5 +26,6 @@ module type T = {
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
+    ~dcbSpec: module(Plugin.DcbSpec)=?,
   ) => component
 }

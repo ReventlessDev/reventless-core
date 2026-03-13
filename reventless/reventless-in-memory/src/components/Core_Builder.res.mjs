@@ -4,12 +4,16 @@ import * as Core_Builder$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as QueryEngine_InMemory$ReventlessInMemory from "../adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
 import * as ClonerRunner_InMemory$ReventlessInMemory from "../adapter/Cloner/ClonerRunner_InMemory.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
+import * as DcbEventLogStorage_InMemory$ReventlessInMemory from "../adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 import * as RuntimeEnvironment_InMemory$ReventlessInMemory from "../adapter/Runtime/RuntimeEnvironment_InMemory.res.mjs";
+import * as CommandTopicChannel_InMemory$ReventlessInMemory from "../adapter/CommandTopic/CommandTopicChannel_InMemory.res.mjs";
+import * as EventTopicPublisher_InMemory$ReventlessInMemory from "../adapter/EventTopic/EventTopicPublisher_InMemory.res.mjs";
 import * as EventCollectorChannel_InMemory$ReventlessInMemory from "../adapter/EventCollector/EventCollectorChannel_InMemory.res.mjs";
 
 function Make(Bus) {
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
+  let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
   let include = Core_Builder$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
@@ -24,7 +28,9 @@ function Make(Bus) {
     extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
-  })(EventCollectorChannel));
+  })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
+    make: $$let.make
+  });
   return {
     EventCollectorChannel: EventCollectorChannel,
     QE: QE,

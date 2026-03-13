@@ -127,173 +127,7 @@ let serviceNameToJsonEventsHandlers: (
   dict
 }
 
-// Captured read model data — stores extracted values instead of module+component
-// so that Plugin_Helpers can work with abstract spec-level component types.
-type readModel = {
-  outputs: ReadModel.outputs,
-  operations: Pulumi.Output.t<ReadModel.operations>,
-  finish: unit => unit,
-}
-
-let addEventMapperFns = Dict.make()
-let aggregateResources = Dict.make()
-let publishToAggregates = Dict.make()
-// Finish functions captured from aggregate modules during createAggregatesWithoutEventMappers.
-let aggregateFinishFns = Dict.make()
-
-let createAggregatesWithoutEventMappers = (
-  type a,
-  aggregates: array<module(ReventlessInfra.Aggregate.T with type api = a)>,
-  ~api: a,
-  opts,
-) =>
-  aggregates
-  ->Array.map((module(SpecificAggregate: ReventlessInfra.Aggregate.T with type api = a)) => {
-    let aggregate = SpecificAggregate.make(~api, ~opts)
-    let aggOutputs = SpecificAggregate.outputs(aggregate)
-    addEventMapperFns->Dict.set(
-      SpecificAggregate.Spec.name,
-      aggOutputs.addEventMapper,
-    )
-    let resources =
-      aggOutputs.commandTopic->Pulumi.Output.apply(commandTopic =>
-        commandTopic.resources
-      )
-    aggregateResources->Dict.set(SpecificAggregate.Spec.name, resources)
-    let publishJsons =
-      SpecificAggregate.operations(aggregate)->Pulumi.Output.apply(({publishJsons}) => publishJsons)
-    publishToAggregates->Dict.set(SpecificAggregate.Spec.name, publishJsons)
-    aggregateFinishFns->Dict.set(SpecificAggregate.Spec.name, SpecificAggregate.finish)
-    aggOutputs
-  })
-  ->Array.map(aggregate => {(aggregate.name, aggregate)})
-  ->Dict.fromArray
-
-let finishAggregates = (
-  aggregatesOutputs: dict<Aggregate.outputs>,
-) => {
-  let (eventMapperOutputs, commandTopicOutputs) =
-    aggregatesOutputs
-    ->Dict.valuesToArray
-    ->Array.map(aggregateOutputs =>
-      aggregateOutputs.eventMapper->Option.map(eventMapper => (
-        eventMapper,
-        aggregateOutputs.commandTopic,
-      ))
-    )
-    ->Array.keepSome
-    ->Array.unzip
-  let _ =
-    (eventMapperOutputs->Pulumi.Output.all, commandTopicOutputs->Pulumi.Output.all)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((eventMapperOutputs, _)) =>
-      eventMapperOutputs
-      ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
-      ->Pulumi.Output.all
-      ->Pulumi.Output.apply(_ =>
-        aggregateFinishFns->Dict.valuesToArray->Array.forEach(finishFn => finishFn())
-      )
-    )
-}
-
-let addEventMappers = (
-  allEventTopics,
-  queryEngine,
-) => {
-  let aggregatesOutputs =
-    addEventMapperFns->Dict.mapValues(addEventMapperFn =>
-      addEventMapperFn(allEventTopics, queryEngine)
-    )
-  finishAggregates(aggregatesOutputs)
-
-  aggregatesOutputs
-}
-
-let readModelNamesForSourceName = Dict.make()
-let publishToReadModels = Dict.make()
-
-let finishReadModels = readModels => {
-  let _ =
-    readModels
-    ->Array.map(((_, {operations})) => operations)
-    ->Pulumi.Output.all
-    ->Pulumi.Output.apply(_ =>
-      readModels->Array.forEach(((_, {finish})) => {
-        finish()
-      })
-    )
-}
-
-let extractReadModelsOutputs = readModels =>
-  readModels
-  ->Dict.fromArray
-  ->Dict.toArray
-  ->Array.map(((name, {outputs})) => (name, outputs))
-  ->Dict.fromArray
-
-let createReadModels = (
-  type a,
-  type r,
-  readModels: array<module(ReventlessInfra.ReadModel.T with type api = a and type role = r)>,
-  ~api: a,
-  ~apiRole: r,
-  allEventTopics,
-  opts,
-) => {
-  let readModels = readModels->Array.map((module(SpecificReadModel: ReventlessInfra.ReadModel.T with type api = a and type role = r)) => {
-    let readModel = SpecificReadModel.make(~api, ~apiRole, ~allEventTopics, ~opts)
-    let rmOutputs = SpecificReadModel.outputs(readModel)
-    let rmOperations = SpecificReadModel.operations(readModel)
-    rmOutputs.sourceNames->Array.forEach(sourceName =>
-      switch readModelNamesForSourceName->Dict.get(sourceName) {
-      | Some(readModelNames) =>
-        readModelNamesForSourceName->Dict.set(
-          sourceName,
-          readModelNames->Array.concat([SpecificReadModel.Spec.name]),
-        )
-      | None => Dict.set(readModelNamesForSourceName, sourceName, [SpecificReadModel.Spec.name])
-      }
-    )
-    publishToReadModels->Dict.set(
-      SpecificReadModel.Spec.name,
-      rmOperations->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
-    )
-
-    (SpecificReadModel.Spec.name, {outputs: rmOutputs, operations: rmOperations, finish: SpecificReadModel.finish})
-  })
-  readModels->finishReadModels
-  readModels->extractReadModelsOutputs
-}
-
-let createExtensionPoints = (
-  extensionPoints,
-  ~aggregateResources,
-  ~publishToAggregates,
-  ~scheduler,
-  ~queryEngine,
-  ~resourceNaming,
-  ~opts,
-) =>
-  extensionPoints
-  ->Array.map((module(SpecificExtensionPoint: ReventlessInfra.ExtensionPoint.T)) => {
-    let extensionPoint = SpecificExtensionPoint.make(
-      ~aggregateResources,
-      ~publishToAggregates,
-      ~scheduler,
-      ~queryEngine,
-      ~resourceNaming,
-      ~opts=Some(opts),
-    )
-    // operations() returns abstract type from ReventlessInfra.ExtensionPoint.T;
-    // coerce to the concrete ExtensionPoint.operations (always identical at runtime).
-    let ops: Pulumi.Output.t<ExtensionPoint.operations> =
-      SpecificExtensionPoint.operations(extensionPoint)->Obj.magic
-    (
-      SpecificExtensionPoint.outputs(extensionPoint),
-      ops->Pulumi.Output.apply(({outgoingJsonEventsHandler}) => outgoingJsonEventsHandler),
-    )
-  })
-  ->Array.unzip
+include Builder_Helpers
 
 let createExtensions = (
   extensions,
@@ -432,12 +266,6 @@ let createTasks = (
   tasksOutputs.contents
 }
 
-let createResolvers = allQueryDbs =>
-  allQueryDbs
-  ->QueryDb.allResolversMakers
-  ->Array.map(resolverMaker => resolverMaker(allQueryDbs))
-  ->Array.flat
-
 module MakeEventCollectorHelper = (
   RuntimeEnvironment: Runtime.Environment,
   EventCollectorChannel: EventCollector_Adapter.Channel
@@ -460,128 +288,74 @@ module MakeEventCollectorHelper = (
     (eventCollector, eventCollectorOutputs, eventCollectorUrn)
   }
 
+  // Unified connect — handles both with-Core and without-Core cases.
+  // When ~corePluginExtensionPointUnwrapped is provided, Core extension point
+  // resources and ConnectPluginExtension handlers are wired.  Otherwise falls
+  // back to a simplified path (no Core extension point resources, empty
+  // incoming connect extension handlers).
   let connect = (
     ~eventCollector: EventCollector.component,
     ~eventTopics: EventTopic.allOutputs,
     ~extensionPointsOutputs: array<ExtensionPoint.outputs>,
     ~extensionsOutputs: array<Extension.outputs>,
-    ~corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs,
+    ~corePluginExtensionPointUnwrapped: option<ReventlessInterop.ExtensionPoint.resolvedOutputs>=?,
     ~pluginDefinition,
-    ~connectPluginExtensionIncomingEventHandler,
+    ~connectPluginExtensionIncomingEventHandler: option<Pulumi.Output.t<Pulumi.Output.t<Plugin_Callback.jsonEventsHandler>>>=?,
     ~extensionsHandlers,
     ~extensionPointsHandlers,
-    ~connectPluginExtensionOutputs: Pulumi.Output.t<Extension.outputs>,
+    ~connectPluginExtensionOutputs: option<Pulumi.Output.t<Extension.outputs>>=?,
   ) => {
     let resources =
       extensionPointsOutputs
       ->Array.map(extensionPoint => extensionPoint.eventTopic)
       ->Pulumi.Output.all
-      ->Pulumi.Output.apply(eventTopics =>
-        eventTopics
-        ->Array.map(eventTopic => eventTopic.resources)
-        ->Array.flat
-        ->Array.concat(
-          corePluginExtensionPointUnwrapped.commandTopic.resources->Adapter.fromInteropResources,
-        )
-      )
-
-    (
-      pluginDefinition,
-      connectPluginExtensionIncomingEventHandler->Pulumi.Output.unwrap,
-      extensionsHandlers->Pulumi.Output.all,
-      extensionPointsHandlers->Pulumi.Output.all,
-      connectPluginExtensionOutputs,
-      resources,
-    )
-    ->Pulumi.Output.all6
-    ->Pulumi.Output.apply(((
-      pluginDefinition,
-      connectPluginExtensionIncomingEventHandler,
-      extensionsHandlers,
-      extensionPointsHandlers,
-      connectPluginExtensionOutputs,
-      resources,
-    )) => {
-      module Callback = Plugin_Callback.Make({
-        let pluginDefinition = pluginDefinition
-        let outgoingExtensionPointEventHandlers = serviceNameToJsonEventsHandlers(
-          extensionPointsOutputs,
-          outputs => outputs.aggregateNames,
-          extensionPointsHandlers->Array.map(extensionPointsHandler => {
-            outgoing: extensionPointsHandler,
-          }),
-          getOutgoingJsonEventsHandler,
-        )
-        let incomingConnectExtensionEventHandlers = serviceNameToJsonEventsHandlers(
-          [connectPluginExtensionOutputs],
-          outputs => [outputs.extensionPointName],
-          [{incoming: connectPluginExtensionIncomingEventHandler}],
-          getIncomingJsonEventsHandler,
-        )
-        let outgoingExtensionEventHandlers = serviceNameToJsonEventsHandlers(
-          extensionsOutputs,
-          outputs => outputs.aggregateNames,
-          extensionsHandlers,
-          getOutgoingJsonEventsHandler,
-        )
-        let incomingExtensionEventHandlers = serviceNameToJsonEventsHandlers(
-          extensionsOutputs,
-          outputs => [outputs.extensionPointName],
-          extensionsHandlers,
-          getIncomingJsonEventsHandler,
-        )
+      ->Pulumi.Output.apply(eventTopics => {
+        let base =
+          eventTopics
+          ->Array.map(eventTopic => eventTopic.resources)
+          ->Array.flat
+        switch corePluginExtensionPointUnwrapped {
+        | Some(unwrapped) =>
+          base->Array.concat(unwrapped.commandTopic.resources->Adapter.fromInteropResources)
+        | None => base
+        }
       })
-      let handler = PluginEventCollector.makeHandler(
-        ~eventCollector,
-        ~jsonEventsHandler=Callback.handleJsonEvents,
-      )
-      eventCollector->PluginRuntimeBuilder.forPluginEventCollector(
-        ~handler,
-        ~eventTopics,
-        ~resources,
-      )
 
-      let _ = switch (eventCollector->Component.outputs).resources->Array.get(0) {
-      | Some(r) => r.urn->Pulumi.Output.apply(urn => pluginDefinition.eventCollector = urn)
-      | None => Pulumi.Output.make()
+    // Resolve ConnectPluginExtension data (or provide defaults for no-Core path)
+    let connectExtData =
+      switch (connectPluginExtensionIncomingEventHandler, connectPluginExtensionOutputs) {
+      | (Some(handler), Some(outputs)) =>
+        (handler->Pulumi.Output.unwrap, outputs)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((h, o)) => Some((h, o)))
+      | _ => Pulumi.Output.make(None)
       }
-    })
-  }
-
-  // Simplified connect for platforms without a Core stack reference (e.g. in-memory).
-  // Skips ConnectPluginExtension wiring and Core PluginExtensionPoint resources.
-  let connectWithoutCore = (
-    ~eventCollector: EventCollector.component,
-    ~eventTopics: EventTopic.allOutputs,
-    ~extensionPointsOutputs: array<ExtensionPoint.outputs>,
-    ~extensionsOutputs: array<Extension.outputs>,
-    ~pluginDefinition,
-    ~extensionsHandlers,
-    ~extensionPointsHandlers,
-  ) => {
-    let resources =
-      extensionPointsOutputs
-      ->Array.map(extensionPoint => extensionPoint.eventTopic)
-      ->Pulumi.Output.all
-      ->Pulumi.Output.apply(eventTopics =>
-        eventTopics
-        ->Array.map(eventTopic => eventTopic.resources)
-        ->Array.flat
-      )
 
     (
       pluginDefinition,
+      connectExtData,
       extensionsHandlers->Pulumi.Output.all,
       extensionPointsHandlers->Pulumi.Output.all,
       resources,
     )
-    ->Pulumi.Output.all4
+    ->Pulumi.Output.all5
     ->Pulumi.Output.apply(((
       pluginDefinition,
+      connectExtData,
       extensionsHandlers,
       extensionPointsHandlers,
       resources,
     )) => {
+      let incomingConnectExtensionEventHandlers = switch connectExtData {
+      | Some((handler, outputs)) =>
+        serviceNameToJsonEventsHandlers(
+          [outputs],
+          outputs => [outputs.extensionPointName],
+          [{incoming: handler}],
+          getIncomingJsonEventsHandler,
+        )
+      | None => Dict.make()
+      }
       module Callback = Plugin_Callback.Make({
         let pluginDefinition = pluginDefinition
         let outgoingExtensionPointEventHandlers = serviceNameToJsonEventsHandlers(
@@ -592,7 +366,7 @@ module MakeEventCollectorHelper = (
           }),
           getOutgoingJsonEventsHandler,
         )
-        let incomingConnectExtensionEventHandlers = Dict.make()
+        let incomingConnectExtensionEventHandlers = incomingConnectExtensionEventHandlers
         let outgoingExtensionEventHandlers = serviceNameToJsonEventsHandlers(
           extensionsOutputs,
           outputs => outputs.aggregateNames,
@@ -623,6 +397,16 @@ module MakeEventCollectorHelper = (
     })
   }
 }
+
+
+// ---------------------------------------------------------------------------
+// Local Core outputs — set by Core_Builder.construct() during Core
+// construction.  When set, Plugin_Builder uses these to wire the Core
+// connection path locally instead of via Interstack.coreStackReference.
+// This eliminates the need for connectWithoutCore in platforms like in-memory
+// where Core and plugins run in the same process.
+// ---------------------------------------------------------------------------
+let localCoreOutputs: ref<option<Core.outputs>> = ref(None)
 
 // ---------------------------------------------------------------------------
 // DCB mutation resolver hook — set by in-memory platform before plugins are

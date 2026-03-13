@@ -21,7 +21,7 @@ let _catalogPlugin = Catalog.make(scheduler, undefined, undefined);
 
 let _orderingPlugin = Ordering.make(scheduler, undefined, undefined);
 
-let _core = Platform.Core.make("1.0.0", [], [], [], scheduler, undefined, undefined, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined);
+let _core = Platform.Core.make("1.0.0", [], [], [], scheduler, undefined, undefined, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined);
 
 console.log("\n========================================");
 
