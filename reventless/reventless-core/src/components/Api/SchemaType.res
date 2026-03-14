@@ -22,7 +22,7 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
     | Number(_) => ScalarNumber
     | Boolean(_) => ScalarBoolean
     | BigInt(_) => ScalarBigInt
-    | Array({items}) =>
+    | Array({items, additionalItems}) =>
       let itemType = switch items->Array.get(0) {
       | Some({schema: itemSchema}) =>
         fromSury(
@@ -30,7 +30,13 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
           ~fieldName,
           itemSchema->(Obj.magic: S.t<unknown> => S.t<unknown>),
         )
-      | None => ScalarString
+      | None =>
+        // sury stores the item schema in additionalItems (not items) for S.array().
+        // additionalItems is @unboxed: Strip="strip", Strict="strict", Schema(t) = the schema object.
+        switch additionalItems {
+        | Schema(s) => fromSury(~parentName, ~fieldName, s)
+        | _ => ScalarString
+        }
       }
       ArrayOf(itemType)
     | Object({properties}) =>

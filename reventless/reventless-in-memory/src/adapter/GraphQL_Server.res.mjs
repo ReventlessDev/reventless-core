@@ -256,44 +256,36 @@ function diagnostics() {
 }
 
 function printDiagnostics() {
+  let p = s => {
+    console.log(`[GraphQL] ` + s);
+  };
   let d = diagnostics();
-  console.log("[GraphQL Diagnostics]");
-  console.log(`  Types (` + d.typeCount.toString() + `):`);
-  d.registeredTypeDefinitions.forEach(t => {
-    console.log(`    - ` + t);
-  });
-  console.log(`  Mutations: ` + d.sdlMutationCount.toString() + ` SDL fields, ` + d.resolverMutationCount.toString() + ` resolvers`);
-  d.registeredMutationFields.forEach(f => {
-    console.log(`    SDL: ` + f);
-  });
-  d.registeredMutationResolvers.forEach(r => {
-    console.log(`    Resolver: ` + r);
-  });
-  console.log(`  Queries: ` + d.sdlQueryCount.toString() + ` SDL fields, ` + d.resolverQueryCount.toString() + ` resolvers`);
-  d.registeredQueryFields.forEach(f => {
-    console.log(`    SDL: ` + f);
-  });
-  d.registeredQueryResolvers.forEach(r => {
-    console.log(`    Resolver: ` + r);
-  });
+  p("Diagnostics");
+  p(`  Types (` + d.typeCount.toString() + `):`);
+  d.registeredTypeDefinitions.forEach(t => p(`    - ` + t));
+  p(`  Mutations: ` + d.sdlMutationCount.toString() + ` SDL fields, ` + d.resolverMutationCount.toString() + ` resolvers`);
+  d.registeredMutationFields.forEach(f => p(`    SDL: ` + f));
+  d.registeredMutationResolvers.forEach(r => p(`    Resolver: ` + r));
+  p(`  Queries: ` + d.sdlQueryCount.toString() + ` SDL fields, ` + d.resolverQueryCount.toString() + ` resolvers`);
+  d.registeredQueryFields.forEach(f => p(`    SDL: ` + f));
+  d.registeredQueryResolvers.forEach(r => p(`    Resolver: ` + r));
   if (d.mismatches.length !== 0) {
-    console.log(`  Mismatches (` + d.mismatches.length.toString() + `):`);
-    d.mismatches.forEach(m => {
-      console.log(`    ⚠ ` + m);
-    });
+    p(`  Mismatches (` + d.mismatches.length.toString() + `):`);
+    d.mismatches.forEach(m => p(`    ⚠ ` + m));
   } else {
-    console.log("  No mismatches");
+    p("  No mismatches");
   }
-  console.log(`  Server running: ` + (
+  p(`  Server running: ` + (
     d.serverRunning ? "yes" : "no"
   ));
   let sdl = d.fullSdl;
   if (sdl !== undefined) {
-    console.log("\n--- Full SDL ---");
-    console.log(sdl);
-    console.log("--- End ---");
+    p("");
+    p("--- Full SDL ---");
+    sdl.split("\n").forEach(p);
+    return p("--- End ---");
   } else {
-    console.log("  No SDL recorded");
+    return p("  No SDL recorded");
   }
 }
 

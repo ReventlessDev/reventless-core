@@ -9,11 +9,18 @@
 // The platform starts a GraphQL server on port 4000 after all components are built.
 // Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
-// Silent-configurable platform — set silent=true to suppress diagnostic warnings in tests.
-// Usage: module Platform = Platform.MakeWithConfig({let silent = true})
+// Module-level ref to hold the core GraphQL server instance in split mode.
+// Populated by makePlatform when splitApi=true.
+let coreGraphQLRef: ref<option<GraphQL_ServerInstance.t>> = ref(None)
+let getCoreGraphQL = () => coreGraphQLRef.contents
+
+// Configurable platform — set silent=true to suppress diagnostic warnings in tests,
+// splitApi=true to serve core and plugin APIs on separate ports.
+// Usage: module Platform = Platform.MakeWithConfig({let silent = true; let splitApi = false})
 module MakeWithConfig = (
   Config: {
     let silent: bool
+    let splitApi: bool
   },
 ): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   type api = unit
@@ -123,14 +130,29 @@ module MakeWithConfig = (
     ) => DcbEventLogMaker.Make(Spec)
   }
 
+  // Empty base fragment — no types, no mutations, no queries.
+  // Used by the plugin Api in split mode so plugin schema has no core fields.
+  let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
+    types: [],
+    mutations: [],
+    queries: [],
+  })
+
   module Api = {
     module Make = (
-      Config: {
+      FragmentConfig: {
         let baseFragment: ReventlessInfra.Api.schemaFragment
       },
     ): ReventlessInfra.Api.T => {
       module Builder = ReventlessCore.Api_Builder.Make(GraphQL_InMemory_Adapter)
-      let make = (~name, ~opts=?) => Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
+      // In split mode, the plugin API uses an empty base fragment so plugin schema
+      // has no core fields. In unified mode, use the provided base fragment as-is.
+      let effectiveBaseFragment = if Config.splitApi {
+        emptyBaseFragment
+      } else {
+        FragmentConfig.baseFragment
+      }
+      let make = (~name, ~opts=?) => Builder.make(~name, ~baseFragment=effectiveBaseFragment, ~opts?)
     }
   }
 
@@ -485,11 +507,68 @@ module MakeWithConfig = (
         })
     })
 
-    // Register the core Plugin aggregate's types/queries/mutations from the base fragment
-    // into the GraphQL server. User plugin schemas are registered via hooks during
-    // Plugin_Builder.construct(), but the core's own schema needs explicit registration.
+    // In split mode, create dedicated core server instances.
+    // In unified mode (default), core schema registers into the plugin singletons.
+    let coreGraphQL = if Config.splitApi {
+      Some(GraphQL_ServerInstance.make(~label="GraphQL:Core"))
+    } else {
+      None
+    }
+    let coreMCP = if Config.splitApi {
+      Some(MCP_ServerInstance.make(~label="MCP:Core"))
+    } else {
+      None
+    }
+
+    // Helpers that route core registrations to the correct target.
+    let registerCoreTypes = (~sdlTypes) =>
+      switch coreGraphQL {
+      | Some(inst) => inst.registerTypes(~sdlTypes)
+      | None => GraphQL_Server.registerTypes(~sdlTypes)
+      }
+    let registerCoreQueries = (~sdlFields, ~resolvers) =>
+      switch coreGraphQL {
+      | Some(inst) => inst.registerQueries(~sdlFields, ~resolvers)
+      | None => GraphQL_Server.registerQueries(~sdlFields, ~resolvers)
+      }
+    let registerCoreMutations = (~sdlFields, ~resolvers) =>
+      switch coreGraphQL {
+      | Some(inst) => inst.registerMutations(~sdlFields, ~resolvers)
+      | None => GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
+      }
+    let getCoreMutationResolver = fieldName =>
+      switch coreGraphQL {
+      | Some(inst) => inst.getMutationResolver(fieldName)
+      | None => GraphQL_Server.getMutationResolver(fieldName)
+      }
+    let registerCoreMcpResources = (
+      ~pluginName,
+      ~queryEntries,
+      ~queryHandler,
+    ) =>
+      switch coreMCP {
+      | Some(inst) =>
+        inst.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
+      | None =>
+        MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
+      }
+    let registerCoreMcpTools = (
+      ~pluginName,
+      ~mutationEntries,
+      ~commandHandler,
+    ) =>
+      switch coreMCP {
+      | Some(inst) =>
+        inst.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
+      | None =>
+        MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
+      }
+
+    // Register the core Plugin aggregate's types/queries/mutations.
+    // In unified mode these go into GraphQL_Server alongside plugin schema.
+    // In split mode they go into a dedicated core GraphQL instance.
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.CoreApi.baseFragment)
-    GraphQL_Server.registerTypes(~sdlTypes=baseParts.types)
+    registerCoreTypes(~sdlTypes=baseParts.types)
 
     // Resolvers for the core Plugin queries — backed by Bus Plugin QueryDb.
     let queryResolvers = Dict.make()
@@ -522,7 +601,7 @@ module MakeWithConfig = (
         ("items", items->JSON.Encode.array),
       ])->JSON.Encode.object
     }))
-    GraphQL_Server.registerQueries(
+    registerCoreQueries(
       ~sdlFields=baseParts.queries,
       ~resolvers=queryResolvers,
     )
@@ -539,7 +618,7 @@ module MakeWithConfig = (
     mutationResolvers->Dict.set("Core_Clone", (async (_root, _args): JSON.t =>
       JSON.Encode.string("clone not supported in-memory")
     ))
-    GraphQL_Server.registerMutations(
+    registerCoreMutations(
       ~sdlFields=baseParts.mutations,
       ~resolvers=mutationResolvers,
     )
@@ -566,18 +645,18 @@ module MakeWithConfig = (
       | None => JSON.Encode.null
       }
     }
-    MCP_Server.registerResourcesFromEntries(
+    registerCoreMcpResources(
       ~pluginName="Core",
       ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
       ~queryHandler=pluginQueryHandler,
     )
 
     // Register core mutations as MCP tools using the same entry-based path as plugins.
-    MCP_Server.registerToolsFromEntries(
+    registerCoreMcpTools(
       ~pluginName="Core",
       ~mutationEntries=ReventlessCore.CoreApi.mutationEntries,
       ~commandHandler=async (toolName, args) => {
-        switch GraphQL_Server.getMutationResolver(toolName) {
+        switch getCoreMutationResolver(toolName) {
         | Some(resolver) =>
           let result = await resolver(JSON.Encode.null, args)
           switch result->JSON.Decode.string {
@@ -589,18 +668,28 @@ module MakeWithConfig = (
       },
     )
 
-    // Start the shared GraphQL server after all plugins have been built.
-    // All Output.apply chains have fired synchronously by this point,
-    // so all mutation and query resolvers are already registered in GraphQL_Server.
+    // Start servers.
+    // In unified mode: one GraphQL + one MCP server with all schema combined.
+    // In split mode: plugin servers on default ports, core servers on +1 ports.
     GraphQL_Server.start()
-    // Start the MCP server alongside GraphQL (shared lifecycle).
     MCP_Server.start()
+    switch coreGraphQL {
+    | Some(inst) =>
+      inst.start(~port=4001, ())
+      coreGraphQLRef := Some(inst)
+    | None => ()
+    }
+    switch coreMCP {
+    | Some(inst) => inst.start(~port=3002, ())
+    | None => ()
+    }
   }
 }
 
-// Default platform — diagnostic warnings enabled.
+// Default platform — diagnostic warnings enabled, unified API (no split).
 module Make = (): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   include MakeWithConfig({
     let silent = false
+    let splitApi = false
   })
 }

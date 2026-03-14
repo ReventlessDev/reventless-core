@@ -35,8 +35,28 @@ For tests where you don't want diagnostic warnings (e.g., missing command handle
 ```rescript
 module Platform = ReventlessInMemory.Platform.MakeWithConfig({
   let silent = true
+  let splitApi = false
 })
 ```
+
+### Split API Mode
+
+To serve core administrative schema (plugin management) and plugin business domain schema on separate ports:
+
+```rescript
+module Platform = ReventlessInMemory.Platform.MakeWithConfig({
+  let silent = false
+  let splitApi = true
+})
+```
+
+When `splitApi = true`:
+- **Plugin GraphQL** on port 4000 — business domain queries and mutations
+- **Core GraphQL** on port 4001 — plugin management queries and mutations
+- **Plugin MCP** on port 3001 — business domain tools and resources
+- **Core MCP** on port 3002 — administrative tools and resources
+
+When `splitApi = false` (default), all schema is served from the unified endpoints (port 4000 for GraphQL, port 3001 for MCP).
 
 ## Using in Tests
 
@@ -48,7 +68,7 @@ Use `TestRunner.setup()` to activate Pulumi mock mode before creating components
 // At the top of your test file
 ReventlessInMemory.TestRunner.setup()
 
-module Platform = ReventlessInMemory.Platform.MakeWithConfig({let silent = true})
+module Platform = ReventlessInMemory.Platform.MakeWithConfig({let silent = true; let splitApi = false})
 module App = MyPlugin.Make(Platform)
 ```
 

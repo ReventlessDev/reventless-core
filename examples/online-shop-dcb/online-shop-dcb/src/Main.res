@@ -5,7 +5,10 @@
 let _ = ReventlessInMemory.TestRunner.setup()
 
 // 2. Create the in-memory platform (starts GraphQL server on port 4000)
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessInMemory.Platform.MakeWithConfig({
+  let silent = false
+  let splitApi = true
+})
 
 // 3. Apply the two plugin modules to the platform
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
@@ -31,14 +34,14 @@ let core = Platform.Core.make(
 )
 
 // 7. Wire everything together
-Platform.makePlatform(
-  ~api=Obj.magic(),
-  ~core,
-  ~plugins=[catalogPlugin, orderingPlugin],
-)
+Platform.makePlatform(~api=Obj.magic(), ~core, ~plugins=[catalogPlugin, orderingPlugin])
 
 // 8. Print schema diagnostics when GRAPHQL_DEBUG is set
 @val external processEnv: dict<string> = "process.env"
 if processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome {
   ReventlessInMemory.GraphQL_Server.printDiagnostics()
+  switch ReventlessInMemory.Platform.getCoreGraphQL() {
+  | Some(core) => core.printDiagnostics()
+  | None => ()
+  }
 }

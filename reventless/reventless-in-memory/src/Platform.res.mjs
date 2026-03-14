@@ -26,8 +26,10 @@ import * as Counter_Builder$ReventlessInMemory from "./components/Counter_Builde
 import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/core/ReadModels/Plugin/PluginReadModelSpec.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
+import * as MCP_ServerInstance$ReventlessInMemory from "./adapter/MCP_ServerInstance.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "./components/DcbEventLog_Builder.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "./components/ExtensionPoint_Builder.res.mjs";
+import * as GraphQL_ServerInstance$ReventlessInMemory from "./adapter/GraphQL_ServerInstance.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateViewSlice_Builder.res.mjs";
 import * as AutomationSlice_Builder$ReventlessInMemory from "./components/AutomationSlice_Builder.res.mjs";
 import * as GraphQL_InMemory_Adapter$ReventlessInMemory from "./adapter/Api/GraphQL_InMemory_Adapter.res.mjs";
@@ -38,6 +40,14 @@ import * as DcbCommandTopicResolvers_GraphQL$ReventlessInMemory from "./adapter/
 import * as OutboundTranslationSlice_Builder$ReventlessInMemory from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res.mjs";
 import * as InboundTranslationResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res.mjs";
+
+let coreGraphQLRef = {
+  contents: undefined
+};
+
+function getCoreGraphQL() {
+  return coreGraphQLRef.contents;
+}
 
 function MakeWithConfig(Config) {
   let Bus = InMemory_Bus$ReventlessInMemory.Impl({
@@ -116,9 +126,15 @@ function MakeWithConfig(Config) {
   let DcbEventLog = {
     Make: Make$10
   };
-  let Make$11 = Config => {
+  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+    types: [],
+    mutations: [],
+    queries: []
+  });
+  let Make$11 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
-    let make = (name, opts) => Builder.make(name, Config.baseFragment, opts);
+    let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
+    let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
     return {
       make: make
     };
@@ -434,8 +450,52 @@ function MakeWithConfig(Config) {
         pluginOps_save(id, entry, "Any", undefined);
       });
     });
+    let coreGraphQL = Config.splitApi ? GraphQL_ServerInstance$ReventlessInMemory.make("GraphQL:Core") : undefined;
+    let coreMCP = Config.splitApi ? MCP_ServerInstance$ReventlessInMemory.make("MCP:Core") : undefined;
+    let registerCoreTypes = sdlTypes => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.registerTypes(sdlTypes);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.registerTypes(sdlTypes);
+      }
+    };
+    let registerCoreQueries = (sdlFields, resolvers) => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.registerQueries(sdlFields, resolvers);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.registerQueries(sdlFields, resolvers);
+      }
+    };
+    let registerCoreMutations = (sdlFields, resolvers) => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.registerMutations(sdlFields, resolvers);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.registerMutations(sdlFields, resolvers);
+      }
+    };
+    let getCoreMutationResolver = fieldName => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.getMutationResolver(fieldName);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.getMutationResolver(fieldName);
+      }
+    };
+    let registerCoreMcpResources = (pluginName, queryEntries, queryHandler) => {
+      if (coreMCP !== undefined) {
+        return coreMCP.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
+      } else {
+        return MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
+      }
+    };
+    let registerCoreMcpTools = (pluginName, mutationEntries, commandHandler) => {
+      if (coreMCP !== undefined) {
+        return coreMCP.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
+      } else {
+        return MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
+      }
+    };
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(CoreApi$ReventlessCore.baseFragment);
-    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    registerCoreTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers["Core_Plugin"] = async (_root, args) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -464,12 +524,12 @@ function MakeWithConfig(Config) {
         ]
       ]);
     };
-    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    registerCoreQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     mutationResolvers["Core_Plugin_Activate"] = async (_root, _args) => "ok";
     mutationResolvers["Core_Plugin_Deactivate"] = async (_root, _args) => "ok";
     mutationResolvers["Core_Clone"] = async (_root, _args) => "clone not supported in-memory";
-    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
+    registerCoreMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
@@ -488,9 +548,9 @@ function MakeWithConfig(Config) {
         return [];
       }
     };
-    MCP_Server$ReventlessInMemory.registerResourcesFromEntries("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    MCP_Server$ReventlessInMemory.registerToolsFromEntries("Core", CoreApi$ReventlessCore.mutationEntries, async (toolName, args) => {
-      let resolver = GraphQL_Server$ReventlessInMemory.getMutationResolver(toolName);
+    registerCoreMcpResources("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
+    registerCoreMcpTools("Core", CoreApi$ReventlessCore.mutationEntries, async (toolName, args) => {
+      let resolver = getCoreMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
@@ -504,6 +564,13 @@ function MakeWithConfig(Config) {
     });
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    if (coreGraphQL !== undefined) {
+      coreGraphQL.start(4001, undefined);
+      coreGraphQLRef.contents = coreGraphQL;
+    }
+    if (coreMCP !== undefined) {
+      return coreMCP.start(3002, undefined);
+    }
   };
   return {
     Aggregate: Aggregate,
@@ -608,9 +675,15 @@ function Make($star) {
   let DcbEventLog = {
     Make: Make$11
   };
-  let Make$12 = Config => {
+  GraphQL_Stitcher$ReventlessCore.encode({
+    types: [],
+    mutations: [],
+    queries: []
+  });
+  let Make$12 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
-    let make = (name, opts) => Builder.make(name, Config.baseFragment, opts);
+    let effectiveBaseFragment = FragmentConfig.baseFragment;
+    let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
     return {
       make: make
     };
@@ -926,8 +999,52 @@ function Make($star) {
         pluginOps_save(id, entry, "Any", undefined);
       });
     });
+    let coreGraphQL;
+    let coreMCP;
+    let registerCoreTypes = sdlTypes => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.registerTypes(sdlTypes);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.registerTypes(sdlTypes);
+      }
+    };
+    let registerCoreQueries = (sdlFields, resolvers) => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.registerQueries(sdlFields, resolvers);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.registerQueries(sdlFields, resolvers);
+      }
+    };
+    let registerCoreMutations = (sdlFields, resolvers) => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.registerMutations(sdlFields, resolvers);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.registerMutations(sdlFields, resolvers);
+      }
+    };
+    let getCoreMutationResolver = fieldName => {
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.getMutationResolver(fieldName);
+      } else {
+        return GraphQL_Server$ReventlessInMemory.getMutationResolver(fieldName);
+      }
+    };
+    let registerCoreMcpResources = (pluginName, queryEntries, queryHandler) => {
+      if (coreMCP !== undefined) {
+        return coreMCP.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
+      } else {
+        return MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
+      }
+    };
+    let registerCoreMcpTools = (pluginName, mutationEntries, commandHandler) => {
+      if (coreMCP !== undefined) {
+        return coreMCP.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
+      } else {
+        return MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
+      }
+    };
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(CoreApi$ReventlessCore.baseFragment);
-    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    registerCoreTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers["Core_Plugin"] = async (_root, args) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -956,12 +1073,12 @@ function Make($star) {
         ]
       ]);
     };
-    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    registerCoreQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     mutationResolvers["Core_Plugin_Activate"] = async (_root, _args) => "ok";
     mutationResolvers["Core_Plugin_Deactivate"] = async (_root, _args) => "ok";
     mutationResolvers["Core_Clone"] = async (_root, _args) => "clone not supported in-memory";
-    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
+    registerCoreMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
@@ -980,9 +1097,9 @@ function Make($star) {
         return [];
       }
     };
-    MCP_Server$ReventlessInMemory.registerResourcesFromEntries("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    MCP_Server$ReventlessInMemory.registerToolsFromEntries("Core", CoreApi$ReventlessCore.mutationEntries, async (toolName, args) => {
-      let resolver = GraphQL_Server$ReventlessInMemory.getMutationResolver(toolName);
+    registerCoreMcpResources("Core", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
+    registerCoreMcpTools("Core", CoreApi$ReventlessCore.mutationEntries, async (toolName, args) => {
+      let resolver = getCoreMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
@@ -996,6 +1113,13 @@ function Make($star) {
     });
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    if (coreGraphQL !== undefined) {
+      coreGraphQL.start(4001, undefined);
+      coreGraphQLRef.contents = coreGraphQL;
+    }
+    if (coreMCP !== undefined) {
+      return coreMCP.start(3002, undefined);
+    }
   };
   let Counter_make = Counter.make;
   let Counter_outputs = Counter.outputs;
@@ -1028,6 +1152,8 @@ function Make($star) {
 }
 
 export {
+  coreGraphQLRef,
+  getCoreGraphQL,
   MakeWithConfig,
   Make,
 }

@@ -19,6 +19,7 @@ This guide walks through building platforms with plugins using Reventless. It co
    - [Plugin Composition](#plugin-composition)
 5. [Platform Package](#platform-package)
 6. [Configuration Reference](#configuration-reference)
+   - [Split API Mode](#split-api-mode)
 7. [Cross-Plugin Communication](#cross-plugin-communication)
 8. [Conventions & Pitfalls](#conventions--pitfalls)
 9. [DCB Approach](#dcb-approach)
@@ -769,6 +770,72 @@ In both `package.json` and `rescript.json`, order dependencies as:
 |---------|---------|-----|
 | Framework & plugin packages | `bs-dependencies` | Used in production source |
 | `@glennsl/rescript-jest` | `dev-dependencies` | Used only in test sources |
+
+### Split API mode
+
+By default, the in-memory platform serves core administrative schema (plugin management, clone) and plugin business domain schema from a single GraphQL endpoint (port 4000) and a single MCP endpoint (port 3001).
+
+Use `MakeWithConfig` with `splitApi = true` to serve them on separate ports:
+
+```rescript
+let _ = ReventlessInMemory.TestRunner.setup()
+
+module Platform = ReventlessInMemory.Platform.MakeWithConfig({
+  let silent = false
+  let splitApi = true
+})
+
+// ... build plugins and core as usual ...
+
+Platform.makePlatform(~api=Obj.magic(), ~core, ~plugins=[catalogPlugin, orderingPlugin])
+```
+
+**Port assignments:**
+
+| Mode | Service | Port |
+|------|---------|------|
+| `splitApi=false` (default) | GraphQL (unified) | 4000 |
+| `splitApi=false` (default) | MCP (unified) | 3001 |
+| `splitApi=true` | GraphQL (plugin) | 4000 |
+| `splitApi=true` | GraphQL (core) | 4001 |
+| `splitApi=true` | MCP (plugin) | 3001 |
+| `splitApi=true` | MCP (core) | 3002 |
+
+**When to use split mode:**
+
+- **Security boundary** — restrict administrative operations (activate/deactivate plugins, clone) to internal networks or specific auth groups, while exposing business domain APIs to external clients.
+- **AI agent clarity** — an agent working with business data sees only domain-relevant tools and queries, not administrative operations like `Core_Plugin_Activate`.
+- **Independent scaling** — core admin traffic is low-frequency; plugin business traffic is high-frequency. Separate endpoints allow independent rate limiting.
+
+**What changes in split mode:**
+
+- Core types/queries/mutations (`Core_Plugin`, `Core_Plugins`, `Core_Plugin_Activate`, `Core_Plugin_Deactivate`, `Core_Clone`) register into a dedicated `GraphQL_ServerInstance` on port 4001 instead of the shared singleton.
+- Core MCP tools/resources register into a dedicated `MCP_ServerInstance` on port 3002.
+- Plugin schema continues to register into the `GraphQL_Server` / `MCP_Server` singletons on the default ports.
+- No changes to plugin code, resolver modules, or hooks.
+
+**AWS split mode** works the same way — use `MakeWithConfig` on the AWS platform:
+
+```rescript
+module Platform = ReventlessAws.Platform.MakeWithConfig(
+  {let api = appSyncApi; let apiRole = appSyncRole},
+  {let splitApi = true},
+)
+```
+
+In split mode, `makePlatform` creates a dedicated core AppSync API. Access the core API outputs for stack exports:
+
+```rescript
+// After makePlatform:
+switch ReventlessAws.Platform.getSplitApiOutputs() {
+| Some({coreApi}) =>
+  let coreApiId = coreApi->Pulumi.Output.apply(api => api.id)
+  let coreApiUrl = coreApi->Pulumi.Output.apply(api => api.uris)
+    ->Pulumi.Output.apply(u => u.graphQL)
+  // Export as Pulumi stack outputs from your entry point
+| None => () // unified mode — no separate core API
+}
+```
 
 ---
 

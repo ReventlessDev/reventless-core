@@ -90,6 +90,29 @@ let generateConfig = (
   {serverName, serverVersion, tools, resources, eventHistoryResources}
 }
 
+/** Generate the core-only MCP config for split mode.
+    Contains only core administrative tools (Plugin_Activate, Plugin_Deactivate, Clone)
+    and core resources (Plugin, Plugins). No plugin-contributed entries.
+
+    The commandTopicArns and queryDbTableNames must map core field names to their
+    corresponding AWS resource ARNs/names. When Lambda Function URL deployment is
+    available (Step 13), these will be wired from Pulumi stack outputs. */
+let generateCoreConfig = (
+  ~serverName: string,
+  ~serverVersion: string,
+  ~commandTopicArns: dict<string>=Dict.make(),
+  ~queryDbTableNames: dict<string>=Dict.make(),
+): mcpConfig =>
+  generateConfig(
+    ~serverName=`${serverName}-core`,
+    ~serverVersion,
+    ~pluginName="Core",
+    ~mutationEntries=ReventlessCore.CoreApi.mutationEntries,
+    ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
+    ~commandTopicArns,
+    ~queryDbTableNames,
+  )
+
 // ─── URI parsing helpers ─────────────────────────────────────────────────
 
 /** Extract entity ID from the last path segment (before any query string). */

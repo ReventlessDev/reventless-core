@@ -22,8 +22,11 @@ function fromSury(parentName, fieldName, schema) {
         _0: "ScalarString"
       };
     case "array" :
+      let additionalItems = schema.additionalItems;
       let match = schema.items[0];
-      let itemType = match !== undefined ? fromSury(parentName, fieldName, match.schema) : "ScalarString";
+      let itemType = match !== undefined ? fromSury(parentName, fieldName, match.schema) : (
+          additionalItems === "strip" || additionalItems === "strict" ? "ScalarString" : fromSury(parentName, fieldName, additionalItems)
+        );
       return {
         TAG: "ArrayOf",
         _0: itemType

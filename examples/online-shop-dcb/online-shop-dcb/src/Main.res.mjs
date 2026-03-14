@@ -10,7 +10,10 @@ import * as InMemory_PluginSpec$ReventlessInMemory from "@reventlessdev/reventle
 
 TestRunner$ReventlessInMemory.setup();
 
-let Platform = Platform$ReventlessInMemory.Make({});
+let Platform = Platform$ReventlessInMemory.MakeWithConfig({
+  silent: false,
+  splitApi: true
+});
 
 let Catalog = CatalogPlugin$CatalogPlugin.Make(Platform);
 
@@ -31,6 +34,10 @@ Platform.makePlatform(undefined, core, [
 
 if (Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"])) {
   GraphQL_Server$ReventlessInMemory.printDiagnostics();
+  let core$1 = Platform$ReventlessInMemory.getCoreGraphQL();
+  if (core$1 !== undefined) {
+    core$1.printDiagnostics();
+  }
 }
 
 export {

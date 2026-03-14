@@ -5,13 +5,39 @@
 // the application-defined arguments (Spec, Behavior, Mappings).
 //
 // Example:
-//   module Platform = Platform.Make(Config)
+//   module Platform = Platform.Make({let api = ...; let apiRole = ...})
 //   module App = MyPlugin.Make(Platform)
+//
+// Split API mode:
+//   module Platform = Platform.MakeWithConfig(
+//     {let api = ...; let apiRole = ...},
+//     {let splitApi = true},
+//   )
+// When splitApi=true, the plugin Api.Make creates a plugin-only AppSync API
+// (no core schema). A separate core AppSync API is created internally and
+// its schema is pushed in makePlatform.
 
-module Make = (Api: {
-  let api: Types.AppSync.api
-  let apiRole: Types.AppSync.role
-}): (ReventlessInfra.Platform.T
+// Split API outputs — populated by makePlatform when splitApi=true.
+// Access via getSplitApiOutputs() after makePlatform has been called.
+type splitApiOutputs = {
+  coreApi: Types.AppSync.api,
+  coreRole: Types.AppSync.role,
+}
+let splitApiOutputsRef: ref<option<splitApiOutputs>> = ref(None)
+
+/** Returns the core API outputs created in split mode.
+    Call after `makePlatform` — returns `None` in unified mode. */
+let getSplitApiOutputs = () => splitApiOutputsRef.contents
+
+module MakeWithConfig = (
+  Api: {
+    let api: Types.AppSync.api
+    let apiRole: Types.AppSync.role
+  },
+  Config: {
+    let splitApi: bool
+  },
+): (ReventlessInfra.Platform.T
   with type api = Types.AppSync.api
   and type role = Types.AppSync.role
 ) => {
@@ -82,13 +108,28 @@ module Make = (Api: {
     ): (ReventlessInfra.DcbEventLog.T with module Spec = Spec) => DcbEventLog_Builder.Make(Spec)
   }
 
+  // Empty base fragment — no types, no mutations, no queries.
+  // Used by the plugin Api in split mode so plugin schema has no core fields.
+  let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
+    types: [],
+    mutations: [],
+    queries: [],
+  })
+
   module Api = {
     module Make = (
-      Config: {let baseFragment: ReventlessInfra.Api.schemaFragment},
+      FragmentConfig: {let baseFragment: ReventlessInfra.Api.schemaFragment},
     ): ReventlessInfra.Api.T => {
       module Builder = ReventlessCore.Api_Builder.Make(AppSync_Adapter)
+      // In split mode, the plugin API uses an empty base fragment so plugin schema
+      // has no core fields. In unified mode, use the provided base fragment as-is.
+      let effectiveBaseFragment = if Config.splitApi {
+        emptyBaseFragment
+      } else {
+        FragmentConfig.baseFragment
+      }
       let make = (~name, ~opts=?) =>
-        Builder.make(~name, ~baseFragment=Config.baseFragment, ~opts?)
+        Builder.make(~name, ~baseFragment=effectiveBaseFragment, ~opts?)
     }
   }
 
@@ -137,9 +178,49 @@ module Make = (Api: {
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpNotSupported
 
+  // In split mode, create a dedicated core AppSync API and push the core schema.
+  // In unified mode, makePlatform is a no-op (schema stitching handled by events).
   let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
-    // Schema stitching is handled by the event system (ConnectPluginExtension).
-    // Stack exports are set by user entry-point code.
-    ()
+    if Config.splitApi {
+      // Create a dedicated AppSync API for core administrative schema.
+      let (coreApiOutput, coreRoleOutput) = AppSync_Adapter.makeApiResource(
+        ~name="core-api",
+        ~opts={},
+      )
+
+      // Store outputs so users can export them as stack outputs.
+      splitApiOutputsRef := Some({coreApi: coreApiOutput, coreRole: coreRoleOutput})
+
+      // Push the core schema (base fragment only, no plugin fragments).
+      // This is a one-time operation — core schema is static.
+      let coreBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+        ReventlessCore.CoreApi.baseFragment,
+        ~group="Admin",
+      )
+      let _ =
+        coreApiOutput->Pulumi.Output.apply(coreApi => {
+          let _ = AppSync_Adapter.updateSchema(
+            ~api=Pulumi.Output.make(coreApi),
+            ~baseFragment=coreBaseFragment,
+            ~pluginFragments=[],
+          )
+        })
+    }
   }
+}
+
+// Default platform — unified API (no split).
+module Make = (Api: {
+  let api: Types.AppSync.api
+  let apiRole: Types.AppSync.role
+}): (ReventlessInfra.Platform.T
+  with type api = Types.AppSync.api
+  and type role = Types.AppSync.role
+) => {
+  include MakeWithConfig(
+    Api,
+    {
+      let splitApi = false
+    },
+  )
 }

@@ -255,32 +255,34 @@ let diagnostics = (): diagnostics => {
 }
 
 let printDiagnostics = () => {
+  let p = s => Console.log(`[GraphQL] ${s}`)
   let d = diagnostics()
-  Console.log("[GraphQL Diagnostics]")
-  Console.log(`  Types (${d.typeCount->Int.toString}):`)
-  d.registeredTypeDefinitions->Array.forEach(t => Console.log(`    - ${t}`))
-  Console.log(
+  p("Diagnostics")
+  p(`  Types (${d.typeCount->Int.toString}):`)
+  d.registeredTypeDefinitions->Array.forEach(t => p(`    - ${t}`))
+  p(
     `  Mutations: ${d.sdlMutationCount->Int.toString} SDL fields, ${d.resolverMutationCount->Int.toString} resolvers`,
   )
-  d.registeredMutationFields->Array.forEach(f => Console.log(`    SDL: ${f}`))
-  d.registeredMutationResolvers->Array.forEach(r => Console.log(`    Resolver: ${r}`))
-  Console.log(
+  d.registeredMutationFields->Array.forEach(f => p(`    SDL: ${f}`))
+  d.registeredMutationResolvers->Array.forEach(r => p(`    Resolver: ${r}`))
+  p(
     `  Queries: ${d.sdlQueryCount->Int.toString} SDL fields, ${d.resolverQueryCount->Int.toString} resolvers`,
   )
-  d.registeredQueryFields->Array.forEach(f => Console.log(`    SDL: ${f}`))
-  d.registeredQueryResolvers->Array.forEach(r => Console.log(`    Resolver: ${r}`))
+  d.registeredQueryFields->Array.forEach(f => p(`    SDL: ${f}`))
+  d.registeredQueryResolvers->Array.forEach(r => p(`    Resolver: ${r}`))
   if d.mismatches->Array.length > 0 {
-    Console.log(`  Mismatches (${d.mismatches->Array.length->Int.toString}):`)
-    d.mismatches->Array.forEach(m => Console.log(`    ⚠ ${m}`))
+    p(`  Mismatches (${d.mismatches->Array.length->Int.toString}):`)
+    d.mismatches->Array.forEach(m => p(`    ⚠ ${m}`))
   } else {
-    Console.log("  No mismatches")
+    p("  No mismatches")
   }
-  Console.log(`  Server running: ${d.serverRunning ? "yes" : "no"}`)
+  p(`  Server running: ${d.serverRunning ? "yes" : "no"}`)
   switch d.fullSdl {
   | Some(sdl) =>
-    Console.log("\n--- Full SDL ---")
-    Console.log(sdl)
-    Console.log("--- End ---")
-  | None => Console.log("  No SDL recorded")
+    p("")
+    p("--- Full SDL ---")
+    sdl->String.split("\n")->Array.forEach(line => p(line))
+    p("--- End ---")
+  | None => p("  No SDL recorded")
   }
 }
