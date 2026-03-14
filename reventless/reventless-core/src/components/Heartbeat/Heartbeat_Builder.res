@@ -24,9 +24,9 @@ module Make = (Runner: Heartbeat_Adapter.Runner): (
     let _ = heartbeat->Component.setOutputs(outputs)
   }
 
-  let makeHandler = (~id, ~timeout=10, ~publishToCorePluginExtensionPoint) => {
+  let makeHandler = (~id, ~timeout=10, ~publishToPluginExtensionPoint) => {
     module Callback = Heartbeat_Callback.Make({
-      let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
+      let publishToPluginExtensionPoint = publishToPluginExtensionPoint
       let id = id
       let timeout = timeout
     })

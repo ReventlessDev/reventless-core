@@ -18,7 +18,7 @@ Platform.makePlatform("1.0.0", [
   {
     make: Ordering.make
   }
-], undefined, undefined, undefined, undefined);
+]);
 
 console.log("\n========================================");
 

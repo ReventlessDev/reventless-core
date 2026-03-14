@@ -6,7 +6,7 @@ draft: false
 
 ## Heartbeat → CloudWatch Events
 
-The Heartbeat adapter provides periodic heartbeat signals using CloudWatch Events, enabling health monitoring, keepalive mechanisms, and periodic extension point invocations within the Core Plugin.
+The Heartbeat adapter provides periodic heartbeat signals using CloudWatch Events, enabling health monitoring, keepalive mechanisms, and periodic extension point invocations within the platform admin.
 
 ## CloudWatch Event Rule Configuration
 
@@ -18,7 +18,7 @@ let cloudwatchEventRule = {
   EventRule.make(
     ~name=Pulumi.Pulumi.getStackName() ++ ("-" ++ name),
     ~args={
-      description: "Send a heartbeat to the Core Plugin ExtensionPoint"->Pulumi.Input.make,
+      description: "Send a heartbeat to the admin Plugin ExtensionPoint"->Pulumi.Input.make,
       scheduleExpression: EventRule.ScheduleExpression.every(timeout->Minutes),
     },
     ~opts,
@@ -65,7 +65,7 @@ let _attachPoliciesAndSetEventTarget =
       ~opts,
     )
 
-    // 2. Create policy for Lambda to send messages to Core SQS queue
+    // 2. Create policy for Lambda to send messages to admin SQS queue
     let heartbeatLambdaSendMessagePolicyDocument = {
       PulumiAws.PolicyDocument.make(
         ~statements=[
@@ -117,14 +117,14 @@ let _attachPoliciesAndSetEventTarget =
    - **Resource**: Specific Lambda function
    - **Effect**: Allows CloudWatch Events to trigger Lambda on schedule
 
-2. **SQS Send Policy** - Grants Lambda permission to send heartbeat messages to Core Plugin's SQS queue
+2. **SQS Send Policy** - Grants Lambda permission to send heartbeat messages to the admin Plugin ExtensionPoint's SQS queue
    - **Action**: `sqs:SendMessage`
-   - **Resource**: Core Plugin's CommandTopic SQS queue URN
-   - **Purpose**: Enables Lambda to publish heartbeat events to the Core ExtensionPoint
+   - **Resource**: Admin CommandTopic SQS queue URN
+   - **Purpose**: Enables Lambda to publish heartbeat events to the admin ExtensionPoint
 
 3. **Policy Merging** - Combines logging and SQS policies into a single IAM role policy
    - **Logging policy**: Standard CloudWatch Logs permissions (`logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`)
-   - **SQS policy**: SendMessage permission for Core queue
+   - **SQS policy**: SendMessage permission for admin queue
    - **Attachment**: Attached to Lambda execution role
 
 4. **Event Target** - Configures Lambda as the target for the CloudWatch Event Rule
@@ -134,21 +134,21 @@ let _attachPoliciesAndSetEventTarget =
 
 **Key features:**
 
-- **Least privilege** - Lambda only has permission to send to specific Core queue
+- **Least privilege** - Lambda only has permission to send to the specific admin queue
 - **Resource binding** - Uses `Pulumi.Output.all3` to coordinate resource dependencies
 - **Automatic wiring** - All permissions and targets are configured automatically at deploy-time
 - **CloudWatch Logs** - Includes standard logging permissions for debugging and monitoring
 
-## Core Plugin Integration
+## Admin Plugin ExtensionPoint Integration
 
-The Heartbeat adapter is specifically designed to integrate with the Core Plugin's ExtensionPoint mechanism:
+The Heartbeat adapter is specifically designed to integrate with the admin Plugin ExtensionPoint mechanism:
 
 **Heartbeat flow:**
 
 1. **CloudWatch Event fires** - Rule triggers Lambda based on schedule expression
 2. **Lambda executes** - Heartbeat Lambda function is invoked
-3. **Message published** - Lambda sends heartbeat message to Core Plugin's SQS queue
-4. **Core processes** - Core Plugin's ExtensionPoint receives and processes heartbeat
+3. **Message published** - Lambda sends heartbeat message to admin Plugin ExtensionPoint's SQS queue
+4. **Admin processes** - Plugin ExtensionPoint receives and processes heartbeat
 5. **Extension invocation** - Registered extensions respond to heartbeat signal
 
 **`remoteChannel` parameter:**
@@ -157,14 +157,14 @@ The Heartbeat adapter is specifically designed to integrate with the Core Plugin
 let coreSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
 ```
 
-The `remoteChannel` parameter provides access to the Core Plugin's CommandTopic SQS queue:
-- **Type**: `Reventless.CommandTopic.outputs` from Core Plugin
-- **Purpose**: Enables Heartbeat to send messages to Core's ExtensionPoint
+The `remoteChannel` parameter provides access to the admin Plugin ExtensionPoint's CommandTopic SQS queue:
+- **Type**: `Reventless.CommandTopic.outputs` from the admin Plugin ExtensionPoint
+- **Purpose**: Enables Heartbeat to send messages to the admin ExtensionPoint
 - **Resolution**: `findResolvedResource` extracts the SQS queue resource from the channel outputs
 
 **Why SQS instead of direct invocation?**
 
-- **Decoupling** - Heartbeat doesn't need to know about Core's Lambda implementation
+- **Decoupling** - Heartbeat doesn't need to know about the admin Lambda implementation
 - **Reliability** - SQS provides message durability and retry logic
 - **Consistency** - Uses the same CommandTopic pattern as other components
 - **Extensibility** - Multiple heartbeat sources can send to the same queue
@@ -206,7 +206,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 **Flow steps:**
 
 1. **Create Event Rule** - Pulumi provisions CloudWatch Event Rule with schedule expression
-2. **Extract resources** - Gets Lambda function, Lambda role, and Core SQS queue from parameters
+2. **Extract resources** - Gets Lambda function, Lambda role, and admin SQS queue from parameters
 3. **Configure permissions** - Sets up Lambda permissions, IAM policies, and event target
 4. **Return resources** - Returns Lambda and Event Rule resources for dependency tracking
 
@@ -229,7 +229,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   - WebSocket connection keepalives
   - Session renewal
   - Connection pool maintenance
-- **Extension Point triggers** - Invoke Core Plugin extensions periodically
+- **Extension Point triggers** - Invoke admin extensions periodically
   - Scheduled cleanup tasks via extensions
   - Periodic data synchronization
   - Metric collection and reporting
@@ -240,16 +240,16 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 
 **Common patterns:**
 
-- **Health Check Pattern** - Heartbeat → Core ExtensionPoint → Health Check Extension
-  - Heartbeat triggers Core Plugin
+- **Health Check Pattern** - Heartbeat → Admin ExtensionPoint → Health Check Extension
+  - Heartbeat triggers admin Plugin ExtensionPoint
   - Extension performs health checks
   - Extension publishes events or commands based on health status
-- **Cleanup Pattern** - Heartbeat → Core ExtensionPoint → Cleanup Extension
-  - Heartbeat triggers Core Plugin
+- **Cleanup Pattern** - Heartbeat → Admin ExtensionPoint → Cleanup Extension
+  - Heartbeat triggers admin Plugin ExtensionPoint
   - Extension queries for expired/stale data
   - Extension publishes delete commands
-- **Sync Pattern** - Heartbeat → Core ExtensionPoint → Sync Extension
-  - Heartbeat triggers Core Plugin
+- **Sync Pattern** - Heartbeat → Admin ExtensionPoint → Sync Extension
+  - Heartbeat triggers admin Plugin ExtensionPoint
   - Extension checks for data to synchronize
   - Extension publishes commands to update aggregates
 
@@ -257,15 +257,15 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 
 | Feature | Heartbeat | ScheduledPublisher |
 |---------|-----------|-------------------|
-| **Purpose** | Core Plugin ExtensionPoint trigger | General scheduled event publishing |
-| **Target** | Fixed (Core Plugin SQS queue) | Dynamic (any target) |
+| **Purpose** | Admin Plugin ExtensionPoint trigger | General scheduled event publishing |
+| **Target** | Fixed (admin Plugin ExtensionPoint SQS queue) | Dynamic (any target) |
 | **Runtime operations** | None (pure deploy-time) | `createSchedule`, `deleteSchedule` |
 | **Use case** | Framework-level health/monitoring | Application-level scheduled workflows |
 | **Flexibility** | Fixed schedule at deploy-time | Dynamic schedules at runtime |
-| **Integration** | Tightly coupled to Core Plugin | Loosely coupled to any component |
+| **Integration** | Tightly coupled to admin Plugin ExtensionPoint | Loosely coupled to any component |
 
 **When to choose Heartbeat:**
-- Need to integrate with Core Plugin's extension mechanism
+- Need to integrate with admin Plugin ExtensionPoint mechanism
 - Want simple, fixed-interval triggers
 - Don't need dynamic schedule management
 - Focused on health monitoring and periodic checks
@@ -275,4 +275,3 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 - Want flexible target configuration
 - Require user-configurable schedules
 - Building application-specific scheduled workflows
-

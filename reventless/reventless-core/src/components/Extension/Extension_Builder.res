@@ -6,7 +6,7 @@ module Make = (
   type component = Extension.component
 
   let construct = (
-    ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
+    ~publishToPluginExtensionPoint: CommandTopic.publishJsons,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: dict<array<string>>,
     ~publishToReadModels: dict<EventCollector.enqueueEvent>,
@@ -19,7 +19,7 @@ module Make = (
       Mappings,
       {
         let publishToAggregates = publishToAggregates
-        let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
+        let publishToPluginExtensionPoint = publishToPluginExtensionPoint
         let readModelNamesForSourceName = readModelNamesForSourceName
         let publishToReadModels = publishToReadModels
         let queryEngine = queryEngine
@@ -45,7 +45,7 @@ module Make = (
   }
 
   let make = (
-    ~publishToCorePluginExtensionPoint,
+    ~publishToPluginExtensionPoint,
     ~publishToAggregates,
     ~readModelNamesForSourceName,
     ~publishToReadModels,
@@ -56,7 +56,7 @@ module Make = (
       ~componentType=Extension.componentType->ComponentType.toString,
       ~name=Spec.name ++ ("." ++ Mappings.name),
       ~construct=construct(
-        ~publishToCorePluginExtensionPoint,
+        ~publishToPluginExtensionPoint,
         ~publishToAggregates,
         ~readModelNamesForSourceName,
         ~publishToReadModels,

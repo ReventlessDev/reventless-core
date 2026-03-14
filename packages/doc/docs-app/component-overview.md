@@ -623,22 +623,22 @@ scheduler -> cmd_topic: triggers { class: command-flow }
 
 ### Heartbeat
 
-The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the Core Plugin's ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
+The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the platform admin's Plugin ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
 
 ```d2
 direction: right
 
 cloudwatch: CloudWatch Events { class: scheduler }
 lambda: Lambda { class: heartbeat }
-core_plugin: Core Plugin { class: extension-point }
+admin_ep: Admin Plugin ExtensionPoint { class: extension-point }
 
 cloudwatch -> lambda: triggers
-lambda -> core_plugin: heartbeat { class: event-flow }
+lambda -> admin_ep: heartbeat { class: event-flow }
 ```
 
 - **responsibility**: generate periodic heartbeat signals for health monitoring and extension triggering
-- **in**: timeout configuration and Core Plugin connection details
-- **out**: periodic heartbeat messages sent to Core Plugin ExtensionPoint
+- **in**: timeout configuration and admin Plugin ExtensionPoint connection details
+- **out**: periodic heartbeat messages sent to admin Plugin ExtensionPoint
 
 [Read more about the Heartbeat component.](./components/heartbeat.md)
 

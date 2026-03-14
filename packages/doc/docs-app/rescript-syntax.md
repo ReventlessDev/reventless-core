@@ -366,7 +366,6 @@ module MyComponent = MyComponent_Builder.Make(MySpec)
 
 Common patterns in Reventless:
 - `Make` - Primary functor for creating component instances
-- `MakeFromCore` - Functor that requires the Core module
 - Builder functors typically accept a `Spec` module with configuration and type definitions
 
 ## PPX

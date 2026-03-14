@@ -6,7 +6,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 function Make(Spec) {
   let heartbeat = (param, param$1) => {
     let msgId = Message$ReventlessCore.uuid();
-    return Spec.publishToCorePluginExtensionPoint([{
+    return Spec.publishToPluginExtensionPoint([{
         id: Spec.id,
         meta: {
           service: PluginExtensionPointSpec$ReventlessInfra.name,

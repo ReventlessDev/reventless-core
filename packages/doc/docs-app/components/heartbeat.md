@@ -10,30 +10,30 @@ This component follows the Reventless [Component Structure Pattern](/framework/i
 
 ## Overview
 
-The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the Core Plugin's ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
+The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the platform admin's Plugin ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
 
 ```d2
 CloudWatch: CloudWatch Events { class: aws-service }
 Lambda: Lambda Function { class: aws-service }
-CoreSQS: Core Plugin SQS { class: plugin }
+AdminSQS: Admin Plugin SQS { class: plugin }
 ExtensionPoint: Extension Point { class: extension-point }
 Extensions: Extensions { class: extension }
 
 CloudWatch -> Lambda: triggers
-Lambda -> CoreSQS: heartbeat message
-CoreSQS -> ExtensionPoint: processes
+Lambda -> AdminSQS: heartbeat message
+AdminSQS -> ExtensionPoint: processes
 ExtensionPoint -> Extensions: invokes
 ```
 
 ## Purpose and Responsibilities
 
 - **Responsibility:** Generate periodic heartbeat signals for health monitoring and extension triggering
-- **In:** Timeout configuration and Core Plugin connection details
-- **Out:** Periodic heartbeat messages sent to Core Plugin ExtensionPoint
+- **In:** Timeout configuration and admin Plugin ExtensionPoint connection details
+- **Out:** Periodic heartbeat messages sent to admin Plugin ExtensionPoint
 
 ## Component Configuration
 
-The Heartbeat component requires minimal configuration, focusing on timing and Core Plugin integration:
+The Heartbeat component requires minimal configuration, focusing on timing and admin Plugin ExtensionPoint integration:
 
 ### Basic Setup
 
@@ -41,11 +41,11 @@ The Heartbeat component requires minimal configuration, focusing on timing and C
 // Create a heartbeat component
 let heartbeat = Reventless.Heartbeat.make(~name="system-heartbeat")
 
-// Connect to Core Plugin with timeout configuration
-let connectHeartbeat = (~coreCommandTopic, ~runtime) => {
+// Connect to admin Plugin ExtensionPoint with timeout configuration
+let connectHeartbeat = (~adminCommandTopic, ~runtime) => {
   heartbeat->Reventless.Heartbeat.connect(
     ~runtime,
-    ~remoteChannel=coreCommandTopic.outputs,
+    ~remoteChannel=adminCommandTopic.outputs,
     ~timeout=5, // Send heartbeat every 5 minutes
   )
 }
@@ -58,7 +58,7 @@ let connectHeartbeat = (~coreCommandTopic, ~runtime) => {
 let heartbeatHandler = Reventless.Heartbeat.makeHandler(
   ~id="health-monitor",
   ~timeout=10, // 10 minute timeout
-  ~publishToCorePluginExtensionPoint=corePublisher,
+  ~publishToCorePluginExtensionPoint=adminPublisher,
 )
 ```
 
@@ -73,7 +73,7 @@ shape: sequence_diagram
 
 CW: CloudWatch Events { class: aws-service }
 Lambda: Heartbeat Lambda { class: aws-service }
-SQS: Core Plugin SQS { class: aws-service }
+SQS: Admin Plugin SQS { class: aws-service }
 EP: Extension Point { class: extension-point }
 Ext: Extensions { class: extension }
 
@@ -87,7 +87,7 @@ Ext --> EP: Process heartbeat
 
 ### Message Structure
 
-The heartbeat generates standardized messages for the Core Plugin:
+The heartbeat generates standardized messages for the admin Plugin ExtensionPoint:
 
 ```rescript
 // Generated heartbeat message structure
@@ -107,14 +107,14 @@ The heartbeat generates standardized messages for the Core Plugin:
 
 ## Integration Points
 
-The Heartbeat component is specifically designed to integrate with the Core Plugin architecture:
+The Heartbeat component is specifically designed to integrate with the platform admin architecture:
 
-### Core Plugin Integration
+### Admin Plugin ExtensionPoint Integration
 
 ```d2
 Heartbeat: Heartbeat Component { class: heartbeat }
 
-CorePlugin: Core Plugin { 
+Admin: Platform Admin {
   class: plugin-area
   ExtensionPoint: Plugin Extension Point { class: extension-point }
   HealthExt: Health Check Extension { class: extension }
@@ -126,7 +126,7 @@ CorePlugin: Core Plugin {
   ExtensionPoint -> MonitorExt: invokes
 }
 
-Heartbeat -> CorePlugin.ExtensionPoint: periodic signals
+Heartbeat -> Admin.ExtensionPoint: periodic signals
 ```
 
 ### Extension Response Patterns
@@ -137,10 +137,10 @@ Extensions can respond to heartbeat signals in various ways:
 // Health check extension responding to heartbeat
 let healthCheckExtension = (heartbeatCommand) => {
   switch heartbeatCommand {
-  | Heartbeat(timeout) => 
+  | Heartbeat(timeout) =>
     // Perform health checks
     checkDatabaseConnection()
-    ->Promise.then(dbStatus => 
+    ->Promise.then(dbStatus =>
       checkExternalAPIs()
       ->Promise.then(apiStatus => {
         // Publish health status events
@@ -162,7 +162,7 @@ let healthMonitorHeartbeat = Reventless.Heartbeat.make(~name="health-monitor")
 // Connect with appropriate timeout for health checks
 healthMonitorHeartbeat->Reventless.Heartbeat.connect(
   ~runtime,
-  ~remoteChannel=coreCommandTopic.outputs,
+  ~remoteChannel=adminCommandTopic.outputs,
   ~timeout=5, // Check health every 5 minutes
 )
 ```
@@ -175,7 +175,7 @@ let cleanupHeartbeat = Reventless.Heartbeat.make(~name="cleanup-scheduler")
 
 cleanupHeartbeat->Reventless.Heartbeat.connect(
   ~runtime,
-  ~remoteChannel=coreCommandTopic.outputs,
+  ~remoteChannel=adminCommandTopic.outputs,
   ~timeout=60, // Run cleanup every hour
 )
 ```
@@ -188,7 +188,7 @@ let watchdogHeartbeat = Reventless.Heartbeat.make(~name="watchdog")
 
 watchdogHeartbeat->Reventless.Heartbeat.connect(
   ~runtime,
-  ~remoteChannel=coreCommandTopic.outputs,
+  ~remoteChannel=adminCommandTopic.outputs,
   ~timeout=1, // Check every minute for quick response
 )
 ```
@@ -203,7 +203,7 @@ let systemHeartbeat = Reventless.Heartbeat.make(~name="system-monitor")
 let multiHandler = Reventless.Heartbeat.makeHandler(
   ~id="system-monitor",
   ~timeout=15,
-  ~publishToCorePluginExtensionPoint=corePublisher,
+  ~publishToCorePluginExtensionPoint=adminPublisher,
 )
 ```
 
@@ -213,18 +213,18 @@ The Heartbeat component serves a specific purpose compared to the general-purpos
 
 | Feature | Heartbeat | Scheduler |
 |---------|-----------|-----------|
-| **Target** | Core Plugin ExtensionPoint only | Any component/service |
+| **Target** | Admin Plugin ExtensionPoint only | Any component/service |
 | **Purpose** | Health monitoring, keepalive | General scheduled workflows |
 | **Configuration** | Fixed at deploy-time | Dynamic at runtime |
 | **Operations** | None (automatic) | `createSchedule`, `deleteSchedule` |
 | **Message Format** | Standardized heartbeat | Custom payload |
-| **Integration** | Tightly coupled to Core Plugin | Loosely coupled |
+| **Integration** | Tightly coupled to admin Plugin ExtensionPoint | Loosely coupled |
 
 ### When to Use Heartbeat
 
 **Choose Heartbeat for:**
 - Health monitoring and system checks
-- Periodic extension invocations via Core Plugin
+- Periodic extension invocations via admin Plugin ExtensionPoint
 - Simple, fixed-interval triggers
 - Framework-level monitoring needs
 - Keepalive mechanisms
@@ -250,4 +250,4 @@ heartbeat->Reventless.Heartbeat.connect(~runtime, ~remoteChannel, ~timeout=10)
 
 ## AWS Implementation
 
-For detailed AWS-specific implementation including CloudWatch Events integration, Lambda permissions, IAM policies, and Core Plugin SQS integration, see [Heartbeat → EventBridge Rule + Lambda](/providers/aws/adapters/heartbeat).
+For detailed AWS-specific implementation including CloudWatch Events integration, Lambda permissions, IAM policies, and admin Plugin SQS integration, see [Heartbeat → EventBridge Rule + Lambda](/providers/aws/adapters/heartbeat).

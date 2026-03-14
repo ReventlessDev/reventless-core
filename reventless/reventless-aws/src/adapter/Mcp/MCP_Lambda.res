@@ -97,17 +97,17 @@ let generateConfig = (
     The commandTopicArns and queryDbTableNames must map core field names to their
     corresponding AWS resource ARNs/names. When Lambda Function URL deployment is
     available (Step 13), these will be wired from Pulumi stack outputs. */
-let generateCoreConfig = (
+let generateAdminConfig = (
   ~serverName: string,
   ~serverVersion: string,
   ~commandTopicArns: dict<string>=Dict.make(),
   ~queryDbTableNames: dict<string>=Dict.make(),
 ): mcpConfig =>
   generateConfig(
-    ~serverName=`${serverName}-core`,
+    ~serverName=`${serverName}-admin`,
     ~serverVersion,
-    ~pluginName="Core",
-    ~mutationEntries=ReventlessCore.CoreApi.mutationEntries,
+    ~pluginName="Admin",
+    ~mutationEntries=ReventlessCore.AdminApi.mutationEntries,
     ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
     ~commandTopicArns,
     ~queryDbTableNames,

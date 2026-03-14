@@ -2,10 +2,10 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Message$ReventlessCore from "../../../Message.res.mjs";
-import * as Util_Promise$ReventlessCore from "../../../util/Util_Promise.res.mjs";
+import * as Message$ReventlessCore from "../Message.res.mjs";
+import * as Util_Promise$ReventlessCore from "../util/Util_Promise.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
-import * as Extension_Builder$ReventlessCore from "../../../components/Extension/Extension_Builder.res.mjs";
+import * as Extension_Builder$ReventlessCore from "../components/Extension/Extension_Builder.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {

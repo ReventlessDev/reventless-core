@@ -8,10 +8,10 @@
 // The platform starts a GraphQL server on port 4000 after all components are built.
 // Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
-// Module-level ref to hold the core GraphQL server instance in split mode.
+// Module-level ref to hold the admin GraphQL server instance in split mode.
 // Populated by makePlatform when splitApi=true.
-let coreGraphQLRef: ref<option<GraphQL_ServerInstance.t>> = ref(None)
-let getCoreGraphQL = () => coreGraphQLRef.contents
+let adminGraphQLRef: ref<option<GraphQL_ServerInstance.t>> = ref(None)
+let getAdminGraphQL = () => adminGraphQLRef.contents
 
 // Configurable platform — set silent=true to suppress diagnostic warnings in tests,
 // splitApi=true to serve core and plugin APIs on separate ports.
@@ -416,13 +416,23 @@ module MakeWithConfig = (
     let make = PluginMaker.make
   }
 
-  module CoreMaker = Core_Builder.Make(Bus)
-  module Core: ReventlessInfra.Core.T with type api = unit and type role = unit = {
-    type api = unit
-    type role = unit
-    type component = ReventlessCore.Core.component
-    let make = CoreMaker.make
-  }
+  module EventCollectorChannel = EventCollectorChannel_InMemory.Make(Bus)
+  module QE = QueryEngine_InMemory.Make(Bus)
+  module Admin = ReventlessCore.Platform_Admin.Make(
+    RuntimeEnvironment_InMemory,
+    EventCollectorChannel,
+    QE,
+    ClonerRunner_InMemory,
+    ReventlessCore.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment_InMemory, EventCollectorChannel),
+    DcbEventLogStorage_InMemory.Make(Bus),
+    EventTopicPublisher_InMemory.Make(Bus),
+    CommandTopicChannel_InMemory.Make(Bus),
+    {
+      let silent = Config.silent
+      let splitApi = Config.splitApi
+      let cloner = true
+    },
+  )
 
   module type PluginMaker = {
     let make: (
@@ -448,23 +458,19 @@ module MakeWithConfig = (
   let makePlatform = (
     ~version,
     ~plugins: array<module(PluginMaker)>,
-    ~extensionPoints=[],
-    ~aggregates=[],
-    ~readModels=[],
-    ~dcbSpec=?,
   ) => {
-    // Create scheduler and Core internally — platform-specific values are known here.
+    // Create scheduler and admin components internally.
     let scheduler = makeScheduler()
-    let _core = Core.make(
+    let _admin = Admin.construct(
       ~version,
-      ~extensionPoints,
-      ~aggregates,
-      ~readModels,
+      ~extensionPoints=[],
+      ~aggregates=[],
+      ~readModels=[],
       ~scheduler,
+      ~resourceNaming=InMemory_PluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~resourceNaming=InMemory_PluginSpec.resourceNaming,
-      ~dcbSpec?,
+      ~dcbSpec=None,
     )
 
     // Build each plugin using the shared scheduler.
@@ -548,72 +554,80 @@ module MakeWithConfig = (
         })
     })
 
-    // In split mode, create dedicated core server instances.
-    // In unified mode (default), core schema registers into the plugin singletons.
-    let coreGraphQL = if Config.splitApi {
-      Some(GraphQL_ServerInstance.make(~label="GraphQL:Core"))
+    // In split mode, create dedicated admin server instances.
+    // In unified mode (default), admin schema registers into the plugin singletons.
+    let adminGraphQL = if Config.splitApi {
+      Some(GraphQL_ServerInstance.make(~label="GraphQL:Admin"))
     } else {
       None
     }
-    let coreMCP = if Config.splitApi {
-      Some(MCP_ServerInstance.make(~label="MCP:Core"))
+    let adminMCP = if Config.splitApi {
+      Some(MCP_ServerInstance.make(~label="MCP:Admin"))
     } else {
       None
     }
 
-    // Helpers that route core registrations to the correct target.
-    let registerCoreTypes = (~sdlTypes) =>
-      switch coreGraphQL {
+    // Helpers that route admin registrations to the correct target.
+    let registerAdminTypes = (~sdlTypes) =>
+      switch adminGraphQL {
       | Some(inst) => inst.registerTypes(~sdlTypes)
       | None => GraphQL_Server.registerTypes(~sdlTypes)
       }
-    let registerCoreQueries = (~sdlFields, ~resolvers) =>
-      switch coreGraphQL {
+    let registerAdminQueries = (~sdlFields, ~resolvers) =>
+      switch adminGraphQL {
       | Some(inst) => inst.registerQueries(~sdlFields, ~resolvers)
       | None => GraphQL_Server.registerQueries(~sdlFields, ~resolvers)
       }
-    let registerCoreMutations = (~sdlFields, ~resolvers) =>
-      switch coreGraphQL {
+    let registerAdminMutations = (~sdlFields, ~resolvers) =>
+      switch adminGraphQL {
       | Some(inst) => inst.registerMutations(~sdlFields, ~resolvers)
       | None => GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
       }
-    let getCoreMutationResolver = fieldName =>
-      switch coreGraphQL {
+    let getAdminMutationResolver = fieldName =>
+      switch adminGraphQL {
       | Some(inst) => inst.getMutationResolver(fieldName)
       | None => GraphQL_Server.getMutationResolver(fieldName)
       }
-    let registerCoreMcpResources = (
+    let registerAdminMcpResources = (
       ~pluginName,
       ~queryEntries,
       ~queryHandler,
     ) =>
-      switch coreMCP {
+      switch adminMCP {
       | Some(inst) =>
         inst.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
       | None =>
         MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
       }
-    let registerCoreMcpTools = (
+    let registerAdminMcpTools = (
       ~pluginName,
       ~mutationEntries,
       ~commandHandler,
     ) =>
-      switch coreMCP {
+      switch adminMCP {
       | Some(inst) =>
         inst.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
       | None =>
         MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
       }
 
-    // Register the core Plugin aggregate's types/queries/mutations.
-    // In unified mode these go into GraphQL_Server alongside plugin schema.
-    // In split mode they go into a dedicated core GraphQL instance.
-    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.CoreApi.baseFragment)
-    registerCoreTypes(~sdlTypes=baseParts.types)
+    // Derive field names from the schema entries — single source of truth.
+    let adminQueryEntry =
+      ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+    let singleQueryField = adminQueryEntry.singleFieldName
+    let listQueryField = adminQueryEntry.listFieldName
+    let adminMutationFieldNames =
+      ReventlessCore.AdminApi.mutationEntries->Array.flatMap(entry => entry.fieldNames)
 
-    // Resolvers for the core Plugin queries — backed by Bus Plugin QueryDb.
+    // Register the admin Plugin aggregate's types/queries/mutations.
+    // In unified mode these go into GraphQL_Server alongside plugin schema.
+    // In split mode they go into a dedicated admin GraphQL instance.
+    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment)
+    registerAdminTypes(~sdlTypes=baseParts.types)
+
+    // Resolvers for the admin Plugin queries — backed by Bus Plugin QueryDb.
     let queryResolvers = Dict.make()
-    queryResolvers->Dict.set("Core_Plugin", (async (_root, args): JSON.t => {
+    queryResolvers->Dict.set(singleQueryField, (async (_root, args): JSON.t => {
       let id =
         args
         ->JSON.Decode.object
@@ -631,7 +645,7 @@ module MakeWithConfig = (
       | None => JSON.Encode.null
       }
     }))
-    queryResolvers->Dict.set("Core_Plugins", (async (_root, _args): JSON.t => {
+    queryResolvers->Dict.set(listQueryField, (async (_root, _args): JSON.t => {
       let items = switch Bus.getQueryDbScan(pluginQueryDbName) {
       | Some(scanAll) => scanAll()
       | None => []
@@ -642,35 +656,30 @@ module MakeWithConfig = (
         ("items", items->JSON.Encode.array),
       ])->JSON.Encode.object
     }))
-    registerCoreQueries(
+    registerAdminQueries(
       ~sdlFields=baseParts.queries,
       ~resolvers=queryResolvers,
     )
 
-    // Stub resolvers for core mutations (Plugin_Activate, Plugin_Deactivate, clone).
-    // These are no-ops in the in-memory platform — the real logic runs in AWS Lambda.
+    // Stub resolvers for admin mutations — no-ops in-memory, real logic runs in AWS Lambda.
     let mutationResolvers = Dict.make()
-    mutationResolvers->Dict.set("Core_Plugin_Activate", (async (_root, _args): JSON.t =>
-      JSON.Encode.string("ok")
-    ))
-    mutationResolvers->Dict.set("Core_Plugin_Deactivate", (async (_root, _args): JSON.t =>
-      JSON.Encode.string("ok")
-    ))
-    mutationResolvers->Dict.set("Core_Clone", (async (_root, _args): JSON.t =>
-      JSON.Encode.string("clone not supported in-memory")
-    ))
-    registerCoreMutations(
+    adminMutationFieldNames->Array.forEach(field =>
+      mutationResolvers->Dict.set(field, (async (_root, _args): JSON.t =>
+        JSON.Encode.string("ok")
+      ))
+    )
+    registerAdminMutations(
       ~sdlFields=baseParts.mutations,
       ~resolvers=mutationResolvers,
     )
 
-    // Register core Plugin queries and mutations as MCP resources and tools.
+    // Register admin Plugin queries and mutations as MCP resources and tools.
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri->String.split("/")
       let id = segments->Array.at(-1)->Option.getOr("")
       switch Bus.getQueryDb(pluginQueryDbName) {
       | Some(ops) =>
-        if id->String.length > 0 && id != "Core_Plugins" {
+        if id->String.length > 0 && id != listQueryField {
           let items =
             await ops.loadStream(id)
             ->Stream.runCollect
@@ -686,18 +695,18 @@ module MakeWithConfig = (
       | None => JSON.Encode.null
       }
     }
-    registerCoreMcpResources(
-      ~pluginName="Core",
+    registerAdminMcpResources(
+      ~pluginName="Admin",
       ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
       ~queryHandler=pluginQueryHandler,
     )
 
-    // Register core mutations as MCP tools using the same entry-based path as plugins.
-    registerCoreMcpTools(
-      ~pluginName="Core",
-      ~mutationEntries=ReventlessCore.CoreApi.mutationEntries,
+    // Register admin mutations as MCP tools using the same entry-based path as plugins.
+    registerAdminMcpTools(
+      ~pluginName="Admin",
+      ~mutationEntries=ReventlessCore.AdminApi.mutationEntries,
       ~commandHandler=async (toolName, args) => {
-        switch getCoreMutationResolver(toolName) {
+        switch getAdminMutationResolver(toolName) {
         | Some(resolver) =>
           let result = await resolver(JSON.Encode.null, args)
           switch result->JSON.Decode.string {
@@ -711,16 +720,16 @@ module MakeWithConfig = (
 
     // Start servers.
     // In unified mode: one GraphQL + one MCP server with all schema combined.
-    // In split mode: plugin servers on default ports, core servers on +1 ports.
+    // In split mode: plugin servers on default ports, admin servers on +1 ports.
     GraphQL_Server.start()
     MCP_Server.start()
-    switch coreGraphQL {
+    switch adminGraphQL {
     | Some(inst) =>
       inst.start(~port=4001, ())
-      coreGraphQLRef := Some(inst)
+      adminGraphQLRef := Some(inst)
     | None => ()
     }
-    switch coreMCP {
+    switch adminMCP {
     | Some(inst) => inst.start(~port=3002, ())
     | None => ()
     }
@@ -728,7 +737,7 @@ module MakeWithConfig = (
     // Print schema diagnostics when GRAPHQL_DEBUG is set.
     if graphqlDebug {
       GraphQL_Server.printDiagnostics()
-      switch coreGraphQL {
+      switch adminGraphQL {
       | Some(inst) => inst.printDiagnostics()
       | None => ()
       }
@@ -736,7 +745,7 @@ module MakeWithConfig = (
   }
 }
 
-// Default platform — diagnostic warnings enabled, split API (core on separate ports).
+// Default platform — diagnostic warnings enabled, split API (admin on separate ports).
 module Make = (): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   include MakeWithConfig({
     let silent = false

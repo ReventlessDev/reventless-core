@@ -38,13 +38,13 @@ function Make(MappingSpec) {
         return Effect.Effect.runSync(Effect.Effect.logError(`Extension: Error on publish command to aggregate ` + aggregateName + `: ` + errMsg));
       }
     };
-    let publishCorePluginExtensionPointCommand = async cmdJson => {
+    let publishPluginExtensionPointCommand = async cmdJson => {
       try {
-        return await Ops.publishToCorePluginExtensionPoint([cmdJson]);
+        return await Ops.publishToPluginExtensionPoint([cmdJson]);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect.Effect.runSync(Effect.Effect.logError(`Extension: Error on publish command to Core.Plugin ExtensionPoint: ` + errMsg));
+        return Effect.Effect.runSync(Effect.Effect.logError(`Extension: Error on publish command to Plugin ExtensionPoint: ` + errMsg));
       }
     };
     let forwardCommand = (extensionPointName, commandJson) => {
@@ -57,7 +57,7 @@ function Make(MappingSpec) {
         }
       };
       let init = commandJson.meta;
-      return publishCorePluginExtensionPointCommand({
+      return publishPluginExtensionPointCommand({
         id: "",
         meta: {
           service: init.service,
@@ -94,7 +94,7 @@ function Make(MappingSpec) {
           tmp = publish(action._0);
           break;
         case "AbstractPublishPluginExtensionPointCommand" :
-          tmp = publishCorePluginExtensionPointCommand(action._0);
+          tmp = publishPluginExtensionPointCommand(action._0);
           break;
         case "AbstractPublishExtensionPointCommand" :
           tmp = forwardCommand(action._0, action._1);
@@ -108,7 +108,7 @@ function Make(MappingSpec) {
     let applyOutgoingCommandAction = async action => {
       switch (action.TAG) {
         case "AbstractPublishPluginExtensionPointCommand" :
-          return publishCorePluginExtensionPointCommand(action._0);
+          return publishPluginExtensionPointCommand(action._0);
         case "AbstractPublishExtensionPointCommand" :
           return forwardCommand(action._0, action._1);
         case "AbstractCall" :

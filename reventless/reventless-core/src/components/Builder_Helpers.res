@@ -1,5 +1,5 @@
-// Shared builder helpers used by both Plugin_Builder and Core_Builder.
-// Extracted from Plugin_Helpers to eliminate duplication and aliasing in Core_Helpers.
+// Shared builder helpers used by both Plugin_Builder and Platform_Admin.
+// Extracted from Plugin_Helpers to eliminate duplication.
 
 // Captured read model data — stores extracted values instead of module+component
 // so that Builder_Helpers can work with abstract spec-level component types.

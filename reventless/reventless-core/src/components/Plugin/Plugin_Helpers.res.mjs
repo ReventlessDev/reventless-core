@@ -23,7 +23,7 @@ import * as Builder_Helpers$ReventlessCore from "../Builder_Helpers.res.mjs";
 import * as Plugin_Callback$ReventlessCore from "./Plugin_Callback.res.mjs";
 import * as ResourceQueryRuntime$ReventlessCore from "../../util/ResourceQueryRuntime.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
-import * as PluginConnectExtension_Builder$ReventlessCore from "../../core/Extensions/Connect/PluginConnectExtension_Builder.res.mjs";
+import * as PluginConnectExtension_Builder$ReventlessCore from "../../admin/PluginConnectExtension_Builder.res.mjs";
 
 function getRemoteStorageResources(pluginName, queryDbName) {
   let resources = Stdlib_Option.map(Util_StackRefs$ReventlessCore.get(pluginName), stackRef => {
@@ -105,9 +105,9 @@ function serviceNameToJsonEventsHandlers(outputs, getServiceNames, handlers, get
   return dict;
 }
 
-function createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts) {
+function createExtensions(extensions, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts) {
   return Stdlib_Array.unzip(extensions.map(SpecificExtension => {
-    let extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+    let extension = SpecificExtension.make(publishToPluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     let ops = SpecificExtension.operations(extension);
     return [
       SpecificExtension.outputs(extension),
@@ -151,7 +151,7 @@ function extractExtensionDefinitions(extensionsOutputs) {
   }));
 }
 
-function createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, runtimeOps, resourceNaming, opts) {
+function createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, runtimeOps, resourceNaming, opts) {
   return Output$Pulumi.unzip(Pulumi.all([
     Pulumi.all(extensionPointsOutputs.map(ExtensionPoint$ReventlessCore.toResolvedOutputs)),
     pluginDefinition
@@ -163,7 +163,7 @@ function createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, 
       runtimeOps: runtimeOps,
       resourceNaming: resourceNaming
     });
-    let connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+    let connectPluginExtension = ConnectPluginExtension.make(publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     let connectPluginExtensionOutputs = Component$ReventlessCore.outputs(connectPluginExtension);
     let connectPluginExtensionIncomingEventHandler = Component$ReventlessCore.operations(connectPluginExtension).apply(param => param.incomingJsonEventsHandler);
     return [
@@ -199,11 +199,11 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         eventCollectorUrn
       ];
     };
-    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, corePluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs) => {
+    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs) => {
       let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => {
         let base = eventTopics.map(eventTopic => eventTopic.resources).flat();
-        if (corePluginExtensionPointUnwrapped !== undefined) {
-          return base.concat(Adapter$ReventlessCore.fromInteropResources(corePluginExtensionPointUnwrapped.commandTopic.resources));
+        if (pluginExtensionPointUnwrapped !== undefined) {
+          return base.concat(Adapter$ReventlessCore.fromInteropResources(pluginExtensionPointUnwrapped.commandTopic.resources));
         } else {
           return base;
         }
@@ -260,7 +260,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
   });
 }
 
-let localCoreOutputs = {
+let localAdminExtensionPoints = {
   contents: undefined
 };
 
@@ -439,7 +439,7 @@ export {
   tasksOutputs,
   createTasks,
   MakeEventCollectorHelper,
-  localCoreOutputs,
+  localAdminExtensionPoints,
   dcbMutationResolverHook,
   inboundMutationResolverHook,
   inboundMutationBindReceiveHook,

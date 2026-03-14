@@ -274,7 +274,7 @@ let make: ReventlessCore.Cloner.Adapter.runnerMaker<api> = (
           }
           `
 
-      let field = "Core_Clone"
+      let field = ReventlessCore.AdminApi.cloneMutationEntry.fieldNames->Array.getUnsafe(0)
       let resolver = AppSync.Resolver.makeUnitResolver(
         ~name=field,
         ~api,

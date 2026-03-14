@@ -12,7 +12,7 @@ module type T = {
   type component = component
 
   let make: (
-    ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
+    ~publishToPluginExtensionPoint: CommandTopic.publishJsons,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: dict<array<string>>,
     ~publishToReadModels: dict<EventCollector.enqueueEvent>,

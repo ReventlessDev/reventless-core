@@ -4,31 +4,39 @@
 // which avoids ESM compatibility issues with Jest.
 //
 // This mirrors what Platform.makePlatform does in split mode:
-// - Core schema → GraphQL_ServerInstance (isolated core server)
+// - Admin schema → GraphQL_ServerInstance (isolated admin server)
 // - Plugin schema → GraphQL_Server singleton (plugin server)
 
 let _ = TestRunner.setup()
 
+// Derive field names from the schema entries — single source of truth.
+let adminQueryEntry =
+  ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+let singleQueryField = adminQueryEntry.singleFieldName
+let listQueryField = adminQueryEntry.listFieldName
+let adminMutationFieldNames =
+  ReventlessCore.AdminApi.mutationEntries->Array.flatMap(entry => entry.fieldNames)
+
 // ─────────────────────────────────────────────────────────────
-// Create core GraphQL instance (mirrors Platform split mode)
+// Create admin GraphQL instance (mirrors Platform split mode)
 // ─────────────────────────────────────────────────────────────
 
-let coreGraphQL = GraphQL_ServerInstance.make(~label="GraphQL:Core")
+let adminGraphQL = GraphQL_ServerInstance.make(~label="GraphQL:Admin")
 
-// Register core schema into the core instance
-let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.CoreApi.baseFragment)
-let () = coreGraphQL.registerTypes(~sdlTypes=baseParts.types)
+// Register admin schema into the admin instance
+let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment)
+let () = adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
-let coreQueryResolvers = Dict.make()
-let () = coreQueryResolvers->Dict.set("Core_Plugin", async (_root, _args): JSON.t => JSON.Encode.null)
-let () = coreQueryResolvers->Dict.set("Core_Plugins", async (_root, _args): JSON.t => JSON.Encode.null)
-let () = coreGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=coreQueryResolvers)
+let adminQueryResolvers = Dict.make()
+let () = adminQueryResolvers->Dict.set(singleQueryField, async (_root, _args): JSON.t => JSON.Encode.null)
+let () = adminQueryResolvers->Dict.set(listQueryField, async (_root, _args): JSON.t => JSON.Encode.null)
+let () = adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=adminQueryResolvers)
 
-let coreMutationResolvers = Dict.make()
-let () = coreMutationResolvers->Dict.set("Core_Plugin_Activate", async (_root, _args): JSON.t => JSON.Encode.string("ok"))
-let () = coreMutationResolvers->Dict.set("Core_Plugin_Deactivate", async (_root, _args): JSON.t => JSON.Encode.string("ok"))
-let () = coreMutationResolvers->Dict.set("Core_Clone", async (_root, _args): JSON.t => JSON.Encode.string("ok"))
-let () = coreGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=coreMutationResolvers)
+let adminMutationResolvers = Dict.make()
+let () = adminMutationFieldNames->Array.forEach(field =>
+  adminMutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+)
+let () = adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=adminMutationResolvers)
 
 // ─────────────────────────────────────────────────────────────
 // Register fake plugin schema into the singleton (plugin server)

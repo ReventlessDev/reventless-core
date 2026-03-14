@@ -28,7 +28,7 @@ module type T = {
   type operations
   type component
   let make: (
-    ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
+    ~publishToPluginExtensionPoint: CommandTopic.publishJsons,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: dict<array<string>>,
     ~publishToReadModels: dict<EventCollector.enqueueEvent>,

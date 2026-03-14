@@ -19,7 +19,7 @@ module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
-  CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
+  PluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
   HeartbeatRunner: Heartbeat_Adapter.Runner with type runtimeParts = RuntimeEnvironment.parts,
   PluginRuntimeBuilder: PluginRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel
@@ -156,17 +156,17 @@ module Make = (
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let builderOutputs = {
-      // Resolve Core extension point data — from Interstack (AWS cross-stack) or local Core outputs.
-      let coreExtensionPoints =
+      // Resolve admin extension point data — from Interstack (AWS cross-stack) or local admin outputs.
+      let adminExtensionPoints =
         Interstack.coreStackReference->Option.mapOr(Pulumi.Output.make(None), coreStack =>
           coreStack->Pulumi.StackReference.getOutput("extensionPoints")
         )
 
-      // Derive local Core extension point resolved data (set by Core_Builder during construction).
-      let localCoreResolvedEP =
-        switch Plugin_Helpers.localCoreOutputs.contents {
-        | Some(coreOutputs) =>
-          coreOutputs.extensionPoints->Pulumi.Output.flatMap(eps =>
+      // Derive local admin extension point resolved data (set by Platform_Admin.construct()).
+      let localAdminResolvedEP =
+        switch Plugin_Helpers.localAdminExtensionPoints.contents {
+        | Some(adminEPs) =>
+          adminEPs->Pulumi.Output.flatMap(eps =>
             switch eps->Dict.get(PluginExtensionPointSpec.name) {
             | Some(ep) => ep->ExtensionPoint.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
             | None => Pulumi.Output.make(None)
@@ -176,7 +176,7 @@ module Make = (
         }
 
       (
-        (coreExtensionPoints, localCoreResolvedEP)->Pulumi.Output.all2,
+        (adminExtensionPoints, localAdminResolvedEP)->Pulumi.Output.all2,
         aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
         publishToReadModels->Pulumi.Output.allDict,
@@ -185,7 +185,7 @@ module Make = (
       )
       ->Pulumi.Output.all6
       ->Pulumi.Output.apply(((
-        (coreExtensionPoints, localCoreResolvedEP),
+        (adminExtensionPoints, localAdminResolvedEP),
         aggregateResources,
         publishToAggregates,
         publishToReadModels,
@@ -204,30 +204,30 @@ module Make = (
             ~opts,
           )
 
-        // Resolve Core connection — from Interstack (AWS), local Core (in-memory), or None
-        let coreSetup = switch coreExtensionPoints {
-        | Some(coreExtensionPoints) => {
-            let corePluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
+        // Resolve admin connection — from Interstack (AWS), local admin (in-memory), or None
+        let coreSetup = switch adminExtensionPoints {
+        | Some(adminExtensionPoints) => {
+            let pluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
               (
-                coreExtensionPoints
+                adminExtensionPoints
                 ->Pulumi.StackReference.get(PluginExtensionPointSpec.name)
                 ->Obj.magic: JSON.t
               )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
-            let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
-              corePluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
+            let pluginExtensionPointCommandTopicRemoteChannel = PluginExtensionPointRemoteChannel.make(
+              pluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
                 Adapter.fromInteropResolved,
               ),
             )
             Some((
-              corePluginExtensionPointUnwrapped,
-              corePluginExtensionPointCommandTopicRemoteChannel,
+              pluginExtensionPointUnwrapped,
+              pluginExtensionPointCommandTopicRemoteChannel,
             ))
           }
         | None =>
-          // Fallback: use local Core extension point data (e.g. in-memory platform)
-          switch localCoreResolvedEP {
+          // Fallback: use local admin extension point data (e.g. in-memory platform)
+          switch localAdminResolvedEP {
           | Some(resolvedEP) =>
-            let remoteChannel = CorePluginExtensionPointRemoteChannel.make(
+            let remoteChannel = PluginExtensionPointRemoteChannel.make(
               resolvedEP.commandTopic.resources->Array.map(Adapter.fromInteropResolved),
             )
             Some((resolvedEP, remoteChannel))
@@ -235,14 +235,14 @@ module Make = (
           }
         }
 
-        let publishToCorePluginExtensionPoint: ReventlessInfra.CommandTopic.publishJsons = switch coreSetup {
+        let publishToPluginExtensionPoint: ReventlessInfra.CommandTopic.publishJsons = switch coreSetup {
         | Some((_, remoteChannel)) => remoteChannel.remotePublish
         | None => async _ => ()
         }
 
         let (extensionsOutputs, extensionsHandlers) =
           extensions->createExtensions(
-            ~publishToCorePluginExtensionPoint,
+            ~publishToPluginExtensionPoint,
             ~publishToAggregates,
             ~publishToReadModels,
             ~queryEngine,
@@ -274,11 +274,11 @@ module Make = (
             extensionPointAggregateNames->Set.union(extensionAggregateNames),
           )
         switch coreSetup {
-        | Some((corePluginExtensionPointUnwrapped, _)) =>
+        | Some((pluginExtensionPointUnwrapped, _)) =>
           eventTopics->Dict.set(
             PluginExtensionPointSpec.name,
             {
-              resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
+              resources: pluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
                 AdapterDeploytime.fromInteropResource,
               ),
             },
@@ -314,7 +314,7 @@ module Make = (
           })
 
         switch coreSetup {
-        | Some((corePluginExtensionPointUnwrapped, _)) => {
+        | Some((pluginExtensionPointUnwrapped, _)) => {
             let (
               connectPluginExtensionOutputs,
               connectPluginExtensionIncomingEventHandler,
@@ -322,7 +322,7 @@ module Make = (
               ~pluginDefinition,
               ~extensionPointsOutputs,
               ~extensionsOutputs,
-              ~publishToCorePluginExtensionPoint,
+              ~publishToPluginExtensionPoint,
               ~publishToAggregates,
               ~readModelNamesForSourceName,
               ~publishToReadModels,
@@ -336,7 +336,7 @@ module Make = (
               ~eventTopics,
               ~extensionPointsOutputs,
               ~extensionsOutputs,
-              ~corePluginExtensionPointUnwrapped,
+              ~pluginExtensionPointUnwrapped,
               ~pluginDefinition,
               ~connectPluginExtensionIncomingEventHandler,
               ~extensionsHandlers,
@@ -345,7 +345,7 @@ module Make = (
             )
           }
         | None =>
-          // No Core connection — connect EventCollector without ConnectPluginExtension
+          // No admin connection — connect EventCollector without ConnectPluginExtension
           let _ = EventCollectorHelper.connect(
             ~eventCollector,
             ~eventTopics,
@@ -374,15 +374,15 @@ module Make = (
         let handler = SpecificHeartbeat.makeHandler(
           ~id,
           ~timeout=heartbeatInterval,
-          ~publishToCorePluginExtensionPoint,
+          ~publishToPluginExtensionPoint,
         )
         switch coreSetup {
-        | Some((_, corePluginExtensionPointCommandTopicRemoteChannel)) =>
+        | Some((_, pluginExtensionPointCommandTopicRemoteChannel)) =>
           heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(
             ~handler,
             ~connect=SpecificHeartbeat.connect(
               heartbeat,
-              ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
+              ~remoteChannel=pluginExtensionPointCommandTopicRemoteChannel,
               ~timeout=heartbeatInterval,
               ...
             ),

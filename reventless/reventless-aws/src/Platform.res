@@ -161,15 +161,23 @@ module MakeWithConfig = (
     let make = PluginBuilder.make
   }
 
-  module Core: (ReventlessInfra.Core.T
-    with type api = Types.AppSync.api
-    and type role = Types.AppSync.role
-  ) = {
-    type api = Types.AppSync.api
-    type role = Types.AppSync.role
-    type component = ReventlessCore.Core.component
-    let make = Core_Builder.make
-  }
+  module RuntimeEnvironment = RuntimeEnvironment.Lambda
+  module EventCollectorChannel = EventCollectorChannel.SQS
+  module Admin = ReventlessCore.Platform_Admin.Make(
+    RuntimeEnvironment,
+    EventCollectorChannel,
+    QueryEngine.DynamoDb,
+    ClonerRunner.Fargate,
+    ReventlessCore.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment_Lambda, EventCollectorChannel),
+    DcbEventLogStorage.DynamoDb,
+    EventTopicPublisher.DynamoDbStream,
+    CommandTopicChannel.SQS_FIFO,
+    {
+      let silent = false
+      let splitApi = Config.splitApi
+      let cloner = true
+    },
+  )
 
   module type PluginMaker = {
     let make: (
@@ -192,23 +200,19 @@ module MakeWithConfig = (
   let makePlatform = (
     ~version,
     ~plugins: array<module(PluginMaker)>,
-    ~extensionPoints=[],
-    ~aggregates=[],
-    ~readModels=[],
-    ~dcbSpec=?,
   ) => {
-    // Create scheduler and Core internally — platform-specific values are known here.
+    // Create scheduler and admin components internally.
     let scheduler = makeScheduler()
-    let _core = Core.make(
+    let _admin = Admin.construct(
       ~version,
-      ~extensionPoints,
-      ~aggregates,
-      ~readModels,
+      ~extensionPoints=[],
+      ~aggregates=[],
+      ~readModels=[],
       ~scheduler,
+      ~resourceNaming=Util_ResourceNaming.operations,
       ~api=appSyncApi,
       ~apiRole=appSyncApiRole,
-      ~resourceNaming=Util_ResourceNaming.operations,
-      ~dcbSpec?,
+      ~dcbSpec=None,
     )
 
     // Build each plugin using the shared scheduler.
@@ -230,7 +234,7 @@ module MakeWithConfig = (
       // Push the core schema (base fragment only, no plugin fragments).
       // This is a one-time operation — core schema is static.
       let coreBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.CoreApi.baseFragment,
+        ReventlessCore.AdminApi.baseFragment,
         ~group="Admin",
       )
       let _ =

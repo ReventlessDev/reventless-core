@@ -5,9 +5,9 @@ import * as Effect from "effect";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as CoreApi$ReventlessCore from "@reventlessdev/reventless-core/src/core/API/CoreApi.res.mjs";
+import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/core/API/PluginBaseFragment.res.mjs";
+import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
 import * as MCP_SchemaGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/MCP_SchemaGenerator.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
@@ -47,10 +47,10 @@ function generateConfig(serverName, serverVersion, pluginName, mutationEntries, 
   };
 }
 
-function generateCoreConfig(serverName, serverVersion, commandTopicArnsOpt, queryDbTableNamesOpt) {
+function generateAdminConfig(serverName, serverVersion, commandTopicArnsOpt, queryDbTableNamesOpt) {
   let commandTopicArns = commandTopicArnsOpt !== undefined ? commandTopicArnsOpt : ({});
   let queryDbTableNames = queryDbTableNamesOpt !== undefined ? queryDbTableNamesOpt : ({});
-  return generateConfig(serverName + `-core`, serverVersion, "Core", CoreApi$ReventlessCore.mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries, undefined, commandTopicArns, queryDbTableNames, undefined);
+  return generateConfig(serverName + `-admin`, serverVersion, "Admin", AdminApi$ReventlessCore.mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries, undefined, commandTopicArns, queryDbTableNames, undefined);
 }
 
 function extractEntityId(uri) {
@@ -197,7 +197,7 @@ async function readDcbEventLogHistory(tableName, entityId, limit, after) {
 
 export {
   generateConfig,
-  generateCoreConfig,
+  generateAdminConfig,
   extractEntityId,
   parsePaginationParams,
   paginatedResponse,

@@ -2,18 +2,20 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
-import * as CoreApi$ReventlessCore from "@reventlessdev/reventless-core/src/core/API/CoreApi.res.mjs";
+import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
-import * as Core_Builder$ReventlessAws from "./core/Core_Builder.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
+import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as DcbEventLog_Builder$ReventlessAws from "./components/DcbEventLog_Builder.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
+import * as ClonerRunner_Fargate$ReventlessAws from "./adapter/Cloner/ClonerRunner_Fargate.res.mjs";
+import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoint_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
@@ -21,8 +23,14 @@ import * as Aggregate_Builder_Micro$ReventlessAws from "./components/Aggregate_B
 import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationSlice_Builder.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
+import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
+import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
+import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
+import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
+import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
+import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 
 let splitApiOutputsRef = {
@@ -112,15 +120,36 @@ function MakeWithConfig(Api) {
     let Plugin = {
       make: Plugin$ReventlessAws.make
     };
-    let Core = {
-      make: Core_Builder$ReventlessAws.make
-    };
-    let makePlatform = (version, plugins, extensionPointsOpt, aggregatesOpt, readModelsOpt, dcbSpec) => {
-      let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
-      let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
-      let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
+    let Admin = Platform_Admin$ReventlessCore.Make({
+      make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+      groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+      extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+      asEventHandler: prim => prim,
+      asEffectHandler: prim => prim
+    })({
+      make: EventCollectorChannel_SQS$ReventlessAws.make,
+      connect: EventCollectorChannel_SQS$ReventlessAws.connect
+    })({
+      make: QueryEngine_DynamoDb$ReventlessAws.make
+    })(ClonerRunner_Fargate$ReventlessAws)(PluginRuntime_Builder_Micro$ReventlessCore.Make({
+      make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+      groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+      extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+      asEventHandler: prim => prim,
+      asEffectHandler: prim => prim
+    })({
+      make: EventCollectorChannel_SQS$ReventlessAws.make,
+      connect: EventCollectorChannel_SQS$ReventlessAws.connect
+    }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+      make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+    })({
+      silent: false,
+      splitApi: Config.splitApi,
+      cloner: true
+    });
+    let makePlatform = (version, plugins) => {
       let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-      Core_Builder$ReventlessAws.make(version, extensionPoints, aggregates, readModels, scheduler, appSyncApi, appSyncApiRole, Util_ResourceNaming$ReventlessAws.operations, undefined, dcbSpec);
+      Admin.construct(version, [], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
       plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
       if (!Config.splitApi) {
         return;
@@ -131,7 +160,7 @@ function MakeWithConfig(Api) {
         coreApi: coreApiOutput,
         coreRole: match[1]
       };
-      let coreBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(CoreApi$ReventlessCore.baseFragment, "Admin");
+      let coreBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment, "Admin");
       coreApiOutput.apply(coreApi => {
         AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), coreBaseFragment, []);
       });
@@ -152,7 +181,6 @@ function MakeWithConfig(Api) {
       Api: Api$1,
       mcpSupported: false,
       Plugin: Plugin,
-      Core: Core,
       makePlatform: makePlatform
     };
   };
@@ -236,15 +264,36 @@ function Make(Api) {
   let Plugin = {
     make: Plugin$ReventlessAws.make
   };
-  let Core = {
-    make: Core_Builder$ReventlessAws.make
-  };
-  let makePlatform = (version, plugins, extensionPointsOpt, aggregatesOpt, readModelsOpt, dcbSpec) => {
-    let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
-    let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
-    let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
+  let Admin = Platform_Admin$ReventlessCore.Make({
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    asEventHandler: prim => prim,
+    asEffectHandler: prim => prim
+  })({
+    make: EventCollectorChannel_SQS$ReventlessAws.make,
+    connect: EventCollectorChannel_SQS$ReventlessAws.connect
+  })({
+    make: QueryEngine_DynamoDb$ReventlessAws.make
+  })(ClonerRunner_Fargate$ReventlessAws)(PluginRuntime_Builder_Micro$ReventlessCore.Make({
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    asEventHandler: prim => prim,
+    asEffectHandler: prim => prim
+  })({
+    make: EventCollectorChannel_SQS$ReventlessAws.make,
+    connect: EventCollectorChannel_SQS$ReventlessAws.connect
+  }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+  })({
+    silent: false,
+    splitApi: false,
+    cloner: true
+  });
+  let makePlatform = (version, plugins) => {
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    Core_Builder$ReventlessAws.make(version, extensionPoints, aggregates, readModels, scheduler, appSyncApi, appSyncApiRole, Util_ResourceNaming$ReventlessAws.operations, undefined, dcbSpec);
+    Admin.construct(version, [], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
     plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
   };
   return {
@@ -263,7 +312,6 @@ function Make(Api) {
     Api: Api$1,
     mcpSupported: false,
     Plugin: Plugin,
-    Core: Core,
     makePlatform: makePlatform
   };
 }

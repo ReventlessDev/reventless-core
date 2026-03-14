@@ -7,16 +7,16 @@ let adminAuth: Reventless.ReadModel.authorization = {
 
 let queryEntries: array<querySchemaEntry> = [
   {
-    singleFieldName: Api_Naming.coreField(~name="Plugin"),
-    listFieldName: Api_Naming.coreField(~name="Plugins"),
-    returnTypeName: Api_Naming.coreField(~name="Plugin"),
+    singleFieldName: Api_Naming.adminField(~name="Plugin"),
+    listFieldName: Api_Naming.adminField(~name="Plugins"),
+    returnTypeName: Api_Naming.adminField(~name="Plugin"),
     stateSchema: PluginReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
     excludeFields: ["apiSchemaFragment", "eventCollector", "extensionPointNames", "extensionNames"],
   },
 ]
 
-// Arg schemas for payload-less Core mutations
+// Arg schemas for payload-less admin mutations
 @schema
 type activateArgs = {id: @s.matches(Reventless.DcbTag.string) string}
 
@@ -25,12 +25,12 @@ type deactivateArgs = {id: @s.matches(Reventless.DcbTag.string) string}
 
 let mutationEntries: array<mutationSchemaEntry> = [
   {
-    fieldNames: [Api_Naming.coreField(~name="Plugin_Activate")],
+    fieldNames: [Api_Naming.adminField(~name="Plugin_Activate")],
     commandSchema: activateArgsSchema->S.castToUnknown,
     description: "Activate a plugin by ID",
   },
   {
-    fieldNames: [Api_Naming.coreField(~name="Plugin_Deactivate")],
+    fieldNames: [Api_Naming.adminField(~name="Plugin_Deactivate")],
     commandSchema: deactivateArgsSchema->S.castToUnknown,
     description: "Deactivate a plugin by ID",
   },

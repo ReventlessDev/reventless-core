@@ -2,7 +2,7 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
-import * as PluginSpec$ReventlessCore from "../../Aggregates/Plugin/PluginSpec.res.mjs";
+import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
 
 function extractExtensionPointNames(__x) {

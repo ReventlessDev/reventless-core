@@ -1,7 +1,7 @@
 // In-memory QueryEngine — uses Bus storage registry for real scan/query.
 // This is a Make(Bus) functor; callers must first create
 //   module QueryEngine = QueryEngine_InMemory.Make(Bus)
-// and then pass QueryEngine as QueryEngineAdapter to Plugin_Builder.Make or Core_Builder.Make.
+// and then pass QueryEngine as QueryEngineAdapter to Plugin_Builder.Make or Platform_Admin.Make.
 
 open Reventless
 

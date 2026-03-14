@@ -772,13 +772,13 @@ In unified mode (`splitApi=false`), all schema is served from a single GraphQL e
 **When to use split mode:**
 
 - **Security boundary** — restrict administrative operations (activate/deactivate plugins, clone) to internal networks or specific auth groups, while exposing business domain APIs to external clients.
-- **AI agent clarity** — an agent working with business data sees only domain-relevant tools and queries, not administrative operations like `Core_Plugin_Activate`.
-- **Independent scaling** — core admin traffic is low-frequency; plugin business traffic is high-frequency. Separate endpoints allow independent rate limiting.
+- **AI agent clarity** — an agent working with business data sees only domain-relevant tools and queries, not administrative operations like `Admin_Plugin_Activate`.
+- **Independent scaling** — admin traffic is low-frequency; plugin business traffic is high-frequency. Separate endpoints allow independent rate limiting.
 
 **What changes in split mode:**
 
-- Core types/queries/mutations (`Core_Plugin`, `Core_Plugins`, `Core_Plugin_Activate`, `Core_Plugin_Deactivate`, `Core_Clone`) register into a dedicated `GraphQL_ServerInstance` on port 4001 instead of the shared singleton.
-- Core MCP tools/resources register into a dedicated `MCP_ServerInstance` on port 3002.
+- Admin types/queries/mutations (`Admin_Plugin`, `Admin_Plugins`, `Admin_Plugin_Activate`, `Admin_Plugin_Deactivate`, `Admin_Clone`) register into a dedicated `GraphQL_ServerInstance` on port 4001 instead of the shared singleton.
+- Admin MCP tools/resources register into a dedicated `MCP_ServerInstance` on port 3002.
 - Plugin schema continues to register into the `GraphQL_Server` / `MCP_Server` singletons on the default ports.
 - No changes to plugin code, resolver modules, or hooks.
 
@@ -791,7 +791,7 @@ module Platform = ReventlessAws.Platform.MakeWithConfig(
 )
 ```
 
-In split mode, `makePlatform` creates a dedicated core AppSync API. Access the core API outputs for stack exports:
+In split mode, `makePlatform` creates a dedicated admin AppSync API. Access the admin API outputs for stack exports:
 
 ```rescript
 // After makePlatform:
@@ -801,7 +801,7 @@ switch ReventlessAws.Platform.getSplitApiOutputs() {
   let coreApiUrl = coreApi->Pulumi.Output.apply(api => api.uris)
     ->Pulumi.Output.apply(u => u.graphQL)
   // Export as Pulumi stack outputs from your entry point
-| None => () // unified mode — no separate core API
+| None => () // unified mode — no separate admin API
 }
 ```
 

@@ -5,7 +5,7 @@ import * as CommandTopicChannel_SQS$ReventlessAws from "../adapter/CommandTopic/
 import * as EventTopicPublisher_SNS$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_SNS.res.mjs";
 import * as PluginRuntimeOperations$ReventlessAws from "../util/PluginRuntimeOperations.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
-import * as PluginExtensionPoint_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/core/ExtensionPoints/Plugin/PluginExtensionPoint_Builder.res.mjs";
+import * as PluginExtensionPoint_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Builder.res.mjs";
 import * as ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res.mjs";
 
 let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore.Make({

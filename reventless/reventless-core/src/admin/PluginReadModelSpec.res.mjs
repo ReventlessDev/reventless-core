@@ -3,7 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as Message$ReventlessCore from "../../../Message.res.mjs";
+import * as Message$ReventlessCore from "../Message.res.mjs";
 
 let statusSchema = S.union([
   S.literal("Connected"),

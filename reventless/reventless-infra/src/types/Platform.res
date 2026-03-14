@@ -44,12 +44,6 @@ module App = CatalogPlugin.Make(Platform)
 // Type alias to avoid shadowing by the nested `module Api` inside Platform.T.
 type apiComponent = Api.component
 
-// Module type aliases — inside Platform.T the nested factory modules shadow these.
-module type extensionPointT = ExtensionPoint.T
-module type aggregateT = Aggregate.T
-module type readModelT = ReadModel.T
-module type dcbSpec = Plugin.DcbSpec
-
 module type T = {
   /** Platform-specific API type (e.g. `Types.AppSync.api` for AWS, `unit` for in-memory). */
   type api
@@ -155,9 +149,6 @@ module type T = {
   /** Factory for plugin deployment units. */
   module Plugin: Plugin.T with type api = api and type role = role
 
-  /** Factory for the Core management instance. */
-  module Core: Core.T with type api = api and type role = role
-
   /** Module type for plugin assembly — matches the `make` function produced by
       every plugin's `Make` functor. Pass first-class modules to `makePlatform`. */
   module type PluginMaker = {
@@ -169,13 +160,9 @@ module type T = {
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,
-      creates Core internally, and wires everything (schema stitching + stack exports). */
+      creates admin components internally, and wires everything (schema stitching + stack exports). */
   let makePlatform: (
     ~version: string,
     ~plugins: array<module(PluginMaker)>,
-    ~extensionPoints: array<module(extensionPointT)>=?,
-    ~aggregates: array<module(aggregateT with type api = api)>=?,
-    ~readModels: array<module(readModelT with type api = api and type role = role)>=?,
-    ~dcbSpec: module(dcbSpec)=?,
   ) => unit
 }

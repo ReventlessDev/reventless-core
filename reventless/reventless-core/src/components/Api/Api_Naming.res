@@ -56,4 +56,4 @@ let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string): qu
   }
 }
 
-let coreField = (~name: string) => `Core_${name}`
+let adminField = (~name: string) => `Admin_${name}`

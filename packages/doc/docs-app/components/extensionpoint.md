@@ -33,7 +33,7 @@ PluginA: "Plugin A (Provider)" {
   EPM -> Agg: internal command { class: command-flow }
 }
 
-CoreStack: Core Plugin {
+Admin: Platform Admin {
   class: plugin-area
   PEP: Plugin ExtensionPoint { class: extension-point }
 }
@@ -43,10 +43,10 @@ PluginB: "Plugin B (Consumer)" {
   Ext: Extension { class: extension }
 }
 
-PluginA.EP.ET -> CoreStack.PEP: event { class: cross-plugin }
-CoreStack.PEP -> PluginB.Ext: event { class: cross-plugin }
-PluginB.Ext -> CoreStack.PEP: command { class: cross-plugin }
-CoreStack.PEP -> PluginA.EP.CT: command { class: cross-plugin }
+PluginA.EP.ET -> Admin.PEP: event { class: cross-plugin }
+Admin.PEP -> PluginB.Ext: event { class: cross-plugin }
+PluginB.Ext -> Admin.PEP: command { class: cross-plugin }
+Admin.PEP -> PluginA.EP.CT: command { class: cross-plugin }
 ```
 
 ## Purpose and Responsibilities
@@ -281,7 +281,7 @@ EventTopic: Aggregate Event Topic { class: event-topic }
 EventCollector: Plugin Event Collector { class: event-collector }
 EPMapping: ExtensionPoint Mapping { class: event-mapper }
 EPEventTopic: ExtensionPoint Event Topic { class: event-topic }
-CoreStack: Core Stack { class: external-system }
+Admin: Platform Admin { class: external-system }
 Extension: Extension { class: extension }
 
 Aggregate -> EventTopic: emit event
@@ -289,8 +289,8 @@ EventTopic -> EventCollector: event
 EventCollector -> EPMapping: "outgoingEventHandler(event)"
 EPMapping -> EPMapping: "mapOutgoingEvent(event)"
 EPMapping -> EPEventTopic: "publishEvent(mappedEvent) (if mapOutgoingEvent defined)"
-EPEventTopic -> CoreStack: event
-CoreStack -> Extension: event
+EPEventTopic -> Admin: event
+Admin -> Extension: event
 ```
 
 ### Incoming Command Flow
@@ -301,14 +301,14 @@ When an Extension sends a command to this ExtensionPoint:
 shape: sequence_diagram
 
 Extension: Extension { class: extension }
-CoreStack: Core Stack { class: external-system }
+Admin: Platform Admin { class: external-system }
 EPCommandTopic: ExtensionPoint Command Topic { class: command-topic }
 EPMapping: ExtensionPoint Mapping { class: event-mapper }
 AggCommandTopic: Aggregate Command Topic { class: command-topic }
 Aggregate: Aggregate { class: aggregate }
 
-Extension -> CoreStack: command
-CoreStack -> EPCommandTopic: forward command
+Extension -> Admin: command
+Admin -> EPCommandTopic: forward command
 EPCommandTopic -> EPMapping: "handleIncomingCommand(command)"
 EPMapping -> EPMapping: "mapIncomingCommand(command)"
 EPMapping -> AggCommandTopic: "publishCommand(mappedCommand)"

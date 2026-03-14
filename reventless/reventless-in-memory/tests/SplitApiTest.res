@@ -1,9 +1,9 @@
 // Integration tests for split API mode.
-// Verifies that core and plugin schemas register into separate server instances
+// Verifies that admin and plugin schemas register into separate server instances
 // with no cross-contamination.
 //
 // Tests the split routing pattern used by Platform.makePlatform(splitApi=true):
-// - Core schema → GraphQL_ServerInstance (dedicated core server)
+// - Admin schema → GraphQL_ServerInstance (dedicated admin server)
 // - Plugin schema → GraphQL_Server singleton (default plugin server)
 //
 // MCP split is structurally identical (MCP_ServerInstance mirrors
@@ -13,12 +13,12 @@
 open AsyncTest
 open AsyncTest.Expect
 
-// Force side-effect import (creates core instance + registers schemas)
-let coreGraphQL = SplitApiFixtures.coreGraphQL
+// Force side-effect import (creates admin instance + registers schemas)
+let adminGraphQL = SplitApiFixtures.adminGraphQL
 
-// Core field names
-let coreQueryFields = ["Core_Plugin", "Core_Plugins"]
-let coreMutationFields = ["Core_Plugin_Activate", "Core_Plugin_Deactivate", "Core_Clone"]
+// Derive field names from schema entries — single source of truth.
+let adminQueryFields = [SplitApiFixtures.singleQueryField, SplitApiFixtures.listQueryField]
+let adminMutationFields = SplitApiFixtures.adminMutationFieldNames
 
 // Plugin field names
 let pluginMutationPrefix = "SplitTestPlugin_SplitTestItem_"
@@ -40,63 +40,63 @@ describe("Split API Mode — Schema Separation", () => {
       expect(hasPluginQuery)->toBe(true)
     })
 
-    testPromise("does NOT contain core mutation fields", async () => {
+    testPromise("does NOT contain admin mutation fields", async () => {
       let d = GraphQL_Server.diagnostics()
-      let hasCoreField =
+      let hasAdminField =
         d.registeredMutationFields->Array.some(f =>
-          coreMutationFields->Array.includes(f)
+          adminMutationFields->Array.includes(f)
         )
-      expect(hasCoreField)->toBe(false)
+      expect(hasAdminField)->toBe(false)
     })
 
-    testPromise("does NOT contain core query fields", async () => {
+    testPromise("does NOT contain admin query fields", async () => {
       let d = GraphQL_Server.diagnostics()
-      let hasCoreQuery =
+      let hasAdminQuery =
         d.registeredQueryFields->Array.some(f =>
-          coreQueryFields->Array.includes(f)
+          adminQueryFields->Array.includes(f)
         )
-      expect(hasCoreQuery)->toBe(false)
+      expect(hasAdminQuery)->toBe(false)
     })
   })
 
-  describe("Core GraphQL instance", () => {
-    testPromise("contains core mutation fields", async () => {
-      let d = coreGraphQL.diagnostics()
-      coreMutationFields->Array.forEach(field => {
+  describe("Admin GraphQL instance", () => {
+    testPromise("contains admin mutation fields", async () => {
+      let d = adminGraphQL.diagnostics()
+      adminMutationFields->Array.forEach(field => {
         let hasField = d.registeredMutationFields->Array.includes(field)
         expect(hasField)->toBe(true)
       })
     })
 
-    testPromise("contains core query fields", async () => {
-      let d = coreGraphQL.diagnostics()
-      coreQueryFields->Array.forEach(field => {
+    testPromise("contains admin query fields", async () => {
+      let d = adminGraphQL.diagnostics()
+      adminQueryFields->Array.forEach(field => {
         let hasField = d.registeredQueryFields->Array.includes(field)
         expect(hasField)->toBe(true)
       })
     })
 
     testPromise("does NOT contain plugin mutation fields", async () => {
-      let d = coreGraphQL.diagnostics()
+      let d = adminGraphQL.diagnostics()
       let hasPluginMutation =
         d.registeredMutationFields->Array.some(f => f->String.startsWith(pluginMutationPrefix))
       expect(hasPluginMutation)->toBe(false)
     })
 
     testPromise("does NOT contain plugin query fields", async () => {
-      let d = coreGraphQL.diagnostics()
+      let d = adminGraphQL.diagnostics()
       let hasPluginQuery =
         d.registeredQueryFields->Array.some(f => f->String.startsWith(pluginQueryPrefix))
       expect(hasPluginQuery)->toBe(false)
     })
 
-    testPromise("has core type definitions registered", async () => {
-      let d = coreGraphQL.diagnostics()
+    testPromise("has admin type definitions registered", async () => {
+      let d = adminGraphQL.diagnostics()
       expect(d.typeCount > 0)->toBe(true)
     })
 
     testPromise("has no SDL mismatches", async () => {
-      let d = coreGraphQL.diagnostics()
+      let d = adminGraphQL.diagnostics()
       expect(d.mismatches->Array.length)->toBe(0)
     })
   })

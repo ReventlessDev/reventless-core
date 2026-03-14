@@ -67,8 +67,8 @@ function queryFieldNamesForSliceQueryDb(plugin, queryDbName) {
   };
 }
 
-function coreField(name) {
-  return `Core_` + name;
+function adminField(name) {
+  return `Admin_` + name;
 }
 
 export {
@@ -80,6 +80,6 @@ export {
   queryFieldNamesForReadModel,
   queryFieldNamesForStateView,
   queryFieldNamesForSliceQueryDb,
-  coreField,
+  adminField,
 }
 /* No side effect */

@@ -20,7 +20,7 @@ PluginA: "Plugin A (Provider)" {
   EP: ExtensionPoint { class: extension-point }
 }
 
-CoreStack: Core Stack {
+Admin: Platform Admin {
   class: external-system
   PEP: Plugin ExtensionPoint { class: extension-point }
 }
@@ -41,10 +41,10 @@ PluginB: "Plugin B (Consumer)" {
   Agg -> Ext.ExtM: event { class: event-flow }
 }
 
-PluginA.EP -> CoreStack.PEP: events/commands { class: cross-plugin }
-CoreStack.PEP -> PluginA.EP: events/commands { class: cross-plugin }
-CoreStack.PEP -> PluginB.Ext: events/commands { class: cross-plugin }
-PluginB.Ext -> CoreStack.PEP: events/commands { class: cross-plugin }
+PluginA.EP -> Admin.PEP: events/commands { class: cross-plugin }
+Admin.PEP -> PluginA.EP: events/commands { class: cross-plugin }
+Admin.PEP -> PluginB.Ext: events/commands { class: cross-plugin }
+PluginB.Ext -> Admin.PEP: events/commands { class: cross-plugin }
 ```
 
 ## Purpose and Responsibilities
@@ -348,15 +348,15 @@ When an event arrives from an ExtensionPoint:
 shape: sequence_diagram
 
 EP: ExtensionPoint { class: extension-point }
-CoreStack: Core Stack { class: external-system }
+Admin: Platform Admin { class: external-system }
 EC: Plugin Event Collector { class: event-collector }
 ExtOps: Extension Operations { class: extension }
 AggCT: Aggregate Command Topic { class: command-topic }
 Agg: Aggregate { class: aggregate }
 RM: ReadModel { class: read-model }
 
-EP -> CoreStack: event
-CoreStack -> EC: event
+EP -> Admin: event
+Admin -> EC: event
 EC -> ExtOps: "incomingEventHandler(event, pluginDef)"
 ExtOps -> ExtOps: "mapIncomingEvent(event)"
 ExtOps -> AggCT: "command (PublishAggregateCommand)"
@@ -375,15 +375,15 @@ Agg: Aggregate { class: aggregate }
 ET: Event Topic { class: event-topic }
 EC: Plugin Event Collector { class: event-collector }
 ExtOps: Extension Operations { class: extension }
-CoreStack: Core Stack { class: external-system }
+Admin: Platform Admin { class: external-system }
 EP: ExtensionPoint { class: extension-point }
 
 Agg -> ET: event
 ET -> EC: event
 EC -> ExtOps: "outgoingEventHandler(event, pluginDef)"
 ExtOps -> ExtOps: "mapOutgoingEvent(event)"
-ExtOps -> CoreStack: "command (PublishExtensionPointCommand)"
-CoreStack -> EP: command
+ExtOps -> Admin: "command (PublishExtensionPointCommand)"
+Admin -> EP: command
 ```
 
 ## Component Outputs

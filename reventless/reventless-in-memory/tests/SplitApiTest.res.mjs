@@ -3,15 +3,9 @@
 import * as GraphQL_Server$ReventlessInMemory from "../src/adapter/GraphQL_Server.res.mjs";
 import * as SplitApiFixtures$ReventlessInMemory from "./SplitApiFixtures.res.mjs";
 
-let coreQueryFields = [
-  "Core_Plugin",
-  "Core_Plugins"
-];
-
-let coreMutationFields = [
-  "Core_Plugin_Activate",
-  "Core_Plugin_Deactivate",
-  "Core_Clone"
+let adminQueryFields = [
+  SplitApiFixtures$ReventlessInMemory.singleQueryField,
+  SplitApiFixtures$ReventlessInMemory.listQueryField
 ];
 
 let pluginMutationPrefix = "SplitTestPlugin_SplitTestItem_";
@@ -30,59 +24,61 @@ describe("Split API Mode — Schema Separation", () => {
       let hasPluginQuery = d.registeredQueryFields.some(f => f.startsWith(pluginQueryPrefix));
       expect(hasPluginQuery).toBe(true);
     });
-    test("does NOT contain core mutation fields", async () => {
+    test("does NOT contain admin mutation fields", async () => {
       let d = GraphQL_Server$ReventlessInMemory.diagnostics();
-      let hasCoreField = d.registeredMutationFields.some(f => coreMutationFields.includes(f));
-      expect(hasCoreField).toBe(false);
+      let hasAdminField = d.registeredMutationFields.some(f => SplitApiFixtures$ReventlessInMemory.adminMutationFieldNames.includes(f));
+      expect(hasAdminField).toBe(false);
     });
-    test("does NOT contain core query fields", async () => {
+    test("does NOT contain admin query fields", async () => {
       let d = GraphQL_Server$ReventlessInMemory.diagnostics();
-      let hasCoreQuery = d.registeredQueryFields.some(f => coreQueryFields.includes(f));
-      expect(hasCoreQuery).toBe(false);
+      let hasAdminQuery = d.registeredQueryFields.some(f => adminQueryFields.includes(f));
+      expect(hasAdminQuery).toBe(false);
     });
   });
-  describe("Core GraphQL instance", () => {
-    test("contains core mutation fields", async () => {
-      let d = SplitApiFixtures$ReventlessInMemory.coreGraphQL.diagnostics();
-      coreMutationFields.forEach(field => {
+  describe("Admin GraphQL instance", () => {
+    test("contains admin mutation fields", async () => {
+      let d = SplitApiFixtures$ReventlessInMemory.adminGraphQL.diagnostics();
+      SplitApiFixtures$ReventlessInMemory.adminMutationFieldNames.forEach(field => {
         let hasField = d.registeredMutationFields.includes(field);
         expect(hasField).toBe(true);
       });
     });
-    test("contains core query fields", async () => {
-      let d = SplitApiFixtures$ReventlessInMemory.coreGraphQL.diagnostics();
-      coreQueryFields.forEach(field => {
+    test("contains admin query fields", async () => {
+      let d = SplitApiFixtures$ReventlessInMemory.adminGraphQL.diagnostics();
+      adminQueryFields.forEach(field => {
         let hasField = d.registeredQueryFields.includes(field);
         expect(hasField).toBe(true);
       });
     });
     test("does NOT contain plugin mutation fields", async () => {
-      let d = SplitApiFixtures$ReventlessInMemory.coreGraphQL.diagnostics();
+      let d = SplitApiFixtures$ReventlessInMemory.adminGraphQL.diagnostics();
       let hasPluginMutation = d.registeredMutationFields.some(f => f.startsWith(pluginMutationPrefix));
       expect(hasPluginMutation).toBe(false);
     });
     test("does NOT contain plugin query fields", async () => {
-      let d = SplitApiFixtures$ReventlessInMemory.coreGraphQL.diagnostics();
+      let d = SplitApiFixtures$ReventlessInMemory.adminGraphQL.diagnostics();
       let hasPluginQuery = d.registeredQueryFields.some(f => f.startsWith(pluginQueryPrefix));
       expect(hasPluginQuery).toBe(false);
     });
-    test("has core type definitions registered", async () => {
-      let d = SplitApiFixtures$ReventlessInMemory.coreGraphQL.diagnostics();
+    test("has admin type definitions registered", async () => {
+      let d = SplitApiFixtures$ReventlessInMemory.adminGraphQL.diagnostics();
       expect(d.typeCount > 0).toBe(true);
     });
     test("has no SDL mismatches", async () => {
-      let d = SplitApiFixtures$ReventlessInMemory.coreGraphQL.diagnostics();
+      let d = SplitApiFixtures$ReventlessInMemory.adminGraphQL.diagnostics();
       expect(d.mismatches.length).toBe(0);
     });
   });
 });
 
-let coreGraphQL = SplitApiFixtures$ReventlessInMemory.coreGraphQL;
+let adminGraphQL = SplitApiFixtures$ReventlessInMemory.adminGraphQL;
+
+let adminMutationFields = SplitApiFixtures$ReventlessInMemory.adminMutationFieldNames;
 
 export {
-  coreGraphQL,
-  coreQueryFields,
-  coreMutationFields,
+  adminGraphQL,
+  adminQueryFields,
+  adminMutationFields,
   pluginMutationPrefix,
   pluginQueryPrefix,
 }

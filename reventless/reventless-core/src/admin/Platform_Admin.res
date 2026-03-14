@@ -1,4 +1,15 @@
-open Core_Helpers
+module type Config = {
+  let silent: bool
+  let splitApi: bool
+  let cloner: bool
+}
+
+type outputs = {
+  adminFragment: ReventlessInfra.Api.schemaFragment,
+  dcbMutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
+  dcbQueryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
+  dcbEventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
+}
 
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
@@ -6,17 +17,73 @@ module Make = (
     with type runtimeParts = RuntimeEnvironment.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner,
-  CoreRuntimeBuilder: PluginRuntime_Builder.T
+  AdminRuntimeBuilder: PluginRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
   DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
+  Config: Config,
 ) => {
+  include Builder_Helpers
+
+  module MakeEventCollectorHelper = (
+    RE: Runtime.Environment,
+    ECC: EventCollector_Adapter.Channel with type runtimeParts = RE.parts,
+    RB: PluginRuntime_Builder.T with module EventCollectorChannel = ECC,
+  ) => {
+    module AdminEventCollector = EventCollector_Builder.Make(RE, ECC)
+    let make = (~name, ~eventTopics, ~opts) => {
+      let eventCollector = AdminEventCollector.make(~name, ~eventTopics, ~opts)
+      let eventCollectorOutputs = eventCollector->Component.outputs
+      (eventCollector, eventCollectorOutputs)
+    }
+
+    let connect = (
+      ~eventCollector: EventCollector.component,
+      ~eventTopics: EventTopic.allOutputs,
+      ~extensionPointsOutputs: array<ExtensionPoint.outputs>,
+      ~extensionPointsOutgoingJsonEventsHandlers,
+    ) => {
+      let resources =
+        extensionPointsOutputs
+        ->Array.map(extensionPoint => extensionPoint.eventTopic)
+        ->Pulumi.Output.all
+        ->Pulumi.Output.apply(eventTopics =>
+          eventTopics
+          ->Array.map(eventTopic => eventTopic.resources)
+          ->Array.flat
+        )
+
+      resources->Pulumi.Output.apply(resources => {
+        let fakePluginDefinition: Reventless.Plugin.pluginDefinition = {
+          id: "Admin@INTERNAL",
+          name: "Admin",
+          version: "INTERNAL",
+          extensionPoints: [],
+          extensions: [],
+          eventCollector: "NOT-SET",
+          extensionProtocols: [],
+          apiSchemaFragment: None,
+        }
+
+        module Callback = Admin_Callback.Make({
+          let pluginDefinition = fakePluginDefinition
+          let outgoingExtensionPointJsonEventsHandlers = extensionPointsOutgoingJsonEventsHandlers
+        })
+        let handler = AdminEventCollector.makeHandler(
+          ~eventCollector,
+          ~jsonEventsHandler=Callback.handleJsonEvents,
+        )
+        eventCollector->RB.forPluginEventCollector(~handler, ~eventTopics, ~resources)
+      })
+    }
+  }
+
   type api = ClonerRunner.api
 
   let construct = (
-    ~version,
+    ~version as _,
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPoint.T)>,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
     ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = 'role)>,
@@ -24,33 +91,38 @@ module Make = (
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~api: ClonerRunner.api,
     ~apiRole: 'role,
-    ~apiComponent: option<ReventlessInfra.Api.component>,
     ~dcbSpec: option<module(Plugin.DcbSpec)>,
-    self,
-    _,
   ) => {
-    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-    let name = Core.componentType->ComponentType.toName
+    let name = "Admin"
+    let opts: Pulumi.ComponentResource.options = {}
 
     // Construct DCB components and derive DCB-specific API schema entries
     module DcbBuilder = Dcb_Builder.Make(
       DcbEventLogStorage,
       DcbEventTopicPublisher,
       DcbCommandTopicChannel,
-      CoreRuntimeBuilder,
+      AdminRuntimeBuilder,
     )
     let dcbResult = DcbBuilder.construct(~name, ~childName=name, ~dcbSpec, ~opts)
 
+    // Admin schema — composed from actual config
+    let adminMutationEntries = if Config.cloner {
+      AdminApi.mutationEntries
+    } else {
+      PluginBaseFragment.mutationEntries
+    }
+    let allMutationEntries = Array.concat(adminMutationEntries, dcbResult.mutationEntries)
+    let allQueryEntries = Array.concat(AdminApi.queryEntries, dcbResult.queryEntries)
+    let adminFragment = GraphQL_FragmentGenerator.generate(
+      ~mutationEntries=allMutationEntries,
+      ~queryEntries=allQueryEntries,
+    )
+
     // Register DCB schema entries via hooks (same path as plugins)
     if dcbResult.mutationEntries->Array.length > 0 || dcbResult.queryEntries->Array.length > 0 {
-      let fragment = CoreApi.generateFragment(
-        ~dcbMutationEntries=dcbResult.mutationEntries,
-        ~dcbQueryEntries=dcbResult.queryEntries,
-        ~dcbEventLogEntries=dcbResult.eventLogEntries,
-      )
       switch Plugin_Helpers.schemaTypeRegistrationHook.contents {
       | Some(registerTypes) =>
-        let parts = GraphQL_Stitcher.decode(fragment)
+        let parts = GraphQL_Stitcher.decode(adminFragment)
         registerTypes(parts.types)
       | None => ()
       }
@@ -58,9 +130,9 @@ module Make = (
       switch Plugin_Helpers.mcpSchemaRegistrationHook.contents {
       | Some(registerMcp) =>
         registerMcp({
-          pluginName: "Core",
-          mutationEntries: Array.concat(CoreApi.mutationEntries, dcbResult.mutationEntries),
-          queryEntries: Array.concat(CoreApi.queryEntries, dcbResult.queryEntries),
+          pluginName: "Admin",
+          mutationEntries: allMutationEntries,
+          queryEntries: allQueryEntries,
           eventLogEntries: dcbResult.eventLogEntries,
         })
       | None => ()
@@ -81,7 +153,7 @@ module Make = (
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
-    let (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs) =
+    let extensionPointsOutputs =
       (
         aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
@@ -90,7 +162,7 @@ module Make = (
       )
       ->Pulumi.Output.all4
       ->Pulumi.Output.apply(((aggregateResources, publishToAggregates, queryEngine, scheduler)) => {
-        let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
+        let _aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
 
         let (extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers) =
           extensionPoints->createExtensionPoints(
@@ -109,14 +181,15 @@ module Make = (
           )
           ->Array.reduce(Belt.Set.String.empty, (acc, names) => acc->Belt.Set.String.union(names))
 
+        let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
         let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
 
         module EventCollectorHelper = MakeEventCollectorHelper(
           RuntimeEnvironment,
           EventCollectorChannel,
-          CoreRuntimeBuilder,
+          AdminRuntimeBuilder,
         )
-        let (eventCollector, eventCollectorOutputs) = EventCollectorHelper.make(
+        let (eventCollector, _eventCollectorOutputs) = EventCollectorHelper.make(
           ~name,
           ~eventTopics,
           ~opts,
@@ -137,74 +210,28 @@ module Make = (
         // Connect DCB command topic to its runtime (if DCB is configured)
         dcbResult.dcbRuntimeSetup->Option.forEach(dcbRuntimeSetup => dcbRuntimeSetup())
 
-        (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs)
+        extensionPointsOutputs
       })
-      ->Pulumi.Output.unzip3
 
-    module Cloner = Cloner.Make(ClonerRunner)
-    let cloner = Cloner.make(~api, ~opts)
+    // Cloner (opt-in)
+    if Config.cloner {
+      module Cloner = Cloner.Make(ClonerRunner)
+      let _cloner = Cloner.make(~api, ~opts)
+    }
 
-    let baseOutputs: Core.outputs = {
-      Core.version,
-      eventCollector: eventCollectorOutputs,
-      extensionPoints: extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
+    // Store admin extension points so Plugin_Builder can wire the admin connection
+    // path locally (in-memory) instead of via Interstack.coreStackReference.
+    Plugin_Helpers.localAdminExtensionPoints := Some(
+      extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
         extensionPointsOutputs->Array.map(ep => (ep.name, ep))->Dict.fromArray
       ),
-      aggregates: aggregatesOutputs,
-      readModels: readModelsOutputs,
-      cloner: cloner->Component.outputs,
-    }
-    // Add optional fields conditionally
-    let withApi = switch apiComponent {
-    | Some(apiComp) => {...baseOutputs, api: apiComp}
-    | None => baseOutputs
-    }
-    let withDcb = switch dcbResult.dcbEventLogOutputs {
-    | Some(dcbEventLogOutputs) => {
-        ...withApi,
-        dcbEventLog: dcbEventLogOutputs,
-        stateChangeSlices: dcbResult.stateChangeSlicesOutputs,
-        stateViewSlices: dcbResult.stateViewSlicesOutputs,
-        automationSlices: dcbResult.automationSlicesOutputs,
-        outboundTranslationSlices: dcbResult.outboundTranslationSlicesOutputs,
-        inboundTranslationSlices: dcbResult.inboundTranslationSlicesOutputs,
-      }
-    | None => withApi
-    }
-    // Store Core outputs so Plugin_Builder can wire the Core connection path
-    // locally (in-memory) instead of via Interstack.coreStackReference.
-    Plugin_Helpers.localCoreOutputs := Some(withDcb)
-    self->Component.setOutputs(withDcb)
-  }
-
-  let make = (
-    ~version,
-    ~extensionPoints,
-    ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = 'role)>,
-    ~scheduler,
-    ~api: ClonerRunner.api,
-    ~apiRole: 'role,
-    ~resourceNaming,
-    ~apiComponent: option<ReventlessInfra.Api.component>=?,
-    ~dcbSpec: option<module(Plugin.DcbSpec)>=?,
-  ): Core.component =>
-    Component.make(
-      ~componentType=Core.componentType->ComponentType.toString,
-      ~name="Core",
-      ~construct=construct(
-        ~version,
-        ~extensionPoints,
-        ~aggregates,
-        ~readModels,
-        ~scheduler,
-        ~api,
-        ~apiRole,
-        ~resourceNaming,
-        ~apiComponent,
-        ~dcbSpec,
-        ...
-      ),
-      ~opts=None,
     )
+
+    {
+      adminFragment,
+      dcbMutationEntries: dcbResult.mutationEntries,
+      dcbQueryEntries: dcbResult.queryEntries,
+      dcbEventLogEntries: dcbResult.eventLogEntries,
+    }
+  }
 }

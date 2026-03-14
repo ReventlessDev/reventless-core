@@ -66,12 +66,12 @@ Downstream: {
 
   1,1: { class: placeholder; width: 800 }
   Plugin: Downstream Plugin { class: plugin }
-  CoreStack: Core Stack { class: plugin }
+  Admin: Platform Admin { class: plugin }
 }
 
 Plugin.External.EP -> Downstream.Plugin: events/commands { class: cross-plugin }
 Upstream.Plugin -> Plugin.External.Ext: events/commands { class: cross-plugin }
-Plugin.External.HB -> Downstream.CoreStack: heartbeat
+Plugin.External.HB -> Downstream.Admin: heartbeat
 ```
 
 ## Purpose and Responsibilities
@@ -80,7 +80,7 @@ Plugin.External.HB -> Downstream.CoreStack: heartbeat
 - **Deployment Unit:** Groups all related components for unified deployment
 - **Component Container:** Contains and orchestrates Aggregates, ReadModels, Tasks, ExtensionPoints, and Extensions
 - **Cross-Plugin Communication:** Manages communication with other Plugins via ExtensionPoints and Extensions
-- **Health Monitoring:** Provides heartbeat signals to the Core Stack for monitoring
+- **Health Monitoring:** Provides heartbeat signals to the Platform Admin for monitoring
 
 ## Plugin Structure
 
@@ -212,28 +212,28 @@ PluginB: Plugin B {
   ExtM -> AggB: command { class: command-flow }
 }
 
-CoreStack: Core Stack {
+Admin: Platform Admin {
   class: plugin-area
   PEP: Plugin Extension Point { class: extension-point }
 }
 
-PluginA.EPA -> CoreStack.PEP: events/commands { class: cross-plugin }
-CoreStack.PEP -> PluginA.EPA: events/commands { class: cross-plugin }
-PluginB.ExtB -> CoreStack.PEP: events/commands { class: cross-plugin }
-CoreStack.PEP -> PluginB.ExtB: events/commands { class: cross-plugin }
+PluginA.EPA -> Admin.PEP: events/commands { class: cross-plugin }
+Admin.PEP -> PluginA.EPA: events/commands { class: cross-plugin }
+PluginB.ExtB -> Admin.PEP: events/commands { class: cross-plugin }
+Admin.PEP -> PluginB.ExtB: events/commands { class: cross-plugin }
 ```
 
 ### Communication Flow
 
 1. **Outgoing Events:** Aggregate events are mapped to ExtensionPoint events via ExtensionPointMappings
-2. **Event Distribution:** ExtensionPoint publishes events to the Core Stack's Plugin ExtensionPoint
+2. **Event Distribution:** ExtensionPoint publishes events to the Platform Admin's Plugin ExtensionPoint
 3. **Event Reception:** Extensions receive events from ExtensionPoints they subscribe to
 4. **Command Generation:** Extension mappings transform incoming events to commands for local Aggregates
 5. **Command Forwarding:** Extensions can also send commands back to ExtensionPoints
 
 ## Plugin Definition
 
-At runtime, each Plugin registers itself with the Core Stack using a plugin definition:
+At runtime, each Plugin registers itself with the Platform Admin using a plugin definition:
 
 ```rescript
 type pluginDefinition = {
@@ -248,7 +248,7 @@ type pluginDefinition = {
 
 This definition enables:
 - **Discovery:** Other Plugins can discover available ExtensionPoints
-- **Routing:** The Core Stack routes events between Plugins
+- **Routing:** The Platform Admin routes events between Plugins
 - **Monitoring:** Health status tracking via heartbeats
 
 ## Example Plugin Setup
@@ -301,7 +301,7 @@ ReadModels: ReadModels { class: read-model }
 ExtensionPoints: ExtensionPoints { class: extension-point }
 Extensions: Extensions { class: extension }
 EventCollector: EventCollector { class: event-collector }
-CoreStack: CoreStack { class: external-system }
+Admin: Admin { class: external-system }
 
 Pulumi -> Plugin: deploy
 Plugin -> Aggregates: "create (without EventMappers)"
@@ -310,23 +310,23 @@ Plugin -> ExtensionPoints: create
 Plugin -> Extensions: create
 Plugin -> Plugin: Add EventMappers to Aggregates
 Plugin -> EventCollector: create & connect
-Plugin -> CoreStack: register plugin definition
+Plugin -> Admin: register plugin definition
 Plugin --> Pulumi: outputs
 ```
 
 ### Heartbeat Monitoring
 
-The Plugin sends periodic heartbeat signals to the Core Stack:
+The Plugin sends periodic heartbeat signals to the Platform Admin:
 
 ```d2
 shape: sequence_diagram
 
 Plugin: Plugin { class: plugin }
 Heartbeat: Heartbeat { class: heartbeat }
-CoreStack: CoreStack { class: external-system }
+Admin: Admin { class: external-system }
 
-Heartbeat -> CoreStack: "heartbeat signal (every heartbeatInterval)"
-CoreStack -> CoreStack: Update plugin health status
+Heartbeat -> Admin: "heartbeat signal (every heartbeatInterval)"
+Admin -> Admin: Update plugin health status
 ```
 
 ## Best Practices

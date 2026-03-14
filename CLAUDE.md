@@ -100,12 +100,12 @@ Reventless is an **event-sourced CQRS framework** for serverless infrastructure,
 3. **reventless-aws** - AWS-specific implementations (DynamoDB, Lambda, SQS, SNS, S3 adapters)
 4. **rescript-*** - ReScript bindings for various JS libraries (aws-sdk, pulumi, uuid, etc.)
 
-### Core Components (in `reventless/reventless/src/components/`)
+### Core Components (in `reventless/reventless-core/src/components/`)
 
 - **Aggregate** - Event-sourced aggregate root with CommandTopic, EventLog, CommandGenerator
 - **ReadModel** - Query-side projection consuming events via EventCollector
 - **Plugin** - Deployable unit containing aggregates, read models, extension points
-- **Core** - The application core orchestrating all components
+- **Platform_Admin** (in `src/admin/`) - Built-in platform components (Plugin aggregate, read model, extension point, cloner)
 
 Component structure pattern (documented in `packages/doc/docs-framework/inner-workings/component-structure-pattern.md`):
 

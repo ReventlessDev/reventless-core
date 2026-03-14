@@ -26,7 +26,7 @@ import * as Heartbeat_Builder$ReventlessCore from "../Heartbeat/Heartbeat_Builde
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
-  return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (CorePluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
+  return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
     let make = (name, version, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, api, apiRole, scheduler, dcbSpec, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
@@ -102,9 +102,9 @@ function Make(Spec) {
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-        let coreExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
-        let coreOutputs = Plugin_Helpers$ReventlessCore.localCoreOutputs.contents;
-        let localCoreResolvedEP = coreOutputs !== undefined ? Output$Pulumi.flatMap(coreOutputs.extensionPoints, eps => {
+        let adminExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
+        let adminEPs = Plugin_Helpers$ReventlessCore.localAdminExtensionPoints.contents;
+        let localAdminResolvedEP = adminEPs !== undefined ? Output$Pulumi.flatMap(adminEPs, eps => {
             let ep = eps[PluginExtensionPointSpec$ReventlessInfra.name];
             if (ep !== undefined) {
               return ExtensionPoint$ReventlessCore.toResolvedOutputs(ep).apply(r => r);
@@ -114,8 +114,8 @@ function Make(Spec) {
           }) : Pulumi.output(undefined);
         let builderOutputs = Pulumi.all([
           Pulumi.all([
-            coreExtensionPoints,
-            localCoreResolvedEP
+            adminExtensionPoints,
+            localAdminResolvedEP
           ]),
           Pulumi.all(Plugin_Helpers$ReventlessCore.aggregateResources),
           Pulumi.all(Plugin_Helpers$ReventlessCore.publishToAggregates),
@@ -128,31 +128,31 @@ function Make(Spec) {
           let publishToReadModels = param[3];
           let publishToAggregates = param[2];
           let match = param[0];
-          let localCoreResolvedEP = match[1];
-          let coreExtensionPoints = match[0];
+          let localAdminResolvedEP = match[1];
+          let adminExtensionPoints = match[0];
           let aggregatesOutputs = Plugin_Helpers$ReventlessCore.addEventMappers(allEventTopics, queryEngine);
           let match$1 = Plugin_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
           let extensionPointsHandlers = match$1[1];
           let extensionPointsOutputs = match$1[0];
           let coreSetup;
-          if (coreExtensionPoints !== undefined) {
-            let corePluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(coreExtensionPoints, PluginExtensionPointSpec$ReventlessInfra.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
-            let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources.map(Adapter$ReventlessCore.fromInteropResolved));
+          if (adminExtensionPoints !== undefined) {
+            let pluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(adminExtensionPoints, PluginExtensionPointSpec$ReventlessInfra.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
+            let pluginExtensionPointCommandTopicRemoteChannel = PluginExtensionPointRemoteChannel.make(pluginExtensionPointUnwrapped.commandTopic.resources.map(Adapter$ReventlessCore.fromInteropResolved));
             coreSetup = [
-              corePluginExtensionPointUnwrapped,
-              corePluginExtensionPointCommandTopicRemoteChannel
+              pluginExtensionPointUnwrapped,
+              pluginExtensionPointCommandTopicRemoteChannel
             ];
-          } else if (localCoreResolvedEP !== undefined) {
-            let remoteChannel = CorePluginExtensionPointRemoteChannel.make(localCoreResolvedEP.commandTopic.resources.map(Adapter$ReventlessCore.fromInteropResolved));
+          } else if (localAdminResolvedEP !== undefined) {
+            let remoteChannel = PluginExtensionPointRemoteChannel.make(localAdminResolvedEP.commandTopic.resources.map(Adapter$ReventlessCore.fromInteropResolved));
             coreSetup = [
-              localCoreResolvedEP,
+              localAdminResolvedEP,
               remoteChannel
             ];
           } else {
             coreSetup = undefined;
           }
-          let publishToCorePluginExtensionPoint = coreSetup !== undefined ? coreSetup[1].remotePublish : async param => {};
-          let match$2 = Plugin_Helpers$ReventlessCore.createExtensions(extensions, publishToCorePluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
+          let publishToPluginExtensionPoint = coreSetup !== undefined ? coreSetup[1].remotePublish : async param => {};
+          let match$2 = Plugin_Helpers$ReventlessCore.createExtensions(extensions, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
           let extensionsHandlers = match$2[1];
           let extensionsOutputs = match$2[0];
           let extensionPointsDefinitions = Plugin_Helpers$ReventlessCore.extractExtensionPointDefinitions(extensionPointsOutputs);
@@ -184,7 +184,7 @@ function Make(Spec) {
             apiSchemaFragment: apiSchemaFragment
           }));
           if (coreSetup !== undefined) {
-            let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToCorePluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
+            let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
             EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, coreSetup[0], pluginDefinition, match$4[1], extensionsHandlers, extensionPointsHandlers, match$4[0]);
           } else {
             EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, undefined, extensionsHandlers, extensionPointsHandlers, undefined);
@@ -193,10 +193,10 @@ function Make(Spec) {
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);
           let SpecificHeartbeat = Heartbeat_Builder$ReventlessCore.Make(HeartbeatRunner);
           let heartbeat = SpecificHeartbeat.make(childName, opts);
-          let handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
+          let handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToPluginExtensionPoint);
           if (coreSetup !== undefined) {
-            let corePluginExtensionPointCommandTopicRemoteChannel$1 = coreSetup[1];
-            PluginRuntimeBuilder.forPluginHeartbeat(handler, none => SpecificHeartbeat.connect(none, corePluginExtensionPointCommandTopicRemoteChannel$1, heartbeatInterval, heartbeat), undefined, undefined, heartbeat);
+            let pluginExtensionPointCommandTopicRemoteChannel$1 = coreSetup[1];
+            PluginRuntimeBuilder.forPluginHeartbeat(handler, none => SpecificHeartbeat.connect(none, pluginExtensionPointCommandTopicRemoteChannel$1, heartbeatInterval, heartbeat), undefined, undefined, heartbeat);
           } else {
             PluginRuntimeBuilder.forPluginHeartbeat(handler, param => {}, undefined, undefined, heartbeat);
           }

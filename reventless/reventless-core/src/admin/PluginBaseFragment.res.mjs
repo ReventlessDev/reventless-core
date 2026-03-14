@@ -2,9 +2,9 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "../ReadModels/Plugin/PluginReadModelSpec.res.mjs";
-import * as GraphQL_FragmentGenerator$ReventlessCore from "../../components/Api/GraphQL_FragmentGenerator.res.mjs";
+import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
+import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 let adminAuth = {
   tableName: "Plugin",
@@ -12,9 +12,9 @@ let adminAuth = {
 };
 
 let queryEntries = [{
-    singleFieldName: Api_Naming$ReventlessCore.coreField("Plugin"),
-    listFieldName: Api_Naming$ReventlessCore.coreField("Plugins"),
-    returnTypeName: Api_Naming$ReventlessCore.coreField("Plugin"),
+    singleFieldName: Api_Naming$ReventlessCore.adminField("Plugin"),
+    listFieldName: Api_Naming$ReventlessCore.adminField("Plugins"),
+    returnTypeName: Api_Naming$ReventlessCore.adminField("Plugin"),
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     authorization: adminAuth,
     excludeFields: [
@@ -35,12 +35,12 @@ let deactivateArgsSchema = S.schema(s => ({
 
 let mutationEntries = [
   {
-    fieldNames: [Api_Naming$ReventlessCore.coreField("Plugin_Activate")],
+    fieldNames: [Api_Naming$ReventlessCore.adminField("Plugin_Activate")],
     commandSchema: activateArgsSchema,
     description: "Activate a plugin by ID"
   },
   {
-    fieldNames: [Api_Naming$ReventlessCore.coreField("Plugin_Deactivate")],
+    fieldNames: [Api_Naming$ReventlessCore.adminField("Plugin_Deactivate")],
     commandSchema: deactivateArgsSchema,
     description: "Deactivate a plugin by ID"
   }

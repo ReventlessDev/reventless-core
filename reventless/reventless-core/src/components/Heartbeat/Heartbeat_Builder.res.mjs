@@ -24,10 +24,10 @@ function Make(Runner) {
     };
     Component$ReventlessCore.setOutputs(heartbeat, outputs);
   };
-  let makeHandler = (id, timeoutOpt, publishToCorePluginExtensionPoint) => {
+  let makeHandler = (id, timeoutOpt, publishToPluginExtensionPoint) => {
     let timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
     let Callback = Heartbeat_Callback$ReventlessCore.Make({
-      publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
+      publishToPluginExtensionPoint: publishToPluginExtensionPoint,
       id: id,
       timeout: timeout
     });

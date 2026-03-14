@@ -10,7 +10,7 @@ module type Mappings = {
 
 module type Ops = {
   let publishToAggregates: dict<CommandTopic.publishJsons>
-  let publishToCorePluginExtensionPoint: CommandTopic.publishJsons
+  let publishToPluginExtensionPoint: CommandTopic.publishJsons
   let readModelNamesForSourceName: dict<array<string>>
   let publishToReadModels: dict<EventCollector.enqueueEvent>
   let queryEngine: Reventless.QueryEngine.operations
@@ -72,12 +72,12 @@ module Make = (
     }
   }
 
-  let publishCorePluginExtensionPointCommand = async cmdJson =>
-    try await Ops.publishToCorePluginExtensionPoint([cmdJson]) catch {
+  let publishPluginExtensionPointCommand = async cmdJson =>
+    try await Ops.publishToPluginExtensionPoint([cmdJson]) catch {
     | err =>
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
       Effect.logError(
-        `Extension: Error on publish command to Core.Plugin ExtensionPoint: ${errMsg}`,
+        `Extension: Error on publish command to Plugin ExtensionPoint: ${errMsg}`,
       )->Effect.runSync
     }
 
@@ -87,7 +87,7 @@ module Make = (
       id: commandJson.id,
       command: commandJson->Message.toMessageBody,
     })
-    publishCorePluginExtensionPointCommand({
+    publishPluginExtensionPointCommand({
       Message.id: "",
       meta: {
         ...commandJson.meta,
@@ -127,7 +127,7 @@ module Make = (
         }
         promise->publish
       | AbstractPublishPluginExtensionPointCommand(commandJson) =>
-        publishCorePluginExtensionPointCommand(commandJson)
+        publishPluginExtensionPointCommand(commandJson)
       | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) => handler->handle
@@ -137,7 +137,7 @@ module Make = (
   let applyOutgoingCommandAction = async action =>
     switch action {
     | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(commandJson) =>
-      publishCorePluginExtensionPointCommand(commandJson)
+      publishPluginExtensionPointCommand(commandJson)
     | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
       forwardCommand(extensionPointName, commandJson)
     | AbstractCall(handler) => handler->handle

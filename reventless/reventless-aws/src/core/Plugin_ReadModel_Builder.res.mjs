@@ -2,8 +2,8 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
-import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/core/ReadModels/Plugin/PluginProjection.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/core/ReadModels/Plugin/PluginReadModelSpec.res.mjs";
+import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginProjection.res.mjs";
+import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "../components/ReadModel_Builder_Single.res.mjs";
 
 let MappingsType = Projection$Reventless.Mappings.Make({

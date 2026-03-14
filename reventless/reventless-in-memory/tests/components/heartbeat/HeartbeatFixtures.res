@@ -42,7 +42,7 @@ let _ = beforeAllAsync(async () => {
     await HeartbeatMaker.makeHandler(
       ~id="hb-id-1",
       ~timeout=1,
-      ~publishToCorePluginExtensionPoint=mockPublish,
+      ~publishToPluginExtensionPoint=mockPublish,
     )->TestRunner.resolve
   resolvedHandler := Some(h)
 })

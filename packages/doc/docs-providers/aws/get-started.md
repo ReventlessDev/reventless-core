@@ -54,9 +54,9 @@ Set your AWS region:
 pulumi config set aws:region us-east-1
 ```
 
-## Create the Core Stack
+## Platform Admin Components
 
-The Core Stack is created internally by `makePlatform` — it provides shared infrastructure for plugins to communicate. You don't need to create it manually.
+The platform admin components (Plugin aggregate, Plugin read model, Plugin extension point) are created internally by `makePlatform` — they provide shared infrastructure for plugins to communicate. You don't need to create them manually.
 
 ## Create a Plugin
 

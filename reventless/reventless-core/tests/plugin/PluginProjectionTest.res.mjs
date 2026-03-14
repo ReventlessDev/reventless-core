@@ -2,7 +2,7 @@
 
 import * as PluginFixtures$ReventlessCore from "./PluginFixtures.res.mjs";
 import * as ProjectionTest$ReventlessCore from "../ProjectionTest.res.mjs";
-import * as PluginProjection$ReventlessCore from "../../src/core/ReadModels/Plugin/PluginProjection.res.mjs";
+import * as PluginProjection$ReventlessCore from "../../src/admin/PluginProjection.res.mjs";
 
 let PluginProjectionTest = ProjectionTest$ReventlessCore.Make(PluginProjection$ReventlessCore.PluginMapping);
 

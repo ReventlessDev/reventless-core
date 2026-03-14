@@ -6,12 +6,12 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Message$ReventlessCore from "../../../Message.res.mjs";
+import * as Message$ReventlessCore from "../Message.res.mjs";
 import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src/Compat.res.mjs";
-import * as PluginSpec$ReventlessCore from "../../Aggregates/Plugin/PluginSpec.res.mjs";
-import * as ScheduleOps$ReventlessCore from "../../../util/ScheduleOps.res.mjs";
+import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
+import * as ScheduleOps$ReventlessCore from "../util/ScheduleOps.res.mjs";
 import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-interop/src/protocol/CompatMatrix.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "../../ReadModels/Plugin/PluginReadModelSpec.res.mjs";
+import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 

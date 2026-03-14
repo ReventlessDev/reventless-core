@@ -9,6 +9,7 @@ import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Util_Vpc$ReventlessAws from "../../util/Util_Vpc.res.mjs";
+import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as GetSecretVersion$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.mjs";
@@ -146,7 +147,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       },
       serviceRoleArn: dataSourceRole.arn
     }, opts);
-    let field = "Core_Clone";
+    let field = AdminApi$ReventlessCore.cloneMutationEntry.fieldNames[0];
     let resolver = AppSync_Resolver$PulumiAws.makeUnitResolver(field, api, dataSource.name, "Mutation", field, `{
             "version": "2017-02-28",
             "operation": "Invoke",

@@ -1,7 +1,7 @@
 module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 
 module type Spec = {
-  let publishToCorePluginExtensionPoint: CommandTopic.publishJsons
+  let publishToPluginExtensionPoint: CommandTopic.publishJsons
   let id: string
   let timeout: int
 }
@@ -9,7 +9,7 @@ module type Spec = {
 module Make = (Spec: Spec) => {
   let heartbeat = (_, _) => {
     let msgId = Message.uuid()
-    Spec.publishToCorePluginExtensionPoint([
+    Spec.publishToPluginExtensionPoint([
       {
         Message.id: Spec.id,
         meta: {

@@ -11,10 +11,10 @@ import * as Extension_Operations$ReventlessCore from "./Extension_Operations.res
 
 function Make(Spec) {
   return Mappings => {
-    let make = (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Extension$ReventlessCore.componentType), Spec.name + ("." + Mappings.name), (extra, extra$1) => {
+    let make = (publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Extension$ReventlessCore.componentType), Spec.name + ("." + Mappings.name), (extra, extra$1) => {
       let Operations = Extension_Operations$ReventlessCore.Make(Spec)(Mappings)({
         publishToAggregates: publishToAggregates,
-        publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
+        publishToPluginExtensionPoint: publishToPluginExtensionPoint,
         readModelNamesForSourceName: readModelNamesForSourceName,
         publishToReadModels: publishToReadModels,
         queryEngine: queryEngine

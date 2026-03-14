@@ -4,7 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
-import * as PluginSpec$ReventlessCore from "../../src/core/Aggregates/Plugin/PluginSpec.res.mjs";
+import * as PluginSpec$ReventlessCore from "../../src/admin/PluginSpec.res.mjs";
 
 Jest.describe("Message should", () => {
   Jest.test("create a valid sequenceNr", () => Jest.Expect.toBe(Jest.Expect.expect(Message$ReventlessCore.hrtimeToString([

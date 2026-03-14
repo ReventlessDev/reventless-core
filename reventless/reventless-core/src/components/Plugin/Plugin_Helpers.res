@@ -131,7 +131,7 @@ include Builder_Helpers
 
 let createExtensions = (
   extensions,
-  ~publishToCorePluginExtensionPoint,
+  ~publishToPluginExtensionPoint,
   ~publishToAggregates,
   ~publishToReadModels,
   ~queryEngine,
@@ -140,7 +140,7 @@ let createExtensions = (
   extensions
   ->Array.map((module(SpecificExtension: ReventlessInfra.Extension.T)) => {
     let extension = SpecificExtension.make(
-      ~publishToCorePluginExtensionPoint,
+      ~publishToPluginExtensionPoint,
       ~publishToAggregates,
       ~readModelNamesForSourceName,
       ~publishToReadModels,
@@ -197,7 +197,7 @@ let createConnectPluginExtension = (
   ~pluginDefinition,
   ~extensionPointsOutputs,
   ~extensionsOutputs,
-  ~publishToCorePluginExtensionPoint,
+  ~publishToPluginExtensionPoint,
   ~publishToAggregates,
   ~readModelNamesForSourceName,
   ~publishToReadModels,
@@ -222,7 +222,7 @@ let createConnectPluginExtension = (
       let resourceNaming = resourceNaming
     })
     let connectPluginExtension = ConnectPluginExtension.make(
-      ~publishToCorePluginExtensionPoint,
+      ~publishToPluginExtensionPoint,
       ~publishToAggregates,
       ~readModelNamesForSourceName,
       ~publishToReadModels,
@@ -288,17 +288,17 @@ module MakeEventCollectorHelper = (
     (eventCollector, eventCollectorOutputs, eventCollectorUrn)
   }
 
-  // Unified connect — handles both with-Core and without-Core cases.
-  // When ~corePluginExtensionPointUnwrapped is provided, Core extension point
+  // Unified connect — handles both with-admin and without-admin cases.
+  // When ~pluginExtensionPointUnwrapped is provided, admin extension point
   // resources and ConnectPluginExtension handlers are wired.  Otherwise falls
-  // back to a simplified path (no Core extension point resources, empty
+  // back to a simplified path (no admin extension point resources, empty
   // incoming connect extension handlers).
   let connect = (
     ~eventCollector: EventCollector.component,
     ~eventTopics: EventTopic.allOutputs,
     ~extensionPointsOutputs: array<ExtensionPoint.outputs>,
     ~extensionsOutputs: array<Extension.outputs>,
-    ~corePluginExtensionPointUnwrapped: option<ReventlessInterop.ExtensionPoint.resolvedOutputs>=?,
+    ~pluginExtensionPointUnwrapped: option<ReventlessInterop.ExtensionPoint.resolvedOutputs>=?,
     ~pluginDefinition,
     ~connectPluginExtensionIncomingEventHandler: option<Pulumi.Output.t<Pulumi.Output.t<Plugin_Callback.jsonEventsHandler>>>=?,
     ~extensionsHandlers,
@@ -314,7 +314,7 @@ module MakeEventCollectorHelper = (
           eventTopics
           ->Array.map(eventTopic => eventTopic.resources)
           ->Array.flat
-        switch corePluginExtensionPointUnwrapped {
+        switch pluginExtensionPointUnwrapped {
         | Some(unwrapped) =>
           base->Array.concat(unwrapped.commandTopic.resources->Adapter.fromInteropResources)
         | None => base
@@ -400,13 +400,13 @@ module MakeEventCollectorHelper = (
 
 
 // ---------------------------------------------------------------------------
-// Local Core outputs — set by Core_Builder.construct() during Core
-// construction.  When set, Plugin_Builder uses these to wire the Core
+// Local admin extension points — set by Platform_Admin.construct() during
+// admin construction.  When set, Plugin_Builder uses these to wire the admin
 // connection path locally instead of via Interstack.coreStackReference.
 // This eliminates the need for connectWithoutCore in platforms like in-memory
-// where Core and plugins run in the same process.
+// where admin and plugins run in the same process.
 // ---------------------------------------------------------------------------
-let localCoreOutputs: ref<option<Core.outputs>> = ref(None)
+let localAdminExtensionPoints: ref<option<Pulumi.Output.t<dict<ExtensionPoint.outputs>>>> = ref(None)
 
 // ---------------------------------------------------------------------------
 // DCB mutation resolver hook — set by in-memory platform before plugins are

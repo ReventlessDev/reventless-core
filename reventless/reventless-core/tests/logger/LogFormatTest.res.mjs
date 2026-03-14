@@ -4,7 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../src/util/LogFormat.res.mjs";
-import * as PluginSpec$ReventlessCore from "../../src/core/Aggregates/Plugin/PluginSpec.res.mjs";
+import * as PluginSpec$ReventlessCore from "../../src/admin/PluginSpec.res.mjs";
 
 S.enableJson();
 
