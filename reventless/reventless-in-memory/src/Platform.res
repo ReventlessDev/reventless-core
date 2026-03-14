@@ -1,8 +1,7 @@
 // In-memory Platform — implements ReventlessInfra.Platform.T using only in-memory data structures.
-// Use in Jest tests together with TestRunner.setup() to activate Pulumi mock mode.
+// Pulumi mock mode is activated automatically when Platform.Make() is applied.
 //
 // Example:
-//   TestRunner.setup()
 //   module Platform = Platform.Make()
 //   module App = MyPlugin.Make(Platform)
 //
@@ -23,6 +22,10 @@ module MakeWithConfig = (
     let splitApi: bool
   },
 ): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
+  // Activate Pulumi mock mode — must happen before any component creation.
+  // Idempotent, so safe to call even if TestRunner.setup() was already called.
+  let _ = TestRunner.setup()
+
   type api = unit
   type role = unit
 
@@ -421,6 +424,14 @@ module MakeWithConfig = (
     let make = CoreMaker.make
   }
 
+  module type PluginMaker = {
+    let make: (
+      ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
+      ~api: api,
+      ~apiRole: role,
+    ) => Plugin.component
+  }
+
   let makeScheduler = () => {
     module SP = ScheduledPublisher_InMemory.Make(Bus)
     module S = ReventlessCore.Scheduler_Builder.Make(SP)
@@ -428,10 +439,40 @@ module MakeWithConfig = (
     component->ReventlessCore.Component.operations
   }
 
+  @val external processEnv: dict<string> = "process.env"
+  let graphqlDebug = processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome
+
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpSupported
 
-  let makePlatform = (~api as _, ~core as _, ~plugins) => {
+  let makePlatform = (
+    ~version,
+    ~plugins: array<module(PluginMaker)>,
+    ~extensionPoints=[],
+    ~aggregates=[],
+    ~readModels=[],
+    ~dcbSpec=?,
+  ) => {
+    // Create scheduler and Core internally — platform-specific values are known here.
+    let scheduler = makeScheduler()
+    let _core = Core.make(
+      ~version,
+      ~extensionPoints,
+      ~aggregates,
+      ~readModels,
+      ~scheduler,
+      ~api=(),
+      ~apiRole=(),
+      ~resourceNaming=InMemory_PluginSpec.resourceNaming,
+      ~dcbSpec?,
+    )
+
+    // Build each plugin using the shared scheduler.
+    let plugins = plugins->Array.map(plugin => {
+      module P = unpack(plugin)
+      P.make(~scheduler, ~api=(), ~apiRole=())
+    })
+
     // Create an in-memory Plugin QueryDb in the Bus.
     // This mirrors what QueryDbStorage_InMemory does for user read models,
     // providing the runtime store that backs plugin/everyPlugin queries.
@@ -683,13 +724,22 @@ module MakeWithConfig = (
     | Some(inst) => inst.start(~port=3002, ())
     | None => ()
     }
+
+    // Print schema diagnostics when GRAPHQL_DEBUG is set.
+    if graphqlDebug {
+      GraphQL_Server.printDiagnostics()
+      switch coreGraphQL {
+      | Some(inst) => inst.printDiagnostics()
+      | None => ()
+      }
+    }
   }
 }
 
-// Default platform — diagnostic warnings enabled, unified API (no split).
+// Default platform — diagnostic warnings enabled, split API (core on separate ports).
 module Make = (): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   include MakeWithConfig({
     let silent = false
-    let splitApi = false
+    let splitApi = true
   })
 }

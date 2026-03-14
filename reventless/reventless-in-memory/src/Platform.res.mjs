@@ -13,6 +13,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as MCP_Server$ReventlessInMemory from "./adapter/MCP_Server.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as TestRunner$ReventlessInMemory from "./test/TestRunner.res.mjs";
 import * as Core_Builder$ReventlessInMemory from "./components/Core_Builder.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
@@ -28,6 +29,7 @@ import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Bu
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
 import * as MCP_ServerInstance$ReventlessInMemory from "./adapter/MCP_ServerInstance.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "./components/DcbEventLog_Builder.res.mjs";
+import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_PluginSpec.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "./components/ExtensionPoint_Builder.res.mjs";
 import * as GraphQL_ServerInstance$ReventlessInMemory from "./adapter/GraphQL_ServerInstance.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateViewSlice_Builder.res.mjs";
@@ -50,6 +52,7 @@ function getCoreGraphQL() {
 }
 
 function MakeWithConfig(Config) {
+  TestRunner$ReventlessInMemory.setup();
   let Bus = InMemory_Bus$ReventlessInMemory.Impl({
     capacity: undefined,
     silent: Config.silent
@@ -323,8 +326,9 @@ function MakeWithConfig(Config) {
     make: PluginMaker.make
   };
   let CoreMaker = Core_Builder$ReventlessInMemory.Make(Bus);
+  let make = CoreMaker.make;
   let Core = {
-    make: CoreMaker.make
+    make: make
   };
   let makeScheduler = () => {
     let SP = ScheduledPublisher_InMemory$ReventlessInMemory.Make(Bus);
@@ -333,7 +337,14 @@ function MakeWithConfig(Config) {
     });
     return Component$ReventlessCore.operations(S.make(undefined));
   };
-  let makePlatform = (param, param$1, plugins) => {
+  let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
+  let makePlatform = (version, plugins, extensionPointsOpt, aggregatesOpt, readModelsOpt, dcbSpec) => {
+    let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
+    let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
+    let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
+    let scheduler = makeScheduler();
+    make(version, extensionPoints, aggregates, readModels, scheduler, undefined, undefined, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, dcbSpec);
+    let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
     let store = {
       contents: {}
     };
@@ -398,7 +409,7 @@ function MakeWithConfig(Config) {
     Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
     Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
     Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Effect.Stream.fromIterable(allItems.contents));
-    plugins.forEach(plugin => {
+    plugins$1.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
         outputs.id,
@@ -569,7 +580,15 @@ function MakeWithConfig(Config) {
       coreGraphQLRef.contents = coreGraphQL;
     }
     if (coreMCP !== undefined) {
-      return coreMCP.start(3002, undefined);
+      coreMCP.start(3002, undefined);
+    }
+    if (graphqlDebug) {
+      GraphQL_Server$ReventlessInMemory.printDiagnostics();
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.printDiagnostics();
+      } else {
+        return;
+      }
     }
   };
   return {
@@ -593,12 +612,12 @@ function MakeWithConfig(Config) {
     mcpSupported: true,
     Plugin: Plugin,
     Core: Core,
-    makeScheduler: makeScheduler,
     makePlatform: makePlatform
   };
 }
 
 function Make($star) {
+  TestRunner$ReventlessInMemory.setup();
   let Bus = InMemory_Bus$ReventlessInMemory.Impl({
     capacity: undefined,
     silent: false
@@ -675,15 +694,14 @@ function Make($star) {
   let DcbEventLog = {
     Make: Make$11
   };
-  GraphQL_Stitcher$ReventlessCore.encode({
+  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
   let Make$12 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
-    let effectiveBaseFragment = FragmentConfig.baseFragment;
-    let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
+    let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
     return {
       make: make
     };
@@ -872,8 +890,9 @@ function Make($star) {
     make: PluginMaker.make
   };
   let CoreMaker = Core_Builder$ReventlessInMemory.Make(Bus);
+  let make = CoreMaker.make;
   let Core = {
-    make: CoreMaker.make
+    make: make
   };
   let makeScheduler = () => {
     let SP = ScheduledPublisher_InMemory$ReventlessInMemory.Make(Bus);
@@ -882,7 +901,14 @@ function Make($star) {
     });
     return Component$ReventlessCore.operations(S.make(undefined));
   };
-  let makePlatform = (param, param$1, plugins) => {
+  let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
+  let makePlatform = (version, plugins, extensionPointsOpt, aggregatesOpt, readModelsOpt, dcbSpec) => {
+    let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
+    let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
+    let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
+    let scheduler = makeScheduler();
+    make(version, extensionPoints, aggregates, readModels, scheduler, undefined, undefined, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, dcbSpec);
+    let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
     let store = {
       contents: {}
     };
@@ -947,7 +973,7 @@ function Make($star) {
     Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
     Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
     Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Effect.Stream.fromIterable(allItems.contents));
-    plugins.forEach(plugin => {
+    plugins$1.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
         outputs.id,
@@ -999,8 +1025,8 @@ function Make($star) {
         pluginOps_save(id, entry, "Any", undefined);
       });
     });
-    let coreGraphQL;
-    let coreMCP;
+    let coreGraphQL = GraphQL_ServerInstance$ReventlessInMemory.make("GraphQL:Core");
+    let coreMCP = MCP_ServerInstance$ReventlessInMemory.make("MCP:Core");
     let registerCoreTypes = sdlTypes => {
       if (coreGraphQL !== undefined) {
         return coreGraphQL.registerTypes(sdlTypes);
@@ -1118,7 +1144,15 @@ function Make($star) {
       coreGraphQLRef.contents = coreGraphQL;
     }
     if (coreMCP !== undefined) {
-      return coreMCP.start(3002, undefined);
+      coreMCP.start(3002, undefined);
+    }
+    if (graphqlDebug) {
+      GraphQL_Server$ReventlessInMemory.printDiagnostics();
+      if (coreGraphQL !== undefined) {
+        return coreGraphQL.printDiagnostics();
+      } else {
+        return;
+      }
     }
   };
   let Counter_make = Counter.make;
@@ -1146,7 +1180,6 @@ function Make($star) {
     mcpSupported: true,
     Plugin: Plugin,
     Core: Core,
-    makeScheduler: makeScheduler,
     makePlatform: makePlatform
   };
 }

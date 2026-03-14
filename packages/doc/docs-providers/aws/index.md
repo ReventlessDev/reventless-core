@@ -422,8 +422,8 @@ let adapter = {
   runtime: RuntimeEnvironment_Lambda.make,
 }
 
-// Pass adapter to core components
-let core = Reventless.Core.make(~adapter, ...)
+// The adapter is used internally by Platform.makePlatform
+// to provision Core and Plugin infrastructure.
 ```
 
 The framework will use the AWS-specific implementations to provision infrastructure and execute runtime operations.

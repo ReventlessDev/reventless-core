@@ -3,11 +3,7 @@
 import * as CatalogPlugin$CatalogPlugin from "@reventlessdev/online-shop-dcb-catalog/src/Plugin/CatalogPlugin.res.mjs";
 import * as Platform$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/Platform.res.mjs";
 import * as OrderingPlugin$OrderingPlugin from "@reventlessdev/online-shop-dcb-ordering/src/Plugin/OrderingPlugin.res.mjs";
-import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/GraphQL_Server.res.mjs";
-import * as InMemory_PluginSpec$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_PluginSpec.res.mjs";
-
-TestRunner$ReventlessInMemory.setup();
 
 let Platform = Platform$ReventlessInMemory.Make({});
 
@@ -15,13 +11,14 @@ let Catalog = CatalogPlugin$CatalogPlugin.Make(Platform);
 
 let Ordering = OrderingPlugin$OrderingPlugin.Make(Platform);
 
-let scheduler = Platform.makeScheduler();
-
-let _catalogPlugin = Catalog.make(scheduler, undefined, undefined);
-
-let _orderingPlugin = Ordering.make(scheduler, undefined, undefined);
-
-let _core = Platform.Core.make("1.0.0", [], [], [], scheduler, undefined, undefined, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined);
+Platform.makePlatform("1.0.0", [
+  {
+    make: Catalog.make
+  },
+  {
+    make: Ordering.make
+  }
+], undefined, undefined, undefined, undefined);
 
 console.log("\n========================================");
 
@@ -41,9 +38,5 @@ export {
   Platform,
   Catalog,
   Ordering,
-  scheduler,
-  _catalogPlugin,
-  _orderingPlugin,
-  _core,
 }
-/*  Not a pure module */
+/* Platform Not a pure module */

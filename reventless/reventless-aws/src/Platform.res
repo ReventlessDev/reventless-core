@@ -44,8 +44,9 @@ module MakeWithConfig = (
   type api = Types.AppSync.api
   type role = Types.AppSync.role
 
-  // Alias the functor parameter before module Api shadows it below.
+  // Alias the functor parameters before module Api shadows them below.
   let appSyncApi = Api.api
+  let appSyncApiRole = Api.apiRole
 
   module Aggregate = {
     module Make = (
@@ -170,6 +171,14 @@ module MakeWithConfig = (
     let make = Core_Builder.make
   }
 
+  module type PluginMaker = {
+    let make: (
+      ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
+      ~api: api,
+      ~apiRole: role,
+    ) => Plugin.component
+  }
+
   let makeScheduler = () => {
     let component = Scheduler.make()
     component->ReventlessCore.Component.operations
@@ -180,7 +189,34 @@ module MakeWithConfig = (
 
   // In split mode, create a dedicated core AppSync API and push the core schema.
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
-  let makePlatform = (~api as _, ~core as _, ~plugins as _) => {
+  let makePlatform = (
+    ~version,
+    ~plugins: array<module(PluginMaker)>,
+    ~extensionPoints=[],
+    ~aggregates=[],
+    ~readModels=[],
+    ~dcbSpec=?,
+  ) => {
+    // Create scheduler and Core internally — platform-specific values are known here.
+    let scheduler = makeScheduler()
+    let _core = Core.make(
+      ~version,
+      ~extensionPoints,
+      ~aggregates,
+      ~readModels,
+      ~scheduler,
+      ~api=appSyncApi,
+      ~apiRole=appSyncApiRole,
+      ~resourceNaming=Util_ResourceNaming.operations,
+      ~dcbSpec?,
+    )
+
+    // Build each plugin using the shared scheduler.
+    let _plugins = plugins->Array.map(plugin => {
+      module P = unpack(plugin)
+      P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
+    })
+
     if Config.splitApi {
       // Create a dedicated AppSync API for core administrative schema.
       let (coreApiOutput, coreRoleOutput) = AppSync_Adapter.makeApiResource(

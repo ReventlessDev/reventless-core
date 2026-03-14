@@ -56,17 +56,7 @@ pulumi config set aws:region us-east-1
 
 ## Create the Core Stack
 
-The Core Stack is the central piece providing shared infrastructure for plugins to communicate:
-
-```rescript
-// MyCore.res
-module Core = ReventlessAws.Core.Make({
-  let name = "my-app-core"
-  let version = "1.0.0"
-})
-
-let core = Core.make()
-```
+The Core Stack is created internally by `makePlatform` — it provides shared infrastructure for plugins to communicate. You don't need to create it manually.
 
 ## Create a Plugin
 

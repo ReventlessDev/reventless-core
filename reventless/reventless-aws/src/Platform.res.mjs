@@ -13,6 +13,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as DcbEventLog_Builder$ReventlessAws from "./components/DcbEventLog_Builder.res.mjs";
+import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoint_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
@@ -35,6 +36,7 @@ function getSplitApiOutputs() {
 function MakeWithConfig(Api) {
   return Config => {
     let appSyncApi = Api.api;
+    let appSyncApiRole = Api.apiRole;
     let Make = Spec => (Behavior => (EventMappings => {
       let $$let = Aggregate_Builder_Micro$ReventlessAws.Make(Spec)(Behavior)(EventMappings);
       return {
@@ -113,8 +115,13 @@ function MakeWithConfig(Api) {
     let Core = {
       make: Core_Builder$ReventlessAws.make
     };
-    let makeScheduler = () => Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    let makePlatform = (param, param$1, param$2) => {
+    let makePlatform = (version, plugins, extensionPointsOpt, aggregatesOpt, readModelsOpt, dcbSpec) => {
+      let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
+      let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
+      let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
+      let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+      Core_Builder$ReventlessAws.make(version, extensionPoints, aggregates, readModels, scheduler, appSyncApi, appSyncApiRole, Util_ResourceNaming$ReventlessAws.operations, undefined, dcbSpec);
+      plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
       if (!Config.splitApi) {
         return;
       }
@@ -146,7 +153,6 @@ function MakeWithConfig(Api) {
       mcpSupported: false,
       Plugin: Plugin,
       Core: Core,
-      makeScheduler: makeScheduler,
       makePlatform: makePlatform
     };
   };
@@ -154,6 +160,7 @@ function MakeWithConfig(Api) {
 
 function Make(Api) {
   let appSyncApi = Api.api;
+  let appSyncApiRole = Api.apiRole;
   let Make$1 = Spec => (Behavior => (EventMappings => {
     let $$let = Aggregate_Builder_Micro$ReventlessAws.Make(Spec)(Behavior)(EventMappings);
     return {
@@ -232,8 +239,14 @@ function Make(Api) {
   let Core = {
     make: Core_Builder$ReventlessAws.make
   };
-  let makeScheduler = () => Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-  let makePlatform = (param, param$1, param$2) => {};
+  let makePlatform = (version, plugins, extensionPointsOpt, aggregatesOpt, readModelsOpt, dcbSpec) => {
+    let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
+    let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
+    let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
+    let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    Core_Builder$ReventlessAws.make(version, extensionPoints, aggregates, readModels, scheduler, appSyncApi, appSyncApiRole, Util_ResourceNaming$ReventlessAws.operations, undefined, dcbSpec);
+    plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+  };
   return {
     Aggregate: Aggregate,
     ReadModel: ReadModel,
@@ -251,7 +264,6 @@ function Make(Api) {
     mcpSupported: false,
     Plugin: Plugin,
     Core: Core,
-    makeScheduler: makeScheduler,
     makePlatform: makePlatform
   };
 }

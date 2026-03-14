@@ -224,13 +224,13 @@ Then visit `http://localhost:4000/graphql` in a browser.
 When building a new in-memory platform (e.g., in a test or example), add diagnostics after all components are wired:
 
 ```rescript
-// 1. Setup and build
-let _ = ReventlessInMemory.TestRunner.setup()
 module Platform = ReventlessInMemory.Platform.Make()
 module MyPlugin = MyPluginModule.Make(Platform)
 
-let scheduler = Platform.makeScheduler()
-let _plugin = MyPlugin.make(~scheduler, ~api=(), ~apiRole=())
+Platform.makePlatform(
+  ~version="1.0.0",
+  ~plugins=[module(MyPlugin)],
+)
 
 // 2. Inspect — pick the level you need
 

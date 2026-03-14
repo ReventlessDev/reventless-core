@@ -658,40 +658,14 @@ The platform package wires plugins together and starts the application.
 
 **`Main.res`**:
 ```rescript
-// 1. Activate Pulumi mock mode (for in-memory / local dev)
-let _ = ReventlessInMemory.TestRunner.setup()
-
-// 2. Create the in-memory platform
 module Platform = ReventlessInMemory.Platform.Make()
 
-// 3. Apply plugin modules to the platform
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
 
-// 4. Create a shared scheduler
-let scheduler = Platform.makeScheduler()
-
-// 5. Build plugin components
-let catalogPlugin = Catalog.make(~scheduler, ~api=(), ~apiRole=())
-let orderingPlugin = Ordering.make(~scheduler, ~api=(), ~apiRole=())
-
-// 6. Build Core
-let core = Platform.Core.make(
-  ~version="1.0.0",
-  ~extensionPoints=[],
-  ~aggregates=[],
-  ~readModels=[],
-  ~scheduler,
-  ~api=(),
-  ~apiRole=(),
-  ~resourceNaming=ReventlessInMemory.InMemory_PluginSpec.resourceNaming,
-)
-
-// 7. Wire everything together
 Platform.makePlatform(
-  ~api=Obj.magic(),
-  ~core,
-  ~plugins=[catalogPlugin, orderingPlugin],
+  ~version="1.0.0",
+  ~plugins=[module(Catalog), module(Ordering)],
 )
 ```
 
@@ -773,33 +747,27 @@ In both `package.json` and `rescript.json`, order dependencies as:
 
 ### Split API mode
 
-By default, the in-memory platform serves core administrative schema (plugin management, clone) and plugin business domain schema from a single GraphQL endpoint (port 4000) and a single MCP endpoint (port 3001).
+By default, the in-memory platform uses split API mode — core administrative schema (plugin management, clone) and plugin business domain schema are served on separate ports. Use `MakeWithConfig` with `splitApi = false` to serve them from a single endpoint instead.
 
-Use `MakeWithConfig` with `splitApi = true` to serve them on separate ports:
+**Port assignments (default — split mode):**
+
+| Service | Port |
+|---------|------|
+| GraphQL (plugin) | 4000 |
+| GraphQL (core) | 4001 |
+| MCP (plugin) | 3001 |
+| MCP (core) | 3002 |
+
+Use `MakeWithConfig` to disable split mode:
 
 ```rescript
-let _ = ReventlessInMemory.TestRunner.setup()
-
 module Platform = ReventlessInMemory.Platform.MakeWithConfig({
   let silent = false
-  let splitApi = true
+  let splitApi = false
 })
-
-// ... build plugins and core as usual ...
-
-Platform.makePlatform(~api=Obj.magic(), ~core, ~plugins=[catalogPlugin, orderingPlugin])
 ```
 
-**Port assignments:**
-
-| Mode | Service | Port |
-|------|---------|------|
-| `splitApi=false` (default) | GraphQL (unified) | 4000 |
-| `splitApi=false` (default) | MCP (unified) | 3001 |
-| `splitApi=true` | GraphQL (plugin) | 4000 |
-| `splitApi=true` | GraphQL (core) | 4001 |
-| `splitApi=true` | MCP (plugin) | 3001 |
-| `splitApi=true` | MCP (core) | 3002 |
+In unified mode (`splitApi=false`), all schema is served from a single GraphQL endpoint (port 4000) and a single MCP endpoint (port 3001).
 
 **When to use split mode:**
 
@@ -1364,36 +1332,17 @@ Both examples use the same namespace conventions (`CatalogSpec`, `CatalogPlugin`
 
 ### DCB Platform Package
 
-The platform `Main.res` is nearly identical to the aggregate version:
+The platform `Main.res` is identical to the aggregate version:
 
 ```rescript
-let _ = ReventlessInMemory.TestRunner.setup()
-
 module Platform = ReventlessInMemory.Platform.Make()
 
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
 
-let scheduler = Platform.makeScheduler()
-
-let catalogPlugin = Catalog.make(~scheduler, ~api=(), ~apiRole=())
-let orderingPlugin = Ordering.make(~scheduler, ~api=(), ~apiRole=())
-
-let core = Platform.Core.make(
-  ~version="1.0.0",
-  ~extensionPoints=[],
-  ~aggregates=[],
-  ~readModels=[],
-  ~scheduler,
-  ~api=(),
-  ~apiRole=(),
-  ~resourceNaming=ReventlessInMemory.InMemory_PluginSpec.resourceNaming,
-)
-
 Platform.makePlatform(
-  ~api=Obj.magic(),
-  ~core,
-  ~plugins=[catalogPlugin, orderingPlugin],
+  ~version="1.0.0",
+  ~plugins=[module(Catalog), module(Ordering)],
 )
 ```
 
