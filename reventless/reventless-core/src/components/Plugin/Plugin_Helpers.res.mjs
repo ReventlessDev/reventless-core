@@ -264,7 +264,11 @@ let localAdminExtensionPoints = {
   contents: undefined
 };
 
-let dcbMutationResolverHook = {
+let mutationResolverHook = {
+  contents: undefined
+};
+
+let mutationBindHook = {
   contents: undefined
 };
 
@@ -280,7 +284,7 @@ let inboundAppSyncResolverHook = {
   contents: undefined
 };
 
-let aggregateMutationResolverHook = {
+let dcbAppSyncResolverHook = {
   contents: undefined
 };
 
@@ -440,11 +444,12 @@ export {
   createTasks,
   MakeEventCollectorHelper,
   localAdminExtensionPoints,
-  dcbMutationResolverHook,
+  mutationResolverHook,
+  mutationBindHook,
   inboundMutationResolverHook,
   inboundMutationBindReceiveHook,
   inboundAppSyncResolverHook,
-  aggregateMutationResolverHook,
+  dcbAppSyncResolverHook,
   schemaTypeRegistrationHook,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,

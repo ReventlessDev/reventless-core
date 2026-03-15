@@ -6,12 +6,14 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/AutomationSlice_Callback.res.mjs";
+import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "../OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
 
@@ -66,9 +68,19 @@ function Make(DcbEventLogStorage) {
           Component$ReventlessCore.outputs(ch)
         ];
       }));
-      let registerResolver = Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents;
+      let registerResolver = Plugin_Helpers$ReventlessCore.mutationResolverHook.contents;
       if (registerResolver !== undefined) {
-        dcbSpec.stateChangeSlices.forEach(S => registerResolver(Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name), S.Spec.commandSchema));
+        dcbSpec.stateChangeSlices.forEach(S => registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], S.Spec.commandSchema));
+      }
+      let bindHandler = Plugin_Helpers$ReventlessCore.mutationBindHook.contents;
+      if (bindHandler !== undefined) {
+        Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
+          dcbSpec.stateChangeSlices.forEach(S => {
+            let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
+            let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, S.Spec.name, S.Spec.commandSchema, false);
+            bindHandler(fieldName, generateCommand);
+          });
+        });
       }
       dcbSpec.stateViewSlices.forEach(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name);
@@ -137,22 +149,31 @@ function Make(DcbEventLogStorage) {
         ]);
       })).apply(pairs => Object.fromEntries(pairs));
       let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic);
+      let dcbGenerateCommandOutput = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, name, S.json, false));
       let dcbHandler = Pulumi.all([
         dcbHandlerBase,
-        inboundReceiversOutput
+        inboundReceiversOutput,
+        dcbGenerateCommandOutput
       ]).apply(param => {
+        let generateCommand = param[2];
         let receivers = param[1];
         let baseHandler = param[0];
         return (event, ctx) => {
           let match = event["__inboundTranslation"];
-          if (match === undefined) {
-            return baseHandler(event, ctx);
+          if (match !== undefined) {
+            let fieldName = Stdlib_Option.getOr(Stdlib_Option.flatMap(event["fieldName"], Stdlib_JSON.Decode.string), "");
+            let args = Stdlib_Option.getOr(event["arguments"], null);
+            let receiveFn = receivers[fieldName];
+            if (receiveFn !== undefined) {
+              return Effect.Effect.promise(async () => (await receiveFn(args))._0);
+            } else {
+              return baseHandler(event, ctx);
+            }
           }
-          let fieldName = Stdlib_Option.getOr(Stdlib_Option.flatMap(event["fieldName"], Stdlib_JSON.Decode.string), "");
-          let args = Stdlib_Option.getOr(event["arguments"], null);
-          let receiveFn = receivers[fieldName];
-          if (receiveFn !== undefined) {
-            return Effect.Effect.promise(async () => (await receiveFn(args))._0);
+          let match$1 = event["command"];
+          let match$2 = event["arguments"];
+          if (typeof match$1 === "string" && match$2 !== undefined) {
+            return Effect.Effect.map(generateCommand(event), msgId => msgId);
           } else {
             return baseHandler(event, ctx);
           }
@@ -161,17 +182,39 @@ function Make(DcbEventLogStorage) {
       let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources));
       let inboundFieldNames = inboundTranslationSliceData.map(param => param[1]);
       let inboundSchemas = inboundTranslationSliceData.map(param => param[3]);
+      let dcbMutationData = dcbSpec.stateChangeSlices.map(S => {
+        let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
+        let constructorNames = DcbTag$Reventless.extractEventTypes(S.Spec.commandSchema);
+        let tag = Stdlib_Option.getOr(constructorNames[0], S.Spec.name);
+        return [
+          fieldName,
+          tag
+        ];
+      });
+      let dcbFieldNames = dcbMutationData.map(param => param[0]);
+      let dcbTags = dcbMutationData.map(param => param[1]);
       let dcbConnectFn = runtime => {
         DcbCommandTopic.connect(runtime, dcbResources, dcbCommandTopic);
-        if (inboundFieldNames.length === 0) {
+        if (inboundFieldNames.length !== 0) {
+          let hook = Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents;
+          if (hook !== undefined) {
+            hook({
+              runtime: runtime,
+              fieldNames: inboundFieldNames,
+              externalInputSchemas: inboundSchemas,
+              opts: opts
+            });
+          }
+        }
+        if (dcbFieldNames.length === 0) {
           return;
         }
-        let hook = Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents;
-        if (hook !== undefined) {
-          return hook({
+        let hook$1 = Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents;
+        if (hook$1 !== undefined) {
+          return hook$1({
             runtime: runtime,
-            fieldNames: inboundFieldNames,
-            externalInputSchemas: inboundSchemas,
+            fieldNames: dcbFieldNames,
+            tags: dcbTags,
             opts: opts
           });
         }

@@ -100,8 +100,58 @@ function make(name, api, fields, param, runtime, resources, opts) {
   };
 }
 
+function makeDcb(api, runtime, fieldNames, tags, opts) {
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let lambda = runtime.parts.lambda;
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("DcbMutationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
+  Pulumi.all([
+    Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
+    dataSourceRole.id
+  ]).apply(param => {
+    new (Aws.iam.RolePolicy)("DcbMutationDS", {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "DcbMutationDSPolicy", [{
+          Sid: "AllowDcbMutationInvokeLambda",
+          Effect: "Allow",
+          Action: "lambda:InvokeFunction",
+          Resource: param[0]
+        }])),
+      role: param[1]
+    }, opts$1);
+  });
+  let dataSource = new (Aws.appsync.DataSource)("DcbMutation", {
+    type: "AWS_LAMBDA",
+    apiId: Output$Pulumi.flatMap(api, api => api.id),
+    lambdaConfig: {
+      functionArn: Output$Pulumi.flatMap(lambda, lambda => lambda.arn)
+    },
+    serviceRoleArn: dataSourceRole.arn
+  }, opts$1);
+  let invokeDcbMutation = tag => `
+  #set($parentTypeName = $context.info.parentTypeName)
+  #set($fieldName = $context.info.fieldName)
+  {
+    "version": "2017-02-28",
+    "operation": "Invoke",
+    "payload": {
+        "command": "` + tag + `",
+        "arguments": $utils.toJson($context.arguments),
+        "meta": {
+          "ip": $util.toJson($context.identity.sourceIp),
+          "user": $util.toJson($context.identity.username),
+          "info": $util.toJson("$parentTypeName.$fieldName")
+        }
+    }
+  }
+  `;
+  Stdlib_Array.zip(fieldNames, tags).forEach(param => {
+    let fieldName = param[0];
+    AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, invokeDcbMutation(param[1]), AppSync_Resolver_Templates$PulumiAws.result, opts$1);
+  });
+}
+
 export {
   handleResolversEvent,
   make,
+  makeDcb,
 }
 /* @pulumi/aws Not a pure module */

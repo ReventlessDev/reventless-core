@@ -104,11 +104,29 @@ module Make = (
       ->Component.operations
       ->Pulumi.Output.apply(({publishJsons}) => {
         let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
-        let resources = (commandTopic->Component.outputs).resources
-        commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
-          ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
-          ~connect=SpecificCommandGenerator.connect(commandGenerator, ~api, ~resources, ...),
-        )
+        switch Plugin_Helpers.mutationBindHook.contents {
+        | Some(bindHandler) =>
+          // In-memory: bind generateCommand to resolver stubs directly,
+          // skipping the adapter-driven forCommandGenerator path.
+          let fields =
+            switch Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.get(Spec.name) {
+            | Some(registeredFields) if registeredFields->Array.length > 0 => registeredFields
+            | _ => Behavior.resolverConfig.fields
+            }
+          let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
+            ~publishJsons,
+            ~serviceName=Spec.name,
+            ~commandSchema=Behavior.resolverConfig.commandSchema->S.castToUnknown,
+          )
+          fields->Array.forEach(field => bindHandler(~field, ~generateCommand))
+        | None =>
+          // AWS: use adapter-driven forCommandGenerator (creates Lambda + policies)
+          let resources = (commandTopic->Component.outputs).resources
+          commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
+            ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
+            ~connect=SpecificCommandGenerator.connect(commandGenerator, ~api, ~resources, ...),
+          )
+        }
         commandGenerator
       })
     )

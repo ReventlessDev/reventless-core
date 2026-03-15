@@ -5,12 +5,14 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Aggregate$ReventlessCore from "./Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
 import * as EventLog_Builder$ReventlessCore from "../EventLog/EventLog_Builder.res.mjs";
 import * as Aggregate_Callback$ReventlessCore from "./Aggregate_Callback.res.mjs";
 import * as EventMapper_Builder$ReventlessCore from "../EventMapper/EventMapper_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
 import * as CommandGenerator_Builder$ReventlessCore from "../CommandGenerator/CommandGenerator_Builder.res.mjs";
+import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 
 function Make(Spec) {
   return Behavior => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => {
@@ -43,9 +45,18 @@ function Make(Spec) {
       return commandTopic;
     });
     let createCommandGenerator = (commandTopic, api, name, opts) => Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => {
+      let publishJsons = param.publishJsons;
       let commandGenerator = SpecificCommandGenerator.make(name, opts);
-      let resources = Component$ReventlessCore.outputs(commandTopic).resources;
-      AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(param.publishJsons), none => SpecificCommandGenerator.connect(api, resources, none, commandGenerator), undefined, undefined, commandGenerator);
+      let bindHandler = Plugin_Helpers$ReventlessCore.mutationBindHook.contents;
+      if (bindHandler !== undefined) {
+        let registeredFields = Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name];
+        let fields = registeredFields !== undefined && registeredFields.length !== 0 ? registeredFields : Behavior.resolverConfig.fields;
+        let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, Spec.name, Behavior.resolverConfig.commandSchema, undefined);
+        fields.forEach(field => bindHandler(field, generateCommand));
+      } else {
+        let resources = Component$ReventlessCore.outputs(commandTopic).resources;
+        AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(publishJsons), none => SpecificCommandGenerator.connect(api, resources, none, commandGenerator), undefined, undefined, commandGenerator);
+      }
       return commandGenerator;
     }));
     let make = (api, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Aggregate$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {

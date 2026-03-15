@@ -6,18 +6,19 @@ module type T = {
   let generateCommand: CommandGenerator.commandGenerator
 }
 
-module Make = (
-  Spec: Spec,
-  AggregateSpec: Reventless.Aggregate.Spec,
-  Behavior: Behavior.T with module Spec := AggregateSpec,
-): T => {
-  let generateCommand = (payload: CommandGenerator.payload) =>
+let makeGenerateCommand = (
+  ~publishJsons: CommandGenerator.publishJsons,
+  ~serviceName: string,
+  ~commandSchema: S.t<unknown>,
+  ~stripIdFromParams: bool=true,
+): CommandGenerator.commandGenerator => {
+  (payload: CommandGenerator.payload) =>
     Effect.sync(() => {
       let msgId = Message.uuid()
       let id = payload.arguments.id
       let meta = {
         {
-          Message.service: AggregateSpec.name,
+          Message.service: serviceName,
           ip: payload.meta.ip->Array.shift->Option.getOr(""),
           user: payload.meta.user,
           time: Message.nowAsISOString(),
@@ -29,7 +30,9 @@ module Make = (
       ->JSON.stringifyAny
       ->Option.flatMap(jsonString => jsonString->JSON.parseOrThrow->JSON.Decode.object) {
       | Some(obj) => {
-          obj->Dict.delete("id")
+          if stripIdFromParams {
+            obj->Dict.delete("id")
+          }
           obj->Dict.toArray
         }
       | None =>
@@ -53,10 +56,10 @@ module Make = (
       )
     )
     ->Effect.flatMap(((meta, commandJson, id)) => {
-      switch commandJson->Message.decode(Behavior.resolverConfig.commandSchema) {
+      switch commandJson->Message.decode(commandSchema) {
       | _ =>
         Effect.promise(() => {
-          Spec.publishJsons([{id, meta, commandJson}])
+          publishJsons([{id, meta, commandJson}])
         })->Effect.map(_ => meta.msgId)
       | exception err =>
         JsError.throwWithMessage(
@@ -66,4 +69,16 @@ module Make = (
         )
       }
     })
+}
+
+module Make = (
+  Spec: Spec,
+  AggregateSpec: Reventless.Aggregate.Spec,
+  Behavior: Behavior.T with module Spec := AggregateSpec,
+): T => {
+  let generateCommand = makeGenerateCommand(
+    ~publishJsons=Spec.publishJsons,
+    ~serviceName=AggregateSpec.name,
+    ~commandSchema=Behavior.resolverConfig.commandSchema->S.castToUnknown,
+  )
 }

@@ -47,7 +47,6 @@ import * as CommandTopicChannel_InMemory$ReventlessInMemory from "./adapter/Comm
 import * as EventTopicPublisher_InMemory$ReventlessInMemory from "./adapter/EventTopic/EventTopicPublisher_InMemory.res.mjs";
 import * as EventCollectorChannel_InMemory$ReventlessInMemory from "./adapter/EventCollector/EventCollectorChannel_InMemory.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessInMemory from "./components/InboundTranslationSlice_Builder.res.mjs";
-import * as DcbCommandTopicResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/DcbCommandTopicResolvers_GraphQL.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessInMemory from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res.mjs";
 import * as InboundTranslationResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res.mjs";
@@ -154,10 +153,15 @@ function MakeWithConfig(Config) {
   let Api = {
     Make: Make$11
   };
-  Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents = DcbCommandTopicResolvers_GraphQL$ReventlessInMemory.register;
+  Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
+    if (kind === "Aggregate") {
+      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema);
+    }
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema));
+  };
+  Plugin_Helpers$ReventlessCore.mutationBindHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
   Plugin_Helpers$ReventlessCore.inboundMutationResolverHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
   Plugin_Helpers$ReventlessCore.inboundMutationBindReceiveHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
-  Plugin_Helpers$ReventlessCore.aggregateMutationResolverHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register;
   Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents = GraphQL_Server$ReventlessInMemory.registerTypes;
   Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents = param => {
     let eventLogEntries = param.eventLogEntries;
@@ -736,10 +740,15 @@ function Make($star) {
   let Api = {
     Make: Make$12
   };
-  Plugin_Helpers$ReventlessCore.dcbMutationResolverHook.contents = DcbCommandTopicResolvers_GraphQL$ReventlessInMemory.register;
+  Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
+    if (kind === "Aggregate") {
+      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema);
+    }
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema));
+  };
+  Plugin_Helpers$ReventlessCore.mutationBindHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
   Plugin_Helpers$ReventlessCore.inboundMutationResolverHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
   Plugin_Helpers$ReventlessCore.inboundMutationBindReceiveHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
-  Plugin_Helpers$ReventlessCore.aggregateMutationResolverHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register;
   Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents = GraphQL_Server$ReventlessInMemory.registerTypes;
   Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents = param => {
     let eventLogEntries = param.eventLogEntries;

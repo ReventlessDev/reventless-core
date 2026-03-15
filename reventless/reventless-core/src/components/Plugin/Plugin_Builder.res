@@ -74,8 +74,9 @@ module Make = (
         Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.set(M.Spec.name, fieldNames)
         // Register aggregate mutation SDL + resolver stubs synchronously via hook
         // (before Output.apply chains fire).
-        switch Plugin_Helpers.aggregateMutationResolverHook.contents {
-        | Some(registerResolver) => registerResolver(~fields=fieldNames, ~commandSchema)
+        switch Plugin_Helpers.mutationResolverHook.contents {
+        | Some(registerResolver) =>
+          registerResolver(~kind=Aggregate, ~fields=fieldNames, ~commandSchema)
         | None => ()
         }
         [{ReventlessInfra.Api.fieldNames, commandSchema}]

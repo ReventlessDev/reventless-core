@@ -8,17 +8,17 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 
-function Make(Spec) {
-  return AggregateSpec => (Behavior => {
-    let generateCommand = payload => Effect.Effect.flatMap(Effect.Effect.tap(Effect.Effect.sync(() => {
+function makeGenerateCommand(publishJsons, serviceName, commandSchema, $staropt$star) {
+  return payload => {
+    let stripIdFromParams = $staropt$star !== undefined ? $staropt$star : true;
+    return Effect.Effect.flatMap(Effect.Effect.tap(Effect.Effect.sync(() => {
       let msgId = Message$ReventlessCore.uuid();
       let id = payload.arguments.id;
-      let meta_service = AggregateSpec.name;
       let meta_time = Message$ReventlessCore.nowAsISOString();
       let meta_ip = Stdlib_Option.getOr(payload.meta.ip.shift(), "");
       let meta_user = payload.meta.user;
       let meta = {
-        service: meta_service,
+        service: serviceName,
         time: meta_time,
         ip: meta_ip,
         user: meta_user,
@@ -26,7 +26,7 @@ function Make(Spec) {
         correlationId: msgId
       };
       let obj = Stdlib_Option.flatMap(JSON.stringify(payload.arguments), jsonString => Stdlib_JSON.Decode.object(JSON.parse(jsonString)));
-      let params = obj !== undefined ? (Stdlib_Dict.$$delete(obj, "id"), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+      let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
       let commandStr = payload.command;
       let match = params.length;
       let commandJson = match !== 0 ? Object.fromEntries([[
@@ -44,17 +44,23 @@ function Make(Spec) {
       let meta = param[0];
       let val;
       try {
-        val = Message$ReventlessCore.decode(commandJson, Behavior.resolverConfig.commandSchema);
+        val = Message$ReventlessCore.decode(commandJson, commandSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         return Stdlib_JsError.throwWithMessage(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + Stdlib_Option.getOrThrow(JSON.stringify(err), undefined));
       }
-      return Effect.Effect.map(Effect.Effect.promise(() => Spec.publishJsons([{
+      return Effect.Effect.map(Effect.Effect.promise(() => publishJsons([{
           id: id,
           meta: meta,
           commandJson: commandJson
         }])), () => meta.msgId);
     });
+  };
+}
+
+function Make(Spec) {
+  return AggregateSpec => (Behavior => {
+    let generateCommand = makeGenerateCommand(Spec.publishJsons, AggregateSpec.name, Behavior.resolverConfig.commandSchema, undefined);
     return {
       generateCommand: generateCommand
     };
@@ -62,6 +68,7 @@ function Make(Spec) {
 }
 
 export {
+  makeGenerateCommand,
   Make,
 }
 /* effect Not a pure module */

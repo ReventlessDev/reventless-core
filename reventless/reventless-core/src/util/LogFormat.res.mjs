@@ -8,7 +8,7 @@ function commandJsonToLogMessage(param) {
   let commandName = Message$ReventlessCore.variantNameOfJson(commandJson);
   let commandStr = JSON.stringify(commandJson);
   let metaStr = JSON.stringify(Message$ReventlessCore.encode(param.meta, Message$ReventlessCore.metaSchema));
-  return commandName + `(` + id + `): {"command":` + commandStr + `,"meta":` + metaStr + `,"id":` + id + `}`;
+  return commandName + `(` + id + `): {"command":` + commandStr + `,"meta":` + metaStr + `,"id":"` + id + `"}`;
 }
 
 function commandJsonsToLogMessages(cmdJsons) {

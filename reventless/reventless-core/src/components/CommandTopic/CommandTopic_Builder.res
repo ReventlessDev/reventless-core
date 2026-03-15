@@ -15,13 +15,24 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
   }
   type component = Component.t<CommandTopic.t, CommandTopic.outputs, operations>
 
-  // Helper to extract type name from JSON command using TAG field
+  // Helper to extract type name from JSON command using TAG field.
+  // Handles both direct command JSON (TAG at top level) and full message
+  // body from publishJsons (TAG nested inside "command" field).
   let extractTypeNameFromJson = json => {
     switch json {
     | JSON.Object(dict) =>
       switch dict->Dict.get("TAG") {
       | Some(JSON.String(tag)) => tag
-      | _ => ""
+      | _ =>
+        // TAG is nested inside "command" when message comes via publishJsons → bus
+        switch dict->Dict.get("command") {
+        | Some(JSON.Object(cmdDict)) =>
+          switch cmdDict->Dict.get("TAG") {
+          | Some(JSON.String(tag)) => tag
+          | _ => ""
+          }
+        | _ => ""
+        }
       }
     | _ => ""
     }

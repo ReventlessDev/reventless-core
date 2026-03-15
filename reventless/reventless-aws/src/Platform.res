@@ -153,6 +153,23 @@ module MakeWithConfig = (
     },
   )
 
+  // Set the DCB StateChangeSlice AppSync resolver hook so Dcb_Builder creates
+  // AppSync DataSource + Resolvers for each StateChangeSlice mutation, pointing
+  // to the shared DCB CommandTopic Lambda.
+  let () = ReventlessCore.Plugin_Helpers.dcbAppSyncResolverHook.contents = Some(
+    ({runtime, fieldNames, tags, opts}) => {
+      let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
+        runtime->Obj.magic
+      CommandGeneratorResolvers_AppSync.makeDcb(
+        ~api=appSyncApi,
+        ~runtime=runtimeTyped,
+        ~fieldNames,
+        ~tags,
+        ~opts,
+      )
+    },
+  )
+
   // Alias before defining module Plugin to avoid self-reference.
   module PluginBuilder = Plugin
   module Plugin: ReventlessInfra.Plugin.T

@@ -19,6 +19,17 @@ function Make(Spec) {
       let match = json["TAG"];
       if (typeof match === "string") {
         return match;
+      }
+      let match$1 = json["command"];
+      if (match$1 === undefined) {
+        return "";
+      }
+      if (typeof match$1 !== "object" || match$1 === null || Array.isArray(match$1)) {
+        return "";
+      }
+      let match$2 = match$1["TAG"];
+      if (typeof match$2 === "string") {
+        return match$2;
       } else {
         return "";
       }

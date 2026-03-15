@@ -1,12 +1,14 @@
 // GraphQL mutation resolvers for in-memory CommandGenerator.
 //
-// Two-phase registration:
-//   Phase 1 (synchronous): Plugin_Builder calls `register(~fields, ~commandSchema)` via the
-//     aggregateMutationResolverHook during construct(). This registers SDL fields and resolver
-//     stubs in GraphQL_Server immediately — before Output.apply chains fire.
-//   Phase 2 (async, inside Output.apply): AggregateRuntime_Builder calls handleResolversEvent
-//     then make(). make() binds the real generateCommand function to the resolver stubs.
+// Two-phase registration for both Aggregate and DCB StateChangeSlice mutations:
+//   Phase 1 (synchronous): Plugin_Builder/Dcb_Builder calls register/registerDcb via hooks
+//     during construct(). This registers SDL fields and resolver stubs in GraphQL_Server
+//     immediately — before Output.apply chains fire.
+//   Phase 2 (async, inside Output.apply):
+//     - Aggregates: AggregateRuntime_Builder calls handleResolversEvent then make().
+//     - DCB: Dcb_Builder calls bindHandler() directly.
 
+@@warning("-44")
 open ReventlessCore
 
 type api = unit
@@ -20,36 +22,38 @@ let extractCommandName = (fieldName: string) => {
   parts->Array.get(parts->Array.length - 1)->Option.getOr(fieldName)->capitalize
 }
 
+// -- Shared SDL derivation helpers --------------------------------------------
+
+let extractVariantSchema = (commandSchema: S.t<unknown>, ~index=0) =>
+  switch commandSchema {
+  | Union({anyOf}) => anyOf->Array.get(index)->Option.getOr(commandSchema)
+  | _ => commandSchema
+  }
+
+let deriveSdlField = (~fieldName, variantSchema: S.t<unknown>) =>
+  switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(~fieldName, variantSchema) {
+  | Some(field) => field
+  | None => `  ${fieldName}: String!`
+  }
+
 // -- Per-field handler refs ---------------------------------------------------
-// Populated by register() with empty refs; bound by make() when generateCommand
-// becomes available.
+// Populated by register()/registerDcb() with empty refs; bound by make() or
+// bindHandler() when generateCommand becomes available.
 
 let handlerRefs: dict<ref<option<CommandGenerator.commandGenerator>>> = Dict.make()
 
-// -- register (Phase 1 — synchronous) ----------------------------------------
+// -- register (Phase 1 — synchronous, Aggregates) ----------------------------
 // Called by Plugin_Builder via aggregateMutationResolverHook before any
 // Output.apply chains fire. Registers SDL + resolver stubs in GraphQL_Server.
 
 let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
-  let anyOf = switch commandSchema {
-  | Union({anyOf}) => anyOf
-  | _ => []
-  }
-
   // Aggregate commands target a specific instance — prepend id: ID!
   let sdlFields = fields->Array.mapWithIndex((field, i) => {
-    let variantSchema = anyOf->Array.get(i)->Option.getOr(commandSchema)
-    switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
-      ~fieldName=field,
-      variantSchema,
-    ) {
-    | Some(sdl) =>
-      if sdl->String.includes("(") {
-        sdl->String.replace(`${field}(`, `${field}(id: ID!, `)
-      } else {
-        sdl->String.replace(`${field}:`, `${field}(id: ID!):`)
-      }
-    | None => `  ${field}(id: ID!): String!`
+    let sdl = deriveSdlField(~fieldName=field, extractVariantSchema(commandSchema, ~index=i))
+    if sdl->String.includes("(") {
+      sdl->String.replace(`${field}(`, `${field}(id: ID!, `)
+    } else {
+      sdl->String.replace(`${field}:`, `${field}(id: ID!):`)
     }
   })
 
@@ -77,7 +81,82 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
   GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
 }
 
-// -- Pending handler slot (Phase 2) -------------------------------------------
+// -- registerDcb (Phase 1 — synchronous, DCB StateChangeSlices) ---------------
+// Called by Dcb_Builder via dcbMutationResolverHook. Registers SDL + resolver
+// stubs for DCB mutations. Unlike aggregate mutations, DCB commands use a tagged
+// ID field (e.g., itemId) instead of a separate id: ID! parameter.
+
+let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
+  let variantSchema = extractVariantSchema(commandSchema)
+  let sdlFields = [deriveSdlField(~fieldName, variantSchema)]
+
+  // Extract TAG (variant constructor name) for routing
+  let constructorNames = Reventless.DcbTag.extractEventTypes(commandSchema->Obj.magic)
+  let tag = constructorNames->Array.get(0)->Option.getOr(fieldName)
+
+  // Find the tagged ID field name (the one with @s.matches(DcbTag.string))
+  let idFieldName = switch variantSchema {
+  | Object({properties}) =>
+    properties
+    ->Dict.toArray
+    ->Array.findMap(((name, fieldSchema)) =>
+      if Reventless.DcbTag.isTagged(fieldSchema) {
+        Some(name)
+      } else {
+        None
+      }
+    )
+  | _ => None
+  }
+
+  let handlerRef = ref(None)
+  handlerRefs->Dict.set(fieldName, handlerRef)
+
+  let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
+    switch handlerRef.contents {
+    | Some(generateCommand) =>
+      let argsDict: dict<JSON.t> = args->Obj.magic
+
+      // Extract entity ID from tagged field and add as "id" for generateCommand.
+      // Skip if the tagged field is already called "id" (it's already present).
+      switch idFieldName {
+      | Some(idField) if idField != "id" =>
+        let id = switch argsDict->Dict.get(idField) {
+        | Some(JSON.String(s)) => s
+        | _ => ""
+        }
+        argsDict->Dict.set("id", JSON.Encode.string(id))
+      | _ => ()
+      }
+
+      let payload: CommandGenerator.payload = {
+        command: tag,
+        arguments: argsDict->Obj.magic,
+        meta: {ip: [], user: "local", info: `Mutation.${fieldName}`},
+      }
+      let result = await generateCommand(payload)->Effect.runPromise
+      result->JSON.Encode.string
+    | None => JSON.Encode.null
+    }
+  }
+
+  let resolvers = Dict.make()
+  resolvers->Dict.set(fieldName, resolver)
+  GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
+}
+
+// -- bindHandler (Phase 2 — direct binding) -----------------------------------
+// Binds a generateCommand function to a pre-registered resolver stub.
+// Used by DCB StateChangeSlices via dcbMutationBindHook.
+
+let bindHandler = (~field: string, ~generateCommand: CommandGenerator.commandGenerator) => {
+  switch handlerRefs->Dict.get(field) {
+  | Some(handlerRef) => handlerRef.contents = Some(generateCommand)
+  | None => ()
+  }
+}
+
+// -- Pending handler slot (Phase 2, Aggregates) -------------------------------
 
 let pending: ref<option<CommandGenerator.commandGenerator>> = ref(None)
 
@@ -86,7 +165,7 @@ let handleResolversEvent = (generateCommand: CommandGenerator.commandGenerator) 
   Pulumi.Output.make((event, _context) => event->generateCommand)
 }
 
-// -- make (Phase 2 — inside Output.apply) -------------------------------------
+// -- make (Phase 2 — inside Output.apply, Aggregates) -------------------------
 // Binds the real generateCommand to resolver stubs created by register().
 
 let make: CommandGenerator_Adapter.resolversMaker<unit, runtimeParts> = (

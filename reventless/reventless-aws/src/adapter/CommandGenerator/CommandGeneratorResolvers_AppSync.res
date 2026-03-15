@@ -169,3 +169,106 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
 
   {resources: resources}
 }
+
+// -- makeDcb (DCB StateChangeSlice mutations) --------------------------------
+// Creates an AppSync DataSource + Resolver per DCB mutation field, pointing to
+// the shared DCB CommandTopic Lambda. Unlike aggregate mutations, the TAG comes
+// from the schema (not the field name), and there is no id: ID! parameter.
+// The Lambda handler detects the CommandGenerator.payload format and runs
+// makeGenerateCommand → publishJsons before returning the msgId.
+
+let makeDcb = (
+  ~api: api,
+  ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
+  ~fieldNames: array<string>,
+  ~tags: array<string>,
+  ~opts: Pulumi.ComponentResource.options,
+) => {
+  let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+
+  let lambda = runtime.parts.lambda
+
+  let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
+    ~name="DcbMutationDS",
+    ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+    ~opts,
+  )
+
+  let _ =
+    (
+      lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
+      dataSourceRole.id,
+    )
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((lambdaArn, dataSourceRoleId)) => {
+      let _attachDataSourcePolicy = PulumiAws.IAM.RolePolicy.make(
+        ~name="DcbMutationDS",
+        ~args={
+          PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
+            ~id="DcbMutationDSPolicy",
+            ~statements=[
+              {
+                sid: "AllowDcbMutationInvokeLambda",
+                effect: Allow,
+                actions: Action("lambda:InvokeFunction"),
+                resources: Resource(lambdaArn),
+              },
+            ],
+          )
+          ->PulumiAws.PolicyDocument.toJsonString
+          ->Pulumi.Input.make,
+          role: dataSourceRoleId->Pulumi.Input.make,
+        },
+        ~opts,
+      )
+    })
+
+  let dataSource = PulumiAws.AppSync.DataSource.make(
+    ~name="DcbMutation",
+    ~args={
+      type_: AWS_LAMBDA,
+      apiId: api->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
+      lambdaConfig: {
+        PulumiAws.AppSync.DataSource.functionArn: lambda
+        ->Pulumi.Output.flatMap(lambda => lambda.arn)
+        ->Pulumi.Output.asInput,
+      }->Pulumi.Input.make,
+      serviceRoleArn: dataSourceRole.arn->Pulumi.Output.asInput,
+    },
+    ~opts=Some(opts),
+  )
+
+  // VTL request template for DCB mutations — uses a fixed TAG (from schema)
+  // and passes all arguments as CommandGenerator.payload format.
+  let invokeDcbMutation = tag =>
+    `
+  #set($parentTypeName = $context.info.parentTypeName)
+  #set($fieldName = $context.info.fieldName)
+  {
+    "version": "2017-02-28",
+    "operation": "Invoke",
+    "payload": {
+        "command": "${tag}",
+        "arguments": $utils.toJson($context.arguments),
+        "meta": {
+          "ip": $util.toJson($context.identity.sourceIp),
+          "user": $util.toJson($context.identity.username),
+          "info": $util.toJson("$parentTypeName.$fieldName")
+        }
+    }
+  }
+  `->Pulumi.Input.make
+
+  let _resolvers = Array.zip(fieldNames, tags)->Array.forEach(((fieldName, tag)) => {
+    let _ = PulumiAws.AppSync.Resolver.makeUnitResolver(
+      ~name=fieldName->String.capitalize,
+      ~api,
+      ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+      ~type_="Mutation"->Pulumi.Input.make,
+      ~field=fieldName->Pulumi.Input.make,
+      ~requestTemplate=invokeDcbMutation(tag),
+      ~responseTemplate=PulumiAws.AppSync.Resolver.Templates.result,
+      ~opts,
+    )
+  })
+}

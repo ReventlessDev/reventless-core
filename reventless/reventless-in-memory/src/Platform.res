@@ -161,10 +161,22 @@ module MakeWithConfig = (
     }
   }
 
-  // Set the DCB mutation resolver hook so Plugin_Builder.construct() registers
-  // GraphQL resolvers for each StateChangeSlice during plugin construction.
-  let () = ReventlessCore.Plugin_Helpers.dcbMutationResolverHook.contents = Some(
-    DcbCommandTopicResolvers_GraphQL.register,
+  // Set the unified mutation resolver hooks for both Aggregates and DCB
+  // StateChangeSlices. Phase 1 (register) dispatches by kind to the appropriate
+  // SDL derivation. Phase 2 (bind) is shared.
+  let () = ReventlessCore.Plugin_Helpers.mutationResolverHook.contents = Some(
+    (~kind, ~fields, ~commandSchema) =>
+      switch kind {
+      | ReventlessCore.Plugin_Helpers.Aggregate =>
+        CommandGeneratorResolvers_GraphQL.register(~fields, ~commandSchema)
+      | Dcb =>
+        fields->Array.forEach(field =>
+          CommandGeneratorResolvers_GraphQL.registerDcb(~fieldName=field, ~commandSchema)
+        )
+      },
+  )
+  let () = ReventlessCore.Plugin_Helpers.mutationBindHook.contents = Some(
+    CommandGeneratorResolvers_GraphQL.bindHandler,
   )
 
   // Set the InboundTranslationSlice mutation resolver hooks so Plugin_Builder.construct()
@@ -176,13 +188,6 @@ module MakeWithConfig = (
   )
   let () = ReventlessCore.Plugin_Helpers.inboundMutationBindReceiveHook.contents = Some(
     InboundTranslationResolvers_GraphQL.bindReceive,
-  )
-
-  // Set the aggregate mutation resolver hook so Plugin_Builder.construct() registers
-  // GraphQL SDL + resolver stubs for each aggregate during plugin construction.
-  // The real generateCommand handler is bound later when Output.apply chains fire.
-  let () = ReventlessCore.Plugin_Helpers.aggregateMutationResolverHook.contents = Some(
-    CommandGeneratorResolvers_GraphQL.register,
   )
 
   // Set the schema type registration hook so Plugin_Builder.construct() registers

@@ -30,6 +30,7 @@ import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "./adapter/CommandTo
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
+import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 
@@ -117,6 +118,7 @@ function MakeWithConfig(Api) {
       Make: Make$7
     };
     Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
+    Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
     let Plugin = {
       make: Plugin$ReventlessAws.make
     };
@@ -262,6 +264,7 @@ function Make(Api) {
     Make: Make$8
   };
   Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
+  Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
   let Plugin = {
     make: Plugin$ReventlessAws.make
   };

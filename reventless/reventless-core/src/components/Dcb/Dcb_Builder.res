@@ -77,17 +77,41 @@ module Make = (
           })
           ->Dict.fromArray
 
-        // Register DCB mutation resolvers via platform hook
-        switch Plugin_Helpers.dcbMutationResolverHook.contents {
+        // Phase 1: Register DCB mutation SDL + resolver stubs via platform hook
+        switch Plugin_Helpers.mutationResolverHook.contents {
         | Some(registerResolver) =>
           DcbSpec.stateChangeSlices->Array.forEach((
             module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
           ) => {
             registerResolver(
-              ~fieldName=Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name),
+              ~kind=Dcb,
+              ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
               ~commandSchema=S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
             )
           })
+        | None => ()
+        }
+
+        // Phase 2: Bind generateCommand to resolver stubs when publishJsons resolves
+        switch Plugin_Helpers.mutationBindHook.contents {
+        | Some(bindHandler) =>
+          let _ =
+            dcbCommandTopic
+            ->Component.operations
+            ->Pulumi.Output.apply(ops => {
+              DcbSpec.stateChangeSlices->Array.forEach((
+                module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+              ) => {
+                let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+                let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
+                  ~publishJsons=ops.publishJsons,
+                  ~serviceName=S.Spec.name,
+                  ~commandSchema=S.Spec.commandSchema->Obj.magic,
+                  ~stripIdFromParams=false,
+                )
+                bindHandler(~field=fieldName, ~generateCommand)
+              })
+            })
         | None => ()
         }
 
@@ -197,12 +221,29 @@ module Make = (
           ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray)
 
         // Composite handler: SQS commands (StateChangeSlice) + direct invocations (InboundTranslation)
+        // + AppSync direct invocations (CommandGenerator.payload format)
         let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
 
+        // Shared generateCommand for AppSync direct invocations — all StateChangeSlices
+        // share the same DCB CommandTopic's publishJsons, so a single function suffices.
+        // commandSchema validation is skipped (permissive JSON.t schema) because AppSync
+        // already validates input against the SDL.
+        let dcbGenerateCommandOutput =
+          dcbCommandTopic
+          ->Component.operations
+          ->Pulumi.Output.apply(ops =>
+            CommandGenerator_Callback.makeGenerateCommand(
+              ~publishJsons=ops.publishJsons,
+              ~serviceName=name,
+              ~commandSchema=S.json->S.castToUnknown,
+              ~stripIdFromParams=false,
+            )
+          )
+
         let dcbHandler =
-          (dcbHandlerBase, inboundReceiversOutput)
-          ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((baseHandler, receivers)) => {
+          (dcbHandlerBase, inboundReceiversOutput, dcbGenerateCommandOutput)
+          ->Pulumi.Output.all3
+          ->Pulumi.Output.apply(((baseHandler, receivers, generateCommand)) => {
             let composite = (event, ctx) => {
               let raw: dict<JSON.t> = event->Obj.magic
               switch raw->Dict.get("__inboundTranslation") {
@@ -225,7 +266,14 @@ module Make = (
                   })
                 | None => baseHandler(event, ctx)
                 }
-              | None => baseHandler(event, ctx)
+              | None =>
+                // Check for CommandGenerator.payload format (AppSync direct invocation)
+                switch (raw->Dict.get("command"), raw->Dict.get("arguments")) {
+                | (Some(JSON.String(_)), Some(_)) =>
+                  let payload: CommandGenerator.payload = event->Obj.magic
+                  (generateCommand(payload)->Effect.map(msgId => msgId->Obj.magic))->Obj.magic
+                | _ => baseHandler(event, ctx)
+                }
               }
             }
             composite->Obj.magic
@@ -243,6 +291,20 @@ module Make = (
           inboundTranslationSliceData->Array.map(((_, fieldName, _, _)) => fieldName)
         let inboundSchemas = inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
 
+        // Collect DCB mutation field names + TAGs for AppSync resolver creation
+        let dcbMutationData =
+          DcbSpec.stateChangeSlices->Array.map((
+            module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+          ) => {
+            let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+            let constructorNames =
+              Reventless.DcbTag.extractEventTypes(S.Spec.commandSchema->Obj.magic)
+            let tag = constructorNames->Array.get(0)->Option.getOr(S.Spec.name)
+            (fieldName, tag)
+          })
+        let dcbFieldNames = dcbMutationData->Array.map(((f, _)) => f)
+        let dcbTags = dcbMutationData->Array.map(((_, t)) => t)
+
         let dcbConnectFn = (~runtime) => {
           DcbCommandTopic.connect(~runtime, ~resources=dcbResources, dcbCommandTopic)
 
@@ -253,6 +315,19 @@ module Make = (
                 runtime: runtime->Obj.magic,
                 fieldNames: inboundFieldNames,
                 externalInputSchemas: inboundSchemas,
+                opts,
+              })
+            | None => ()
+            }
+          }
+
+          if dcbFieldNames->Array.length > 0 {
+            switch Plugin_Helpers.dcbAppSyncResolverHook.contents {
+            | Some(hook) =>
+              hook({
+                runtime: runtime->Obj.magic,
+                fieldNames: dcbFieldNames,
+                tags: dcbTags,
                 opts,
               })
             | None => ()

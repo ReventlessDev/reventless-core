@@ -4,7 +4,7 @@ let commandJsonToLogMessage: Message.commandJson => string = ({id, meta, command
   let commandName = commandJson->Message.variantNameOfJson
   let commandStr = commandJson->JSON.stringify
   let metaStr = meta->Message.encode(Message.metaSchema)->JSON.stringify
-  `${commandName}(${id}): {"command":${commandStr},"meta":${metaStr},"id":${id}}`
+  `${commandName}(${id}): {"command":${commandStr},"meta":${metaStr},"id":"${id}"}`
 }
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmdJsons => {
   let count = cmdJsons->Array.length->Int.toString

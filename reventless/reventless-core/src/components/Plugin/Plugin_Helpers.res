@@ -409,11 +409,22 @@ module MakeEventCollectorHelper = (
 let localAdminExtensionPoints: ref<option<Pulumi.Output.t<dict<ExtensionPoint.outputs>>>> = ref(None)
 
 // ---------------------------------------------------------------------------
-// DCB mutation resolver hook — set by in-memory platform before plugins are
-// built.  Plugin_Builder.construct() calls this for each StateChangeSlice to
-// register GraphQL mutation resolvers.  No-op when unset (AWS/other platforms).
+// Unified mutation resolver hooks — set by in-memory platform before plugins
+// are built.  Used by both Plugin_Builder (aggregates) and Dcb_Builder
+// (StateChangeSlices) to register GraphQL mutation SDL + resolver stubs.
+// Phase 1 (mutationResolverHook): called synchronously to register SDL + stub.
+// Phase 2 (mutationBindHook): called inside Output.apply to bind generateCommand.
+// No-op when unset (AWS/other platforms).
 // ---------------------------------------------------------------------------
-let dcbMutationResolverHook: ref<option<(~fieldName: string, ~commandSchema: S.t<unknown>) => unit>> = ref(None)
+type mutationKind = Aggregate | Dcb
+
+let mutationResolverHook: ref<
+  option<(~kind: mutationKind, ~fields: array<string>, ~commandSchema: S.t<unknown>) => unit>,
+> = ref(None)
+
+let mutationBindHook: ref<
+  option<(~field: string, ~generateCommand: CommandGenerator.commandGenerator) => unit>,
+> = ref(None)
 
 // ---------------------------------------------------------------------------
 // InboundTranslationSlice mutation resolver hooks — set by in-memory platform
@@ -445,14 +456,21 @@ type inboundAppSyncResolverParams = {
 let inboundAppSyncResolverHook: ref<option<inboundAppSyncResolverParams => unit>> = ref(None)
 
 // ---------------------------------------------------------------------------
-// Aggregate mutation resolver hook — set by in-memory platform before plugins
-// are built.  Plugin_Builder.construct() calls this for each aggregate to
-// register GraphQL mutation SDL + resolver stubs synchronously (before
-// Output.apply chains fire).  No-op when unset (AWS/other platforms).
+// DCB StateChangeSlice AppSync resolver hook — set by AWS platform before
+// plugins are built.  Dcb_Builder.construct() calls this from the DCB connect
+// function to create AppSync DataSource + Resolvers for each StateChangeSlice,
+// pointing to the shared DCB CommandTopic Lambda.
+// No-op when unset (in-memory/other platforms).
 // ---------------------------------------------------------------------------
-let aggregateMutationResolverHook: ref<
-  option<(~fields: array<string>, ~commandSchema: S.t<unknown>) => unit>,
-> = ref(None)
+type dcbAppSyncResolverParams = {
+  runtime: Runtime.environment<unknown>,
+  fieldNames: array<string>,
+  tags: array<string>,
+  opts: Pulumi.ComponentResource.options,
+}
+let dcbAppSyncResolverHook: ref<option<dcbAppSyncResolverParams => unit>> = ref(None)
+
+// (aggregateMutationResolverHook removed — replaced by unified mutationResolverHook above)
 
 // ---------------------------------------------------------------------------
 // Schema type registration hook — set by in-memory platform before plugins are

@@ -47,9 +47,9 @@ function Make(Spec) {
           let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
           let fieldNames = constructorNames.map(cname => Api_Naming$ReventlessCore.aggregateMutationField(extra$1, M.Spec.name, cname));
           Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[M.Spec.name] = fieldNames;
-          let registerResolver = Plugin_Helpers$ReventlessCore.aggregateMutationResolverHook.contents;
+          let registerResolver = Plugin_Helpers$ReventlessCore.mutationResolverHook.contents;
           if (registerResolver !== undefined) {
-            registerResolver(fieldNames, commandSchema);
+            registerResolver("Aggregate", fieldNames, commandSchema);
           }
           return [{
               fieldNames: fieldNames,
