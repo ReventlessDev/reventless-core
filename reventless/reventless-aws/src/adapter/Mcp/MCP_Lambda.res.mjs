@@ -47,10 +47,11 @@ function generateConfig(serverName, serverVersion, pluginName, mutationEntries, 
   };
 }
 
-function generateAdminConfig(serverName, serverVersion, commandTopicArnsOpt, queryDbTableNamesOpt) {
+function generateAdminConfig(serverName, serverVersion, clonerOpt, commandTopicArnsOpt, queryDbTableNamesOpt) {
+  let cloner = clonerOpt !== undefined ? clonerOpt : false;
   let commandTopicArns = commandTopicArnsOpt !== undefined ? commandTopicArnsOpt : ({});
   let queryDbTableNames = queryDbTableNamesOpt !== undefined ? queryDbTableNamesOpt : ({});
-  return generateConfig(serverName + `-admin`, serverVersion, "Admin", AdminApi$ReventlessCore.mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries, undefined, commandTopicArns, queryDbTableNames, undefined);
+  return generateConfig(serverName + `-admin`, serverVersion, "Admin", AdminApi$ReventlessCore.mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries, undefined, commandTopicArns, queryDbTableNames, undefined);
 }
 
 function extractEntityId(uri) {

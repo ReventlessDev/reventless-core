@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
+import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
@@ -352,11 +353,7 @@ function MakeWithConfig(Config) {
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
     make: $$let.make
-  })({
-    silent: Config.silent,
-    splitApi: Config.splitApi,
-    cloner: true
-  });
+  })(Config);
   let makeScheduler = () => {
     let SP = ScheduledPublisher_InMemory$ReventlessInMemory.Make(Bus);
     let S = Scheduler_Builder$ReventlessCore.Make({
@@ -366,6 +363,8 @@ function MakeWithConfig(Config) {
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
   let makePlatform = (version, plugins) => {
+    console.log(`[Platform] v` + version);
+    console.log(`[Platform] silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let scheduler = makeScheduler();
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
     let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
@@ -532,8 +531,9 @@ function MakeWithConfig(Config) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
-    let adminMutationFieldNames = AdminApi$ReventlessCore.mutationEntries.flatMap(entry => entry.fieldNames);
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment);
+    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     registerAdminTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args) => {
@@ -588,7 +588,7 @@ function MakeWithConfig(Config) {
       }
     };
     registerAdminMcpResources("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    registerAdminMcpTools("Admin", AdminApi$ReventlessCore.mutationEntries, async (toolName, args) => {
+    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args) => {
       let resolver = getAdminMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
@@ -938,7 +938,7 @@ function Make($star) {
   })({
     silent: false,
     splitApi: true,
-    cloner: true
+    cloner: false
   });
   let makeScheduler = () => {
     let SP = ScheduledPublisher_InMemory$ReventlessInMemory.Make(Bus);
@@ -949,6 +949,8 @@ function Make($star) {
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
   let makePlatform = (version, plugins) => {
+    console.log(`[Platform] v` + version);
+    console.log(`[Platform] silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let scheduler = makeScheduler();
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
     let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
@@ -1115,8 +1117,9 @@ function Make($star) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
-    let adminMutationFieldNames = AdminApi$ReventlessCore.mutationEntries.flatMap(entry => entry.fieldNames);
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment);
+    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     registerAdminTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args) => {
@@ -1171,7 +1174,7 @@ function Make($star) {
       }
     };
     registerAdminMcpResources("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    registerAdminMcpTools("Admin", AdminApi$ReventlessCore.mutationEntries, async (toolName, args) => {
+    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args) => {
       let resolver = getAdminMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;

@@ -106,11 +106,7 @@ module Make = (
     let dcbResult = DcbBuilder.construct(~name, ~childName=name, ~dcbSpec, ~opts)
 
     // Admin schema — composed from actual config
-    let adminMutationEntries = if Config.cloner {
-      AdminApi.mutationEntries
-    } else {
-      PluginBaseFragment.mutationEntries
-    }
+    let adminMutationEntries = AdminApi.mutationEntries(~cloner=Config.cloner)
     let allMutationEntries = Array.concat(adminMutationEntries, dcbResult.mutationEntries)
     let allQueryEntries = Array.concat(AdminApi.queryEntries, dcbResult.queryEntries)
     let adminFragment = GraphQL_FragmentGenerator.generate(

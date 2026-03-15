@@ -15,7 +15,7 @@ let adminQueryEntry =
 let singleQueryField = adminQueryEntry.singleFieldName
 let listQueryField = adminQueryEntry.listFieldName
 let adminMutationFieldNames =
-  ReventlessCore.AdminApi.mutationEntries->Array.flatMap(entry => entry.fieldNames)
+  ReventlessCore.AdminApi.mutationEntries(~cloner=true)->Array.flatMap(entry => entry.fieldNames)
 
 // ─────────────────────────────────────────────────────────────
 // Create admin GraphQL instance (mirrors Platform split mode)
@@ -24,7 +24,7 @@ let adminMutationFieldNames =
 let adminGraphQL = GraphQL_ServerInstance.make(~label="GraphQL:Admin")
 
 // Register admin schema into the admin instance
-let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment)
+let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment(~cloner=true))
 let () = adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
 let adminQueryResolvers = Dict.make()

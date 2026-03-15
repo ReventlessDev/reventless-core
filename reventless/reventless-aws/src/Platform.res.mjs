@@ -145,9 +145,10 @@ function MakeWithConfig(Api) {
     })({
       silent: false,
       splitApi: Config.splitApi,
-      cloner: true
+      cloner: Config.cloner
     });
     let makePlatform = (version, plugins) => {
+      console.log(`[Platform] v` + version);
       let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
       Admin.construct(version, [], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
       plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
@@ -160,9 +161,9 @@ function MakeWithConfig(Api) {
         coreApi: coreApiOutput,
         coreRole: match[1]
       };
-      let coreBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment, "Admin");
+      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
       coreApiOutput.apply(coreApi => {
-        AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), coreBaseFragment, []);
+        AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), adminBaseFragment, []);
       });
     };
     return {
@@ -240,7 +241,7 @@ function Make(Api) {
   let DcbEventLog = {
     Make: Make$7
   };
-  GraphQL_Stitcher$ReventlessCore.encode({
+  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
@@ -251,7 +252,7 @@ function Make(Api) {
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
       updateSchema: AppSync_Adapter$ReventlessAws.updateSchema
     });
-    let effectiveBaseFragment = FragmentConfig.baseFragment;
+    let effectiveBaseFragment = emptyBaseFragment;
     let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
     return {
       make: make
@@ -288,13 +289,24 @@ function Make(Api) {
     make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
   })({
     silent: false,
-    splitApi: false,
-    cloner: true
+    splitApi: true,
+    cloner: false
   });
   let makePlatform = (version, plugins) => {
+    console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     Admin.construct(version, [], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
     plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+    let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
+    let coreApiOutput = match[0];
+    splitApiOutputsRef.contents = {
+      coreApi: coreApiOutput,
+      coreRole: match[1]
+    };
+    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
+    coreApiOutput.apply(coreApi => {
+      AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), adminBaseFragment, []);
+    });
   };
   return {
     Aggregate: Aggregate,

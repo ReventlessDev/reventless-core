@@ -15,11 +15,11 @@ let singleQueryField = adminQueryEntry.singleFieldName;
 
 let listQueryField = adminQueryEntry.listFieldName;
 
-let adminMutationFieldNames = AdminApi$ReventlessCore.mutationEntries.flatMap(entry => entry.fieldNames);
+let adminMutationFieldNames = AdminApi$ReventlessCore.mutationEntries(true).flatMap(entry => entry.fieldNames);
 
 let adminGraphQL = GraphQL_ServerInstance$ReventlessInMemory.make("GraphQL:Admin");
 
-let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment);
+let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(true));
 
 adminGraphQL.registerTypes(baseParts.types);
 

@@ -15,11 +15,12 @@ let getAdminGraphQL = () => adminGraphQLRef.contents
 
 // Configurable platform — set silent=true to suppress diagnostic warnings in tests,
 // splitApi=true to serve core and plugin APIs on separate ports.
-// Usage: module Platform = Platform.MakeWithConfig({let silent = true; let splitApi = false})
+// Usage: module Platform = Platform.MakeWithConfig({let silent = true; let splitApi = false; let cloner = false})
 module MakeWithConfig = (
   Config: {
     let silent: bool
     let splitApi: bool
+    let cloner: bool
   },
 ): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   // Activate Pulumi mock mode — must happen before any component creation.
@@ -155,7 +156,8 @@ module MakeWithConfig = (
       } else {
         FragmentConfig.baseFragment
       }
-      let make = (~name, ~opts=?) => Builder.make(~name, ~baseFragment=effectiveBaseFragment, ~opts?)
+      let make = (~name, ~opts=?) =>
+        Builder.make(~name, ~baseFragment=effectiveBaseFragment, ~opts?)
     }
   }
 
@@ -262,7 +264,7 @@ module MakeWithConfig = (
         ~eventLogEntries,
         ~eventLogHandler=async (resourceName, uri) => {
           // Parse URI: extract entity ID from path, pagination from query string
-          let pathPart = (uri->String.split("?"))->Array.getUnsafe(0)
+          let pathPart = uri->String.split("?")->Array.getUnsafe(0)
           let segments = pathPart->String.split("/")
           let entityId = segments->Array.at(-1)->Option.getOr("")
           let (limit, after) = {
@@ -271,7 +273,9 @@ module MakeWithConfig = (
             | None => (None, None)
             | Some(qs) =>
               let params = Dict.make()
-              qs->String.split("&")->Array.forEach(param => {
+              qs
+              ->String.split("&")
+              ->Array.forEach(param => {
                 let kv = param->String.split("=")
                 switch (kv->Array.get(0), kv->Array.get(1)) {
                 | (Some(k), Some(v)) => params->Dict.set(k, v)
@@ -297,10 +301,7 @@ module MakeWithConfig = (
                 "pagination",
                 Dict.fromArray([
                   ("hasMore", hasMore->JSON.Encode.bool),
-                  (
-                    "nextAfter",
-                    nextAfter->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
-                  ),
+                  ("nextAfter", nextAfter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
                 ])->JSON.Encode.object,
               ),
             ])->JSON.Encode.object
@@ -310,9 +311,7 @@ module MakeWithConfig = (
             let filtered = switch after {
             | Some(afterPos) =>
               let idx =
-                events->Array.findIndex(e =>
-                  getPosition(e)->Option.mapOr(false, p => p > afterPos)
-                )
+                events->Array.findIndex(e => getPosition(e)->Option.mapOr(false, p => p > afterPos))
               if idx >= 0 {
                 events->Array.slice(~start=idx, ~end=events->Array.length)
               } else {
@@ -321,8 +320,10 @@ module MakeWithConfig = (
             | None => events
             }
             let (limited, hasMore) = switch limit {
-            | Some(n) when filtered->Array.length > n =>
-              (filtered->Array.slice(~start=0, ~end=n), true)
+            | Some(n) if filtered->Array.length > n => (
+                filtered->Array.slice(~start=0, ~end=n),
+                true,
+              )
             | _ => (filtered, false)
             }
             let nextAfterVal = if hasMore {
@@ -360,31 +361,29 @@ module MakeWithConfig = (
               | Some(read) =>
                 let result = await read(~query=[])
                 let filtered = if entityId->String.length > 0 && entityId != resourceName {
-                  result.events->Array.filter(e =>
-                    e.tags->Array.some(tag => tag.value == entityId)
-                  )
+                  result.events->Array.filter(e => e.tags->Array.some(tag => tag.value == entityId))
                 } else {
                   result.events
                 }
-                let serialized =
-                  filtered->Array.map(e =>
-                    Dict.fromArray([
-                      ("position", JSON.Encode.string(e.position)),
-                      ("eventType", JSON.Encode.string(e.eventType)),
-                      ("data", e.data),
-                      (
-                        "tags",
-                        e.tags
-                        ->Array.map(t =>
+                let serialized = filtered->Array.map(e =>
+                  Dict.fromArray([
+                    ("position", JSON.Encode.string(e.position)),
+                    ("eventType", JSON.Encode.string(e.eventType)),
+                    ("data", e.data),
+                    (
+                      "tags",
+                      e.tags
+                      ->Array.map(
+                        t =>
                           Dict.fromArray([
                             ("key", JSON.Encode.string(t.key)),
                             ("value", JSON.Encode.string(t.value)),
-                          ])->JSON.Encode.object
-                        )
-                        ->JSON.Encode.array,
-                      ),
-                    ])->JSON.Encode.object
-                  )
+                          ])->JSON.Encode.object,
+                      )
+                      ->JSON.Encode.array,
+                    ),
+                  ])->JSON.Encode.object
+                )
                 paginate(serialized, e => {
                   switch e->JSON.Decode.object {
                   | Some(obj) =>
@@ -394,8 +393,7 @@ module MakeWithConfig = (
                   | None => None
                   }
                 })
-              | None =>
-                makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
+              | None => makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
               }
             }
           | None => makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
@@ -423,14 +421,17 @@ module MakeWithConfig = (
     EventCollectorChannel,
     QE,
     ClonerRunner_InMemory,
-    ReventlessCore.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment_InMemory, EventCollectorChannel),
+    ReventlessCore.PluginRuntime_Builder_Micro.Make(
+      RuntimeEnvironment_InMemory,
+      EventCollectorChannel,
+    ),
     DcbEventLogStorage_InMemory.Make(Bus),
     EventTopicPublisher_InMemory.Make(Bus),
     CommandTopicChannel_InMemory.Make(Bus),
     {
       let silent = Config.silent
       let splitApi = Config.splitApi
-      let cloner = true
+      let cloner = Config.cloner
     },
   )
 
@@ -455,10 +456,11 @@ module MakeWithConfig = (
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpSupported
 
-  let makePlatform = (
-    ~version,
-    ~plugins: array<module(PluginMaker)>,
-  ) => {
+  let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
+    Console.log(`[Platform] v${version}`)
+    Console.log(
+      `[Platform] silent: ${Config.silent->Bool.toString}, splitApi: ${Config.splitApi->Bool.toString}, cloner: ${Config.cloner->Bool.toString}`,
+    )
     // Create scheduler and admin components internally.
     let scheduler = makeScheduler()
     let _admin = Admin.construct(
@@ -523,7 +525,13 @@ module MakeWithConfig = (
     plugins->Array.forEach(plugin => {
       let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
       let _ =
-        (outputs.id, outputs.version, outputs.eventCollector, outputs.extensionPoints, outputs.extensions)
+        (
+          outputs.id,
+          outputs.version,
+          outputs.eventCollector,
+          outputs.extensionPoints,
+          outputs.extensions,
+        )
         ->Pulumi.Output.all5
         ->Pulumi.Output.apply(((id, version, eventCollector, extensionPoints, extensions)) => {
           let state: ReventlessCore.PluginReadModelSpec.state = {
@@ -531,25 +539,30 @@ module MakeWithConfig = (
             version,
             eventCollector: eventCollector.name,
             extensionPoints: extensionPoints
-              ->Dict.toArray
-              ->Array.map(((epName, ep: ReventlessInfra.ExtensionPoint.outputs)) => {
+            ->Dict.toArray
+            ->Array.map(
+              ((epName, ep: ReventlessInfra.ExtensionPoint.outputs)) => {
                 Reventless.Plugin.name: epName,
                 commandTopic: epName,
                 eventTopic: ep.name,
-              }),
+              },
+            ),
             extensionPointNames: extensionPoints->Dict.keysToArray,
             extensionNames: extensions->Dict.keysToArray,
             extensions: extensions
-              ->Dict.toArray
-              ->Array.map(((_, ext: ReventlessInfra.Extension.outputs)) => {
+            ->Dict.toArray
+            ->Array.map(
+              ((_, ext: ReventlessInfra.Extension.outputs)) => {
                 Reventless.Plugin.name: ext.name,
                 extensionPointName: ext.extensionPointName,
-              }),
+              },
+            ),
             status: Connected,
             statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
             apiSchemaFragment: None,
           }
-          let entry = state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+          let entry =
+            state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
           let _ = pluginOps.save(id, entry, Any, None)
         })
     })
@@ -588,46 +601,35 @@ module MakeWithConfig = (
       | Some(inst) => inst.getMutationResolver(fieldName)
       | None => GraphQL_Server.getMutationResolver(fieldName)
       }
-    let registerAdminMcpResources = (
-      ~pluginName,
-      ~queryEntries,
-      ~queryHandler,
-    ) =>
+    let registerAdminMcpResources = (~pluginName, ~queryEntries, ~queryHandler) =>
       switch adminMCP {
-      | Some(inst) =>
-        inst.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
-      | None =>
-        MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
+      | Some(inst) => inst.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
+      | None => MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
       }
-    let registerAdminMcpTools = (
-      ~pluginName,
-      ~mutationEntries,
-      ~commandHandler,
-    ) =>
+    let registerAdminMcpTools = (~pluginName, ~mutationEntries, ~commandHandler) =>
       switch adminMCP {
-      | Some(inst) =>
-        inst.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
-      | None =>
-        MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
+      | Some(inst) => inst.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
+      | None => MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
       }
 
     // Derive field names from the schema entries — single source of truth.
-    let adminQueryEntry =
-      ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+    let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
     let singleQueryField = adminQueryEntry.singleFieldName
     let listQueryField = adminQueryEntry.listFieldName
-    let adminMutationFieldNames =
-      ReventlessCore.AdminApi.mutationEntries->Array.flatMap(entry => entry.fieldNames)
+    let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
 
     // Register the admin Plugin aggregate's types/queries/mutations.
     // In unified mode these go into GraphQL_Server alongside plugin schema.
     // In split mode they go into a dedicated admin GraphQL instance.
-    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment)
+    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
+      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+    )
     registerAdminTypes(~sdlTypes=baseParts.types)
 
     // Resolvers for the admin Plugin queries — backed by Bus Plugin QueryDb.
     let queryResolvers = Dict.make()
-    queryResolvers->Dict.set(singleQueryField, (async (_root, args): JSON.t => {
+    queryResolvers->Dict.set(singleQueryField, async (_root, args): JSON.t => {
       let id =
         args
         ->JSON.Decode.object
@@ -636,16 +638,15 @@ module MakeWithConfig = (
         ->Option.getOr("")
       switch Bus.getQueryDb(pluginQueryDbName) {
       | Some(ops) =>
-        let items =
-          await ops.loadStream(id)
-          ->Stream.runCollect
-          ->Effect.catchAll(_ => Effect.succeed([]))
-          ->Effect.runPromise
+        let items = await ops.loadStream(id)
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
         items->Array.get(0)->Option.getOr(JSON.Encode.null)
       | None => JSON.Encode.null
       }
-    }))
-    queryResolvers->Dict.set(listQueryField, (async (_root, _args): JSON.t => {
+    })
+    queryResolvers->Dict.set(listQueryField, async (_root, _args): JSON.t => {
       let items = switch Bus.getQueryDbScan(pluginQueryDbName) {
       | Some(scanAll) => scanAll()
       | None => []
@@ -655,23 +656,15 @@ module MakeWithConfig = (
         ("scannedCount", JSON.Encode.int(items->Array.length)),
         ("items", items->JSON.Encode.array),
       ])->JSON.Encode.object
-    }))
-    registerAdminQueries(
-      ~sdlFields=baseParts.queries,
-      ~resolvers=queryResolvers,
-    )
+    })
+    registerAdminQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Stub resolvers for admin mutations — no-ops in-memory, real logic runs in AWS Lambda.
     let mutationResolvers = Dict.make()
     adminMutationFieldNames->Array.forEach(field =>
-      mutationResolvers->Dict.set(field, (async (_root, _args): JSON.t =>
-        JSON.Encode.string("ok")
-      ))
+      mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
     )
-    registerAdminMutations(
-      ~sdlFields=baseParts.mutations,
-      ~resolvers=mutationResolvers,
-    )
+    registerAdminMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 
     // Register admin Plugin queries and mutations as MCP resources and tools.
     let pluginQueryHandler = async (_resourceName, uri) => {
@@ -680,11 +673,10 @@ module MakeWithConfig = (
       switch Bus.getQueryDb(pluginQueryDbName) {
       | Some(ops) =>
         if id->String.length > 0 && id != listQueryField {
-          let items =
-            await ops.loadStream(id)
-            ->Stream.runCollect
-            ->Effect.catchAll(_ => Effect.succeed([]))
-            ->Effect.runPromise
+          let items = await ops.loadStream(id)
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
           items->Array.get(0)->Option.getOr(JSON.Encode.null)
         } else {
           switch Bus.getQueryDbScan(pluginQueryDbName) {
@@ -704,7 +696,7 @@ module MakeWithConfig = (
     // Register admin mutations as MCP tools using the same entry-based path as plugins.
     registerAdminMcpTools(
       ~pluginName="Admin",
-      ~mutationEntries=ReventlessCore.AdminApi.mutationEntries,
+      ~mutationEntries=adminMutationEntries,
       ~commandHandler=async (toolName, args) => {
         switch getAdminMutationResolver(toolName) {
         | Some(resolver) =>
@@ -745,10 +737,11 @@ module MakeWithConfig = (
   }
 }
 
-// Default platform — diagnostic warnings enabled, split API (admin on separate ports).
+// Default platform — diagnostic warnings enabled, split API (admin on separate ports), no cloner.
 module Make = (): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   include MakeWithConfig({
     let silent = false
     let splitApi = true
+    let cloner = false
   })
 }

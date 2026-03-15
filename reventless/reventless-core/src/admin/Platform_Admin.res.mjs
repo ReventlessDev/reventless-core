@@ -15,7 +15,6 @@ import * as Admin_Callback$ReventlessCore from "./Admin_Callback.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../components/Plugin/Plugin_Helpers.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../components/Builder_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "./PluginBaseFragment.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../components/EventCollector/EventCollector_Builder.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -63,7 +62,7 @@ function Make(RuntimeEnvironment) {
       let opts = {};
       let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(AdminRuntimeBuilder);
       let dcbResult = DcbBuilder.construct(name, name, dcbSpec, opts);
-      let adminMutationEntries = Config.cloner ? AdminApi$ReventlessCore.mutationEntries : PluginBaseFragment$ReventlessCore.mutationEntries;
+      let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
       let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
       let adminFragment = GraphQL_FragmentGenerator$ReventlessCore.generate(allMutationEntries, allQueryEntries);

@@ -100,6 +100,7 @@ let generateConfig = (
 let generateAdminConfig = (
   ~serverName: string,
   ~serverVersion: string,
+  ~cloner: bool=false,
   ~commandTopicArns: dict<string>=Dict.make(),
   ~queryDbTableNames: dict<string>=Dict.make(),
 ): mcpConfig =>
@@ -107,7 +108,7 @@ let generateAdminConfig = (
     ~serverName=`${serverName}-admin`,
     ~serverVersion,
     ~pluginName="Admin",
-    ~mutationEntries=ReventlessCore.AdminApi.mutationEntries,
+    ~mutationEntries=ReventlessCore.AdminApi.mutationEntries(~cloner),
     ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
     ~commandTopicArns,
     ~queryDbTableNames,

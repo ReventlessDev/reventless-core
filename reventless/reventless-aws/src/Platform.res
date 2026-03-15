@@ -36,10 +36,10 @@ module MakeWithConfig = (
   },
   Config: {
     let splitApi: bool
+    let cloner: bool
   },
-): (ReventlessInfra.Platform.T
-  with type api = Types.AppSync.api
-  and type role = Types.AppSync.role
+): (
+  ReventlessInfra.Platform.T with type api = Types.AppSync.api and type role = Types.AppSync.role
 ) => {
   type api = Types.AppSync.api
   type role = Types.AppSync.role
@@ -53,19 +53,21 @@ module MakeWithConfig = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-    ): (ReventlessInfra.Aggregate.T with type api = Types.AppSync.api) =>
-      Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
+    ): (
+      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
+    ) => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
     module Make = (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-    ): (ReventlessInfra.ReadModel.T
-      with module Spec = Spec
-      and type api = Types.AppSync.api
-      and type role = Types.AppSync.role) =>
-      ReadModel_Builder_Single.Make(Spec, Mappings)
+    ): (
+      ReventlessInfra.ReadModel.T
+        with module Spec = Spec
+        and type api = Types.AppSync.api
+        and type role = Types.AppSync.role
+    ) => ReadModel_Builder_Single.Make(Spec, Mappings)
   }
 
   module ExtensionPoint = {
@@ -83,19 +85,19 @@ module MakeWithConfig = (
   }
 
   module Task = {
-    module Make = (
-      Spec: ReventlessInfra.Task.Spec,
-    ): (ReventlessInfra.Task.T with module Spec = Spec) => Task_Builder_PerBucket.Make(Spec)
+    module Make = (Spec: ReventlessInfra.Task.Spec): (
+      ReventlessInfra.Task.T with module Spec = Spec
+    ) => Task_Builder_PerBucket.Make(Spec)
   }
 
   module Counter = Counter_Builder.Make(Api)
 
   module StateChangeSlice = {
-    module Make = (
-      Spec: Reventless.StateChangeSlice.Spec,
-    ): (ReventlessInfra.StateChangeSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec) => StateChangeSlice_Builder.Make(Spec)
+    module Make = (Spec: Reventless.StateChangeSlice.Spec): (
+      ReventlessInfra.StateChangeSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    ) => StateChangeSlice_Builder.Make(Spec)
   }
 
   module StateViewSlice = StateViewSlice_Builder.Make(Api)
@@ -104,9 +106,9 @@ module MakeWithConfig = (
   module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(Api)
 
   module DcbEventLog = {
-    module Make = (
-      Spec: Reventless.DcbEventLog.Spec,
-    ): (ReventlessInfra.DcbEventLog.T with module Spec = Spec) => DcbEventLog_Builder.Make(Spec)
+    module Make = (Spec: Reventless.DcbEventLog.Spec): (
+      ReventlessInfra.DcbEventLog.T with module Spec = Spec
+    ) => DcbEventLog_Builder.Make(Spec)
   }
 
   // Empty base fragment — no types, no mutations, no queries.
@@ -119,7 +121,9 @@ module MakeWithConfig = (
 
   module Api = {
     module Make = (
-      FragmentConfig: {let baseFragment: ReventlessInfra.Api.schemaFragment},
+      FragmentConfig: {
+        let baseFragment: ReventlessInfra.Api.schemaFragment
+      },
     ): ReventlessInfra.Api.T => {
       module Builder = ReventlessCore.Api_Builder.Make(AppSync_Adapter)
       // In split mode, the plugin API uses an empty base fragment so plugin schema
@@ -151,10 +155,9 @@ module MakeWithConfig = (
 
   // Alias before defining module Plugin to avoid self-reference.
   module PluginBuilder = Plugin
-  module Plugin: (ReventlessInfra.Plugin.T
+  module Plugin: ReventlessInfra.Plugin.T
     with type api = Types.AppSync.api
-    and type role = Types.AppSync.role
-  ) = {
+    and type role = Types.AppSync.role = {
     type api = Types.AppSync.api
     type role = Types.AppSync.role
     type component = ReventlessCore.Plugin.component
@@ -168,14 +171,17 @@ module MakeWithConfig = (
     EventCollectorChannel,
     QueryEngine.DynamoDb,
     ClonerRunner.Fargate,
-    ReventlessCore.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment_Lambda, EventCollectorChannel),
+    ReventlessCore.PluginRuntime_Builder_Micro.Make(
+      RuntimeEnvironment_Lambda,
+      EventCollectorChannel,
+    ),
     DcbEventLogStorage.DynamoDb,
     EventTopicPublisher.DynamoDbStream,
     CommandTopicChannel.SQS_FIFO,
     {
       let silent = false
       let splitApi = Config.splitApi
-      let cloner = true
+      let cloner = Config.cloner
     },
   )
 
@@ -197,10 +203,8 @@ module MakeWithConfig = (
 
   // In split mode, create a dedicated core AppSync API and push the core schema.
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
-  let makePlatform = (
-    ~version,
-    ~plugins: array<module(PluginMaker)>,
-  ) => {
+  let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
+    Console.log(`[Platform] v${version}`)
     // Create scheduler and admin components internally.
     let scheduler = makeScheduler()
     let _admin = Admin.construct(
@@ -231,36 +235,37 @@ module MakeWithConfig = (
       // Store outputs so users can export them as stack outputs.
       splitApiOutputsRef := Some({coreApi: coreApiOutput, coreRole: coreRoleOutput})
 
-      // Push the core schema (base fragment only, no plugin fragments).
-      // This is a one-time operation — core schema is static.
-      let coreBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.AdminApi.baseFragment,
+      // Push the admin schema (base fragment only, no plugin fragments).
+      // This is a one-time operation — admin schema is static.
+      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
         ~group="Admin",
       )
-      let _ =
-        coreApiOutput->Pulumi.Output.apply(coreApi => {
-          let _ = AppSync_Adapter.updateSchema(
-            ~api=Pulumi.Output.make(coreApi),
-            ~baseFragment=coreBaseFragment,
-            ~pluginFragments=[],
-          )
-        })
+      let _ = coreApiOutput->Pulumi.Output.apply(coreApi => {
+        let _ = AppSync_Adapter.updateSchema(
+          ~api=Pulumi.Output.make(coreApi),
+          ~baseFragment=adminBaseFragment,
+          ~pluginFragments=[],
+        )
+      })
     }
   }
 }
 
 // Default platform — unified API (no split).
-module Make = (Api: {
-  let api: Types.AppSync.api
-  let apiRole: Types.AppSync.role
-}): (ReventlessInfra.Platform.T
-  with type api = Types.AppSync.api
-  and type role = Types.AppSync.role
+module Make = (
+  Api: {
+    let api: Types.AppSync.api
+    let apiRole: Types.AppSync.role
+  },
+): (
+  ReventlessInfra.Platform.T with type api = Types.AppSync.api and type role = Types.AppSync.role
 ) => {
   include MakeWithConfig(
     Api,
     {
-      let splitApi = false
+      let splitApi = true
+      let cloner = false
     },
   )
 }

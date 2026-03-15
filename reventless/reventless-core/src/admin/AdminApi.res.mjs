@@ -19,9 +19,17 @@ let cloneMutationEntry = {
   description: cloneMutationEntry_description
 };
 
-let mutationEntries = PluginBaseFragment$ReventlessCore.mutationEntries.concat([cloneMutationEntry]);
+function mutationEntries(cloner) {
+  if (cloner) {
+    return PluginBaseFragment$ReventlessCore.mutationEntries.concat([cloneMutationEntry]);
+  } else {
+    return PluginBaseFragment$ReventlessCore.mutationEntries;
+  }
+}
 
-let baseFragment = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries);
+function baseFragment(cloner) {
+  return GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
+}
 
 let queryEntries = PluginBaseFragment$ReventlessCore.queryEntries;
 

@@ -4,6 +4,6 @@ module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
 
 Platform.makePlatform(
-  ~version="1.0.0",
+  ~version=Reventless.PackageVersion.fromCwd(),
   ~plugins=[module(Catalog), module(Ordering)],
 )

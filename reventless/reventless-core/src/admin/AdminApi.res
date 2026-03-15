@@ -9,11 +9,14 @@ let cloneMutationEntry: mutationSchemaEntry = {
   description: "Clone the system to a specific point in time",
 }
 
-let mutationEntries: array<mutationSchemaEntry> = Array.concat(
-  PluginBaseFragment.mutationEntries,
-  [cloneMutationEntry],
-)
+let mutationEntries = (~cloner: bool) =>
+  if cloner {
+    Array.concat(PluginBaseFragment.mutationEntries, [cloneMutationEntry])
+  } else {
+    PluginBaseFragment.mutationEntries
+  }
 
 let queryEntries = PluginBaseFragment.queryEntries
 
-let baseFragment = GraphQL_FragmentGenerator.generate(~mutationEntries, ~queryEntries)
+let baseFragment = (~cloner: bool) =>
+  GraphQL_FragmentGenerator.generate(~mutationEntries=mutationEntries(~cloner), ~queryEntries)
