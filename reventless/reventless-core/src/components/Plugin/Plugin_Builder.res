@@ -452,7 +452,6 @@ module Make = (
 
   let make = (
     ~name,
-    ~version,
     ~heartbeatInterval,
     ~extensionPoints=[],
     ~extensions=[],
@@ -466,7 +465,8 @@ module Make = (
     ~scheduler,
     ~dcbSpec=?,
     ~opts=?,
-  ) =>
+  ) => {
+    let version = Reventless.PackageVersion.fromCaller()
     Component.make(
       ~componentType=Plugin.componentType->ComponentType.toString,
       ~name,
@@ -486,4 +486,5 @@ module Make = (
       ),
       ~opts,
     )
+  }
 }

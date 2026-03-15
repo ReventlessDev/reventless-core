@@ -169,7 +169,7 @@ function Make(Platform) {
     name: ImportProducts$CatalogPlugin.name,
     setup: ImportProducts$CatalogPlugin.setup
   });
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", "1.0.0", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
     ProductAggregate,
     CategoryAggregate,
     ProductDemandAggregate

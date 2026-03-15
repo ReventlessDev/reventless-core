@@ -15,7 +15,6 @@ module type T = {
   type role
   let make: (
     ~name: string,
-    ~version: string,
     ~heartbeatInterval: int,
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPoint.T)>=?,
     ~extensions: array<module(ReventlessInfra.Extension.T)>=?,

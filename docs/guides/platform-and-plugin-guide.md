@@ -609,7 +609,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   ) =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~version="1.0.0",
       ~heartbeatInterval=60,
       ~aggregates=[
         module(ProductAggregate),
@@ -664,7 +663,7 @@ module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
 
 Platform.makePlatform(
-  ~version="1.0.0",
+  ~version=Reventless.PackageVersion.fromCwd(),
   ~plugins=[module(Catalog), module(Ordering)],
 )
 ```
@@ -1163,7 +1162,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~version="1.0.0",
       ~heartbeatInterval=60,
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
@@ -1341,7 +1339,7 @@ module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
 
 Platform.makePlatform(
-  ~version="1.0.0",
+  ~version=Reventless.PackageVersion.fromCwd(),
   ~plugins=[module(Catalog), module(Ordering)],
 )
 ```
@@ -1397,7 +1395,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~version="1.0.0",
       ~heartbeatInterval=60,
       ~aggregates=[module(CategoryAggregate)],      // Aggregate components
       ~readModels=[module(CategoriesReadModelMaker)], // Aggregate read models

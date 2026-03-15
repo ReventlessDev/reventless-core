@@ -191,7 +191,7 @@ function Make(Platform) {
     outboundTranslationSlices: outboundTranslationSlices,
     inboundTranslationSlices: inboundTranslationSlices
   };
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", "1.0.0", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {
     CatalogEventLogMaker: CatalogEventLogMaker,
     AddProductSlice: AddProductSlice,

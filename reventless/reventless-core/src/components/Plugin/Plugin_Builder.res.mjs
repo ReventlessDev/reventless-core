@@ -14,6 +14,7 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../ReadModel/ReadModel.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as Interstack$ReventlessCore from "../../util/Interstack.res.mjs";
+import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 import * as Dcb_Builder$ReventlessCore from "../Dcb/Dcb_Builder.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
@@ -27,12 +28,13 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 
 function Make(Spec) {
   return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
-    let make = (name, version, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, api, apiRole, scheduler, dcbSpec, opts) => {
+    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, api, apiRole, scheduler, dcbSpec, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
       let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
       let tasks = tasksOpt !== undefined ? tasksOpt : [];
+      let version = PackageVersion$Reventless.fromCaller();
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let id = Plugin$ReventlessCore.makeId(extra$1, version);
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);

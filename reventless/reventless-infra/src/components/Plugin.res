@@ -74,7 +74,6 @@ module type T = {
   type component
   let make: (
     ~name: string,
-    ~version: string,
     /** How often (in seconds) the heartbeat Lambda fires. */
     ~heartbeatInterval: int,
     ~extensionPoints: array<module(ExtensionPoint.T)>=?,

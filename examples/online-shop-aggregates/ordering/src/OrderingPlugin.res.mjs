@@ -163,7 +163,7 @@ function Make(Platform) {
     mappings: mappings$4
   });
   let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", "1.0.0", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
     CustomerAggregate,
     OrderAggregate,
     CatalogProductAggregate

@@ -253,7 +253,6 @@ module MyDcbSpec = {
 ```rescript
 let plugin = MyPlugin.make(
   ~name="my-plugin",
-  ~version="1.0.0",
   ~heartbeatInterval=300,
   ~scheduler,
   ~dcbSpec=module(MyDcbSpec),

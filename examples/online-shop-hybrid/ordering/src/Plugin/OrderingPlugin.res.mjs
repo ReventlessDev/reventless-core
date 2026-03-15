@@ -193,7 +193,7 @@ function Make(Platform) {
     outboundTranslationSlices: outboundTranslationSlices,
     inboundTranslationSlices: inboundTranslationSlices
   };
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", "1.0.0", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, DcbSpec, undefined);
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {
     CustomerAggregate: CustomerAggregate,
     CustomerProjections: CustomerProjections,

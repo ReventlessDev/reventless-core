@@ -228,7 +228,7 @@ module Platform = ReventlessInMemory.Platform.Make()
 module MyPlugin = MyPluginModule.Make(Platform)
 
 Platform.makePlatform(
-  ~version="1.0.0",
+  ~version=Reventless.PackageVersion.fromCwd(),
   ~plugins=[module(MyPlugin)],
 )
 

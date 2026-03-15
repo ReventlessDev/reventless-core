@@ -97,7 +97,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   ) =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~version="1.0.0",
       ~heartbeatInterval=60,
       ~aggregates=[
         module(ProductAggregate),
