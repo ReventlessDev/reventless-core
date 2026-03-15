@@ -2,6 +2,23 @@
 // Make(Bus) functor: registers ops and scan function in the Bus so that
 // QueryDbResolvers_GraphQL and QueryEngine_InMemory can look up data by read model name.
 
+let flattenWithId = (store: dict<array<JSON.t>>): array<JSON.t> =>
+  store
+  ->Dict.toArray
+  ->Array.flatMap(((id, items)) =>
+    items->Array.map(item => {
+      let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+      if !(obj->Dict.get("id")->Option.isSome) {
+        let copy = Dict.make()
+        obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
+        copy->Dict.set("id", JSON.Encode.string(id))
+        JSON.Encode.object(copy)
+      } else {
+        item
+      }
+    })
+  )
+
 module Make = (Bus: InMemory_Bus.T) => {
   open ReventlessCore
 
@@ -21,7 +38,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     let allItems: ref<array<JSON.t>> = ref([])
 
     let syncAll = () => {
-      allItems.contents = store.contents->Dict.valuesToArray->Array.flatMap(v => v)
+      allItems.contents = flattenWithId(store.contents)
     }
 
     let load: QueryDb.load<string, JSON.t> = async id =>

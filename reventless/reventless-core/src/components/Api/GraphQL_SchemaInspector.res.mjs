@@ -12,7 +12,7 @@ function inspectScalar(schema) {
 }
 
 function inspectObjectType(typeName, schema) {
-  let types = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectTypeWithNested(typeName, undefined, schema);
+  let types = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectTypeWithNested(typeName, undefined, undefined, schema);
   return types[types.length - 1 | 0];
 }
 
@@ -39,9 +39,9 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
 }
 
 function inspectQueryFields(name, typeName, stateSchema) {
-  let types = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectTypeWithNested(typeName, undefined, stateSchema);
+  let types = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectTypeWithNested(typeName, undefined, undefined, stateSchema);
   let typeDef = types[types.length - 1 | 0];
-  let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName);
+  let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName, undefined);
   let pluralName = name + "s";
   let listQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveListQueryField(pluralName, pluralName);
   return {

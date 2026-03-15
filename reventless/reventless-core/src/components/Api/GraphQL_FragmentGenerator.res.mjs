@@ -64,8 +64,9 @@ function deriveFieldType(parentTypeName, fieldName, required, fieldSchema, colle
   return fromSchemaType(required, st, collectedTypes, seenTypes);
 }
 
-function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, schema) {
+function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOpt, schema) {
   let excludeFields = excludeFieldsOpt !== undefined ? excludeFieldsOpt : [];
+  let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
   let fields = SchemaType$ReventlessCore.fromSuryObject(typeName, schema);
   if (fields === undefined) {
     return [];
@@ -88,15 +89,21 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, schema) {
   let seenTypes = new Set();
   seenTypes.add(typeName);
   let mainType = objectRefToGraphQL(typeName, filteredFields, collectedTypes, seenTypes);
-  return collectedTypes.concat([mainType]);
+  let mainTypeWithId = includeIdParam ? mainType.replace(`type ` + typeName + ` {\n`, `type ` + typeName + ` {\n  id: ID!\n`) : mainType;
+  return collectedTypes.concat([mainTypeWithId]);
 }
 
 function derivePluralWrapperType(pluralTypeName, singularTypeName) {
   return `type ` + pluralTypeName + ` {\n  nextToken: String\n  scannedCount: Int!\n  items: [` + singularTypeName + `!]!\n}`;
 }
 
-function deriveObjectQueryField(singleFieldName, typeName) {
-  return `  ` + singleFieldName + `(id: ID!): ` + typeName;
+function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt) {
+  let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
+  if (includeIdParam) {
+    return `  ` + singleFieldName + `(id: ID!): ` + typeName;
+  } else {
+    return `  ` + singleFieldName + `: ` + typeName;
+  }
 }
 
 function deriveListQueryField(listFieldName, pluralTypeName) {
@@ -151,16 +158,17 @@ function generate(mutationEntries, queryEntries) {
     }
   });
   queryEntries.forEach(entry => {
+    let includeIdParam = Stdlib_Option.getOr(entry.includeIdParam, true);
     if (!seenTypes.has(entry.returnTypeName)) {
       seenTypes.add(entry.returnTypeName);
       let fields = entry.excludeFields;
       let excludeFields = fields !== undefined ? fields : [];
-      let nestedTypes = deriveObjectTypeWithNested(entry.returnTypeName, excludeFields, entry.stateSchema);
+      let nestedTypes = deriveObjectTypeWithNested(entry.returnTypeName, excludeFields, includeIdParam, entry.stateSchema);
       nestedTypes.forEach(t => {
         types.push(t);
       });
     }
-    let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName);
+    let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName, includeIdParam);
     queries.push(singleField);
     let listFieldName = entry.listFieldName;
     if (!seenTypes.has(listFieldName)) {

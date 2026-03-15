@@ -3,6 +3,7 @@ type queryNames = {
   listFieldName: string,
   returnTypeName: string,
   pluralTypeName: string,
+  includeIdParam: bool,
 }
 
 let pluralize = (n: string) => n->String.endsWith("s") ? n : n ++ "s"
@@ -32,6 +33,7 @@ let queryFieldNamesForReadModel = (~plugin: string, ~name: string): queryNames =
     listFieldName: `${plugin}_${plural}`,
     returnTypeName: `${plugin}_${singular}`,
     pluralTypeName: `${plugin}_${plural}`,
+    includeIdParam: true,
   }
 }
 
@@ -44,6 +46,7 @@ let queryFieldNamesForStateView = (~plugin: string, ~viewName: string): queryNam
     listFieldName: `${plugin}_${plural}`,
     returnTypeName: `${plugin}_${singular}`,
     pluralTypeName: `${plugin}_${plural}`,
+    includeIdParam: false,
   }
 }
 
@@ -53,6 +56,7 @@ let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string): qu
     listFieldName: `${plugin}_${queryDbName}s`,
     returnTypeName: `${plugin}_${queryDbName}`,
     pluralTypeName: `${plugin}_${queryDbName}s`,
+    includeIdParam: false,
   }
 }
 

@@ -45,10 +45,20 @@ module Make = (Bus: InMemory_Bus.T) => {
     | None => "[String]"
     }
 
+    // Resolve includeIdParam flag from registry (defaults to true for ReadModels)
+    let includeIdParam = switch registryEntry {
+    | Some({includeIdParam}) => includeIdParam
+    | None => true
+    }
+
     // -- Main query: getById ---------------------------------------------------
-    let byIdSdl = switch subIdField {
-    | Some(sf) => `  ${singleQueryName}(id: ID!, ${sf}: String): ${returnTypeName}`
-    | None => `  ${singleQueryName}(id: ID!): ${returnTypeName}`
+    let byIdSdl = if includeIdParam {
+      switch subIdField {
+      | Some(sf) => `  ${singleQueryName}(id: ID!, ${sf}: String): ${returnTypeName}`
+      | None => `  ${singleQueryName}(id: ID!): ${returnTypeName}`
+      }
+    } else {
+      `  ${singleQueryName}: ${returnTypeName}`
     }
     let byIdResolver: GraphQL_Server.resolverFn = async (_root, args) => {
       let id =
@@ -61,7 +71,15 @@ module Make = (Bus: InMemory_Bus.T) => {
           ->Effect.catchAll(_ => Effect.succeed([]))
           ->Effect.runPromise
         switch items->Array.get(0) {
-        | Some(item) => item
+        | Some(item) =>
+          if includeIdParam {
+            // Inject "id" into the response for ReadModel queries
+            let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+            obj->Dict.set("id", JSON.Encode.string(id))
+            JSON.Encode.object(obj)
+          } else {
+            item
+          }
         | None => JSON.Encode.null
         }
       | None => JSON.Encode.null

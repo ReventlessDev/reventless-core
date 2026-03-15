@@ -368,6 +368,7 @@ module Make = (
             returnTypeName: qn.returnTypeName,
             stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
             authorization: None,
+            includeIdParam: false,
           }
         })
 

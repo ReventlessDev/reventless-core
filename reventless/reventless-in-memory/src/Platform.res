@@ -493,7 +493,7 @@ module MakeWithConfig = (
     let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
     let allItems: ref<array<JSON.t>> = ref([])
     let syncAll = () => {
-      allItems.contents = store.contents->Dict.valuesToArray->Array.flatMap(v => v)
+      allItems.contents = QueryDbStorage_InMemory.flattenWithId(store.contents)
     }
     let pluginOps: ReventlessCore.QueryDb_Adapter.operations = {
       load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),

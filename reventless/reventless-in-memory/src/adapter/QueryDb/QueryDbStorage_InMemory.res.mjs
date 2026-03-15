@@ -2,8 +2,27 @@
 
 import * as Effect from "effect";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+
+function flattenWithId(store) {
+  return Object.entries(store).flatMap(param => {
+    let id = param[0];
+    return param[1].map(item => {
+      let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+      if (Stdlib_Option.isSome(obj["id"])) {
+        return item;
+      }
+      let copy = {};
+      Object.entries(obj).forEach(param => {
+        copy[param[0]] = param[1];
+      });
+      copy["id"] = id;
+      return copy;
+    });
+  });
+}
 
 function Make(Bus) {
   let make = (name, param, param$1, param$2, param$3, param$4, param$5) => {
@@ -14,7 +33,7 @@ function Make(Bus) {
       contents: []
     };
     let syncAll = () => {
-      allItems.contents = Object.values(store.contents).flatMap(v => v);
+      allItems.contents = flattenWithId(store.contents);
     };
     let load = async id => ({
       TAG: "Ok",
@@ -83,6 +102,7 @@ function Make(Bus) {
 }
 
 export {
+  flattenWithId,
   Make,
 }
 /* effect Not a pure module */

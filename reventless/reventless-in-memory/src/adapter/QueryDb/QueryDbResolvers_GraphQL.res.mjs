@@ -15,7 +15,10 @@ function Make(Bus) {
     let listQueryName = registryEntry !== undefined ? registryEntry.listFieldName : name + "s";
     let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : "String";
     let pluralTypeName = registryEntry !== undefined ? registryEntry.pluralTypeName : "[String]";
-    let byIdSdl = subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName;
+    let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
+    let byIdSdl = includeIdParam ? (
+        subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName
+      ) : `  ` + singleQueryName + `: ` + returnTypeName;
     let byIdResolver = async (_root, args) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(name);
@@ -24,11 +27,15 @@ function Make(Bus) {
       }
       let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
       let item = items[0];
-      if (item !== undefined) {
-        return item;
-      } else {
+      if (item === undefined) {
         return null;
       }
+      if (!includeIdParam) {
+        return item;
+      }
+      let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+      obj["id"] = id;
+      return obj;
     };
     let listSdl = [`  ` + listQueryName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`];
     let listResolver = async (_root, _args) => {

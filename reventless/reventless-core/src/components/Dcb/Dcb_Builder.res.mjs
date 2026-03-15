@@ -235,7 +235,8 @@ function Make(DcbEventLogStorage) {
           listFieldName: qn.listFieldName,
           returnTypeName: qn.returnTypeName,
           stateSchema: V.Spec.stateSchema,
-          authorization: undefined
+          authorization: undefined,
+          includeIdParam: false
         };
       });
       let automationEntries = dcbSpec.automationSlices.map(A => {

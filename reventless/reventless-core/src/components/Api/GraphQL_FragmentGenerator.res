@@ -77,6 +77,7 @@ let deriveFieldType = (
 let deriveObjectTypeWithNested = (
   ~typeName: string,
   ~excludeFields: array<string>=[],
+  ~includeIdParam: bool=true,
   schema: S.t<unknown>,
 ): array<string> =>
   switch SchemaType.fromSuryObject(~typeName, schema) {
@@ -98,7 +99,15 @@ let deriveObjectTypeWithNested = (
     let seenTypes = Set.make()
     seenTypes->Set.add(typeName)
     let mainType = objectRefToGraphQL(typeName, filteredFields, collectedTypes, seenTypes)
-    Array.concat(collectedTypes, [mainType])
+    let mainTypeWithId = if includeIdParam {
+      mainType->String.replace(
+        `type ${typeName} {\n`,
+        `type ${typeName} {\n  id: ID!\n`,
+      )
+    } else {
+      mainType
+    }
+    Array.concat(collectedTypes, [mainTypeWithId])
   | None => []
   }
 
@@ -110,8 +119,13 @@ let derivePluralWrapperType = (~pluralTypeName: string, ~singularTypeName: strin
 let deriveObjectQueryField = (
   ~singleFieldName: string,
   ~typeName: string,
+  ~includeIdParam: bool=true,
 ): string =>
-  `  ${singleFieldName}(id: ID!): ${typeName}`
+  if includeIdParam {
+    `  ${singleFieldName}(id: ID!): ${typeName}`
+  } else {
+    `  ${singleFieldName}: ${typeName}`
+  }
 
 let deriveListQueryField = (
   ~listFieldName: string,
@@ -182,6 +196,7 @@ let generate = (
   })
 
   queryEntries->Array.forEach(entry => {
+    let includeIdParam = entry.includeIdParam->Option.getOr(true)
     if !(seenTypes->Set.has(entry.returnTypeName)) {
       seenTypes->Set.add(entry.returnTypeName)
       let excludeFields = switch entry.excludeFields {
@@ -191,6 +206,7 @@ let generate = (
       let nestedTypes = deriveObjectTypeWithNested(
         ~typeName=entry.returnTypeName,
         ~excludeFields,
+        ~includeIdParam,
         entry.stateSchema,
       )
       nestedTypes->Array.forEach(t => {
@@ -201,6 +217,7 @@ let generate = (
     let singleField = deriveObjectQueryField(
       ~singleFieldName=entry.singleFieldName,
       ~typeName=entry.returnTypeName,
+      ~includeIdParam,
     )
     queries->Array.push(singleField)
 

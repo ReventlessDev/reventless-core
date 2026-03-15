@@ -26,6 +26,7 @@ type querySchemaEntry = {
   authorization: option<Reventless.ReadModel.authorization>,
   excludeFields?: array<string>,
   description?: string,
+  includeIdParam?: bool,
 }
 
 /**

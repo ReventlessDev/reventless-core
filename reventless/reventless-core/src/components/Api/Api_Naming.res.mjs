@@ -42,7 +42,8 @@ function queryFieldNamesForReadModel(plugin, name) {
     singleFieldName: plugin + `_` + singular,
     listFieldName: plugin + `_` + plural,
     returnTypeName: plugin + `_` + singular,
-    pluralTypeName: plugin + `_` + plural
+    pluralTypeName: plugin + `_` + plural,
+    includeIdParam: true
   };
 }
 
@@ -54,7 +55,8 @@ function queryFieldNamesForStateView(plugin, viewName) {
     singleFieldName: plugin + `_` + singular,
     listFieldName: plugin + `_` + plural,
     returnTypeName: plugin + `_` + singular,
-    pluralTypeName: plugin + `_` + plural
+    pluralTypeName: plugin + `_` + plural,
+    includeIdParam: false
   };
 }
 
@@ -63,7 +65,8 @@ function queryFieldNamesForSliceQueryDb(plugin, queryDbName) {
     singleFieldName: plugin + `_` + queryDbName,
     listFieldName: plugin + `_` + queryDbName + `s`,
     returnTypeName: plugin + `_` + queryDbName,
-    pluralTypeName: plugin + `_` + queryDbName + `s`
+    pluralTypeName: plugin + `_` + queryDbName + `s`,
+    includeIdParam: false
   };
 }
 
