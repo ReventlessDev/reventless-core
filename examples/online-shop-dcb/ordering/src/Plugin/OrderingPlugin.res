@@ -92,11 +92,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     > = []
   }
 
-  let make = (
-    ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
-    ~api: Platform.api,
-    ~apiRole: Platform.role,
-  ) =>
+  let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,

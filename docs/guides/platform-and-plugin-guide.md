@@ -602,11 +602,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   )
 
   // ── Self-assembly ───────────────────────────────────────────
-  let make = (
-    ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
-    ~api: Platform.api,
-    ~apiRole: Platform.role,
-  ) =>
+  let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,

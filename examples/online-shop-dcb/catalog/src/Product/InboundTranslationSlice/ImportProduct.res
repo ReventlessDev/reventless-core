@@ -24,7 +24,7 @@ type command = AddProduct({
   price: float,
 })
 
-let translate = (input: externalInput) =>
+let translate = input =>
   if input.currency !== "USD" {
     Error("Unsupported currency: " ++ input.currency)
   } else if input.unitPrice <= 0 {
