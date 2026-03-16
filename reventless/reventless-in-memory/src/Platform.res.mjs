@@ -7,10 +7,14 @@ import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as MCP_Server$ReventlessInMemory from "./adapter/MCP_Server.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
@@ -569,9 +573,82 @@ function MakeWithConfig(Config) {
       ]);
     };
     registerAdminQueries(baseParts.queries, queryResolvers);
+    let statusToString = s => {
+      switch (s) {
+        case "Connected" :
+          return "Connected";
+        case "Disconnected" :
+          return "Disconnected";
+        case "Inactive" :
+          return "Inactive";
+      }
+    };
+    let updatePluginStatus = async (field, args, newStatus) => {
+      let msgId = Message$ReventlessCore.uuid();
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      console.log(`[Admin] ` + field + `(` + id + `): received command (msgId: ` + msgId + `)`);
+      let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
+      if (ops !== undefined) {
+        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let json = items[0];
+        if (json !== undefined) {
+          let exit = 0;
+          let state;
+          try {
+            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            exit = 1;
+          } catch (raw_e) {
+            let e = Primitive_exceptions.internalToException(raw_e);
+            console.log(`[Admin] ` + field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
+          }
+          if (exit === 1) {
+            let previousStatus = statusToString(state.status);
+            let updated_name = state.name;
+            let updated_version = state.version;
+            let updated_eventCollector = state.eventCollector;
+            let updated_extensionPoints = state.extensionPoints;
+            let updated_extensionPointNames = state.extensionPointNames;
+            let updated_extensionNames = state.extensionNames;
+            let updated_extensions = state.extensions;
+            let updated_statusChange = {
+              at: new Date().toISOString(),
+              by: "in-memory"
+            };
+            let updated_apiSchemaFragment = state.apiSchemaFragment;
+            let updated = {
+              name: updated_name,
+              version: updated_version,
+              eventCollector: updated_eventCollector,
+              extensionPoints: updated_extensionPoints,
+              extensionPointNames: updated_extensionPointNames,
+              extensionNames: updated_extensionNames,
+              extensions: updated_extensions,
+              status: newStatus,
+              statusChange: updated_statusChange,
+              apiSchemaFragment: updated_apiSchemaFragment
+            };
+            let entry = S.reverseConvertToJsonOrThrow(updated, PluginReadModelSpec$ReventlessCore.stateSchema);
+            await ops.save(id, entry, "Any", undefined);
+            console.log(`[Admin] ` + field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
+          }
+        } else {
+          console.log(`[Admin] ` + field + `(` + id + `): plugin not found`);
+        }
+      } else {
+        console.log(`[Admin] ` + field + `(` + id + `): Plugin QueryDb not registered`);
+      }
+      return msgId;
+    };
+    let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
+    let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
     let mutationResolvers = {};
+    mutationResolvers[activateField] = async (_root, args) => await updatePluginStatus(activateField, args, "Disconnected");
+    mutationResolvers[deactivateField] = async (_root, args) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args) => "ok";
+      if (Stdlib_Option.isNone(mutationResolvers[field])) {
+        mutationResolvers[field] = async (_root, _args) => "ok";
+        return;
+      }
     });
     registerAdminMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {
@@ -1160,9 +1237,82 @@ function Make($star) {
       ]);
     };
     registerAdminQueries(baseParts.queries, queryResolvers);
+    let statusToString = s => {
+      switch (s) {
+        case "Connected" :
+          return "Connected";
+        case "Disconnected" :
+          return "Disconnected";
+        case "Inactive" :
+          return "Inactive";
+      }
+    };
+    let updatePluginStatus = async (field, args, newStatus) => {
+      let msgId = Message$ReventlessCore.uuid();
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      console.log(`[Admin] ` + field + `(` + id + `): received command (msgId: ` + msgId + `)`);
+      let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
+      if (ops !== undefined) {
+        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let json = items[0];
+        if (json !== undefined) {
+          let exit = 0;
+          let state;
+          try {
+            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            exit = 1;
+          } catch (raw_e) {
+            let e = Primitive_exceptions.internalToException(raw_e);
+            console.log(`[Admin] ` + field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
+          }
+          if (exit === 1) {
+            let previousStatus = statusToString(state.status);
+            let updated_name = state.name;
+            let updated_version = state.version;
+            let updated_eventCollector = state.eventCollector;
+            let updated_extensionPoints = state.extensionPoints;
+            let updated_extensionPointNames = state.extensionPointNames;
+            let updated_extensionNames = state.extensionNames;
+            let updated_extensions = state.extensions;
+            let updated_statusChange = {
+              at: new Date().toISOString(),
+              by: "in-memory"
+            };
+            let updated_apiSchemaFragment = state.apiSchemaFragment;
+            let updated = {
+              name: updated_name,
+              version: updated_version,
+              eventCollector: updated_eventCollector,
+              extensionPoints: updated_extensionPoints,
+              extensionPointNames: updated_extensionPointNames,
+              extensionNames: updated_extensionNames,
+              extensions: updated_extensions,
+              status: newStatus,
+              statusChange: updated_statusChange,
+              apiSchemaFragment: updated_apiSchemaFragment
+            };
+            let entry = S.reverseConvertToJsonOrThrow(updated, PluginReadModelSpec$ReventlessCore.stateSchema);
+            await ops.save(id, entry, "Any", undefined);
+            console.log(`[Admin] ` + field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
+          }
+        } else {
+          console.log(`[Admin] ` + field + `(` + id + `): plugin not found`);
+        }
+      } else {
+        console.log(`[Admin] ` + field + `(` + id + `): Plugin QueryDb not registered`);
+      }
+      return msgId;
+    };
+    let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
+    let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
     let mutationResolvers = {};
+    mutationResolvers[activateField] = async (_root, args) => await updatePluginStatus(activateField, args, "Disconnected");
+    mutationResolvers[deactivateField] = async (_root, args) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args) => "ok";
+      if (Stdlib_Option.isNone(mutationResolvers[field])) {
+        mutationResolvers[field] = async (_root, _args) => "ok";
+        return;
+      }
     });
     registerAdminMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {

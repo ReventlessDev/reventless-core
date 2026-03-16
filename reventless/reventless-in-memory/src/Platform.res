@@ -664,10 +664,83 @@ module MakeWithConfig = (
     })
     registerAdminQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
-    // Stub resolvers for admin mutations — no-ops in-memory, real logic runs in AWS Lambda.
+    // Helper: extract plugin id from mutation args, load state, apply status change, save.
+    let statusToString = (s: ReventlessCore.PluginReadModelSpec.status) =>
+      switch s {
+      | Connected => "Connected"
+      | Disconnected => "Disconnected"
+      | Inactive => "Inactive"
+      }
+    let updatePluginStatus = async (
+      ~field: string,
+      args: JSON.t,
+      newStatus: ReventlessCore.PluginReadModelSpec.status,
+    ) => {
+      let msgId = ReventlessCore.Message.uuid()
+      let id =
+        args
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get("id"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr("")
+      Console.log(`[Admin] ${field}(${id}): received command (msgId: ${msgId})`)
+      switch Bus.getQueryDb(pluginQueryDbName) {
+      | Some(ops) =>
+        let items = await ops.loadStream(id)
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
+        switch items->Array.get(0) {
+        | Some(json) =>
+          switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+          | state =>
+            let previousStatus = state.status->statusToString
+            let updated = {
+              ...state,
+              status: newStatus,
+              statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
+            }
+            let entry =
+              updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+            let _ = await ops.save(id, entry, Any, None)
+            Console.log(
+              `[Admin] ${field}(${id}): ${previousStatus} → ${newStatus->statusToString}`,
+            )
+          | exception e =>
+            Console.log(
+              `[Admin] ${field}(${id}): failed to decode plugin state: ${e
+                ->JsExn.fromException
+                ->Option.flatMap(JsExn.message)
+                ->Option.getOr("unknown error")}`,
+            )
+          }
+        | None =>
+          Console.log(`[Admin] ${field}(${id}): plugin not found`)
+        }
+      | None =>
+        Console.log(`[Admin] ${field}(${id}): Plugin QueryDb not registered`)
+      }
+      msgId->JSON.Encode.string
+    }
+
+    // Real resolvers for admin mutations — update plugin state in QueryDb.
+    let activateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Activate")
+    let deactivateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Deactivate")
     let mutationResolvers = Dict.make()
+    mutationResolvers->Dict.set(
+      activateField,
+      async (_root, args): JSON.t => await updatePluginStatus(~field=activateField, args, Disconnected),
+    )
+    mutationResolvers->Dict.set(
+      deactivateField,
+      async (_root, args): JSON.t =>
+        await updatePluginStatus(~field=deactivateField, args, Inactive),
+    )
+    // Remaining admin mutations (e.g., Clone) are no-ops in-memory.
     adminMutationFieldNames->Array.forEach(field =>
-      mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+      if (mutationResolvers->Dict.get(field)->Option.isNone) {
+        mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+      }
     )
     registerAdminMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 
