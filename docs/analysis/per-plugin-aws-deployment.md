@@ -37,18 +37,18 @@ Each plugin creates the following AWS resources:
 
 ### Architecture
 
-Split the monolithic Pulumi program into **one stack per plugin** plus a **core/admin stack**:
+Split the monolithic Pulumi program into **one stack per plugin** plus a **platform stack**:
 
 ```
 Stacks:
-├── core          # Admin components, Scheduler, Core API (AppSync), Lambda Layer
+├── platform      # Admin components, Scheduler, Core API (AppSync), Lambda Layer
 ├── catalog       # CatalogPlugin (aggregates, read models, EPs, extensions, tasks)
 └── ordering      # OrderingPlugin (aggregates, read models, EPs, extensions, tasks)
 ```
 
 ### Stack Structure
 
-#### Core Stack (`infrastructure/core/`)
+#### Platform Stack (`infrastructure/platform/`)
 
 Deploys shared platform resources:
 - AppSync API (core) with admin schema
@@ -64,7 +64,7 @@ Deploys shared platform resources:
 #### Plugin Stacks (`infrastructure/plugins/<plugin-name>/`)
 
 Each plugin stack:
-1. Reads core stack outputs via `Pulumi.StackReference`
+1. Reads platform stack outputs via `Pulumi.StackReference`
 2. Creates its own AppSync API (split mode) or pushes to shared API
 3. Deploys all plugin-specific infrastructure
 4. Exports its own `extensionPoints` for other plugins that depend on it
@@ -75,7 +75,7 @@ Each plugin stack:
 
 ```
 infrastructure/
-├── core/
+├── platform/
 │   ├── Pulumi.yaml
 │   ├── Pulumi.<env>.yaml
 │   └── index.ts              # Thin wrapper calling ReScript
@@ -98,7 +98,7 @@ Each plugin stack needs its own `Main.res` that:
 1. Creates the AWS Platform (with API + role)
 2. Instantiates only its own plugin module
 3. Calls a new `Platform.deployPlugin` (instead of `makePlatform`) that:
-   - Reads core stack outputs for admin EP + scheduler
+   - Reads platform stack outputs for admin EP + scheduler
    - Deploys the single plugin
    - Exports the plugin's extension points as stack outputs
 
@@ -110,7 +110,7 @@ This requires a **new framework API**: `Platform.deployPlugin` (single-plugin de
    ```rescript
    let deployPlugin = (
      ~version: string,
-     ~coreStackName: string,         // StackReference to core
+     ~platformStackName: string,     // StackReference to platform
      ~dependencyStacks: array<string>, // StackReferences to other plugin stacks
      ~plugin: module(PluginMaker),
    ) => unit
@@ -118,7 +118,7 @@ This requires a **new framework API**: `Platform.deployPlugin` (single-plugin de
 
 2. **Plugin stack output serialization** — each plugin must export its ExtensionPoint resolved outputs in a format consumable by `StackReference.getOutput`.
 
-3. **`Interstack` module enhancement** — generalize to support reading from multiple dependency stacks (currently only reads from a single `coreStackReference`).
+3. **`Interstack` module enhancement** — generalize to support reading from multiple dependency stacks (currently only reads from a single `coreStackReference` for the platform stack).
 
 ### GitHub Actions Workflow
 
@@ -141,7 +141,7 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      core-changed: ${{ steps.changes.outputs.core }}
+      platform-changed: ${{ steps.changes.outputs.platform }}
       changed-plugins: ${{ steps.changes.outputs.plugins }}
     steps:
       - uses: actions/checkout@v6
@@ -155,12 +155,12 @@ jobs:
           BASE_SHA="${{ github.event.before }}"
           HEAD_SHA="${{ github.sha }}"
 
-          # Core changes: framework packages or core infrastructure
-          CORE_CHANGED="false"
-          if git diff --name-only $BASE_SHA $HEAD_SHA | grep -qE '^(reventless/reventless-(core|aws|infra|spec)/|infrastructure/core/)'; then
-            CORE_CHANGED="true"
+          # Platform changes: framework packages or platform infrastructure
+          PLATFORM_CHANGED="false"
+          if git diff --name-only $BASE_SHA $HEAD_SHA | grep -qE '^(reventless/reventless-(core|aws|infra|spec)/|infrastructure/platform/)'; then
+            PLATFORM_CHANGED="true"
           fi
-          echo "core=$CORE_CHANGED" >> $GITHUB_OUTPUT
+          echo "platform=$PLATFORM_CHANGED" >> $GITHUB_OUTPUT
 
           # Plugin changes: detect which plugin directories changed
           CHANGED_PLUGINS="[]"
@@ -173,8 +173,8 @@ jobs:
             fi
           done
 
-          # If core changed, deploy ALL plugins (infrastructure may have changed)
-          if [ "$CORE_CHANGED" = "true" ]; then
+          # If platform changed, deploy ALL plugins (infrastructure may have changed)
+          if [ "$PLATFORM_CHANGED" = "true" ]; then
             PLUGIN_LIST=()
             for plugin in $PLUGINS; do
               PLUGIN_LIST+=("\"$plugin\"")
@@ -184,11 +184,11 @@ jobs:
           CHANGED_PLUGINS="[$(IFS=,; echo "${PLUGIN_LIST[*]}")]"
           echo "plugins=$CHANGED_PLUGINS" >> $GITHUB_OUTPUT
 
-  deploy-core:
+  deploy-platform:
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.core-changed == 'true'
+    if: needs.detect-changes.outputs.platform-changed == 'true'
     runs-on: ubuntu-latest
-    environment: deploy-core
+    environment: deploy-platform
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -206,8 +206,8 @@ jobs:
       - uses: pulumi/actions@v6
         with:
           command: up
-          stack-name: org/core/${{ vars.PULUMI_ENV }}
-          work-dir: infrastructure/core
+          stack-name: org/platform/${{ vars.PULUMI_ENV }}
+          work-dir: infrastructure/platform
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -215,11 +215,11 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
 
   deploy-plugins:
-    needs: [detect-changes, deploy-core]
+    needs: [detect-changes, deploy-platform]
     if: |
       always() &&
       needs.detect-changes.outputs.changed-plugins != '[]' &&
-      (needs.deploy-core.result == 'success' || needs.deploy-core.result == 'skipped')
+      (needs.deploy-platform.result == 'success' || needs.deploy-platform.result == 'skipped')
     runs-on: ubuntu-latest
     environment: deploy-${{ matrix.plugin }}
     strategy:
@@ -255,7 +255,7 @@ jobs:
 
 #### Deployment Order
 
-1. **Core first** — always deploy core before plugins (if core changed)
+1. **Platform first** — always deploy platform before plugins (if platform changed)
 2. **Plugins in parallel** — independent plugins deploy concurrently
 3. **Dependent plugins sequentially** — if Plugin B depends on Plugin A's ExtensionPoint, B must deploy after A
 
@@ -264,7 +264,7 @@ For dependency ordering, add a plugin dependency manifest:
 ```yaml
 # infrastructure/plugin-dependencies.yaml
 catalog:
-  depends-on: []      # No plugin dependencies (only core)
+  depends-on: []      # No plugin dependencies (only platform)
 ordering:
   depends-on:
     - catalog          # OrdersExtension subscribes to CatalogSpec.ProductsExtensionPoint
@@ -331,11 +331,11 @@ Also set **repository variables** (Settings → Secrets and variables → Action
 
 ##### 2. Create GitHub Environments
 
-Create one environment per deployment target. At minimum: `deploy-core` and one `deploy-<plugin>` per plugin.
+Create one environment per deployment target. At minimum: `deploy-platform` and one `deploy-<plugin>` per plugin.
 
 1. Go to **Settings** → **Environments**
 2. Click **New environment**
-3. Name it `deploy-core` → click **Configure environment**
+3. Name it `deploy-platform` → click **Configure environment**
 4. (Optional) Add **protection rules**:
    - Required reviewers — require approval before deploying to production
    - Wait timer — delay deployment (e.g., 5 minutes for manual abort)
@@ -356,11 +356,11 @@ You can override any combination of secrets per environment:
 
 | Environment | `PULUMI_ACCESS_TOKEN` | `AWS_ACCESS_KEY_ID` | `AWS_SECRET_ACCESS_KEY` |
 |---|---|---|---|
-| `deploy-core` | (uses repo default) | (uses repo default) | (uses repo default) |
+| `deploy-platform` | (uses repo default) | (uses repo default) | (uses repo default) |
 | `deploy-catalog` | `plc_catalog_token...` | `AKIA_CATALOG...` | `secret_catalog...` |
 | `deploy-ordering` | (uses repo default) | (uses repo default) | (uses repo default) |
 
-In this example, catalog deploys with its own Pulumi token and IAM user, while core and ordering share the platform-wide credentials.
+In this example, catalog deploys with its own Pulumi token and IAM user, while platform and ordering share the platform-wide credentials.
 
 ##### 4. Verify the setup
 
@@ -374,8 +374,8 @@ Run the workflow manually (workflow_dispatch) or push a change. In the GitHub Ac
 The `environment` field on each job determines which secret scope applies:
 
 ```yaml
-deploy-core:
-  environment: deploy-core                    # ← picks secrets from this environment
+deploy-platform:
+  environment: deploy-platform                # ← picks secrets from this environment
   steps:
     - uses: pulumi/actions@v6
       env:
@@ -412,7 +412,7 @@ No conditional logic, no `.env` files, no secret values in the repository.
 Each environment gets its own set of Pulumi stacks:
 
 ```
-org/core/dev          org/core/staging          org/core/prod
+org/platform/dev      org/platform/staging      org/platform/prod
 org/catalog/dev       org/catalog/staging       org/catalog/prod
 org/ordering/dev      org/ordering/staging      org/ordering/prod
 ```
@@ -428,15 +428,15 @@ Branch mapping:
 
 A developer changes `CatalogPlugin.res` behavior logic:
 1. Change detection finds `examples/online-shop-aggregates/catalog/` modified
-2. Core stack not affected → skip core deployment
+2. Platform stack not affected → skip platform deployment
 3. Only `catalog` plugin stack deploys → new Lambda code, no infra changes
 4. Other plugins unaffected
 
 ### Scenario 2: Framework change
 
 A developer modifies `reventless-core/src/components/Plugin/Plugin_Builder.res`:
-1. Change detection finds `reventless/reventless-core/` modified → core changed
-2. Core stack deploys first (admin components may be affected)
+1. Change detection finds `reventless/reventless-core/` modified → platform changed
+2. Platform stack deploys first (admin components may be affected)
 3. All plugin stacks deploy (framework change could affect any plugin)
 
 ### Scenario 3: New plugin added
@@ -482,22 +482,22 @@ Catalog adds a new ExtensionPoint that Ordering will consume:
 
 1. **Plugin source code location**: Should plugin code live under `infrastructure/plugins/<name>/src/` (co-located with Pulumi config) or remain under `examples/` (current structure)?
 
-2. **Shared resources**: Should the AppSync API be in the core stack or per-plugin? Split API mode naturally fits per-plugin stacks, but unified mode requires a shared API managed by core.
+2. **Shared resources**: Should the AppSync API be in the platform stack or per-plugin? Split API mode naturally fits per-plugin stacks, but unified mode requires a shared API managed by the platform.
 
 3. **Rollback strategy**: Should rollbacks be per-plugin (Pulumi stack rollback) or coordinated across dependent plugins?
 
 4. **Preview/PR deployments**: Should PRs trigger `pulumi preview` for changed plugins to catch deployment issues before merge?
 
-5. **Plugin-to-plugin StackReference naming convention**: How should stacks reference each other? By convention (`org/<plugin>/<env>`) or via configuration?
+5. **Stack naming convention**: How should stacks reference each other? By convention (`org/<plugin>/<env>`, `org/platform/<env>`) or via configuration?
 
 ## Recommendation
 
 Start with the **convention-based discovery** (Option A) and **split API mode** (which already isolates plugin APIs). The initial implementation should:
 
-1. Create `infrastructure/` directory structure with core + plugin stacks
+1. Create `infrastructure/` directory structure with platform + plugin stacks
 2. Implement `Platform.deployPlugin` in the framework (single-plugin deployment)
 3. Enhance `Interstack` to support multi-stack references
 4. Add the GitHub Actions workflow with change detection + dependency-ordered deployment
 5. Add `pulumi preview` on PRs for affected stacks
 
-This can be implemented incrementally — start with the core stack and one plugin, then migrate additional plugins one at a time.
+This can be implemented incrementally — start with the platform stack and one plugin, then migrate additional plugins one at a time.
