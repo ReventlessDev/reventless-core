@@ -297,6 +297,32 @@ org/my-app-ordering/dev       org/my-app-ordering/test       org/my-app-ordering
 | Remove `dev` environment | Delete `Pulumi.dev.yaml` files | No |
 | Feature branches | Don't create `Pulumi.<branch>.yaml` → no deploy | No |
 
+#### Disabling deployment on a branch
+
+To temporarily disable deployment for a branch that has a `Pulumi.<branch>.yaml` without losing the configuration, **rename the file** by adding a `.disabled` suffix:
+
+```bash
+# Disable prod deployment for the catalog plugin
+mv catalog/deploy/aws/Pulumi.prod.yaml catalog/deploy/aws/Pulumi.prod.yaml.disabled
+
+# Re-enable it later
+mv catalog/deploy/aws/Pulumi.prod.yaml.disabled catalog/deploy/aws/Pulumi.prod.yaml
+```
+
+The workflow checks for `Pulumi.<branch>.yaml` — a renamed file doesn't match, so deployment is skipped. This is:
+- **Reversible** — rename back to re-enable, config is preserved
+- **Per-plugin granular** — disable one plugin's deployment while others continue
+- **Git-tracked** — the disable/enable is visible in the commit history and PR diffs
+- **No workflow changes** — the existing existence check handles it automatically
+
+| Scope | How to disable | How to re-enable |
+|---|---|---|
+| One plugin on one branch | Rename that plugin's `Pulumi.<branch>.yaml` to `.disabled` | Rename back |
+| All plugins on one branch | Rename all `Pulumi.<branch>.yaml` files to `.disabled` | Rename all back |
+| One plugin on all branches | Rename all `Pulumi.*.yaml` files in that plugin's deploy dir | Rename all back |
+
+For **per-commit** skip (e.g., documentation-only changes), include `[skip deploy]` in the commit message. The reusable workflow should check for this marker and skip all deployment jobs when present.
+
 ### ReScript Entry Points
 
 Each plugin stack needs its own entry point that:
@@ -874,17 +900,111 @@ A team wants to run the catalog plugin on Azure in addition to AWS:
 - **Partial deployment failures**: Plugin A deploys but Plugin B fails — system in inconsistent state
 - **Lambda Layer version mismatch**: All plugins must use the same Lambda Layer version; independent deploys could cause version skew
 
-## Open Questions
+## Decisions and Open Questions
 
-1. **Shared resources**: Should the AppSync API be in the platform stack or per-plugin? Split API mode naturally fits per-plugin stacks, but unified mode requires a shared API managed by the platform.
+### Decided: One AppSync API per platform
 
-2. **Rollback strategy**: Should rollbacks be per-plugin (Pulumi stack rollback) or coordinated across dependent plugins?
+There is **one AppSync API per platform stack**, not per plugin. The platform stack creates the API endpoint. Each plugin registers its schema fragment dynamically with this shared API (see API Schema Registration above). This keeps a single GraphQL endpoint for clients while allowing plugins to independently update their portion of the schema.
 
-3. **Preview/PR deployments**: Should PRs trigger `pulumi preview` for changed plugins to catch deployment issues before merge?
+### Decided: Pulumi preview on PRs
 
-4. **Manifest per platform vs. single manifest**: Should there be one `deploy-manifest.yaml` per cloud provider, or a single manifest with platform sections?
+PRs should trigger `pulumi preview` for all changed plugins to catch deployment issues before merge. The reusable workflow should include a `preview` mode that runs on `pull_request` events:
 
-5. **Template distribution**: Should Pulumi templates be distributed as an npm package (`npx create-reventless-deploy`), a GitHub template repo, or documented copy-paste files?
+```yaml
+# In the customer's deploy-aws.yml
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+```
+
+The reusable workflow detects the event type:
+- `push` → `pulumi up` (actual deployment, gated by `Pulumi.<branch>.yaml` existence)
+- `pull_request` → `pulumi preview` (dry run against the PR's target branch stack)
+
+Preview output is posted as a PR comment so reviewers can see exactly which resources would be created, updated, or destroyed before approving the merge.
+
+### Open: Rollback strategy
+
+Two approaches, each with different trade-offs:
+
+**Per-plugin rollback** — revert the plugin's code and redeploy its stack independently:
+- Fast: only one stack to update
+- Simple: `git revert` + push triggers redeployment of just that plugin
+- Risk: if the plugin pushed a breaking schema change that other plugins or clients depend on, reverting the plugin doesn't fix the downstream consumers until they also adapt
+
+**Coordinated rollback** — revert all dependent plugins together:
+- Safe: restores the entire system to a known-good state
+- Slow: multiple stacks redeploy, even if only one plugin caused the issue
+- Complex: requires knowing the dependency graph and deploying in reverse topological order
+
+**Recommended default**: per-plugin rollback. The dynamic schema registration means the platform API automatically reflects the reverted schema. Cross-plugin dependencies via ExtensionPoints are additive (new EPs don't break existing consumers), so per-plugin rollback is safe in most cases. Coordinated rollback should be reserved for breaking changes to ExtensionPoint contracts.
+
+### Open: Manifest per platform vs. single manifest
+
+Two options for organizing `deploy-manifest.yaml` when deploying to multiple cloud providers:
+
+**Option A: One manifest per platform** (e.g., `deploy-manifest-aws.yaml`, `deploy-manifest-azure.yaml`)
+- Each manifest points to its platform's `deploy/<platform>/` directories
+- Each platform has its own GitHub Actions workflow calling the platform-specific reusable workflow
+- Clean separation — a team working on Azure never touches the AWS manifest
+- Duplicates plugin source-paths and dependency declarations across manifests
+
+**Option B: Single manifest with platform sections**
+```yaml
+platforms:
+  aws:
+    platform-deploy-dir: platform/deploy/aws
+    plugins:
+      catalog:
+        deploy-dir: catalog/deploy/aws
+  azure:
+    platform-deploy-dir: platform/deploy/azure
+    plugins:
+      catalog:
+        deploy-dir: catalog/deploy/azure
+
+# Shared across all platforms
+plugins:
+  catalog:
+    source-paths:
+      - catalog/
+      - catalog-spec/
+    depends-on: []
+```
+- Single source of truth for source paths and dependencies
+- More complex manifest structure
+- Workflow needs a `platform` input to select the right section
+
+**Recommendation**: Start with Option A (one manifest per platform). It's simpler, and most customers will deploy to a single cloud provider. If multi-platform becomes common, Option B can be introduced later as an optimization.
+
+### Open: Template distribution
+
+Options for how customers get the initial Pulumi files and project structure:
+
+**Option A: npm scaffolding package** (`npx create-reventless-platform`)
+- Interactive CLI: asks for project name, plugins, cloud provider, environments
+- Generates `deploy-manifest.yaml`, `deploy/<platform>/` directories with `Pulumi.yaml` + `Pulumi.<branch>.yaml` + `Main.res` for each plugin and the platform
+- Generates `.github/workflows/deploy-<platform>.yml` calling the reusable workflow
+- Can also scaffold a complete new Reventless project from scratch (platform package, first plugin, spec package, in-memory dev server) — not just the deployment files
+- Lowest customer effort — one command sets up everything
+- Requires maintaining the scaffolding tool
+
+**Option B: GitHub template repository**
+- A template repo containing a working example project with deployment configured
+- Customer clicks "Use this template" on GitHub, gets a copy
+- Rename packages, adjust plugin names, done
+- Easy to understand — it's just a real project
+- Hard to keep in sync if the template evolves
+
+**Option C: Documented copy-paste files**
+- Template files in the Docusaurus docs with instructions
+- Customer copies files manually and fills in placeholders
+- Most flexible — works with any project structure
+- Most error-prone — easy to miss a step or copy wrong
+
+**Recommendation**: Option A (npm scaffolding package) gives the best customer experience. A single `npx create-reventless-platform` command should scaffold a complete project with platform, plugin, spec packages, in-memory dev server, deployment configuration, and CI workflow. This reduces the "time to first deploy" to minutes. Option C (docs) should exist as supplementary reference for customers who want to understand what was generated or need to customize.
 
 ## Recommendation
 
@@ -892,10 +1012,10 @@ Start with **co-located `deploy/aws/` directories** and a **reusable GitHub Acti
 
 1. Implement `Platform.deployPlugin` in the framework (single-plugin deployment)
 2. Enhance `Interstack` to support multi-stack references
-3. Create the reusable workflow (`deploy-reventless-aws.yml`) in this repo
+3. Create the reusable workflow (`deploy-reventless-aws.yml`) in this repo, with both `push` (deploy) and `pull_request` (preview) support
 4. Create Pulumi template files for platform and plugin stacks
-5. Add `deploy/aws/` to one example (e.g., `online-shop-aggregates`) as reference
+5. Add `deploy/aws/` to the `online-shop-hybrid` example as reference implementation
 6. Document the customer setup in the Docusaurus docs
-7. Add `pulumi preview` on PRs for affected stacks
+7. Build `create-reventless-platform` npm scaffolding package
 
 This can be implemented incrementally — start with the platform stack and one plugin, then migrate additional plugins one at a time. Additional cloud providers can be added later by creating new `deploy/<platform>/` directories and reusable workflows without touching plugin source code.
