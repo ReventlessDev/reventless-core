@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.7...@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.8) (2026-03-16)
+
+* feat!: auto-detect plugin version from package.json via V8 stack trace ([e172673](https://github.com/ReventlessDev/reventless-core/commit/e17267390c197fa34052cef8325c579bb781419f))
+
+### BREAKING CHANGES
+
+* Plugin.make no longer accepts ~version.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [1.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.6...@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.7) (2026-03-12)
 
 ### Features

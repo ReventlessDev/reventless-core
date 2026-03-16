@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/doc@1.0.0-alpha.10...doc@1.0.0-alpha.11) (2026-03-16)
+
+* feat!: replace Core component with Platform_Admin, rename schema prefix Core_ → Admin_ ([940263d](https://github.com/ReventlessDev/reventless-core/commit/940263d8b39e28f4c874af3b0335ae81444928c4))
+### Features
+
+* internalize scheduler, Core, and setup in Platform.makePlatform ([ce3e1b6](https://github.com/ReventlessDev/reventless-core/commit/ce3e1b60e8ffdbab1a6b5cd08d73f5e907726481))
+
+### BREAKING CHANGES
+
+* GraphQL/MCP field names change from Core_ to Admin_
+prefix (e.g. Core_Plugin → Admin_Plugin). makePlatform no longer accepts
+~extensionPoints, ~aggregates, ~readModels, ~dcbSpec parameters.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [1.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/doc@1.0.0-alpha.9...doc@1.0.0-alpha.10) (2026-03-14)
 
 ### Features

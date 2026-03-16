@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-dcb",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-alpha.5",
   "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
   "private": true,
   "license": "MIT",

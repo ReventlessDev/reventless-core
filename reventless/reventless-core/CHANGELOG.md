@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.15](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-core@3.0.0-alpha.14...@reventlessdev/reventless-core@3.0.0-alpha.15) (2026-03-16)
+
+* feat!: auto-detect plugin version from package.json via V8 stack trace ([e172673](https://github.com/ReventlessDev/reventless-core/commit/e17267390c197fa34052cef8325c579bb781419f))
+* feat!: unify DCB and Aggregate command generation paths ([8c9bbad](https://github.com/ReventlessDev/reventless-core/commit/8c9bbad14082e7b696da35f5abb337520b1c8683))
+* feat!: replace Core component with Platform_Admin, rename schema prefix Core_ → Admin_ ([940263d](https://github.com/ReventlessDev/reventless-core/commit/940263d8b39e28f4c874af3b0335ae81444928c4))
+### Features
+
+* differentiate ReadModel and StateViewSlice GraphQL query schemas ([62f6130](https://github.com/ReventlessDev/reventless-core/commit/62f6130d2ee34d65fe3eab1395d55c77c0309ddb))
+* read version from package.json, make cloner opt-in, log platform version ([d8216a1](https://github.com/ReventlessDev/reventless-core/commit/d8216a1d569064ca14eff6e0c3be86923e5b84ad))
+
+### BREAKING CHANGES
+
+* Plugin.make no longer accepts ~version.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+* DCB mutation return value changes from "ok" to a UUID.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+* GraphQL/MCP field names change from Core_ to Admin_
+prefix (e.g. Core_Plugin → Admin_Plugin). makePlatform no longer accepts
+~extensionPoints, ~aggregates, ~readModels, ~dcbSpec parameters.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [3.0.0-alpha.14](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-core@3.0.0-alpha.13...@reventlessdev/reventless-core@3.0.0-alpha.14) (2026-03-14)
 
 ### Bug Fixes

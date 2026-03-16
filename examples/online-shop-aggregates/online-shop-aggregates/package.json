@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-aggregates",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "description": "Online Shop example — full aggregate platform with Catalog + Ordering plugins (in-memory)",
   "private": true,
   "scripts": {
