@@ -66,6 +66,7 @@ jobs:
       all-plugins: ${{ steps.changes.outputs.all-plugins }}
       branch: ${{ steps.branch.outputs.name }}
       skip-deploy: ${{ steps.skip.outputs.skip }}
+      region: ${{ steps.changes.outputs.region }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -149,6 +150,11 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
+          # Parse region from manifest (optional, defaults to empty)
+          REGION=$(yq '.region // ""' "$MANIFEST")
+          echo "region=${REGION}" >> "$GITHUB_OUTPUT"
+          echo "Region: ${REGION:-(not set)}"
+
           # Parse platform path from manifest and resolve to repo-root-relative
           PLATFORM_REL=$(yq '.platform.path' "$MANIFEST")
           PLATFORM_PATH="${MANIFEST_DIR}${PLATFORM_REL}"
@@ -223,6 +229,7 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ needs.detect-changes.outputs.region }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -324,6 +331,7 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ needs.detect-changes.outputs.region }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
