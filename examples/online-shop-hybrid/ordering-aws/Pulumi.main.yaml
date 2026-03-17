@@ -1,6 +1,6 @@
 config:
   aws:region: eu-west-1
-  platform:stack: org/online-shop-hybrid-platform/main
+  platform:stack: reventless/online-shop-hybrid-platform/main
   interstack:
     dependencies:
-      - org/online-shop-hybrid-catalog/main
+      - reventless/online-shop-hybrid-catalog/main
