@@ -1,12 +1,11 @@
 # Deploy the online-shop-hybrid example to AWS.
 #
 # Runs after the Release workflow completes on alpha/main — this ensures
-# packages are published and the Lambda Layer ARN variable is up to date
-# before Pulumi runs.
+# packages are published before Pulumi runs.
 #
-# The REVENTLESS_LAYER_ARN repo variable is set by build-lambda-layer.yml
-# (triggered by the release tag). On the first deploy after a new release,
-# the layer may still be building; subsequent deploys will pick it up.
+# The Lambda Layer ARN is read from .github/layer-arn.txt (committed by
+# build-lambda-layer.yml). On the first deploy after a new release, the
+# layer may still be building; subsequent deploys will pick it up.
 
 name: Deploy Online Shop Hybrid
 

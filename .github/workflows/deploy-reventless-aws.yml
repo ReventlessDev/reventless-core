@@ -35,7 +35,7 @@ on:
         type: string
         default: "22"
       layer-arn:
-        description: "Lambda Layer ARN (overrides REVENTLESS_LAYER_ARN variable)"
+        description: "Lambda Layer ARN (overrides .github/layer-arn.txt)"
         required: false
         type: string
         default: ""
@@ -234,11 +234,19 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      # Lambda Layer ARN — input takes precedence, then repo variable, then empty (no layer).
-      REVENTLESS_LAYER_ARN: ${{ inputs.layer-arn || vars.REVENTLESS_LAYER_ARN || '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Resolve Lambda Layer ARN
+        run: |
+          # Input takes precedence, then .github/layer-arn.txt, then empty (no layer)
+          ARN="${{ inputs.layer-arn }}"
+          if [[ -z "$ARN" && -f .github/layer-arn.txt ]]; then
+            ARN=$(cat .github/layer-arn.txt | tr -d '[:space:]')
+          fi
+          echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
+          echo "Layer ARN: ${ARN:-(none)}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -329,10 +337,18 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      REVENTLESS_LAYER_ARN: ${{ inputs.layer-arn || vars.REVENTLESS_LAYER_ARN || '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Resolve Lambda Layer ARN
+        run: |
+          ARN="${{ inputs.layer-arn }}"
+          if [[ -z "$ARN" && -f .github/layer-arn.txt ]]; then
+            ARN=$(cat .github/layer-arn.txt | tr -d '[:space:]')
+          fi
+          echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
+          echo "Layer ARN: ${ARN:-(none)}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
