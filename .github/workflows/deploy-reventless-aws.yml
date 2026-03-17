@@ -34,6 +34,11 @@ on:
         required: false
         type: string
         default: "22"
+      layer-arn:
+        description: "Lambda Layer ARN (overrides REVENTLESS_LAYER_ARN variable)"
+        required: false
+        type: string
+        default: ""
     secrets:
       PULUMI_ACCESS_TOKEN:
         required: true
@@ -212,6 +217,8 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # Lambda Layer ARN — input takes precedence, then repo variable, then empty (no layer).
+      REVENTLESS_LAYER_ARN: ${{ inputs.layer-arn || vars.REVENTLESS_LAYER_ARN || '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -305,6 +312,7 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      REVENTLESS_LAYER_ARN: ${{ inputs.layer-arn || vars.REVENTLESS_LAYER_ARN || '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

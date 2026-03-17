@@ -96,6 +96,20 @@ jobs:
           echo "layer_arn=$LAYER_VERSION" >> $GITHUB_OUTPUT
           echo "Published layer: $LAYER_VERSION"
 
+      - name: Store layer ARN as GitHub Actions variable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LAYER_ARN="${{ steps.publish.outputs.layer_arn }}"
+          REGION="${{ matrix.region }}"
+          # Store as repo variable so deploy workflows can read it.
+          # Variable name: REVENTLESS_LAYER_ARN_<REGION> (e.g. REVENTLESS_LAYER_ARN_EU_WEST_1)
+          VAR_NAME="REVENTLESS_LAYER_ARN_$(echo "$REGION" | tr '[:lower:]-' '[:upper:]_')"
+          gh variable set "$VAR_NAME" --body "$LAYER_ARN"
+          # Also set the default (first region) as REVENTLESS_LAYER_ARN
+          gh variable set "REVENTLESS_LAYER_ARN" --body "$LAYER_ARN"
+          echo "Stored $VAR_NAME=$LAYER_ARN"
+
       - name: Upload zip as release asset and append layer ARN
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
