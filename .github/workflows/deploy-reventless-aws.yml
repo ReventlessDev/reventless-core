@@ -469,8 +469,9 @@ jobs:
       always() &&
       github.event_name != 'pull_request' &&
       needs.detect-changes.result == 'success' &&
-      (needs.deploy-platform.result == 'success' || needs.deploy-platform.result == 'skipped') &&
-      (needs.deploy-plugins.result == 'success' || needs.deploy-plugins.result == 'skipped')
+      (needs.deploy-platform.result == 'success' || needs.deploy-plugins.result == 'success') &&
+      needs.deploy-platform.result != 'failure' &&
+      needs.deploy-plugins.result != 'failure'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
