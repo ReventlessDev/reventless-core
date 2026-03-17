@@ -55,7 +55,21 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check for releasable changes
+        id: changes
+        run: |
+          CHANGED=$(npx lerna changed --json 2>/dev/null || echo "[]")
+          COUNT=$(echo "$CHANGED" | jq 'length')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "No packages have releasable changes — skipping release"
+          else
+            echo "Packages to release: $COUNT"
+            echo "$CHANGED" | jq -r '.[].name'
+          fi
+
       - name: Build all packages
+        if: steps.changes.outputs.count != '0'
         run: npm run build
 
       # Tests already run in CI workflow - no need to run again
@@ -63,6 +77,7 @@ jobs:
       #   run: npm run test
 
       - name: Determine prerelease identifier
+        if: steps.changes.outputs.count != '0'
         id: prerelease
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
@@ -80,6 +95,7 @@ jobs:
           fi
 
       - name: Clean uncommitted changes
+        if: steps.changes.outputs.count != '0'
         run: |
           # Discard any uncommitted changes from build process
           # (build artifacts, generated files, deleted files, etc.)
@@ -89,6 +105,7 @@ jobs:
           git status
 
       - name: Version packages with Lerna
+        if: steps.changes.outputs.count != '0'
         timeout-minutes: 10
         env:
           HUSKY: 0
@@ -111,6 +128,7 @@ jobs:
           echo "Lerna version completed successfully"
 
       - name: Update documentation CHANGELOG
+        if: steps.changes.outputs.count != '0'
         run: |
           CHANGELOG_FILE="packages/doc/CHANGELOG.md"
           GITHUB_REPO="ReventlessDev/reventless-core"
@@ -198,11 +216,13 @@ jobs:
           fi
 
       - name: Build release artifacts
+        if: steps.changes.outputs.count != '0'
         run: |
           npm run clean
           npm run build
 
       - name: Restore deleted dev sources
+        if: steps.changes.outputs.count != '0'
         run: |
           # rescript clean deletes compiled test files (dev sources)
           # that are checked into git. rescript build from root skips
@@ -211,6 +231,7 @@ jobs:
           git checkout -- .
 
       - name: Publish to GitHub Package Registry
+        if: steps.changes.outputs.count != '0'
         run: |
           npx lerna publish from-package \
             --registry=https://npm.pkg.github.com \
@@ -219,11 +240,13 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push version tags and commits
+        if: steps.changes.outputs.count != '0'
         run: |
           BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
           git push --follow-tags origin $BRANCH_NAME
 
       - name: Create GitHub releases
+        if: steps.changes.outputs.count != '0'
         run: |
           IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
           BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
@@ -271,6 +294,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trigger Lambda Layer build if reventless-aws was released
+        if: steps.changes.outputs.count != '0'
         run: |
           NEW_TAGS=$(git tag --points-at HEAD)
           for tag in $NEW_TAGS; do

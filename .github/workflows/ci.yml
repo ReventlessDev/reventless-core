@@ -5,10 +5,14 @@ on:
     branches: ["**"]
     paths-ignore:
       - 'docs/**'
+      - '.github/**'
+      - '*.md'
   pull_request:
     branches: [main, beta, alpha]
     paths-ignore:
       - 'docs/**'
+      - '.github/**'
+      - '*.md'
   workflow_dispatch:
 
 concurrency:
@@ -108,8 +112,93 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected test projects
+        id: affected
+        run: |
+          # Map changed paths to Jest --selectProjects names.
+          # Framework changes → run all tests. Example/binding changes → scoped.
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            if [[ -z "$BASE_SHA" || "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+              echo "select=all" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          CHANGED=$(git diff --name-only "$BASE_SHA" "${{ github.sha }}" 2>/dev/null || echo "")
+          if [[ -z "$CHANGED" ]]; then
+            echo "select=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Framework changes → run everything
+          if echo "$CHANGED" | grep -qE "^reventless/reventless-core/|^reventless/reventless-spec/|^rescript/|^package\.json|^jest\.config"; then
+            echo "select=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PROJECTS=""
+          # In-memory adapter
+          if echo "$CHANGED" | grep -q "^reventless/reventless-in-memory/"; then
+            PROJECTS="$PROJECTS --selectProjects reventless-in-memory"
+          fi
+          # Interop
+          if echo "$CHANGED" | grep -q "^reventless/reventless-interop/"; then
+            PROJECTS="$PROJECTS --selectProjects reventless-interop"
+          fi
+          # rescript-moment
+          if echo "$CHANGED" | grep -q "^rescript/rescript-moment/"; then
+            PROJECTS="$PROJECTS --selectProjects rescript-moment"
+          fi
+          # DCB examples
+          if echo "$CHANGED" | grep -q "^examples/online-shop-dcb/catalog/"; then
+            PROJECTS="$PROJECTS --selectProjects online-shop-dcb-catalog"
+          fi
+          if echo "$CHANGED" | grep -q "^examples/online-shop-dcb/ordering/"; then
+            PROJECTS="$PROJECTS --selectProjects online-shop-dcb-ordering"
+          fi
+          # Aggregate examples
+          if echo "$CHANGED" | grep -q "^examples/online-shop-aggregates/catalog/"; then
+            PROJECTS="$PROJECTS --selectProjects example-aggregate-catalog"
+          fi
+          if echo "$CHANGED" | grep -q "^examples/online-shop-aggregates/ordering/"; then
+            PROJECTS="$PROJECTS --selectProjects example-aggregate-ordering"
+          fi
+          # Hybrid examples
+          if echo "$CHANGED" | grep -q "^examples/online-shop-hybrid/catalog/"; then
+            PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-catalog"
+          fi
+          if echo "$CHANGED" | grep -q "^examples/online-shop-hybrid/ordering/"; then
+            PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-ordering"
+          fi
+
+          # In-memory changes also affect all example tests (they depend on it)
+          if echo "$CHANGED" | grep -q "^reventless/reventless-in-memory/"; then
+            PROJECTS="$PROJECTS --selectProjects online-shop-dcb-catalog --selectProjects online-shop-dcb-ordering"
+            PROJECTS="$PROJECTS --selectProjects example-aggregate-catalog --selectProjects example-aggregate-ordering"
+            PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-catalog --selectProjects online-shop-hybrid-ordering"
+          fi
+
+          if [[ -z "$PROJECTS" ]]; then
+            # Changes outside any test-mapped path (e.g. reventless-aws, rescript bindings with no tests)
+            echo "select=none" >> "$GITHUB_OUTPUT"
+          else
+            # Deduplicate --selectProjects flags
+            PROJECTS=$(echo "$PROJECTS" | tr ' ' '\n' | awk '!seen[$0]++' | tr '\n' ' ')
+            echo "select=some" >> "$GITHUB_OUTPUT"
+            echo "projects=$PROJECTS" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node.js
+        if: steps.affected.outputs.select != 'none'
         uses: actions/setup-node@v6
         with:
           node-version: "22.17.1"
@@ -117,11 +206,13 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
 
       - name: Install dependencies
+        if: steps.affected.outputs.select != 'none'
         run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore build artifacts
+        if: steps.affected.outputs.select != 'none'
         uses: actions/cache@v5
         with:
           path: |
@@ -132,16 +223,30 @@ jobs:
           key: build-${{ runner.os }}-${{ github.sha }}
 
       - name: Build packages (if cache miss)
+        if: steps.affected.outputs.select != 'none'
         run: npm run build
 
-      - name: Run unit tests
+      - name: Run unit tests (all)
+        if: steps.affected.outputs.select == 'all'
         run: npm run test
         env:
           CI: true
 
+      - name: Run unit tests (affected only)
+        if: steps.affected.outputs.select == 'some'
+        run: |
+          echo "Running tests for: ${{ steps.affected.outputs.projects }}"
+          NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' npx jest --silent ${{ steps.affected.outputs.projects }}
+        env:
+          CI: true
+
+      - name: Skip tests (no affected projects)
+        if: steps.affected.outputs.select == 'none'
+        run: echo "No test-mapped packages changed — skipping tests"
+
       - name: Run integration tests
+        if: steps.affected.outputs.select != 'none'
         run: npm run test:integration
-        if: always()
         continue-on-error: true
 
       # Commented out for faster CI - re-enable if needed
