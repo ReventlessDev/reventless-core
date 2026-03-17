@@ -127,7 +127,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           elif [[ -f .github/last-deploy-sha.txt ]]; then
-            BASE_SHA=$(cat .github/last-deploy-sha.txt | tr -d '[:space:]')
+            BASE_SHA=$(tr -d '[:space:]' < .github/last-deploy-sha.txt)
             # Verify the commit exists in history (it may have been force-pushed away)
             if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
               echo "::warning::Last deploy SHA $BASE_SHA not found in history — deploying everything"
@@ -161,12 +161,13 @@ jobs:
           echo "Platform path: $PLATFORM_PATH"
 
           # Check if platform changed (any file under platform path)
+          # Use <<< to avoid broken pipe with pipefail when CHANGED_FILES is large
           PLATFORM_CHANGED="false"
-          if echo "$CHANGED_FILES" | grep -q "^${PLATFORM_PATH}"; then
+          if grep -q "^${PLATFORM_PATH}" <<< "$CHANGED_FILES"; then
             PLATFORM_CHANGED="true"
           fi
           # Also trigger platform deploy if framework packages changed
-          if echo "$CHANGED_FILES" | grep -qE "^reventless/|^rescript/"; then
+          if grep -qE "^reventless/|^rescript/" <<< "$CHANGED_FILES"; then
             PLATFORM_CHANGED="true"
           fi
           echo "Platform changed: $PLATFORM_CHANGED"
@@ -191,11 +192,11 @@ jobs:
 
             # Check if this plugin changed
             PLUGIN_CHANGED="false"
-            if echo "$CHANGED_FILES" | grep -q "^${PLUGIN_PATH}"; then
+            if grep -q "^${PLUGIN_PATH}" <<< "$CHANGED_FILES"; then
               PLUGIN_CHANGED="true"
             fi
             # Also trigger plugin deploy if framework packages changed
-            if echo "$CHANGED_FILES" | grep -qE "^reventless/|^rescript/"; then
+            if grep -qE "^reventless/|^rescript/" <<< "$CHANGED_FILES"; then
               PLUGIN_CHANGED="true"
             fi
 
