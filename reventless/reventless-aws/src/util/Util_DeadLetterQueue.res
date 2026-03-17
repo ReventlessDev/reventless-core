@@ -22,10 +22,9 @@ let fifoQueue = SQS.Queue.make(
   },
 )
 
-let callback: Lambda.eventHandlerNoResult<'a> = (evt, _ctx) =>
-  Effect.logError(
-    "DEAD LETTER ITEM: " ++ evt->JSON.stringifyAny->Option.getOr("<unknown>"),
-  )->Effect.runPromise
+let callback: Lambda.eventHandlerNoResult<'a> = async (evt, _ctx) => {
+  Console.error("DEAD LETTER ITEM: " ++ evt->JSON.stringifyAny->Option.getOr("<unknown>"))
+}
 
 let opts = {Pulumi.CustomResourceOptions.parent: queue->PulumiAws.SQS.Queue.toResource}
 let lambdaRole = IAM.Role.makeWithDefaultPolicy(

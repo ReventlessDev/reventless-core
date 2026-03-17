@@ -5,6 +5,8 @@ module Platform = ReventlessAws.Platform.Make()
 module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
 
 Platform.deployPlugin(
-  ~version=Reventless.PackageVersion.fromCwd(),
+  ~version=Reventless.PackageVersion.fromCaller(),
   ~plugin=module(Ordering),
 )
+
+let default = Pulumi.Pulumi.getOutputs()

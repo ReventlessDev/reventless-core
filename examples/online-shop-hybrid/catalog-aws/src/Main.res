@@ -5,6 +5,8 @@ module Platform = ReventlessAws.Platform.Make()
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 
 Platform.deployPlugin(
-  ~version=Reventless.PackageVersion.fromCwd(),
+  ~version=Reventless.PackageVersion.fromCaller(),
   ~plugin=module(Catalog),
 )
+
+let default = Pulumi.Pulumi.getOutputs()

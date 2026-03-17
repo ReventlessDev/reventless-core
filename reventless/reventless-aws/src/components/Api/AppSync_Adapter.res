@@ -9,20 +9,26 @@ open PulumiAws
 
 type appSyncClient
 
-// AppSync SDK accepts string | Uint8Array for definition — use string via Obj.magic
+// AWS SDK v3 command pattern: client.send(new StartSchemaCreationCommand({...}))
 type startSchemaCreationInput = {
   apiId: string,
   definition: unknown,
 }
 
+type startSchemaCreationCommand
+
 @module("@aws-sdk/client-appsync") @new
 external makeAppSyncClient: unit => appSyncClient = "AppSyncClient"
 
+@module("@aws-sdk/client-appsync") @new
+external makeStartSchemaCreationCommand: startSchemaCreationInput => startSchemaCreationCommand =
+  "StartSchemaCreationCommand"
+
 @send
-external startSchemaCreation: (
-  appSyncClient,
-  startSchemaCreationInput,
-) => promise<unknown> = "startSchemaCreation"
+external send: (appSyncClient, startSchemaCreationCommand) => promise<unknown> = "send"
+
+let startSchemaCreation = (client: appSyncClient, input: startSchemaCreationInput) =>
+  client->send(input->makeStartSchemaCreationCommand)
 
 // Lazy singleton AppSync client (runtime only)
 let _client: ref<option<appSyncClient>> = ref(None)

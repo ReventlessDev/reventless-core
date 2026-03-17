@@ -7,6 +7,10 @@ import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
+function startSchemaCreation(client, input) {
+  return client.send(new ClientAppsync.StartSchemaCreationCommand(input));
+}
+
 let _client = {
   contents: undefined
 };
@@ -136,16 +140,18 @@ function updateSchema(api, baseFragment, pluginFragments) {
     contents: Promise.resolve()
   };
   api.apply(graphQLApi => graphQLApi.id.apply(apiId => {
-    let p = getClient().startSchemaCreation({
+    let client = getClient();
+    let p = client.send(new ClientAppsync.StartSchemaCreationCommand({
       apiId: apiId,
       definition: sdl
-    }).then(param => Promise.resolve());
+    })).then(param => Promise.resolve());
     resultPromise.contents = p;
   }));
   return resultPromise.contents;
 }
 
 export {
+  startSchemaCreation,
   _client,
   getClient,
   injectAwsAuth,

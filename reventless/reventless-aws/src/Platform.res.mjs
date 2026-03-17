@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -211,7 +212,7 @@ function MakeWithConfig(Config) {
         S.reverseConvertToJsonOrThrow(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
       ]);
     })).apply(pairs => Object.fromEntries(pairs)));
-    Pulumi.export("extensionPoints", serialized);
+    Pulumi$Pulumi.$$export("extensionPoints", serialized);
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
@@ -236,7 +237,7 @@ function MakeWithConfig(Config) {
       });
       let adminBase = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBase, fragments);
-      await AppSync_Adapter$ReventlessAws.getClient().startSchemaCreation({
+      await AppSync_Adapter$ReventlessAws.startSchemaCreation(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl
       });
@@ -247,15 +248,15 @@ function MakeWithConfig(Config) {
     Admin.construct(version, [PluginExtensionPoint], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
     AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment, []);
-    Pulumi.export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi.export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
+    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
     exportAdminExtensionPoints();
   };
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     plugin.make(scheduler, appSyncApi, appSyncApiRole);
-    Pulumi.export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
+    Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
   };
   return {
     Aggregate: Aggregate,
@@ -435,7 +436,7 @@ function Make($star) {
         S.reverseConvertToJsonOrThrow(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
       ]);
     })).apply(pairs => Object.fromEntries(pairs)));
-    Pulumi.export("extensionPoints", serialized);
+    Pulumi$Pulumi.$$export("extensionPoints", serialized);
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
@@ -460,7 +461,7 @@ function Make($star) {
       });
       let adminBase = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBase, fragments);
-      await AppSync_Adapter$ReventlessAws.getClient().startSchemaCreation({
+      await AppSync_Adapter$ReventlessAws.startSchemaCreation(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl
       });
@@ -471,15 +472,15 @@ function Make($star) {
     Admin.construct(version, [PluginExtensionPoint], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
     AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment, []);
-    Pulumi.export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi.export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
+    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
     exportAdminExtensionPoints();
   };
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     plugin.make(scheduler, appSyncApi, appSyncApiRole);
-    Pulumi.export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
+    Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
   };
   return {
     Aggregate: Aggregate,

@@ -3,4 +3,4 @@
 
 module Platform = ReventlessAws.Platform.Make()
 
-Platform.deployPlatform(~version=Reventless.PackageVersion.fromCwd())
+Platform.deployPlatform(~version=Reventless.PackageVersion.fromCaller())

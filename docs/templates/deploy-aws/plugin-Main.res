@@ -5,6 +5,6 @@ module Platform = ReventlessAws.Platform.Make()
 module {{PLUGIN_NAME}} = {{PLUGIN_MODULE}}.Make(Platform)
 
 Platform.deployPlugin(
-  ~version=Reventless.PackageVersion.fromCwd(),
+  ~version=Reventless.PackageVersion.fromCaller(),
   ~plugin=module({{PLUGIN_NAME}}),
 )
