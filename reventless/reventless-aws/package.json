@@ -18,6 +18,7 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
+    "@aws-sdk/client-appsync": "3.970.0",
     "@reventlessdev/rescript-aws-sdk": "^2.2.0-alpha.2",
     "@reventlessdev/rescript-effect": "*",
     "@reventlessdev/rescript-pulumi-aws": "^2.4.0-alpha.0",

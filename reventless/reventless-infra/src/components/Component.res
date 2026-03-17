@@ -55,7 +55,7 @@ Create a new Reventless component backed by a Pulumi `ComponentResource`.
 - `construct` — a callback that builds child resources; called by the Pulumi runtime
 - `opts` — optional Pulumi resource options (parent, provider, etc.)
 */
-@module("./Component") @new
+@module("./Component.mjs") @new
 external make: (
   ~componentType: string,
   ~name: string,
