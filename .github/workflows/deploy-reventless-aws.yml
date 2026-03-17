@@ -291,7 +291,7 @@ jobs:
 
       - name: Pulumi up (push)
         if: |
-          github.event_name == 'push' &&
+          github.event_name != 'pull_request' &&
           steps.check-config.outputs.exists == 'true'
         run: |
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
@@ -443,7 +443,7 @@ jobs:
 
       - name: Pulumi up (push)
         if: |
-          github.event_name == 'push' &&
+          github.event_name != 'pull_request' &&
           steps.check-config.outputs.exists == 'true'
         run: |
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
