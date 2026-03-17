@@ -1,6 +1,6 @@
 let stackRefs: dict<Pulumi.StackReference.t> = Dict.make()
 
-let coreStackName = Pulumi.Config.make(Some("core"))->Pulumi.Config.get("stack")
+let coreStackName = Pulumi.Config.make(Some("platform"))->Pulumi.Config.get("stack")
 
 let stackName = pluginName =>
   coreStackName->Option.map(name => {

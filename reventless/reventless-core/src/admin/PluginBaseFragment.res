@@ -12,7 +12,7 @@ let queryEntries: array<querySchemaEntry> = [
     returnTypeName: Api_Naming.adminField(~name="Plugin"),
     stateSchema: PluginReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
-    excludeFields: ["apiSchemaFragment", "eventCollector", "extensionPointNames", "extensionNames"],
+    excludeFields: ["eventCollector", "extensionPointNames", "extensionNames"],
   },
 ]
 

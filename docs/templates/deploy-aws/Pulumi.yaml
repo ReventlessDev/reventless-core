@@ -1,0 +1,4 @@
+name: {{PROJECT_NAME}}
+runtime: nodejs
+main: src/Main.res.mjs
+description: {{DESCRIPTION}}

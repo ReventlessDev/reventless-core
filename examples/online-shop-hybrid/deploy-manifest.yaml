@@ -1,0 +1,16 @@
+# Per-plugin deployment manifest for online-shop-hybrid.
+# Used by the reusable GitHub Actions workflow to determine deployment order.
+
+platform:
+  path: platform-aws
+  name: online-shop-hybrid-platform
+
+plugins:
+  - name: catalog
+    path: catalog-aws
+    depends-on: []
+
+  - name: ordering
+    path: ordering-aws
+    depends-on:
+      - catalog

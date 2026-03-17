@@ -5,17 +5,11 @@
 // the application-defined arguments (Spec, Behavior, Mappings).
 //
 // Example:
-//   module Platform = Platform.Make({let api = ...; let apiRole = ...})
+//   module Platform = Platform.Make()
 //   module App = MyPlugin.Make(Platform)
 //
-// Split API mode:
-//   module Platform = Platform.MakeWithConfig(
-//     {let api = ...; let apiRole = ...},
-//     {let splitApi = true},
-//   )
-// When splitApi=true, the plugin Api.Make creates a plugin-only AppSync API
-// (no core schema). A separate core AppSync API is created internally and
-// its schema is pushed in makePlatform.
+// Custom config:
+//   module Platform = Platform.MakeWithConfig({let splitApi = false; let cloner = true})
 
 // Split API outputs — populated by makePlatform when splitApi=true.
 // Access via getSplitApiOutputs() after makePlatform has been called.
@@ -30,10 +24,6 @@ let splitApiOutputsRef: ref<option<splitApiOutputs>> = ref(None)
 let getSplitApiOutputs = () => splitApiOutputsRef.contents
 
 module MakeWithConfig = (
-  Api: {
-    let api: Types.AppSync.api
-    let apiRole: Types.AppSync.role
-  },
   Config: {
     let splitApi: bool
     let cloner: bool
@@ -44,9 +34,41 @@ module MakeWithConfig = (
   type api = Types.AppSync.api
   type role = Types.AppSync.role
 
-  // Alias the functor parameters before module Api shadows them below.
-  let appSyncApi = Api.api
-  let appSyncApiRole = Api.apiRole
+  // Determine API source based on platform:stack config.
+  // - Platform/monolithic mode (no config): create a real AppSync API resource.
+  // - Plugin mode (config set): reference the platform's shared API via StackReference.
+  let platformStackRef =
+    Pulumi.Config.make(Some("platform"))
+    ->Pulumi.Config.get("stack")
+    ->Option.map(stack => Pulumi.StackReference.make(stack))
+
+  let (appSyncApi, appSyncApiRole) = switch platformStackRef {
+  | None =>
+    AppSync_Adapter.makeApiResource(~name="api", ~opts={})
+  | Some(stackRef) =>
+    // Plugin mode — reconstruct phantom API/role from the platform's exported IDs.
+    // Consumers only access api.id and role.arn, so other fields are unused.
+    let apiIdOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("apiId")
+    let apiRoleArnOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("apiRoleArn")
+
+    let phantomApi: Types.AppSync.api =
+      apiIdOutput->Pulumi.Output.apply(opt =>
+        Obj.magic({"id": Pulumi.Output.make(opt->Option.getOrThrow)})
+      )
+    let phantomRole: Types.AppSync.role =
+      apiRoleArnOutput->Pulumi.Output.apply(opt =>
+        Obj.magic({"arn": Pulumi.Output.make(opt->Option.getOrThrow)})
+      )
+    (phantomApi, phantomRole)
+  }
+
+  // Local module alias so sub-builders that require {api, apiRole} can reference it.
+  module ApiConfig = {
+    let api = appSyncApi
+    let apiRole = appSyncApiRole
+  }
 
   module Aggregate = {
     module Make = (
@@ -90,7 +112,7 @@ module MakeWithConfig = (
     ) => Task_Builder_PerBucket.Make(Spec)
   }
 
-  module Counter = Counter_Builder.Make(Api)
+  module Counter = Counter_Builder.Make(ApiConfig)
 
   module StateChangeSlice = {
     module Make = (Spec: Reventless.StateChangeSlice.Spec): (
@@ -100,10 +122,10 @@ module MakeWithConfig = (
     ) => StateChangeSlice_Builder.Make(Spec)
   }
 
-  module StateViewSlice = StateViewSlice_Builder.Make(Api)
-  module AutomationSlice = AutomationSlice_Builder.Make(Api)
-  module OutboundTranslationSlice = OutboundTranslationSlice_Builder.Make(Api)
-  module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(Api)
+  module StateViewSlice = StateViewSlice_Builder.Make(ApiConfig)
+  module AutomationSlice = AutomationSlice_Builder.Make(ApiConfig)
+  module OutboundTranslationSlice = OutboundTranslationSlice_Builder.Make(ApiConfig)
+  module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(ApiConfig)
 
   module DcbEventLog = {
     module Make = (Spec: Reventless.DcbEventLog.Spec): (
@@ -267,22 +289,127 @@ module MakeWithConfig = (
       })
     }
   }
+
+  // Helper: serialize admin extension points as a stack output for cross-stack consumption.
+  let exportAdminExtensionPoints = () => {
+    switch ReventlessCore.Plugin_Helpers.localAdminExtensionPoints.contents {
+    | Some(adminEPs) =>
+      let serialized =
+        adminEPs->Pulumi.Output.flatMap(eps =>
+          eps
+          ->Dict.toArray
+          ->Array.map(((name, ep)) =>
+            ep
+            ->ReventlessCore.ExtensionPoint.toResolvedOutputs
+            ->Pulumi.Output.apply(resolved => (name, resolved->S.reverseConvertToJsonOrThrow(
+              ReventlessInterop.ExtensionPoint.resolvedOutputsSchema,
+            )))
+          )
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
+        )
+      Pulumi.Pulumi.export("extensionPoints", serialized)
+    | None => ()
+    }
+  }
+
+  let deployPlatform = (~version) => {
+    Console.log(`[Platform:deployPlatform] v${version}`)
+    let scheduler = makeScheduler()
+
+    // Create PluginExtensionPoint with runtime schema stitching.
+    // When plugins connect/disconnect, the handler queries the Plugin read model
+    // for all active schema fragments, stitches them with the admin base, and
+    // pushes the combined schema to AppSync via the SDK.
+    //
+    // The closure captures appSyncApiId (a Pulumi Output). Pulumi serializes
+    // captured Outputs into the CallbackFunction Lambda; at runtime, Output.get
+    // returns the resolved string synchronously.
+    let appSyncApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
+    module PluginExtensionPoint = Plugin_ExtensionPoint_Builder.MakeWithConfig({
+      let updateApiSchema = Some(async (queryEngine: Reventless.QueryEngine.operations) => {
+        open Reventless.QueryEngine.Filter
+        let apiId = appSyncApiId->Pulumi.Output.get
+        let plugins = await queryEngine.scan(
+          ~readModelName="Plugin",
+          ~filterConfigs=[("status", Contains, String("Connected"))],
+          ~limit=1000,
+        )
+        let fragments = plugins->Array.filterMap(json =>
+          try {
+            let state = json->S.parseOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+            state.apiSchemaFragment
+          } catch {
+          | _ => None
+          }
+        )
+        let adminBase = AppSync_Adapter.injectAwsAuthAll(
+          ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+          ~group="Admin",
+        )
+        let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+          ~baseFragment=adminBase,
+          ~pluginFragments=fragments,
+        )
+        let _ = await AppSync_Adapter.getClient()->AppSync_Adapter.startSchemaCreation({
+          apiId,
+          definition: sdl->Obj.magic,
+        })
+      })
+    })
+
+    let _admin = Admin.construct(
+      ~version,
+      ~extensionPoints=[module(PluginExtensionPoint)],
+      ~aggregates=[],
+      ~readModels=[],
+      ~scheduler,
+      ~resourceNaming=Util_ResourceNaming.operations,
+      ~api=appSyncApi,
+      ~apiRole=appSyncApiRole,
+      ~dcbSpec=None,
+    )
+
+    // Push admin schema to the shared API. In per-plugin deployment there is one
+    // API — plugin schema fragments are pushed at runtime via PluginExtensionPoint.
+    let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+      ~group="Admin",
+    )
+    let _ = AppSync_Adapter.updateSchema(
+      ~api=appSyncApi,
+      ~baseFragment=adminBaseFragment,
+      ~pluginFragments=[],
+    )
+
+    // Export API ID and role ARN so plugin stacks can create DataSources/Resolvers
+    // against the shared API via StackReference.
+    Pulumi.Pulumi.export("apiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
+    Pulumi.Pulumi.export("apiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+
+    // Export admin extension points for plugin stacks to consume.
+    exportAdminExtensionPoints()
+  }
+
+  let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {
+    Console.log(`[Platform:deployPlugin] v${version}`)
+    // Each plugin stack creates its own scheduler (closures can't cross stacks).
+    let scheduler = makeScheduler()
+
+    module P = unpack(plugin)
+    let _plugin = P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
+
+    // Export interop metadata for cross-stack consumption.
+    Pulumi.Pulumi.export("_interopMeta", ReventlessCore.Plugin_Helpers.getInteropMeta())
+  }
 }
 
-// Default platform — unified API (no split).
-module Make = (
-  Api: {
-    let api: Types.AppSync.api
-    let apiRole: Types.AppSync.role
-  },
-): (
+// Default platform — split API, no cloner.
+module Make = (): (
   ReventlessInfra.Platform.T with type api = Types.AppSync.api and type role = Types.AppSync.role
 ) => {
-  include MakeWithConfig(
-    Api,
-    {
-      let splitApi = true
-      let cloner = false
-    },
-  )
+  include MakeWithConfig({
+    let splitApi = true
+    let cloner = false
+  })
 }

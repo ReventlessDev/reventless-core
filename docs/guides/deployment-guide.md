@@ -1,129 +1,169 @@
-# Deployment Guide
+# Per-Plugin AWS Deployment Guide
 
-This guide explains how to deploy a Reventless application with independent per-plugin deployment using Pulumi and GitHub Actions.
+This guide covers deploying a Reventless application to AWS using independent per-plugin Pulumi stacks, automated by GitHub Actions.
 
-## Overview
+## 1. Overview
 
 A Reventless application is deployed as **one Pulumi stack per plugin** plus a **platform stack**:
 
-- **Platform stack** — deploys shared resources: AppSync API, admin components, scheduler, Lambda Layer
-- **Plugin stacks** — each plugin deploys its own infrastructure (DynamoDB tables, SQS queues, Lambda functions, etc.) and registers its GraphQL schema fragment with the platform API
+- **Platform stack** (`platform-aws`) -- deploys the shared AppSync API (single unified endpoint), admin components (Plugin aggregate, read model, extension point), scheduler, and Lambda Layer. Exports the API ID so plugins can create DataSources/Resolvers against it.
+- **Plugin stacks** (`catalog-aws`, `ordering-aws`) -- each plugin deploys its own infrastructure (DynamoDB, SQS, Lambda, S3) and creates AppSync DataSources/Resolvers against the shared API. At runtime, plugins register their GraphQL schema fragment with the platform via the PluginExtensionPoint.
 
-Only changed plugins are deployed on each push. The git branch name determines which environment to deploy to.
+### Package split: agnostic + AWS
 
-## Repository Structure
+Each plugin and the platform are split into two packages:
 
-Each plugin and the platform package contain a `deploy/` directory with platform-specific Pulumi programs:
+| Package | Purpose | Depends on |
+|---|---|---|
+| `catalog/` | Plugin code, tests, in-memory dev | `reventless-infra`, `reventless-in-memory` |
+| `catalog-aws/` | AWS deployment entry point | `reventless-aws`, `catalog` |
+| `platform/` | In-memory dev server (all plugins) | `reventless-in-memory`, all plugins |
+| `platform-aws/` | AWS platform deployment | `reventless-aws` |
+
+Plugin packages never depend on `reventless-aws`. The `-aws` packages are private (`"private": true` in `package.json`) — they are entry points, not published libraries.
+
+### How schema management works
+
+Schema stitching is a **runtime** concern, not deploy-time:
+
+1. When a plugin **connects**, it sends a connect event including its schema fragment to the PluginExtensionPoint. The platform's admin handler adds the fragment to the combined schema and pushes it to AppSync.
+2. When a plugin **disconnects**, the platform removes that fragment and pushes the updated schema.
+
+No platform redeployment is needed when plugins change.
+
+### Benefits
+
+- **Independent deployments** -- changing a single plugin only redeploys that plugin's `-aws` stack.
+- **Clean dependency graph** -- plugin code never touches AWS. AWS coupling is isolated in `-aws` packages.
+- **Dynamic schema** -- plugins register/deregister their schema fragments at runtime via the PluginExtensionPoint.
+- **Reduced blast radius** -- a failed deployment affects only one plugin's stack.
+- **Parallel deploys** -- independent plugins deploy concurrently.
+- **Multiple providers** -- adding `catalog-supabase/` later is just another package.
+
+## 2. Prerequisites
+
+| Requirement | Details |
+|---|---|
+| AWS account | With IAM credentials that have permissions to create DynamoDB, Lambda, SQS, SNS, S3, AppSync, and IAM resources |
+| Pulumi CLI | Installed locally (`brew install pulumi` or `curl -fsSL https://get.pulumi.com \| sh`) |
+| Pulumi state backend | Pulumi Cloud account (free tier) or self-managed S3 backend |
+| Node.js v22+ | See `.node-version` in the project root |
+| npm access to `@reventlessdev/*` | GitHub Package Registry token with `read:packages` scope |
+| ReScript compiler | Installed via npm (included in `@reventlessdev/reventless-aws` dependencies) |
+
+## 3. Architecture
+
+### Stack structure
+
+```
+                      +---------------------------+
+                      |   platform-aws            |
+                      |   (admin, scheduler, API) |
+                      |   exports: API ID,        |
+                      |     admin EP, role ARN    |
+                      +---------------------------+
+                             |            |
+              StackReference |            | StackReference
+              (API ID, EPs)  |            | (API ID, EPs)
+                             v            v
+                +----------------+  +----------------+
+                | catalog-aws    |  | ordering-aws   |
+                | (plugin infra, |  | (plugin infra, |
+                |  DataSources,  |  |  DataSources,  |
+                |  Resolvers)    |  |  Resolvers)    |
+                +----------------+  +----------------+
+                        |                    |
+                        |  runtime connect   |  runtime connect
+                        |  + schema fragment |  + schema fragment
+                        v                    v
+                  PluginExtensionPoint (platform runtime)
+                  --> pushes combined schema to AppSync
+```
+
+### Data flow
+
+**Deploy-time:**
+- Platform creates the AppSync API and exports its ID + role ARN as stack outputs.
+- Each plugin reads the API ID via StackReference and creates its own DataSources/Resolvers pointing to its Lambda functions.
+- Plugins also read admin extension points from the platform for the admin connection path.
+
+**Runtime:**
+- Each plugin sends a "connect" event to the PluginExtensionPoint, including its schema fragment.
+- The platform's admin handler stitches all connected plugin fragments into a combined schema and pushes it to AppSync.
+- When a plugin disconnects, its fragment is removed and the schema is updated.
+
+**Cross-plugin:**
+- Plugins that consume another plugin's extension point read that plugin's exported EP data via StackReference (`interstack:dependencies`).
+
+### Deployment order
+
+Single pass: **platform first, then plugins**.
+
+1. Platform deploys -- creates API, admin components, PluginExtensionPoint. Exports API ID.
+2. Plugins deploy in parallel -- create infrastructure, create DataSources/Resolvers using the platform's API ID. At runtime, connect and register schema.
+
+No second platform deploy is needed when plugins change.
+
+## 4. Step-by-step Setup
+
+### 4a. Create the package structure
+
+Each plugin gets an `-aws` package alongside its agnostic package. The platform gets `platform/` (in-memory) and `platform-aws/` (AWS):
 
 ```
 my-app/
-├── catalog-spec/                             # Spec package (no deployment)
+├── catalog-spec/
 ├── catalog/
-│   ├── src/CatalogPlugin.res                 # Plugin code (platform-agnostic)
-│   └── deploy/
-│       └── aws/
-│           ├── Pulumi.yaml                   # Project definition
-│           ├── Pulumi.dev.yaml               # Dev environment config
-│           ├── Pulumi.prod.yaml              # Prod environment config
-│           └── Main.res                      # Deploys this plugin on AWS
+│   ├── src/CatalogPlugin.res
+│   ├── tests/
+│   ├── package.json
+│   └── rescript.json
+├── catalog-aws/
+│   ├── src/Main.res
+│   ├── package.json
+│   ├── rescript.json
+│   ├── Pulumi.yaml
+│   ├── Pulumi.alpha.yaml
+│   └── Pulumi.main.yaml
 ├── ordering-spec/
 ├── ordering/
-│   ├── src/OrderingPlugin.res
-│   └── deploy/
-│       └── aws/
-│           ├── Pulumi.yaml
-│           ├── Pulumi.dev.yaml
-│           ├── Pulumi.prod.yaml
-│           └── Main.res
+├── ordering-aws/
+│   ├── src/Main.res
+│   ├── ...
 ├── platform/
-│   ├── src/Main.res                          # In-memory dev server (all plugins)
-│   └── deploy/
-│       └── aws/
-│           ├── Pulumi.yaml
-│           ├── Pulumi.dev.yaml
-│           ├── Pulumi.prod.yaml
-│           └── Main.res                      # Deploys platform (admin, scheduler, API)
+│   ├── src/Main.res                  # In-memory dev server
+│   ├── package.json
+│   └── rescript.json
+├── platform-aws/
+│   ├── src/Main.res
+│   ├── package.json
+│   ├── rescript.json
+│   ├── Pulumi.yaml
+│   ├── Pulumi.alpha.yaml
+│   └── Pulumi.main.yaml
 ├── deploy-manifest.yaml
 ├── package.json
 └── .github/workflows/deploy-aws.yml
 ```
 
-## Setup
+Register the `-aws` packages as Lerna workspaces in the root `package.json` and `lerna.json`.
 
-### 1. Create `deploy-manifest.yaml`
+### 4b. Add `Main.res` entry points
 
-At the repo root, create a manifest that maps plugin names to their source paths and deploy directories:
+Templates are available in `docs/templates/deploy-aws/`.
 
-```yaml
-# deploy-manifest.yaml
-platform:
-  deploy-dir: platform/deploy/aws
+**`platform-aws/src/Main.res`** -- deploys admin components, scheduler, and the shared API:
 
-plugins:
-  catalog:
-    source-paths:
-      - catalog/
-      - catalog-spec/
-    deploy-dir: catalog/deploy/aws
-    depends-on: []
-
-  ordering:
-    source-paths:
-      - ordering/
-      - ordering-spec/
-    deploy-dir: ordering/deploy/aws
-    depends-on:
-      - catalog
-```
-
-The `depends-on` field declares deployment ordering — ordering deploys after catalog because it subscribes to catalog's ExtensionPoint.
-
-### 2. Add `deploy/aws/` to each package
-
-Each plugin and the platform package needs a `deploy/aws/` directory with:
-
-```
-deploy/aws/
-├── Pulumi.yaml              # Project name + runtime
-├── Pulumi.dev.yaml          # Config for dev branch
-├── Pulumi.prod.yaml         # Config for prod branch
-└── Main.res                 # Entry point
-```
-
-**`Pulumi.yaml`** (shared across all environments):
-```yaml
-name: my-app-catalog
-runtime: nodejs
-description: Catalog plugin — AWS deployment
-```
-
-**`Pulumi.dev.yaml`**:
-```yaml
-config:
-  aws:region: eu-west-1
-  my-app-catalog:platformStack: org/my-app-platform/dev
-  my-app-catalog:lambdaMemory: 256
-  my-app-catalog:dynamoDbBillingMode: PAY_PER_REQUEST
-```
-
-**`Pulumi.prod.yaml`**:
-```yaml
-config:
-  aws:region: eu-west-1
-  my-app-catalog:platformStack: org/my-app-platform/prod
-  my-app-catalog:lambdaMemory: 1024
-  my-app-catalog:dynamoDbBillingMode: PROVISIONED
-  my-app-catalog:dynamoDbReadCapacity: 100
-  my-app-catalog:dynamoDbWriteCapacity: 50
-```
-
-**`Main.res`** (plugin entry point):
 ```rescript
-module Platform = ReventlessAws.Platform.Make({
-  let api = ...
-  let apiRole = ...
-})
+module Platform = ReventlessAws.Platform.Make()
 
+Platform.deployPlatform(~version=Reventless.PackageVersion.fromCwd())
+```
+
+**`catalog-aws/src/Main.res`** -- deploys a single plugin's infrastructure:
+
+```rescript
+module Platform = ReventlessAws.Platform.Make()
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 
 Platform.deployPlugin(
@@ -132,28 +172,149 @@ Platform.deployPlugin(
 )
 ```
 
-The platform `Main.res` calls `Platform.deployPlatform()` instead.
+Key points:
+- `Platform.Make()` configures the infrastructure builders. In per-plugin mode, it reads the platform's API ID from the `platform:stack` StackReference.
+- Plugins create their own DataSources/Resolvers against the shared API. The schema fragment is registered at runtime via the PluginExtensionPoint.
 
-### 3. Add the GitHub Actions workflow
+**`platform/src/Main.res`** -- in-memory dev server (unchanged):
+
+```rescript
+module Platform = ReventlessInMemory.Platform.Make()
+
+module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
+module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
+
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(Catalog), module(Ordering)],
+)
+```
+
+### 4c. Add `package.json` for `-aws` packages
+
+Each `-aws` package is a private Lerna workspace member:
+
+```json
+{
+  "name": "@myorg/catalog-aws",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "@reventlessdev/reventless-aws": "^3.0.0",
+    "@myorg/catalog": "*"
+  }
+}
+```
+
+### 4d. Add `rescript.json` for `-aws` packages
+
+```json
+{
+  "name": "catalog-aws",
+  "sources": [{ "dir": "src", "subdirs": false }],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-aws",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@myorg/catalog"
+  ],
+  "ppx-flags": ["sury-ppx/bin"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs"
+}
+```
+
+### 4e. Add `Pulumi.yaml` per stack
+
+Each `-aws` package root gets a `Pulumi.yaml` project definition:
+
+```yaml
+name: my-app-catalog
+runtime: nodejs
+main: src/Main.res.mjs
+description: My App — Catalog plugin stack
+```
+
+- `name` must be globally unique within your Pulumi organization.
+- `main` points to the compiled ReScript output.
+
+### 4f. Add `Pulumi.<env>.yaml` per environment
+
+Create one file per environment the stack should deploy to.
+
+**Platform** (`platform-aws/Pulumi.alpha.yaml`):
+
+```yaml
+config:
+  aws:region: eu-west-1
+```
+
+**Independent plugin** (`catalog-aws/Pulumi.alpha.yaml`):
+
+```yaml
+config:
+  aws:region: eu-west-1
+  platform:stack: org/my-app-platform/alpha
+```
+
+**Plugin with cross-plugin dependency** (`ordering-aws/Pulumi.alpha.yaml`):
+
+```yaml
+config:
+  aws:region: eu-west-1
+  platform:stack: org/my-app-platform/alpha
+  interstack:
+    dependencies:
+      - org/my-app-catalog/alpha
+```
+
+The branch name determines the environment: push to `alpha` uses `Pulumi.alpha.yaml`, push to `main` uses `Pulumi.main.yaml`. If no matching file exists, no deployment occurs.
+
+### 4g. Create `deploy-manifest.yaml` at the project root
+
+This manifest tells the GitHub Actions workflow which stacks exist and their deployment order:
+
+```yaml
+platform:
+  path: platform-aws
+  name: my-app-platform
+
+plugins:
+  - name: catalog
+    path: catalog-aws
+    depends-on: []
+
+  - name: ordering
+    path: ordering-aws
+    depends-on:
+      - catalog
+```
+
+- `path` points to the `-aws` package root (relative to repo root).
+- `name` matches the Pulumi project name (without the org prefix).
+- `depends-on` declares deployment ordering.
+
+### 4h. Add the GitHub Actions workflow
 
 Create `.github/workflows/deploy-aws.yml`:
 
 ```yaml
-name: Deploy (AWS)
+name: Deploy to AWS
 
 on:
   push:
-    branches: ['**']
+    branches: [main, alpha, beta]
   pull_request:
-    branches: ['**']
-  workflow_dispatch:
+    branches: [main]
 
 jobs:
   deploy:
     uses: ReventlessDev/reventless-core/.github/workflows/deploy-reventless-aws.yml@main
     with:
       manifest: deploy-manifest.yaml
-      node-version: "22.17.1"
+      node-version: "22"
     secrets:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -161,178 +322,372 @@ jobs:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-The reusable workflow handles everything: change detection, environment selection, deployment ordering, and secret resolution.
+The reusable workflow handles change detection, environment selection, deployment ordering, and secret resolution automatically.
 
-### 4. Configure GitHub secrets
+## 5. Multi-Repository Setup
 
-Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **Repository secrets** and add:
+The same architecture works when plugins live in separate repositories. Each plugin repo contains its agnostic package and its `-aws` package. The platform lives in its own repo.
 
-| Name | Value | Purpose |
+### Repository structure
+
+```
+repo: my-org/platform
+├── platform/                  # In-memory dev server (depends on all plugins)
+├── platform-aws/              # AWS platform deployment
+├── deploy-manifest.yaml       # platform only
+└── .github/workflows/deploy-aws.yml
+
+repo: my-org/catalog
+├── catalog-spec/
+├── catalog/
+├── catalog-aws/
+├── deploy-manifest.yaml       # catalog plugin only
+└── .github/workflows/deploy-aws.yml
+
+repo: my-org/ordering
+├── ordering-spec/
+├── ordering/
+├── ordering-aws/
+├── deploy-manifest.yaml       # ordering plugin only
+└── .github/workflows/deploy-aws.yml
+```
+
+### What changes from monorepo
+
+**One manifest per repo.** Each repo has its own `deploy-manifest.yaml` listing only the stacks in that repo:
+
+```yaml
+# repo: my-org/catalog — deploy-manifest.yaml
+plugins:
+  - name: catalog
+    path: catalog-aws
+    depends-on: []
+```
+
+```yaml
+# repo: my-org/platform — deploy-manifest.yaml
+platform:
+  path: platform-aws
+  name: my-app-platform
+```
+
+**Published package dependencies.** The `-aws` package depends on the published plugin package, not a workspace link:
+
+```json
+{
+  "name": "@myorg/catalog-aws",
+  "private": true,
+  "dependencies": {
+    "@reventlessdev/reventless-aws": "^3.0.0",
+    "@myorg/catalog": "^1.2.0"
+  }
+}
+```
+
+**Each repo calls the reusable workflow independently.** Push to the catalog repo triggers catalog's workflow. Push to the platform repo triggers the platform's workflow. They are independent CI pipelines.
+
+**Cross-plugin StackReferences work across repos.** `interstack:dependencies` and `platform:stack` are Pulumi stack names — they reference stacks by name, not by repo. Ordering in repo B can reference catalog in repo A's stack:
+
+```yaml
+# repo: my-org/ordering — ordering-aws/Pulumi.alpha.yaml
+config:
+  aws:region: eu-west-1
+  platform:stack: myorg/my-app-platform/alpha
+  interstack:
+    dependencies:
+      - myorg/my-app-catalog/alpha
+```
+
+### Platform repo and local development
+
+The platform repo contains `platform/` for the in-memory dev server. It depends on all plugin packages (published versions). For local development with unpublished plugin changes, use `npm link` or workspace overrides to point to local checkouts.
+
+### Deployment coordination
+
+| Scenario | What to do |
+|---|---|
+| Plugin code change | Push to plugin repo. CI deploys the `-aws` stack. Schema updates at runtime. |
+| New plugin | Create new repo with plugin + `-aws` packages. Deploy. Platform is untouched. |
+| Remove plugin | Destroy the plugin stack. Remove the repo. Schema updates at runtime. |
+| Cross-plugin spec change | Publish the spec package. Update dependent plugin repos. Deploy each. |
+| Framework upgrade | Update `@reventlessdev/*` versions in each repo. Deploy platform first, then plugins. |
+
+### What stays identical
+
+- Pulumi stack structure (platform + per-plugin stacks)
+- `platform:stack` and `interstack:dependencies` config
+- Runtime schema registration via PluginExtensionPoint
+- The reusable workflow (called from each repo)
+- Deployment order (platform first, then plugins)
+- Secret management (per-repo GitHub secrets with environment overrides)
+
+## 6. Configuration
+
+### `platform:stack` -- platform stack reference
+
+Every plugin stack must reference the platform stack so it can read the shared API ID and admin extension points:
+
+```yaml
+config:
+  platform:stack: org/my-app-platform/alpha
+```
+
+The format is `<pulumi-org>/<project-name>/<stack-name>`. The stack name matches the branch/environment name.
+
+### `interstack:dependencies` -- cross-plugin StackReferences
+
+When a plugin consumes another plugin's extension point (e.g., ordering subscribes to catalog events), it needs a StackReference to that plugin:
+
+```yaml
+config:
+  interstack:
+    dependencies:
+      - org/my-app-catalog/alpha
+```
+
+Multiple dependencies are supported as a YAML list. The ordering plugin reads the catalog plugin's exported `_interopMeta` to resolve extension point bindings at deploy time.
+
+### Environment-specific configuration
+
+Each environment gets its own `Pulumi.<env>.yaml`. Common differences between environments:
+
+| Setting | Alpha | Main (Production) |
 |---|---|---|
-| `PULUMI_ACCESS_TOKEN` | Your Pulumi access token | Authenticates Pulumi CLI |
-| `AWS_ACCESS_KEY_ID` | IAM access key | AWS authentication |
-| `AWS_SECRET_ACCESS_KEY` | IAM secret key | AWS authentication |
-| `NPM_TOKEN` | GitHub/npm token | Install `@reventlessdev/*` packages |
+| `aws:region` | `eu-west-1` | `eu-west-1` |
+| `platform:stack` | `org/my-app-platform/alpha` | `org/my-app-platform/main` |
+| `interstack:dependencies` | `org/.../alpha` | `org/.../main` |
 
-### 5. Done
+Add custom config keys per environment for Lambda memory, DynamoDB capacity, or feature flags:
 
-Push to `dev` → deploys to the `dev` stack. Push to `prod` → deploys to the `prod` stack. Open a PR → runs `pulumi preview` as a dry run. Only changed plugins deploy.
-
-## Environments
+```yaml
+config:
+  aws:region: eu-west-1
+  platform:stack: org/my-app-platform/main
+  my-app-catalog:lambdaMemory: 1024
+  my-app-catalog:dynamoDbBillingMode: PROVISIONED
+```
 
 ### Branch name = Pulumi stack name
 
-The git branch name is used **directly** as the Pulumi stack name. There is no hardcoded mapping. Deployment only happens if a `Pulumi.<branch>.yaml` file exists in the plugin's `deploy/aws/` directory.
+The git branch name is used directly as the Pulumi stack name. Deployment only happens if a `Pulumi.<branch>.yaml` file exists in the `-aws` package root.
 
-- Push to `dev` → looks for `Pulumi.dev.yaml` → deploys if found
-- Push to `prod` → looks for `Pulumi.prod.yaml` → deploys if found
-- Push to `feature-xyz` → no `Pulumi.feature-xyz.yaml` → skipped
-
-### Branch naming convention
-
-Branches must be named after the environment they deploy to. The `main` branch is **not** used for active development in customer projects.
-
-| Branch | Environment | Purpose |
-|---|---|---|
-| `dev` | Development | Active development, frequent deploys |
-| `test` | Test | Pre-production verification |
-| `prod` | Production | Stable releases only |
-
-Feature branches (e.g., `feature-xyz`) have no `Pulumi.<branch>.yaml` and never trigger deployment.
+- Push to `alpha` -- looks for `Pulumi.alpha.yaml` -- deploys if found.
+- Push to `main` -- looks for `Pulumi.main.yaml` -- deploys if found.
+- Push to `feature-xyz` -- no `Pulumi.feature-xyz.yaml` -- skipped.
 
 ### Adding or removing environments
 
 | Action | What to do | Workflow change needed? |
 |---|---|---|
-| Add `test` environment | Create `test` branch + `Pulumi.test.yaml` in every `deploy/aws/` dir | No |
-| Add temporary `demo` environment | Create `demo` branch + `Pulumi.demo.yaml` in relevant deploy dirs | No |
-| Remove `dev` environment | Delete `Pulumi.dev.yaml` files | No |
-| Feature branches | Don't create `Pulumi.<branch>.yaml` → no deploy | No |
-
-### Disabling deployment on a branch
-
-To temporarily disable deployment without losing the configuration, rename the file:
-
-```bash
-# Disable prod deployment for catalog
-mv catalog/deploy/aws/Pulumi.prod.yaml catalog/deploy/aws/Pulumi.prod.yaml.disabled
-
-# Re-enable
-mv catalog/deploy/aws/Pulumi.prod.yaml.disabled catalog/deploy/aws/Pulumi.prod.yaml
-```
-
-This is git-tracked, per-plugin granular, and reversible.
-
-| Scope | How to disable |
-|---|---|
-| One plugin on one branch | Rename that plugin's `Pulumi.<branch>.yaml` to `.disabled` |
-| All plugins on one branch | Rename all `Pulumi.<branch>.yaml` files to `.disabled` |
-| One plugin on all branches | Rename all `Pulumi.*.yaml` files in that plugin's deploy dir |
-| Skip one commit | Include `[skip deploy]` in the commit message |
+| Add `test` environment | Create `test` branch + `Pulumi.test.yaml` in every `-aws` package | No |
+| Add temporary `demo` environment | Create `demo` branch + `Pulumi.demo.yaml` in relevant `-aws` packages | No |
+| Remove an environment | Delete its `Pulumi.<env>.yaml` files | No |
+| Disable one plugin on one branch | Rename `Pulumi.<branch>.yaml` to `Pulumi.<branch>.yaml.disabled` | No |
 
 ### Stack naming
 
 Each plugin and the platform get their own Pulumi stack per environment:
 
 ```
-org/my-app-platform/dev       org/my-app-platform/test       org/my-app-platform/prod
-org/my-app-catalog/dev        org/my-app-catalog/test        org/my-app-catalog/prod
-org/my-app-ordering/dev       org/my-app-ordering/test       org/my-app-ordering/prod
+org/my-app-platform/alpha      org/my-app-platform/main
+org/my-app-catalog/alpha       org/my-app-catalog/main
+org/my-app-ordering/alpha      org/my-app-ordering/main
 ```
 
-## API Schema Registration
+## 7. Deployment Scenarios
 
-Each plugin generates a GraphQL schema fragment and registers it dynamically with the platform's AppSync API:
+### First deployment
 
-1. During deployment, the plugin derives its schema from its aggregate commands and read model states
-2. The plugin pushes its fragment to the platform API
-3. The platform stitches all plugin fragments into a unified schema
-4. When a plugin redeploys with changed schema, the platform API updates automatically
+1. Ensure all `Pulumi.yaml` and `Pulumi.<env>.yaml` files are committed.
+2. Deploy the platform stack first:
+   ```bash
+   cd platform-aws
+   pulumi up --stack alpha
+   ```
+3. Deploy plugins (can run in parallel if independent):
+   ```bash
+   cd catalog-aws
+   pulumi up --stack alpha
+   ```
+4. Deploy dependent plugins after their dependencies:
+   ```bash
+   cd ordering-aws
+   pulumi up --stack alpha
+   ```
 
-This means adding a field to a read model or a new command only requires redeploying that plugin — no platform redeployment needed.
+Or push to the `alpha` branch and let GitHub Actions handle the ordering automatically.
 
-## Secret Management
+### Adding a new plugin
 
-### Repository secrets (platform-wide defaults)
+1. Create the plugin package (`shipping/`) and its AWS package (`shipping-aws/`).
+2. Add `src/Main.res`, `package.json`, `rescript.json`, `Pulumi.yaml`, and `Pulumi.<env>.yaml` to `shipping-aws/`.
+3. Register `shipping-aws/` in the Lerna workspaces.
+4. Add the plugin entry to `deploy-manifest.yaml`:
+   ```yaml
+   - name: shipping
+     path: shipping-aws
+     depends-on: []
+   ```
+5. If the plugin consumes another plugin's extension point, add `depends-on` and `interstack:dependencies`.
+6. Commit and push. The workflow deploys the plugin. At runtime, the plugin connects to the PluginExtensionPoint and its schema fragment is added to the unified API.
 
-Set once — used by all plugins unless overridden:
+No platform redeployment is needed.
+
+### Updating a plugin (independent redeploy)
+
+Change the plugin's source code and push. Only that plugin's `-aws` stack redeploys. At runtime, the reconnect updates the schema fragment if it changed. No platform or other plugin stacks are touched.
+
+### Removing a plugin
+
+1. Destroy the plugin stack: `pulumi destroy --stack alpha` from the `-aws` package.
+2. Remove the `-aws` package and the plugin entry from `deploy-manifest.yaml`.
+
+At runtime, the disconnect event removes the plugin's schema fragment from the unified API. No platform redeployment needed.
+
+### Cross-plugin extension wiring
+
+When plugin B subscribes to plugin A's extension point:
+
+1. Plugin A exports its extension points as stack outputs (handled automatically by `deployPlugin`'s `_interopMeta` export).
+2. Plugin B declares a dependency on plugin A in `deploy-manifest.yaml` (`depends-on: [pluginA]`).
+3. Plugin B's `Pulumi.<env>.yaml` includes a StackReference to plugin A:
+   ```yaml
+   interstack:
+     dependencies:
+       - org/my-app-pluginA/alpha
+   ```
+4. At deploy time, plugin B reads plugin A's outputs via StackReference and wires the extension binding.
+
+## 8. API Functions
+
+### `Platform.deployPlatform(~version)`
+
+Called in `platform-aws/src/Main.res`. Creates:
+- **AppSync API** -- the single unified GraphQL endpoint for the entire application.
+- **Scheduler** -- Pulumi component for scheduling recurring tasks.
+- **Admin components** -- Plugin aggregate, read model, extension point (via `Platform_Admin.construct`).
+- **Stack outputs** -- exports API ID, role ARN, and admin extension points for plugin stacks to consume.
+
+The admin schema (plugin queries, cloner mutations) is pushed at deploy time. Plugin schema fragments are added at runtime when plugins connect.
+
+### `Platform.deployPlugin(~version, ~plugin)`
+
+Called in each plugin's `-aws` package (e.g., `catalog-aws/src/Main.res`). Creates:
+- **Scheduler** -- each plugin stack creates its own scheduler instance (closures cannot cross Pulumi stacks).
+- **Plugin infrastructure** -- all DynamoDB tables, SQS queues, Lambda functions, and S3 buckets for the plugin's aggregates, read models, tasks, and DCB slices.
+- **AppSync DataSources/Resolvers** -- created against the shared API using the API ID from the platform StackReference.
+- **Stack outputs** -- exports `_interopMeta` (extension points, event topics) for cross-stack consumption by dependent plugins.
+
+At runtime, the plugin connects to the PluginExtensionPoint with its schema fragment. The platform updates the combined schema.
+
+### `Platform.makePlatform(~version, ~plugins)`
+
+Monolithic deployment mode (still supported). Deploys the platform and all plugins in a single Pulumi stack. Used by the `platform/` package for in-memory local development:
+
+```rescript
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[
+    module(Catalog),
+    module(Ordering),
+  ],
+)
+```
+
+This creates one stack with all resources. To migrate to per-plugin deployment, create the `-aws` packages as described in this guide.
+
+## 9. Secret Management
+
+### Required GitHub secrets (platform-wide defaults)
+
+Go to your GitHub repo Settings, then Secrets and variables, then Actions, then Repository secrets:
 
 | Name | Value | Purpose |
 |---|---|---|
-| `PULUMI_ACCESS_TOKEN` | Default Pulumi token | Authenticates Pulumi CLI for all stacks |
-| `AWS_ACCESS_KEY_ID` | IAM access key | AWS authentication |
-| `AWS_SECRET_ACCESS_KEY` | IAM secret key | AWS authentication |
-| `NPM_TOKEN` | Package registry token | Install `@reventlessdev/*` packages |
+| `PULUMI_ACCESS_TOKEN` | Your Pulumi access token | Authenticates Pulumi CLI (default for all stacks) |
+| `AWS_ACCESS_KEY_ID` | IAM access key | AWS authentication for resource creation |
+| `AWS_SECRET_ACCESS_KEY` | IAM secret key | AWS authentication for resource creation |
+| `NPM_TOKEN` | GitHub Package Registry token | Install `@reventlessdev/*` packages |
+
+These are the defaults used by the platform and all plugins unless overridden.
 
 ### Per-plugin secret overrides (optional)
 
-To use different credentials for a specific plugin:
+To use a different Pulumi access token or AWS credentials for a specific plugin:
 
-1. Go to **Settings** → **Environments** → **New environment**
-2. Name it `deploy-<plugin>` (e.g., `deploy-catalog`)
-3. Add environment secrets with the same names (e.g., `PULUMI_ACCESS_TOKEN`)
-4. These override the repository secrets for that plugin's deployment job
+1. Go to Settings, then Environments, then New environment.
+2. Name it `deploy-<plugin>` (e.g., `deploy-catalog`).
+3. Add a `PULUMI_ACCESS_TOKEN` secret (and/or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) to that environment. These override the repository-level defaults for that plugin's deployment job.
 
-| Environment | `PULUMI_ACCESS_TOKEN` | `AWS_ACCESS_KEY_ID` | `AWS_SECRET_ACCESS_KEY` |
-|---|---|---|---|
-| `deploy-platform` | (repo default) | (repo default) | (repo default) |
-| `deploy-catalog` | custom token | custom key | custom secret |
-| `deploy-ordering` | (repo default) | (repo default) | (repo default) |
+The same mechanism works for the platform stack via the `deploy-platform` environment.
+
+**Resolution order**: environment secret (per-plugin or per-platform) > repository secret (platform-wide default).
 
 ### What goes where
 
 | What | Where | Why |
 |---|---|---|
-| AWS region, memory, capacity | `Pulumi.<branch>.yaml` (committed) | Non-secret, per-environment |
-| Platform stack reference | `Pulumi.<branch>.yaml` (committed) | Points to correct env's platform |
-| Feature flags | `Pulumi.<branch>.yaml` (committed) | Per-environment behavior |
+| AWS region, memory, capacity | `Pulumi.<env>.yaml` (committed) | Non-secret, per-environment |
+| Platform stack reference | `Pulumi.<env>.yaml` (committed) | Points to correct env's platform |
+| Feature flags | `Pulumi.<env>.yaml` (committed) | Per-environment behavior |
 | Access tokens, keys | GitHub secrets (never committed) | Authentication credentials |
 | Database passwords | `pulumi config --secret` (encrypted in state) | Encrypted per-stack |
 
-**Never** commit secrets to `.env`, `Pulumi.<branch>.yaml`, or any file in the repo.
+**Never** commit secrets to `.env`, `Pulumi.<env>.yaml`, or any file in the repo.
 
-## Multi-Platform Support
+## 10. Troubleshooting
 
-Plugins are platform-agnostic. To deploy to a different cloud provider, add a `deploy/<platform>/` directory:
+### Stack not found
 
 ```
-catalog/deploy/
-├── aws/          # Uses reventless-aws
-├── azure/        # Would use a future reventless-azure
-└── supabase/     # Would use a future reventless-supabase
+error: no stack named "org/my-app-catalog/alpha" found
 ```
 
-Each platform directory is a self-contained Pulumi project. Plugin source code is shared — only the entry point differs.
+**Cause**: The Pulumi stack has not been created yet.
+**Fix**: Run `pulumi stack init alpha` from the `-aws` package root, or let the GitHub Actions workflow create it on first deployment.
 
-## Deployment Behavior
+### Missing `platform:stack` config
 
-### What triggers deployment
-
-| Event | Action |
-|---|---|
-| Push to a branch with `Pulumi.<branch>.yaml` | Deploy changed plugins |
-| Push to a branch without `Pulumi.<branch>.yaml` | No deployment |
-| Pull request | `pulumi preview` (dry run, posted as PR comment) |
-| Commit message contains `[skip deploy]` | No deployment |
-| Platform framework packages changed | Platform + all plugins deploy |
-| Only one plugin's source changed | Only that plugin deploys |
-
-### Deployment order
-
-1. **Platform first** — if platform changed, deploys before any plugins
-2. **Plugins in parallel** — independent plugins deploy concurrently
-3. **Dependent plugins sequentially** — respects `depends-on` in the manifest
-
-### Manual deployment
-
-```bash
-# Deploy catalog to dev
-pulumi up --stack dev --cwd catalog/deploy/aws/
-
-# Preview what would change in prod
-pulumi preview --stack prod --cwd catalog/deploy/aws/
 ```
+error: Missing required configuration variable 'platform:stack'
+```
+
+**Cause**: The plugin's `Pulumi.<env>.yaml` does not include the `platform:stack` key.
+**Fix**: Add `platform:stack: org/<platform-project>/<env>` to the plugin's environment config file.
+
+### Cross-stack reference errors
+
+```
+error: getting stack reference "org/my-app-catalog/alpha": no stack found
+```
+
+**Cause**: The referenced stack (e.g., catalog) has not been deployed yet, but the ordering plugin depends on it.
+**Fix**: Deploy the dependency stack first. Check `depends-on` in `deploy-manifest.yaml` to ensure correct ordering. For manual deployments, always deploy dependencies before dependents.
+
+### StackReference output is `undefined`
+
+**Cause**: The dependency stack deployed but did not export the expected output (e.g., `_interopMeta` or `extensionPoints`).
+**Fix**: Verify the dependency plugin calls `Platform.deployPlugin(...)` (not `makePlatform`). Redeploy the dependency stack.
+
+### Plugin schema not appearing in API
+
+**Cause**: The plugin deployed successfully but its schema fragment is not in the unified API.
+**Fix**: The schema is registered at runtime when the plugin connects. Check that the plugin's Lambda is running and can reach the PluginExtensionPoint (SQS queue). Verify the connect event was processed by checking the admin Plugin read model.
+
+### `Pulumi.<branch>.yaml` not found (deployment skipped)
+
+**Cause**: The branch name does not match any environment config file.
+**Fix**: This is expected behavior for feature branches. If you want the branch to deploy, create a `Pulumi.<branch>.yaml` file in the relevant `-aws` packages.
+
+### ReScript compilation error in `-aws` package
+
+**Cause**: Missing dependency in `rescript.json` or the plugin package has not been built.
+**Fix**: Ensure `rescript.json` in the `-aws` package lists all required dependencies including the plugin package. Run `npm run build` from the monorepo root before deploying.
+
+### Platform redeployment required after framework upgrade
+
+After upgrading `@reventlessdev/reventless-aws` or `@reventlessdev/reventless-spec`, redeploy the platform stack first, then all plugin stacks. The GitHub Actions workflow handles this automatically when it detects changes in framework packages.
 
 ## Reference Implementation
 
-The `examples/online-shop-hybrid/` directory in the reventless-core repo contains a working reference implementation with deployment configured. It follows the same patterns described in this guide.
+The `examples/online-shop-hybrid/` directory in the reventless-core repo contains a working reference implementation with per-plugin deployment configured for both `alpha` and `main` environments. It follows all patterns described in this guide.

@@ -1,10 +1,10 @@
 // Stack entries: (stackName, StackReference) pairs derived from Pulumi config.
 // Pattern mirrors Interstack.stackDependencies in the reventless package.
 // - "interstack.dependencies" — explicit cross-stack dependency names
-// - "core.stack" — the core plugin stack (if configured)
+// - "platform.stack" — the platform stack (if configured)
 let stackEntries: array<(string, Pulumi.StackReference.t)> = {
   let coreEntry =
-    Pulumi.Config.make(Some("core"))
+    Pulumi.Config.make(Some("platform"))
     ->Pulumi.Config.get("stack")
     ->Option.map(name => (name, Pulumi.StackReference.make(name)))
 
@@ -187,6 +187,25 @@ module Plugin = {
     let queryAll = () =>
       queryAllSingle(
         ~outputName="plugin",
+        ~requiredFields=P.requiredFields,
+        ~fromJson=P.fromJson,
+      )
+
+    let mergeWith = locals =>
+      queryAll()->Pulumi.Output.apply(results => {
+        let remotes = results->Array.filterMap(r => switch r { | Ok(v) => Some(v) | Error(_) => None })
+        locals->Array.concat(remotes)
+      })
+  }
+}
+
+module ExtensionPoint = {
+  module Make = (P: Projection.T): (StackQuery with type t = P.t) => {
+    type t = P.t
+
+    let queryAll = () =>
+      queryAllSingle(
+        ~outputName="extensionPoints",
         ~requiredFields=P.requiredFields,
         ~fromJson=P.fromJson,
       )

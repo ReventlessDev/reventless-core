@@ -165,4 +165,12 @@ module type T = {
     ~version: string,
     ~plugins: array<module(PluginMaker)>,
   ) => unit
+
+  /** Deploy only the platform (admin components, scheduler, shared API).
+      No plugins are deployed — each plugin deploys independently via `deployPlugin`. */
+  let deployPlatform: (~version: string) => unit
+
+  /** Deploy a single plugin as an independent stack.
+      Creates its own scheduler and exports stack outputs for cross-stack consumption. */
+  let deployPlugin: (~version: string, ~plugin: module(PluginMaker)) => unit
 }

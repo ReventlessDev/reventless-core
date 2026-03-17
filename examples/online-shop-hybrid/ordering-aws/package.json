@@ -1,0 +1,20 @@
+{
+  "name": "@reventlessdev/online-shop-hybrid-ordering-aws",
+  "version": "0.0.0",
+  "description": "Online Shop Hybrid — Ordering plugin AWS deployment",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "rescript build"
+  },
+  "dependencies": {
+    "@reventlessdev/online-shop-hybrid-ordering": "*",
+    "@reventlessdev/reventless-aws": "*",
+    "@reventlessdev/reventless-spec": "*",
+    "sury": "^11.0.0-alpha.4"
+  },
+  "devDependencies": {
+    "rescript": "^12.2.0",
+    "sury-ppx": "^11.0.0-alpha.2"
+  }
+}

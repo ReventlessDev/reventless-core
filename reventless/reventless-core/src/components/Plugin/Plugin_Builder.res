@@ -441,6 +441,7 @@ module Make = (
       resolvers: builderOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
       heartbeat: builderOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
       dcbEventLog: builderOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
+      apiSchemaFragment: Pulumi.Output.make(Some(apiSchemaFragment)),
     }
     let _ = self->Component.setOutputs(pluginOutputs)
 

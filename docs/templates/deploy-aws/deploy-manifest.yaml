@@ -1,0 +1,16 @@
+# Per-plugin deployment manifest.
+# Used by the reusable GitHub Actions workflow to determine deployment order.
+
+platform:
+  path: {{PLATFORM_DEPLOY_PATH}}
+  name: {{PLATFORM_STACK_NAME}}
+
+plugins:
+  - name: {{PLUGIN_1_NAME}}
+    path: {{PLUGIN_1_DEPLOY_PATH}}
+    depends-on: []
+
+  # - name: {{PLUGIN_2_NAME}}
+  #   path: {{PLUGIN_2_DEPLOY_PATH}}
+  #   depends-on:
+  #     - {{PLUGIN_1_NAME}}

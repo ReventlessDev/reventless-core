@@ -448,7 +448,8 @@ function MakeWithConfig(Config) {
         outputs.version,
         outputs.eventCollector,
         outputs.extensionPoints,
-        outputs.extensions
+        outputs.extensions,
+        outputs.apiSchemaFragment
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
@@ -477,6 +478,7 @@ function MakeWithConfig(Config) {
           at: new Date().toISOString(),
           by: "in-memory"
         };
+        let state_apiSchemaFragment = param[5];
         let state = {
           name: state_name,
           version: state_version,
@@ -487,7 +489,7 @@ function MakeWithConfig(Config) {
           extensions: state_extensions,
           status: "Connected",
           statusChange: state_statusChange,
-          apiSchemaFragment: undefined
+          apiSchemaFragment: state_apiSchemaFragment
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps_save(id, entry, "Any", undefined);
@@ -701,6 +703,75 @@ function MakeWithConfig(Config) {
       }
     }
   };
+  let deployPlatform = version => {
+    console.log(`[Platform:deployPlatform] v` + version);
+    let scheduler = makeScheduler();
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
+    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    let queryResolvers = {};
+    let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+      [
+        "nextToken",
+        null
+      ],
+      [
+        "scannedCount",
+        0
+      ],
+      [
+        "items",
+        []
+      ]
+    ]);
+    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    let mutationResolvers = {};
+    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    adminMutationFieldNames.forEach(field => {
+      mutationResolvers[field] = async (_root, _args) => "ok";
+    });
+    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
+    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+  };
+  let deployPlugin = (version, plugin) => {
+    console.log(`[Platform:deployPlugin] v` + version);
+    let scheduler = makeScheduler();
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    plugin.make(scheduler, undefined, undefined);
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
+    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    let queryResolvers = {};
+    let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+      [
+        "nextToken",
+        null
+      ],
+      [
+        "scannedCount",
+        0
+      ],
+      [
+        "items",
+        []
+      ]
+    ]);
+    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    let mutationResolvers = {};
+    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    adminMutationFieldNames.forEach(field => {
+      mutationResolvers[field] = async (_root, _args) => "ok";
+    });
+    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
+    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+  };
   return {
     Aggregate: Aggregate,
     ReadModel: ReadModel,
@@ -721,7 +792,9 @@ function MakeWithConfig(Config) {
     Api: Api,
     mcpSupported: true,
     Plugin: Plugin,
-    makePlatform: makePlatform
+    makePlatform: makePlatform,
+    deployPlatform: deployPlatform,
+    deployPlugin: deployPlugin
   };
 }
 
@@ -1112,7 +1185,8 @@ function Make($star) {
         outputs.version,
         outputs.eventCollector,
         outputs.extensionPoints,
-        outputs.extensions
+        outputs.extensions,
+        outputs.apiSchemaFragment
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
@@ -1141,6 +1215,7 @@ function Make($star) {
           at: new Date().toISOString(),
           by: "in-memory"
         };
+        let state_apiSchemaFragment = param[5];
         let state = {
           name: state_name,
           version: state_version,
@@ -1151,7 +1226,7 @@ function Make($star) {
           extensions: state_extensions,
           status: "Connected",
           statusChange: state_statusChange,
-          apiSchemaFragment: undefined
+          apiSchemaFragment: state_apiSchemaFragment
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps_save(id, entry, "Any", undefined);
@@ -1365,6 +1440,75 @@ function Make($star) {
       }
     }
   };
+  let deployPlatform = version => {
+    console.log(`[Platform:deployPlatform] v` + version);
+    let scheduler = makeScheduler();
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
+    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    let queryResolvers = {};
+    let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+      [
+        "nextToken",
+        null
+      ],
+      [
+        "scannedCount",
+        0
+      ],
+      [
+        "items",
+        []
+      ]
+    ]);
+    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    let mutationResolvers = {};
+    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    adminMutationFieldNames.forEach(field => {
+      mutationResolvers[field] = async (_root, _args) => "ok";
+    });
+    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
+    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+  };
+  let deployPlugin = (version, plugin) => {
+    console.log(`[Platform:deployPlugin] v` + version);
+    let scheduler = makeScheduler();
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    plugin.make(scheduler, undefined, undefined);
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
+    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    let queryResolvers = {};
+    let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+      [
+        "nextToken",
+        null
+      ],
+      [
+        "scannedCount",
+        0
+      ],
+      [
+        "items",
+        []
+      ]
+    ]);
+    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    let mutationResolvers = {};
+    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    adminMutationFieldNames.forEach(field => {
+      mutationResolvers[field] = async (_root, _args) => "ok";
+    });
+    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
+    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+  };
   let Counter_make = Counter.make;
   let Counter_outputs = Counter.outputs;
   let Counter_operations = Counter.operations;
@@ -1389,7 +1533,9 @@ function Make($star) {
     Api: Api,
     mcpSupported: true,
     Plugin: Plugin,
-    makePlatform: makePlatform
+    makePlatform: makePlatform,
+    deployPlatform: deployPlatform,
+    deployPlugin: deployPlugin
   };
 }
 

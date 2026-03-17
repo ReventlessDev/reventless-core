@@ -243,6 +243,7 @@ function Make(Spec) {
         let pluginOutputs_tasks = builderOutputs.apply(outputs => outputs.tasks);
         let pluginOutputs_resolvers = builderOutputs.apply(outputs => outputs.resolvers);
         let pluginOutputs_heartbeat = builderOutputs.apply(outputs => outputs.heartbeat);
+        let pluginOutputs_apiSchemaFragment = Pulumi.output(apiSchemaFragment);
         let pluginOutputs_dcbEventLog = builderOutputs.apply(outputs => outputs.dcbEventLog);
         let pluginOutputs_stateChangeSlices = builderOutputs.apply(outputs => outputs.stateChangeSlices);
         let pluginOutputs_stateViewSlices = builderOutputs.apply(outputs => outputs.stateViewSlices);
@@ -261,6 +262,7 @@ function Make(Spec) {
           tasks: pluginOutputs_tasks,
           resolvers: pluginOutputs_resolvers,
           heartbeat: pluginOutputs_heartbeat,
+          apiSchemaFragment: pluginOutputs_apiSchemaFragment,
           dcbEventLog: pluginOutputs_dcbEventLog,
           stateChangeSlices: pluginOutputs_stateChangeSlices,
           stateViewSlices: pluginOutputs_stateViewSlices,

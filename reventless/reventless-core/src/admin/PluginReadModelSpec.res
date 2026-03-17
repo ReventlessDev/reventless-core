@@ -30,6 +30,7 @@ type queryResult = {
   extensionNames: array<string>,
   extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
+  apiSchemaFragment: option<Reventless.Plugin.apiSchemaFragment>,
 }
 
 let name = "Plugin"

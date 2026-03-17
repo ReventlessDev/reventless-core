@@ -1,0 +1,15 @@
+{
+  "name": "deploy-aws-ordering",
+  "sources": [{ "dir": "src", "subdirs": false }],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-aws",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/online-shop-hybrid-ordering"
+  ],
+  "ppx-flags": ["sury-ppx/bin"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs"
+}

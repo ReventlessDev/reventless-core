@@ -1,0 +1,4 @@
+name: online-shop-hybrid-platform
+runtime: nodejs
+main: src/Main.res.mjs
+description: Online Shop Hybrid — platform stack (admin, scheduler, shared API)

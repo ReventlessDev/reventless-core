@@ -777,13 +777,10 @@ In unified mode (`splitApi=false`), all schema is served from a single GraphQL e
 - Plugin schema continues to register into the `GraphQL_Server` / `MCP_Server` singletons on the default ports.
 - No changes to plugin code, resolver modules, or hooks.
 
-**AWS split mode** works the same way — use `MakeWithConfig` on the AWS platform:
+**AWS split mode** is the default — `Platform.Make()` uses split API automatically:
 
 ```rescript
-module Platform = ReventlessAws.Platform.MakeWithConfig(
-  {let api = appSyncApi; let apiRole = appSyncRole},
-  {let splitApi = true},
-)
+module Platform = ReventlessAws.Platform.Make()
 ```
 
 In split mode, `makePlatform` creates a dedicated admin AppSync API. Access the admin API outputs for stack exports:

@@ -536,9 +536,17 @@ module MakeWithConfig = (
           outputs.eventCollector,
           outputs.extensionPoints,
           outputs.extensions,
+          outputs.apiSchemaFragment,
         )
-        ->Pulumi.Output.all5
-        ->Pulumi.Output.apply(((id, version, eventCollector, extensionPoints, extensions)) => {
+        ->Pulumi.Output.all6
+        ->Pulumi.Output.apply(((
+          id,
+          version,
+          eventCollector,
+          extensionPoints,
+          extensions,
+          apiSchemaFragment,
+        )) => {
           let state: ReventlessCore.PluginReadModelSpec.state = {
             name: id->String.split("@")->Array.get(0)->Option.getOr(id),
             version,
@@ -564,7 +572,7 @@ module MakeWithConfig = (
             ),
             status: Connected,
             statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
-            apiSchemaFragment: None,
+            apiSchemaFragment,
           }
           let entry =
             state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
@@ -812,6 +820,107 @@ module MakeWithConfig = (
       | None => ()
       }
     }
+  }
+
+  let deployPlatform = (~version) => {
+    Console.log(`[Platform:deployPlatform] v${version}`)
+    let scheduler = makeScheduler()
+    let _admin = Admin.construct(
+      ~version,
+      ~extensionPoints=[],
+      ~aggregates=[],
+      ~readModels=[],
+      ~scheduler,
+      ~resourceNaming=InMemory_PluginSpec.resourceNaming,
+      ~api=(),
+      ~apiRole=(),
+      ~dcbSpec=None,
+    )
+
+    // Register admin schema and start servers (admin-only, no plugins).
+    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
+      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+    )
+    GraphQL_Server.registerTypes(~sdlTypes=baseParts.types)
+
+    // Minimal admin query resolvers (no plugin QueryDb seeding needed for platform-only).
+    let queryResolvers = Dict.make()
+    let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+    queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args): JSON.t =>
+      JSON.Encode.null
+    )
+    queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args): JSON.t =>
+      Dict.fromArray([
+        ("nextToken", JSON.Encode.null),
+        ("scannedCount", JSON.Encode.int(0)),
+        ("items", []->JSON.Encode.array),
+      ])->JSON.Encode.object
+    )
+    GraphQL_Server.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+
+    let mutationResolvers = Dict.make()
+    let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
+    adminMutationFieldNames->Array.forEach(field =>
+      mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+    )
+    GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+
+    GraphQL_Server.start()
+    MCP_Server.start()
+  }
+
+  let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {
+    Console.log(`[Platform:deployPlugin] v${version}`)
+    // Each plugin creates its own scheduler (mirrors AWS behaviour).
+    let scheduler = makeScheduler()
+
+    // Admin components are needed in-memory even for single-plugin deploy.
+    let _admin = Admin.construct(
+      ~version,
+      ~extensionPoints=[],
+      ~aggregates=[],
+      ~readModels=[],
+      ~scheduler,
+      ~resourceNaming=InMemory_PluginSpec.resourceNaming,
+      ~api=(),
+      ~apiRole=(),
+      ~dcbSpec=None,
+    )
+
+    module P = unpack(plugin)
+    let _plugin = P.make(~scheduler, ~api=(), ~apiRole=())
+
+    // Register admin schema into the shared server alongside plugin schema.
+    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
+      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+    )
+    GraphQL_Server.registerTypes(~sdlTypes=baseParts.types)
+
+    let queryResolvers = Dict.make()
+    let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+    queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args): JSON.t =>
+      JSON.Encode.null
+    )
+    queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args): JSON.t =>
+      Dict.fromArray([
+        ("nextToken", JSON.Encode.null),
+        ("scannedCount", JSON.Encode.int(0)),
+        ("items", []->JSON.Encode.array),
+      ])->JSON.Encode.object
+    )
+    GraphQL_Server.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+
+    let mutationResolvers = Dict.make()
+    let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
+    adminMutationFieldNames->Array.forEach(field =>
+      mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+    )
+    GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+
+    GraphQL_Server.start()
+    MCP_Server.start()
   }
 }
 

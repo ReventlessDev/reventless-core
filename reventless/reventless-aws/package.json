@@ -25,6 +25,7 @@
     "@reventlessdev/rescript-uuid": "^1.1.0-alpha.2",
     "@reventlessdev/reventless-core": "^3.0.0-alpha.15",
     "@reventlessdev/reventless-infra": "^3.0.0-alpha.8",
+    "@reventlessdev/reventless-interop": "^1.0.0-alpha.3",
     "@reventlessdev/reventless-spec": "^3.0.0-alpha.9"
   },
   "devDependencies": {

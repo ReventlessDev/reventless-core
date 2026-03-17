@@ -1,5 +1,5 @@
 let coreStackReference =
-  Pulumi.Config.make(Some("core"))
+  Pulumi.Config.make(Some("platform"))
   ->Pulumi.Config.get("stack")
   ->Option.map(stack => stack->Pulumi.StackReference.make)
 
@@ -47,7 +47,26 @@ module DefaultEventMapperQuery = ReventlessInterop.Query.EventMapper.Make({
 let stackDependenciesTasks = DefaultTaskQuery.queryAll()
 let stackDependenciesEventMappers = DefaultEventMapperQuery.queryAll()
 
+module DefaultExtensionPointQuery = ReventlessInterop.Query.ExtensionPoint.Make({
+  type t = ReventlessInterop.ExtensionPoint.resolvedOutputs
+  let requiredFields = ["name", "commandTopic", "eventTopic"]
+  let optionalFields = []
+  let fromJson = (json: JSON.t) =>
+    try Ok(json->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema))
+    catch {
+    | exn =>
+      let msg =
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("parse error")
+      Error(msg)
+    }
+})
+
+// Typed cross-stack queries.  Each item is either Ok(resolvedOutputs) or
+// Error(Compat.error) describing which field was missing or which decode failed.
+let stackDependenciesExtensionPoints = DefaultExtensionPointQuery.queryAll()
+
 // Merge local items with successfully queried remote items.
 // Remote errors are silently dropped; inspect queryAll() directly if you need them.
 let mergeTasks = DefaultTaskQuery.mergeWith
 let mergeEventMappers = DefaultEventMapperQuery.mergeWith
+let mergeExtensionPoints = DefaultExtensionPointQuery.mergeWith

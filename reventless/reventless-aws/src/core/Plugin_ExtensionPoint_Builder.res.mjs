@@ -18,6 +18,25 @@ let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoi
   make: CommandTopicChannel_SQS$ReventlessAws.make
 });
 
+function MakeWithConfig(Config) {
+  let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
+  return PluginExtensionPoint_Builder$ReventlessCore.Make({
+    runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
+    environment: environment,
+    updateApiSchema: Config.updateApiSchema
+  })({
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    asEventHandler: prim => prim,
+    asEffectHandler: prim => prim
+  })({
+    make: CommandTopicChannel_SQS$ReventlessAws.make
+  })(EventTopicPublisher_SNS$ReventlessAws)({
+    forCommandTopic: ExtensionPointRuntimeBuilder.forCommandTopic
+  });
+}
+
 let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
 
 let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
@@ -44,6 +63,7 @@ export {
   CommandTopicChannel,
   RuntimeEnvironment,
   ExtensionPointRuntimeBuilder,
+  MakeWithConfig,
   Make,
 }
 /* ExtensionPointRuntimeBuilder Not a pure module */

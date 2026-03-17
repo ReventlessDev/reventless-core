@@ -18,7 +18,6 @@ let queryEntries = [{
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     authorization: adminAuth,
     excludeFields: [
-      "apiSchemaFragment",
       "eventCollector",
       "extensionPointNames",
       "extensionNames"

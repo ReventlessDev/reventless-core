@@ -633,11 +633,8 @@ In a production stack file, the composition root selects the AWS platform:
 ```rescript
 // index.res  — the only file that imports reventless-aws
 
-// Create the AWS platform with AppSync API credentials
-module Platform = ReventlessAws.Platform.Make({
-  let api     = awsConfig.api      // AppSync API resource
-  let apiRole = awsConfig.apiRole  // IAM role for AppSync resolvers
-})
+// Create the AWS platform (creates AppSync API internally)
+module Platform = ReventlessAws.Platform.Make()
 
 // Apply the plugin functor — identical call to the test version
 module Catalog  = CatalogPlugin.Make(Platform)
@@ -780,7 +777,7 @@ module Items    = ItemsPlugin.Make(Platform)
 
 **index.res** — AWS for production
 ```rescript
-module Platform = ReventlessAws.Platform.Make({let api = config.api; let apiRole = config.apiRole})
+module Platform = ReventlessAws.Platform.Make()
 module Items    = ItemsPlugin.Make(Platform)
 ```
 

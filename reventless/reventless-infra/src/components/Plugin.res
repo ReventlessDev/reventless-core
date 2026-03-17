@@ -17,6 +17,7 @@ type outputs = {
   /** AppSync / GraphQL resolver resources. */
   resolvers: Pulumi.Output.t<array<Adapter.resource>>,
   heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
+  apiSchemaFragment: Pulumi.Output.t<option<Reventless.Plugin.apiSchemaFragment>>,
   /** Present when the plugin uses a `DcbEventLog`. */
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
   stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,

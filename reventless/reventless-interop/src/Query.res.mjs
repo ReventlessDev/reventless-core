@@ -12,7 +12,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Compat$ReventlessInterop from "./Compat.res.mjs";
 import * as ExportMeta$ReventlessInterop from "./ExportMeta.res.mjs";
 
-let coreEntry = Stdlib_Option.map(new Pulumi.Config("core").get("stack"), name => [
+let coreEntry = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), name => [
   name,
   new Pulumi.StackReference(name)
 ]);
@@ -180,6 +180,26 @@ let Plugin = {
   Make: Make$2
 };
 
+function Make$3(P) {
+  let queryAll = () => queryAllSingle("extensionPoints", P.requiredFields, P.fromJson);
+  let mergeWith = locals => queryAllSingle("extensionPoints", P.requiredFields, P.fromJson).apply(results => {
+    let remotes = Stdlib_Array.filterMap(results, r => {
+      if (r.TAG === "Ok") {
+        return Primitive_option.some(r._0);
+      }
+    });
+    return locals.concat(remotes);
+  });
+  return {
+    queryAll: queryAll,
+    mergeWith: mergeWith
+  };
+}
+
+let ExtensionPoint = {
+  Make: Make$3
+};
+
 export {
   stackEntries,
   parseMeta,
@@ -188,5 +208,6 @@ export {
   Task,
   EventMapper,
   Plugin,
+  ExtensionPoint,
 }
 /* coreEntry Not a pure module */

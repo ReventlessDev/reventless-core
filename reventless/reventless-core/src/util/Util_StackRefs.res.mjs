@@ -6,7 +6,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 
 let stackRefs = {};
 
-let coreStackName = new Pulumi.Config("core").get("stack");
+let coreStackName = new Pulumi.Config("platform").get("stack");
 
 function stackName(pluginName) {
   return Stdlib_Option.map(coreStackName, name => {

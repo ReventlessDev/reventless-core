@@ -8,8 +8,9 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Task$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Task.res.mjs";
 import * as Query$ReventlessInterop from "@reventlessdev/reventless-interop/src/Query.res.mjs";
 import * as EventMapper$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/EventMapper.res.mjs";
+import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 
-let coreStackReference = Stdlib_Option.map(new Pulumi.Config("core").get("stack"), stack => new Pulumi.StackReference(stack));
+let coreStackReference = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
 
 let requiredFields = ["name"];
 
@@ -73,15 +74,51 @@ let stackDependenciesTasks = DefaultTaskQuery.queryAll();
 
 let stackDependenciesEventMappers = DefaultEventMapperQuery.queryAll();
 
+let requiredFields$2 = [
+  "name",
+  "commandTopic",
+  "eventTopic"
+];
+
+let optionalFields$2 = [];
+
+function fromJson$2(json) {
+  try {
+    return {
+      TAG: "Ok",
+      _0: S.parseOrThrow(json, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
+    };
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "parse error");
+    return {
+      TAG: "Error",
+      _0: msg
+    };
+  }
+}
+
+let DefaultExtensionPointQuery = Query$ReventlessInterop.ExtensionPoint.Make({
+  requiredFields: requiredFields$2,
+  optionalFields: optionalFields$2,
+  fromJson: fromJson$2
+});
+
+let stackDependenciesExtensionPoints = DefaultExtensionPointQuery.queryAll();
+
 let mergeTasks = DefaultTaskQuery.mergeWith;
 
 let mergeEventMappers = DefaultEventMapperQuery.mergeWith;
+
+let mergeExtensionPoints = DefaultExtensionPointQuery.mergeWith;
 
 export {
   coreStackReference,
   stackDependenciesTasks,
   stackDependenciesEventMappers,
+  stackDependenciesExtensionPoints,
   mergeTasks,
   mergeEventMappers,
+  mergeExtensionPoints,
 }
 /* coreStackReference Not a pure module */

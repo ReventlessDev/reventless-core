@@ -1,5 +1,7 @@
 # Per-Plugin Deployment Strategy
 
+> **Note**: This analysis proposed `deploy/aws/` subdirectories within plugin packages. The implementation plan evolved to use **separate `-aws` packages** instead (e.g., `catalog-aws/` alongside `catalog/`). See `docs/plans/per-plugin-deployment-plan.md` for the final architecture and `docs/guides/deployment-guide.md` for the setup guide.
+
 ## Context
 
 Reventless applications are composed of **plugins** deployed on a **platform** (AWS, in-memory, or future providers). Currently, all plugins are deployed together as a single Pulumi program. This analysis proposes an architecture where each plugin is deployed independently — triggered by GitHub Actions when files within that plugin change.
@@ -12,7 +14,7 @@ The **primary audience** is customers building their own applications in separat
 
 - `Main.res` imports all plugins and calls `Platform.makePlatform(~plugins=[...])`, deploying everything as a single Pulumi stack
 - All examples currently use `ReventlessInMemory.Platform`, not AWS — no production Pulumi programs exist in the repo yet
-- The AWS Platform (`reventless-aws/src/Platform.res`) uses `MakeWithConfig` with `splitApi` mode (creates separate admin and plugin AppSync APIs)
+- The AWS Platform (`reventless-aws/src/Platform.res`) defaults to `splitApi` mode via `Platform.Make` (creates separate admin and plugin AppSync APIs)
 - Admin components (Plugin aggregate, read model, extension point, cloner) are created internally by `makePlatform`
 
 ### Infrastructure Per Plugin
@@ -142,11 +144,7 @@ Plugins are already **platform-agnostic** — `CatalogPlugin.Make(Platform)` acc
 #### AWS entry point (`catalog/deploy/aws/Main.res`)
 
 ```rescript
-module Platform = ReventlessAws.Platform.Make({
-  let api = ...
-  let apiRole = ...
-})
-
+module Platform = ReventlessAws.Platform.Make()
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 
 Platform.deployPlugin(
@@ -410,11 +408,7 @@ Only branches with a matching `Pulumi.<branch>.yaml` file trigger deployment. No
 The `Main.res` for a plugin is a few lines:
 
 ```rescript
-module Platform = ReventlessAws.Platform.Make({
-  let api = ...
-  let apiRole = ...
-})
-
+module Platform = ReventlessAws.Platform.Make()
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 
 Platform.deployPlugin(

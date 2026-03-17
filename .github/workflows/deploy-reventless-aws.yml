@@ -1,0 +1,425 @@
+# Reusable workflow for deploying Reventless applications with per-plugin Pulumi stacks.
+#
+# Secrets resolution (per-plugin override with platform-wide fallback):
+#   - PULUMI_ACCESS_TOKEN passed here is the platform-wide default.
+#   - To use a different token for a specific plugin, create a GitHub environment
+#     named "deploy-<plugin>" (e.g. "deploy-catalog") and add a PULUMI_ACCESS_TOKEN
+#     secret to that environment. It will override the workflow-level default.
+#   - Same override mechanism works for the platform job via the "deploy-platform" environment.
+#   - AWS credentials follow the same pattern.
+#
+# Caller example:
+#   jobs:
+#     deploy:
+#       uses: ReventlessDev/reventless-core/.github/workflows/deploy-reventless-aws.yml@main
+#       with:
+#         manifest: deploy-manifest.yaml
+#       secrets:
+#         PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+#         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+name: Deploy Reventless (AWS)
+
+on:
+  workflow_call:
+    inputs:
+      manifest:
+        description: "Path to deploy-manifest.yaml"
+        required: true
+        type: string
+      node-version:
+        description: "Node.js version"
+        required: false
+        type: string
+        default: "22"
+    secrets:
+      PULUMI_ACCESS_TOKEN:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      NPM_TOKEN:
+        required: true
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Detect which plugins changed and parse the manifest
+  # ---------------------------------------------------------------------------
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      platform-changed: ${{ steps.changes.outputs.platform-changed }}
+      changed-plugins: ${{ steps.changes.outputs.changed-plugins }}
+      all-plugins: ${{ steps.changes.outputs.all-plugins }}
+      branch: ${{ steps.branch.outputs.name }}
+      skip-deploy: ${{ steps.skip.outputs.skip }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine branch name
+        id: branch
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, use the target branch for stack name (preview against target env)
+            BRANCH="${{ github.base_ref }}"
+          else
+            # For push events, extract branch from ref
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "Branch: ${BRANCH}"
+
+      - name: Check for skip deploy
+        id: skip
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -qi '\[skip deploy\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping deployment: [skip deploy] found in commit message"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Parse manifest and detect changes
+        id: changes
+        run: |
+          set -euo pipefail
+
+          MANIFEST="${{ inputs.manifest }}"
+
+          if [[ ! -f "$MANIFEST" ]]; then
+            echo "::error::Manifest not found: $MANIFEST"
+            exit 1
+          fi
+
+          # Manifest paths are relative to the manifest file. Derive the parent
+          # directory so we can build repo-root-relative paths for git diff matching
+          # and Pulumi --cwd.
+          MANIFEST_DIR=$(dirname "$MANIFEST")
+          if [[ "$MANIFEST_DIR" == "." ]]; then
+            MANIFEST_DIR=""
+          else
+            MANIFEST_DIR="${MANIFEST_DIR}/"
+          fi
+          echo "Manifest dir: ${MANIFEST_DIR:-(repo root)}"
+
+          # Determine the base commit for diffing
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            # For push events, diff against the previous commit
+            BASE_SHA="${{ github.event.before }}"
+            # Handle first push (no previous commit)
+            if [[ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+              BASE_SHA=$(git rev-list --max-parents=0 HEAD)
+            fi
+          fi
+
+          echo "Base SHA: $BASE_SHA"
+          echo "Head SHA: ${{ github.sha }}"
+
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "${{ github.sha }}" || true)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Install yq for YAML parsing
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+          # Parse platform path from manifest and resolve to repo-root-relative
+          PLATFORM_REL=$(yq '.platform.path' "$MANIFEST")
+          PLATFORM_PATH="${MANIFEST_DIR}${PLATFORM_REL}"
+          echo "Platform path: $PLATFORM_PATH"
+
+          # Check if platform changed (any file under platform path)
+          PLATFORM_CHANGED="false"
+          if echo "$CHANGED_FILES" | grep -q "^${PLATFORM_PATH}"; then
+            PLATFORM_CHANGED="true"
+          fi
+          # Also trigger platform deploy if framework packages changed
+          if echo "$CHANGED_FILES" | grep -qE "^reventless/|^rescript/"; then
+            PLATFORM_CHANGED="true"
+          fi
+          echo "Platform changed: $PLATFORM_CHANGED"
+
+          # Parse plugins from manifest
+          PLUGIN_COUNT=$(yq '.plugins | length' "$MANIFEST")
+          ALL_PLUGINS="[]"
+          CHANGED_PLUGINS="[]"
+
+          for ((i = 0; i < PLUGIN_COUNT; i++)); do
+            PLUGIN_NAME=$(yq ".plugins[$i].name" "$MANIFEST")
+            PLUGIN_REL=$(yq ".plugins[$i].path" "$MANIFEST")
+            PLUGIN_PATH="${MANIFEST_DIR}${PLUGIN_REL}"
+            PLUGIN_DEPS=$(yq -o=json ".plugins[$i].depends-on // []" "$MANIFEST")
+
+            # Build all-plugins entry (store resolved path for --cwd)
+            ALL_PLUGINS=$(echo "$ALL_PLUGINS" | jq \
+              --arg name "$PLUGIN_NAME" \
+              --arg path "$PLUGIN_PATH" \
+              --argjson deps "$PLUGIN_DEPS" \
+              '. + [{"name": $name, "path": $path, "depends-on": $deps}]')
+
+            # Check if this plugin changed
+            PLUGIN_CHANGED="false"
+            if echo "$CHANGED_FILES" | grep -q "^${PLUGIN_PATH}"; then
+              PLUGIN_CHANGED="true"
+            fi
+            # Also trigger plugin deploy if framework packages changed
+            if echo "$CHANGED_FILES" | grep -qE "^reventless/|^rescript/"; then
+              PLUGIN_CHANGED="true"
+            fi
+
+            if [[ "$PLUGIN_CHANGED" == "true" ]]; then
+              CHANGED_PLUGINS=$(echo "$CHANGED_PLUGINS" | jq \
+                --arg name "$PLUGIN_NAME" \
+                '. + [$name]')
+            fi
+          done
+
+          echo "All plugins: $ALL_PLUGINS"
+          echo "Changed plugins: $CHANGED_PLUGINS"
+
+          echo "platform-changed=${PLATFORM_CHANGED}" >> "$GITHUB_OUTPUT"
+          echo "changed-plugins=$(echo "$CHANGED_PLUGINS" | jq -c .)" >> "$GITHUB_OUTPUT"
+          echo "all-plugins=$(echo "$ALL_PLUGINS" | jq -c .)" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Deploy the platform stack (shared resources)
+  # ---------------------------------------------------------------------------
+  deploy-platform:
+    name: Deploy Platform
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.skip-deploy != 'true' &&
+      needs.detect-changes.outputs.platform-changed == 'true'
+    environment: deploy-platform
+    env:
+      # Environment "deploy-platform" secrets override these defaults if set.
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "npm"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v6
+        with:
+          command: version
+
+      - name: Resolve platform path
+        id: platform
+        run: |
+          MANIFEST="${{ inputs.manifest }}"
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 2>/dev/null || true
+          sudo chmod +x /usr/local/bin/yq 2>/dev/null || true
+          MANIFEST_DIR=$(dirname "$MANIFEST")
+          [[ "$MANIFEST_DIR" == "." ]] && MANIFEST_DIR="" || MANIFEST_DIR="${MANIFEST_DIR}/"
+          PLATFORM_REL=$(yq '.platform.path' "$MANIFEST")
+          echo "path=${MANIFEST_DIR}${PLATFORM_REL}" >> "$GITHUB_OUTPUT"
+
+      - name: Check stack config exists
+        id: check-config
+        run: |
+          BRANCH="${{ needs.detect-changes.outputs.branch }}"
+          DEPLOY_DIR="${{ steps.platform.outputs.path }}"
+          CONFIG_FILE="${DEPLOY_DIR}/Pulumi.${BRANCH}.yaml"
+          if [[ -f "$CONFIG_FILE" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Stack config found: $CONFIG_FILE"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No stack config at $CONFIG_FILE — skipping platform deployment"
+          fi
+
+      - name: Pulumi preview (PR)
+        if: |
+          github.event_name == 'pull_request' &&
+          steps.check-config.outputs.exists == 'true'
+        run: |
+          BRANCH="${{ needs.detect-changes.outputs.branch }}"
+          DEPLOY_DIR="${{ steps.platform.outputs.path }}"
+          pulumi preview --stack "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
+
+      - name: Pulumi up (push)
+        if: |
+          github.event_name == 'push' &&
+          steps.check-config.outputs.exists == 'true'
+        run: |
+          BRANCH="${{ needs.detect-changes.outputs.branch }}"
+          DEPLOY_DIR="${{ steps.platform.outputs.path }}"
+          pulumi up --stack "$BRANCH" --yes --cwd "$DEPLOY_DIR" --non-interactive
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Deploy changed plugins (matrix, respecting depends-on ordering)
+  # ---------------------------------------------------------------------------
+  deploy-plugins:
+    name: Deploy Plugin (${{ matrix.plugin }})
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-platform]
+    # Run even if deploy-platform was skipped (platform didn't change)
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      (needs.deploy-platform.result == 'success' || needs.deploy-platform.result == 'skipped') &&
+      needs.detect-changes.outputs.skip-deploy != 'true' &&
+      needs.detect-changes.outputs.changed-plugins != '[]'
+    environment: deploy-${{ matrix.plugin }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        plugin: ${{ fromJson(needs.detect-changes.outputs.changed-plugins) }}
+    env:
+      # Environment "deploy-<plugin>" secrets override these defaults if set.
+      # E.g. "deploy-catalog" can have its own PULUMI_ACCESS_TOKEN.
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "npm"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v6
+        with:
+          command: version
+
+      - name: Resolve plugin path
+        id: plugin
+        run: |
+          MANIFEST="${{ inputs.manifest }}"
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 2>/dev/null || true
+          sudo chmod +x /usr/local/bin/yq 2>/dev/null || true
+          MANIFEST_DIR=$(dirname "$MANIFEST")
+          [[ "$MANIFEST_DIR" == "." ]] && MANIFEST_DIR="" || MANIFEST_DIR="${MANIFEST_DIR}/"
+          PLUGIN_REL=$(yq '.plugins[] | select(.name == "${{ matrix.plugin }}") | .path' "$MANIFEST")
+          PLUGIN_DEPS=$(yq -o=json '.plugins[] | select(.name == "${{ matrix.plugin }}") | .depends-on // []' "$MANIFEST")
+          echo "path=${MANIFEST_DIR}${PLUGIN_REL}" >> "$GITHUB_OUTPUT"
+          echo "deps=${PLUGIN_DEPS}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for dependencies
+        if: steps.plugin.outputs.deps != '[]'
+        run: |
+          echo "Plugin ${{ matrix.plugin }} depends on: ${{ steps.plugin.outputs.deps }}"
+          echo "Dependencies are satisfied by deploy-platform completing first."
+          echo "Cross-plugin ordering within a single matrix run is handled by"
+          echo "Pulumi stack references at deploy time (eventual consistency)."
+          #
+          # Note: For strict ordering where plugin B must deploy AFTER plugin A,
+          # callers should split into separate workflow_call invocations or use
+          # the depends-on field to inform a future orchestration enhancement.
+
+      - name: Check stack config exists
+        id: check-config
+        run: |
+          BRANCH="${{ needs.detect-changes.outputs.branch }}"
+          DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
+          CONFIG_FILE="${DEPLOY_DIR}/Pulumi.${BRANCH}.yaml"
+          if [[ -f "$CONFIG_FILE" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Stack config found: $CONFIG_FILE"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No stack config at $CONFIG_FILE — skipping ${{ matrix.plugin }} deployment"
+          fi
+
+      - name: Pulumi preview (PR)
+        id: preview
+        if: |
+          github.event_name == 'pull_request' &&
+          steps.check-config.outputs.exists == 'true'
+        run: |
+          BRANCH="${{ needs.detect-changes.outputs.branch }}"
+          DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
+          OUTPUT=$(pulumi preview --stack "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive 2>&1) || true
+          echo "$OUTPUT"
+          # Save output for PR comment
+          {
+            echo "preview<<PREVIEW_EOF"
+            echo "$OUTPUT"
+            echo "PREVIEW_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post PR comment with preview
+        if: |
+          github.event_name == 'pull_request' &&
+          steps.check-config.outputs.exists == 'true' &&
+          steps.preview.outputs.preview != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const plugin = '${{ matrix.plugin }}';
+            const preview = `${{ steps.preview.outputs.preview }}`;
+            const body = [
+              `### Pulumi Preview: \`${plugin}\``,
+              '',
+              '<details>',
+              '<summary>Preview output</summary>',
+              '',
+              '```',
+              preview,
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Pulumi up (push)
+        if: |
+          github.event_name == 'push' &&
+          steps.check-config.outputs.exists == 'true'
+        run: |
+          BRANCH="${{ needs.detect-changes.outputs.branch }}"
+          DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
+          pulumi up --stack "$BRANCH" --yes --cwd "$DEPLOY_DIR" --non-interactive

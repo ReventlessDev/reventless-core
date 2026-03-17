@@ -1,0 +1,4 @@
+name: online-shop-hybrid-catalog
+runtime: nodejs
+main: src/Main.res.mjs
+description: Online Shop Hybrid — Catalog plugin stack
