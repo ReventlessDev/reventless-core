@@ -253,9 +253,7 @@ jobs:
         run: npm run build
 
       - name: Install Pulumi CLI
-        uses: pulumi/actions@v6
-        with:
-          command: version
+        uses: pulumi/setup-pulumi@v2
 
       - name: Resolve platform path
         id: platform
@@ -355,9 +353,7 @@ jobs:
         run: npm run build
 
       - name: Install Pulumi CLI
-        uses: pulumi/actions@v6
-        with:
-          command: version
+        uses: pulumi/setup-pulumi@v2
 
       - name: Resolve plugin path
         id: plugin
