@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.4.0-alpha.1](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-pulumi-aws@2.4.0-alpha.0...@reventlessdev/rescript-pulumi-aws@2.4.0-alpha.1) (2026-03-17)
+
+**Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
+
+
+
+
+
 # [2.4.0-alpha.0](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-pulumi-aws@2.3.1-alpha.7...@reventlessdev/rescript-pulumi-aws@2.4.0-alpha.0) (2026-03-12)
 
 ### Features

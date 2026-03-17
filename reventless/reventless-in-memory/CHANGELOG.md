@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.10...@reventlessdev/reventless-in-memory@1.0.0-alpha.11) (2026-03-17)
+
+### Bug Fixes
+
+* **reventless-in-memory:** implement admin Activate/Deactivate mutations ([b36948f](https://github.com/ReventlessDev/reventless-core/commit/b36948fc18d272f79271f42f234de7e1460c916b))
+### Features
+
+* **reventless-aws:** implement per-plugin deployment with runtime schema stitching ([f16714c](https://github.com/ReventlessDev/reventless-core/commit/f16714c5d2b3ad869863ac30dc55ef3e1570bf4f))
+
+
 # [1.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.9...@reventlessdev/reventless-in-memory@1.0.0-alpha.10) (2026-03-16)
 
 * feat!: unify DCB and Aggregate command generation paths ([8c9bbad](https://github.com/ReventlessDev/reventless-core/commit/8c9bbad14082e7b696da35f5abb337520b1c8683))

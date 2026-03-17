@@ -1,6 +1,6 @@
 {
     "name": "@reventlessdev/reventless-core",
-    "version": "3.0.0-alpha.15",
+    "version": "3.0.0-alpha.16",
     "description": "Core package for Reventless framework",
     "license": "MIT",
     "jest": {
@@ -37,11 +37,11 @@
         "@reventlessdev/rescript-fast-csv": "^1.2.0-alpha.0",
         "@reventlessdev/rescript-hash-object": "^1.2.0-alpha.0",
         "@reventlessdev/rescript-node-streams": "^1.1.0-alpha.0",
-        "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.0",
+        "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.1",
         "@reventlessdev/rescript-ssh2": "^1.1.0-alpha.0",
         "@reventlessdev/rescript-uuid": "^1.1.0-alpha.2",
-        "@reventlessdev/reventless-infra": "^3.0.0-alpha.8",
-        "@reventlessdev/reventless-interop": "^1.0.0-alpha.3",
+        "@reventlessdev/reventless-infra": "^3.0.0-alpha.9",
+        "@reventlessdev/reventless-interop": "^1.0.0-alpha.4",
         "@reventlessdev/reventless-spec": "^3.0.0-alpha.9"
     },
     "devDependencies": {
