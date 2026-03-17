@@ -15,7 +15,7 @@ const opt = {
     pathToLayerData,
     pathToSavedDependencies,
     excludeScopes: ['pulumi', 'types', 'opentelemetry', 'aws-sdk', 'smithy', 'sigstore'],
-    excludeModules: ['aws-sdk', 'sury-ppx'],
+    excludeModules: ['aws-sdk', 'sury-ppx', 'fast-check'],
     registryOpts: {
         "@reventlessdev:registry": "https://npm.pkg.github.com",
         "//npm.pkg.github.com/:_authToken": process.env.NPM_GITHUB_TOKEN || process.env.NODE_AUTH_TOKEN
