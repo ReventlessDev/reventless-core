@@ -12,5 +12,4 @@ plugins:
 
   - name: ordering
     path: ordering-aws
-    depends-on:
-      - catalog
+    depends-on: []

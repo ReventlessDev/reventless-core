@@ -1,5 +1,5 @@
 {
-  "name": "deploy-aws-platform",
+  "name": "@reventlessdev/online-shop-hybrid-platform-aws",
   "sources": [{ "dir": "src", "subdirs": false }],
   "dependencies": [
     "sury",

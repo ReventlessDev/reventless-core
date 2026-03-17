@@ -1,4 +1,4 @@
-name: online-shop-hybrid-ordering
+name: online-shop-hybrid-ordering-aws
 runtime: nodejs
 main: src/Main.res.mjs
 description: Online Shop Hybrid — Ordering plugin stack
