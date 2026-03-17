@@ -119,32 +119,21 @@ jobs:
           fi
           echo "Manifest dir: ${MANIFEST_DIR:-(repo root)}"
 
-          # Determine the base commit for diffing
+          # Determine the base commit for diffing.
+          # For PRs: diff against the PR base.
+          # For everything else (push, workflow_run, workflow_dispatch):
+          # diff against the last successful deploy SHA stored in .github/last-deploy-sha.txt.
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          else
-            # For push events, diff against the previous commit
-            BASE_SHA="${{ github.event.before }}"
-            # Handle first push (no previous commit)
-            if [[ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+          elif [[ -f .github/last-deploy-sha.txt ]]; then
+            BASE_SHA=$(cat .github/last-deploy-sha.txt | tr -d '[:space:]')
+            # Verify the commit exists in history (it may have been force-pushed away)
+            if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
+              echo "::warning::Last deploy SHA $BASE_SHA not found in history — deploying everything"
               BASE_SHA=$(git rev-list --max-parents=0 HEAD)
             fi
-          fi
-
-          # Fallback: workflow_run events don't carry push context, so
-          # github.event.before is empty. Use the head_sha of the
-          # triggering run's parent commit as the base.
-          if [[ -z "$BASE_SHA" ]]; then
-            # workflow_run provides the head commit of the run that triggered us
-            TRIGGER_SHA="${{ github.event.workflow_run.head_sha }}"
-            if [[ -n "$TRIGGER_SHA" ]]; then
-              BASE_SHA=$(git rev-parse "${TRIGGER_SHA}~1" 2>/dev/null || true)
-            fi
-          fi
-
-          # Last resort: if we still have no base, deploy everything
-          if [[ -z "$BASE_SHA" ]]; then
-            echo "::warning::Could not determine base SHA — treating all components as changed"
+          else
+            echo "::warning::No last-deploy-sha.txt found — deploying everything"
             BASE_SHA=$(git rev-list --max-parents=0 HEAD)
           fi
 
@@ -464,3 +453,30 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
           pulumi up --stack "$BRANCH" --yes --cwd "$DEPLOY_DIR" --non-interactive
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Record successful deploy SHA for next run's change detection
+  # ---------------------------------------------------------------------------
+  record-deploy-sha:
+    name: Record Deploy SHA
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-platform, deploy-plugins]
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      needs.detect-changes.result == 'success' &&
+      (needs.deploy-platform.result == 'success' || needs.deploy-platform.result == 'skipped') &&
+      (needs.deploy-plugins.result == 'success' || needs.deploy-plugins.result == 'skipped')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update last deploy SHA
+        run: |
+          echo "${{ github.sha }}" > .github/last-deploy-sha.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/last-deploy-sha.txt
+          git diff --cached --quiet && echo "SHA unchanged" && exit 0
+          git commit -m "chore(ci): record successful deploy at ${{ github.sha }} [skip ci]"
+          git push
