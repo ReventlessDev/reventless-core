@@ -131,6 +131,23 @@ jobs:
             fi
           fi
 
+          # Fallback: workflow_run events don't carry push context, so
+          # github.event.before is empty. Use the head_sha of the
+          # triggering run's parent commit as the base.
+          if [[ -z "$BASE_SHA" ]]; then
+            # workflow_run provides the head commit of the run that triggered us
+            TRIGGER_SHA="${{ github.event.workflow_run.head_sha }}"
+            if [[ -n "$TRIGGER_SHA" ]]; then
+              BASE_SHA=$(git rev-parse "${TRIGGER_SHA}~1" 2>/dev/null || true)
+            fi
+          fi
+
+          # Last resort: if we still have no base, deploy everything
+          if [[ -z "$BASE_SHA" ]]; then
+            echo "::warning::Could not determine base SHA — treating all components as changed"
+            BASE_SHA=$(git rev-list --max-parents=0 HEAD)
+          fi
+
           echo "Base SHA: $BASE_SHA"
           echo "Head SHA: ${{ github.sha }}"
 
