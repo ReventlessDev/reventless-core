@@ -21,7 +21,7 @@ jobs:
       pull-requests: write
       issues: write
       checks: read
-      actions: read
+      actions: write
     steps:
       - name: Wait for CI and Security Scan
         uses: lewagon/wait-on-check-action@v1.5.0
@@ -266,6 +266,21 @@ jobs:
               --title "$package_name v$version" \
               --notes "$RELEASE_NOTES" \
               $PRERELEASE_FLAG || echo "Release already exists or failed for $tag"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Lambda Layer build if reventless-aws was released
+        run: |
+          NEW_TAGS=$(git tag --points-at HEAD)
+          for tag in $NEW_TAGS; do
+            if [[ "$tag" == @reventlessdev/reventless-aws@* ]]; then
+              VERSION="${tag##*@}"
+              echo "Triggering Lambda Layer build for version $VERSION"
+              gh workflow run build-lambda-layer.yml \
+                -f version="$VERSION"
+              break
+            fi
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
