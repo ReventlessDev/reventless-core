@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "^1.0.0-alpha.0",
-    "@reventlessdev/online-shop-hybrid-catalog-spec": "^0.1.0-alpha.1",
+    "@reventlessdev/online-shop-hybrid-catalog-spec": "^1.0.0-alpha.0",
     "@reventlessdev/online-shop-hybrid-ordering": "^1.0.0-alpha.0",
-    "@reventlessdev/online-shop-hybrid-ordering-spec": "^0.1.0-alpha.1",
+    "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.0",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*"
   }
