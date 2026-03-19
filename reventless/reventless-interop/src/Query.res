@@ -6,7 +6,7 @@ let stackEntries: array<(string, Pulumi.StackReference.t)> = {
   let coreEntry =
     Pulumi.Config.make(Some("platform"))
     ->Pulumi.Config.get("stack")
-    ->Option.map(name => (name, Pulumi.StackReference.make(name)))
+    ->Option.map(name => (name, Pulumi.StackReference.makeWithName(name ++ "-query", {"name": name})))
 
   Pulumi.Config.make(Some("interstack"))
   ->Pulumi.Config.getObject("dependencies")

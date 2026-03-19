@@ -39,6 +39,8 @@ let CallbackFunction = {
   Args: Args
 };
 
+let $$Function = {};
+
 let Permission = {};
 
 let defaultLoggingPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
@@ -54,6 +56,7 @@ let defaultLoggingPolicyDocument = PolicyDocument$PulumiAws.make(undefined, unde
 
 export {
   CallbackFunction,
+  $$Function,
   Permission,
   defaultLoggingPolicyDocument,
 }

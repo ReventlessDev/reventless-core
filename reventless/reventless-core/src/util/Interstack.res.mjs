@@ -10,7 +10,9 @@ import * as Query$ReventlessInterop from "@reventlessdev/reventless-interop/src/
 import * as EventMapper$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/EventMapper.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 
-let coreStackReference = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
+let coreStackReference = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack + "-interstack", {
+  name: stack
+}));
 
 let requiredFields = ["name"];
 

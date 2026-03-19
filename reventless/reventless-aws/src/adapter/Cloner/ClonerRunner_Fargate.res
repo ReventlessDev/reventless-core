@@ -89,6 +89,36 @@ let make: ReventlessCore.Cloner.Adapter.runnerMaker<api> = (
     )
   }
 
+  let entryPointCode = `import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
+const client = new ECSClient();
+export const handler = async (event) => {
+  const environment = Object.fromEntries([
+    ["REVENTLESS_CORE_STACK", process.env.STACK_ORG + "/" + process.env.STACK_PROJECT + "/" + process.env.STACK_STACK],
+    ["RESTORE_DATE_TIME", event.restoreDateTime],
+  ]);
+  console.log("clone: requested by user " + event.meta.user + " from ip " + event.meta.ip);
+  await client.send(new RunTaskCommand({
+    taskDefinition: process.env.TASK_DEFINITION_ARN,
+    cluster: process.env.CLUSTER_ARN,
+    launchType: "FARGATE",
+    networkConfiguration: { awsvpcConfiguration: { subnets: JSON.parse(process.env.SUBNETS) } },
+    overrides: {
+      containerOverrides: [{
+        name: "reventless-ci",
+        command: ["reventless-ci", "clone-environment"],
+        environment: environment,
+      }],
+    },
+  }));
+};`
+  let code = Util_Bundle.bundleEntryPoint(entryPointCode)
+
+  let layers =
+    Lambda.reventlessLayerArn
+    ->Option.map(arn => [arn->Pulumi.Input.make])
+    ->Option.getOr([])
+    ->Pulumi.Input.make
+
   let vpcStackName = Pulumi.Config.make(Some("vpc"))->Pulumi.Config.get("stack")->Option.getOrThrow
   let vpcConfig = Util_Vpc.getVpcConfig(~stackName=vpcStackName, ~outputName="vpc")
 
@@ -161,17 +191,43 @@ let make: ReventlessCore.Cloner.Adapter.runnerMaker<api> = (
         ~opts?,
       )
 
-      let lambda = Lambda.CallbackFunction.make(
+      let lambda = Lambda.Function.make(
         ~name,
-        ~args=Lambda.CallbackFunction.Args.make(
-          ~callback=ClonerRunner_Fargate_Runtime.clone(
-            ~taskDefinition=taskDefinition.arn,
-            ~cluster=cluster.arn,
-            ~fullQualifiedStackName,
-            ~subnets={subnets: vpcConfig.subnetIds},
-            ...
-          ),
-        ),
+        ~args={
+          handler: "index.handler"->Pulumi.Input.make,
+          runtime: "nodejs22.x"->Pulumi.Input.make,
+          code: code->Pulumi.Input.make,
+          role: lambdaRole.arn->Pulumi.Output.asInput,
+          memorySize: 1024->Pulumi.Input.make,
+          timeout: 180->Pulumi.Input.make,
+          layers,
+          tags: AWS.Tags.make(~name, ReventlessCore.Cloner.componentType),
+          environment: (
+            {
+              Lambda.Function.variables: Dict.fromArray([
+                ("TASK_DEFINITION_ARN", taskDefinition.arn->Pulumi.Output.asInput),
+                ("CLUSTER_ARN", cluster.arn->Pulumi.Output.asInput),
+                (
+                  "STACK_ORG",
+                  fullQualifiedStackName.organization->Pulumi.Input.make,
+                ),
+                (
+                  "STACK_PROJECT",
+                  fullQualifiedStackName.project->Pulumi.Input.make,
+                ),
+                ("STACK_STACK", fullQualifiedStackName.stack->Pulumi.Input.make),
+                (
+                  "SUBNETS",
+                  vpcConfig.subnetIds
+                  ->JSON.stringifyAny
+                  ->Option.getOr("[]")
+                  ->Pulumi.Input.make,
+                ),
+                ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
+              ]),
+            }: Lambda.Function.functionEnvironment
+          )->Pulumi.Input.make,
+        },
         ~opts?,
       )
       let _ = lambda.arn->Pulumi.Output.apply(arn => {

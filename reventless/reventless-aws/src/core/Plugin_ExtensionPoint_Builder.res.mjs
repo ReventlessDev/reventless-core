@@ -6,17 +6,7 @@ import * as EventTopicPublisher_SNS$ReventlessAws from "../adapter/EventTopic/Ev
 import * as PluginRuntimeOperations$ReventlessAws from "../util/PluginRuntimeOperations.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as PluginExtensionPoint_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Builder.res.mjs";
-import * as ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res.mjs";
-
-let ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessCore.Make({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: CommandTopicChannel_SQS$ReventlessAws.make
-});
+import * as PluginExtensionPointRuntime_Builder_Bundled$ReventlessAws from "../adapter/Runtime/PluginExtensionPointRuntime_Builder_Bundled.res.mjs";
 
 function MakeWithConfig(Config) {
   let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
@@ -33,7 +23,7 @@ function MakeWithConfig(Config) {
   })({
     make: CommandTopicChannel_SQS$ReventlessAws.make
   })(EventTopicPublisher_SNS$ReventlessAws)({
-    forCommandTopic: ExtensionPointRuntimeBuilder.forCommandTopic
+    forCommandTopic: PluginExtensionPointRuntime_Builder_Bundled$ReventlessAws.forCommandTopic
   });
 }
 
@@ -52,12 +42,14 @@ let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
 })({
   make: CommandTopicChannel_SQS$ReventlessAws.make
 })(EventTopicPublisher_SNS$ReventlessAws)({
-  forCommandTopic: ExtensionPointRuntimeBuilder.forCommandTopic
+  forCommandTopic: PluginExtensionPointRuntime_Builder_Bundled$ReventlessAws.forCommandTopic
 });
 
 let CommandTopicChannel;
 
 let RuntimeEnvironment;
+
+let ExtensionPointRuntimeBuilder;
 
 export {
   CommandTopicChannel,
@@ -66,4 +58,4 @@ export {
   MakeWithConfig,
   Make,
 }
-/* ExtensionPointRuntimeBuilder Not a pure module */
+/* Make Not a pure module */

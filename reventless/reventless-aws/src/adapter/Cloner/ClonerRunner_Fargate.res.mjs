@@ -8,14 +8,16 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as Cloner$ReventlessCore from "@reventlessdev/reventless-core/src/components/Cloner.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Util_Vpc$ReventlessAws from "../../util/Util_Vpc.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as GetSecretVersion$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
-import * as ClonerRunner_Fargate_Runtime$ReventlessAws from "./ClonerRunner_Fargate_Runtime.res.mjs";
 
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {
   let cluster = new (Aws.ecs.Cluster)(name, undefined, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
@@ -56,6 +58,29 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
     policyArn: secretsManagerAccessPolicy.arn,
     role: taskExecutionRole.id
   }, opts);
+  let code = Util_Bundle$ReventlessAws.bundleEntryPoint(`import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
+const client = new ECSClient();
+export const handler = async (event) => {
+  const environment = Object.fromEntries([
+    ["REVENTLESS_CORE_STACK", process.env.STACK_ORG + "/" + process.env.STACK_PROJECT + "/" + process.env.STACK_STACK],
+    ["RESTORE_DATE_TIME", event.restoreDateTime],
+  ]);
+  console.log("clone: requested by user " + event.meta.user + " from ip " + event.meta.ip);
+  await client.send(new RunTaskCommand({
+    taskDefinition: process.env.TASK_DEFINITION_ARN,
+    cluster: process.env.CLUSTER_ARN,
+    launchType: "FARGATE",
+    networkConfiguration: { awsvpcConfiguration: { subnets: JSON.parse(process.env.SUBNETS) } },
+    overrides: {
+      containerOverrides: [{
+        name: "reventless-ci",
+        command: ["reventless-ci", "clone-environment"],
+        environment: environment,
+      }],
+    },
+  }));
+};`);
+  let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
   let vpcStackName = Stdlib_Option.getOrThrow(new Pulumi.Config("vpc").get("stack"), undefined);
   let vpcConfig = Util_Vpc$ReventlessAws.getVpcConfig(vpcStackName, "vpc");
   let secrets = Pulumi.all(secretUrns.map(urn => GetSecretVersion$PulumiAws.getSecretNames(urn).apply(names => names.map(name => ({
@@ -68,7 +93,6 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
     vpcConfig,
     secrets
   ]).apply(param => {
-    let vpcConfig = param[2];
     let containerDefinitions = [{
         name: "reventless-ci",
         cpu: 1024,
@@ -103,9 +127,48 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       executionRoleArn: taskExecutionRole.arn
     }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
     let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts);
-    let lambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((extra, extra$1) => ClonerRunner_Fargate_Runtime$ReventlessAws.clone(taskDefinition.arn, cluster.arn, fullQualifiedStackName, {
-      subnets: vpcConfig.subnetIds
-    }, extra, extra$1), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
+    let lambda = new (Aws.lambda.Function)(name, {
+      handler: "index.handler",
+      runtime: "nodejs22.x",
+      code: code,
+      role: lambdaRole.arn,
+      memorySize: 1024,
+      timeout: 180,
+      layers: layers,
+      tags: AWS_Tags$ReventlessAws.make(name, Cloner$ReventlessCore.componentType),
+      environment: {
+        variables: Object.fromEntries([
+          [
+            "TASK_DEFINITION_ARN",
+            taskDefinition.arn
+          ],
+          [
+            "CLUSTER_ARN",
+            cluster.arn
+          ],
+          [
+            "STACK_ORG",
+            fullQualifiedStackName.organization
+          ],
+          [
+            "STACK_PROJECT",
+            fullQualifiedStackName.project
+          ],
+          [
+            "STACK_STACK",
+            fullQualifiedStackName.stack
+          ],
+          [
+            "SUBNETS",
+            Stdlib_Option.getOr(JSON.stringify(param[2].subnetIds), "[]")
+          ],
+          [
+            "Environment",
+            Pulumi.getStack()
+          ]
+        ])
+      }
+    }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
     lambda.arn.apply(arn => {
       let appsyncInvokeLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "AppSyncInvokePolicy", [{
           Sid: "AllowAppSyncInvoke",

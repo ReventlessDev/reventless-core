@@ -508,6 +508,16 @@ type mcpRegistrationParams = {
 let mcpSchemaRegistrationHook: ref<option<mcpRegistrationParams => unit>> = ref(None)
 
 // ---------------------------------------------------------------------------
+// Pre-resolvers schema push hook — set by AWS platform so that plugin stacks
+// push their schema fragment to AppSync BEFORE creating QueryDb resolvers.
+// The hook returns Output.t<unit> so callers can chain resolver creation after it.
+// No-op when unset (in-memory/other platforms).
+// ---------------------------------------------------------------------------
+let preResolversSchemaHook: ref<
+  option<Reventless.Plugin.apiSchemaFragment => Pulumi.Output.t<unit>>,
+> = ref(None)
+
+// ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so
 // that the plugin's entry-point module can export it as `_interopMeta`.
 // ---------------------------------------------------------------------------

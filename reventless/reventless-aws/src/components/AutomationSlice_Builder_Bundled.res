@@ -1,0 +1,58 @@
+module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
+module RuntimeEnvironment = RuntimeEnvironment.Lambda
+module EventCollectorRuntimeBuilder = AutomationSliceRuntime_Builder_Single_Bundled
+
+module type BundledConfig = {
+  let specModulePath: string
+  let dcbQueueUrl: Pulumi.Output.t<string>
+}
+
+module Make = (Api: {
+  let api: Types.AppSync.api
+  let apiRole: Types.AppSync.role
+}) => {
+  module Inner = ReventlessCore.AutomationSlice_Builder.Make(
+    RuntimeEnvironment,
+    QueryDbStorage.DynamoDb,
+    QueryDbResolvers.AppSync,
+    EventCollectorChannel,
+    EventCollectorRuntimeBuilder,
+    Api,
+  )
+
+  module Make = (
+    Spec: Reventless.AutomationSlice.Spec,
+    Config: BundledConfig,
+  ): (
+    ReventlessCore.AutomationSlice.T
+      with type dcbEvent = Spec.DcbEventLogSpec.event
+      and module Spec = Spec
+  ) => {
+    module InnerMake = Inner.Make(Spec)
+
+    type dcbEvent = InnerMake.dcbEvent
+    module Spec = InnerMake.Spec
+    type dcbEventLogComponent = InnerMake.dcbEventLogComponent
+    type component = InnerMake.component
+    let queryDbName = InnerMake.queryDbName
+
+    let make = (~dcbEventLog, ~publishJsons, ~opts=?): component => {
+      let as_ = InnerMake.make(~dcbEventLog, ~publishJsons, ~opts?)
+
+      let queryDbOutputs = (as_->ReventlessCore.Component.outputs).queryDb
+      let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
+      let queryDbTableName = tableResource.name
+
+      EventCollectorRuntimeBuilder.registerBundledAutomationSlice(
+        ~name=Spec.name,
+        ~specModulePath=Config.specModulePath,
+        ~queryDbTableName,
+        ~dcbQueueUrl=Config.dcbQueueUrl,
+      )
+
+      as_
+    }
+  }
+
+  let finish = () => EventCollectorRuntimeBuilder.finish()
+}

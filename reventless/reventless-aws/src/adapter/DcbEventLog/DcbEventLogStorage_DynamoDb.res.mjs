@@ -3,6 +3,7 @@
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as DcbEventLog$ReventlessCore from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
+import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "./DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 
 function make(name, indexes, opts) {
@@ -26,9 +27,9 @@ function make(name, indexes, opts) {
     projectionType: "ALL",
     rangeKey: "position"
   }));
-  let table = Util_DynamoDb$ReventlessAws.makeTable(attributes, globalSecondaryIndexes, undefined, "position", AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType), opts, name);
+  let table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, globalSecondaryIndexes, undefined, "position", "NEW_IMAGE", AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType), opts, name);
   return {
-    resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
+    resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => {
       let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(resolvedTable);
       return {

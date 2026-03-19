@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
 
 function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
@@ -13,7 +14,22 @@ function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
   }, opts);
 }
 
+function subscribeSqs(lambda, name, queue, opts) {
+  let esm = new (Aws.lambda.EventSourceMapping)(name, {
+    functionName: Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
+    eventSourceArn: queue.arn
+  }, opts);
+  return {
+    name: esm.id,
+    id: esm.id,
+    urn: esm.arn,
+    info: esm.id.apply(param => ""),
+    service: esm.id.apply(param => AWS$ReventlessAws.SQS.service)
+  };
+}
+
 export {
   subscribe,
+  subscribeSqs,
 }
 /* @pulumi/aws Not a pure module */

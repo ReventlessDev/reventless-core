@@ -28,3 +28,18 @@ let fromOutput = (output: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>) 
   id: output->Pulumi.Output.flatMap(({id}) => id),
   name: output->Pulumi.Output.flatMap(({name}) => name),
 }
+
+external functionToCallbackFunction: PulumiAws.Lambda.Function.t => PulumiAws.Lambda.CallbackFunction.t =
+  "%identity"
+
+let functionToResource: PulumiAws.Lambda.Function.t => ReventlessInfra.Adapter.resource = ({
+  id,
+  name,
+  arn,
+}) => {
+  ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.Lambda.service),
+  name,
+  id,
+  urn: arn,
+  info: name->Pulumi.Output.apply(_ => ""),
+}

@@ -1,7 +1,9 @@
 let coreStackReference =
   Pulumi.Config.make(Some("platform"))
   ->Pulumi.Config.get("stack")
-  ->Option.map(stack => stack->Pulumi.StackReference.make)
+  ->Option.map(stack =>
+    Pulumi.StackReference.makeWithName(stack ++ "-interstack", {"name": stack})
+  )
 
 // -----------------------------------------------------------------------
 // Typed, validated cross-stack queries using the reventless-interop engine.

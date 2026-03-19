@@ -7,7 +7,9 @@
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/rescript-pulumi-pulumi",
-    "@reventlessdev/online-shop-hybrid-ordering"
+    "@reventlessdev/online-shop-hybrid-ordering",
+    "@reventlessdev/online-shop-hybrid-ordering-spec",
+    "@reventlessdev/online-shop-hybrid-catalog-spec"
   ],
   "ppx-flags": ["sury-ppx/bin"],
   "package-specs": { "module": "esmodule", "in-source": true },

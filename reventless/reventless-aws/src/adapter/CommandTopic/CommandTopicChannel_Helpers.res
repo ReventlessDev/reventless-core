@@ -185,10 +185,4 @@ let createLambdaPolicy = (
 }
 
 let subscribeLambda2SqsTopic = (lambda, name, queue, opts) =>
-  lambda
-  ->Pulumi.Output.apply(lambda => {
-    queue
-    ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
-    ->Util.SQS.Subscription.toResource
-  })
-  ->ReventlessCore.Adapter.outputToResource
+  Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~opts)

@@ -142,7 +142,10 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
     }, opts);
     dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(dynamoDbStreamResource), opts));
   });
-  return queues.map(queue => Adapter$ReventlessCore.outputToResource(lambda.apply(lambda => Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts)))));
+  return queues.map((queue, idx) => {
+    let esmName = queues.length > 1 ? name + `Sqs` + idx.toString() : name;
+    return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, esmName, queue, opts);
+  });
 }
 
 export {

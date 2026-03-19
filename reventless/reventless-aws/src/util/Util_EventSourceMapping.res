@@ -1,6 +1,5 @@
 open PulumiAws
 
-/** TODO: handle other EventSources than Stream */
 let subscribe = (
   ~batchSize=?,
   ~lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
@@ -21,3 +20,30 @@ let subscribe = (
     },
     ~opts=Some(opts),
   )
+
+let subscribeSqs = (
+  ~lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
+  ~name,
+  ~queue: PulumiAws.SQS.Queue.t,
+  ~opts,
+) => {
+  let esm = EventSourceMapping.make(
+    ~name,
+    ~args={
+      EventSourceMapping.functionName: lambda
+      ->Pulumi.Output.flatMap(lambda => lambda.arn)
+      ->Pulumi.Output.asInput,
+      eventSourceArn: queue.arn->Pulumi.Output.asInput,
+    },
+    ~opts=Some(opts),
+  )
+  (
+    {
+      ReventlessInfra.Adapter.service: esm.id->Pulumi.Output.apply(_ => AWS.SQS.service),
+      name: esm.id,
+      id: esm.id,
+      urn: esm.arn,
+      info: esm.id->Pulumi.Output.apply(_ => ""),
+    }: ReventlessInfra.Adapter.resource
+  )
+}

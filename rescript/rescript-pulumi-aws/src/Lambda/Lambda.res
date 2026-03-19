@@ -155,6 +155,43 @@ module CallbackFunction = {
   ) => t = "get"
 }
 
+module Function = {
+  type functionEnvironment = {variables?: dict<Pulumi.Input.t<string>>}
+
+  type args = {
+    handler?: Pulumi.Input.t<string>,
+    runtime?: Pulumi.Input.t<string>,
+    code?: Pulumi.Input.t<Pulumi.Archive.t>,
+    role: Pulumi.Input.t<string>,
+    memorySize?: Pulumi.Input.t<int>,
+    timeout?: Pulumi.Input.t<int>,
+    layers?: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
+    tags?: Pulumi.Input.t<Aws.tags>,
+    environment?: Pulumi.Input.t<functionEnvironment>,
+  }
+
+  type t = {
+    arn: Pulumi.Output.t<string>,
+    id: Pulumi.Output.t<string>,
+    name: Pulumi.Output.t<string>,
+    invokeArn: Pulumi.Output.t<string>,
+  }
+
+  @module("@pulumi/aws") @scope("lambda") @new
+  external make: (
+    ~name: string,
+    ~args: args,
+    ~opts: Pulumi.CustomResourceOptions.t=?,
+  ) => t = "Function"
+
+  @module("@pulumi/aws") @scope(("lambda", "Function"))
+  external get: (
+    ~name: string,
+    ~id: Pulumi.Input.t<string>,
+    ~opts: Pulumi.CustomResourceOptions.t=?,
+  ) => t = "get"
+}
+
 module Permission = {
   type args = {
     action: string,

@@ -46,19 +46,19 @@ let createAggregatesWithoutEventMappers = (
 let finishAggregates = (
   aggregatesOutputs: dict<Aggregate.outputs>,
 ) => {
-  let (eventMapperOutputs, commandTopicOutputs) =
-    aggregatesOutputs
-    ->Dict.valuesToArray
-    ->Array.map(aggregateOutputs =>
-      aggregateOutputs.eventMapper->Option.map(eventMapper => (
-        eventMapper,
-        aggregateOutputs.commandTopic,
-      ))
-    )
+  let allOutputs = aggregatesOutputs->Dict.valuesToArray
+
+  // Wait for ALL commandTopicOutputs (not just those with event mappers)
+  // to ensure forCommandTopic has registered specs before finish() runs.
+  let allCommandTopicOutputs =
+    allOutputs->Array.map(aggregateOutputs => aggregateOutputs.commandTopic)
+  let eventMapperOutputs =
+    allOutputs
+    ->Array.map(aggregateOutputs => aggregateOutputs.eventMapper)
     ->Array.keepSome
-    ->Array.unzip
+
   let _ =
-    (eventMapperOutputs->Pulumi.Output.all, commandTopicOutputs->Pulumi.Output.all)
+    (eventMapperOutputs->Pulumi.Output.all, allCommandTopicOutputs->Pulumi.Output.all)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((eventMapperOutputs, _)) =>
       eventMapperOutputs

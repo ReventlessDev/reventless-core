@@ -241,15 +241,10 @@ let connectLambda = (
         )
     })
 
-  let subscriptionResources = queues->Array.map(queue =>
-    lambda
-    ->Pulumi.Output.apply(lambda =>
-      queue
-      ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
-      ->Util.SQS.Subscription.toResource
-    )
-    ->ReventlessCore.Adapter.outputToResource
-  )
+  let subscriptionResources = queues->Array.mapWithIndex((queue, idx) => {
+    let esmName = queues->Array.length > 1 ? `${name}Sqs${Int.toString(idx)}` : name
+    Util_EventSourceMapping.subscribeSqs(~lambda, ~name=esmName, ~queue, ~opts)
+  })
 
   subscriptionResources
 }

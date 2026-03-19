@@ -176,8 +176,16 @@ module Make = (
         | None => Pulumi.Output.make(None)
         }
 
+      // Push schema fragment to the API before resolvers are created (AWS only).
+      // The returned Output chains into the dependency tuple so Pulumi waits
+      // for the schema update to complete before creating resolver resources.
+      let schemaPushed = switch Plugin_Helpers.preResolversSchemaHook.contents {
+      | Some(pushSchema) => pushSchema(apiSchemaFragment)
+      | None => Pulumi.Output.make()
+      }
+
       (
-        (adminExtensionPoints, localAdminResolvedEP)->Pulumi.Output.all2,
+        (adminExtensionPoints, localAdminResolvedEP, schemaPushed)->Pulumi.Output.all3,
         aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
         publishToReadModels->Pulumi.Output.allDict,
@@ -186,7 +194,7 @@ module Make = (
       )
       ->Pulumi.Output.all6
       ->Pulumi.Output.apply(((
-        (adminExtensionPoints, localAdminResolvedEP),
+        (adminExtensionPoints, localAdminResolvedEP, _),
         aggregateResources,
         publishToAggregates,
         publishToReadModels,

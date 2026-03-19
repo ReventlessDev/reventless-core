@@ -17,12 +17,19 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
 ) => {
   let dataSourceName = dataSourceName->Pulumi.Output.asInput
   let name = name->String.capitalize
+  let registryEntry = ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.get(name)
+
+  // In plugin mode, use plugin-prefixed field names from the registry.
+  let fieldNameForSingle = switch registryEntry {
+  | Some({singleFieldName}) => singleFieldName
+  | None => name->Resolver.Templates.uncapitalize
+  }
   let resolverByIdSingle = Resolver.makeUnitResolver(
-    ~name,
+    ~name=fieldNameForSingle->String.capitalize,
     ~api,
     ~dataSourceName,
     ~type_="Query"->Pulumi.Input.make,
-    ~field=name->Resolver.Templates.uncapitalize->Pulumi.Input.make,
+    ~field=fieldNameForSingle->Pulumi.Input.make,
     ~requestTemplate=switch subIdField {
     | Some(sortField) => Resolver.Templates.queryByIdSort(sortField)
     | None => Resolver.Templates.getItemById
@@ -36,18 +43,17 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   let resolverByIdMultiple =
     subIdField->Option.map(_sortField =>
       Resolver.makeUnitResolver(
-        ~name=name ++ "ById",
+        ~name=fieldNameForSingle->String.capitalize ++ "ById",
         ~api,
         ~dataSourceName,
         ~type_="Query"->Pulumi.Input.make,
-        ~field=(name->Resolver.Templates.uncapitalize ++ "ById")->Pulumi.Input.make,
+        ~field=(fieldNameForSingle ++ "ById")->Pulumi.Input.make,
         ~requestTemplate=Resolver.Templates.queryById,
         ~responseTemplate=Resolver.Templates.result,
         ~opts,
       )
     )
 
-  let registryEntry = ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.get(name)
   let fieldNameForAll = switch registryEntry {
   | Some({listFieldName}) => listFieldName
   | None => name ++ "s"

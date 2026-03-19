@@ -1,9 +1,6 @@
 module CommandTopicChannel = CommandTopicChannel.SQS
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
-module ExtensionPointRuntimeBuilder = ReventlessCore.ExtensionPointRuntime_Builder_PerExtensionPoint.Make(
-  RuntimeEnvironment,
-  CommandTopicChannel,
-)
+module ExtensionPointRuntimeBuilder = PluginExtensionPointRuntime_Builder_Bundled
 
 module MakeWithConfig = (
   Config: {

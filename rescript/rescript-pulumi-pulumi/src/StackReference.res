@@ -6,6 +6,9 @@ type t
 @module("@pulumi/pulumi") @new
 external make: string => t = "StackReference"
 
+@module("@pulumi/pulumi") @new
+external makeWithName: (string, {"name": string}) => t = "StackReference"
+
 @send
 external getOutput: (t, string) => Output.t<option<'a>> = "getOutput"
 

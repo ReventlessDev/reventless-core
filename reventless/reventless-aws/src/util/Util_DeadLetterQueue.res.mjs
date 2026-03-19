@@ -6,7 +6,11 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../adapter/AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Util_Bundle$ReventlessAws from "./Util_Bundle.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as Util_EventSourceMapping$ReventlessAws from "./Util_EventSourceMapping.res.mjs";
 
 let name = "DeadLetterQueue";
 
@@ -24,10 +28,6 @@ let fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
   sqsManagedSseEnabled: false
 });
 
-async function callback(evt, _ctx) {
-  console.error("DEAD LETTER ITEM: " + Stdlib_Option.getOr(JSON.stringify(evt), "<unknown>"));
-}
-
 let opts_parent = queue;
 
 let opts = {
@@ -36,11 +36,36 @@ let opts = {
 
 let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
 
-let handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, lambdaRole, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+let entryPointCode = `export const handler = async (event) => {
+  console.error("DEAD LETTER ITEM:", JSON.stringify(event));
+};`;
 
-let subscription = queue.onEvent(name, handler);
+let code = Util_Bundle$ReventlessAws.bundleEntryPoint(entryPointCode);
 
-let fifoSubscription = fifoQueue.onEvent(nameFifo, handler);
+let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
+
+let handler = new (Aws.lambda.Function)(name, {
+  handler: "index.handler",
+  runtime: "nodejs22.x",
+  code: code,
+  role: lambdaRole.arn,
+  memorySize: 128,
+  timeout: 30,
+  layers: layers,
+  tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
+  environment: {
+    variables: Object.fromEntries([[
+        "Environment",
+        Pulumi.getStack()
+      ]])
+  }
+}, opts);
+
+let lambda = Pulumi.output(handler);
+
+let _subscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, opts);
+
+let _fifoSubscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, nameFifo, fifoQueue, opts);
 
 function createQueuePolicyDocument(name, queueArn, handlerArn) {
   return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
@@ -105,17 +130,23 @@ Pulumi.all([
   }, opts);
 });
 
+let handlerAsCallback = handler;
+
 export {
   name,
   nameFifo,
   queue,
   fifoQueue,
-  callback,
   opts,
   lambdaRole,
+  entryPointCode,
+  code,
+  layers,
   handler,
-  subscription,
-  fifoSubscription,
+  handlerAsCallback,
+  lambda,
+  _subscription,
+  _fifoSubscription,
   createQueuePolicyDocument,
 }
 /* queue Not a pure module */

@@ -22,10 +22,6 @@ let fifoQueue = SQS.Queue.make(
   },
 )
 
-let callback: Lambda.eventHandlerNoResult<'a> = async (evt, _ctx) => {
-  Console.error("DEAD LETTER ITEM: " ++ evt->JSON.stringifyAny->Option.getOr("<unknown>"))
-}
-
 let opts = {Pulumi.CustomResourceOptions.parent: queue->PulumiAws.SQS.Queue.toResource}
 let lambdaRole = IAM.Role.makeWithDefaultPolicy(
   ~name,
@@ -33,14 +29,52 @@ let lambdaRole = IAM.Role.makeWithDefaultPolicy(
   ~opts,
 )
 
-let handler = PulumiAws.Lambda.CallbackFunction.make(
+let entryPointCode = `export const handler = async (event) => {
+  console.error("DEAD LETTER ITEM:", JSON.stringify(event));
+};`
+
+let code = Util_Bundle.bundleEntryPoint(entryPointCode)
+
+let layers =
+  Lambda.reventlessLayerArn
+  ->Option.map(arn => [arn->Pulumi.Input.make])
+  ->Option.getOr([])
+  ->Pulumi.Input.make
+
+let handler = Lambda.Function.make(
   ~name,
-  ~args=PulumiAws.Lambda.CallbackFunction.Args.make(~callback, ~role=lambdaRole),
+  ~args={
+    handler: "index.handler"->Pulumi.Input.make,
+    runtime: "nodejs22.x"->Pulumi.Input.make,
+    code: code->Pulumi.Input.make,
+    role: lambdaRole.arn->Pulumi.Output.asInput,
+    memorySize: 128->Pulumi.Input.make,
+    timeout: 30->Pulumi.Input.make,
+    layers,
+    tags: AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
+    environment: (
+      {
+        Lambda.Function.variables: Dict.fromArray([
+          ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
+        ]),
+      }: Lambda.Function.functionEnvironment
+    )->Pulumi.Input.make,
+  },
   ~opts,
 )
 
-let subscription = queue->SQS.Queue.onEvent(~name, ~handler)
-let fifoSubscription = fifoQueue->SQS.Queue.onEvent(~name=nameFifo, ~handler)
+let handlerAsCallback: Lambda.CallbackFunction.t =
+  handler->Util_Lambda.functionToCallbackFunction
+
+let lambda = handler->Util_Lambda.functionToCallbackFunction->Pulumi.Output.make
+
+let _subscription = Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~opts)
+let _fifoSubscription = Util_EventSourceMapping.subscribeSqs(
+  ~lambda,
+  ~name=nameFifo,
+  ~queue=fifoQueue,
+  ~opts,
+)
 let createQueuePolicyDocument = (name, queueArn: string, handlerArn: string) => {
   open PulumiAws.PolicyDocument
   PulumiAws.PolicyDocument.make(

@@ -30,6 +30,38 @@ external send: (appSyncClient, startSchemaCreationCommand) => promise<unknown> =
 let startSchemaCreation = (client: appSyncClient, input: startSchemaCreationInput) =>
   client->send(input->makeStartSchemaCreationCommand)
 
+// GetSchemaCreationStatus — poll until schema is ACTIVE
+type getSchemaCreationStatusInput = {apiId: string}
+type getSchemaCreationStatusCommand
+type getSchemaCreationStatusResult = {status: string, details: option<string>}
+
+@module("@aws-sdk/client-appsync") @new
+external makeGetSchemaCreationStatusCommand: getSchemaCreationStatusInput => getSchemaCreationStatusCommand =
+  "GetSchemaCreationStatusCommand"
+
+@send
+external sendGetStatus: (appSyncClient, getSchemaCreationStatusCommand) => promise<getSchemaCreationStatusResult> =
+  "send"
+
+let rec waitForSchemaActive = async (client, apiId, ~maxAttempts=30, ~attempt=0) => {
+  let result = await client->sendGetStatus(
+    {apiId: apiId}->makeGetSchemaCreationStatusCommand,
+  )
+  switch result.status {
+  | "ACTIVE" | "SUCCESS" => ()
+  | "FAILED" =>
+    let details = result.details->Option.getOr("(no details)")
+    JsError.throwWithMessage(`Schema creation failed for API ${apiId}: ${details}`)
+  | status if attempt >= maxAttempts =>
+    JsError.throwWithMessage(
+      `Schema creation timed out after ${maxAttempts->Int.toString} attempts (status: ${status})`,
+    )
+  | _ =>
+    await Promise.make((resolve, _) => setTimeout(resolve, 500)->ignore)
+    await waitForSchemaActive(client, apiId, ~maxAttempts, ~attempt=attempt + 1)
+  }
+}
+
 // Lazy singleton AppSync client (runtime only)
 let _client: ref<option<appSyncClient>> = ref(None)
 let getClient = () =>

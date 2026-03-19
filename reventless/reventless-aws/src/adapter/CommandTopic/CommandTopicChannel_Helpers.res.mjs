@@ -6,9 +6,9 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
-import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
+import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
 function createQueuePolicy(queue, name, lambda, opts) {
   Pulumi.all([
@@ -129,9 +129,7 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
   });
 }
 
-function subscribeLambda2SqsTopic(lambda, name, queue, opts) {
-  return Adapter$ReventlessCore.outputToResource(lambda.apply(lambda => Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts))));
-}
+let subscribeLambda2SqsTopic = Util_EventSourceMapping$ReventlessAws.subscribeSqs;
 
 export {
   createQueuePolicy,

@@ -1,8 +1,9 @@
-// Catalog plugin deployment — deploys as an independent Pulumi stack.
-// Reads platform stack outputs via StackReference (configured in Pulumi.<env>.yaml).
+// Catalog plugin deployment — bundled variant.
+// Uses bundled Lambda handlers for Aggregate and ReadModel components.
+// DCB slices use standard CallbackFunction handlers.
 
 module Platform = ReventlessAws.Platform.Make()
-module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
+module Catalog = CatalogPlugin_Bundled.Make(Platform)
 
 Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCaller(),

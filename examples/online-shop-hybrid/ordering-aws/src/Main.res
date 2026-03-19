@@ -1,8 +1,9 @@
-// Ordering plugin deployment — deploys as an independent Pulumi stack.
-// Reads platform and catalog stack outputs via StackReference for cross-plugin EP resolution.
+// Ordering plugin deployment — bundled variant.
+// Uses bundled Lambda handlers for Aggregate and ReadModel components.
+// DCB slices use standard CallbackFunction handlers.
 
 module Platform = ReventlessAws.Platform.Make()
-module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
+module Ordering = OrderingPlugin_Bundled.Make(Platform)
 
 Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCaller(),

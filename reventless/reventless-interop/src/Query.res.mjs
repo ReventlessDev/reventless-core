@@ -14,7 +14,9 @@ import * as ExportMeta$ReventlessInterop from "./ExportMeta.res.mjs";
 
 let coreEntry = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), name => [
   name,
-  new Pulumi.StackReference(name)
+  new Pulumi.StackReference(name + "-query", {
+    name: name
+  })
 ]);
 
 let stackEntries = Stdlib_Option.getOr(new Pulumi.Config("interstack").getObject("dependencies"), []).map(name => [

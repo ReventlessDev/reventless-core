@@ -33,10 +33,22 @@ function fromOutput(output) {
   };
 }
 
+function functionToResource(param) {
+  let name = param.name;
+  return {
+    name: name,
+    id: param.id,
+    urn: param.arn,
+    info: name.apply(param => ""),
+    service: name.apply(param => AWS$ReventlessAws.Lambda.service)
+  };
+}
+
 export {
   findResource,
   toResource,
   fromResource,
   fromOutput,
+  functionToResource,
 }
 /* @pulumi/aws Not a pure module */

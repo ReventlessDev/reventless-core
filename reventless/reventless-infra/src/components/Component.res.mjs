@@ -2,33 +2,37 @@
 
 import ComponentMjs from "./Component.mjs";
 
+let _outputsStore = new WeakMap();
+
+let _operationsStore = new WeakMap();
+
+function outputs(self) {
+  return _outputsStore.get(self);
+}
+
 function wrappedOutputs(component) {
-  return component.apply(component => component.outputs);
+  return component.apply(outputs);
+}
+
+function setOperations(self, ops) {
+  _operationsStore.set(self, ops);
+}
+
+function operations(self) {
+  return _operationsStore.get(self);
 }
 
 function make(prim0, prim1, prim2, prim3) {
   return new ComponentMjs(prim0, prim1, prim2, prim3);
 }
 
-function setOutputs(self, outputs) {
-  self.outputs = outputs;
+function registerOutputs(self, outputs) {
   return self.registerOutputs(outputs);
 }
 
-function registerOutputs(prim0, prim1) {
-  return prim0.registerOutputs(prim1);
-}
-
-function outputs(prim) {
-  return prim.outputs;
-}
-
-function setOperations(prim0, prim1) {
-  prim0.operations = prim1;
-}
-
-function operations(prim) {
-  return prim.operations;
+function setOutputs(self, outputs) {
+  _outputsStore.set(self, outputs);
+  return self.registerOutputs({});
 }
 
 function toPulumiResource(prim) {
@@ -50,4 +54,4 @@ export {
   fromPulumiResource,
   make,
 }
-/* ./Component.mjs Not a pure module */
+/* _outputsStore Not a pure module */

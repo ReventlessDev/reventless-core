@@ -304,6 +304,10 @@ let mcpSchemaRegistrationHook = {
   contents: undefined
 };
 
+let preResolversSchemaHook = {
+  contents: undefined
+};
+
 let interopMetaOutput = {
   contents: undefined
 };
@@ -454,6 +458,7 @@ export {
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,
   mcpSchemaRegistrationHook,
+  preResolversSchemaHook,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,

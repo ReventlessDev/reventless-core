@@ -114,10 +114,13 @@ function Make(Spec) {
               return Pulumi.output(undefined);
             }
           }) : Pulumi.output(undefined);
+        let pushSchema = Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents;
+        let schemaPushed = pushSchema !== undefined ? pushSchema(apiSchemaFragment) : Pulumi.output();
         let builderOutputs = Pulumi.all([
           Pulumi.all([
             adminExtensionPoints,
-            localAdminResolvedEP
+            localAdminResolvedEP,
+            schemaPushed
           ]),
           Pulumi.all(Plugin_Helpers$ReventlessCore.aggregateResources),
           Pulumi.all(Plugin_Helpers$ReventlessCore.publishToAggregates),

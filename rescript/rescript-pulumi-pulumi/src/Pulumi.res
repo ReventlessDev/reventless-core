@@ -5,12 +5,28 @@ external getStackName: unit => string = "getStack"
 @module("@pulumi/pulumi")
 external getProjectName: unit => string = "getProject"
 
-// Pulumi reads ESM named exports or CJS module.exports as stack outputs.
-// Since deploy functions run inside calls (not at module top level), we
-// collect outputs in a shared dict. The entry point re-exports them.
+// Pulumi captures ALL top-level ESM named exports as stack outputs. ReScript
+// hoists module bindings (Platform, Catalog) as named exports, leaking internal
+// data (sury schemas, Spec modules) into `pulumi stack output`.
+//
+// To override: after all resources are created, call registerStackOutputs()
+// on the stack resource, which replaces auto-captured outputs with only the
+// values explicitly registered via Pulumi.export().
 let _outputs: dict<Output.t<JSON.t>> = Dict.make()
 
 let export = (name: string, value: Output.t<'a>): unit =>
   _outputs->Dict.set(name, value->Obj.magic)
 
-let getOutputs = (): dict<Output.t<JSON.t>> => _outputs
+@module("@pulumi/pulumi/runtime/index.js")
+external _getStackResource: unit => option<{..}> = "getStackResource"
+
+@send
+external _stackRegisterOutputs: ({..}, dict<Output.t<JSON.t>>) => unit = "registerOutputs"
+
+let getOutputs = (): dict<Output.t<JSON.t>> => {
+  switch _getStackResource() {
+  | Some(stack) => stack->_stackRegisterOutputs(_outputs)
+  | None => ()
+  }
+  _outputs
+}

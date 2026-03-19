@@ -2,7 +2,6 @@
 
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as QueryDb$ReventlessCore from "./QueryDb/QueryDb.res.mjs";
 
@@ -32,13 +31,12 @@ function createAggregatesWithoutEventMappers(aggregates, api, opts) {
 }
 
 function finishAggregates(aggregatesOutputs) {
-  let match = Stdlib_Array.unzip(Stdlib_Array.keepSome(Object.values(aggregatesOutputs).map(aggregateOutputs => Stdlib_Option.map(aggregateOutputs.eventMapper, eventMapper => [
-    eventMapper,
-    aggregateOutputs.commandTopic
-  ]))));
+  let allOutputs = Object.values(aggregatesOutputs);
+  let allCommandTopicOutputs = allOutputs.map(aggregateOutputs => aggregateOutputs.commandTopic);
+  let eventMapperOutputs = Stdlib_Array.keepSome(allOutputs.map(aggregateOutputs => aggregateOutputs.eventMapper));
   Pulumi.all([
-    Pulumi.all(match[0]),
-    Pulumi.all(match[1])
+    Pulumi.all(eventMapperOutputs),
+    Pulumi.all(allCommandTopicOutputs)
   ]).apply(param => Pulumi.all(param[0].map(eventMapperOutput => eventMapperOutput.eventCollector)).apply(param => {
     Object.values(aggregateFinishFns).forEach(finishFn => finishFn());
   }));

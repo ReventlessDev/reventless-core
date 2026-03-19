@@ -14,9 +14,10 @@ import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-p
 
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
   let name$1 = Stdlib_String.capitalize(name);
-  let resolverByIdSingle = AppSync_Resolver$PulumiAws.makeUnitResolver(name$1, api, dataSourceName, "Query", AppSync_Resolver_Templates$PulumiAws.uncapitalize(name$1), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, opts);
-  let resolverByIdMultiple = Stdlib_Option.map(subIdField, _sortField => AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + "ById", api, dataSourceName, "Query", AppSync_Resolver_Templates$PulumiAws.uncapitalize(name$1) + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result, opts));
   let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[name$1];
+  let fieldNameForSingle = registryEntry !== undefined ? registryEntry.singleFieldName : AppSync_Resolver_Templates$PulumiAws.uncapitalize(name$1);
+  let resolverByIdSingle = AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldNameForSingle), api, dataSourceName, "Query", fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, opts);
+  let resolverByIdMultiple = Stdlib_Option.map(subIdField, _sortField => AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldNameForSingle) + "ById", api, dataSourceName, "Query", fieldNameForSingle + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result, opts));
   let fieldNameForAll = registryEntry !== undefined ? registryEntry.listFieldName : name$1 + "s";
   let resolverAll = AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldNameForAll), api, dataSourceName, "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, opts);
   let resourcesMaker = allQueryDbs => {

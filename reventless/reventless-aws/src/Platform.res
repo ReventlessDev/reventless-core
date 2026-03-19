@@ -48,19 +48,56 @@ module MakeWithConfig = (
   | Some(stackRef) =>
     // Plugin mode — reconstruct phantom API/role from the platform's exported IDs.
     // Consumers only access api.id and role.arn, so other fields are unused.
+    //
+    // In ESM mode, Pulumi exports are inside the "default" output.
+    // Try top-level "apiId" first (CJS), fall back to "default"."apiId" (ESM).
+    let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
+      stackRef->Pulumi.StackReference.getOutput("default")
     let apiIdOutput: Pulumi.Output.t<option<string>> =
       stackRef->Pulumi.StackReference.getOutput("apiId")
     let apiRoleArnOutput: Pulumi.Output.t<option<string>> =
       stackRef->Pulumi.StackReference.getOutput("apiRoleArn")
 
     let phantomApi: Types.AppSync.api =
-      apiIdOutput->Pulumi.Output.apply(opt =>
-        Obj.magic({"id": Pulumi.Output.make(opt->Option.getOrThrow)})
-      )
+      (apiIdOutput, defaultOutput)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((direct, default)) => {
+        let apiId = switch direct {
+        | Some(id) => id
+        | None =>
+          default
+          ->Option.flatMap(d => d->JSON.Decode.object)
+          ->Option.flatMap(d => d->Dict.get("apiId"))
+          ->Option.flatMap(v => v->JSON.Decode.string)
+          ->Option.getOrThrow
+        }
+        Obj.magic({"id": Pulumi.Output.make(apiId)})
+      })
     let phantomRole: Types.AppSync.role =
-      apiRoleArnOutput->Pulumi.Output.apply(opt =>
-        Obj.magic({"arn": Pulumi.Output.make(opt->Option.getOrThrow)})
-      )
+      (apiRoleArnOutput, defaultOutput)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((direct, default)) => {
+        let apiRoleArn = switch direct {
+        | Some(arn) => arn
+        | None =>
+          default
+          ->Option.flatMap(d => d->JSON.Decode.object)
+          ->Option.flatMap(d => d->Dict.get("apiRoleArn"))
+          ->Option.flatMap(v => v->JSON.Decode.string)
+          ->Option.getOrThrow
+        }
+        // Derive role name from ARN (arn:aws:iam::ACCOUNT:role/NAME or .../path/NAME)
+        let roleName =
+          apiRoleArn
+          ->String.split("/")
+          ->Array.at(-1)
+          ->Option.getOr(apiRoleArn)
+        Obj.magic({
+          "arn": Pulumi.Output.make(apiRoleArn),
+          "id": Pulumi.Output.make(roleName),
+          "name": Pulumi.Output.make(roleName),
+        })
+      })
     (phantomApi, phantomRole)
   }
 
@@ -78,6 +115,33 @@ module MakeWithConfig = (
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
     ) => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
+
+    module MakeBundled = (
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
+      Config: Aggregate_Builder_Single_Bundled.BundledConfig,
+    ): (
+      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
+    ) => Aggregate_Builder_Single_Bundled.Make(Spec, Behavior, EventMappings, Config)
+
+    module MakeBundledPerAggregate = (
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
+      Config: Aggregate_Builder_PerAggregate_Bundled.BundledConfig,
+    ): (
+      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
+    ) => Aggregate_Builder_PerAggregate_Bundled.Make(Spec, Behavior, EventMappings, Config)
+
+    module MakeBundledMicro = (
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
+      Config: Aggregate_Builder_Micro_Bundled.BundledConfig,
+    ): (
+      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
+    ) => Aggregate_Builder_Micro_Bundled.Make(Spec, Behavior, EventMappings, Config)
   }
 
   module ReadModel = {
@@ -90,6 +154,17 @@ module MakeWithConfig = (
         and type api = Types.AppSync.api
         and type role = Types.AppSync.role
     ) => ReadModel_Builder_Single.Make(Spec, Mappings)
+
+    module MakeBundled = (
+      Spec: Reventless.ReadModel.Spec,
+      Mappings: Reventless.Projection.Mappings with module Target := Spec,
+      Config: ReadModel_Builder_Single_Bundled.BundledConfig,
+    ): (
+      ReventlessInfra.ReadModel.T
+        with module Spec = Spec
+        and type api = Types.AppSync.api
+        and type role = Types.AppSync.role
+    ) => ReadModel_Builder_Single_Bundled.Make(Spec, Mappings, Config)
   }
 
   module ExtensionPoint = {
@@ -97,6 +172,12 @@ module MakeWithConfig = (
       Spec: ReventlessInfra.ExtensionPointMapping.Spec,
       Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
     ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings)
+
+    module MakeBundled = (
+      Spec: ReventlessInfra.ExtensionPointMapping.Spec,
+      Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
+      Config: ExtensionPoint_Builder_Bundled.BundledConfig,
+    ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder_Bundled.Make(Spec, Mappings, Config)
   }
 
   module Extension = {
@@ -192,6 +273,39 @@ module MakeWithConfig = (
     },
   )
 
+  // Set the pre-resolvers schema push hook so plugin stacks push their
+  // schema fragment to AppSync before QueryDb resolvers are created.
+  // Without this, resolvers reference types that don't exist in the schema yet.
+  // Uses Output.flatMap to ensure the API call completes before resolvers are created.
+  let () = ReventlessCore.Plugin_Helpers.preResolversSchemaHook.contents = Some(
+    pluginFragment => {
+      Console.log("[preResolversSchemaHook] Pushing plugin schema fragment to AppSync")
+      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+        ~group="Admin",
+      )
+      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+        ~baseFragment=adminBaseFragment,
+        ~pluginFragments=[pluginFragment],
+      )
+      appSyncApi->Pulumi.Output.flatMap(api =>
+        api.id->Pulumi.Output.flatMap(apiId => {
+          Console.log(`[preResolversSchemaHook] Calling startSchemaCreation for API ${apiId}`)
+          let definition: unknown = sdl->Obj.magic
+          let client = AppSync_Adapter.getClient()
+          client
+          ->AppSync_Adapter.startSchemaCreation({apiId, definition})
+          ->Promise.then(async _ => {
+            Console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE")
+            await AppSync_Adapter.waitForSchemaActive(client, apiId)
+            Console.log("[preResolversSchemaHook] Schema is ACTIVE")
+          })
+          ->Pulumi.Output.fromPromise
+        })
+      )
+    },
+  )
+
   // Alias before defining module Plugin to avoid self-reference.
   module PluginBuilder = Plugin
   module Plugin: ReventlessInfra.Plugin.T
@@ -210,10 +324,7 @@ module MakeWithConfig = (
     EventCollectorChannel,
     QueryEngine.DynamoDb,
     ClonerRunner.Fargate,
-    ReventlessCore.PluginRuntime_Builder_Micro.Make(
-      RuntimeEnvironment_Lambda,
-      EventCollectorChannel,
-    ),
+    PluginRuntime_Builder_Bundled.Make(EventCollectorChannel),
     DcbEventLogStorage.DynamoDb,
     EventTopicPublisher.DynamoDbStream,
     CommandTopicChannel.SQS_FIFO,
@@ -326,6 +437,15 @@ module MakeWithConfig = (
     // captured Outputs into the CallbackFunction Lambda; at runtime, Output.get
     // returns the resolved string synchronously.
     let appSyncApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
+
+    // Register bundled Admin EventCollector config with available infrastructure values.
+    // Values that aren't available in Platform-only deployment use defaults (NOT_AVAILABLE).
+    PluginRuntime_Builder_Bundled.registerConfig(
+      ~appSyncApiId=appSyncApiId,
+      ~clonerEnabled=Config.cloner,
+      (),
+    )
+
     module PluginExtensionPoint = Plugin_ExtensionPoint_Builder.MakeWithConfig({
       let updateApiSchema = Some(async (queryEngine: Reventless.QueryEngine.operations) => {
         open Reventless.QueryEngine.Filter
