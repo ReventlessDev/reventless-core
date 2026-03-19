@@ -7,18 +7,21 @@ type runtimeParts = Util.Lambda.runtimeParts
 type bundledAutomationSliceInfo = {
   specModulePath: string,
   queryDbTableName: Pulumi.Output.t<string>,
-  dcbQueueUrl: Pulumi.Output.t<string>,
 }
 
 let bundledInfos: dict<bundledAutomationSliceInfo> = Dict.make()
+
+// Global DCB CommandTopic queue URL — set via onDcbCommandTopicCreated hook
+// before finish() is called. Shared by all AutomationSlice/OutboundTranslationSlice handlers.
+let dcbQueueUrlRef: ref<option<Pulumi.Output.t<string>>> = ref(None)
+let setDcbQueueUrl = url => dcbQueueUrlRef := Some(url)
 
 let registerBundledAutomationSlice = (
   ~name,
   ~specModulePath,
   ~queryDbTableName,
-  ~dcbQueueUrl,
 ) =>
-  bundledInfos->Dict.set(name, {specModulePath, queryDbTableName, dcbQueueUrl})
+  bundledInfos->Dict.set(name, {specModulePath, queryDbTableName})
 
 type storedSpec = {
   sliceName: string,
@@ -122,7 +125,11 @@ let finish = () =>
             let sourceUrnEnvVar = `HANDLER_${iStr}_SOURCE_URN`
 
             envVars->Dict.set(tableEnvVar, info.queryDbTableName->Pulumi.Output.asInput)
-            envVars->Dict.set(dcbQueueUrlEnvVar, info.dcbQueueUrl->Pulumi.Output.asInput)
+            let dcbQueueUrl = switch dcbQueueUrlRef.contents {
+            | Some(url) => url
+            | None => Pulumi.Output.make("NOT_AVAILABLE")
+            }
+            envVars->Dict.set(dcbQueueUrlEnvVar, dcbQueueUrl->Pulumi.Output.asInput)
 
             let _ =
               spec.sourceUrns->Pulumi.Output.apply(urns => {

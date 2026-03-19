@@ -18,6 +18,38 @@ let configRef: ref<bundledAdminConfig> = ref({
   clonerEnabled: false,
 })
 
+type bundledDcbConfig = {
+  pluginName: string,
+  dcbTableName: option<Pulumi.Output.t<string>>,
+  stateChangeSliceSpecPaths: array<string>,
+}
+
+let dcbConfigRef: ref<bundledDcbConfig> = ref({
+  pluginName: "",
+  dcbTableName: None,
+  stateChangeSliceSpecPaths: [],
+})
+
+let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceSpecPaths=[], ()) => {
+  dcbConfigRef := {pluginName, dcbTableName, stateChangeSliceSpecPaths}
+  stateChangeSliceSpecPaths->Array.length
+}
+
+type bundledHeartbeatConfig = {
+  pluginId: string,
+  heartbeatTimeout: int,
+  epQueueUrl: option<Pulumi.Output.t<string>>,
+}
+
+let heartbeatConfigRef: ref<bundledHeartbeatConfig> = ref({
+  pluginId: "",
+  heartbeatTimeout: 10,
+  epQueueUrl: None,
+})
+
+let registerHeartbeatConfig = (~pluginId, ~heartbeatTimeout=10, ~epQueueUrl=?, ()) =>
+  heartbeatConfigRef := {pluginId, heartbeatTimeout, epQueueUrl}
+
 let registerConfig = (
   ~eventTopicArn=?,
   ~pluginReadModelTableName=?,
@@ -153,12 +185,55 @@ module Make = (
     ReventlessCore.Heartbeat.component,
   > = (
     ~handler as _,
-    ~connect as _,
-    ~memorySize as _=1024,
-    ~timeout as _=30,
-    _heartbeat,
+    ~connect,
+    ~memorySize=1024,
+    ~timeout=30,
+    heartbeat,
   ) => {
-    Console.warn("PluginRuntime_Builder_Bundled: forPluginHeartbeat is a no-op stub")
+    let hbConfig = heartbeatConfigRef.contents
+    switch hbConfig.epQueueUrl {
+    | None =>
+      Console.warn("PluginRuntime_Builder_Bundled: forPluginHeartbeat skipped (no EP queue URL)")
+    | Some(epQueueUrl) =>
+      let resource = heartbeat->ReventlessCore.Component.toPulumiResource
+      let name = resource.name->ReventlessCore.ComponentType.nameOpt(
+        ReventlessCore.Heartbeat.componentType,
+      )
+      let opts = {Pulumi.ComponentResource.parent: resource}
+
+      let factoryModulePath = Util_Bundle.resolveModule(
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/BundledHeartbeatHandlerFactory.mjs",
+      )
+
+      let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
+      envVars->Dict.set("EP_QUEUE_URL", epQueueUrl->Pulumi.Output.asInput)
+      envVars->Dict.set(
+        "PLUGIN_ID",
+        hbConfig.pluginId->Pulumi.Output.make->Pulumi.Output.asInput,
+      )
+      envVars->Dict.set(
+        "HEARTBEAT_TIMEOUT",
+        hbConfig.heartbeatTimeout->Int.toString->Pulumi.Output.make->Pulumi.Output.asInput,
+      )
+
+      let entryPointCode = Util_EntryPoint.generateBundledHeartbeatEntryPoint({
+        name,
+        factoryModule: factoryModulePath,
+        epQueueUrlEnvVar: "EP_QUEUE_URL",
+        pluginIdEnvVar: "PLUGIN_ID",
+        timeoutEnvVar: "HEARTBEAT_TIMEOUT",
+      })
+
+      let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+        ~name,
+        ~entryPointCode,
+        ~envVars,
+        ~memorySize,
+        ~timeout,
+        ~opts,
+      )
+      connect(~runtime)
+    }
   }
 
   let forDcbCommandTopic: ReventlessCore.Runtime.forComponent<
@@ -167,12 +242,68 @@ module Make = (
     ReventlessCore.CommandTopic.component<'op>,
   > = (
     ~handler as _,
-    ~connect as _,
-    ~memorySize as _=1024,
-    ~timeout as _=30,
-    _dcbCommandTopic,
+    ~connect,
+    ~memorySize=1024,
+    ~timeout=30,
+    dcbCommandTopic,
   ) => {
-    Console.warn("PluginRuntime_Builder_Bundled: forDcbCommandTopic is a no-op stub")
+    let dcbConfig = dcbConfigRef.contents
+    if dcbConfig.stateChangeSliceSpecPaths->Array.length == 0 {
+      Console.warn("PluginRuntime_Builder_Bundled: forDcbCommandTopic skipped (no slice specs)")
+    } else {
+      let commandTopicResource = dcbCommandTopic->ReventlessCore.Component.toPulumiResource
+      let name = commandTopicResource.name->ReventlessCore.ComponentType.nameOpt(
+        ReventlessCore.CommandTopic.componentType,
+      )
+      let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
+
+      // Extract SQS queue from the DCB CommandTopic
+      let channel = dcbCommandTopic->ReventlessCore.CommandTopic_Adapter.channel
+      let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
+      let queue = channelParts.queue
+
+      let factoryModulePath = Util_Bundle.resolveModule(
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/BundledDcbCommandTopicHandlerFactory.mjs",
+      )
+      let requestContextModulePath = Util_Bundle.resolveModule(
+        "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
+      )
+
+      // Get DCB EventLog table name from the DcbEventLog resources (passed via dcbConfig)
+      let dcbTableName = switch dcbConfig.dcbTableName {
+      | Some(tableName) => tableName
+      | None => Pulumi.Output.make("NOT_AVAILABLE")
+      }
+
+      let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
+      envVars->Dict.set("DCB_TABLE", dcbTableName->Pulumi.Output.asInput)
+      envVars->Dict.set("QUEUE_URL", queue.id->Pulumi.Output.asInput)
+
+      let stateChangeSliceSpecs: array<Util_EntryPoint.bundledDcbSliceSpec> =
+        dcbConfig.stateChangeSliceSpecPaths->Array.map(specModulePath => {
+          Util_EntryPoint.specModulePath: specModulePath,
+        })
+
+      let entryPointCode = Util_EntryPoint.generateBundledDcbCommandTopicEntryPoint({
+        name,
+        factoryModule: factoryModulePath,
+        requestContextModule: requestContextModulePath,
+        dcbTableEnvVar: "DCB_TABLE",
+        queueUrlEnvVar: "QUEUE_URL",
+        pluginName: dcbConfig.pluginName,
+        stateChangeSliceSpecs,
+      })
+
+      let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+        ~name,
+        ~entryPointCode,
+        ~envVars,
+        ~memorySize,
+        ~timeout,
+        ~opts,
+      )
+      connect(~runtime)
+    }
   }
 
   let finish = () => ()

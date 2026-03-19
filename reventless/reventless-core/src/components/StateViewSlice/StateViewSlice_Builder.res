@@ -13,6 +13,7 @@ module Make = (
     let apiRole: QueryDbStorage.role
   },
 ) => {
+  let finish = EventCollectorRuntimeBuilder.finish
   module Make = (Spec: Reventless.StateViewSlice.Spec): (
     StateViewSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
   ) => {

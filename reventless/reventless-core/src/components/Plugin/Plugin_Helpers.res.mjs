@@ -308,6 +308,22 @@ let preResolversSchemaHook = {
   contents: undefined
 };
 
+let onDcbEventLogCreated = {
+  contents: undefined
+};
+
+let onDcbCommandTopicCreated = {
+  contents: undefined
+};
+
+let onDcbSlicesCreated = {
+  contents: undefined
+};
+
+let onHeartbeatEpChannelAvailable = {
+  contents: undefined
+};
+
 let interopMetaOutput = {
   contents: undefined
 };
@@ -459,6 +475,10 @@ export {
   aggregateMutationFieldsRegistry,
   mcpSchemaRegistrationHook,
   preResolversSchemaHook,
+  onDcbEventLogCreated,
+  onDcbCommandTopicCreated,
+  onDcbSlicesCreated,
+  onHeartbeatEpChannelAvailable,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,

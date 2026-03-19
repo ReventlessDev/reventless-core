@@ -31,6 +31,7 @@ import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSli
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
 import * as Aggregate_Builder_Micro$ReventlessAws from "./components/Aggregate_Builder_Micro.res.mjs";
 import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationSlice_Builder.res.mjs";
+import * as Counter_Builder_Bundled$ReventlessAws from "./components/Counter_Builder_Bundled.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
@@ -40,7 +41,10 @@ import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "./adapter/CommandTo
 import * as PluginRuntime_Builder_Bundled$ReventlessAws from "./adapter/Runtime/PluginRuntime_Builder_Bundled.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as ExtensionPoint_Builder_Bundled$ReventlessAws from "./components/ExtensionPoint_Builder_Bundled.res.mjs";
+import * as StateViewSlice_Builder_Bundled$ReventlessAws from "./components/StateViewSlice_Builder_Bundled.res.mjs";
+import * as Task_Builder_PerBucket_Bundled$ReventlessAws from "./components/Task_Builder_PerBucket_Bundled.res.mjs";
 import * as Aggregate_Builder_Micro_Bundled$ReventlessAws from "./components/Aggregate_Builder_Micro_Bundled.res.mjs";
+import * as AutomationSlice_Builder_Bundled$ReventlessAws from "./components/AutomationSlice_Builder_Bundled.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Aggregate_Builder_Single_Bundled$ReventlessAws from "./components/Aggregate_Builder_Single_Bundled.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
@@ -49,6 +53,16 @@ import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/Comm
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 import * as Aggregate_Builder_PerAggregate_Bundled$ReventlessAws from "./components/Aggregate_Builder_PerAggregate_Bundled.res.mjs";
+import * as OutboundTranslationSlice_Builder_Bundled$ReventlessAws from "./components/OutboundTranslationSlice_Builder_Bundled.res.mjs";
+import * as AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws from "./adapter/Runtime/AutomationSliceRuntime_Builder_Single_Bundled.res.mjs";
+
+let apiConfigRef = {
+  contents: undefined
+};
+
+function getApiConfig() {
+  return Stdlib_Option.getOrThrow(apiConfigRef.contents, "Platform.getApiConfig() called before MakeWithConfig");
+}
 
 let splitApiOutputsRef = {
   contents: undefined
@@ -98,6 +112,10 @@ function MakeWithConfig(Config) {
   }
   let appSyncApiRole = match[1];
   let appSyncApi = match[0];
+  apiConfigRef.contents = {
+    api: appSyncApi,
+    apiRole: appSyncApiRole
+  };
   let ApiConfig = {
     api: appSyncApi,
     apiRole: appSyncApiRole
@@ -147,17 +165,32 @@ function MakeWithConfig(Config) {
     Make: Make$3
   };
   let Make$4 = Task_Builder_PerBucket$ReventlessAws.Make;
+  let MakeBundled$3 = Spec => (Config => Task_Builder_PerBucket_Bundled$ReventlessAws.Make(Spec)(Config));
   let Task = {
-    Make: Make$4
+    Make: Make$4,
+    MakeBundled: MakeBundled$3
   };
-  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
+  let include = Counter_Builder$ReventlessAws.Make(ApiConfig);
+  let MakeBundled$4 = Config => Counter_Builder_Bundled$ReventlessAws.Make(ApiConfig)(Config);
+  let Counter_make = include.make;
+  let Counter_outputs = include.outputs;
+  let Counter_operations = include.operations;
+  let Counter = {
+    make: Counter_make,
+    outputs: Counter_outputs,
+    operations: Counter_operations,
+    MakeBundled: MakeBundled$4
+  };
   let Make$5 = StateChangeSlice_Builder$ReventlessAws.Make;
   let StateChangeSlice = {
     Make: Make$5
   };
-  let StateViewSlice = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let AutomationSlice = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let OutboundTranslationSlice = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$1 = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
+  StateViewSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
+  let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  AutomationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
+  let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Make$6 = DcbEventLog_Builder$ReventlessAws.Make;
   let DcbEventLog = {
@@ -201,6 +234,28 @@ function MakeWithConfig(Config) {
         console.log("[preResolversSchemaHook] Schema is ACTIVE");
       });
     }));
+  };
+  Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents = dcbEventLogUnknown => {
+    let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
+    let tableResource = outputs.resources[0];
+    PluginRuntime_Builder_Bundled$ReventlessAws.registerDcbConfig("", tableResource.name, undefined, undefined);
+  };
+  Plugin_Helpers$ReventlessCore.onDcbCommandTopicCreated.contents = dcbCommandTopicUnknown => {
+    let channel = dcbCommandTopicUnknown.channel;
+    let channelParts = channel.parts;
+    AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
+  };
+  Plugin_Helpers$ReventlessCore.onDcbSlicesCreated.contents = _dcbEventLogUnknown => {
+    console.log("[Platform] onDcbSlicesCreated: slice finish() deferred (bundled slices pending)");
+  };
+  Plugin_Helpers$ReventlessCore.onHeartbeatEpChannelAvailable.contents = remoteChannelUnknown => {
+    let resource = remoteChannelUnknown.resources[0];
+    if (resource !== undefined) {
+      return PluginRuntime_Builder_Bundled$ReventlessAws.registerHeartbeatConfig("", undefined, Pulumi.output(resource.id), undefined);
+    } else {
+      console.warn("Platform: heartbeat EP channel has no resources");
+      return;
+    }
   };
   let Plugin = {
     make: Plugin$ReventlessAws.make
@@ -312,9 +367,15 @@ function MakeWithConfig(Config) {
     Task: Task,
     Counter: Counter,
     StateChangeSlice: StateChangeSlice,
-    StateViewSlice: StateViewSlice,
-    AutomationSlice: AutomationSlice,
-    OutboundTranslationSlice: OutboundTranslationSlice,
+    StateViewSlice: {
+      Make: include$1.Make
+    },
+    AutomationSlice: {
+      Make: include$2.Make
+    },
+    OutboundTranslationSlice: {
+      Make: include$3.Make
+    },
     InboundTranslationSlice: InboundTranslationSlice,
     DcbEventLog: DcbEventLog,
     Api: Api,
@@ -366,6 +427,10 @@ function Make($star) {
   }
   let appSyncApiRole = match[1];
   let appSyncApi = match[0];
+  apiConfigRef.contents = {
+    api: appSyncApi,
+    apiRole: appSyncApiRole
+  };
   let ApiConfig = {
     api: appSyncApi,
     apiRole: appSyncApiRole
@@ -415,17 +480,32 @@ function Make($star) {
     Make: Make$4
   };
   let Make$5 = Task_Builder_PerBucket$ReventlessAws.Make;
+  let MakeBundled$3 = Spec => (Config => Task_Builder_PerBucket_Bundled$ReventlessAws.Make(Spec)(Config));
   let Task = {
-    Make: Make$5
+    Make: Make$5,
+    MakeBundled: MakeBundled$3
   };
-  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
+  let include = Counter_Builder$ReventlessAws.Make(ApiConfig);
+  let MakeBundled$4 = Config => Counter_Builder_Bundled$ReventlessAws.Make(ApiConfig)(Config);
+  let Counter_make = include.make;
+  let Counter_outputs = include.outputs;
+  let Counter_operations = include.operations;
+  let Counter = {
+    make: Counter_make,
+    outputs: Counter_outputs,
+    operations: Counter_operations,
+    MakeBundled: MakeBundled$4
+  };
   let Make$6 = StateChangeSlice_Builder$ReventlessAws.Make;
   let StateChangeSlice = {
     Make: Make$6
   };
-  let StateViewSlice = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let AutomationSlice = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let OutboundTranslationSlice = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$1 = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
+  StateViewSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
+  let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  AutomationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
+  let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Make$7 = DcbEventLog_Builder$ReventlessAws.Make;
   let DcbEventLog = {
@@ -468,6 +548,28 @@ function Make($star) {
         console.log("[preResolversSchemaHook] Schema is ACTIVE");
       });
     }));
+  };
+  Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents = dcbEventLogUnknown => {
+    let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
+    let tableResource = outputs.resources[0];
+    PluginRuntime_Builder_Bundled$ReventlessAws.registerDcbConfig("", tableResource.name, undefined, undefined);
+  };
+  Plugin_Helpers$ReventlessCore.onDcbCommandTopicCreated.contents = dcbCommandTopicUnknown => {
+    let channel = dcbCommandTopicUnknown.channel;
+    let channelParts = channel.parts;
+    AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
+  };
+  Plugin_Helpers$ReventlessCore.onDcbSlicesCreated.contents = _dcbEventLogUnknown => {
+    console.log("[Platform] onDcbSlicesCreated: slice finish() deferred (bundled slices pending)");
+  };
+  Plugin_Helpers$ReventlessCore.onHeartbeatEpChannelAvailable.contents = remoteChannelUnknown => {
+    let resource = remoteChannelUnknown.resources[0];
+    if (resource !== undefined) {
+      return PluginRuntime_Builder_Bundled$ReventlessAws.registerHeartbeatConfig("", undefined, Pulumi.output(resource.id), undefined);
+    } else {
+      console.warn("Platform: heartbeat EP channel has no resources");
+      return;
+    }
   };
   let Plugin = {
     make: Plugin$ReventlessAws.make
@@ -568,6 +670,15 @@ function Make($star) {
     plugin.make(scheduler, appSyncApi, appSyncApiRole);
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
   };
+  let StateViewSlice = {
+    Make: include$1.Make
+  };
+  let AutomationSlice = {
+    Make: include$2.Make
+  };
+  let OutboundTranslationSlice = {
+    Make: include$3.Make
+  };
   return {
     Aggregate: Aggregate,
     ReadModel: ReadModel,
@@ -591,6 +702,8 @@ function Make($star) {
 }
 
 export {
+  apiConfigRef,
+  getApiConfig,
   splitApiOutputsRef,
   getSplitApiOutputs,
   MakeWithConfig,

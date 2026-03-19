@@ -50,6 +50,11 @@ module Make = (
         )
         let dcbEventLog = DcbEventLog.make(~name, ~opts)
 
+        // Notify platform hook that DCB EventLog was created (AWS extracts table name)
+        Plugin_Helpers.onDcbEventLogCreated.contents->Option.forEach(hook =>
+          hook(dcbEventLog->Obj.magic)
+        )
+
         // Create shared CommandTopic for all StateChangeSlices
         module DcbCommandTopicSpec = {
           module Id = Reventless.Id.String
@@ -61,6 +66,11 @@ module Make = (
           DcbCommandTopicChannel,
         )
         let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
+
+        // Notify platform hook that DCB CommandTopic was created (AWS extracts SQS queue URL)
+        Plugin_Helpers.onDcbCommandTopicCreated.contents->Option.forEach(hook =>
+          hook(dcbCommandTopic->Obj.magic)
+        )
 
         let publishJsons =
           dcbCommandTopic
@@ -334,6 +344,12 @@ module Make = (
             }
           }
         }
+
+        // Notify platform hook that all DCB slices are created (AWS calls finish on bundled builders).
+        // Pass dcbEventLog so the platform can wait for its operations to resolve before calling finish().
+        Plugin_Helpers.onDcbSlicesCreated.contents->Option.forEach(hook =>
+          hook(dcbEventLog->Obj.magic)
+        )
 
         let dcbRuntimeSetup = () =>
           dcbCommandTopic->RuntimeBuilder.forDcbCommandTopic(

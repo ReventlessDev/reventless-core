@@ -518,6 +518,37 @@ let preResolversSchemaHook: ref<
 > = ref(None)
 
 // ---------------------------------------------------------------------------
+// DCB CommandTopic created hook — set by AWS platform before plugins are built.
+// Dcb_Builder calls this after creating the shared DCB CommandTopic, passing
+// the CommandTopic component (as unknown) so that the AWS platform can extract
+// the SQS queue URL for bundled slice runtime builders.
+// No-op when unset (in-memory/other platforms).
+// ---------------------------------------------------------------------------
+let onDcbEventLogCreated: ref<option<unknown => unit>> = ref(None)
+let onDcbCommandTopicCreated: ref<option<unknown => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
+// DCB slices created hook — set by AWS platform before plugins are built.
+// Dcb_Builder calls this after all DCB slices have been created and registered
+// with their runtime builders, so that the platform can call finish() on each
+// bundled slice runtime builder to create the bundled Lambda functions.
+// No-op when unset (in-memory/other platforms).
+// ---------------------------------------------------------------------------
+// The hook receives the DcbEventLog component (as unknown) so the platform can
+// wait for its operations to resolve before calling finish() — forEventCollector
+// runs inside Output.apply chains that depend on DcbEventLog operations.
+let onDcbSlicesCreated: ref<option<unknown => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
+// Heartbeat EP queue URL hook — set by AWS platform before plugins are built.
+// Plugin_Builder calls this with the PluginExtensionPoint CommandTopic remote
+// channel so that the AWS platform can extract the SQS queue URL for the
+// bundled heartbeat handler.
+// No-op when unset (in-memory/other platforms).
+// ---------------------------------------------------------------------------
+let onHeartbeatEpChannelAvailable: ref<option<unknown => unit>> = ref(None)
+
+// ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so
 // that the plugin's entry-point module can export it as `_interopMeta`.
 // ---------------------------------------------------------------------------

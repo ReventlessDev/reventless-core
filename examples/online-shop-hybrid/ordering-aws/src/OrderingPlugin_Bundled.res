@@ -7,6 +7,8 @@ open Reventless.Projection
 let resolveModule = ReventlessAws.Util_Bundle.resolveModule
 let orderingPkg = "@reventlessdev/online-shop-hybrid-ordering/src"
 
+// DCB config registered in index.mjs (before ReScript module init)
+
 module Make = (
   Platform: ReventlessInfra.Platform.T
     with type api = ReventlessAws.Types.AppSync.api

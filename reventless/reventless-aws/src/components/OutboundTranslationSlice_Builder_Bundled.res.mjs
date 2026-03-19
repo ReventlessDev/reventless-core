@@ -42,7 +42,7 @@ function Make(Api) {
       let queryDbOutputs = Component$ReventlessCore.outputs(ots).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.registerBundledAutomationSlice(InnerMake.Spec.name, Config.specModulePath, queryDbTableName, Config.dcbQueueUrl);
+      AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.registerBundledAutomationSlice(InnerMake.Spec.name, Config.specModulePath, queryDbTableName);
       return ots;
     };
     return {

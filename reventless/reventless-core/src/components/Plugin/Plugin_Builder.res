@@ -387,6 +387,10 @@ module Make = (
         )
         switch coreSetup {
         | Some((_, pluginExtensionPointCommandTopicRemoteChannel)) =>
+          // Notify platform hook that the EP channel is available (AWS extracts SQS URL for bundled heartbeat)
+          Plugin_Helpers.onHeartbeatEpChannelAvailable.contents->Option.forEach(hook =>
+            hook(pluginExtensionPointCommandTopicRemoteChannel->Obj.magic)
+          )
           heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(
             ~handler,
             ~connect=SpecificHeartbeat.connect(

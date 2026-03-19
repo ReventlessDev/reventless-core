@@ -11,6 +11,18 @@
 // Custom config:
 //   module Platform = Platform.MakeWithConfig({let splitApi = false; let cloner = true})
 
+// API config ref — populated during MakeWithConfig so bundled slice builders
+// can access api/apiRole outside the functor constraint.
+type apiConfig = {
+  api: Types.AppSync.api,
+  apiRole: Types.AppSync.role,
+}
+let apiConfigRef: ref<option<apiConfig>> = ref(None)
+let getApiConfig = () =>
+  apiConfigRef.contents->Option.getOrThrow(
+    ~message="Platform.getApiConfig() called before MakeWithConfig",
+  )
+
 // Split API outputs — populated by makePlatform when splitApi=true.
 // Access via getSplitApiOutputs() after makePlatform has been called.
 type splitApiOutputs = {
@@ -100,6 +112,10 @@ module MakeWithConfig = (
       })
     (phantomApi, phantomRole)
   }
+
+  // Expose api/apiRole via module-level ref so bundled slice builders can access
+  // them outside the functor constraint.
+  let () = apiConfigRef := Some({api: appSyncApi, apiRole: appSyncApiRole})
 
   // Local module alias so sub-builders that require {api, apiRole} can reference it.
   module ApiConfig = {
@@ -191,9 +207,22 @@ module MakeWithConfig = (
     module Make = (Spec: ReventlessInfra.Task.Spec): (
       ReventlessInfra.Task.T with module Spec = Spec
     ) => Task_Builder_PerBucket.Make(Spec)
+
+    module MakeBundled = (
+      Spec: ReventlessCore.Task.Spec,
+      Config: Task_Builder_PerBucket_Bundled.BundledConfig,
+    ): (
+      ReventlessCore.Task.T with module Spec = Spec
+    ) => Task_Builder_PerBucket_Bundled.Make(Spec, Config)
   }
 
-  module Counter = Counter_Builder.Make(ApiConfig)
+  module Counter = {
+    include Counter_Builder.Make(ApiConfig)
+
+    module MakeBundled = (Config: Counter_Builder_Bundled.BundledConfig) => {
+      include Counter_Builder_Bundled.Make(ApiConfig, Config)
+    }
+  }
 
   module StateChangeSlice = {
     module Make = (Spec: Reventless.StateChangeSlice.Spec): (
@@ -203,9 +232,18 @@ module MakeWithConfig = (
     ) => StateChangeSlice_Builder.Make(Spec)
   }
 
-  module StateViewSlice = StateViewSlice_Builder.Make(ApiConfig)
-  module AutomationSlice = AutomationSlice_Builder.Make(ApiConfig)
-  module OutboundTranslationSlice = OutboundTranslationSlice_Builder.Make(ApiConfig)
+  module StateViewSlice = {
+    include StateViewSlice_Builder.Make(ApiConfig)
+    module Bundled = StateViewSlice_Builder_Bundled.Make(ApiConfig)
+  }
+  module AutomationSlice = {
+    include AutomationSlice_Builder.Make(ApiConfig)
+    module Bundled = AutomationSlice_Builder_Bundled.Make(ApiConfig)
+  }
+  module OutboundTranslationSlice = {
+    include OutboundTranslationSlice_Builder.Make(ApiConfig)
+    module Bundled = OutboundTranslationSlice_Builder_Bundled.Make(ApiConfig)
+  }
   module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(ApiConfig)
 
   module DcbEventLog = {
@@ -303,6 +341,66 @@ module MakeWithConfig = (
           ->Pulumi.Output.fromPromise
         })
       )
+    },
+  )
+
+  // Set DCB EventLog created hook — extracts DynamoDB table name for bundled
+  // DCB CommandTopic handler.
+  let () = ReventlessCore.Plugin_Helpers.onDcbEventLogCreated.contents = Some(
+    dcbEventLogUnknown => {
+      let dcbEventLog: ReventlessCore.Component.t<unit, ReventlessCore.DcbEventLog.outputs, unit> =
+        Obj.magic(dcbEventLogUnknown)
+      let outputs = dcbEventLog->ReventlessCore.Component.outputs
+      let tableResource = outputs.resources->Array.getUnsafe(0)
+      let _ = PluginRuntime_Builder_Bundled.registerDcbConfig(
+        ~pluginName="",
+        ~dcbTableName=tableResource.name,
+        (),
+      )
+    },
+  )
+
+  // Set DCB CommandTopic created hook — extracts SQS queue URL for bundled
+  // AutomationSlice/OutboundTranslationSlice runtime builders.
+  let () = ReventlessCore.Plugin_Helpers.onDcbCommandTopicCreated.contents = Some(
+    dcbCommandTopicUnknown => {
+      let commandTopic: ReventlessCore.CommandTopic.component<unit> = Obj.magic(
+        dcbCommandTopicUnknown,
+      )
+      let channel = commandTopic->ReventlessCore.CommandTopic_Adapter.channel
+      let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
+      AutomationSliceRuntime_Builder_Single_Bundled.setDcbQueueUrl(channelParts.queue.id)
+    },
+  )
+
+  // DCB slices created hook — placeholder for bundled slice finish() calls.
+  // Currently a no-op: non-bundled slice builders use CallbackFunction which hits
+  // serialization errors. Bundled slice builders need api/apiRole in Platform.T
+  // to work inside the functor constraint. See complete-bundled-migration.md Step 6.
+  let () = ReventlessCore.Plugin_Helpers.onDcbSlicesCreated.contents = Some(
+    _dcbEventLogUnknown => {
+      Console.log("[Platform] onDcbSlicesCreated: slice finish() deferred (bundled slices pending)")
+    },
+  )
+
+  // Set heartbeat EP channel hook — extracts SQS queue URL for bundled heartbeat handler.
+  // The remoteChannel contains resolved resources from the admin PluginExtensionPoint
+  // CommandTopic. The first resource's id is the SQS queue URL.
+  let () = ReventlessCore.Plugin_Helpers.onHeartbeatEpChannelAvailable.contents = Some(
+    remoteChannelUnknown => {
+      let remoteChannel: ReventlessCore.CommandTopic_Adapter.remoteChannel = Obj.magic(
+        remoteChannelUnknown,
+      )
+      switch remoteChannel.resources->Array.get(0) {
+      | Some(resource) =>
+        PluginRuntime_Builder_Bundled.registerHeartbeatConfig(
+          ~pluginId="",
+          ~epQueueUrl=resource.id->Pulumi.Output.make,
+          (),
+        )
+      | None =>
+        Console.warn("Platform: heartbeat EP channel has no resources")
+      }
     },
   )
 

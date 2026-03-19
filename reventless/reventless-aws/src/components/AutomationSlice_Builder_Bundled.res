@@ -4,7 +4,6 @@ module EventCollectorRuntimeBuilder = AutomationSliceRuntime_Builder_Single_Bund
 
 module type BundledConfig = {
   let specModulePath: string
-  let dcbQueueUrl: Pulumi.Output.t<string>
 }
 
 module Make = (Api: {
@@ -47,7 +46,6 @@ module Make = (Api: {
         ~name=Spec.name,
         ~specModulePath=Config.specModulePath,
         ~queryDbTableName,
-        ~dcbQueueUrl=Config.dcbQueueUrl,
       )
 
       as_

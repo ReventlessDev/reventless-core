@@ -2,7 +2,9 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
@@ -19,6 +21,41 @@ let configRef = {
     clonerEnabled: false
   }
 };
+
+let dcbConfigRef = {
+  contents: {
+    pluginName: "",
+    dcbTableName: undefined,
+    stateChangeSliceSpecPaths: []
+  }
+};
+
+function registerDcbConfig(pluginName, dcbTableName, stateChangeSliceSpecPathsOpt, param) {
+  let stateChangeSliceSpecPaths = stateChangeSliceSpecPathsOpt !== undefined ? stateChangeSliceSpecPathsOpt : [];
+  dcbConfigRef.contents = {
+    pluginName: pluginName,
+    dcbTableName: dcbTableName,
+    stateChangeSliceSpecPaths: stateChangeSliceSpecPaths
+  };
+  return stateChangeSliceSpecPaths.length;
+}
+
+let heartbeatConfigRef = {
+  contents: {
+    pluginId: "",
+    heartbeatTimeout: 10,
+    epQueueUrl: undefined
+  }
+};
+
+function registerHeartbeatConfig(pluginId, heartbeatTimeoutOpt, epQueueUrl, param) {
+  let heartbeatTimeout = heartbeatTimeoutOpt !== undefined ? heartbeatTimeoutOpt : 10;
+  heartbeatConfigRef.contents = {
+    pluginId: pluginId,
+    heartbeatTimeout: heartbeatTimeout,
+    epQueueUrl: epQueueUrl
+  };
+}
 
 function registerConfig(eventTopicArn, pluginReadModelTableName, schedulerRoleArn, schedulerQueueArn, schedulerQueueName, appSyncApiId, clonerEnabledOpt, param) {
   let clonerEnabled = clonerEnabledOpt !== undefined ? clonerEnabledOpt : false;
@@ -85,15 +122,71 @@ function Make(EventCollectorChannel) {
         resources: resources
       }], runtime, opts);
   };
-  let forPluginHeartbeat = (param, param$1, $staropt$star, $staropt$star$1, _heartbeat) => {
-    $staropt$star !== undefined;
-    $staropt$star$1 !== undefined;
-    console.warn("PluginRuntime_Builder_Bundled: forPluginHeartbeat is a no-op stub");
+  let forPluginHeartbeat = (param, connect, memorySizeOpt, timeoutOpt, heartbeat) => {
+    let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
+    let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
+    let hbConfig = heartbeatConfigRef.contents;
+    let epQueueUrl = hbConfig.epQueueUrl;
+    if (epQueueUrl !== undefined) {
+      let resource = Component$ReventlessCore.toPulumiResource(heartbeat);
+      let name = ComponentType$ReventlessCore.nameOpt(resource.__name, Heartbeat$ReventlessCore.componentType);
+      let opts_parent = resource;
+      let opts = {
+        parent: opts_parent
+      };
+      let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/BundledHeartbeatHandlerFactory.mjs");
+      let envVars = {};
+      envVars["EP_QUEUE_URL"] = epQueueUrl;
+      envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
+      envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
+      let entryPointCode = Util_EntryPoint$ReventlessAws.generateBundledHeartbeatEntryPoint({
+        name: name,
+        factoryModule: factoryModulePath,
+        epQueueUrlEnvVar: "EP_QUEUE_URL",
+        pluginIdEnvVar: "PLUGIN_ID",
+        timeoutEnvVar: "HEARTBEAT_TIMEOUT"
+      });
+      return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(name, entryPointCode, envVars, memorySize, timeout, opts));
+    }
+    console.warn("PluginRuntime_Builder_Bundled: forPluginHeartbeat skipped (no EP queue URL)");
   };
-  let forDcbCommandTopic = (param, param$1, $staropt$star, $staropt$star$1, _dcbCommandTopic) => {
-    $staropt$star !== undefined;
-    $staropt$star$1 !== undefined;
-    console.warn("PluginRuntime_Builder_Bundled: forDcbCommandTopic is a no-op stub");
+  let forDcbCommandTopic = (param, connect, memorySizeOpt, timeoutOpt, dcbCommandTopic) => {
+    let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
+    let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
+    let dcbConfig = dcbConfigRef.contents;
+    if (dcbConfig.stateChangeSliceSpecPaths.length === 0) {
+      console.warn("PluginRuntime_Builder_Bundled: forDcbCommandTopic skipped (no slice specs)");
+      return;
+    }
+    let commandTopicResource = Component$ReventlessCore.toPulumiResource(dcbCommandTopic);
+    let name = ComponentType$ReventlessCore.nameOpt(commandTopicResource.__name, CommandTopic$ReventlessCore.componentType);
+    let opts_parent = commandTopicResource;
+    let opts = {
+      parent: opts_parent
+    };
+    let channel = dcbCommandTopic.channel;
+    let channelParts = channel.parts;
+    let queue = channelParts.queue;
+    let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/BundledDcbCommandTopicHandlerFactory.mjs");
+    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
+    let tableName = dcbConfig.dcbTableName;
+    let dcbTableName = tableName !== undefined ? tableName : Pulumi.output("NOT_AVAILABLE");
+    let envVars = {};
+    envVars["DCB_TABLE"] = dcbTableName;
+    envVars["QUEUE_URL"] = queue.id;
+    let stateChangeSliceSpecs = dcbConfig.stateChangeSliceSpecPaths.map(specModulePath => ({
+      specModulePath: specModulePath
+    }));
+    let entryPointCode = Util_EntryPoint$ReventlessAws.generateBundledDcbCommandTopicEntryPoint({
+      name: name,
+      factoryModule: factoryModulePath,
+      requestContextModule: requestContextModulePath,
+      dcbTableEnvVar: "DCB_TABLE",
+      queueUrlEnvVar: "QUEUE_URL",
+      pluginName: dcbConfig.pluginName,
+      stateChangeSliceSpecs: stateChangeSliceSpecs
+    });
+    connect(RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(name, entryPointCode, envVars, memorySize, timeout, opts));
   };
   let finish = () => {};
   return {
@@ -107,6 +200,10 @@ function Make(EventCollectorChannel) {
 
 export {
   configRef,
+  dcbConfigRef,
+  registerDcbConfig,
+  heartbeatConfigRef,
+  registerHeartbeatConfig,
   registerConfig,
   Make,
 }

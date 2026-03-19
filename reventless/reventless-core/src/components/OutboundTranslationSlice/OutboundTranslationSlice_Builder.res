@@ -18,6 +18,7 @@ module Make = (
     let apiRole: QueryDbStorage.role
   },
 ) => {
+  let finish = EventCollectorRuntimeBuilder.finish
   module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
     OutboundTranslationSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event

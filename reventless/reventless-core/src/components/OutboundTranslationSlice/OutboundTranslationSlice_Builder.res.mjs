@@ -104,6 +104,7 @@ function Make(RuntimeEnvironment) {
       };
     };
     return {
+      finish: EventCollectorRuntimeBuilder.finish,
       Make: Make
     };
   }))));

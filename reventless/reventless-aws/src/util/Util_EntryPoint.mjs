@@ -794,3 +794,122 @@ export const handler = async (event, context) => {
 };
 `;
 }
+
+// ---------- DCB CommandTopic ----------
+
+/**
+ * Generate bundled entry point for DCB CommandTopic Lambda.
+ *
+ * @param {Object} config
+ * @param {string} config.name - Handler name
+ * @param {string} config.factoryModule - Path to BundledDcbCommandTopicHandlerFactory.mjs
+ * @param {string} config.requestContextModule - Path to RequestContext.res.mjs
+ * @param {string} config.dcbTableEnvVar - Env var for DCB EventLog table name
+ * @param {string} config.queueUrlEnvVar - Env var for SQS queue URL
+ * @param {string} config.pluginName - Plugin name
+ * @param {Array<{specModulePath: string}>} config.stateChangeSliceSpecs - Array of spec module paths
+ * @returns {string} Generated entry point JS code
+ */
+export function generateBundledDcbCommandTopicEntryPoint(config) {
+  const {
+    name,
+    factoryModule,
+    requestContextModule,
+    dcbTableEnvVar,
+    queueUrlEnvVar,
+    pluginName,
+    stateChangeSliceSpecs,
+  } = config;
+
+  const imports = stateChangeSliceSpecs
+    .map((spec, i) => `import * as SliceSpec_${i} from "${spec.specModulePath}";`)
+    .join("\n");
+
+  const specArray = stateChangeSliceSpecs
+    .map((_, i) => `  { specModule: SliceSpec_${i} }`)
+    .join(",\n");
+
+  return `
+import { createDcbCommandTopicHandler } from "${factoryModule}";
+import * as RequestContext from "${requestContextModule}";
+${imports}
+
+const dcbHandler = createDcbCommandTopicHandler({
+  dcbEventLogTableName: process.env.${dcbTableEnvVar},
+  queueUrl: process.env.${queueUrlEnvVar},
+  pluginName: "${pluginName}",
+  stateChangeSliceSpecs: [
+${specArray}
+  ],
+});
+
+export const handler = async (event, context) => {
+  console.log(\`----- bundledDcbCommandTopic for ${name}: processing \${JSON.stringify(event).slice(0, 200)}\`);
+
+  // Handle InboundTranslation markers
+  if (event.__inboundTranslation) {
+    console.log(\`----- bundledDcbCommandTopic: InboundTranslation route (fieldName=\${event.fieldName})\`);
+    // InboundTranslation not yet supported in bundled mode
+    return "NOT_SUPPORTED_IN_BUNDLED_MODE";
+  }
+
+  // Handle CommandGenerator payload (AppSync direct invocation)
+  if (event.command && event.arguments) {
+    console.log(\`----- bundledDcbCommandTopic: CommandGenerator route (command=\${event.command})\`);
+    // CommandGenerator not yet supported in bundled mode
+    return "NOT_SUPPORTED_IN_BUNDLED_MODE";
+  }
+
+  // Normal SQS path
+  const { Effect } = await import("effect");
+  const correlationId = extractCorrelationId(event);
+  RequestContext.set({ correlationId: correlationId || "unknown" });
+  const result = await Effect.runPromise(dcbHandler(event, context));
+  return result || "";
+};
+
+function extractCorrelationId(event) {
+  try {
+    const records = event.Records || [];
+    if (records.length > 0) {
+      const body = JSON.parse(records[0].body);
+      return body?.meta?.correlationId;
+    }
+  } catch (_) {}
+  return undefined;
+}
+`;
+}
+
+// ---------- Heartbeat ----------
+
+/**
+ * Generate bundled entry point for Heartbeat Lambda.
+ *
+ * @param {Object} config
+ * @param {string} config.name - Handler name
+ * @param {string} config.factoryModule - Path to BundledHeartbeatHandlerFactory.mjs
+ * @param {string} config.epQueueUrlEnvVar - Env var for EP CommandTopic SQS queue URL
+ * @param {string} config.pluginIdEnvVar - Env var for plugin ID
+ * @param {string} config.timeoutEnvVar - Env var for heartbeat timeout
+ * @returns {string} Generated entry point JS code
+ */
+export function generateBundledHeartbeatEntryPoint(config) {
+  const { name, factoryModule, epQueueUrlEnvVar, pluginIdEnvVar, timeoutEnvVar } = config;
+
+  return `
+import { createHeartbeatHandler } from "${factoryModule}";
+
+const heartbeatHandler = createHeartbeatHandler({
+  epQueueUrl: process.env.${epQueueUrlEnvVar},
+  pluginId: process.env.${pluginIdEnvVar},
+  timeout: parseInt(process.env.${timeoutEnvVar} || "10", 10),
+});
+
+export const handler = async (event, context) => {
+  console.log(\`----- bundledHeartbeat for ${name}: invoked\`);
+  await heartbeatHandler(event, context);
+  return "";
+};
+`;
+}

@@ -12,11 +12,18 @@ import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCol
 
 let bundledInfos = {};
 
-function registerBundledAutomationSlice(name, specModulePath, queryDbTableName, dcbQueueUrl) {
+let dcbQueueUrlRef = {
+  contents: undefined
+};
+
+function setDcbQueueUrl(url) {
+  dcbQueueUrlRef.contents = url;
+}
+
+function registerBundledAutomationSlice(name, specModulePath, queryDbTableName) {
   bundledInfos[name] = {
     specModulePath: specModulePath,
-    queryDbTableName: queryDbTableName,
-    dcbQueueUrl: dcbQueueUrl
+    queryDbTableName: queryDbTableName
   };
 }
 
@@ -95,7 +102,9 @@ function finish() {
           let dcbQueueUrlEnvVar = `HANDLER_` + iStr + `_DCB_QUEUE_URL`;
           let sourceUrnEnvVar = `HANDLER_` + iStr + `_SOURCE_URN`;
           envVars[tableEnvVar] = info.queryDbTableName;
-          envVars[dcbQueueUrlEnvVar] = info.dcbQueueUrl;
+          let url = dcbQueueUrlRef.contents;
+          let dcbQueueUrl = url !== undefined ? url : Pulumi.output("NOT_AVAILABLE");
+          envVars[dcbQueueUrlEnvVar] = dcbQueueUrl;
           spec.sourceUrns.apply(urns => {
             urns.forEach((urn, j) => {
               let envVar = j === 0 ? sourceUrnEnvVar : `HANDLER_` + iStr + `_SOURCE_URN_` + j.toString();
@@ -139,6 +148,8 @@ export {
   EventCollectorChannel,
   RuntimeEnvironment,
   bundledInfos,
+  dcbQueueUrlRef,
+  setDcbQueueUrl,
   registerBundledAutomationSlice,
   storedSpecs,
   grandParent,

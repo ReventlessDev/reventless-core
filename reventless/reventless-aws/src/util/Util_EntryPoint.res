@@ -218,3 +218,31 @@ type bundledCounterEntryPointConfig = {
 @module("./Util_EntryPoint.mjs")
 external generateBundledCounterEntryPoint: bundledCounterEntryPointConfig => string =
   "generateBundledCounterEntryPoint"
+
+type bundledDcbSliceSpec = {specModulePath: string}
+
+type bundledDcbCommandTopicEntryPointConfig = {
+  name: string,
+  factoryModule: string,
+  requestContextModule: string,
+  dcbTableEnvVar: string,
+  queueUrlEnvVar: string,
+  pluginName: string,
+  stateChangeSliceSpecs: array<bundledDcbSliceSpec>,
+}
+
+@module("./Util_EntryPoint.mjs")
+external generateBundledDcbCommandTopicEntryPoint: bundledDcbCommandTopicEntryPointConfig =>
+string = "generateBundledDcbCommandTopicEntryPoint"
+
+type bundledHeartbeatEntryPointConfig = {
+  name: string,
+  factoryModule: string,
+  epQueueUrlEnvVar: string,
+  pluginIdEnvVar: string,
+  timeoutEnvVar: string,
+}
+
+@module("./Util_EntryPoint.mjs")
+external generateBundledHeartbeatEntryPoint: bundledHeartbeatEntryPointConfig => string =
+  "generateBundledHeartbeatEntryPoint"

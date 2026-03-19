@@ -58,6 +58,14 @@ function generateBundledCounterEntryPoint(prim) {
   return Util_EntryPointMjs.generateBundledCounterEntryPoint(prim);
 }
 
+function generateBundledDcbCommandTopicEntryPoint(prim) {
+  return Util_EntryPointMjs.generateBundledDcbCommandTopicEntryPoint(prim);
+}
+
+function generateBundledHeartbeatEntryPoint(prim) {
+  return Util_EntryPointMjs.generateBundledHeartbeatEntryPoint(prim);
+}
+
 export {
   generateAggregateEntryPoint,
   generateBundledAggregateEntryPoint,
@@ -73,5 +81,7 @@ export {
   generateBundledSideEffectEntryPoint,
   generateBundledTaskBucketEntryPoint,
   generateBundledCounterEntryPoint,
+  generateBundledDcbCommandTopicEntryPoint,
+  generateBundledHeartbeatEntryPoint,
 }
 /* ./Util_EntryPoint.mjs Not a pure module */

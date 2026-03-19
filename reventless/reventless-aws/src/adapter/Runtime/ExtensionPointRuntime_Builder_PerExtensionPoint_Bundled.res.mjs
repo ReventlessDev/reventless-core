@@ -24,8 +24,9 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let commandTopicResource = Component$ReventlessCore.toPulumiResource(commandTopic);
   let epName = Stdlib_Option.getOr(commandTopicResource.__name, "Unnamed");
-  let info = bundledInfos[epName];
-  if (info !== undefined) {
+  let hit = bundledInfos[epName];
+  let matchedInfo = hit !== undefined ? hit : Stdlib_Option.map(Object.entries(bundledInfos).find(param => epName.includes(param[0].replaceAll(".", ""))), param => param[1]);
+  if (matchedInfo !== undefined) {
     let channel = commandTopic.channel;
     let channelParts = channel.parts;
     let queue = channelParts.queue;
@@ -40,13 +41,13 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     envVars["EP_QUEUE_URL"] = queue.id;
     envVars["EP_QUEUE_ARN"] = queue.arn;
     let publishToAggregatesEnvVars = {};
-    Stdlib_Dict.forEachWithKey(info.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
+    Stdlib_Dict.forEachWithKey(matchedInfo.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
       let envVar = `PTA_` + aggName + `_QUEUE_URL`;
       envVars[envVar] = queueUrlOutput;
       publishToAggregatesEnvVars[aggName] = envVar;
     });
-    let registration_specModulePath = info.specModulePath;
-    let registration_mappingsModulePath = info.mappingsModulePath;
+    let registration_specModulePath = matchedInfo.specModulePath;
+    let registration_mappingsModulePath = matchedInfo.mappingsModulePath;
     let registration = {
       specModulePath: registration_specModulePath,
       mappingsModulePath: registration_mappingsModulePath,

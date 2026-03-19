@@ -42,7 +42,19 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
   let commandTopicResource = commandTopic->ReventlessCore.Component.toPulumiResource
   let epName = commandTopicResource.name->Option.getOr("Unnamed")
 
-  switch bundledInfos->Dict.get(epName) {
+  // Look up by exact name first, then by suffix match (EP names get prefixed
+  // by the Plugin name and dots are stripped, e.g. "Ordering.Orders" → "OrderingOrdersExtPoint").
+  let matchedInfo = switch bundledInfos->Dict.get(epName) {
+  | Some(_) as hit => hit
+  | None =>
+    bundledInfos
+    ->Dict.toArray
+    ->Array.find(((registeredName, _)) =>
+      epName->String.includes(registeredName->String.replaceAll(".", ""))
+    )
+    ->Option.map(((_, info)) => info)
+  }
+  switch matchedInfo {
   | Some(info) =>
     let channel = commandTopic->ReventlessCore.CommandTopic_Adapter.channel
     let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
