@@ -50,7 +50,6 @@ jobs:
           echo "Building layer for @reventlessdev/reventless-aws@$VERSION"
 
       - name: Install dependencies
-        working-directory: reventless/reventless-layer-builder
         run: npm install
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
