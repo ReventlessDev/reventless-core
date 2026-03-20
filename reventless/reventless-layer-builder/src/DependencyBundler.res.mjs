@@ -43,6 +43,7 @@ async function build(config) {
   let pathToLayerData = config.pathToLayerData;
   let sourcePackageVersion = config.sourcePackageVersion;
   let sourcePackageName = config.sourcePackageName;
+  let includeModules = Stdlib_Option.getOr(config.includeModules, []);
   let spinner = Ora();
   spinner.start("configure");
   let rootPath = Nodepath.resolve(pathToSavedDependencies, sourcePackageName);
@@ -90,7 +91,7 @@ async function build(config) {
         rescriptModule.contents = Primitive_option.some(node);
       }
       console.log("\nNode: ", node.packageName);
-      if (!DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, node)) {
+      if (!DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, includeModules, node)) {
         _skippedExtractionCount.contents = _skippedExtractionCount.contents + 1 | 0;
         return;
       }
@@ -135,7 +136,7 @@ async function build(config) {
         return [];
       }
     },
-    filter: node => DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, node)
+    filter: node => DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, includeModules, node)
   });
   spinner.suffixText = "";
   spinner.succeed(undefined);

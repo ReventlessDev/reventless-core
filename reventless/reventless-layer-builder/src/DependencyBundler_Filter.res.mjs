@@ -31,7 +31,11 @@ function hasRescriptDependency(node) {
   return hasDependency(node, "rescript");
 }
 
-function isNecessary(excludeScopes, excludeModules, node) {
+function isNecessary(excludeScopes, excludeModules, includeModulesOpt, node) {
+  let includeModules = includeModulesOpt !== undefined ? includeModulesOpt : [];
+  if (includeModules.includes(node.name)) {
+    return;
+  }
   if (node.dev) {
     return "Dev";
   }
@@ -82,8 +86,9 @@ function isNecessary(excludeScopes, excludeModules, node) {
   }
 }
 
-function predIsNecessary(excludeScopes, excludeModules, node) {
-  return Stdlib_Option.isNone(isNecessary(excludeScopes, excludeModules, node));
+function predIsNecessary(excludeScopes, excludeModules, includeModulesOpt, node) {
+  let includeModules = includeModulesOpt !== undefined ? includeModulesOpt : [];
+  return Stdlib_Option.isNone(isNecessary(excludeScopes, excludeModules, includeModules, node));
 }
 
 function filterNodes(node, predicate) {

@@ -30,6 +30,11 @@ let config: DependencyBundler_Config.t = {
     "npmcli",
     "gar",
   ],
+  includeModules: [
+    // @rescript/runtime is a transitive dep of rescript (excluded as build tool)
+    // but is required at runtime by all compiled ReScript code
+    "@rescript/runtime",
+  ],
   excludeModules: [
     "aws-sdk",
     "sury-ppx",

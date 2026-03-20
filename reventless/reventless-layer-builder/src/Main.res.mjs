@@ -70,6 +70,8 @@ let config_excludeModules = [
   "jsonschema2graphql"
 ];
 
+let config_includeModules = ["@rescript/runtime"];
+
 let config_registryOpts = Object.fromEntries([
   [
     "@reventlessdev:registry",
@@ -115,6 +117,7 @@ let config = {
   pathToSavedDependencies: pathToSavedDependencies,
   excludeScopes: config_excludeScopes,
   excludeModules: config_excludeModules,
+  includeModules: config_includeModules,
   registryOpts: config_registryOpts,
   postProcess: config_postProcess
 };

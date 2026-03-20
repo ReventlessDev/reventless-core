@@ -23,9 +23,11 @@ let build = async (config: DependencyBundler_Config.t) => {
     pathToSavedDependencies,
     excludeScopes,
     excludeModules,
+    ?includeModules,
     postProcess,
     registryOpts,
   } = config
+  let includeModules = includeModules->Option.getOr([])
 
   let spinner = Ora.make()
   let _ = spinner->Ora.start("configure")
@@ -89,7 +91,7 @@ let build = async (config: DependencyBundler_Config.t) => {
 
         Console.log2("\nNode: ", node->Arborist.packageName)
 
-        if DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, node) {
+        if DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, ~includeModules, node) {
           let extractOpts = Pacote.makeConfig(
             Dict.fromArray([
               ...registryOpts->Dict.toArray,
@@ -148,7 +150,7 @@ let build = async (config: DependencyBundler_Config.t) => {
       } else {
         []
       },
-    filter: node => DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, node),
+    filter: node => DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, ~includeModules, node),
   })
 
   spinner->Ora.setSuffixText("")

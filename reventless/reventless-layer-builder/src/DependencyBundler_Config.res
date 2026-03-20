@@ -7,6 +7,7 @@ type t = {
   pathToSavedDependencies: string,
   excludeScopes: array<string>,
   excludeModules: array<string>,
+  includeModules?: array<string>,
   registryOpts: Dict.t<string>,
   postProcess: postProcessMap,
 }

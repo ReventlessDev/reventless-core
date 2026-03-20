@@ -28,7 +28,10 @@ let hasDependency = (node, dependencyName) => {
 
 let hasRescriptDependency = node => hasDependency(node, "rescript")
 
-let isNecessary = (~excludeScopes, ~excludeModules, node) => {
+let isNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], node) => {
+  if includeModules->Array.includes(node->Arborist.name) {
+    None
+  } else
   if node->Arborist.dev {
     Some(Dev)
   } else if node->Arborist.optional {
@@ -76,8 +79,8 @@ let isNecessary = (~excludeScopes, ~excludeModules, node) => {
   }
 }
 
-let predIsNecessary = (~excludeScopes, ~excludeModules, node) =>
-  isNecessary(~excludeScopes, ~excludeModules, node)->Option.isNone
+let predIsNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], node) =>
+  isNecessary(~excludeScopes, ~excludeModules, ~includeModules, node)->Option.isNone
 
 let rec filterNodes = (node, ~predicate) => {
   let count = ref(0)
