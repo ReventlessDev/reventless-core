@@ -9,7 +9,7 @@
     "clean": "rescript clean",
     "rebuild": "npm run clean && npm run build -- -with-deps",
     "deploy": "./scripts/deploy.sh",
-    "test": "echo \"There are no tests for reventless-aws.\"",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",
     "watch:bsb": "bsb -make-world -w",
@@ -38,6 +38,21 @@
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ],
+    "moduleNameMapper": {
+      "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+      "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
+      "^spdx-license-ids/deprecated$": "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",
+      "^spdx-exceptions$": "<rootDir>/../../node_modules/spdx-exceptions/index.json"
+    }
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

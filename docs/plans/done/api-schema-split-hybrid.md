@@ -159,26 +159,51 @@ MCP URLs (`coreMcpUrl` / `pluginMcpUrl`) deferred to Step 13 (Lambda Function UR
 
 ### Step 12: AWS integration tests
 
-Verify split mode works end-to-end:
+**Files:**
+- `reventless/reventless-aws/tests/TestHelpers.res` (new — Jest bindings)
+- `reventless/reventless-aws/tests/MCP_LambdaTest.res` (new — 9 tests)
+- `reventless/reventless-aws/tests/AppSync_AdapterTest.res` (new — 9 tests)
+- `reventless/reventless-aws/package.json` (modified — Jest config + moduleNameMapper)
+- `reventless/reventless-aws/rescript.json` (modified — added tests source dir)
+- `reventless/reventless-aws/__mocks__/emptyModule.js` (new — mock for spdx/arborist)
 
-- Core AppSync API responds to `Core_Plugin` / `Core_Plugins` queries and `Core_Plugin_Activate` / `Core_Plugin_Deactivate` / `Core_Clone` mutations
-- Plugin AppSync API responds to plugin-contributed queries/mutations only
-- No cross-contamination — plugin fields absent from core API introspection, core fields absent from plugin API
-- Unified mode (`splitApi=false`) behaves identically to current behavior
+Set up test infrastructure for reventless-aws (previously had no tests). 18 tests across 2 suites:
 
-- [ ] Done
+**MCP_Lambda tests (9):**
+- `generateAdminConfig` produces correct tool count without/with cloner
+- Resources generated from admin query entries
+- Server name has `-admin` suffix, version passed through
+- Tools and resources have non-empty names/descriptions
+- Command topic ARN mapping, event history defaults to empty
+
+**AppSync_Adapter tests (9):**
+- `injectAwsAuthAll` adds `@aws_auth` to all mutation/query fields, preserves types
+- `injectAwsAuth` adds auth only on entries with authorization metadata
+- `generateFragment` produces fragment with types, mutations, and queries
+- Empty base fragment round-trips correctly (no fields)
+- Schema stitching with empty base produces only plugin fields (no cross-contamination)
+- Admin base without plugins produces only admin fields
+
+Full E2E AppSync verification (actual API responds to queries) requires deployment
+and is not covered by unit tests — the in-memory SplitApiTest proves schema separation
+at the server level, and these tests verify the AWS-specific auth injection and config
+generation layers.
+
+- [x] Done
 
 ### Step 13: MCP Lambda Function URL support (prerequisite)
 
-**File:** `rescript/rescript-pulumi-aws/` (modify — add bindings)
+**File:** `rescript/rescript-pulumi-aws/src/Lambda/FunctionUrl.res` (new)
 
-Implement Pulumi bindings for AWS Lambda Function URLs:
+Pulumi bindings for `aws.lambda.FunctionUrl`:
+- `authorizationType` enum: `AwsIam` / `None`
+- `invokeMode` enum: `Buffered` / `ResponseStream`
+- `cors` type with allow origins/methods/headers, expose headers, max age, credentials
+- `args` type with function name, auth type, optional CORS, invoke mode, qualifier
+- `t` output type with `functionUrl`, `functionArn`, `urlId`
+- `make` and `get` external bindings following existing Lambda module patterns
 
-- `aws.lambda.FunctionUrl` resource — creates a Function URL for a Lambda
-- Required before MCP split can be deployed (Step 10 generates the config, this step enables deployment)
-- Currently marked as placeholder in `MCP_Lambda.res`
-
-- [ ] Done
+- [x] Done
 
 ---
 
@@ -207,7 +232,11 @@ Implement Pulumi bindings for AWS Lambda Function URLs:
 | `Platform.res` | Add MakeWithConfig + splitApi wiring | reventless-aws |
 | `adapter/Mcp/MCP_Lambda.res` | Split config generation | reventless-aws |
 | `platform-and-plugin-guide.md` | AWS split mode + stack outputs docs | doc |
-| Lambda Function URL bindings | New (Pulumi bindings) | rescript-pulumi-aws |
+| `Lambda/FunctionUrl.res` | New (Pulumi bindings) | rescript-pulumi-aws |
+| `tests/TestHelpers.res` | New (Jest bindings) | reventless-aws |
+| `tests/MCP_LambdaTest.res` | New (9 tests) | reventless-aws |
+| `tests/AppSync_AdapterTest.res` | New (9 tests) | reventless-aws |
+| `__mocks__/emptyModule.js` | New (mock) | reventless-aws |
 
 ## What Was NOT Changed (by design)
 
