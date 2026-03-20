@@ -51,7 +51,7 @@ function isNecessary(excludeScopes, excludeModules, node) {
     return "ModuleExcluded";
   }
   let tracks = new Map();
-  Treeverse.depth({
+  Treeverse.default.depth({
     tree: node,
     visit: n => {
       tracks.delete(n.name);

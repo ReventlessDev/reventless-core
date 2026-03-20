@@ -5,5 +5,5 @@ type depthOptions<'node, 'result> = {
   filter?: 'node => bool,
 }
 
-@module("treeverse")
+@module("treeverse") @scope("default")
 external depth: depthOptions<'node, 'result> => 'result = "depth"

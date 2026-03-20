@@ -53,7 +53,7 @@ async function build(config) {
   await Rimraf.rimraf(pathToLayerData);
   spinner.succeed(undefined);
   spinner.start("extract source package");
-  await Pacote.extract(sourcePackageSpec, rootPath, registryOpts);
+  await Pacote.default.extract(sourcePackageSpec, rootPath, registryOpts);
   spinner.succeed(undefined);
   spinner.start("build dependency tree");
   let arboristConfig = Object.fromEntries(Belt_Array.concatMany([
@@ -79,7 +79,7 @@ async function build(config) {
     contents: undefined
   };
   spinner.start("extract dependencies");
-  await Treeverse.depth({
+  await Treeverse.default.depth({
     tree: tree,
     visit: async node => {
       spinner.suffixText = node.name;
@@ -102,7 +102,7 @@ async function build(config) {
           ]]
       ]));
       let dest = Nodepath.resolve(pathToSavedDependencies, node.packageName);
-      await Pacote.extract(node.packageName + "@" + node.version, dest, extractOpts);
+      await Pacote.default.extract(node.packageName + "@" + node.version, dest, extractOpts);
       spinner.suffixText = "";
       spinner.succeed("extracted dependency " + node.name);
       extractionCount.contents = extractionCount.contents + 1 | 0;
