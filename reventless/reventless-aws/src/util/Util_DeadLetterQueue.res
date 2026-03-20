@@ -33,7 +33,7 @@ let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
 };`
 
-let code = Util_Bundle.bundleEntryPoint(entryPointCode)
+let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleEntryPoint(entryPointCode)
 
 let layers =
   Lambda.reventlessLayerArn
@@ -47,6 +47,7 @@ let handler = Lambda.Function.make(
     handler: "index.handler"->Pulumi.Input.make,
     runtime: "nodejs22.x"->Pulumi.Input.make,
     code: code->Pulumi.Input.make,
+    sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
     role: lambdaRole.arn->Pulumi.Output.asInput,
     memorySize: 128->Pulumi.Input.make,
     timeout: 30->Pulumi.Input.make,

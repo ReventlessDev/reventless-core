@@ -2,6 +2,7 @@ import * as esbuild from "esbuild";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
+import * as crypto from "crypto";
 import * as pulumi from "@pulumi/pulumi";
 import { createRequire } from "module";
 
@@ -67,9 +68,37 @@ function buildAndArchive(wrapperPath) {
     throw new Error(`esbuild bundling failed: ${JSON.stringify(result.errors)}`);
   }
 
-  return new pulumi.asset.AssetArchive({
-    "index.mjs": new pulumi.asset.FileAsset(outPath),
-  });
+  // Read bundled output as string — StringAsset is path-independent,
+  // so Pulumi only sees content changes, not temp directory path changes.
+  const bundledCode = fs.readFileSync(outPath, "utf-8");
+
+  // Clean up temp directory — content is in memory now
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+
+  const sourceCodeHash = crypto
+    .createHash("sha256")
+    .update(bundledCode)
+    .digest("base64");
+
+
+  return {
+    code: new pulumi.asset.AssetArchive({
+      "index.mjs": new pulumi.asset.StringAsset(bundledCode),
+    }),
+    sourceCodeHash,
+  };
+}
+
+/**
+ * Create a stable temp directory based on content hash.
+ * esbuild embeds the entry point path as a comment in its output,
+ * so a random temp dir name causes non-deterministic bundles.
+ */
+function stableTmpDir(content) {
+  const hash = crypto.createHash("sha256").update(content).digest("hex").slice(0, 16);
+  const dir = path.join(os.tmpdir(), `reventless-bundle-${hash}`);
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
 }
 
 /**
@@ -81,12 +110,11 @@ function buildAndArchive(wrapperPath) {
  * @returns {pulumi.asset.AssetArchive} - Archive containing the bundled index.mjs
  */
 export function bundleHandler(entryPoint, exportName) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "reventless-bundle-"));
-  const wrapperPath = path.join(tmpDir, "wrapper.mjs");
-
   const wrapperCode = `import { ${exportName} } from ${JSON.stringify(entryPoint)};
 export const handler = ${exportName};
 `;
+  const tmpDir = stableTmpDir(wrapperCode);
+  const wrapperPath = path.join(tmpDir, "wrapper.mjs");
   fs.writeFileSync(wrapperPath, wrapperCode);
 
   return buildAndArchive(wrapperPath);
@@ -103,7 +131,7 @@ export const handler = ${exportName};
  * @returns {pulumi.asset.AssetArchive} - Archive containing the bundled index.mjs
  */
 export function bundleEntryPoint(entryPointCode) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "reventless-bundle-"));
+  const tmpDir = stableTmpDir(entryPointCode);
   const wrapperPath = path.join(tmpDir, "wrapper.mjs");
 
   fs.writeFileSync(wrapperPath, entryPointCode);

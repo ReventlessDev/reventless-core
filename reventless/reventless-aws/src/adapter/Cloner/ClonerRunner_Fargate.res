@@ -111,7 +111,7 @@ export const handler = async (event) => {
     },
   }));
 };`
-  let code = Util_Bundle.bundleEntryPoint(entryPointCode)
+  let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleEntryPoint(entryPointCode)
 
   let layers =
     Lambda.reventlessLayerArn
@@ -197,6 +197,7 @@ export const handler = async (event) => {
           handler: "index.handler"->Pulumi.Input.make,
           runtime: "nodejs22.x"->Pulumi.Input.make,
           code: code->Pulumi.Input.make,
+          sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
           role: lambdaRole.arn->Pulumi.Output.asInput,
           memorySize: 1024->Pulumi.Input.make,
           timeout: 180->Pulumi.Input.make,

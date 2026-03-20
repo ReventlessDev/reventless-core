@@ -70,7 +70,7 @@ let makeBundled: ReventlessCore.Runtime.bundledEnvironmentMaker<parts> = (
     ~opts?,
   )
 
-  let code = Util_Bundle.bundleHandler(
+  let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleHandler(
     ~entryPoint=handlerRef.handlerModule,
     ~exportName=handlerRef.handlerExport,
   )
@@ -94,6 +94,7 @@ let makeBundled: ReventlessCore.Runtime.bundledEnvironmentMaker<parts> = (
       handler: "index.handler"->Pulumi.Input.make,
       runtime: "nodejs22.x"->Pulumi.Input.make,
       code: code->Pulumi.Input.make,
+      sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
       role: lambdaRole.arn->Pulumi.Output.asInput,
       memorySize: memorySize->Pulumi.Input.make,
       timeout: timeout->Pulumi.Input.make,
@@ -139,7 +140,7 @@ let makeBundledFromEntryPoint: (
     ~opts?,
   )
 
-  let code = Util_Bundle.bundleEntryPoint(entryPointCode)
+  let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleEntryPoint(entryPointCode)
 
   let layers =
     Lambda.reventlessLayerArn
@@ -160,6 +161,7 @@ let makeBundledFromEntryPoint: (
       handler: "index.handler"->Pulumi.Input.make,
       runtime: "nodejs22.x"->Pulumi.Input.make,
       code: code->Pulumi.Input.make,
+      sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
       role: lambdaRole.arn->Pulumi.Output.asInput,
       memorySize: memorySize->Pulumi.Input.make,
       timeout: timeout->Pulumi.Input.make,

@@ -41,7 +41,7 @@ function makeBundled(name, handlerRef, envVarsOpt, memorySizeOpt, timeoutOpt, op
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  let code = Util_Bundle$ReventlessAws.bundleHandler(handlerRef.handlerModule, handlerRef.handlerExport);
+  let match = Util_Bundle$ReventlessAws.bundleHandler(handlerRef.handlerModule, handlerRef.handlerExport);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
   let variables = Object.fromEntries([[
       "Environment",
@@ -53,7 +53,7 @@ function makeBundled(name, handlerRef, envVarsOpt, memorySizeOpt, timeoutOpt, op
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: "nodejs22.x",
-    code: code,
+    code: match.code,
     role: lambdaRole.arn,
     memorySize: memorySize,
     timeout: timeout,
@@ -61,7 +61,8 @@ function makeBundled(name, handlerRef, envVarsOpt, memorySizeOpt, timeoutOpt, op
     tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
     environment: {
       variables: variables
-    }
+    },
+    sourceCodeHash: match.sourceCodeHash
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   return {
     parts: {
@@ -81,7 +82,7 @@ function makeBundledFromEntryPoint(name, entryPointCode, envVarsOpt, memorySizeO
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  let code = Util_Bundle$ReventlessAws.bundleEntryPoint(entryPointCode);
+  let match = Util_Bundle$ReventlessAws.bundleEntryPoint(entryPointCode);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
   let variables = Object.fromEntries([[
       "Environment",
@@ -93,7 +94,7 @@ function makeBundledFromEntryPoint(name, entryPointCode, envVarsOpt, memorySizeO
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: "nodejs22.x",
-    code: code,
+    code: match.code,
     role: lambdaRole.arn,
     memorySize: memorySize,
     timeout: timeout,
@@ -101,7 +102,8 @@ function makeBundledFromEntryPoint(name, entryPointCode, envVarsOpt, memorySizeO
     tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
     environment: {
       variables: variables
-    }
+    },
+    sourceCodeHash: match.sourceCodeHash
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   return {
     parts: {

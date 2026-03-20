@@ -168,6 +168,7 @@ module Function = {
     layers?: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
     tags?: Pulumi.Input.t<Aws.tags>,
     environment?: Pulumi.Input.t<functionEnvironment>,
+    sourceCodeHash?: Pulumi.Input.t<string>,
   }
 
   type t = {

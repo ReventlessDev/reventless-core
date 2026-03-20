@@ -40,7 +40,11 @@ let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
 };`;
 
-let code = Util_Bundle$ReventlessAws.bundleEntryPoint(entryPointCode);
+let match = Util_Bundle$ReventlessAws.bundleEntryPoint(entryPointCode);
+
+let sourceCodeHash = match.sourceCodeHash;
+
+let code = match.code;
 
 let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
 
@@ -58,7 +62,8 @@ let handler = new (Aws.lambda.Function)(name, {
         "Environment",
         Pulumi.getStack()
       ]])
-  }
+  },
+  sourceCodeHash: sourceCodeHash
 }, opts);
 
 let lambda = Pulumi.output(handler);
@@ -139,6 +144,7 @@ export {
   lambdaRole,
   entryPointCode,
   code,
+  sourceCodeHash,
   layers,
   handler,
   lambda,

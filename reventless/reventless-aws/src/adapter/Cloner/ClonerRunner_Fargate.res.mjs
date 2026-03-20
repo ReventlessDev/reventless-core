@@ -58,7 +58,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
     policyArn: secretsManagerAccessPolicy.arn,
     role: taskExecutionRole.id
   }, opts);
-  let code = Util_Bundle$ReventlessAws.bundleEntryPoint(`import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
+  let match = Util_Bundle$ReventlessAws.bundleEntryPoint(`import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
 const client = new ECSClient();
 export const handler = async (event) => {
   const environment = Object.fromEntries([
@@ -80,6 +80,8 @@ export const handler = async (event) => {
     },
   }));
 };`);
+  let sourceCodeHash = match.sourceCodeHash;
+  let code = match.code;
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
   let vpcStackName = Stdlib_Option.getOrThrow(new Pulumi.Config("vpc").get("stack"), undefined);
   let vpcConfig = Util_Vpc$ReventlessAws.getVpcConfig(vpcStackName, "vpc");
@@ -167,7 +169,8 @@ export const handler = async (event) => {
             Pulumi.getStack()
           ]
         ])
-      }
+      },
+      sourceCodeHash: sourceCodeHash
     }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
     lambda.arn.apply(arn => {
       let appsyncInvokeLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "AppSyncInvokePolicy", [{
