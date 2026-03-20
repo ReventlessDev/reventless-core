@@ -20,13 +20,54 @@ let config_excludeScopes = [
   "opentelemetry",
   "aws-sdk",
   "smithy",
-  "sigstore"
+  "sigstore",
+  "npmcli",
+  "gar"
 ];
 
 let config_excludeModules = [
   "aws-sdk",
   "sury-ppx",
-  "fast-check"
+  "fast-check",
+  "ssh2",
+  "tweetnacl",
+  "bcrypt-pbkdf",
+  "asn1",
+  "esprima",
+  "acorn",
+  "source-map",
+  "source-map-support",
+  "cjs-module-lexer",
+  "execa",
+  "cross-spawn",
+  "shebang-command",
+  "shebang-regex",
+  "cacache",
+  "make-fetch-happen",
+  "ssri",
+  "minipass-fetch",
+  "minipass-collect",
+  "minipass-flush",
+  "minipass-pipeline",
+  "minipass-sized",
+  "socks",
+  "socks-proxy-agent",
+  "http-proxy-agent",
+  "https-proxy-agent",
+  "hosted-git-info",
+  "npm-install-checks",
+  "npm-normalize-package-bin",
+  "npm-package-arg",
+  "npm-pick-manifest",
+  "validate-npm-package-name",
+  "spdx-exceptions",
+  "spdx-expression-parse",
+  "spdx-license-ids",
+  "pure-rand",
+  "ramda",
+  "lodash",
+  "graphql",
+  "jsonschema2graphql"
 ];
 
 let config_registryOpts = Object.fromEntries([
@@ -56,6 +97,14 @@ let config_postProcess = Object.fromEntries([
   [
     "effect",
     DependencyBundler_PostProcess.deleteEffectSrc
+  ],
+  [
+    "@reventlessdev/rescript-fast-csv",
+    DependencyBundler_PostProcess.deleteTestsAndExamples
+  ],
+  [
+    "fast-csv",
+    DependencyBundler_PostProcess.deleteTestsAndExamples
   ]
 ]);
 

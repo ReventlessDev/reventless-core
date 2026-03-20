@@ -37,10 +37,30 @@ async function deleteEffectSrc(_node, cwd) {
   return await Rimraf.rimraf(Nodepath.resolve(cwd, "src"));
 }
 
+async function deleteTestsAndExamples(_node, cwd) {
+  return await Rimraf.rimraf([
+    Nodepath.resolve(cwd, "tests"),
+    Nodepath.resolve(cwd, "test"),
+    Nodepath.resolve(cwd, "examples"),
+    Nodepath.resolve(cwd, "benchmark"),
+    Nodepath.resolve(cwd, "docs")
+  ]);
+}
+
+async function deleteLodashExtras(_node, cwd) {
+  return await Rimraf.rimraf([
+    Nodepath.resolve(cwd, "core.min.js"),
+    Nodepath.resolve(cwd, "lodash.min.js"),
+    Nodepath.resolve(cwd, "fp")
+  ]);
+}
+
 export {
   rescriptDependent,
   reventlessCore,
   deleteTests,
   deleteEffectSrc,
+  deleteTestsAndExamples,
+  deleteLodashExtras,
 }
 /* rimraf Not a pure module */

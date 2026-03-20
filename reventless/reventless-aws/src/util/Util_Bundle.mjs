@@ -52,7 +52,20 @@ function buildAndArchive(wrapperPath) {
     format: "esm",
     platform: "node",
     target: "node22",
-    external: ["@aws-sdk/*"],
+    external: [
+      "@aws-sdk/*",
+      // Layer-provided packages — must match what reventless-layer-builder produces.
+      // User domain code (Spec, Behavior) is resolved via absolute paths and won't match.
+      "effect",
+      "effect/*",
+      "sury",
+      "sury/*",
+      "@reventlessdev/*",
+      "@rescript/*",
+      "@standard-schema/*",
+      "uuid",
+      "hash-object",
+    ],
     // Resolve dependencies from the project root so temp-dir entry points
     // can find packages like "effect", "@reventlessdev/*", etc.
     absWorkingDir: projectRoot,
@@ -60,7 +73,7 @@ function buildAndArchive(wrapperPath) {
     banner: {
       js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`,
     },
-    minify: false,
+    minify: true,
     sourcemap: false,
   });
 
