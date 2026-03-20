@@ -493,7 +493,7 @@ let mcpSchemaRegistrationHook: ref<option<mcpRegistrationParams => unit>> = ref(
 // No-op when unset (in-memory/other platforms).
 // ---------------------------------------------------------------------------
 let preResolversSchemaHook: ref<
-  option<Reventless.Plugin.apiSchemaFragment => Pulumi.Output.t<unit>>,
+  option<(~name: string, Reventless.Plugin.apiSchemaFragment) => Pulumi.Output.t<unit>>,
 > = ref(None)
 
 // ---------------------------------------------------------------------------

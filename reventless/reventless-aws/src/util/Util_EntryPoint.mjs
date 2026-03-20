@@ -455,6 +455,9 @@ export function generateAggregateEntryPoint(config) {
   importLines.push(
     `import { createCommandTopicHandler } from ${JSON.stringify(factoryModule)};`
   );
+  importLines.push(
+    `import { createCommandGeneratorHandler } from ${JSON.stringify(factoryModule.replace("AggregateHandlerFactory", "CommandGeneratorHandlerFactory"))};`
+  );
   importLines.push(`import { Effect } from "effect";`);
   importLines.push(
     `import * as RequestContext from ${JSON.stringify(requestContextModule)};`
@@ -478,6 +481,16 @@ export function generateAggregateEntryPoint(config) {
   })],`
   );
 
+  // CommandGenerator handlers keyed by aggregate Spec.name — used for
+  // direct AppSync invocations (event.command && event.arguments).
+  const cmdGenInitLines = handlers.map((h, i) =>
+    `  [Spec_${i}.name, createCommandGeneratorHandler({
+    specModule: Spec_${i},
+    behaviorModule: Behavior_${i},
+    queueUrl: process.env.${h.queueUrlEnvVar},
+  })],`
+  );
+
   return `// Generated aggregate handler entry point for "${name}"
 ${importLines.join("\n")}
 
@@ -490,6 +503,10 @@ const runEffect = (correlationId, effect) =>
 
 const commandTopicHandlers = new Map([
 ${handlerInitLines.join("\n")}
+]);
+
+const commandGeneratorHandlers = new Map([
+${cmdGenInitLines.join("\n")}
 ]);
 
 function groupBySource(event) {
@@ -510,6 +527,26 @@ function extractCorrelationId(event) {
 }
 
 export const handler = async (event, context) => {
+  // Direct AppSync invocation — CommandGenerator payload
+  if (event.command && event.arguments) {
+    const desc = "commandGeneratorHandler for ${name}:";
+    // Route to the correct aggregate by trying each handler.
+    // The handler validates the command against its schema — if invalid, it throws.
+    for (const [aggName, cmdGenHandler] of commandGeneratorHandlers) {
+      try {
+        const result = await runEffect(undefined, cmdGenHandler(event, context));
+        console.log(\`----- \${desc} processed command \${event.command} via \${aggName}\`);
+        return result;
+      } catch {
+        // Command didn't match this aggregate's schema — try next
+        continue;
+      }
+    }
+    console.warn(\`\${desc} no handler matched command: \${event.command}\`);
+    return "";
+  }
+
+  // SQS event — CommandTopic handler
   const correlationId = extractCorrelationId(event);
   const desc = "aggregateHandler for ${name}:";
   const grouped = groupBySource(event);

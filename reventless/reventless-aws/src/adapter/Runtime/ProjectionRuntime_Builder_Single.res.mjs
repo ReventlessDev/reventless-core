@@ -80,9 +80,13 @@ function Make(C) {
             let i = idx.contents;
             let iStr = i.toString();
             let sourceUrnEnvVar = `HANDLER_` + iStr + `_SOURCE_URN`;
+            envVars[sourceUrnEnvVar] = spec.sourceUrns.apply(urns => urns[0]);
             spec.sourceUrns.apply(urns => {
               urns.forEach((urn, j) => {
-                let envVar = j === 0 ? sourceUrnEnvVar : `HANDLER_` + iStr + `_SOURCE_URN_` + j.toString();
+                if (j <= 0) {
+                  return;
+                }
+                let envVar = `HANDLER_` + iStr + `_SOURCE_URN_` + j.toString();
                 envVars[envVar] = urn;
               });
             });

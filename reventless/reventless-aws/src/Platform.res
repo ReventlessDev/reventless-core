@@ -285,33 +285,148 @@ module MakeWithConfig = (
   // Set the pre-resolvers schema push hook so plugin stacks push their
   // schema fragment to AppSync before QueryDb resolvers are created.
   // Without this, resolvers reference types that don't exist in the schema yet.
-  // Uses Output.flatMap to ensure the API call completes before resolvers are created.
+  //
+  // To accumulate fragments across independent plugin deployments, each plugin
+  // writes its fragment to the Plugin RM table (keyed "deploy-schema:<name>")
+  // at deploy time. The hook then scans for ALL deploy-schema entries and
+  // stitches them together — ensuring the schema is cumulative rather than
+  // overwritten by each plugin deployment.
+  let deploySchemaPrefix = "deploy-schema:"
+
   let () = ReventlessCore.Plugin_Helpers.preResolversSchemaHook.contents = Some(
-    pluginFragment => {
-      Console.log("[preResolversSchemaHook] Pushing plugin schema fragment to AppSync")
-      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-        ~group="Admin",
-      )
-      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
-        ~baseFragment=adminBaseFragment,
-        ~pluginFragments=[pluginFragment],
-      )
-      appSyncApi->Pulumi.Output.flatMap(api =>
-        api.id->Pulumi.Output.flatMap(apiId => {
-          Console.log(`[preResolversSchemaHook] Calling startSchemaCreation for API ${apiId}`)
-          let definition: unknown = sdl->Obj.magic
-          let client = AppSync_Adapter.getClient()
-          client
-          ->AppSync_Adapter.startSchemaCreation({apiId, definition})
-          ->Promise.then(async _ => {
-            Console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE")
-            await AppSync_Adapter.waitForSchemaActive(client, apiId)
-            Console.log("[preResolversSchemaHook] Schema is ACTIVE")
+    (~name, pluginFragment) => {
+      Console.log(`[preResolversSchemaHook] Pushing schema for plugin ${name} to AppSync`)
+
+      // Read Plugin RM table name from platform StackReference.
+      let pluginRmTableNameOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
+      | Some(stackRef) =>
+        let direct: Pulumi.Output.t<option<string>> =
+          stackRef->Pulumi.StackReference.getOutput("pluginRmTableName")
+        let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
+          stackRef->Pulumi.StackReference.getOutput("default")
+        (direct, defaultOutput)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((direct, default)) =>
+          switch direct {
+          | Some(name) => Some(name)
+          | None =>
+            default
+            ->Option.flatMap(d => d->JSON.Decode.object)
+            ->Option.flatMap(d => d->Dict.get("pluginRmTableName"))
+            ->Option.flatMap(v => v->JSON.Decode.string)
+          }
+        )
+      | None => Pulumi.Output.make(None)
+      }
+
+      pluginRmTableNameOutput->Pulumi.Output.flatMap(tableNameOpt => {
+        // Write this plugin's fragment to DynamoDB, then scan all deploy-schema
+        // entries to collect every deployed plugin's fragment.
+        let writeAndScanFragments = () =>
+          switch tableNameOpt {
+          | None =>
+            Console.log(
+              "[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence",
+            )
+            Promise.resolve([])
+          | Some(tableName) =>
+            open AwsSdk.DynamoDb.DocumentClient
+            // Write this plugin's fragment so subsequent plugin deployments find it.
+            let deployItem =
+              Dict.fromArray([
+                ("id", `${deploySchemaPrefix}${name}`->JSON.Encode.string),
+                ("fragment", pluginFragment.encoded->JSON.Encode.string),
+              ])->JSON.Encode.object
+            Console.log(
+              `[preResolversSchemaHook] Writing deploy-schema entry for ${name} to ${tableName}`,
+            )
+            PutCommand.send(PutCommand.make({PutCommand.tableName: tableName, item: deployItem}))
+            ->Promise.then(_ => {
+              // Scan for all deploy-schema entries from previously deployed plugins.
+              Console.log(
+                `[preResolversSchemaHook] Scanning ${tableName} for deploy-schema entries`,
+              )
+              ScanCommand.send(
+                ScanCommand.make({
+                  ScanCommand.tableName: tableName,
+                  filterExpression: "begins_with(#id, :prefix)",
+                  expressionAttributeNames: Dict.fromArray([("#id", "id")]),
+                  expressionAttributeValues: Dict.fromArray([
+                    (":prefix", deploySchemaPrefix->JSON.Encode.string),
+                  ]),
+                }),
+              )
+            })
+            ->Promise.then(result => {
+              let items = result.items->Option.getOr([])
+              let fragments = items->Array.filterMap(item => {
+                try {
+                  let obj = item->JSON.stringify->JSON.parseOrThrow
+                  switch obj->JSON.Decode.object->Option.flatMap(d => d->Dict.get("fragment")) {
+                  | Some(fragmentJson) =>
+                    switch fragmentJson->JSON.Decode.string {
+                    | Some(encoded) =>
+                      Some({Reventless.Plugin.encoded, protocol: "graphql"})
+                    | None => None
+                    }
+                  | None => None
+                  }
+                } catch {
+                | _ => None
+                }
+              })
+              Console.log(
+                `[preResolversSchemaHook] Found ${fragments->Array.length->Int.toString} deploy-schema entries`,
+              )
+              Promise.resolve(fragments)
+            })
+            ->Promise.catch(err => {
+              let msg =
+                err
+                ->JsExn.fromException
+                ->Option.flatMap(JsExn.message)
+                ->Option.getOr("unknown")
+              Console.log(
+                `[preResolversSchemaHook] DynamoDB write/scan failed (${msg}) — using current plugin only`,
+              )
+              Promise.resolve([pluginFragment])
+            })
+          }
+
+        appSyncApi->Pulumi.Output.flatMap(api =>
+          api.id->Pulumi.Output.flatMap(apiId => {
+            writeAndScanFragments()
+            ->Promise.then(async allPluginFragments => {
+              // In split mode, use empty base (admin is on the core API).
+              // In unified mode, include admin base so the single API has everything.
+              let baseFragment = if Config.splitApi {
+                emptyBaseFragment
+              } else {
+                AppSync_Adapter.injectAwsAuthAll(
+                  ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+                  ~group="Admin",
+                )
+              }
+              let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+                ~baseFragment,
+                ~pluginFragments=allPluginFragments,
+              )
+              Console.log(
+                `[preResolversSchemaHook] Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments)`,
+              )
+              let client = AppSync_Adapter.getClient()
+              let _ = await client->AppSync_Adapter.startSchemaCreation({
+                apiId,
+                definition: sdl->Obj.magic,
+              })
+              Console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE")
+              await AppSync_Adapter.waitForSchemaActive(client, apiId)
+              Console.log("[preResolversSchemaHook] Schema is ACTIVE")
+            })
+            ->Pulumi.Output.fromPromise
           })
-          ->Pulumi.Output.fromPromise
-        })
-      )
+        )
+      })
     },
   )
 
@@ -503,19 +618,29 @@ module MakeWithConfig = (
       // Store outputs so users can export them as stack outputs.
       splitApiOutputsRef := Some({coreApi: coreApiOutput, coreRole: coreRoleOutput})
 
-      // Push the admin schema (base fragment only, no plugin fragments).
-      // This is a one-time operation — admin schema is static.
+      // Push admin schema to core API via flatMap so Pulumi tracks the async chain.
       let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
         ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
         ~group="Admin",
       )
-      let _ = coreApiOutput->Pulumi.Output.apply(coreApi => {
-        let _ = AppSync_Adapter.updateSchema(
-          ~api=Pulumi.Output.make(coreApi),
-          ~baseFragment=adminBaseFragment,
-          ~pluginFragments=[],
-        )
-      })
+      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+        ~baseFragment=adminBaseFragment,
+        ~pluginFragments=[],
+      )
+      let _ = coreApiOutput->Pulumi.Output.flatMap(api =>
+        api.id->Pulumi.Output.flatMap(apiId => {
+          Console.log(`[makePlatform] Pushing admin schema to core-api ${apiId}`)
+          let client = AppSync_Adapter.getClient()
+          client
+          ->AppSync_Adapter.startSchemaCreation({apiId, definition: sdl->Obj.magic})
+          ->Promise.then(async _ => {
+            Console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE")
+            await AppSync_Adapter.waitForSchemaActive(client, apiId)
+            Console.log("[makePlatform] core-api schema is ACTIVE")
+          })
+          ->Pulumi.Output.fromPromise
+        })
+      )
     }
   }
 
@@ -532,6 +657,9 @@ module MakeWithConfig = (
     // captured Outputs into the CallbackFunction Lambda; at runtime, Output.get
     // returns the resolved string synchronously.
     let appSyncApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
+
+    // Ref to capture Plugin RM table name for export (set inside onAdminComponentsCreated).
+    let pluginRmTableNameRef: ref<option<Pulumi.Output.t<string>>> = ref(None)
 
     // Register bundled Admin EventCollector config. Done via onAdminComponentsCreated
     // hook so pluginReadModelTableName is available (set after aggregates/readModels
@@ -562,6 +690,9 @@ module MakeWithConfig = (
           }
         | None => None
         }
+
+        // Capture for export so plugin stacks can scan existing plugins.
+        pluginRmTableNameRef := pluginReadModelTableName
 
         // Register EP runtime with aggregate queue URLs and RM table
         PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
@@ -597,12 +728,18 @@ module MakeWithConfig = (
           | _ => None
           }
         )
-        let adminBase = AppSync_Adapter.injectAwsAuthAll(
-          ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-          ~group="Admin",
-        )
+        // In split mode, the plugin API only has plugin schema (admin is on the core API).
+        // In unified mode, stitch admin + plugins into the single shared API.
+        let baseFragment = if Config.splitApi {
+          emptyBaseFragment
+        } else {
+          AppSync_Adapter.injectAwsAuthAll(
+            ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+            ~group="Admin",
+          )
+        }
         let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
-          ~baseFragment=adminBase,
+          ~baseFragment,
           ~pluginFragments=fragments,
         )
         let _ = await AppSync_Adapter.getClient()->AppSync_Adapter.startSchemaCreation({
@@ -624,22 +761,71 @@ module MakeWithConfig = (
       ~dcbSpec=None,
     )
 
-    // Push admin schema to the shared API. In per-plugin deployment there is one
-    // API — plugin schema fragments are pushed at runtime via PluginExtensionPoint.
-    let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-      ~group="Admin",
-    )
-    let _ = AppSync_Adapter.updateSchema(
-      ~api=appSyncApi,
-      ~baseFragment=adminBaseFragment,
-      ~pluginFragments=[],
-    )
+    if Config.splitApi {
+      // Split mode: create a dedicated core AppSync API for admin schema.
+      // Plugin API (appSyncApi) only gets plugin schema — no admin fields.
+      let (coreApiOutput, coreRoleOutput) = AppSync_Adapter.makeApiResource(
+        ~name="core-api",
+        ~opts={},
+      )
+      splitApiOutputsRef := Some({coreApi: coreApiOutput, coreRole: coreRoleOutput})
 
-    // Export API ID and role ARN so plugin stacks can create DataSources/Resolvers
-    // against the shared API via StackReference.
+      // Push admin schema to core API via flatMap so Pulumi tracks the async chain.
+      // (updateSchema uses fire-and-forget Output.apply which can miss for fresh resources.)
+      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+        ~group="Admin",
+      )
+      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+        ~baseFragment=adminBaseFragment,
+        ~pluginFragments=[],
+      )
+      let _ = coreApiOutput->Pulumi.Output.flatMap(api =>
+        api.id->Pulumi.Output.flatMap(apiId => {
+          Console.log(`[deployPlatform] Pushing admin schema to core-api ${apiId}`)
+          let client = AppSync_Adapter.getClient()
+          client
+          ->AppSync_Adapter.startSchemaCreation({apiId, definition: sdl->Obj.magic})
+          ->Promise.then(async _ => {
+            Console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE")
+            await AppSync_Adapter.waitForSchemaActive(client, apiId)
+            Console.log("[deployPlatform] core-api schema is ACTIVE")
+          })
+          ->Pulumi.Output.fromPromise
+        })
+      )
+
+      // Export core API outputs so they can be consumed independently.
+      Pulumi.Pulumi.export("coreApiId", coreApiOutput->Pulumi.Output.flatMap(api => api.id))
+      Pulumi.Pulumi.export(
+        "coreApiRoleArn",
+        coreRoleOutput->Pulumi.Output.flatMap(role => role.arn),
+      )
+    } else {
+      // Unified mode: push admin schema to the shared API.
+      // Plugin schema fragments are pushed at runtime via PluginExtensionPoint.
+      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+        ~group="Admin",
+      )
+      let _ = AppSync_Adapter.updateSchema(
+        ~api=appSyncApi,
+        ~baseFragment=adminBaseFragment,
+        ~pluginFragments=[],
+      )
+    }
+
+    // Export plugin API ID and role ARN so plugin stacks can create DataSources/Resolvers
+    // against the shared (plugin) API via StackReference.
     Pulumi.Pulumi.export("apiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export("apiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+
+    // Export Plugin RM table name so plugin stacks can query existing plugins
+    // for cumulative schema stitching (preResolversSchemaHook).
+    switch pluginRmTableNameRef.contents {
+    | Some(tableName) => Pulumi.Pulumi.export("pluginRmTableName", tableName)
+    | None => ()
+    }
 
     // Export admin component outputs (same pattern as deployPlugin).
     ReventlessCore.Plugin_Helpers.exportPlatformOutputs(

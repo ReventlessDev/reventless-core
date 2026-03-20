@@ -116,7 +116,7 @@ function Make(Spec) {
             }
           }) : Pulumi.output(undefined);
         let pushSchema = Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents;
-        let schemaPushed = pushSchema !== undefined ? pushSchema(apiSchemaFragment) : Pulumi.output();
+        let schemaPushed = pushSchema !== undefined ? pushSchema(extra$1, apiSchemaFragment) : Pulumi.output();
         let builderOutputs = Pulumi.all([
           Pulumi.all([
             adminExtensionPoints,

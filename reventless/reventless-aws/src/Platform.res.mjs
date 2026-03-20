@@ -3,13 +3,16 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
+import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
@@ -22,6 +25,7 @@ import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginProjection.res.mjs";
@@ -205,22 +209,106 @@ function MakeWithConfig(Config) {
   };
   Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
   Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
-  Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents = pluginFragment => {
-    console.log("[preResolversSchemaHook] Pushing plugin schema fragment to AppSync");
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, [pluginFragment]);
-    return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => {
-      console.log(`[preResolversSchemaHook] Calling startSchemaCreation for API ` + apiId);
-      let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
-        apiId: apiId,
-        definition: sdl
-      }).then(async param => {
+  let deploySchemaPrefix = "deploy-schema:";
+  Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents = (name, pluginFragment) => {
+    console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
+    let pluginRmTableNameOutput;
+    if (platformStackRef !== undefined) {
+      let stackRef = Primitive_option.valFromOption(platformStackRef);
+      let direct = stackRef.getOutput("pluginRmTableName");
+      let defaultOutput = stackRef.getOutput("default");
+      pluginRmTableNameOutput = Pulumi.all([
+        direct,
+        defaultOutput
+      ]).apply(param => {
+        let direct = param[0];
+        if (direct !== undefined) {
+          return direct;
+        } else {
+          return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["pluginRmTableName"]), v => Stdlib_JSON.Decode.string(v));
+        }
+      });
+    } else {
+      pluginRmTableNameOutput = Pulumi.output(undefined);
+    }
+    return Output$Pulumi.flatMap(pluginRmTableNameOutput, tableNameOpt => {
+      let writeAndScanFragments = () => {
+        if (tableNameOpt !== undefined) {
+          let deployItem = Object.fromEntries([
+            [
+              "id",
+              deploySchemaPrefix + name
+            ],
+            [
+              "fragment",
+              pluginFragment.encoded
+            ]
+          ]);
+          console.log(`[preResolversSchemaHook] Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
+          return Stdlib_Promise.$$catch(DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+            Item: deployItem,
+            TableName: tableNameOpt
+          })).then(param => {
+            console.log(`[preResolversSchemaHook] Scanning ` + tableNameOpt + ` for deploy-schema entries`);
+            return DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
+              TableName: tableNameOpt,
+              ExpressionAttributeNames: Object.fromEntries([[
+                  "#id",
+                  "id"
+                ]]),
+              ExpressionAttributeValues: Object.fromEntries([[
+                  ":prefix",
+                  deploySchemaPrefix
+                ]]),
+              FilterExpression: "begins_with(#id, :prefix)"
+            }));
+          }).then(result => {
+            let items = Stdlib_Option.getOr(result.Items, []);
+            let fragments = Stdlib_Array.filterMap(items, item => {
+              try {
+                let obj = JSON.parse(JSON.stringify(item));
+                let fragmentJson = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(obj), d => d["fragment"]);
+                if (fragmentJson === undefined) {
+                  return;
+                }
+                let encoded = Stdlib_JSON.Decode.string(fragmentJson);
+                if (encoded !== undefined) {
+                  return {
+                    encoded: encoded,
+                    protocol: "graphql"
+                  };
+                } else {
+                  return;
+                }
+              } catch (exn) {
+                return;
+              }
+            });
+            console.log(`[preResolversSchemaHook] Found ` + fragments.length.toString() + ` deploy-schema entries`);
+            return Promise.resolve(fragments);
+          }), err => {
+            let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+            console.log(`[preResolversSchemaHook] DynamoDB write/scan failed (` + msg + `) — using current plugin only`);
+            return Promise.resolve([pluginFragment]);
+          });
+        }
+        console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
+        return Promise.resolve([]);
+      };
+      return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
+        let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+        let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
+        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments)`);
+        let client = AppSync_Adapter$ReventlessAws.getClient();
+        await AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+          apiId: apiId,
+          definition: sdl
+        });
         console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
         console.log("[preResolversSchemaHook] Schema is ACTIVE");
-      });
-    }));
+      })));
+    });
   };
   Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
@@ -332,14 +420,27 @@ function MakeWithConfig(Config) {
       coreRole: match[1]
     };
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-    coreApiOutput.apply(coreApi => {
-      AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), adminBaseFragment, []);
-    });
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
+    Output$Pulumi.flatMap(coreApiOutput, api => Output$Pulumi.flatMap(api.id, apiId => {
+      console.log(`[makePlatform] Pushing admin schema to core-api ` + apiId);
+      let client = AppSync_Adapter$ReventlessAws.getClient();
+      return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+        apiId: apiId,
+        definition: sdl
+      }).then(async param => {
+        console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE");
+        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+        console.log("[makePlatform] core-api schema is ACTIVE");
+      });
+    }));
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let pluginRmTableNameRef = {
+      contents: undefined
+    };
     Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents = (aggregatesOutputs, readModelsOutputs) => {
       let publishToAggregatesQueueUrls = {};
       let pluginAgg = aggregatesOutputs["Plugin"];
@@ -362,6 +463,7 @@ function MakeWithConfig(Config) {
       } else {
         pluginReadModelTableName = undefined;
       }
+      pluginRmTableNameRef.contents = pluginReadModelTableName;
       PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
       PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, Config.cloner, undefined);
     };
@@ -382,8 +484,8 @@ function MakeWithConfig(Config) {
           return;
         }
       });
-      let adminBase = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBase, fragments);
+      let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, fragments);
       await AppSync_Adapter$ReventlessAws.startSchemaCreation(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl
@@ -393,10 +495,40 @@ function MakeWithConfig(Config) {
       updateApiSchema: updateApiSchema
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-    AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment, []);
+    if (Config.splitApi) {
+      let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
+      let coreRoleOutput = match[1];
+      let coreApiOutput = match[0];
+      splitApiOutputsRef.contents = {
+        coreApi: coreApiOutput,
+        coreRole: coreRoleOutput
+      };
+      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
+      Output$Pulumi.flatMap(coreApiOutput, api => Output$Pulumi.flatMap(api.id, apiId => {
+        console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
+        let client = AppSync_Adapter$ReventlessAws.getClient();
+        return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+          apiId: apiId,
+          definition: sdl
+        }).then(async param => {
+          console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE");
+          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+          console.log("[deployPlatform] core-api schema is ACTIVE");
+        });
+      }));
+      Pulumi$Pulumi.$$export("coreApiId", Output$Pulumi.flatMap(coreApiOutput, api => api.id));
+      Pulumi$Pulumi.$$export("coreApiRoleArn", Output$Pulumi.flatMap(coreRoleOutput, role => role.arn));
+    } else {
+      let adminBaseFragment$1 = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+      AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment$1, []);
+    }
     Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
     Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    let tableName = pluginRmTableNameRef.contents;
+    if (tableName !== undefined) {
+      Pulumi$Pulumi.$$export("pluginRmTableName", tableName);
+    }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
   };
   let deployPlugin = (version, plugin) => {
@@ -579,22 +711,105 @@ function Make($star) {
   };
   Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
   Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
-  Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents = pluginFragment => {
-    console.log("[preResolversSchemaHook] Pushing plugin schema fragment to AppSync");
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
-    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, [pluginFragment]);
-    return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => {
-      console.log(`[preResolversSchemaHook] Calling startSchemaCreation for API ` + apiId);
-      let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
-        apiId: apiId,
-        definition: sdl
-      }).then(async param => {
+  let deploySchemaPrefix = "deploy-schema:";
+  Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents = (name, pluginFragment) => {
+    console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
+    let pluginRmTableNameOutput;
+    if (platformStackRef !== undefined) {
+      let stackRef = Primitive_option.valFromOption(platformStackRef);
+      let direct = stackRef.getOutput("pluginRmTableName");
+      let defaultOutput = stackRef.getOutput("default");
+      pluginRmTableNameOutput = Pulumi.all([
+        direct,
+        defaultOutput
+      ]).apply(param => {
+        let direct = param[0];
+        if (direct !== undefined) {
+          return direct;
+        } else {
+          return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["pluginRmTableName"]), v => Stdlib_JSON.Decode.string(v));
+        }
+      });
+    } else {
+      pluginRmTableNameOutput = Pulumi.output(undefined);
+    }
+    return Output$Pulumi.flatMap(pluginRmTableNameOutput, tableNameOpt => {
+      let writeAndScanFragments = () => {
+        if (tableNameOpt !== undefined) {
+          let deployItem = Object.fromEntries([
+            [
+              "id",
+              deploySchemaPrefix + name
+            ],
+            [
+              "fragment",
+              pluginFragment.encoded
+            ]
+          ]);
+          console.log(`[preResolversSchemaHook] Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
+          return Stdlib_Promise.$$catch(DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+            Item: deployItem,
+            TableName: tableNameOpt
+          })).then(param => {
+            console.log(`[preResolversSchemaHook] Scanning ` + tableNameOpt + ` for deploy-schema entries`);
+            return DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
+              TableName: tableNameOpt,
+              ExpressionAttributeNames: Object.fromEntries([[
+                  "#id",
+                  "id"
+                ]]),
+              ExpressionAttributeValues: Object.fromEntries([[
+                  ":prefix",
+                  deploySchemaPrefix
+                ]]),
+              FilterExpression: "begins_with(#id, :prefix)"
+            }));
+          }).then(result => {
+            let items = Stdlib_Option.getOr(result.Items, []);
+            let fragments = Stdlib_Array.filterMap(items, item => {
+              try {
+                let obj = JSON.parse(JSON.stringify(item));
+                let fragmentJson = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(obj), d => d["fragment"]);
+                if (fragmentJson === undefined) {
+                  return;
+                }
+                let encoded = Stdlib_JSON.Decode.string(fragmentJson);
+                if (encoded !== undefined) {
+                  return {
+                    encoded: encoded,
+                    protocol: "graphql"
+                  };
+                } else {
+                  return;
+                }
+              } catch (exn) {
+                return;
+              }
+            });
+            console.log(`[preResolversSchemaHook] Found ` + fragments.length.toString() + ` deploy-schema entries`);
+            return Promise.resolve(fragments);
+          }), err => {
+            let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+            console.log(`[preResolversSchemaHook] DynamoDB write/scan failed (` + msg + `) — using current plugin only`);
+            return Promise.resolve([pluginFragment]);
+          });
+        }
+        console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
+        return Promise.resolve([]);
+      };
+      return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
+        let sdl = GraphQL_Stitcher$ReventlessCore.stitch(emptyBaseFragment, allPluginFragments);
+        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments)`);
+        let client = AppSync_Adapter$ReventlessAws.getClient();
+        await AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+          apiId: apiId,
+          definition: sdl
+        });
         console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
         console.log("[preResolversSchemaHook] Schema is ACTIVE");
-      });
-    }));
+      })));
+    });
   };
   Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
@@ -703,14 +918,27 @@ function Make($star) {
       coreRole: match[1]
     };
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
-    coreApiOutput.apply(coreApi => {
-      AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), adminBaseFragment, []);
-    });
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
+    Output$Pulumi.flatMap(coreApiOutput, api => Output$Pulumi.flatMap(api.id, apiId => {
+      console.log(`[makePlatform] Pushing admin schema to core-api ` + apiId);
+      let client = AppSync_Adapter$ReventlessAws.getClient();
+      return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+        apiId: apiId,
+        definition: sdl
+      }).then(async param => {
+        console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE");
+        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+        console.log("[makePlatform] core-api schema is ACTIVE");
+      });
+    }));
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let pluginRmTableNameRef = {
+      contents: undefined
+    };
     Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents = (aggregatesOutputs, readModelsOutputs) => {
       let publishToAggregatesQueueUrls = {};
       let pluginAgg = aggregatesOutputs["Plugin"];
@@ -733,6 +961,7 @@ function Make($star) {
       } else {
         pluginReadModelTableName = undefined;
       }
+      pluginRmTableNameRef.contents = pluginReadModelTableName;
       PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
       PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, false, undefined);
     };
@@ -753,8 +982,7 @@ function Make($star) {
           return;
         }
       });
-      let adminBase = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
-      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBase, fragments);
+      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(emptyBaseFragment, fragments);
       await AppSync_Adapter$ReventlessAws.startSchemaCreation(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl
@@ -764,10 +992,35 @@ function Make($star) {
       updateApiSchema: updateApiSchema
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
+    let coreRoleOutput = match[1];
+    let coreApiOutput = match[0];
+    splitApiOutputsRef.contents = {
+      coreApi: coreApiOutput,
+      coreRole: coreRoleOutput
+    };
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
-    AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment, []);
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
+    Output$Pulumi.flatMap(coreApiOutput, api => Output$Pulumi.flatMap(api.id, apiId => {
+      console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
+      let client = AppSync_Adapter$ReventlessAws.getClient();
+      return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+        apiId: apiId,
+        definition: sdl
+      }).then(async param => {
+        console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE");
+        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+        console.log("[deployPlatform] core-api schema is ACTIVE");
+      });
+    }));
+    Pulumi$Pulumi.$$export("coreApiId", Output$Pulumi.flatMap(coreApiOutput, api => api.id));
+    Pulumi$Pulumi.$$export("coreApiRoleArn", Output$Pulumi.flatMap(coreRoleOutput, role => role.arn));
     Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
     Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    let tableName = pluginRmTableNameRef.contents;
+    if (tableName !== undefined) {
+      Pulumi$Pulumi.$$export("pluginRmTableName", tableName);
+    }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
   };
   let deployPlugin = (version, plugin) => {

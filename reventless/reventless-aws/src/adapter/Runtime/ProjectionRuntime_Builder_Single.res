@@ -130,15 +130,25 @@ module Make = (C: Config) => {
               let iStr = i->Int.toString
               let sourceUrnEnvVar = `HANDLER_${iStr}_SOURCE_URN`
 
+              // Set the primary source URN env var synchronously with an
+              // Output-wrapped value. Setting inside Output.apply is a race
+              // condition — the dict entry may not exist when the Lambda
+              // resource is created.
+              envVars->Dict.set(
+                sourceUrnEnvVar,
+                spec.sourceUrns
+                ->Pulumi.Output.apply(urns => urns->Array.getUnsafe(0))
+                ->Pulumi.Output.asInput,
+              )
+
+              // Set additional source URN env vars for multi-source ReadModels.
               let _ =
                 spec.sourceUrns->Pulumi.Output.apply(urns => {
                   urns->Array.forEachWithIndex((urn, j) => {
-                    let envVar = if j == 0 {
-                      sourceUrnEnvVar
-                    } else {
-                      `HANDLER_${iStr}_SOURCE_URN_${j->Int.toString}`
+                    if j > 0 {
+                      let envVar = `HANDLER_${iStr}_SOURCE_URN_${j->Int.toString}`
+                      envVars->Dict.set(envVar, urn->Pulumi.Input.make)
                     }
-                    envVars->Dict.set(envVar, urn->Pulumi.Input.make)
                   })
                 })
 
