@@ -469,8 +469,6 @@ jobs:
   record-deploy-sha:
     name: Record Deploy SHA
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     needs: [detect-changes, deploy-platform, deploy-plugins]
     if: |
       always() &&
