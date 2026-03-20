@@ -460,7 +460,14 @@ module Make = (
     // Compute and store the _interopMeta stack export value.  User entry-point
     // code retrieves it via Plugin_Helpers.getInteropMeta() and exports it
     // alongside "tasks", "plugin", and "eventMappers".
-    interopMetaOutput := Some(builderOutputs->Pulumi.Output.apply(toInteropMeta))
+    // Assign directly — do NOT wrap in Some().  Pulumi.Output.t is a JS Proxy;
+    // wrapping a Proxy in Caml_option.some() triggers the BS_PRIVATE sentinel bug.
+    interopMetaOutput :=
+      builderOutputs->Pulumi.Output.apply(outputs =>
+        outputs
+        ->toInteropMeta
+        ->S.reverseConvertToJsonOrThrow(ReventlessInterop.ExportMeta.schema)
+      )
   }
 
   let make = (

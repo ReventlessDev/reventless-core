@@ -11,14 +11,8 @@ import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 let NotPublishedToPublisher = /* @__PURE__ */Primitive_exceptions.create("EventTopic-ReventlessCore.NotPublishedToPublisher");
 
 function toResolvedOutputs(outputs) {
-  return Adapter$ReventlessCore.resourcesToResolvedOutput(outputs.resources).apply(resources => ({
-    resources: resources.map(r => ({
-      name: r.name,
-      id: r.id,
-      urn: r.urn,
-      info: r.info,
-      service: r.service
-    }))
+  return Adapter$ReventlessCore.resourcesToInterop(outputs.resources).apply(resources => ({
+    resources: resources
   }));
 }
 

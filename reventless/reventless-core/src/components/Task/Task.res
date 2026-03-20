@@ -32,6 +32,46 @@ type maker = (
   ~opts: option<Pulumi.ComponentResource.options>,
 ) => component
 
+let toResolvedOutputs = (
+  outputs: outputs,
+): Pulumi.Output.t<ReventlessInterop.Task.resolvedOutputs> =>
+  switch (outputs.bucketNames, outputs.sideEffectSources) {
+  | (Some(bucketNames), Some(sideEffectSources)) =>
+    bucketNames
+    ->Dict.toArray
+    ->Array.map(((k, v)) => v->Pulumi.Output.apply(resolved => (k, resolved)))
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(pairs => {
+      let resolved: ReventlessInterop.Task.resolvedOutputs = {
+        name: outputs.name,
+        bucketNames: pairs->Dict.fromArray,
+        sideEffectSources,
+      }
+      resolved
+    })
+  | (Some(bucketNames), None) =>
+    bucketNames
+    ->Dict.toArray
+    ->Array.map(((k, v)) => v->Pulumi.Output.apply(resolved => (k, resolved)))
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(pairs => {
+      let resolved: ReventlessInterop.Task.resolvedOutputs = {
+        name: outputs.name,
+        bucketNames: pairs->Dict.fromArray,
+      }
+      resolved
+    })
+  | (None, Some(sideEffectSources)) =>
+    Pulumi.Output.make({
+      ReventlessInterop.Task.name: outputs.name,
+      sideEffectSources,
+    })
+  | (None, None) =>
+    Pulumi.Output.make({
+      ReventlessInterop.Task.name: outputs.name,
+    })
+  }
+
 module type T = {
   module Spec: Spec
   type component = Component.t<t, outputs, operations>

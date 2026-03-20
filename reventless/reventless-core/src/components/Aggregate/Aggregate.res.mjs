@@ -2,9 +2,13 @@
 
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
+import * as EventMapper$ReventlessCore from "../EventMapper/EventMapper.res.mjs";
+import * as CommandTopic$ReventlessCore from "../CommandTopic/CommandTopic.res.mjs";
 
 function allEventTopics(allAggregates) {
   return Stdlib_Dict.mapValues(allAggregates, aggregate => aggregate.eventLog.eventTopic);
@@ -21,6 +25,51 @@ function filterEventTopics(allAggregates, aggregateNames) {
   ])));
 }
 
+function toResolvedOutputs(outputs) {
+  let commandGeneratorResolved = Output$Pulumi.flatMap(outputs.commandGenerator, cg => Adapter$ReventlessCore.resourcesToInterop(cg.resources).apply(resources => ({
+    resources: resources
+  })));
+  let commandTopicResolved = Output$Pulumi.flatMap(outputs.commandTopic, CommandTopic$ReventlessCore.toResolvedOutputs);
+  let eventLogResolved = Pulumi.all([
+    Adapter$ReventlessCore.resourcesToInterop(outputs.eventLog.resources),
+    Adapter$ReventlessCore.resourcesToInterop(outputs.eventLog.eventTopic.resources)
+  ]).apply(param => ({
+    resources: param[0],
+    eventTopic: {
+      resources: param[1]
+    }
+  }));
+  let emOutput = outputs.eventMapper;
+  let eventMapperResolved = emOutput !== undefined ? Output$Pulumi.flatMap(emOutput, EventMapper$ReventlessCore.toResolvedOutputs).apply(resolved => resolved) : Pulumi.output(undefined);
+  return Pulumi.all([
+    commandGeneratorResolved,
+    commandTopicResolved,
+    eventLogResolved,
+    eventMapperResolved
+  ]).apply(param => {
+    let eventMapper = param[3];
+    let eventLog = param[2];
+    let commandTopic = param[1];
+    let commandGenerator = param[0];
+    if (eventMapper !== undefined) {
+      return {
+        name: outputs.name,
+        commandGenerator: commandGenerator,
+        commandTopic: commandTopic,
+        eventLog: eventLog,
+        eventMapper: eventMapper
+      };
+    } else {
+      return {
+        name: outputs.name,
+        commandGenerator: commandGenerator,
+        commandTopic: commandTopic,
+        eventLog: eventLog
+      };
+    }
+  });
+}
+
 let componentType = "Aggregate";
 
 export {
@@ -28,5 +77,6 @@ export {
   allEventTopics,
   allCommandTopics,
   filterEventTopics,
+  toResolvedOutputs,
 }
-/* @pulumi/pulumi Not a pure module */
+/* Output-Pulumi Not a pure module */

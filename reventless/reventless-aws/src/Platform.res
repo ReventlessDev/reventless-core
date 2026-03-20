@@ -638,10 +638,17 @@ module MakeWithConfig = (
     let scheduler = makeScheduler()
 
     module P = unpack(plugin)
-    let _plugin = P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
+    let pluginComponent = P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
 
     // Export interop metadata for cross-stack consumption.
     Pulumi.Pulumi.export("_interopMeta", ReventlessCore.Plugin_Helpers.getInteropMeta())
+
+    // Export plugin outputs (plugin, tasks, eventMappers, extensionPoints) for cross-stack access.
+    // Obj.magic bridges the nominal type gap between AWS Plugin.component and
+    // ReventlessCore.Component.t — they are structurally identical.
+    let pluginOutputs: ReventlessCore.Plugin.outputs =
+      (pluginComponent->Obj.magic: ReventlessCore.Plugin.component)->ReventlessCore.Component.outputs
+    ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
   }
 }
 

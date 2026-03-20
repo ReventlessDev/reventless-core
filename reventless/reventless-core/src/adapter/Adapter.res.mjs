@@ -86,6 +86,20 @@ function urns(resources) {
   return resources.map(resource => resource.urn);
 }
 
+function toInteropResource(param) {
+  return {
+    name: param.name,
+    id: param.id,
+    urn: param.urn,
+    info: param.info,
+    service: param.service
+  };
+}
+
+function resourcesToInterop(resources) {
+  return resourcesToResolvedOutput(resources).apply(rs => rs.map(toInteropResource));
+}
+
 function fromInteropResolved(param) {
   return {
     name: param.name,
@@ -121,6 +135,8 @@ export {
   logResource,
   resolvedToString,
   urns,
+  toInteropResource,
+  resourcesToInterop,
   fromInteropResolved,
   fromInteropResource,
   fromInteropResources,

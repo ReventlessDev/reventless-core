@@ -26,6 +26,63 @@ let filterEventTopics = (allAggregates, aggregateNames) =>
   )
   ->Dict.fromArray
 
+let toResolvedOutputs = (
+  outputs: outputs,
+): Pulumi.Output.t<ReventlessInterop.Aggregate.resolvedOutputs> => {
+  let commandGeneratorResolved =
+    outputs.commandGenerator->Pulumi.Output.flatMap((cg: ReventlessInfra.CommandGenerator.outputs) =>
+      cg.resources
+      ->Adapter.resourcesToInterop
+      ->Pulumi.Output.apply(resources => {
+        let resolved: ReventlessInterop.CommandGenerator.resolvedOutputs = {
+          resources: resources,
+        }
+        resolved
+      })
+    )
+  let commandTopicResolved =
+    outputs.commandTopic->Pulumi.Output.flatMap(CommandTopic.toResolvedOutputs)
+  let eventLogResolved =
+    (
+      outputs.eventLog.resources->Adapter.resourcesToInterop,
+      outputs.eventLog.eventTopic.resources->Adapter.resourcesToInterop,
+    )
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((resources, eventTopicResources)) => {
+      let resolved: ReventlessInterop.EventLog.resolvedOutputs = {
+        resources: resources,
+        eventTopic: {resources: eventTopicResources},
+      }
+      resolved
+    })
+  let eventMapperResolved = switch outputs.eventMapper {
+  | Some(emOutput) =>
+    emOutput
+    ->Pulumi.Output.flatMap(EventMapper.toResolvedOutputs)
+    ->Pulumi.Output.apply(resolved => Some(resolved))
+  | None => Pulumi.Output.make(None)
+  }
+  (commandGeneratorResolved, commandTopicResolved, eventLogResolved, eventMapperResolved)
+  ->Pulumi.Output.all4
+  ->Pulumi.Output.apply(((commandGenerator, commandTopic, eventLog, eventMapper)) =>
+    switch eventMapper {
+    | Some(em) => {
+        ReventlessInterop.Aggregate.name: outputs.name,
+        commandGenerator,
+        commandTopic,
+        eventLog,
+        eventMapper: em,
+      }
+    | None => {
+        name: outputs.name,
+        commandGenerator,
+        commandTopic,
+        eventLog,
+      }
+    }
+  )
+}
+
 module type T = {
   module Spec: Reventless.Aggregate.Spec
   module AggregateRuntimeBuilder: AggregateRuntime_Builder.T

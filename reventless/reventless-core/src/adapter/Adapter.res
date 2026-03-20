@@ -76,6 +76,15 @@ let urns = resources => resources->Array.map((resource: resolvedResource) => res
 // two type-system identities without runtime cost.
 // ---------------------------------------------------------------------------
 
+let toInteropResource = (
+  {name, id, urn, info, service}: resolvedResource,
+): ReventlessInterop.Resource.t => {name, id, urn, info, service}
+
+let resourcesToInterop = (resources: array<ReventlessInfra.Adapter.resource>) =>
+  resources
+  ->resourcesToResolvedOutput
+  ->Pulumi.Output.apply(rs => rs->Array.map(toInteropResource))
+
 let fromInteropResolved = (
   {name, id, urn, info, service}: ReventlessInterop.Resource.t,
 ): resolvedResource => {name, id, urn, info, service}

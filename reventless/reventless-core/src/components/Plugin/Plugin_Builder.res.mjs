@@ -17,6 +17,7 @@ import * as Interstack$ReventlessCore from "../../util/Interstack.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 import * as Dcb_Builder$ReventlessCore from "../Dcb/Dcb_Builder.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as ExportMeta$ReventlessInterop from "@reventlessdev/reventless-interop/src/ExportMeta.res.mjs";
 import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "./Plugin_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../Api/GraphQL_Stitcher.res.mjs";
@@ -275,7 +276,7 @@ function Make(Spec) {
           inboundTranslationSlices: pluginOutputs_inboundTranslationSlices
         };
         Component$ReventlessCore.setOutputs(extra, pluginOutputs);
-        Plugin_Helpers$ReventlessCore.interopMetaOutput.contents = builderOutputs.apply(Plugin_Helpers$ReventlessCore.toInteropMeta);
+        Plugin_Helpers$ReventlessCore.interopMetaOutput.contents = builderOutputs.apply(outputs => S.reverseConvertToJsonOrThrow(Plugin_Helpers$ReventlessCore.toInteropMeta(outputs), ExportMeta$ReventlessInterop.schema));
       }, opts);
     };
     return {

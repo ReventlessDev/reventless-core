@@ -24,61 +24,40 @@ type builderOutputs = {
 
 let getRemoteStorageResources = (pluginName, queryDbName) =>
   switch Util_StackRefs.get(pluginName)->Option.map(stackRef => {
-    // Read both _interopMeta (for field-manifest validation) and "plugin" (the export).
-    // Both are annotated as option<JSON.t> so Pulumi's untyped output unifies with sury's JSON.t.
-    let metaOutput: Pulumi.Output.t<option<JSON.t>> =
-      stackRef->Pulumi.StackReference.getOutput("_interopMeta")
-    let pluginOutput: Pulumi.Output.t<option<JSON.t>> =
-      stackRef->Pulumi.StackReference.getOutput("plugin")
+    // Read the "readModels" top-level export directly (no longer nested under "plugin").
+    let readModelsOutput: Pulumi.Output.t<option<JSON.t>> =
+      stackRef->Pulumi.StackReference.getOutput("readModels")
 
-    metaOutput->Pulumi.Output.flatMap(metaOpt =>
-      pluginOutput->Pulumi.Output.apply(pluginOpt =>
-        switch (metaOpt, pluginOpt) {
-        | (Some(rawMeta), Some(rawPlugin)) =>
-          switch ReventlessInterop.Query.parseMeta(rawMeta) {
-          | Ok(meta) =>
-            switch ReventlessInterop.Compat.validateAndProject(
-              ~stackName=pluginName,
-              ~meta,
-              ~outputName="plugin",
-              ~rawJson=rawPlugin,
-              ~requiredFields=["readModels"],
-              ~fromJson=json =>
-                try Ok(json->S.parseOrThrow(ReventlessInterop.Plugin.resolvedOutputsSchema))
-                catch {
-                | exn =>
-                  let msg =
-                    exn
-                    ->JsExn.fromException
-                    ->Option.flatMap(JsExn.message)
-                    ->Option.getOr("parse error")
-                  Error(msg)
-                },
-            ) {
-            | Ok(plugin) =>
-              plugin.readModels
-              ->Option.flatMap(readModels => readModels->Dict.get(queryDbName))
-              ->Option.map(readModel =>
-                readModel.queryDb.resources->Adapter.fromInteropResources
-              )
-              ->Option.getOr([])
-            | Error(err) =>
+    readModelsOutput->Pulumi.Output.apply(readModelsOpt =>
+      switch readModelsOpt {
+      | Some(rawReadModels) =>
+        switch rawReadModels->JSON.Decode.object {
+        | Some(dict) =>
+          switch dict->Dict.get(queryDbName) {
+          | Some(rawReadModel) =>
+            try {
+              let readModel =
+                rawReadModel->S.parseOrThrow(ReventlessInterop.ReadModel.resolvedOutputsSchema)
+              readModel.queryDb.resources->Adapter.fromInteropResources
+            } catch {
+            | exn =>
+              let msg =
+                exn
+                ->JsExn.fromException
+                ->Option.flatMap(JsExn.message)
+                ->Option.getOr("parse error")
               Console.log2(
-                `Plugin_Builder.getRemoteStorageResources: compat error for ${pluginName}:`,
-                err,
+                `getRemoteStorageResources: failed to parse readModel ${queryDbName} from ${pluginName}:`,
+                msg,
               )
               []
             }
-          | Error(msg) =>
-            Console.log2(
-              `Plugin_Builder.getRemoteStorageResources: failed to parse _interopMeta for ${pluginName}:`,
-              msg,
-            )
-            []
+          | None => []
           }
-        | _ => []
+        | None => []
         }
-      )
+      | None => []
+      }
     )
   }) {
   | Some(resources) => resources
@@ -556,7 +535,12 @@ let onHeartbeatEpChannelAvailable: ref<option<unknown => unit>> = ref(None)
 // Module-level ref; follows the same mutable-state pattern as `tasksOutputs`
 // above.  Set by Plugin_Builder during construct(); read by user entry-point
 // code via `getInteropMeta()`.
-let interopMetaOutput: ref<option<Pulumi.Output.t<ReventlessInterop.ExportMeta.t>>> = ref(None)
+// IMPORTANT: Do NOT use option<Pulumi.Output.t<_>> here.  Pulumi.Output.t is a
+// JavaScript Proxy.  ReScript's Caml_option.some() checks for BS_PRIVATE_NESTED_SOME_NONE
+// on the value — the Proxy intercepts that property access and returns a truthy value,
+// causing some() to produce the sentinel object {BS_PRIVATE_NESTED_SOME_NONE: 0}
+// instead of wrapping the actual Output.  Use a raw JS null ref to avoid option wrapping.
+let interopMetaOutput: ref<Pulumi.Output.t<JSON.t>> = ref(%raw(`null`))
 
 // Derive a field-name union across all tasks (field names present in at least
 // one task's serialized resolvedOutputs).  Optional fields only appear in the
@@ -592,24 +576,6 @@ let taskFieldUnion = (tasks: dict<Task.outputs>): array<string> => {
 // Nested Output.t values (e.g. inside Task.bucketNames dict values) are still
 // pending — we use placeholder detection (Some vs None) rather than unwrapping.
 let toInteropMeta = (outputs: builderOutputs): ReventlessInterop.ExportMeta.t => {
-  // Include optional fields only when the corresponding dict is non-empty,
-  // so old publishers with empty dicts produce a conservative manifest.
-  // ReScript optional fields cannot be set via option<_> in record literals.
-  let hasReadModels = outputs.readModels->Dict.toArray->Array.length > 0
-  let hasExtensionPoints = outputs.extensionPoints->Dict.toArray->Array.length > 0
-  let pluginResolved: ReventlessInterop.Plugin.resolvedOutputs =
-    switch (hasReadModels, hasExtensionPoints) {
-    | (false, false) => {id: outputs.id, version: outputs.version}
-    | (true, false) => {id: outputs.id, version: outputs.version, readModels: Dict.make()}
-    | (false, true) => {id: outputs.id, version: outputs.version, extensionPoints: Dict.make()}
-    | (true, true) => {
-        id: outputs.id,
-        version: outputs.version,
-        readModels: Dict.make(),
-        extensionPoints: Dict.make(),
-      }
-    }
-
   // EventMapper field manifest uses minimum required fields (counter presence
   // cannot be checked without resolving inner Output.t — improved in later phase).
   let eventMapperMinimal: ReventlessInterop.EventMapper.resolvedOutputs = {
@@ -628,20 +594,180 @@ let toInteropMeta = (outputs: builderOutputs): ReventlessInterop.ExportMeta.t =>
           ReventlessInterop.EventMapper.resolvedOutputsSchema,
         ),
       ),
-      (
-        "plugin",
-        ReventlessInterop.ExportMeta.fieldNamesOf(
-          pluginResolved,
-          ReventlessInterop.Plugin.resolvedOutputsSchema,
-        ),
-      ),
     ]),
   }
 }
 
 // Returns the computed interop meta Output.  Call this from the plugin's entry-
 // point module and export the result as `let _interopMeta = getInteropMeta()`.
-let getInteropMeta = () =>
-  interopMetaOutput.contents->Option.getOrThrow(
-    ~message="getInteropMeta() called before Plugin_Builder.construct()",
+let getInteropMeta = (): Pulumi.Output.t<JSON.t> => {
+  let v = interopMetaOutput.contents
+  // Use raw null check to avoid option wrapping of the Proxy value.
+  if %raw(`v === null`) {
+    Exn.raiseError("getInteropMeta() called before Plugin_Builder.construct()")
+  } else {
+    v
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Serialize individual component output dicts as top-level Pulumi stack exports.
+// Each component type gets its own export key (e.g. "aggregates", "readModels").
+// ---------------------------------------------------------------------------
+
+let serializeDictExport = (
+  dictOutput: Pulumi.Output.t<dict<'outputs>>,
+  toResolved: 'outputs => Pulumi.Output.t<'resolved>,
+  schema: S.t<'resolved>,
+): Pulumi.Output.t<JSON.t> =>
+  dictOutput->Pulumi.Output.flatMap(dict =>
+    dict
+    ->Dict.toArray
+    ->Array.map(((name, outputs)) =>
+      outputs
+      ->toResolved
+      ->Pulumi.Output.apply(resolved => (
+        name,
+        resolved->S.reverseConvertToJsonOrThrow(schema),
+      ))
+    )
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
   )
+
+// Serialize tasks dict to JSON array for the "tasks" stack export.
+let serializeTasksOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Output.t<JSON.t> =>
+  pluginOutputs.tasks->Pulumi.Output.flatMap(tasks =>
+    tasks
+    ->Dict.valuesToArray
+    ->Array.map(task =>
+      task
+      ->Task.toResolvedOutputs
+      ->Pulumi.Output.apply(resolved =>
+        resolved->S.reverseConvertToJsonOrThrow(ReventlessInterop.Task.resolvedOutputsSchema)
+      )
+    )
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(arr => arr->JSON.Encode.array)
+  )
+
+// Serialize event mappers from aggregates to JSON array for the "eventMappers" stack export.
+let serializeEventMappersOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Output.t<JSON.t> =>
+  pluginOutputs.aggregates->Pulumi.Output.flatMap(aggregates =>
+    aggregates
+    ->Dict.valuesToArray
+    ->Array.filterMap((agg: Aggregate.outputs) =>
+      agg.eventMapper->Option.map(eventMapperOutput =>
+        eventMapperOutput->Pulumi.Output.flatMap(em =>
+          em
+          ->EventMapper.toResolvedOutputs
+          ->Pulumi.Output.apply(resolved =>
+            resolved->S.reverseConvertToJsonOrThrow(
+              ReventlessInterop.EventMapper.resolvedOutputsSchema,
+            )
+          )
+        )
+      )
+    )
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(arr => arr->JSON.Encode.array)
+  )
+
+// Export all plugin outputs as individual top-level Pulumi stack exports.
+// Each component type is its own export key for flat, readable `pulumi stack output`.
+let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
+  // Scalar fields
+  Pulumi.Pulumi.export("id", pluginOutputs.id->Pulumi.Output.apply(v => v->JSON.Encode.string))
+  Pulumi.Pulumi.export(
+    "version",
+    pluginOutputs.version->Pulumi.Output.apply(v => v->JSON.Encode.string),
+  )
+
+  // Component dicts
+  Pulumi.Pulumi.export(
+    "aggregates",
+    serializeDictExport(
+      pluginOutputs.aggregates,
+      Aggregate.toResolvedOutputs,
+      ReventlessInterop.Aggregate.resolvedOutputsSchema,
+    ),
+  )
+  Pulumi.Pulumi.export(
+    "readModels",
+    serializeDictExport(
+      pluginOutputs.readModels,
+      ReadModel.toResolvedOutputs,
+      ReventlessInterop.ReadModel.resolvedOutputsSchema,
+    ),
+  )
+  Pulumi.Pulumi.export(
+    "extensionPoints",
+    serializeDictExport(
+      pluginOutputs.extensionPoints,
+      ExtensionPoint.toResolvedOutputs,
+      ReventlessInterop.ExtensionPoint.resolvedOutputsSchema,
+    ),
+  )
+  Pulumi.Pulumi.export(
+    "stateChangeSlices",
+    serializeDictExport(
+      pluginOutputs.stateChangeSlices,
+      StateChangeSlice.toResolvedOutputs,
+      ReventlessInterop.StateChangeSlice.resolvedOutputsSchema,
+    ),
+  )
+  Pulumi.Pulumi.export(
+    "stateViewSlices",
+    serializeDictExport(
+      pluginOutputs.stateViewSlices,
+      StateViewSlice.toResolvedOutputs,
+      ReventlessInterop.StateViewSlice.resolvedOutputsSchema,
+    ),
+  )
+  Pulumi.Pulumi.export(
+    "automationSlices",
+    serializeDictExport(
+      pluginOutputs.automationSlices,
+      AutomationSlice.toResolvedOutputs,
+      ReventlessInterop.AutomationSlice.resolvedOutputsSchema,
+    ),
+  )
+  Pulumi.Pulumi.export(
+    "outboundTranslationSlices",
+    serializeDictExport(
+      pluginOutputs.outboundTranslationSlices,
+      OutboundTranslationSlice.toResolvedOutputs,
+      ReventlessInterop.OutboundTranslationSlice.resolvedOutputsSchema,
+    ),
+  )
+  Pulumi.Pulumi.export(
+    "inboundTranslationSlices",
+    serializeDictExport(
+      pluginOutputs.inboundTranslationSlices,
+      InboundTranslationSlice.toResolvedOutputs,
+      ReventlessInterop.InboundTranslationSlice.resolvedOutputsSchema,
+    ),
+  )
+
+  // DCB event log — single optional value
+  Pulumi.Pulumi.export(
+    "dcbEventLog",
+    pluginOutputs.dcbEventLog->Pulumi.Output.flatMap(opt =>
+      switch opt {
+      | Some(dcbOutputs) =>
+        dcbOutputs
+        ->DcbEventLog.toResolvedOutputs
+        ->Pulumi.Output.apply(resolved =>
+          resolved->S.reverseConvertToJsonOrThrow(
+            ReventlessInterop.DcbEventLog.resolvedOutputsSchema,
+          )
+        )
+      | None => Pulumi.Output.make(Obj.magic(JSON.Encode.null))
+      }
+    ),
+  )
+
+  // Array exports
+  Pulumi.Pulumi.export("tasks", serializeTasksOutputs(pluginOutputs))
+  Pulumi.Pulumi.export("eventMappers", serializeEventMappersOutputs(pluginOutputs))
+}

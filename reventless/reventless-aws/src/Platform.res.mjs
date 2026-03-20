@@ -350,8 +350,9 @@ function MakeWithConfig(Config) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    plugin.make(scheduler, appSyncApi, appSyncApiRole);
+    let pluginComponent = plugin.make(scheduler, appSyncApi, appSyncApiRole);
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
+    Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(pluginComponent));
   };
   return {
     Aggregate: Aggregate,
@@ -672,8 +673,9 @@ function Make($star) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    plugin.make(scheduler, appSyncApi, appSyncApiRole);
+    let pluginComponent = plugin.make(scheduler, appSyncApi, appSyncApiRole);
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
+    Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(pluginComponent));
   };
   let Counter_make = include.make;
   let Counter_outputs = include.outputs;

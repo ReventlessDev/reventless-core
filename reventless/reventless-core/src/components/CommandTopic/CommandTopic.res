@@ -62,19 +62,9 @@ let toResolvedOutputs = (
   outputs: outputs,
 ): Pulumi.Output.t<ReventlessInterop.CommandTopic.resolvedOutputs> =>
   outputs.resources
-  ->Adapter.resourcesToResolvedOutput
+  ->Adapter.resourcesToInterop
   ->Pulumi.Output.apply(resources => {
-    let resolved: ReventlessInterop.CommandTopic.resolvedOutputs = {
-      resources: resources->Array.map(
-        (r: Adapter.resolvedResource): ReventlessInterop.Resource.t => {
-          name: r.name,
-          id: r.id,
-          urn: r.urn,
-          info: r.info,
-          service: r.service,
-        },
-      ),
-    }
+    let resolved: ReventlessInterop.CommandTopic.resolvedOutputs = {resources: resources}
     resolved
   })
 

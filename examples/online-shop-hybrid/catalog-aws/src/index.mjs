@@ -7,7 +7,7 @@ registerDcbConfig("Catalog", undefined, [
   resolveModule(pkg + "/Product/StateChangeSlice/ChangeProductName.res.mjs"),
   resolveModule(pkg + "/Product/StateChangeSlice/ChangeProductDescription.res.mjs"),
   resolveModule(pkg + "/Product/StateChangeSlice/ChangeProductPrice.res.mjs"),
-  resolveModule(pkg + "/Product/StateChangeSlice/RecordProductDemand.res.mjs"),
+  resolveModule(pkg + "/ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs"),
 ], undefined);
 
 export { default } from "./Main.res.mjs";

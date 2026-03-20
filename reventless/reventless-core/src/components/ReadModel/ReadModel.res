@@ -23,5 +23,19 @@ module type T = {
   let finish: unit => unit
 }
 
+let toResolvedOutputs = (
+  outputs: outputs,
+): Pulumi.Output.t<ReventlessInterop.ReadModel.resolvedOutputs> =>
+  outputs.queryDb.resources
+  ->Adapter.resourcesToInterop
+  ->Pulumi.Output.apply(queryDbResources => {
+    let resolved: ReventlessInterop.ReadModel.resolvedOutputs = {
+      name: outputs.name,
+      queryDb: {resources: queryDbResources},
+      sourceNames: outputs.sourceNames,
+    }
+    resolved
+  })
+
 let allQueryDbs = allReadModels =>
   Dict.mapValues(allReadModels, (readModel: outputs) => readModel.queryDb)
