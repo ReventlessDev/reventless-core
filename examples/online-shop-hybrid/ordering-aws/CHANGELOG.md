@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-ordering-aws@1.0.0-alpha.1...@reventlessdev/online-shop-hybrid-ordering-aws@1.0.0-alpha.2) (2026-03-20)
+
+### Bug Fixes
+
+* **examples:** correct Pulumi org name and add beta stack configs ([6358f37](https://github.com/ReventlessDev/reventless-core/commit/6358f3702e3d72df0df74b7a39eb795d9fe6d756))
+### Features
+
+* **aws:** implement bundled DCB CommandTopic, Heartbeat, and EP fix ([4ae72ec](https://github.com/ReventlessDev/reventless-core/commit/4ae72ec20d7ea1941e9b02dc7f06461c5fff06c4))
+* **aws:** replace CallbackFunction with bundled Lambda handlers ([6f6200b](https://github.com/ReventlessDev/reventless-core/commit/6f6200b0796e5f414493f50fd2f13dd6c7871ef4))
+
+
 # 1.0.0-alpha.1 (2026-03-17)
 
 ### Bug Fixes

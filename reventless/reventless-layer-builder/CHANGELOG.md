@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.2.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@0.2.0-alpha.1...@reventlessdev/reventless-layer-builder@0.2.0-alpha.2) (2026-03-20)
+
+### Bug Fixes
+
+* **aws:** reduce Lambda bundle size by externalizing layer packages ([c1a042a](https://github.com/ReventlessDev/reventless-core/commit/c1a042a8304bd303a4e0018954b239e9ec38d2bf))
+* **layer:** exclude fast-check from Lambda layer ([aafe38d](https://github.com/ReventlessDev/reventless-core/commit/aafe38d603b1a9b54dac321fac3da959333a9afb))
+### Features
+
+* **layer-builder:** migrate Lambda layer builder from JS to ReScript ([f6e6f93](https://github.com/ReventlessDev/reventless-core/commit/f6e6f93ab2c311b5ba363403dd3e770f4adb8b4d))
+
+
 # [0.2.0-alpha.1](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@0.2.0-alpha.0...@reventlessdev/reventless-layer-builder@0.2.0-alpha.1) (2026-03-08)
 
 ### Bug Fixes
