@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - "@reventlessdev/reventless-aws@*"
+    branches: [main, beta, alpha]
+    paths:
+      - "reventless/reventless-layer-builder/**"
   workflow_dispatch:
     inputs:
       version:
@@ -41,10 +44,13 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
-          else
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             # Extract version from tag: @reventlessdev/reventless-aws@1.2.3 -> 1.2.3
             TAG="${GITHUB_REF#refs/tags/}"
             VERSION="${TAG##*@}"
+          else
+            # Path-triggered build: read current version from package.json
+            VERSION=$(node -p "require('./reventless/reventless-aws/package.json').version")
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building layer for @reventlessdev/reventless-aws@$VERSION"
@@ -110,9 +116,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          TAG="@reventlessdev/reventless-aws@${VERSION}"
           LAYER_ARN="${{ steps.publish.outputs.layer_arn }}"
           REGION="${{ matrix.region }}"
+
+          # Determine the release tag to attach to.
+          # For tag/dispatch triggers, use the exact version. For path-triggered
+          # builds, find the latest @reventlessdev/reventless-aws release tag.
+          if [[ "$GITHUB_REF" == refs/tags/* ]] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="@reventlessdev/reventless-aws@${VERSION}"
+          else
+            TAG=$(gh release list --limit 50 \
+              --json tagName --jq '[.[].tagName | select(startswith("@reventlessdev/reventless-aws@"))][0]')
+            if [ -z "$TAG" ]; then
+              echo "No existing reventless-aws release found — skipping asset upload"
+              exit 0
+            fi
+            echo "Path-triggered build — attaching to latest release: $TAG"
+          fi
 
           # Upload zip as release asset
           gh release upload "$TAG" \
