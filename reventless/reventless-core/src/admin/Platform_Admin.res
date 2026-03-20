@@ -9,6 +9,15 @@ type outputs = {
   dcbMutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   dcbQueryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
   dcbEventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
+  extensionPointsOutputs: Pulumi.Output.t<array<ExtensionPoint.outputs>>,
+  aggregatesOutputs: dict<Aggregate.outputs>,
+  readModelsOutputs: dict<ReadModel.outputs>,
+  dcbEventLogOutputs: option<DcbEventLog.outputs>,
+  stateChangeSlicesOutputs: dict<StateChangeSlice.outputs>,
+  stateViewSlicesOutputs: dict<StateViewSlice.outputs>,
+  automationSlicesOutputs: dict<AutomationSlice.outputs>,
+  outboundTranslationSlicesOutputs: dict<OutboundTranslationSlice.outputs>,
+  inboundTranslationSlicesOutputs: dict<InboundTranslationSlice.outputs>,
 }
 
 module Make = (
@@ -149,6 +158,13 @@ module Make = (
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
+    // Notify platform of admin aggregates and read models before extension points
+    // are built, so runtime builders can register queue URLs and table names.
+    switch Plugin_Helpers.onAdminComponentsCreated.contents {
+    | Some(hook) => hook(~aggregatesOutputs=aggregatesWithoutEventMappers, ~readModelsOutputs)
+    | None => ()
+    }
+
     let extensionPointsOutputs =
       (
         aggregateResources->Pulumi.Output.allDict,
@@ -228,6 +244,15 @@ module Make = (
       dcbMutationEntries: dcbResult.mutationEntries,
       dcbQueryEntries: dcbResult.queryEntries,
       dcbEventLogEntries: dcbResult.eventLogEntries,
+      extensionPointsOutputs,
+      aggregatesOutputs: aggregatesWithoutEventMappers,
+      readModelsOutputs,
+      dcbEventLogOutputs: dcbResult.dcbEventLogOutputs,
+      stateChangeSlicesOutputs: dcbResult.stateChangeSlicesOutputs,
+      stateViewSlicesOutputs: dcbResult.stateViewSlicesOutputs,
+      automationSlicesOutputs: dcbResult.automationSlicesOutputs,
+      outboundTranslationSlicesOutputs: dcbResult.outboundTranslationSlicesOutputs,
+      inboundTranslationSlicesOutputs: dcbResult.inboundTranslationSlicesOutputs,
     }
   }
 }

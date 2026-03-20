@@ -528,6 +528,19 @@ let onDcbSlicesCreated: ref<option<unknown => unit>> = ref(None)
 let onHeartbeatEpChannelAvailable: ref<option<unknown => unit>> = ref(None)
 
 // ---------------------------------------------------------------------------
+// Admin components created hook — set by AWS platform before admin is built.
+// Platform_Admin.construct calls this after building aggregates and read models
+// but BEFORE building extension points. This lets the platform register
+// aggregate queue URLs and read model table names with the runtime builders
+// (e.g. PluginExtensionPointRuntime_Builder) so that the EP Lambda handler
+// has the correct env vars to publish commands and query the Plugin read model.
+// No-op when unset (in-memory/other platforms).
+// ---------------------------------------------------------------------------
+let onAdminComponentsCreated: ref<
+  option<(~aggregatesOutputs: dict<Aggregate.outputs>, ~readModelsOutputs: dict<ReadModel.outputs>) => unit>,
+> = ref(None)
+
+// ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so
 // that the plugin's entry-point module can export it as `_interopMeta`.
 // ---------------------------------------------------------------------------
@@ -615,6 +628,27 @@ let getInteropMeta = (): Pulumi.Output.t<JSON.t> => {
 // Each component type gets its own export key (e.g. "aggregates", "readModels").
 // ---------------------------------------------------------------------------
 
+// Serialize a plain dict of component outputs to JSON. Unlike serializeDictExport,
+// this does NOT wrap the dict in Pulumi.Output.make (which deeply resolves nested
+// Outputs and breaks toResolvedOutputs).
+let serializePlainDictExport = (
+  dict: dict<'outputs>,
+  toResolved: 'outputs => Pulumi.Output.t<'resolved>,
+  schema: S.t<'resolved>,
+): Pulumi.Output.t<JSON.t> =>
+  dict
+  ->Dict.toArray
+  ->Array.map(((name, outputs)) =>
+    outputs
+    ->toResolved
+    ->Pulumi.Output.apply(resolved => (
+      name,
+      resolved->S.reverseConvertToJsonOrThrow(schema),
+    ))
+  )
+  ->Pulumi.Output.all
+  ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
+
 let serializeDictExport = (
   dictOutput: Pulumi.Output.t<dict<'outputs>>,
   toResolved: 'outputs => Pulumi.Output.t<'resolved>,
@@ -672,6 +706,137 @@ let serializeEventMappersOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Outpu
     ->Pulumi.Output.all
     ->Pulumi.Output.apply(arr => arr->JSON.Encode.array)
   )
+
+// Export platform admin component outputs as individual top-level Pulumi stack exports.
+// Follows the same serialization pattern as exportPluginOutputs.
+// Only exports non-empty component dicts to avoid cluttering stack output with empty values.
+let exportPlatformOutputs = (
+  ~extensionPointsOutputs: Pulumi.Output.t<array<ExtensionPoint.outputs>>,
+  ~aggregatesOutputs: dict<Aggregate.outputs>,
+  ~readModelsOutputs: dict<ReadModel.outputs>,
+  ~dcbEventLogOutputs: option<DcbEventLog.outputs>,
+  ~stateChangeSlicesOutputs: dict<StateChangeSlice.outputs>,
+  ~stateViewSlicesOutputs: dict<StateViewSlice.outputs>,
+  ~automationSlicesOutputs: dict<AutomationSlice.outputs>,
+  ~outboundTranslationSlicesOutputs: dict<OutboundTranslationSlice.outputs>,
+  ~inboundTranslationSlicesOutputs: dict<InboundTranslationSlice.outputs>,
+) => {
+  // Extension points — always exported (the admin's primary component output)
+  Pulumi.Pulumi.export(
+    "extensionPoints",
+    extensionPointsOutputs->Pulumi.Output.flatMap(eps =>
+      eps
+      ->Array.map(ep =>
+        ep
+        ->ExtensionPoint.toResolvedOutputs
+        ->Pulumi.Output.apply(resolved => (
+          ep.name,
+          resolved->S.reverseConvertToJsonOrThrow(
+            ReventlessInterop.ExtensionPoint.resolvedOutputsSchema,
+          ),
+        ))
+      )
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
+    ),
+  )
+
+  // Aggregates — only export if non-empty
+  if aggregatesOutputs->Dict.keysToArray->Array.length > 0 {
+    Pulumi.Pulumi.export(
+      "aggregates",
+      serializePlainDictExport(
+        aggregatesOutputs,
+        Aggregate.toResolvedOutputs,
+        ReventlessInterop.Aggregate.resolvedOutputsSchema,
+      ),
+    )
+  }
+
+  // ReadModels — only export if non-empty
+  if readModelsOutputs->Dict.keysToArray->Array.length > 0 {
+    Pulumi.Pulumi.export(
+      "readModels",
+      serializePlainDictExport(
+        readModelsOutputs,
+        ReadModel.toResolvedOutputs,
+        ReventlessInterop.ReadModel.resolvedOutputsSchema,
+      ),
+    )
+  }
+
+  // DCB event log — only export if present
+  switch dcbEventLogOutputs {
+  | Some(dcbOutputs) =>
+    Pulumi.Pulumi.export(
+      "dcbEventLog",
+      dcbOutputs
+      ->DcbEventLog.toResolvedOutputs
+      ->Pulumi.Output.apply(resolved =>
+        resolved->S.reverseConvertToJsonOrThrow(
+          ReventlessInterop.DcbEventLog.resolvedOutputsSchema,
+        )
+      ),
+    )
+  | None => ()
+  }
+
+  // DCB slices — only export non-empty dicts
+  if stateChangeSlicesOutputs->Dict.keysToArray->Array.length > 0 {
+    Pulumi.Pulumi.export(
+      "stateChangeSlices",
+      serializePlainDictExport(
+        stateChangeSlicesOutputs,
+        StateChangeSlice.toResolvedOutputs,
+        ReventlessInterop.StateChangeSlice.resolvedOutputsSchema,
+      ),
+    )
+  }
+
+  if stateViewSlicesOutputs->Dict.keysToArray->Array.length > 0 {
+    Pulumi.Pulumi.export(
+      "stateViewSlices",
+      serializePlainDictExport(
+        stateViewSlicesOutputs,
+        StateViewSlice.toResolvedOutputs,
+        ReventlessInterop.StateViewSlice.resolvedOutputsSchema,
+      ),
+    )
+  }
+
+  if automationSlicesOutputs->Dict.keysToArray->Array.length > 0 {
+    Pulumi.Pulumi.export(
+      "automationSlices",
+      serializePlainDictExport(
+        automationSlicesOutputs,
+        AutomationSlice.toResolvedOutputs,
+        ReventlessInterop.AutomationSlice.resolvedOutputsSchema,
+      ),
+    )
+  }
+
+  if outboundTranslationSlicesOutputs->Dict.keysToArray->Array.length > 0 {
+    Pulumi.Pulumi.export(
+      "outboundTranslationSlices",
+      serializePlainDictExport(
+        outboundTranslationSlicesOutputs,
+        OutboundTranslationSlice.toResolvedOutputs,
+        ReventlessInterop.OutboundTranslationSlice.resolvedOutputsSchema,
+      ),
+    )
+  }
+
+  if inboundTranslationSlicesOutputs->Dict.keysToArray->Array.length > 0 {
+    Pulumi.Pulumi.export(
+      "inboundTranslationSlices",
+      serializePlainDictExport(
+        inboundTranslationSlicesOutputs,
+        InboundTranslationSlice.toResolvedOutputs,
+        ReventlessInterop.InboundTranslationSlice.resolvedOutputsSchema,
+      ),
+    )
+  }
+}
 
 // Export all plugin outputs as individual top-level Pulumi stack exports.
 // Each component type is its own export key for flat, readable `pulumi stack output`.

@@ -331,6 +331,10 @@ let onHeartbeatEpChannelAvailable = {
   contents: undefined
 };
 
+let onAdminComponentsCreated = {
+  contents: undefined
+};
+
 let interopMetaOutput = {
   contents: null
 };
@@ -393,6 +397,16 @@ function getInteropMeta() {
   }
 }
 
+function serializePlainDictExport(dict, toResolved, schema) {
+  return Pulumi.all(Object.entries(dict).map(param => {
+    let name = param[0];
+    return toResolved(param[1]).apply(resolved => [
+      name,
+      S.reverseConvertToJsonOrThrow(resolved, schema)
+    ]);
+  })).apply(pairs => Object.fromEntries(pairs));
+}
+
 function serializeDictExport(dictOutput, toResolved, schema) {
   return Output$Pulumi.flatMap(dictOutput, dict => Pulumi.all(Object.entries(dict).map(param => {
     let name = param[0];
@@ -409,6 +423,37 @@ function serializeTasksOutputs(pluginOutputs) {
 
 function serializeEventMappersOutputs(pluginOutputs) {
   return Output$Pulumi.flatMap(pluginOutputs.aggregates, aggregates => Pulumi.all(Stdlib_Array.filterMap(Object.values(aggregates), agg => Stdlib_Option.map(agg.eventMapper, eventMapperOutput => Output$Pulumi.flatMap(eventMapperOutput, em => EventMapper$ReventlessCore.toResolvedOutputs(em).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, EventMapper$ReventlessInterop.resolvedOutputsSchema)))))).apply(arr => arr));
+}
+
+function exportPlatformOutputs(extensionPointsOutputs, aggregatesOutputs, readModelsOutputs, dcbEventLogOutputs, stateChangeSlicesOutputs, stateViewSlicesOutputs, automationSlicesOutputs, outboundTranslationSlicesOutputs, inboundTranslationSlicesOutputs) {
+  Pulumi$Pulumi.$$export("extensionPoints", Output$Pulumi.flatMap(extensionPointsOutputs, eps => Pulumi.all(eps.map(ep => ExtensionPoint$ReventlessCore.toResolvedOutputs(ep).apply(resolved => [
+    ep.name,
+    S.reverseConvertToJsonOrThrow(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
+  ]))).apply(pairs => Object.fromEntries(pairs))));
+  if (Object.keys(aggregatesOutputs).length !== 0) {
+    Pulumi$Pulumi.$$export("aggregates", serializePlainDictExport(aggregatesOutputs, Aggregate$ReventlessCore.toResolvedOutputs, Aggregate$ReventlessInterop.resolvedOutputsSchema));
+  }
+  if (Object.keys(readModelsOutputs).length !== 0) {
+    Pulumi$Pulumi.$$export("readModels", serializePlainDictExport(readModelsOutputs, ReadModel$ReventlessCore.toResolvedOutputs, ReadModel$ReventlessInterop.resolvedOutputsSchema));
+  }
+  if (dcbEventLogOutputs !== undefined) {
+    Pulumi$Pulumi.$$export("dcbEventLog", DcbEventLog$ReventlessCore.toResolvedOutputs(dcbEventLogOutputs).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, DcbEventLog$ReventlessInterop.resolvedOutputsSchema)));
+  }
+  if (Object.keys(stateChangeSlicesOutputs).length !== 0) {
+    Pulumi$Pulumi.$$export("stateChangeSlices", serializePlainDictExport(stateChangeSlicesOutputs, StateChangeSlice$ReventlessCore.toResolvedOutputs, StateChangeSlice$ReventlessInterop.resolvedOutputsSchema));
+  }
+  if (Object.keys(stateViewSlicesOutputs).length !== 0) {
+    Pulumi$Pulumi.$$export("stateViewSlices", serializePlainDictExport(stateViewSlicesOutputs, StateViewSlice$ReventlessCore.toResolvedOutputs, StateViewSlice$ReventlessInterop.resolvedOutputsSchema));
+  }
+  if (Object.keys(automationSlicesOutputs).length !== 0) {
+    Pulumi$Pulumi.$$export("automationSlices", serializePlainDictExport(automationSlicesOutputs, AutomationSlice$ReventlessCore.toResolvedOutputs, AutomationSlice$ReventlessInterop.resolvedOutputsSchema));
+  }
+  if (Object.keys(outboundTranslationSlicesOutputs).length !== 0) {
+    Pulumi$Pulumi.$$export("outboundTranslationSlices", serializePlainDictExport(outboundTranslationSlicesOutputs, OutboundTranslationSlice$ReventlessCore.toResolvedOutputs, OutboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema));
+  }
+  if (Object.keys(inboundTranslationSlicesOutputs).length !== 0) {
+    return Pulumi$Pulumi.$$export("inboundTranslationSlices", serializePlainDictExport(inboundTranslationSlicesOutputs, InboundTranslationSlice$ReventlessCore.toResolvedOutputs, InboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema));
+  }
 }
 
 function exportPluginOutputs(pluginOutputs) {
@@ -504,13 +549,16 @@ export {
   onDcbCommandTopicCreated,
   onDcbSlicesCreated,
   onHeartbeatEpChannelAvailable,
+  onAdminComponentsCreated,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,
   getInteropMeta,
+  serializePlainDictExport,
   serializeDictExport,
   serializeTasksOutputs,
   serializeEventMappersOutputs,
+  exportPlatformOutputs,
   exportPluginOutputs,
 }
 /* S Not a pure module */

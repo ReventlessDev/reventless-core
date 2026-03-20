@@ -3,23 +3,28 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
+import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
+import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
-import * as ExtensionPoint$ReventlessCore from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
+import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
-import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
+import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginProjection.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as DcbEventLog_Builder$ReventlessAws from "./components/DcbEventLog_Builder.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
@@ -38,7 +43,9 @@ import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChang
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
+import * as Aggregate_Builder_NoResolver$ReventlessAws from "./components/Aggregate_Builder_NoResolver.res.mjs";
 import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
+import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as Aggregate_Builder_PerAggregate$ReventlessAws from "./components/Aggregate_Builder_PerAggregate.res.mjs";
 import * as StateViewSlice_Builder_Bundled$ReventlessAws from "./components/StateViewSlice_Builder_Bundled.res.mjs";
@@ -48,6 +55,7 @@ import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/Ou
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
+import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginExtensionPointRuntime_Builder.res.mjs";
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
 import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
 import * as OutboundTranslationSlice_Builder_Bundled$ReventlessAws from "./components/OutboundTranslationSlice_Builder_Bundled.res.mjs";
@@ -275,11 +283,59 @@ function MakeWithConfig(Config) {
     splitApi: Config.splitApi,
     cloner: Config.cloner
   });
+  let corePkg = "@reventlessdev/reventless-core/src/admin";
+  let specModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginSpec.res.mjs");
+  let behaviorModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginBehavior.res.mjs");
+  let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginSpec$ReventlessCore.name,
+    eventSchema: PluginSpec$ReventlessCore.eventSchema,
+    errorSchema: PluginSpec$ReventlessCore.errorSchema,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema
+  })({
+    resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
+    init: PluginBehavior$ReventlessCore.init,
+    apply: PluginBehavior$ReventlessCore.apply,
+    create: PluginBehavior$ReventlessCore.create,
+    execute: PluginBehavior$ReventlessCore.execute
+  })(NoEventMappings$ReventlessInfra.Make({
+    name: PluginSpec$ReventlessCore.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema
+  }))({
+    specModulePath: specModulePath,
+    behaviorModulePath: behaviorModulePath
+  });
+  Projection$Reventless.Mappings.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginReadModelSpec$ReventlessCore.name,
+    stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
+    subIdConfig: undefined
+  });
+  let PluginReadModelMappings = {
+    mappings: PluginProjection$ReventlessCore.mappings
+  };
+  let specModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginReadModelSpec.res.mjs");
+  let mappingsModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginProjection.res.mjs");
+  let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginReadModelSpec$ReventlessCore.name,
+    stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined
+  })(PluginReadModelMappings)({
+    specModulePath: specModulePath$1,
+    mappingsModulePath: mappingsModulePath
+  });
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    Admin.construct(version, [], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
-    plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    let pluginComponents = plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+    let pluginComponent = pluginComponents[0];
+    if (pluginComponent !== undefined) {
+      Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
+    }
     if (!Config.splitApi) {
       return;
     }
@@ -294,25 +350,35 @@ function MakeWithConfig(Config) {
       AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), adminBaseFragment, []);
     });
   };
-  let exportAdminExtensionPoints = () => {
-    let adminEPs = Plugin_Helpers$ReventlessCore.localAdminExtensionPoints.contents;
-    if (adminEPs === undefined) {
-      return;
-    }
-    let serialized = Output$Pulumi.flatMap(adminEPs, eps => Pulumi.all(Object.entries(eps).map(param => {
-      let name = param[0];
-      return ExtensionPoint$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => [
-        name,
-        S.reverseConvertToJsonOrThrow(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
-      ]);
-    })).apply(pairs => Object.fromEntries(pairs)));
-    Pulumi$Pulumi.$$export("extensionPoints", serialized);
-  };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, undefined, undefined, undefined, undefined, appSyncApiId, Config.cloner, undefined);
+    Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents = (aggregatesOutputs, readModelsOutputs) => {
+      let publishToAggregatesQueueUrls = {};
+      let pluginAgg = aggregatesOutputs["Plugin"];
+      if (pluginAgg !== undefined) {
+        let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
+          let r = ct.resources[0];
+          if (r !== undefined) {
+            return r.id;
+          } else {
+            return Pulumi.output("");
+          }
+        });
+        publishToAggregatesQueueUrls["Plugin"] = queueUrl;
+      }
+      let pluginRm = readModelsOutputs["Plugin"];
+      let pluginReadModelTableName;
+      if (pluginRm !== undefined) {
+        let r = pluginRm.queryDb.resources[0];
+        pluginReadModelTableName = r !== undefined ? r.name : undefined;
+      } else {
+        pluginReadModelTableName = undefined;
+      }
+      PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
+      PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, Config.cloner, undefined);
+    };
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
       let plugins = await queryEngine.scan("Plugin", [[
@@ -340,12 +406,12 @@ function MakeWithConfig(Config) {
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
       updateApiSchema: updateApiSchema
     });
-    Admin.construct(version, [PluginExtensionPoint], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
     AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment, []);
     Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
     Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    exportAdminExtensionPoints();
+    Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
   };
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
@@ -601,11 +667,59 @@ function Make($star) {
     splitApi: true,
     cloner: false
   });
+  let corePkg = "@reventlessdev/reventless-core/src/admin";
+  let specModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginSpec.res.mjs");
+  let behaviorModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginBehavior.res.mjs");
+  let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginSpec$ReventlessCore.name,
+    eventSchema: PluginSpec$ReventlessCore.eventSchema,
+    errorSchema: PluginSpec$ReventlessCore.errorSchema,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema
+  })({
+    resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
+    init: PluginBehavior$ReventlessCore.init,
+    apply: PluginBehavior$ReventlessCore.apply,
+    create: PluginBehavior$ReventlessCore.create,
+    execute: PluginBehavior$ReventlessCore.execute
+  })(NoEventMappings$ReventlessInfra.Make({
+    name: PluginSpec$ReventlessCore.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema
+  }))({
+    specModulePath: specModulePath,
+    behaviorModulePath: behaviorModulePath
+  });
+  Projection$Reventless.Mappings.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginReadModelSpec$ReventlessCore.name,
+    stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
+    subIdConfig: undefined
+  });
+  let PluginReadModelMappings = {
+    mappings: PluginProjection$ReventlessCore.mappings
+  };
+  let specModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginReadModelSpec.res.mjs");
+  let mappingsModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginProjection.res.mjs");
+  let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginReadModelSpec$ReventlessCore.name,
+    stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined
+  })(PluginReadModelMappings)({
+    specModulePath: specModulePath$1,
+    mappingsModulePath: mappingsModulePath
+  });
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    Admin.construct(version, [], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
-    plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    let pluginComponents = plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+    let pluginComponent = pluginComponents[0];
+    if (pluginComponent !== undefined) {
+      Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
+    }
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreApiOutput = match[0];
     splitApiOutputsRef.contents = {
@@ -617,25 +731,35 @@ function Make($star) {
       AppSync_Adapter$ReventlessAws.updateSchema(Pulumi.output(coreApi), adminBaseFragment, []);
     });
   };
-  let exportAdminExtensionPoints = () => {
-    let adminEPs = Plugin_Helpers$ReventlessCore.localAdminExtensionPoints.contents;
-    if (adminEPs === undefined) {
-      return;
-    }
-    let serialized = Output$Pulumi.flatMap(adminEPs, eps => Pulumi.all(Object.entries(eps).map(param => {
-      let name = param[0];
-      return ExtensionPoint$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => [
-        name,
-        S.reverseConvertToJsonOrThrow(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
-      ]);
-    })).apply(pairs => Object.fromEntries(pairs)));
-    Pulumi$Pulumi.$$export("extensionPoints", serialized);
-  };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, undefined, undefined, undefined, undefined, appSyncApiId, false, undefined);
+    Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents = (aggregatesOutputs, readModelsOutputs) => {
+      let publishToAggregatesQueueUrls = {};
+      let pluginAgg = aggregatesOutputs["Plugin"];
+      if (pluginAgg !== undefined) {
+        let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
+          let r = ct.resources[0];
+          if (r !== undefined) {
+            return r.id;
+          } else {
+            return Pulumi.output("");
+          }
+        });
+        publishToAggregatesQueueUrls["Plugin"] = queueUrl;
+      }
+      let pluginRm = readModelsOutputs["Plugin"];
+      let pluginReadModelTableName;
+      if (pluginRm !== undefined) {
+        let r = pluginRm.queryDb.resources[0];
+        pluginReadModelTableName = r !== undefined ? r.name : undefined;
+      } else {
+        pluginReadModelTableName = undefined;
+      }
+      PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
+      PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, false, undefined);
+    };
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
       let plugins = await queryEngine.scan("Plugin", [[
@@ -663,12 +787,12 @@ function Make($star) {
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
       updateApiSchema: updateApiSchema
     });
-    Admin.construct(version, [PluginExtensionPoint], [], [], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
     AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment, []);
     Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
     Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    exportAdminExtensionPoints();
+    Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
   };
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);

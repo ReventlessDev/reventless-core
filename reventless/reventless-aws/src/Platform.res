@@ -456,6 +456,45 @@ module MakeWithConfig = (
     },
   )
 
+  // Admin-internal Plugin aggregate — standalone component so the PluginExtensionPoint
+  // can publish commands to it and its infrastructure appears in stack outputs.
+  let resolveModule = Util_Bundle.resolveModule
+  let corePkg = "@reventlessdev/reventless-core/src/admin"
+
+  // Use NoResolver variant — Plugin aggregate is internal (commands come via the
+  // ExtensionPoint's publishToAggregates, not through AppSync mutations).
+  module PluginAggregate: (
+    ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
+  ) = Aggregate_Builder_NoResolver.Make(
+    ReventlessCore.PluginSpec,
+    ReventlessCore.PluginBehavior,
+    ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
+    {
+      let specModulePath = resolveModule(corePkg ++ "/PluginSpec.res.mjs")
+      let behaviorModulePath = resolveModule(corePkg ++ "/PluginBehavior.res.mjs")
+    },
+  )
+
+  // Admin-internal Plugin read model — standalone component for the Plugin QueryDb
+  // (DynamoDB table) that backs queryEngine.scan(~readModelName="Plugin", ...).
+  module PluginReadModelMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.PluginReadModelSpec = {
+    module M = Reventless.Projection.Mappings.Make(ReventlessCore.PluginReadModelSpec)
+    module type Mapping = M.Mapping
+    let mappings: array<module(Mapping)> = ReventlessCore.PluginProjection.mappings->Obj.magic
+  }
+
+  // Use NoResolver variant — Plugin read model is internal (accessed via queryEngine,
+  // not through AppSync GraphQL API). No AppSync resolvers needed.
+  module PluginReadModel = ReadModel_Builder_NoResolver.Make(
+    ReventlessCore.PluginReadModelSpec,
+    PluginReadModelMappings,
+    {
+      let specModulePath = resolveModule(corePkg ++ "/PluginReadModelSpec.res.mjs")
+      let mappingsModulePath = resolveModule(corePkg ++ "/PluginProjection.res.mjs")
+    },
+  )
+
   module type PluginMaker = {
     let make: (
       ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
@@ -481,8 +520,8 @@ module MakeWithConfig = (
     let _admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
-      ~aggregates=[],
-      ~readModels=[],
+      ~aggregates=[module(PluginAggregate)],
+      ~readModels=[module(PluginReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=appSyncApi,
@@ -491,10 +530,20 @@ module MakeWithConfig = (
     )
 
     // Build each plugin using the shared scheduler.
-    let _plugins = plugins->Array.map(plugin => {
+    let pluginComponents = plugins->Array.map(plugin => {
       module P = unpack(plugin)
       P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
     })
+
+    // Export first plugin's outputs (monolithic mode = typically single plugin).
+    switch pluginComponents->Array.get(0) {
+    | Some(pluginComponent) =>
+      let pluginOutputs: ReventlessCore.Plugin.outputs =
+        (pluginComponent->Obj.magic: ReventlessCore.Plugin.component)
+        ->ReventlessCore.Component.outputs
+      ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
+    | None => ()
+    }
 
     if Config.splitApi {
       // Create a dedicated AppSync API for core administrative schema.
@@ -522,29 +571,6 @@ module MakeWithConfig = (
     }
   }
 
-  // Helper: serialize admin extension points as a stack output for cross-stack consumption.
-  let exportAdminExtensionPoints = () => {
-    switch ReventlessCore.Plugin_Helpers.localAdminExtensionPoints.contents {
-    | Some(adminEPs) =>
-      let serialized =
-        adminEPs->Pulumi.Output.flatMap(eps =>
-          eps
-          ->Dict.toArray
-          ->Array.map(((name, ep)) =>
-            ep
-            ->ReventlessCore.ExtensionPoint.toResolvedOutputs
-            ->Pulumi.Output.apply(resolved => (name, resolved->S.reverseConvertToJsonOrThrow(
-              ReventlessInterop.ExtensionPoint.resolvedOutputsSchema,
-            )))
-          )
-          ->Pulumi.Output.all
-          ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object)
-        )
-      Pulumi.Pulumi.export("extensionPoints", serialized)
-    | None => ()
-    }
-  }
-
   let deployPlatform = (~version) => {
     Console.log(`[Platform:deployPlatform] v${version}`)
     let scheduler = makeScheduler()
@@ -559,12 +585,51 @@ module MakeWithConfig = (
     // returns the resolved string synchronously.
     let appSyncApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
 
-    // Register bundled Admin EventCollector config with available infrastructure values.
-    // Values that aren't available in Platform-only deployment use defaults (NOT_AVAILABLE).
-    PluginRuntime_Builder.registerConfig(
-      ~appSyncApiId=appSyncApiId,
-      ~clonerEnabled=Config.cloner,
-      (),
+    // Register bundled Admin EventCollector config. Done via onAdminComponentsCreated
+    // hook so pluginReadModelTableName is available (set after aggregates/readModels
+    // are built but before the EventCollector Lambda is created).
+    ReventlessCore.Plugin_Helpers.onAdminComponentsCreated.contents = Some(
+      (~aggregatesOutputs, ~readModelsOutputs) => {
+        // Extract Plugin aggregate CommandTopic queue URL for EP runtime
+        let publishToAggregatesQueueUrls = Dict.make()
+        switch aggregatesOutputs->Dict.get("Plugin") {
+        | Some(pluginAgg) =>
+          let queueUrl =
+            pluginAgg.commandTopic->Pulumi.Output.flatMap(ct =>
+              switch ct.resources->Array.get(0) {
+              | Some(r) => r.id
+              | None => Pulumi.Output.make("")
+              }
+            )
+          publishToAggregatesQueueUrls->Dict.set("Plugin", queueUrl)
+        | None => ()
+        }
+
+        // Extract Plugin read model QueryDb table name
+        let pluginReadModelTableName = switch readModelsOutputs->Dict.get("Plugin") {
+        | Some(pluginRm) =>
+          switch pluginRm.queryDb.resources->Array.get(0) {
+          | Some(r) => Some(r.name)
+          | None => None
+          }
+        | None => None
+        }
+
+        // Register EP runtime with aggregate queue URLs and RM table
+        PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
+          ~publishToAggregatesQueueUrls,
+          ~pluginReadModelTableName?,
+          (),
+        )
+
+        // Register Admin EventCollector config with all values
+        PluginRuntime_Builder.registerConfig(
+          ~appSyncApiId=appSyncApiId,
+          ~pluginReadModelTableName?,
+          ~clonerEnabled=Config.cloner,
+          (),
+        )
+      },
     )
 
     module PluginExtensionPoint = Plugin_ExtensionPoint_Builder.MakeWithConfig({
@@ -599,11 +664,11 @@ module MakeWithConfig = (
       })
     })
 
-    let _admin = Admin.construct(
+    let admin = Admin.construct(
       ~version,
       ~extensionPoints=[module(PluginExtensionPoint)],
-      ~aggregates=[],
-      ~readModels=[],
+      ~aggregates=[module(PluginAggregate)],
+      ~readModels=[module(PluginReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=appSyncApi,
@@ -628,8 +693,18 @@ module MakeWithConfig = (
     Pulumi.Pulumi.export("apiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export("apiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
 
-    // Export admin extension points for plugin stacks to consume.
-    exportAdminExtensionPoints()
+    // Export admin component outputs (same pattern as deployPlugin).
+    ReventlessCore.Plugin_Helpers.exportPlatformOutputs(
+      ~extensionPointsOutputs=admin.extensionPointsOutputs,
+      ~aggregatesOutputs=admin.aggregatesOutputs,
+      ~readModelsOutputs=admin.readModelsOutputs,
+      ~dcbEventLogOutputs=admin.dcbEventLogOutputs,
+      ~stateChangeSlicesOutputs=admin.stateChangeSlicesOutputs,
+      ~stateViewSlicesOutputs=admin.stateViewSlicesOutputs,
+      ~automationSlicesOutputs=admin.automationSlicesOutputs,
+      ~outboundTranslationSlicesOutputs=admin.outboundTranslationSlicesOutputs,
+      ~inboundTranslationSlicesOutputs=admin.inboundTranslationSlicesOutputs,
+    )
   }
 
   let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {

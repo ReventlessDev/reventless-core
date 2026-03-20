@@ -91,6 +91,10 @@ function Make(RuntimeEnvironment) {
       let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+      let hook = Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents;
+      if (hook !== undefined) {
+        hook(aggregatesWithoutEventMappers, readModelsOutputs);
+      }
       let extensionPointsOutputs = Pulumi.all([
         Pulumi.all(Builder_Helpers$ReventlessCore.aggregateResources),
         Pulumi.all(Builder_Helpers$ReventlessCore.publishToAggregates),
@@ -152,7 +156,16 @@ function Make(RuntimeEnvironment) {
         adminFragment: adminFragment,
         dcbMutationEntries: dcbResult.mutationEntries,
         dcbQueryEntries: dcbResult.queryEntries,
-        dcbEventLogEntries: dcbResult.eventLogEntries
+        dcbEventLogEntries: dcbResult.eventLogEntries,
+        extensionPointsOutputs: extensionPointsOutputs,
+        aggregatesOutputs: aggregatesWithoutEventMappers,
+        readModelsOutputs: readModelsOutputs,
+        dcbEventLogOutputs: dcbResult.dcbEventLogOutputs,
+        stateChangeSlicesOutputs: dcbResult.stateChangeSlicesOutputs,
+        stateViewSlicesOutputs: dcbResult.stateViewSlicesOutputs,
+        automationSlicesOutputs: dcbResult.automationSlicesOutputs,
+        outboundTranslationSlicesOutputs: dcbResult.outboundTranslationSlicesOutputs,
+        inboundTranslationSlicesOutputs: dcbResult.inboundTranslationSlicesOutputs
       };
     };
     return {
