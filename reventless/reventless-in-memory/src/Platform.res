@@ -30,6 +30,9 @@ module MakeWithConfig = (
   type api = unit
   type role = unit
 
+  let api = ()
+  let apiRole = ()
+
   module Bus = InMemory_Bus.Impl({
     let capacity = None
     let silent = Config.silent

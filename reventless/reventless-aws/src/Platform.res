@@ -113,8 +113,12 @@ module MakeWithConfig = (
     (phantomApi, phantomRole)
   }
 
-  // Expose api/apiRole via module-level ref so bundled slice builders can access
-  // them outside the functor constraint.
+  // Expose api/apiRole as Platform.T value bindings so bundled DCB slice builders
+  // can access them through the platform interface.
+  let api = appSyncApi
+  let apiRole = appSyncApiRole
+
+  // Also populate the module-level ref for backward compatibility.
   let () = apiConfigRef := Some({api: appSyncApi, apiRole: appSyncApiRole})
 
   // Local module alias so sub-builders that require {api, apiRole} can reference it.
@@ -125,7 +129,8 @@ module MakeWithConfig = (
 
   module Aggregate = {
     // Non-bundled Make satisfies Platform.T but registers no entry point.
-    // Use MakeBundled (or direct builders) for working AWS deployments.
+    // For working AWS deployments, use the AWS builders directly
+    // (e.g., ReventlessAws.Aggregate_Builder_Single.Make) from _Aws plugin variants.
     module Make = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
@@ -137,33 +142,6 @@ module MakeWithConfig = (
         let specModulePath = ""
         let behaviorModulePath = ""
       })
-
-    module MakeBundled = (
-      Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
-      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-      Config: Aggregate_Builder_Single.Config,
-    ): (
-      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings, Config)
-
-    module MakeBundledPerAggregate = (
-      Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
-      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-      Config: Aggregate_Builder_PerAggregate.Config,
-    ): (
-      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_PerAggregate.Make(Spec, Behavior, EventMappings, Config)
-
-    module MakeBundledMicro = (
-      Spec: Reventless.Aggregate.Spec,
-      Behavior: Reventless.Behavior.T with module Spec := Spec,
-      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-      Config: Aggregate_Builder_Micro.Config,
-    ): (
-      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings, Config)
   }
 
   module ReadModel = {
@@ -180,17 +158,6 @@ module MakeWithConfig = (
         let specModulePath = ""
         let mappingsModulePath = ""
       })
-
-    module MakeBundled = (
-      Spec: Reventless.ReadModel.Spec,
-      Mappings: Reventless.Projection.Mappings with module Target := Spec,
-      Config: ReadModel_Builder_Single.Config,
-    ): (
-      ReventlessInfra.ReadModel.T
-        with module Spec = Spec
-        and type api = Types.AppSync.api
-        and type role = Types.AppSync.role
-    ) => ReadModel_Builder_Single.Make(Spec, Mappings, Config)
   }
 
   module ExtensionPoint = {
@@ -203,12 +170,6 @@ module MakeWithConfig = (
         let mappingsModulePath = ""
         let publishToAggregatesQueueUrls = Dict.make()
       })
-
-    module MakeBundled = (
-      Spec: ReventlessInfra.ExtensionPointMapping.Spec,
-      Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
-      Config: ExtensionPoint_Builder.Config,
-    ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings, Config)
   }
 
   module Extension = {
@@ -226,26 +187,13 @@ module MakeWithConfig = (
         let callbackModulePaths = Dict.make()
         let publishToAggregatesQueueUrls = Dict.make()
       })
-
-    module MakeBundled = (
-      Spec: ReventlessCore.Task.Spec,
-      Config: Task_Builder_PerBucket.Config,
-    ): (
-      ReventlessCore.Task.T with module Spec = Spec
-    ) => Task_Builder_PerBucket.Make(Spec, Config)
   }
 
-  module Counter = {
-    include Counter_Builder.Make(ApiConfig, {
-      let specModulePath = ""
-      let mappingsModulePath = ""
-      let publishQueueUrl = Pulumi.Output.make("")
-    })
-
-    module MakeBundled = (Config: Counter_Builder.Config) => {
-      include Counter_Builder.Make(ApiConfig, Config)
-    }
-  }
+  module Counter = Counter_Builder.Make(ApiConfig, {
+    let specModulePath = ""
+    let mappingsModulePath = ""
+    let publishQueueUrl = Pulumi.Output.make("")
+  })
 
   module StateChangeSlice = {
     module Make = (Spec: Reventless.StateChangeSlice.Spec): (

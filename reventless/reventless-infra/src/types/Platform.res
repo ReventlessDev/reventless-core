@@ -57,6 +57,13 @@ module type T = {
   /** Platform-specific role type (e.g. `Types.AppSync.role` for AWS, `unit` for in-memory). */
   type role
 
+  /** The platform's API instance — used by bundled DCB slice builders that need
+      to create QueryDb resolvers inside the Platform functor. */
+  let api: api
+
+  /** The platform's API role instance — used alongside `api` for QueryDb resolvers. */
+  let apiRole: role
+
   /** Factory for event-sourced aggregate components. */
   module Aggregate: {
     module Make: (

@@ -76,26 +76,35 @@ Added `Task.MakeBundled` and `Counter.MakeBundled` variants to Platform.res.
 | `OrderingPluginHeartbeat` | ✅ **NEW** — Heartbeat + CloudWatch Events |
 | `OrderingOrdersExtPointCmdTopic` | ✅ **NEW** — EP CommandTopic |
 
-### Step 7: Wire bundled DCB slice builders (BLOCKED)
+### Step 7: Wire bundled DCB slice builders ✅
 
-**Still missing:** DCB EventCollector Lambdas (`AllStateViewSlices`, `AllAutomationSlices`)
+**Previously blocked** by two issues, now both resolved:
 
-The `onDcbSlicesCreated` hook + `finish()` mechanism works — Lambdas start being created. But two blockers prevent completion:
+**Blocker 1: Non-bundled path hits serialization error.** ~~`EventCollectorRuntime_Builder_Single.finish()` creates `CallbackFunction` Lambdas → Pulumi closure walker fails on Effect-TS.~~ **BYPASSED** — The bundled path uses `ProjectionRuntime_Builder_Single.finish()` → `RuntimeEnvironment_Lambda.makeBundledFromEntryPoint()`, which never touches `CallbackFunction`. The non-bundled path remains broken but is no longer used by bundled plugins.
 
-**Blocker 1: Non-bundled path hits serialization error.** `EventCollectorRuntime_Builder_Single.finish()` creates `CallbackFunction` Lambdas → Pulumi closure walker fails on Effect-TS (the same root cause that motivated the entire bundled migration).
+**Blocker 2: Bundled path blocked by Platform functor constraint.** **RESOLVED** — Added `let api: api` and `let apiRole: role` value bindings to `ReventlessInfra.Platform.T`. Both implementations updated:
+- AWS `Platform.MakeWithConfig`: `let api = appSyncApi` / `let apiRole = appSyncApiRole`
+- In-memory `Platform.MakeWithConfig`: `let api = ()` / `let apiRole = ()`
 
-**Blocker 2: Bundled path blocked by Platform functor constraint.** The bundled slice builders (`StateViewSlice_Builder_Bundled`, etc.) need `api`/`apiRole` for QueryDb resolvers. These are only available inside `Platform.MakeWithConfig`, but:
-- `ReventlessInfra.Platform.T` erases `Bundled` sub-modules from the functor output
-- Creating bundled builders outside the functor (with `apiConfigRef`) causes `ReventlessCore` vs `ReventlessInfra` type mismatches when used in `DcbSpec` inside the functor
+**Plugin wiring:** The hybrid `_Aws` plugin variants (`OrderingPlugin_Aws.res`, `CatalogPlugin_Aws.res`) already use `Platform.StateViewSlice.Bundled.Make(...)`, `Platform.AutomationSlice.Bundled.Make(...)`, and `Platform.OutboundTranslationSlice.Bundled.Make(...)` with `specModulePath` configs. These are assembled into `DcbSpec` arrays alongside non-bundled `StateChangeSlice.Make(...)` slices (StateChangeSlices don't need bundled builders — they share the DCB CommandTopic Lambda).
 
-**Proposed fix:** Add `api` and `apiRole` values to the `ReventlessInfra.Platform.T` interface. This allows bundled slice builders to be created inside the functor where types unify correctly. Small interface change — `api` and `apiRole` are already abstract types in the interface, just missing the value bindings.
+**Full flow:**
+1. Plugin creates slice modules via `Platform.*.Bundled.Make(Spec, Config)` → returns `StateViewSlice.T` etc.
+2. Plugin assembles `DcbSpec` with arrays of first-class modules
+3. `Dcb_Builder.construct` iterates slices, calling `.make(~dcbEventLog, ~opts)`
+4. Each bundled `make` calls `registerStateViewSlice(~name, ~specModulePath, ~queryDbTableName)`
+5. `onDcbSlicesCreated` hook fires → `StateViewSliceRuntime_Builder_Single.finish()` + `AutomationSliceRuntime_Builder_Single.finish()`
+6. `finish()` generates consolidated entry point code and creates a single bundled Lambda per slice type
 
-**Alternative:** Have the bundled slice builders NOT create QueryDb resolvers (defer resolver creation to a separate hook). The bundled handler only needs the table name, not the full AppSync wiring. Resolvers could be created by the non-bundled path or via a dedicated hook.
+**Remaining:** Deploy and verify `AllStateViewSlices` and `AllAutomationSlices` Lambdas appear in the stack (extends Step 6 verification).
 
 ## Other changes
 
 - `Platform.res` — added `apiConfigRef` + `getApiConfig()` for external api/apiRole access
-- `Platform.res` — added `Bundled` sub-modules on StateViewSlice/AutomationSlice/OutboundTranslationSlice (currently unused due to Blocker 2)
+- `Platform.res` — added `Bundled` sub-modules on StateViewSlice/AutomationSlice/OutboundTranslationSlice
+- `ReventlessInfra.Platform.T` — added `let api: api` and `let apiRole: role` value bindings (Blocker 2 fix)
+- AWS `Platform.MakeWithConfig` — exposed `api`/`apiRole` as module-level values
+- In-memory `Platform.MakeWithConfig` — exposed `api`/`apiRole` as `unit` values
 
 ## Key Lessons
 

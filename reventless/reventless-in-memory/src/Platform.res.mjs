@@ -788,6 +788,8 @@ function MakeWithConfig(Config) {
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
   };
   return {
+    api: undefined,
+    apiRole: undefined,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,
@@ -1548,6 +1550,8 @@ function Make($star) {
     operations: Counter_operations
   };
   return {
+    api: undefined,
+    apiRole: undefined,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,

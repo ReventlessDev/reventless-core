@@ -35,7 +35,6 @@ import * as PluginRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginRu
 import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoint_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
-import * as Aggregate_Builder_Micro$ReventlessAws from "./components/Aggregate_Builder_Micro.res.mjs";
 import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationSlice_Builder.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
@@ -47,7 +46,6 @@ import * as Aggregate_Builder_NoResolver$ReventlessAws from "./components/Aggreg
 import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
 import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
-import * as Aggregate_Builder_PerAggregate$ReventlessAws from "./components/Aggregate_Builder_PerAggregate.res.mjs";
 import * as StateViewSlice_Builder_Bundled$ReventlessAws from "./components/StateViewSlice_Builder_Bundled.res.mjs";
 import * as AutomationSlice_Builder_Bundled$ReventlessAws from "./components/AutomationSlice_Builder_Bundled.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
@@ -128,23 +126,15 @@ function MakeWithConfig(Config) {
     specModulePath: "",
     behaviorModulePath: ""
   })));
-  let MakeBundled = Spec => (Behavior => (EventMappings => (Config => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)(Config))));
-  let MakeBundledPerAggregate = Spec => (Behavior => (EventMappings => (Config => Aggregate_Builder_PerAggregate$ReventlessAws.Make(Spec)(Behavior)(EventMappings)(Config))));
-  let MakeBundledMicro = Spec => (Behavior => (EventMappings => (Config => Aggregate_Builder_Micro$ReventlessAws.Make(Spec)(Behavior)(EventMappings)(Config))));
   let Aggregate = {
-    Make: Make,
-    MakeBundled: MakeBundled,
-    MakeBundledPerAggregate: MakeBundledPerAggregate,
-    MakeBundledMicro: MakeBundledMicro
+    Make: Make
   };
   let Make$1 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings)({
     specModulePath: "",
     mappingsModulePath: ""
   }));
-  let MakeBundled$1 = Spec => (Mappings => (Config => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings)(Config)));
   let ReadModel = {
-    Make: Make$1,
-    MakeBundled: MakeBundled$1
+    Make: Make$1
   };
   let Make$2 = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
@@ -154,10 +144,8 @@ function MakeWithConfig(Config) {
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
-  let MakeBundled$2 = Spec => (Mappings => (Config => ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)(Config)));
   let ExtensionPoint = {
-    Make: Make$2,
-    MakeBundled: MakeBundled$2
+    Make: Make$2
   };
   let Make$3 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
@@ -171,13 +159,11 @@ function MakeWithConfig(Config) {
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   };
-  let MakeBundled$3 = Spec => (Config => Task_Builder_PerBucket$ReventlessAws.Make(Spec)(Config));
   let Task = {
-    Make: Make$4,
-    MakeBundled: MakeBundled$3
+    Make: Make$4
   };
   let publishQueueUrl = Pulumi.output("");
-  let include = Counter_Builder$ReventlessAws.Make(ApiConfig)({
+  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig)({
     specModulePath: "",
     mappingsModulePath: "",
     publishQueueUrl: publishQueueUrl
@@ -186,11 +172,11 @@ function MakeWithConfig(Config) {
   let StateChangeSlice = {
     Make: Make$5
   };
-  let include$1 = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled = StateViewSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
-  let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled$1 = AutomationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
-  let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled$2 = OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Make$6 = DcbEventLog_Builder$ReventlessAws.Make;
@@ -421,31 +407,33 @@ function MakeWithConfig(Config) {
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(pluginComponent));
   };
   return {
+    api: appSyncApi,
+    apiRole: appSyncApiRole,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,
     Counter: {
-      make: include.make,
-      outputs: include.outputs,
-      operations: include.operations
+      make: Counter.make,
+      outputs: Counter.outputs,
+      operations: Counter.operations
     },
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: {
-      Make: include$1.Make,
+      Make: include.Make,
       Bundled: {
         Make: Bundled.Make
       }
     },
     AutomationSlice: {
-      Make: include$2.Make,
+      Make: include$1.Make,
       Bundled: {
         Make: Bundled$1.Make
       }
     },
     OutboundTranslationSlice: {
-      Make: include$3.Make,
+      Make: include$2.Make,
       Bundled: {
         Make: Bundled$2.Make
       }
@@ -513,23 +501,15 @@ function Make($star) {
     specModulePath: "",
     behaviorModulePath: ""
   })));
-  let MakeBundled = Spec => (Behavior => (EventMappings => (Config => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)(Config))));
-  let MakeBundledPerAggregate = Spec => (Behavior => (EventMappings => (Config => Aggregate_Builder_PerAggregate$ReventlessAws.Make(Spec)(Behavior)(EventMappings)(Config))));
-  let MakeBundledMicro = Spec => (Behavior => (EventMappings => (Config => Aggregate_Builder_Micro$ReventlessAws.Make(Spec)(Behavior)(EventMappings)(Config))));
   let Aggregate = {
-    Make: Make$1,
-    MakeBundled: MakeBundled,
-    MakeBundledPerAggregate: MakeBundledPerAggregate,
-    MakeBundledMicro: MakeBundledMicro
+    Make: Make$1
   };
   let Make$2 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings)({
     specModulePath: "",
     mappingsModulePath: ""
   }));
-  let MakeBundled$1 = Spec => (Mappings => (Config => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings)(Config)));
   let ReadModel = {
-    Make: Make$2,
-    MakeBundled: MakeBundled$1
+    Make: Make$2
   };
   let Make$3 = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
@@ -539,10 +519,8 @@ function Make($star) {
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
-  let MakeBundled$2 = Spec => (Mappings => (Config => ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)(Config)));
   let ExtensionPoint = {
-    Make: Make$3,
-    MakeBundled: MakeBundled$2
+    Make: Make$3
   };
   let Make$4 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
@@ -556,13 +534,11 @@ function Make($star) {
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   };
-  let MakeBundled$3 = Spec => (Config => Task_Builder_PerBucket$ReventlessAws.Make(Spec)(Config));
   let Task = {
-    Make: Make$5,
-    MakeBundled: MakeBundled$3
+    Make: Make$5
   };
   let publishQueueUrl = Pulumi.output("");
-  let include = Counter_Builder$ReventlessAws.Make(ApiConfig)({
+  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig)({
     specModulePath: "",
     mappingsModulePath: "",
     publishQueueUrl: publishQueueUrl
@@ -571,11 +547,11 @@ function Make($star) {
   let StateChangeSlice = {
     Make: Make$6
   };
-  let include$1 = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled = StateViewSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
-  let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled$1 = AutomationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
-  let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled$2 = OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Make$7 = DcbEventLog_Builder$ReventlessAws.Make;
@@ -801,15 +777,15 @@ function Make($star) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(pluginComponent));
   };
-  let Counter_make = include.make;
-  let Counter_outputs = include.outputs;
-  let Counter_operations = include.operations;
-  let Counter = {
+  let Counter_make = Counter.make;
+  let Counter_outputs = Counter.outputs;
+  let Counter_operations = Counter.operations;
+  let Counter$1 = {
     make: Counter_make,
     outputs: Counter_outputs,
     operations: Counter_operations
   };
-  let StateViewSlice_Make = include$1.Make;
+  let StateViewSlice_Make = include.Make;
   let StateViewSlice_Bundled = {
     Make: Bundled.Make
   };
@@ -817,7 +793,7 @@ function Make($star) {
     Make: StateViewSlice_Make,
     Bundled: StateViewSlice_Bundled
   };
-  let AutomationSlice_Make = include$2.Make;
+  let AutomationSlice_Make = include$1.Make;
   let AutomationSlice_Bundled = {
     Make: Bundled$1.Make
   };
@@ -825,7 +801,7 @@ function Make($star) {
     Make: AutomationSlice_Make,
     Bundled: AutomationSlice_Bundled
   };
-  let OutboundTranslationSlice_Make = include$3.Make;
+  let OutboundTranslationSlice_Make = include$2.Make;
   let OutboundTranslationSlice_Bundled = {
     Make: Bundled$2.Make
   };
@@ -834,12 +810,14 @@ function Make($star) {
     Bundled: OutboundTranslationSlice_Bundled
   };
   return {
+    api: appSyncApi,
+    apiRole: appSyncApiRole,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,
-    Counter: Counter,
+    Counter: Counter$1,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
     AutomationSlice: AutomationSlice,
