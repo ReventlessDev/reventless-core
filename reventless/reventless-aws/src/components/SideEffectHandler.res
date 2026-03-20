@@ -1,1 +1,1 @@
-include SideEffectHandler_PerSideEffectHandler
+include SideEffectHandler_Single

@@ -6,82 +6,77 @@ function generateAggregateEntryPoint(prim) {
   return Util_EntryPointMjs.generateAggregateEntryPoint(prim);
 }
 
-function generateBundledAggregateEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledAggregateEntryPoint(prim);
+function generateReadModelEntryPoint(prim) {
+  return Util_EntryPointMjs.generateReadModelEntryPoint(prim);
 }
 
-function generateBundledReadModelEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledReadModelEntryPoint(prim);
+function generateStateViewSliceEntryPoint(prim) {
+  return Util_EntryPointMjs.generateStateViewSliceEntryPoint(prim);
 }
 
-function generateBundledStateViewSliceEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledStateViewSliceEntryPoint(prim);
+function generateAutomationSliceEntryPoint(prim) {
+  return Util_EntryPointMjs.generateAutomationSliceEntryPoint(prim);
 }
 
-function generateBundledAutomationSliceEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledAutomationSliceEntryPoint(prim);
+function generateOutboundTranslationSliceEntryPoint(prim) {
+  return Util_EntryPointMjs.generateOutboundTranslationSliceEntryPoint(prim);
 }
 
-function generateBundledOutboundTranslationSliceEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledOutboundTranslationSliceEntryPoint(prim);
+function generateExtensionPointEntryPoint(prim) {
+  return Util_EntryPointMjs.generateExtensionPointEntryPoint(prim);
 }
 
-function generateBundledExtensionPointEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledExtensionPointEntryPoint(prim);
+function generatePluginExtensionPointEntryPoint(prim) {
+  return Util_EntryPointMjs.generatePluginExtensionPointEntryPoint(prim);
 }
 
-function generateBundledPluginExtensionPointEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledPluginExtensionPointEntryPoint(prim);
+function generateCommandGeneratorEntryPoint(prim) {
+  return Util_EntryPointMjs.generateCommandGeneratorEntryPoint(prim);
 }
 
-function generateBundledCommandGeneratorEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledCommandGeneratorEntryPoint(prim);
+function generateEventMapperEntryPoint(prim) {
+  return Util_EntryPointMjs.generateEventMapperEntryPoint(prim);
 }
 
-function generateBundledEventMapperEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledEventMapperEntryPoint(prim);
+function generateAdminEventCollectorEntryPoint(prim) {
+  return Util_EntryPointMjs.generateAdminEventCollectorEntryPoint(prim);
 }
 
-function generateBundledAdminEventCollectorEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledAdminEventCollectorEntryPoint(prim);
+function generateSideEffectEntryPoint(prim) {
+  return Util_EntryPointMjs.generateSideEffectEntryPoint(prim);
 }
 
-function generateBundledSideEffectEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledSideEffectEntryPoint(prim);
+function generateTaskBucketEntryPoint(prim) {
+  return Util_EntryPointMjs.generateTaskBucketEntryPoint(prim);
 }
 
-function generateBundledTaskBucketEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledTaskBucketEntryPoint(prim);
+function generateCounterEntryPoint(prim) {
+  return Util_EntryPointMjs.generateCounterEntryPoint(prim);
 }
 
-function generateBundledCounterEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledCounterEntryPoint(prim);
+function generateDcbCommandTopicEntryPoint(prim) {
+  return Util_EntryPointMjs.generateDcbCommandTopicEntryPoint(prim);
 }
 
-function generateBundledDcbCommandTopicEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledDcbCommandTopicEntryPoint(prim);
-}
-
-function generateBundledHeartbeatEntryPoint(prim) {
-  return Util_EntryPointMjs.generateBundledHeartbeatEntryPoint(prim);
+function generateHeartbeatEntryPoint(prim) {
+  return Util_EntryPointMjs.generateHeartbeatEntryPoint(prim);
 }
 
 export {
   generateAggregateEntryPoint,
-  generateBundledAggregateEntryPoint,
-  generateBundledReadModelEntryPoint,
-  generateBundledStateViewSliceEntryPoint,
-  generateBundledAutomationSliceEntryPoint,
-  generateBundledOutboundTranslationSliceEntryPoint,
-  generateBundledExtensionPointEntryPoint,
-  generateBundledPluginExtensionPointEntryPoint,
-  generateBundledCommandGeneratorEntryPoint,
-  generateBundledEventMapperEntryPoint,
-  generateBundledAdminEventCollectorEntryPoint,
-  generateBundledSideEffectEntryPoint,
-  generateBundledTaskBucketEntryPoint,
-  generateBundledCounterEntryPoint,
-  generateBundledDcbCommandTopicEntryPoint,
-  generateBundledHeartbeatEntryPoint,
+  generateReadModelEntryPoint,
+  generateStateViewSliceEntryPoint,
+  generateAutomationSliceEntryPoint,
+  generateOutboundTranslationSliceEntryPoint,
+  generateExtensionPointEntryPoint,
+  generatePluginExtensionPointEntryPoint,
+  generateCommandGeneratorEntryPoint,
+  generateEventMapperEntryPoint,
+  generateAdminEventCollectorEntryPoint,
+  generateSideEffectEntryPoint,
+  generateTaskBucketEntryPoint,
+  generateCounterEntryPoint,
+  generateDcbCommandTopicEntryPoint,
+  generateHeartbeatEntryPoint,
 }
 /* ./Util_EntryPoint.mjs Not a pure module */

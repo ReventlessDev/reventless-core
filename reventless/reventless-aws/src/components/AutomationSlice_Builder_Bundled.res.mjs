@@ -6,7 +6,7 @@ import * as AutomationSlice_Builder$ReventlessCore from "@reventlessdev/reventle
 import * as QueryDbResolvers_AppSync$ReventlessAws from "../adapter/QueryDb/QueryDbResolvers_AppSync.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
-import * as AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws from "../adapter/Runtime/AutomationSliceRuntime_Builder_Single_Bundled.res.mjs";
+import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "../adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
 
 function Make(Api) {
   let Inner = AutomationSlice_Builder$ReventlessCore.Make({
@@ -25,8 +25,8 @@ function Make(Api) {
       make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
       connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
     },
-    forEventCollector: AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.forEventCollector,
-    finish: AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.finish
+    forEventCollector: AutomationSliceRuntime_Builder_Single$ReventlessAws.forEventCollector,
+    finish: AutomationSliceRuntime_Builder_Single$ReventlessAws.finish
   })(Api);
   let Make$1 = Spec => (Config => {
     let InnerMake = Inner.Make(Spec);
@@ -35,7 +35,7 @@ function Make(Api) {
       let queryDbOutputs = Component$ReventlessCore.outputs(as_).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.registerBundledAutomationSlice(InnerMake.Spec.name, Config.specModulePath, queryDbTableName);
+      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(InnerMake.Spec.name, Config.specModulePath, queryDbTableName);
       return as_;
     };
     return {
@@ -44,7 +44,7 @@ function Make(Api) {
       make: make
     };
   });
-  let finish = () => AutomationSliceRuntime_Builder_Single_Bundled$ReventlessAws.finish();
+  let finish = () => AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   return {
     Inner: Inner,
     Make: Make$1,

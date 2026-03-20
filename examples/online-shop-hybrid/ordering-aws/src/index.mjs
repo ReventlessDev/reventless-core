@@ -1,4 +1,4 @@
-import { registerDcbConfig } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder_Bundled.res.mjs";
+import { registerDcbConfig } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res.mjs";
 import { resolveModule } from "@reventlessdev/reventless-aws/src/util/Util_Bundle.res.mjs";
 
 const pkg = "@reventlessdev/online-shop-hybrid-ordering/src";

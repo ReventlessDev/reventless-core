@@ -63,10 +63,7 @@ let handler = Lambda.Function.make(
   ~opts,
 )
 
-let handlerAsCallback: Lambda.CallbackFunction.t =
-  handler->Util_Lambda.functionToCallbackFunction
-
-let lambda = handler->Util_Lambda.functionToCallbackFunction->Pulumi.Output.make
+let lambda = handler->Pulumi.Output.make
 
 let _subscription = Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~opts)
 let _fifoSubscription = Util_EventSourceMapping.subscribeSqs(

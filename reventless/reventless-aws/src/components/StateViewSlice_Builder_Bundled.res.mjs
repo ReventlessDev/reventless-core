@@ -6,7 +6,7 @@ import * as StateViewSlice_Builder$ReventlessCore from "@reventlessdev/reventles
 import * as QueryDbResolvers_AppSync$ReventlessAws from "../adapter/QueryDb/QueryDbResolvers_AppSync.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
-import * as StateViewSliceRuntime_Builder_Single_Bundled$ReventlessAws from "../adapter/Runtime/StateViewSliceRuntime_Builder_Single_Bundled.res.mjs";
+import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "../adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
 
 function Make(Api) {
   let Inner = StateViewSlice_Builder$ReventlessCore.Make({
@@ -25,8 +25,8 @@ function Make(Api) {
       make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
       connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
     },
-    forEventCollector: StateViewSliceRuntime_Builder_Single_Bundled$ReventlessAws.forEventCollector,
-    finish: StateViewSliceRuntime_Builder_Single_Bundled$ReventlessAws.finish
+    forEventCollector: StateViewSliceRuntime_Builder_Single$ReventlessAws.forEventCollector,
+    finish: StateViewSliceRuntime_Builder_Single$ReventlessAws.finish
   })(Api);
   let Make$1 = Spec => (Config => {
     let InnerMake = Inner.Make(Spec);
@@ -35,7 +35,7 @@ function Make(Api) {
       let queryDbOutputs = Component$ReventlessCore.outputs(sv).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      StateViewSliceRuntime_Builder_Single_Bundled$ReventlessAws.registerBundledStateViewSlice(InnerMake.Spec.name, Config.specModulePath, queryDbTableName);
+      StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(InnerMake.Spec.name, Config.specModulePath, queryDbTableName);
       return sv;
     };
     return {
@@ -43,7 +43,7 @@ function Make(Api) {
       make: make
     };
   });
-  let finish = () => StateViewSliceRuntime_Builder_Single_Bundled$ReventlessAws.finish();
+  let finish = () => StateViewSliceRuntime_Builder_Single$ReventlessAws.finish();
   return {
     Inner: Inner,
     Make: Make$1,

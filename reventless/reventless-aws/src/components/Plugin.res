@@ -17,7 +17,7 @@ include ReventlessCore.Plugin_Builder.Make(
   QueryEngine.DynamoDb,
   CommandTopicRemoteChannel.SQS,
   HeartbeatRunner.CloudwatchEvents,
-  PluginRuntime_Builder_Bundled.Make(EventCollectorChannel),
+  PluginRuntime_Builder.Make(EventCollectorChannel),
   DcbEventLogStorage.DynamoDb,
   EventTopicPublisher.DynamoDbStream,
   CommandTopicChannel.SQS_FIFO,

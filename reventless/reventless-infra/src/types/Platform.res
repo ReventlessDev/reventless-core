@@ -44,6 +44,12 @@ module App = CatalogPlugin.Make(Platform)
 // Type alias to avoid shadowing by the nested `module Api` inside Platform.T.
 type apiComponent = Api.component
 
+/** Config for bundled DCB slice builders — specifies the path to the spec module
+    so the bundled Lambda handler can import it at runtime. */
+module type BundledSliceConfig = {
+  let specModulePath: string
+}
+
 module type T = {
   /** Platform-specific API type (e.g. `Types.AppSync.api` for AWS, `unit` for in-memory). */
   type api
@@ -104,6 +110,14 @@ module type T = {
     module Make: (Spec: Reventless.StateViewSlice.Spec) => StateViewSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec
+    module Bundled: {
+      module Make: (
+        Spec: Reventless.StateViewSlice.Spec,
+        Config: BundledSliceConfig,
+      ) => StateViewSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    }
   }
 
   /** Factory for DCB automation slice components (TODO list pattern). */
@@ -111,6 +125,14 @@ module type T = {
     module Make: (Spec: Reventless.AutomationSlice.Spec) => AutomationSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec
+    module Bundled: {
+      module Make: (
+        Spec: Reventless.AutomationSlice.Spec,
+        Config: BundledSliceConfig,
+      ) => AutomationSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    }
   }
 
   /** Factory for DCB outbound translation slice components (tracked external calls). */
@@ -118,6 +140,14 @@ module type T = {
     module Make: (Spec: Reventless.OutboundTranslationSlice.Spec) => OutboundTranslationSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
       and module Spec = Spec
+    module Bundled: {
+      module Make: (
+        Spec: Reventless.OutboundTranslationSlice.Spec,
+        Config: BundledSliceConfig,
+      ) => OutboundTranslationSlice.T
+        with type dcbEvent = Spec.DcbEventLogSpec.event
+        and module Spec = Spec
+    }
   }
 
   /** Factory for DCB inbound translation slice components (external input to commands). */

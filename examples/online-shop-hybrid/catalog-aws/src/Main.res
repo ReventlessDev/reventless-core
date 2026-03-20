@@ -3,7 +3,7 @@
 // DCB slices use standard CallbackFunction handlers.
 
 module Platform = ReventlessAws.Platform.Make()
-module Catalog = CatalogPlugin_Bundled.Make(Platform)
+module Catalog = CatalogPlugin_Aws.Make(Platform)
 
 Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCaller(),

@@ -29,7 +29,8 @@ function fromOutput(output) {
   return {
     arn: Output$Pulumi.flatMap(output, param => param.arn),
     id: Output$Pulumi.flatMap(output, param => param.id),
-    name: Output$Pulumi.flatMap(output, param => param.name)
+    name: Output$Pulumi.flatMap(output, param => param.name),
+    invokeArn: Output$Pulumi.flatMap(output, param => param.invokeArn)
   };
 }
 

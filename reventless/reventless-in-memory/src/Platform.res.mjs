@@ -123,31 +123,46 @@ function MakeWithConfig(Config) {
     Make: Make$5
   };
   let Make$6 = Spec => StateViewSliceMaker.Make(Spec);
-  let StateViewSlice = {
-    Make: Make$6
-  };
-  let Make$7 = Spec => AutomationSliceMaker.Make(Spec);
-  let AutomationSlice = {
+  let Make$7 = Spec => (Config => StateViewSliceMaker.Make(Spec));
+  let Bundled = {
     Make: Make$7
   };
-  let Make$8 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let OutboundTranslationSlice = {
-    Make: Make$8
+  let StateViewSlice = {
+    Make: Make$6,
+    Bundled: Bundled
   };
-  let Make$9 = Spec => InboundTranslationSliceMaker.Make(Spec);
-  let InboundTranslationSlice = {
+  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
+  let Make$9 = Spec => (Config => AutomationSliceMaker.Make(Spec));
+  let Bundled$1 = {
     Make: Make$9
   };
-  let Make$10 = Spec => DcbEventLogMaker.Make(Spec);
+  let AutomationSlice = {
+    Make: Make$8,
+    Bundled: Bundled$1
+  };
+  let Make$10 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Make$11 = Spec => (Config => OutboundTranslationSliceMaker.Make(Spec));
+  let Bundled$2 = {
+    Make: Make$11
+  };
+  let OutboundTranslationSlice = {
+    Make: Make$10,
+    Bundled: Bundled$2
+  };
+  let Make$12 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let InboundTranslationSlice = {
+    Make: Make$12
+  };
+  let Make$13 = Spec => DcbEventLogMaker.Make(Spec);
   let DcbEventLog = {
-    Make: Make$10
+    Make: Make$13
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$11 = FragmentConfig => {
+  let Make$14 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
     let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
@@ -156,7 +171,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$11
+    Make: Make$14
   };
   Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
     if (kind === "Aggregate") {
@@ -857,31 +872,46 @@ function Make($star) {
     Make: Make$6
   };
   let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
-  let StateViewSlice = {
-    Make: Make$7
-  };
-  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
-  let AutomationSlice = {
+  let Make$8 = Spec => (Config => StateViewSliceMaker.Make(Spec));
+  let Bundled = {
     Make: Make$8
   };
-  let Make$9 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let OutboundTranslationSlice = {
-    Make: Make$9
+  let StateViewSlice = {
+    Make: Make$7,
+    Bundled: Bundled
   };
-  let Make$10 = Spec => InboundTranslationSliceMaker.Make(Spec);
-  let InboundTranslationSlice = {
+  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
+  let Make$10 = Spec => (Config => AutomationSliceMaker.Make(Spec));
+  let Bundled$1 = {
     Make: Make$10
   };
-  let Make$11 = Spec => DcbEventLogMaker.Make(Spec);
+  let AutomationSlice = {
+    Make: Make$9,
+    Bundled: Bundled$1
+  };
+  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Make$12 = Spec => (Config => OutboundTranslationSliceMaker.Make(Spec));
+  let Bundled$2 = {
+    Make: Make$12
+  };
+  let OutboundTranslationSlice = {
+    Make: Make$11,
+    Bundled: Bundled$2
+  };
+  let Make$13 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let InboundTranslationSlice = {
+    Make: Make$13
+  };
+  let Make$14 = Spec => DcbEventLogMaker.Make(Spec);
   let DcbEventLog = {
-    Make: Make$11
+    Make: Make$14
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$12 = FragmentConfig => {
+  let Make$15 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
     return {
@@ -889,7 +919,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$12
+    Make: Make$15
   };
   Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
     if (kind === "Aggregate") {

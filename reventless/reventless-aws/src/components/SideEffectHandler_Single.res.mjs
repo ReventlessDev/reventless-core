@@ -4,49 +4,55 @@ import * as EventCollector_Builder$ReventlessCore from "@reventlessdev/reventles
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as SideEffectHandler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/SideEffectHandler/SideEffectHandler_Builder.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
-import * as EventCollectorRuntime_Builder_Single$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/EventCollectorRuntime_Builder_Single.res.mjs";
+import * as SideEffectHandlerRuntime_Builder_Single$ReventlessAws from "../adapter/Runtime/SideEffectHandlerRuntime_Builder_Single.res.mjs";
 
-let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_Single$ReventlessCore.Make({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-  connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-});
-
-let include = SideEffectHandler_Builder$ReventlessCore.Make({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-  connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-})(EventCollector_Builder$ReventlessCore.Make({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-  connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-}))(EventCollectorRuntimeBuilder);
+function Make(Config) {
+  let Inner = SideEffectHandler_Builder$ReventlessCore.Make({
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    asEventHandler: prim => prim,
+    asEffectHandler: prim => prim
+  })({
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+  })(EventCollector_Builder$ReventlessCore.Make({
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    asEventHandler: prim => prim,
+    asEffectHandler: prim => prim
+  })({
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+  }))({
+    EventCollectorChannel: {
+      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+      connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+    },
+    forEventCollector: SideEffectHandlerRuntime_Builder_Single$ReventlessAws.forEventCollector,
+    finish: SideEffectHandlerRuntime_Builder_Single$ReventlessAws.finish
+  });
+  let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySize, timeout, opts) => {
+    let component = Inner.make(name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySize, timeout, opts);
+    SideEffectHandlerRuntime_Builder_Single$ReventlessAws.registerSideEffectHandler(name, Config.sideEffectModulePaths);
+    return component;
+  };
+  return {
+    make: make
+  };
+}
 
 let EventCollectorChannel;
 
 let RuntimeEnvironment;
 
-let make = include.make;
+let EventCollectorRuntimeBuilder;
 
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
   EventCollectorRuntimeBuilder,
-  make,
+  Make,
 }
-/* EventCollectorRuntimeBuilder Not a pure module */
+/* EventCollector_Builder-ReventlessCore Not a pure module */

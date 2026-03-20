@@ -130,8 +130,6 @@ Pulumi.all([
   }, opts);
 });
 
-let handlerAsCallback = handler;
-
 export {
   name,
   nameFifo,
@@ -143,7 +141,6 @@ export {
   code,
   layers,
   handler,
-  handlerAsCallback,
   lambda,
   _subscription,
   _fifoSubscription,

@@ -2,6 +2,9 @@ type event = PulumiAws.Lambda.CallbackFunction.event
 type context = PulumiAws.Lambda.context
 type parts = Util.Lambda.runtimeParts
 
+// Legacy CallbackFunction path — retained for module type compatibility.
+// Not called at runtime in bundled deployments. Will be removed in Step 6
+// (Unify Lambda Function Type).
 let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, parts> = (
   ~name,
   ~handler,
@@ -34,10 +37,14 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
       )
     )
 
+  // Coerce CallbackFunction.t → Function.t (structurally compatible: both have arn, id, name).
+  // This legacy path is only retained for module type compatibility.
+  let lambdaAsFunction: Pulumi.Output.t<PulumiAws.Lambda.Function.t> = lambda->Obj.magic
+
   {
-    parts: {lambda, lambdaRole},
+    parts: {lambda: lambdaAsFunction, lambdaRole},
     resources: [
-      lambda
+      lambdaAsFunction
       ->Pulumi.Output.apply(lambda => lambda->Util.Lambda.toResource)
       ->ReventlessCore.Adapter.outputToResource,
       Util_IAM_Role.toResource(lambdaRole),
@@ -98,11 +105,8 @@ let makeBundled: ReventlessCore.Runtime.bundledEnvironmentMaker<parts> = (
     ~opts?,
   )
 
-  let lambdaAsCallback: Pulumi.Output.t<Lambda.CallbackFunction.t> =
-    lambda->Util.Lambda.functionToCallbackFunction->Pulumi.Output.make
-
   {
-    parts: {lambda: lambdaAsCallback, lambdaRole},
+    parts: {lambda: lambda->Pulumi.Output.make, lambdaRole},
     resources: [
       lambda->Util.Lambda.functionToResource,
       Util_IAM_Role.toResource(lambdaRole),
@@ -167,11 +171,8 @@ let makeBundledFromEntryPoint: (
     ~opts?,
   )
 
-  let lambdaAsCallback: Pulumi.Output.t<Lambda.CallbackFunction.t> =
-    lambda->Util.Lambda.functionToCallbackFunction->Pulumi.Output.make
-
   {
-    parts: {lambda: lambdaAsCallback, lambdaRole},
+    parts: {lambda: lambda->Pulumi.Output.make, lambdaRole},
     resources: [
       lambda->Util.Lambda.functionToResource,
       Util_IAM_Role.toResource(lambdaRole),

@@ -4,37 +4,54 @@ import * as Aggregate_Builder$ReventlessCore from "@reventlessdev/reventless-cor
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
 import * as EventLogStorage_DynamoDbStream$ReventlessAws from "../adapter/EventLog/EventLogStorage_DynamoDbStream.res.mjs";
-import * as AggregateRuntime_Builder_Single$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/AggregateRuntime_Builder_Single.res.mjs";
+import * as AggregateRuntime_Builder_Single$ReventlessAws from "../adapter/Runtime/AggregateRuntime_Builder_Single.res.mjs";
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
-let AggregateRuntimeBuilder = AggregateRuntime_Builder_Single$ReventlessCore.Make({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
-})({
-  make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-  connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-});
-
 function Make(Spec) {
-  return Behavior => (EventMappings => Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)(EventMappings)({
-    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-    asEventHandler: prim => prim,
-    asEffectHandler: prim => prim
-  })(CommandGeneratorResolvers_AppSync$ReventlessAws)({
-    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
-  })(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
-    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-  })(AggregateRuntimeBuilder));
+  return Behavior => (EventMappings => (Config => {
+    let Inner = Aggregate_Builder$ReventlessCore.Make(Spec)(Behavior)(EventMappings)({
+      make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+      groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+      extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+      asEventHandler: prim => prim,
+      asEffectHandler: prim => prim
+    })(CommandGeneratorResolvers_AppSync$ReventlessAws)({
+      make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+    })(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+      connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+    })({
+      CommandTopicChannel: {
+        make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+      },
+      EventCollectorChannel: {
+        make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+        connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+      },
+      forCommandGenerator: AggregateRuntime_Builder_Single$ReventlessAws.forCommandGenerator,
+      forCommandTopic: AggregateRuntime_Builder_Single$ReventlessAws.forCommandTopic,
+      forEventCollector: AggregateRuntime_Builder_Single$ReventlessAws.forEventCollector,
+      finish: AggregateRuntime_Builder_Single$ReventlessAws.finish
+    });
+    let make = (api, opts) => {
+      let aggregate = Inner.make(api, opts);
+      let eventLogOutputs = Inner.outputs(aggregate).eventLog;
+      let tableResource = eventLogOutputs.resources[0];
+      let eventLogTableName = tableResource.name;
+      AggregateRuntime_Builder_Single$ReventlessAws.registerAggregate(Spec.name, Config.specModulePath, Config.behaviorModulePath, eventLogTableName);
+      return aggregate;
+    };
+    let finish = () => AggregateRuntime_Builder_Single$ReventlessAws.finish();
+    return {
+      Spec: Spec,
+      make: make,
+      outputs: Inner.outputs,
+      operations: Inner.operations,
+      finish: finish
+    };
+  }));
 }
 
 let CommandGeneratorResolvers;
@@ -45,6 +62,8 @@ let EventCollectorChannel;
 
 let RuntimeEnvironment;
 
+let AggregateRuntimeBuilder;
+
 export {
   CommandGeneratorResolvers,
   CommandTopicChannel,
@@ -53,4 +72,4 @@ export {
   AggregateRuntimeBuilder,
   Make,
 }
-/* AggregateRuntimeBuilder Not a pure module */
+/* Aggregate_Builder-ReventlessCore Not a pure module */

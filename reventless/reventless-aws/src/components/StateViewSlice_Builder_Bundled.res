@@ -1,8 +1,8 @@
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
-module EventCollectorRuntimeBuilder = StateViewSliceRuntime_Builder_Single_Bundled
+module EventCollectorRuntimeBuilder = StateViewSliceRuntime_Builder_Single
 
-module type BundledConfig = {
+module type Config = {
   let specModulePath: string
 }
 
@@ -21,7 +21,7 @@ module Make = (Api: {
 
   module Make = (
     Spec: Reventless.StateViewSlice.Spec,
-    Config: BundledConfig,
+    Config: Config,
   ): (
     ReventlessCore.StateViewSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
@@ -41,7 +41,7 @@ module Make = (Api: {
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
       let queryDbTableName = tableResource.name
 
-      EventCollectorRuntimeBuilder.registerBundledStateViewSlice(
+      EventCollectorRuntimeBuilder.registerStateViewSlice(
         ~name=Spec.name,
         ~specModulePath=Config.specModulePath,
         ~queryDbTableName,

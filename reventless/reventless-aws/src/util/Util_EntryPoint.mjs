@@ -9,124 +9,7 @@
  * Type definitions and config types live in Util_EntryPoint.res.
  */
 
-export function generateAggregateEntryPoint(config) {
-  const { name, handlers, shimModule } = config;
-
-  const imports = new Map();
-  handlers.forEach((h, i) => {
-    const key = `${h.handlerModule}:${h.handlerExport}`;
-    if (!imports.has(key)) {
-      imports.set(key, `handler_${i}`);
-    }
-  });
-
-  const importLines = [];
-  importLines.push(
-    `import { val, resource } from ${JSON.stringify(shimModule)};`
-  );
-  importLines.push(`import { Effect } from "effect";`);
-  importLines.push(
-    `import * as RequestContext from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";`
-  );
-
-  for (const [[modPath, exportName], alias] of [...imports.entries()].map(
-    ([k, v]) => [k.split(":"), v]
-  )) {
-    importLines.push(
-      `import { ${exportName} as ${alias} } from ${JSON.stringify(modPath)};`
-    );
-  }
-
-  const cmdTopicLines = [];
-  const evtCollectorLines = [];
-  const cmdGenLines = [];
-
-  handlers.forEach((h, i) => {
-    const key = `${h.handlerModule}:${h.handlerExport}`;
-    const alias = imports.get(key);
-    const urnEnvVar = `HANDLER_${i}_URN`;
-
-    switch (h.handlerType) {
-      case "commandTopic":
-        cmdTopicLines.push(`  [process.env.${urnEnvVar}, ${alias}],`);
-        break;
-      case "eventCollector":
-        evtCollectorLines.push(`  [process.env.${urnEnvVar}, [${alias}]],`);
-        break;
-      case "commandGenerator":
-        cmdGenLines.push(`  [process.env.${urnEnvVar}, ${alias}],`);
-        break;
-    }
-  });
-
-  return `// Generated aggregate handler entry point for "${name}"
-${importLines.join("\n")}
-
-const runEffect = (correlationId, effect) =>
-  effect
-    .pipe(
-      Effect.provideService(RequestContext.tag, { correlationId: correlationId || "unknown" })
-    )
-    .pipe(Effect.runPromise);
-
-const commandTopicHandlers = new Map([
-${cmdTopicLines.join("\n")}
-]);
-
-const eventCollectorHandlers = new Map([
-${evtCollectorLines.join("\n")}
-]);
-
-const commandGeneratorHandlers = new Map([
-${cmdGenLines.join("\n")}
-]);
-
-function groupBySource(event) {
-  const dict = {};
-  for (const record of event.Records || []) {
-    const arn = record.eventSourceARN;
-    if (!dict[arn]) dict[arn] = { Records: [] };
-    dict[arn].Records.push(record);
-  }
-  return dict;
-}
-
-function extractCorrelationId(event) {
-  try {
-    const body = JSON.parse((event.Records || [])[0]?.body || "{}");
-    return body?.meta?.correlationId;
-  } catch { return undefined; }
-}
-
-export const handler = async (event, context) => {
-  const correlationId = extractCorrelationId(event);
-  const desc = "aggregateHandler for ${name}:";
-  const grouped = groupBySource(event);
-
-  for (const [urn, subEvent] of Object.entries(grouped)) {
-    const cmdHandler = commandTopicHandlers.get(urn);
-    if (cmdHandler) {
-      console.log(\`----- \${desc} found handler for CommandTopic \${urn}\`);
-      await runEffect(correlationId, cmdHandler(subEvent, context));
-      continue;
-    }
-
-    const evtHandlers = eventCollectorHandlers.get(urn);
-    if (evtHandlers) {
-      console.log(\`----- \${desc} found \${evtHandlers.length} handler(s) for EventCollector \${urn}\`);
-      await Promise.all(evtHandlers.map(h => runEffect(correlationId, h(subEvent, context))));
-      continue;
-    }
-
-    console.warn(\`\${desc} no handler found: \${urn}\`);
-  }
-
-  return "";
-};
-`;
-}
-
-export function generateBundledExtensionPointEntryPoint(config) {
+export function generateExtensionPointEntryPoint(config) {
   const { name, handler: h, factoryModule, requestContextModule } = config;
 
   const importLines = [];
@@ -149,7 +32,7 @@ export function generateBundledExtensionPointEntryPoint(config) {
     .map(([aggName, envVar]) => `    ${JSON.stringify(aggName)}: process.env.${envVar}`)
     .join(",\n");
 
-  return `// Generated bundled ExtensionPoint handler entry point for "${name}"
+  return `// Generated ExtensionPoint handler entry point for "${name}"
 ${importLines.join("\n")}
 
 const runEffect = (correlationId, effect) =>
@@ -177,20 +60,20 @@ function extractCorrelationId(event) {
 
 export const handler = async (event, context) => {
   const correlationId = extractCorrelationId(event);
-  console.log(\`----- bundledExtensionPointHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
+  console.log(\`----- extensionPointHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
   await runEffect(correlationId, extensionPointHandler(event, context));
   return "";
 };
 `;
 }
 
-export function generateBundledOutboundTranslationSliceEntryPoint(config) {
+export function generateOutboundTranslationSliceEntryPoint(config) {
   // Same structure as AutomationSlice but imports OutboundTranslationSlice_Callback
-  return generateBundledTodoSliceEntryPoint(config, "OutboundTranslationSlice",
+  return generateTodoSliceEntryPoint(config, "OutboundTranslationSlice",
     "@reventlessdev/reventless-core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs");
 }
 
-function generateBundledTodoSliceEntryPoint(config, sliceType, callbackModulePath) {
+function generateTodoSliceEntryPoint(config, sliceType, callbackModulePath) {
   const { name, handlers, factoryModule, requestContextModule } = config;
 
   const importLines = [];
@@ -222,7 +105,7 @@ function generateBundledTodoSliceEntryPoint(config, sliceType, callbackModulePat
   })]],`
   );
 
-  return `// Generated bundled ${sliceType} handler entry point for "${name}"
+  return `// Generated ${sliceType} handler entry point for "${name}"
 ${importLines.join("\n")}
 
 const runEffect = (correlationId, effect) =>
@@ -247,7 +130,7 @@ function groupBySource(event) {
 }
 
 export const handler = async (event, context) => {
-  const desc = "bundled${sliceType}Handler for ${name}:";
+  const desc = "${sliceType}Handler for ${name}:";
   const grouped = groupBySource(event);
 
   for (const [urn, subEvent] of Object.entries(grouped)) {
@@ -265,12 +148,12 @@ export const handler = async (event, context) => {
 `;
 }
 
-export function generateBundledAutomationSliceEntryPoint(config) {
+export function generateAutomationSliceEntryPoint(config) {
   // AutomationSlice uses the default callback (built into the factory import)
-  return generateBundledTodoSliceEntryPoint(config, "AutomationSlice", null);
+  return generateTodoSliceEntryPoint(config, "AutomationSlice", null);
 }
 
-export function generateBundledStateViewSliceEntryPoint(config) {
+export function generateStateViewSliceEntryPoint(config) {
   const { name, handlers, factoryModule, requestContextModule } = config;
 
   const importLines = [];
@@ -295,7 +178,7 @@ export function generateBundledStateViewSliceEntryPoint(config) {
   })]],`
   );
 
-  return `// Generated bundled StateViewSlice handler entry point for "${name}"
+  return `// Generated StateViewSlice handler entry point for "${name}"
 ${importLines.join("\n")}
 
 const runEffect = (correlationId, effect) =>
@@ -320,7 +203,7 @@ function groupBySource(event) {
 }
 
 export const handler = async (event, context) => {
-  const desc = "bundledStateViewSliceHandler for ${name}:";
+  const desc = "stateViewSliceHandler for ${name}:";
   const grouped = groupBySource(event);
 
   for (const [urn, subEvent] of Object.entries(grouped)) {
@@ -338,7 +221,7 @@ export const handler = async (event, context) => {
 `;
 }
 
-export function generateBundledReadModelEntryPoint(config) {
+export function generateReadModelEntryPoint(config) {
   const { name, handlers, factoryModule, requestContextModule } = config;
 
   const importLines = [];
@@ -367,7 +250,7 @@ export function generateBundledReadModelEntryPoint(config) {
   })]],`
   );
 
-  return `// Generated bundled ReadModel handler entry point for "${name}"
+  return `// Generated ReadModel handler entry point for "${name}"
 ${importLines.join("\n")}
 
 const runEffect = (correlationId, effect) =>
@@ -392,7 +275,7 @@ function groupBySource(event) {
 }
 
 export const handler = async (event, context) => {
-  const desc = "bundledReadModelHandler for ${name}:";
+  const desc = "readModelHandler for ${name}:";
   const grouped = groupBySource(event);
 
   for (const [urn, subEvent] of Object.entries(grouped)) {
@@ -410,7 +293,7 @@ export const handler = async (event, context) => {
 `;
 }
 
-export function generateBundledAdminEventCollectorEntryPoint(config) {
+export function generateAdminEventCollectorEntryPoint(config) {
   const {
     name,
     factoryModule,
@@ -425,7 +308,7 @@ export function generateBundledAdminEventCollectorEntryPoint(config) {
     clonerEnabledEnvVar,
   } = config;
 
-  return `// Generated bundled Admin EventCollector handler entry point for "${name}"
+  return `// Generated Admin EventCollector handler entry point for "${name}"
 import { createAdminEventCollectorHandler } from ${JSON.stringify(factoryModule)};
 import { Effect } from "effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
@@ -449,14 +332,14 @@ const adminHandler = createAdminEventCollectorHandler({
 });
 
 export const handler = async (event, context) => {
-  console.log(\`----- bundledAdminEventCollectorHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
+  console.log(\`----- adminEventCollectorHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
   await runEffect(undefined, adminHandler(event, context));
   return "";
 };
 `;
 }
 
-export function generateBundledPluginExtensionPointEntryPoint(config) {
+export function generatePluginExtensionPointEntryPoint(config) {
   const { name, handler: h, factoryModule, requestContextModule } = config;
 
   // Build publishToAggregatesEnv object from env var references
@@ -464,7 +347,7 @@ export function generateBundledPluginExtensionPointEntryPoint(config) {
     .map(([aggName, envVar]) => `    ${JSON.stringify(aggName)}: process.env.${envVar}`)
     .join(",\n");
 
-  return `// Generated bundled Plugin ExtensionPoint handler entry point for "${name}"
+  return `// Generated Plugin ExtensionPoint handler entry point for "${name}"
 import { createPluginExtensionPointHandler } from ${JSON.stringify(factoryModule)};
 import { Effect } from "effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
@@ -496,17 +379,17 @@ function extractCorrelationId(event) {
 
 export const handler = async (event, context) => {
   const correlationId = extractCorrelationId(event);
-  console.log(\`----- bundledPluginExtensionPointHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
+  console.log(\`----- pluginExtensionPointHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
   await runEffect(correlationId, pluginEPHandler(event, context));
   return "";
 };
 `;
 }
 
-export function generateBundledCommandGeneratorEntryPoint(config) {
+export function generateCommandGeneratorEntryPoint(config) {
   const { name, factoryModule, requestContextModule, specModulePath, behaviorModulePath, queueUrlEnvVar } = config;
 
-  return `// Generated bundled CommandGenerator handler entry point for "${name}"
+  return `// Generated CommandGenerator handler entry point for "${name}"
 import { createCommandGeneratorHandler } from ${JSON.stringify(factoryModule)};
 import { Effect } from "effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
@@ -527,17 +410,17 @@ const generateCommand = createCommandGeneratorHandler({
 });
 
 export const handler = async (event, context) => {
-  console.log(\`----- bundledCommandGeneratorHandler for ${name}: processing\`);
+  console.log(\`----- commandGeneratorHandler for ${name}: processing\`);
   const result = await runEffect(undefined, generateCommand(event, context));
   return result;
 };
 `;
 }
 
-export function generateBundledEventMapperEntryPoint(config) {
+export function generateEventMapperEntryPoint(config) {
   const { name, factoryModule, requestContextModule, targetSpecModulePath, mappingsModulePath, queueUrlEnvVar } = config;
 
-  return `// Generated bundled EventMapper handler entry point for "${name}"
+  return `// Generated EventMapper handler entry point for "${name}"
 import { createEventMapperHandler } from ${JSON.stringify(factoryModule)};
 import { Effect } from "effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
@@ -558,14 +441,14 @@ const eventMapperHandler = createEventMapperHandler({
 });
 
 export const handler = async (event, context) => {
-  console.log(\`----- bundledEventMapperHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
+  console.log(\`----- eventMapperHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
   await runEffect(undefined, eventMapperHandler(event, context));
   return "";
 };
 `;
 }
 
-export function generateBundledAggregateEntryPoint(config) {
+export function generateAggregateEntryPoint(config) {
   const { name, handlers, factoryModule, requestContextModule } = config;
 
   const importLines = [];
@@ -595,7 +478,7 @@ export function generateBundledAggregateEntryPoint(config) {
   })],`
   );
 
-  return `// Generated bundled aggregate handler entry point for "${name}"
+  return `// Generated aggregate handler entry point for "${name}"
 ${importLines.join("\n")}
 
 const runEffect = (correlationId, effect) =>
@@ -628,7 +511,7 @@ function extractCorrelationId(event) {
 
 export const handler = async (event, context) => {
   const correlationId = extractCorrelationId(event);
-  const desc = "bundledAggregateHandler for ${name}:";
+  const desc = "aggregateHandler for ${name}:";
   const grouped = groupBySource(event);
 
   for (const [arn, subEvent] of Object.entries(grouped)) {
@@ -646,7 +529,7 @@ export const handler = async (event, context) => {
 `;
 }
 
-export function generateBundledSideEffectEntryPoint(config) {
+export function generateSideEffectEntryPoint(config) {
   const { name, handlers, factoryModule, requestContextModule } = config;
 
   const importLines = [];
@@ -685,7 +568,7 @@ export function generateBundledSideEffectEntryPoint(config) {
   })]],`;
   });
 
-  return `// Generated bundled SideEffectHandler entry point for "${name}"
+  return `// Generated SideEffectHandler entry point for "${name}"
 ${importLines.join("\n")}
 
 const runEffect = (correlationId, effect) =>
@@ -710,7 +593,7 @@ function groupBySource(event) {
 }
 
 export const handler = async (event, context) => {
-  const desc = "bundledSideEffectHandler for ${name}:";
+  const desc = "sideEffectHandler for ${name}:";
   const grouped = groupBySource(event);
 
   for (const [urn, subEvent] of Object.entries(grouped)) {
@@ -728,7 +611,7 @@ export const handler = async (event, context) => {
 `;
 }
 
-export function generateBundledTaskBucketEntryPoint(config) {
+export function generateTaskBucketEntryPoint(config) {
   const { name, callbackModulePath, factoryModule, publishToAggregatesEnvVars } = config;
 
   const importLines = [];
@@ -744,7 +627,7 @@ export function generateBundledTaskBucketEntryPoint(config) {
     .map(([aggName, envVar]) => `    ${JSON.stringify(aggName)}: process.env.${envVar}`)
     .join(",\n");
 
-  return `// Generated bundled Task bucket handler entry point for "${name}"
+  return `// Generated Task bucket handler entry point for "${name}"
 ${importLines.join("\n")}
 
 const taskHandler = createTaskBucketHandler({
@@ -755,16 +638,16 @@ ${publishEntries}
 });
 
 export const handler = async (event, context) => {
-  console.log(\`----- bundledTaskBucketHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
+  console.log(\`----- taskBucketHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
   return await taskHandler(event, context);
 };
 `;
 }
 
-export function generateBundledCounterEntryPoint(config) {
+export function generateCounterEntryPoint(config) {
   const {
     name,
-    targetSpecModulePath,
+    specModulePath,
     mappingsModulePath,
     factoryModule,
     countsTableEnvVar,
@@ -773,9 +656,9 @@ export function generateBundledCounterEntryPoint(config) {
     countsStreamArnEnvVar,
   } = config;
 
-  return `// Generated bundled Counter handler entry point for "${name}"
+  return `// Generated Counter handler entry point for "${name}"
 import { createCounterHandler } from ${JSON.stringify(factoryModule)};
-import * as TargetSpec from ${JSON.stringify(targetSpecModulePath)};
+import * as TargetSpec from ${JSON.stringify(specModulePath)};
 import * as Mappings from ${JSON.stringify(mappingsModulePath)};
 
 const counterHandler = createCounterHandler({
@@ -788,7 +671,7 @@ const counterHandler = createCounterHandler({
 });
 
 export const handler = async (event, context) => {
-  console.log(\`----- bundledCounterHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
+  console.log(\`----- counterHandler for ${name}: processing \${(event.Records || []).length} record(s)\`);
   await counterHandler(event, context);
   return "";
 };
@@ -798,11 +681,11 @@ export const handler = async (event, context) => {
 // ---------- DCB CommandTopic ----------
 
 /**
- * Generate bundled entry point for DCB CommandTopic Lambda.
+ * Generate entry point for DCB CommandTopic Lambda.
  *
  * @param {Object} config
  * @param {string} config.name - Handler name
- * @param {string} config.factoryModule - Path to BundledDcbCommandTopicHandlerFactory.mjs
+ * @param {string} config.factoryModule - Path to DcbCommandTopicHandlerFactory.mjs
  * @param {string} config.requestContextModule - Path to RequestContext.res.mjs
  * @param {string} config.dcbTableEnvVar - Env var for DCB EventLog table name
  * @param {string} config.queueUrlEnvVar - Env var for SQS queue URL
@@ -810,7 +693,7 @@ export const handler = async (event, context) => {
  * @param {Array<{specModulePath: string}>} config.stateChangeSliceSpecs - Array of spec module paths
  * @returns {string} Generated entry point JS code
  */
-export function generateBundledDcbCommandTopicEntryPoint(config) {
+export function generateDcbCommandTopicEntryPoint(config) {
   const {
     name,
     factoryModule,
@@ -844,27 +727,30 @@ ${specArray}
 });
 
 export const handler = async (event, context) => {
-  console.log(\`----- bundledDcbCommandTopic for ${name}: processing \${JSON.stringify(event).slice(0, 200)}\`);
+  console.log(\`----- dcbCommandTopic for ${name}: processing \${JSON.stringify(event).slice(0, 200)}\`);
 
   // Handle InboundTranslation markers
   if (event.__inboundTranslation) {
-    console.log(\`----- bundledDcbCommandTopic: InboundTranslation route (fieldName=\${event.fieldName})\`);
-    // InboundTranslation not yet supported in bundled mode
-    return "NOT_SUPPORTED_IN_BUNDLED_MODE";
+    console.log(\`----- dcbCommandTopic: InboundTranslation route (fieldName=\${event.fieldName})\`);
+    // InboundTranslation not yet supported
+    return "NOT_SUPPORTED";
   }
 
   // Handle CommandGenerator payload (AppSync direct invocation)
   if (event.command && event.arguments) {
-    console.log(\`----- bundledDcbCommandTopic: CommandGenerator route (command=\${event.command})\`);
-    // CommandGenerator not yet supported in bundled mode
-    return "NOT_SUPPORTED_IN_BUNDLED_MODE";
+    console.log(\`----- dcbCommandTopic: CommandGenerator route (command=\${event.command})\`);
+    // CommandGenerator not yet supported
+    return "NOT_SUPPORTED";
   }
 
   // Normal SQS path
   const { Effect } = await import("effect");
   const correlationId = extractCorrelationId(event);
-  RequestContext.set({ correlationId: correlationId || "unknown" });
-  const result = await Effect.runPromise(dcbHandler(event, context));
+  const result = await dcbHandler(event, context)
+    .pipe(
+      Effect.provideService(RequestContext.tag, { correlationId: correlationId || "unknown" })
+    )
+    .pipe(Effect.runPromise);
   return result || "";
 };
 
@@ -884,17 +770,17 @@ function extractCorrelationId(event) {
 // ---------- Heartbeat ----------
 
 /**
- * Generate bundled entry point for Heartbeat Lambda.
+ * Generate entry point for Heartbeat Lambda.
  *
  * @param {Object} config
  * @param {string} config.name - Handler name
- * @param {string} config.factoryModule - Path to BundledHeartbeatHandlerFactory.mjs
+ * @param {string} config.factoryModule - Path to HeartbeatHandlerFactory.mjs
  * @param {string} config.epQueueUrlEnvVar - Env var for EP CommandTopic SQS queue URL
  * @param {string} config.pluginIdEnvVar - Env var for plugin ID
  * @param {string} config.timeoutEnvVar - Env var for heartbeat timeout
  * @returns {string} Generated entry point JS code
  */
-export function generateBundledHeartbeatEntryPoint(config) {
+export function generateHeartbeatEntryPoint(config) {
   const { name, factoryModule, epQueueUrlEnvVar, pluginIdEnvVar, timeoutEnvVar } = config;
 
   return `
@@ -907,7 +793,7 @@ const heartbeatHandler = createHeartbeatHandler({
 });
 
 export const handler = async (event, context) => {
-  console.log(\`----- bundledHeartbeat for ${name}: invoked\`);
+  console.log(\`----- heartbeat for ${name}: invoked\`);
   await heartbeatHandler(event, context);
   return "";
 };

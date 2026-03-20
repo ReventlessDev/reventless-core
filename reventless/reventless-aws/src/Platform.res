@@ -124,40 +124,46 @@ module MakeWithConfig = (
   }
 
   module Aggregate = {
+    // Non-bundled Make satisfies Platform.T but registers no entry point.
+    // Use MakeBundled (or direct builders) for working AWS deployments.
     module Make = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings)
+    ) =>
+      Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings, {
+        let specModulePath = ""
+        let behaviorModulePath = ""
+      })
 
     module MakeBundled = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-      Config: Aggregate_Builder_Single_Bundled.BundledConfig,
+      Config: Aggregate_Builder_Single.Config,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_Single_Bundled.Make(Spec, Behavior, EventMappings, Config)
+    ) => Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings, Config)
 
     module MakeBundledPerAggregate = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-      Config: Aggregate_Builder_PerAggregate_Bundled.BundledConfig,
+      Config: Aggregate_Builder_PerAggregate.Config,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_PerAggregate_Bundled.Make(Spec, Behavior, EventMappings, Config)
+    ) => Aggregate_Builder_PerAggregate.Make(Spec, Behavior, EventMappings, Config)
 
     module MakeBundledMicro = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-      Config: Aggregate_Builder_Micro_Bundled.BundledConfig,
+      Config: Aggregate_Builder_Micro.Config,
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-    ) => Aggregate_Builder_Micro_Bundled.Make(Spec, Behavior, EventMappings, Config)
+    ) => Aggregate_Builder_Micro.Make(Spec, Behavior, EventMappings, Config)
   }
 
   module ReadModel = {
@@ -169,31 +175,40 @@ module MakeWithConfig = (
         with module Spec = Spec
         and type api = Types.AppSync.api
         and type role = Types.AppSync.role
-    ) => ReadModel_Builder_Single.Make(Spec, Mappings)
+    ) =>
+      ReadModel_Builder_Single.Make(Spec, Mappings, {
+        let specModulePath = ""
+        let mappingsModulePath = ""
+      })
 
     module MakeBundled = (
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
-      Config: ReadModel_Builder_Single_Bundled.BundledConfig,
+      Config: ReadModel_Builder_Single.Config,
     ): (
       ReventlessInfra.ReadModel.T
         with module Spec = Spec
         and type api = Types.AppSync.api
         and type role = Types.AppSync.role
-    ) => ReadModel_Builder_Single_Bundled.Make(Spec, Mappings, Config)
+    ) => ReadModel_Builder_Single.Make(Spec, Mappings, Config)
   }
 
   module ExtensionPoint = {
     module Make = (
       Spec: ReventlessInfra.ExtensionPointMapping.Spec,
       Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
-    ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings)
+    ): ReventlessInfra.ExtensionPoint.T =>
+      ExtensionPoint_Builder.Make(Spec, Mappings, {
+        let specModulePath = ""
+        let mappingsModulePath = ""
+        let publishToAggregatesQueueUrls = Dict.make()
+      })
 
     module MakeBundled = (
       Spec: ReventlessInfra.ExtensionPointMapping.Spec,
       Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
-      Config: ExtensionPoint_Builder_Bundled.BundledConfig,
-    ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder_Bundled.Make(Spec, Mappings, Config)
+      Config: ExtensionPoint_Builder.Config,
+    ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings, Config)
   }
 
   module Extension = {
@@ -206,21 +221,29 @@ module MakeWithConfig = (
   module Task = {
     module Make = (Spec: ReventlessInfra.Task.Spec): (
       ReventlessInfra.Task.T with module Spec = Spec
-    ) => Task_Builder_PerBucket.Make(Spec)
+    ) =>
+      Task_Builder_PerBucket.Make(Spec, {
+        let callbackModulePaths = Dict.make()
+        let publishToAggregatesQueueUrls = Dict.make()
+      })
 
     module MakeBundled = (
       Spec: ReventlessCore.Task.Spec,
-      Config: Task_Builder_PerBucket_Bundled.BundledConfig,
+      Config: Task_Builder_PerBucket.Config,
     ): (
       ReventlessCore.Task.T with module Spec = Spec
-    ) => Task_Builder_PerBucket_Bundled.Make(Spec, Config)
+    ) => Task_Builder_PerBucket.Make(Spec, Config)
   }
 
   module Counter = {
-    include Counter_Builder.Make(ApiConfig)
+    include Counter_Builder.Make(ApiConfig, {
+      let specModulePath = ""
+      let mappingsModulePath = ""
+      let publishQueueUrl = Pulumi.Output.make("")
+    })
 
-    module MakeBundled = (Config: Counter_Builder_Bundled.BundledConfig) => {
-      include Counter_Builder_Bundled.Make(ApiConfig, Config)
+    module MakeBundled = (Config: Counter_Builder.Config) => {
+      include Counter_Builder.Make(ApiConfig, Config)
     }
   }
 
@@ -352,7 +375,7 @@ module MakeWithConfig = (
         Obj.magic(dcbEventLogUnknown)
       let outputs = dcbEventLog->ReventlessCore.Component.outputs
       let tableResource = outputs.resources->Array.getUnsafe(0)
-      let _ = PluginRuntime_Builder_Bundled.registerDcbConfig(
+      let _ = PluginRuntime_Builder.registerDcbConfig(
         ~pluginName="",
         ~dcbTableName=tableResource.name,
         (),
@@ -369,17 +392,17 @@ module MakeWithConfig = (
       )
       let channel = commandTopic->ReventlessCore.CommandTopic_Adapter.channel
       let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
-      AutomationSliceRuntime_Builder_Single_Bundled.setDcbQueueUrl(channelParts.queue.id)
+      AutomationSliceRuntime_Builder_Single.setDcbQueueUrl(channelParts.queue.id)
     },
   )
 
-  // DCB slices created hook — placeholder for bundled slice finish() calls.
-  // Currently a no-op: non-bundled slice builders use CallbackFunction which hits
-  // serialization errors. Bundled slice builders need api/apiRole in Platform.T
-  // to work inside the functor constraint. See complete-bundled-migration.md Step 6.
+  // DCB slices created hook — finalize bundled slice Lambdas.
+  // After all DCB slices have registered their specs, create the consolidated
+  // AllStateViewSlices and AllAutomationSlices Lambda functions.
   let () = ReventlessCore.Plugin_Helpers.onDcbSlicesCreated.contents = Some(
     _dcbEventLogUnknown => {
-      Console.log("[Platform] onDcbSlicesCreated: slice finish() deferred (bundled slices pending)")
+      StateViewSliceRuntime_Builder_Single.finish()
+      AutomationSliceRuntime_Builder_Single.finish()
     },
   )
 
@@ -393,7 +416,7 @@ module MakeWithConfig = (
       )
       switch remoteChannel.resources->Array.get(0) {
       | Some(resource) =>
-        PluginRuntime_Builder_Bundled.registerHeartbeatConfig(
+        PluginRuntime_Builder.registerHeartbeatConfig(
           ~pluginId="",
           ~epQueueUrl=resource.id->Pulumi.Output.make,
           (),
@@ -422,7 +445,7 @@ module MakeWithConfig = (
     EventCollectorChannel,
     QueryEngine.DynamoDb,
     ClonerRunner.Fargate,
-    PluginRuntime_Builder_Bundled.Make(EventCollectorChannel),
+    PluginRuntime_Builder.Make(EventCollectorChannel),
     DcbEventLogStorage.DynamoDb,
     EventTopicPublisher.DynamoDbStream,
     CommandTopicChannel.SQS_FIFO,
@@ -538,7 +561,7 @@ module MakeWithConfig = (
 
     // Register bundled Admin EventCollector config with available infrastructure values.
     // Values that aren't available in Platform-only deployment use defaults (NOT_AVAILABLE).
-    PluginRuntime_Builder_Bundled.registerConfig(
+    PluginRuntime_Builder.registerConfig(
       ~appSyncApiId=appSyncApiId,
       ~clonerEnabled=Config.cloner,
       (),

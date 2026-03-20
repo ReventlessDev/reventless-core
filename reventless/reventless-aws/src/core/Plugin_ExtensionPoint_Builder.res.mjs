@@ -6,7 +6,7 @@ import * as EventTopicPublisher_SNS$ReventlessAws from "../adapter/EventTopic/Ev
 import * as PluginRuntimeOperations$ReventlessAws from "../util/PluginRuntimeOperations.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as PluginExtensionPoint_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Builder.res.mjs";
-import * as PluginExtensionPointRuntime_Builder_Bundled$ReventlessAws from "../adapter/Runtime/PluginExtensionPointRuntime_Builder_Bundled.res.mjs";
+import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "../adapter/Runtime/PluginExtensionPointRuntime_Builder.res.mjs";
 
 function MakeWithConfig(Config) {
   let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
@@ -23,7 +23,7 @@ function MakeWithConfig(Config) {
   })({
     make: CommandTopicChannel_SQS$ReventlessAws.make
   })(EventTopicPublisher_SNS$ReventlessAws)({
-    forCommandTopic: PluginExtensionPointRuntime_Builder_Bundled$ReventlessAws.forCommandTopic
+    forCommandTopic: PluginExtensionPointRuntime_Builder$ReventlessAws.forCommandTopic
   });
 }
 
@@ -42,7 +42,7 @@ let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
 })({
   make: CommandTopicChannel_SQS$ReventlessAws.make
 })(EventTopicPublisher_SNS$ReventlessAws)({
-  forCommandTopic: PluginExtensionPointRuntime_Builder_Bundled$ReventlessAws.forCommandTopic
+  forCommandTopic: PluginExtensionPointRuntime_Builder$ReventlessAws.forCommandTopic
 });
 
 let CommandTopicChannel;

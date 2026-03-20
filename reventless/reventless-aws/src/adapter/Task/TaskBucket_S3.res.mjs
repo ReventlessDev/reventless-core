@@ -12,10 +12,10 @@ import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as TaskBucket_S3_Runtime$ReventlessAws from "./TaskBucket_S3_Runtime.res.mjs";
 
 function subscribeLambda2S3Bucket(lambda, name, bucket, opts) {
-  lambda.apply(lambda => {
+  lambda.apply(handler => {
     [
-      bucket.onObjectCreated(name + "Created", lambda, undefined, opts),
-      bucket.onObjectRemoved(name + "Deleted", lambda, undefined, opts)
+      bucket.onObjectCreated(name + "Created", handler, undefined, opts),
+      bucket.onObjectRemoved(name + "Deleted", handler, undefined, opts)
     ];
   });
 }

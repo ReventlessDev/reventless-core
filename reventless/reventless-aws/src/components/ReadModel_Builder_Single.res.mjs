@@ -5,37 +5,53 @@ import * as QueryDbStorage_DynamoDb$ReventlessAws from "../adapter/QueryDb/Query
 import * as QueryDbResolvers_AppSync$ReventlessAws from "../adapter/QueryDb/QueryDbResolvers_AppSync.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
-import * as EventCollectorRuntime_Builder_Single$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/EventCollectorRuntime_Builder_Single.res.mjs";
-
-let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_Single$ReventlessCore.Make({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-  connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-});
+import * as EventCollectorRuntime_Builder_Single$ReventlessAws from "../adapter/Runtime/EventCollectorRuntime_Builder_Single.res.mjs";
 
 function Make(Spec) {
-  return Mappings => ReadModel_Builder$ReventlessCore.Make(Spec)(Mappings)({
-    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-    asEventHandler: prim => prim,
-    asEffectHandler: prim => prim
-  })({
-    make: QueryDbStorage_DynamoDb$ReventlessAws.make
-  })(QueryDbResolvers_AppSync$ReventlessAws)({
-    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-  })(EventCollectorRuntimeBuilder);
+  return Mappings => (Config => {
+    let Inner = ReadModel_Builder$ReventlessCore.Make(Spec)(Mappings)({
+      make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+      groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+      extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+      asEventHandler: prim => prim,
+      asEffectHandler: prim => prim
+    })({
+      make: QueryDbStorage_DynamoDb$ReventlessAws.make
+    })(QueryDbResolvers_AppSync$ReventlessAws)({
+      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+      connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+    })({
+      EventCollectorChannel: {
+        make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+        connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+      },
+      forEventCollector: EventCollectorRuntime_Builder_Single$ReventlessAws.forEventCollector,
+      finish: EventCollectorRuntime_Builder_Single$ReventlessAws.finish
+    });
+    let make = (api, apiRole, allEventTopics, opts) => {
+      let readModel = Inner.make(api, apiRole, allEventTopics, opts);
+      let queryDbOutputs = Inner.outputs(readModel).queryDb;
+      let tableResource = queryDbOutputs.resources[0];
+      let queryDbTableName = tableResource.name;
+      EventCollectorRuntime_Builder_Single$ReventlessAws.registerReadModel(Inner.Spec.name, Config.specModulePath, Config.mappingsModulePath, queryDbTableName);
+      return readModel;
+    };
+    let finish = () => EventCollectorRuntime_Builder_Single$ReventlessAws.finish();
+    return {
+      Spec: Inner.Spec,
+      make: make,
+      outputs: Inner.outputs,
+      operations: Inner.operations,
+      finish: finish
+    };
+  });
 }
 
 let EventCollectorChannel;
 
 let RuntimeEnvironment;
+
+let EventCollectorRuntimeBuilder;
 
 export {
   EventCollectorChannel,
@@ -43,4 +59,4 @@ export {
   EventCollectorRuntimeBuilder,
   Make,
 }
-/* EventCollectorRuntimeBuilder Not a pure module */
+/* ReadModel_Builder-ReventlessCore Not a pure module */

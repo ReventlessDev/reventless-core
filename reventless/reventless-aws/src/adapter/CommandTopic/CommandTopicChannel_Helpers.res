@@ -4,7 +4,7 @@ open Adapter_Helpers
 let createQueuePolicy = (
   queue: PulumiAws.SQS.Queue.t,
   name,
-  lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
+  lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   opts,
 ) => {
   let _ =

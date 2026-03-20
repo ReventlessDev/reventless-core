@@ -80,7 +80,7 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics
 }
 
 let connectLambda = (
-  lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
+  lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   name: string,
   lambdaRole: PulumiAws.IAM.Role.t,
   queues: array<PulumiAws.SQS.Queue.t>,

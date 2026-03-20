@@ -5,13 +5,13 @@ import * as AppSync_Adapter$ReventlessAws from "./Api/AppSync_Adapter.res.mjs";
 import * as Plugin_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Builder.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "../util/Util_ResourceNaming.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "../adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
+import * as PluginRuntime_Builder$ReventlessAws from "../adapter/Runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginRuntimeOperations$ReventlessAws from "../util/PluginRuntimeOperations.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "../adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
 import * as CommandTopicRemoteChannel_SQS$ReventlessAws from "../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.mjs";
-import * as PluginRuntime_Builder_Bundled$ReventlessAws from "../adapter/Runtime/PluginRuntime_Builder_Bundled.res.mjs";
 import * as HeartbeatRunner_CloudWatchEvents$ReventlessAws from "../adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 
@@ -36,7 +36,7 @@ let include = Plugin_Builder$ReventlessCore.Make({
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
 })({
   make: QueryEngine_DynamoDb$ReventlessAws.make
-})(CommandTopicRemoteChannel_SQS$ReventlessAws)(HeartbeatRunner_CloudWatchEvents$ReventlessAws)(PluginRuntime_Builder_Bundled$ReventlessAws.Make({
+})(CommandTopicRemoteChannel_SQS$ReventlessAws)(HeartbeatRunner_CloudWatchEvents$ReventlessAws)(PluginRuntime_Builder$ReventlessAws.Make({
   make: EventCollectorChannel_SQS$ReventlessAws.make,
   connect: EventCollectorChannel_SQS$ReventlessAws.connect
 }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({

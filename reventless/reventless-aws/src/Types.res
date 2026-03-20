@@ -34,6 +34,6 @@ module SNS = {
 }
 
 module Lambda = {
-  type function_ = Lambda.CallbackFunction.t
+  type function_ = Lambda.Function.t
   type role = IAM.Role.t
 }

@@ -1,21 +1,4 @@
-type handlerRegistration = {
-  urn: string,
-  handlerModule: string,
-  handlerExport: string,
-  handlerType: [#commandTopic | #eventCollector | #commandGenerator],
-}
-
-type entryPointConfig = {
-  name: string,
-  handlers: array<handlerRegistration>,
-  shimModule: string,
-  runtimeModule: string,
-}
-
-@module("./Util_EntryPoint.mjs")
-external generateAggregateEntryPoint: entryPointConfig => string = "generateAggregateEntryPoint"
-
-type bundledHandlerRegistration = {
+type aggregateHandlerRegistration = {
   specModulePath: string,
   behaviorModulePath: string,
   eventLogTableEnvVar: string,
@@ -23,75 +6,75 @@ type bundledHandlerRegistration = {
   queueArnEnvVar: string,
 }
 
-type bundledEntryPointConfig = {
+type aggregateEntryPointConfig = {
   name: string,
-  handlers: array<bundledHandlerRegistration>,
+  handlers: array<aggregateHandlerRegistration>,
   factoryModule: string,
   requestContextModule: string,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledAggregateEntryPoint: bundledEntryPointConfig => string =
-  "generateBundledAggregateEntryPoint"
+external generateAggregateEntryPoint: aggregateEntryPointConfig => string =
+  "generateAggregateEntryPoint"
 
-type bundledReadModelRegistration = {
+type readModelRegistration = {
   specModulePath: string,
   mappingsModulePath: string,
   queryDbTableEnvVar: string,
   sourceUrnEnvVar: string,
 }
 
-type bundledReadModelEntryPointConfig = {
+type readModelEntryPointConfig = {
   name: string,
-  handlers: array<bundledReadModelRegistration>,
+  handlers: array<readModelRegistration>,
   factoryModule: string,
   requestContextModule: string,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledReadModelEntryPoint: bundledReadModelEntryPointConfig => string =
-  "generateBundledReadModelEntryPoint"
+external generateReadModelEntryPoint: readModelEntryPointConfig => string =
+  "generateReadModelEntryPoint"
 
-type bundledStateViewSliceRegistration = {
+type stateViewSliceRegistration = {
   specModulePath: string,
   queryDbTableEnvVar: string,
   sourceUrnEnvVar: string,
 }
 
-type bundledStateViewSliceEntryPointConfig = {
+type stateViewSliceEntryPointConfig = {
   name: string,
-  handlers: array<bundledStateViewSliceRegistration>,
+  handlers: array<stateViewSliceRegistration>,
   factoryModule: string,
   requestContextModule: string,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledStateViewSliceEntryPoint: bundledStateViewSliceEntryPointConfig => string =
-  "generateBundledStateViewSliceEntryPoint"
+external generateStateViewSliceEntryPoint: stateViewSliceEntryPointConfig => string =
+  "generateStateViewSliceEntryPoint"
 
-type bundledAutomationSliceRegistration = {
+type automationSliceRegistration = {
   specModulePath: string,
   queryDbTableEnvVar: string,
   dcbQueueUrlEnvVar: string,
   sourceUrnEnvVar: string,
 }
 
-type bundledAutomationSliceEntryPointConfig = {
+type automationSliceEntryPointConfig = {
   name: string,
-  handlers: array<bundledAutomationSliceRegistration>,
+  handlers: array<automationSliceRegistration>,
   factoryModule: string,
   requestContextModule: string,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledAutomationSliceEntryPoint: bundledAutomationSliceEntryPointConfig => string =
-  "generateBundledAutomationSliceEntryPoint"
+external generateAutomationSliceEntryPoint: automationSliceEntryPointConfig => string =
+  "generateAutomationSliceEntryPoint"
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledOutboundTranslationSliceEntryPoint: bundledAutomationSliceEntryPointConfig => string =
-  "generateBundledOutboundTranslationSliceEntryPoint"
+external generateOutboundTranslationSliceEntryPoint: automationSliceEntryPointConfig => string =
+  "generateOutboundTranslationSliceEntryPoint"
 
-type bundledExtensionPointRegistration = {
+type extensionPointRegistration = {
   specModulePath: string,
   mappingsModulePath: string,
   queueUrlEnvVar: string,
@@ -99,18 +82,18 @@ type bundledExtensionPointRegistration = {
   publishToAggregatesEnvVars: dict<string>,
 }
 
-type bundledExtensionPointEntryPointConfig = {
+type extensionPointEntryPointConfig = {
   name: string,
-  handler: bundledExtensionPointRegistration,
+  handler: extensionPointRegistration,
   factoryModule: string,
   requestContextModule: string,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledExtensionPointEntryPoint: bundledExtensionPointEntryPointConfig => string =
-  "generateBundledExtensionPointEntryPoint"
+external generateExtensionPointEntryPoint: extensionPointEntryPointConfig => string =
+  "generateExtensionPointEntryPoint"
 
-type bundledPluginExtensionPointRegistration = {
+type pluginExtensionPointRegistration = {
   queueUrlEnvVar: string,
   queueArnEnvVar: string,
   publishToAggregatesEnvVars: dict<string>,
@@ -120,18 +103,18 @@ type bundledPluginExtensionPointRegistration = {
   schedulerQueueNameEnvVar: string,
 }
 
-type bundledPluginExtensionPointEntryPointConfig = {
+type pluginExtensionPointEntryPointConfig = {
   name: string,
-  handler: bundledPluginExtensionPointRegistration,
+  handler: pluginExtensionPointRegistration,
   factoryModule: string,
   requestContextModule: string,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledPluginExtensionPointEntryPoint: bundledPluginExtensionPointEntryPointConfig => string =
-  "generateBundledPluginExtensionPointEntryPoint"
+external generatePluginExtensionPointEntryPoint: pluginExtensionPointEntryPointConfig => string =
+  "generatePluginExtensionPointEntryPoint"
 
-type bundledCommandGeneratorEntryPointConfig = {
+type commandGeneratorEntryPointConfig = {
   name: string,
   factoryModule: string,
   requestContextModule: string,
@@ -141,10 +124,10 @@ type bundledCommandGeneratorEntryPointConfig = {
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledCommandGeneratorEntryPoint: bundledCommandGeneratorEntryPointConfig => string =
-  "generateBundledCommandGeneratorEntryPoint"
+external generateCommandGeneratorEntryPoint: commandGeneratorEntryPointConfig => string =
+  "generateCommandGeneratorEntryPoint"
 
-type bundledEventMapperEntryPointConfig = {
+type eventMapperEntryPointConfig = {
   name: string,
   factoryModule: string,
   requestContextModule: string,
@@ -154,10 +137,10 @@ type bundledEventMapperEntryPointConfig = {
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledEventMapperEntryPoint: bundledEventMapperEntryPointConfig => string =
-  "generateBundledEventMapperEntryPoint"
+external generateEventMapperEntryPoint: eventMapperEntryPointConfig => string =
+  "generateEventMapperEntryPoint"
 
-type bundledAdminEventCollectorConfig = {
+type adminEventCollectorConfig = {
   name: string,
   factoryModule: string,
   requestContextModule: string,
@@ -172,26 +155,26 @@ type bundledAdminEventCollectorConfig = {
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledAdminEventCollectorEntryPoint: bundledAdminEventCollectorConfig => string =
-  "generateBundledAdminEventCollectorEntryPoint"
+external generateAdminEventCollectorEntryPoint: adminEventCollectorConfig => string =
+  "generateAdminEventCollectorEntryPoint"
 
-type bundledSideEffectRegistration = {
+type sideEffectRegistration = {
   sideEffectModulePaths: array<string>,
   sourceUrnEnvVar: string,
 }
 
-type bundledSideEffectEntryPointConfig = {
+type sideEffectEntryPointConfig = {
   name: string,
-  handlers: array<bundledSideEffectRegistration>,
+  handlers: array<sideEffectRegistration>,
   factoryModule: string,
   requestContextModule: string,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledSideEffectEntryPoint: bundledSideEffectEntryPointConfig => string =
-  "generateBundledSideEffectEntryPoint"
+external generateSideEffectEntryPoint: sideEffectEntryPointConfig => string =
+  "generateSideEffectEntryPoint"
 
-type bundledTaskBucketEntryPointConfig = {
+type taskBucketEntryPointConfig = {
   name: string,
   callbackModulePath: string,
   factoryModule: string,
@@ -200,12 +183,12 @@ type bundledTaskBucketEntryPointConfig = {
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledTaskBucketEntryPoint: bundledTaskBucketEntryPointConfig => string =
-  "generateBundledTaskBucketEntryPoint"
+external generateTaskBucketEntryPoint: taskBucketEntryPointConfig => string =
+  "generateTaskBucketEntryPoint"
 
-type bundledCounterEntryPointConfig = {
+type counterEntryPointConfig = {
   name: string,
-  targetSpecModulePath: string,
+  specModulePath: string,
   mappingsModulePath: string,
   factoryModule: string,
   requestContextModule: string,
@@ -216,26 +199,26 @@ type bundledCounterEntryPointConfig = {
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledCounterEntryPoint: bundledCounterEntryPointConfig => string =
-  "generateBundledCounterEntryPoint"
+external generateCounterEntryPoint: counterEntryPointConfig => string =
+  "generateCounterEntryPoint"
 
-type bundledDcbSliceSpec = {specModulePath: string}
+type dcbSliceSpec = {specModulePath: string}
 
-type bundledDcbCommandTopicEntryPointConfig = {
+type dcbCommandTopicEntryPointConfig = {
   name: string,
   factoryModule: string,
   requestContextModule: string,
   dcbTableEnvVar: string,
   queueUrlEnvVar: string,
   pluginName: string,
-  stateChangeSliceSpecs: array<bundledDcbSliceSpec>,
+  stateChangeSliceSpecs: array<dcbSliceSpec>,
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledDcbCommandTopicEntryPoint: bundledDcbCommandTopicEntryPointConfig =>
-string = "generateBundledDcbCommandTopicEntryPoint"
+external generateDcbCommandTopicEntryPoint: dcbCommandTopicEntryPointConfig =>
+string = "generateDcbCommandTopicEntryPoint"
 
-type bundledHeartbeatEntryPointConfig = {
+type heartbeatEntryPointConfig = {
   name: string,
   factoryModule: string,
   epQueueUrlEnvVar: string,
@@ -244,5 +227,5 @@ type bundledHeartbeatEntryPointConfig = {
 }
 
 @module("./Util_EntryPoint.mjs")
-external generateBundledHeartbeatEntryPoint: bundledHeartbeatEntryPointConfig => string =
-  "generateBundledHeartbeatEntryPoint"
+external generateHeartbeatEntryPoint: heartbeatEntryPointConfig => string =
+  "generateHeartbeatEntryPoint"

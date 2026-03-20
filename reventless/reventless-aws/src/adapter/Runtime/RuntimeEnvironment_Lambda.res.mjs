@@ -63,10 +63,9 @@ function makeBundled(name, handlerRef, envVarsOpt, memorySizeOpt, timeoutOpt, op
       variables: variables
     }
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  let lambdaAsCallback = Pulumi.output(lambda);
   return {
     parts: {
-      lambda: lambdaAsCallback,
+      lambda: Pulumi.output(lambda),
       lambdaRole: lambdaRole
     },
     resources: [
@@ -104,10 +103,9 @@ function makeBundledFromEntryPoint(name, entryPointCode, envVarsOpt, memorySizeO
       variables: variables
     }
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  let lambdaAsCallback = Pulumi.output(lambda);
   return {
     parts: {
-      lambda: lambdaAsCallback,
+      lambda: Pulumi.output(lambda),
       lambdaRole: lambdaRole
     },
     resources: [

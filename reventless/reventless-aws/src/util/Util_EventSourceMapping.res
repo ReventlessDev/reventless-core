@@ -2,7 +2,7 @@ open PulumiAws
 
 let subscribe = (
   ~batchSize=?,
-  ~lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
+  ~lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   ~targetName,
   ~sourceName,
   ~source: ReventlessInfra.Adapter.resource,
@@ -22,7 +22,7 @@ let subscribe = (
   )
 
 let subscribeSqs = (
-  ~lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
+  ~lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   ~name,
   ~queue: PulumiAws.SQS.Queue.t,
   ~opts,

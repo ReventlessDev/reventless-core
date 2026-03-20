@@ -2,7 +2,7 @@ module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
 module EventCollectorRuntimeBuilder = {
-  module Inner = AutomationSliceRuntime_Builder_Single_Bundled
+  module Inner = AutomationSliceRuntime_Builder_Single
   type context = Inner.context
   type runtimeParts = Inner.runtimeParts
   module EventCollectorChannel = Inner.EventCollectorChannel
@@ -11,7 +11,7 @@ module EventCollectorRuntimeBuilder = {
   let finish = Inner.finish
 }
 
-module type BundledConfig = {
+module type Config = {
   let specModulePath: string
 }
 
@@ -30,7 +30,7 @@ module Make = (Api: {
 
   module Make = (
     Spec: Reventless.OutboundTranslationSlice.Spec,
-    Config: BundledConfig,
+    Config: Config,
   ): (
     ReventlessCore.OutboundTranslationSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
@@ -51,7 +51,7 @@ module Make = (Api: {
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
       let queryDbTableName = tableResource.name
 
-      AutomationSliceRuntime_Builder_Single_Bundled.registerBundledAutomationSlice(
+      AutomationSliceRuntime_Builder_Single.registerAutomationSlice(
         ~name=Spec.name,
         ~specModulePath=Config.specModulePath,
         ~queryDbTableName,

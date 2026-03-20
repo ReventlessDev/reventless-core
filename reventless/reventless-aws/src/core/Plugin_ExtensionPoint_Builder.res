@@ -1,6 +1,6 @@
 module CommandTopicChannel = CommandTopicChannel.SQS
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
-module ExtensionPointRuntimeBuilder = PluginExtensionPointRuntime_Builder_Bundled
+module ExtensionPointRuntimeBuilder = PluginExtensionPointRuntime_Builder
 
 module MakeWithConfig = (
   Config: {

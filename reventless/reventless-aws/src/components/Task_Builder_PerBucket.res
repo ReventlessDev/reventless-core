@@ -5,20 +5,58 @@ module EventCollectorRuntimeBuilder = ReventlessCore.EventCollectorRuntime_Build
   EventCollectorChannel,
 )
 module TaskBucket = TaskBucket.S3
-module TaskRuntimeBuilder = ReventlessCore.TaskRuntime_Builder_PerBucket.Make(
-  RuntimeEnvironment,
-  TaskBucket,
-)
+module TaskRuntimeBuilder = TaskRuntime_Builder_PerBucket
 module SideEffectHandler = SideEffectHandler_PerSideEffectHandler
 
-module Make = (Spec: ReventlessCore.Task.Spec): (
+module type Config = {
+  let callbackModulePaths: dict<string>
+  let publishToAggregatesQueueUrls: dict<Pulumi.Output.t<string>>
+}
+
+module Make = (Spec: ReventlessCore.Task.Spec, Config: Config): (
   ReventlessCore.Task.T with module Spec = Spec
-) => ReventlessCore.Task_Builder.Make(
-  Spec,
-  RuntimeEnvironment,
-  EventCollectorChannel,
-  EventCollectorRuntimeBuilder,
-  TaskRuntimeBuilder,
-  TaskBucket,
-  SideEffectHandler,
-)
+) => {
+  module Inner = ReventlessCore.Task_Builder.Make(
+    Spec,
+    RuntimeEnvironment,
+    EventCollectorChannel,
+    EventCollectorRuntimeBuilder,
+    TaskRuntimeBuilder,
+    TaskBucket,
+    SideEffectHandler,
+  )
+
+  module Spec = Spec
+
+  type component = Inner.component
+
+  let make = (
+    ~queryBucketName,
+    ~scheduler,
+    ~publishToAggregates,
+    ~queryEngine,
+    ~resourceNaming,
+    ~allAggregates,
+    ~opts,
+  ) => {
+    Config.callbackModulePaths->Dict.forEachWithKey((modulePath, bucketName) => {
+      TaskRuntimeBuilder.registerTaskBucket(
+        ~bucketName,
+        ~callbackModulePath=modulePath,
+        ~publishToAggregatesQueueUrls=Config.publishToAggregatesQueueUrls,
+      )
+    })
+
+    Inner.make(
+      ~queryBucketName,
+      ~scheduler,
+      ~publishToAggregates,
+      ~queryEngine,
+      ~resourceNaming,
+      ~allAggregates,
+      ~opts,
+    )
+  }
+
+  let outputs = Inner.outputs
+}

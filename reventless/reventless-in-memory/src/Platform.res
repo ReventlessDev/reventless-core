@@ -102,6 +102,16 @@ module MakeWithConfig = (
         with type dcbEvent = Spec.DcbEventLogSpec.event
         and module Spec = Spec
     ) => StateViewSliceMaker.Make(Spec)
+    module Bundled = {
+      module Make = (
+        Spec: Reventless.StateViewSlice.Spec,
+        Config: ReventlessInfra.Platform.BundledSliceConfig,
+      ): (
+        ReventlessInfra.StateViewSlice.T
+          with type dcbEvent = Spec.DcbEventLogSpec.event
+          and module Spec = Spec
+      ) => StateViewSliceMaker.Make(Spec)
+    }
   }
 
   module AutomationSlice = {
@@ -110,6 +120,16 @@ module MakeWithConfig = (
         with type dcbEvent = Spec.DcbEventLogSpec.event
         and module Spec = Spec
     ) => AutomationSliceMaker.Make(Spec)
+    module Bundled = {
+      module Make = (
+        Spec: Reventless.AutomationSlice.Spec,
+        Config: ReventlessInfra.Platform.BundledSliceConfig,
+      ): (
+        ReventlessInfra.AutomationSlice.T
+          with type dcbEvent = Spec.DcbEventLogSpec.event
+          and module Spec = Spec
+      ) => AutomationSliceMaker.Make(Spec)
+    }
   }
 
   module OutboundTranslationSlice = {
@@ -118,6 +138,16 @@ module MakeWithConfig = (
         with type dcbEvent = Spec.DcbEventLogSpec.event
         and module Spec = Spec
     ) => OutboundTranslationSliceMaker.Make(Spec)
+    module Bundled = {
+      module Make = (
+        Spec: Reventless.OutboundTranslationSlice.Spec,
+        Config: ReventlessInfra.Platform.BundledSliceConfig,
+      ): (
+        ReventlessInfra.OutboundTranslationSlice.T
+          with type dcbEvent = Spec.DcbEventLogSpec.event
+          and module Spec = Spec
+      ) => OutboundTranslationSliceMaker.Make(Spec)
+    }
   }
 
   module InboundTranslationSlice = {

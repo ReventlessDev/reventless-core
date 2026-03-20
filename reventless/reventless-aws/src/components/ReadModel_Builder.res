@@ -1,1 +1,1 @@
-include ReadModel_Builder_PerReadModel
+include ReadModel_Builder_Single
