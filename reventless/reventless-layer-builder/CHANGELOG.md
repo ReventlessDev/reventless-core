@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.2.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@0.2.0-alpha.2...@reventlessdev/reventless-layer-builder@0.2.0-alpha.3) (2026-03-21)
+
+### Bug Fixes
+
+* **layer-builder:** fix CJS-via-ESM imports for pacote and treeverse ([03f92c4](https://github.com/ReventlessDev/reventless-core/commit/03f92c406735b117e701e009066db68b6024cfe4))
+* **layer-builder:** include @rescript/runtime in Lambda layer ([292db94](https://github.com/ReventlessDev/reventless-core/commit/292db9477d0d67a814915a995efe388035f1413c))
+* **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
+
+
 # [0.2.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@0.2.0-alpha.1...@reventlessdev/reventless-layer-builder@0.2.0-alpha.2) (2026-03-20)
 
 ### Bug Fixes
