@@ -16,7 +16,7 @@ export function generateExtensionPointEntryPoint(config) {
   importLines.push(
     `import { createExtensionPointHandler } from ${JSON.stringify(factoryModule)};`
   );
-  importLines.push(`import { Effect } from "effect/Effect";`);
+  importLines.push(`import * as Effect from "effect/Effect";`);
   importLines.push(
     `import * as RequestContext from ${JSON.stringify(requestContextModule)};`
   );
@@ -85,7 +85,7 @@ function generateTodoSliceEntryPoint(config, sliceType, callbackModulePath) {
       `import { Make as CallbackMake } from ${JSON.stringify(callbackModulePath)};`
     );
   }
-  importLines.push(`import { Effect } from "effect/Effect";`);
+  importLines.push(`import * as Effect from "effect/Effect";`);
   importLines.push(
     `import * as RequestContext from ${JSON.stringify(requestContextModule)};`
   );
@@ -160,7 +160,7 @@ export function generateStateViewSliceEntryPoint(config) {
   importLines.push(
     `import { createStateViewSliceHandler } from ${JSON.stringify(factoryModule)};`
   );
-  importLines.push(`import { Effect } from "effect/Effect";`);
+  importLines.push(`import * as Effect from "effect/Effect";`);
   importLines.push(
     `import * as RequestContext from ${JSON.stringify(requestContextModule)};`
   );
@@ -228,7 +228,7 @@ export function generateReadModelEntryPoint(config) {
   importLines.push(
     `import { createReadModelHandler } from ${JSON.stringify(factoryModule)};`
   );
-  importLines.push(`import { Effect } from "effect/Effect";`);
+  importLines.push(`import * as Effect from "effect/Effect";`);
   importLines.push(
     `import * as RequestContext from ${JSON.stringify(requestContextModule)};`
   );
@@ -310,7 +310,7 @@ export function generateAdminEventCollectorEntryPoint(config) {
 
   return `// Generated Admin EventCollector handler entry point for "${name}"
 import { createAdminEventCollectorHandler } from ${JSON.stringify(factoryModule)};
-import { Effect } from "effect/Effect";
+import * as Effect from "effect/Effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
 
 const runEffect = (correlationId, effect) =>
@@ -349,7 +349,7 @@ export function generatePluginExtensionPointEntryPoint(config) {
 
   return `// Generated Plugin ExtensionPoint handler entry point for "${name}"
 import { createPluginExtensionPointHandler } from ${JSON.stringify(factoryModule)};
-import { Effect } from "effect/Effect";
+import * as Effect from "effect/Effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
 
 const runEffect = (correlationId, effect) =>
@@ -391,7 +391,7 @@ export function generateCommandGeneratorEntryPoint(config) {
 
   return `// Generated CommandGenerator handler entry point for "${name}"
 import { createCommandGeneratorHandler } from ${JSON.stringify(factoryModule)};
-import { Effect } from "effect/Effect";
+import * as Effect from "effect/Effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
 import * as Spec from ${JSON.stringify(specModulePath)};
 import * as Behavior from ${JSON.stringify(behaviorModulePath)};
@@ -422,7 +422,7 @@ export function generateEventMapperEntryPoint(config) {
 
   return `// Generated EventMapper handler entry point for "${name}"
 import { createEventMapperHandler } from ${JSON.stringify(factoryModule)};
-import { Effect } from "effect/Effect";
+import * as Effect from "effect/Effect";
 import * as RequestContext from ${JSON.stringify(requestContextModule)};
 import * as TargetSpec from ${JSON.stringify(targetSpecModulePath)};
 import * as Mappings from ${JSON.stringify(mappingsModulePath)};
@@ -458,7 +458,7 @@ export function generateAggregateEntryPoint(config) {
   importLines.push(
     `import { createCommandGeneratorHandler } from ${JSON.stringify(factoryModule.replace("AggregateHandlerFactory", "CommandGeneratorHandlerFactory"))};`
   );
-  importLines.push(`import { Effect } from "effect/Effect";`);
+  importLines.push(`import * as Effect from "effect/Effect";`);
   importLines.push(
     `import * as RequestContext from ${JSON.stringify(requestContextModule)};`
   );
@@ -573,7 +573,7 @@ export function generateSideEffectEntryPoint(config) {
   importLines.push(
     `import { createSideEffectHandler } from ${JSON.stringify(factoryModule)};`
   );
-  importLines.push(`import { Effect } from "effect/Effect";`);
+  importLines.push(`import * as Effect from "effect/Effect";`);
   importLines.push(
     `import * as RequestContext from ${JSON.stringify(requestContextModule)};`
   );
@@ -781,7 +781,7 @@ export const handler = async (event, context) => {
   }
 
   // Normal SQS path
-  const { Effect } = await import("effect/Effect");
+  const Effect = await import("effect/Effect");
   const correlationId = extractCorrelationId(event);
   const result = await dcbHandler(event, context)
     .pipe(

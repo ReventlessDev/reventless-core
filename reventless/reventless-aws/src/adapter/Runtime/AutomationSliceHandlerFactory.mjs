@@ -9,8 +9,8 @@
  *   → publishJsons → CommandTopicChannel_SQS_Runtime.publishJsons(queue, "SQS_FIFO")
  */
 
-import { Effect } from "effect/Effect";
-import { Stream } from "effect/Stream";
+import * as Effect from "effect/Effect";
+import * as Stream from "effect/Stream";
 import * as S from "sury/src/S.res.mjs";
 import { Make as AutomationSliceCallbackMake } from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as QueryDbRuntime from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
