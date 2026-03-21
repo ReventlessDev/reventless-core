@@ -22,7 +22,8 @@ import * as Message from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as DcbTag from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import { patchSpecId, makeQueueRef } from "./HandlerFactoryHelpers.mjs";
-import { Effect, Stream } from "effect";
+import { Effect } from "effect/Effect";
+import { Stream } from "effect/Stream";
 
 /**
  * Create a composite DCB CommandTopic handler.

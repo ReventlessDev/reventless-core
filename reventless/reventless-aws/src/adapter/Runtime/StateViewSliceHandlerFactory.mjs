@@ -8,7 +8,8 @@
  *   → QueryDbStorage_DynamoDb_Runtime.{save, saveBatch, delete}
  */
 
-import { Effect, Stream } from "effect";
+import { Effect } from "effect/Effect";
+import { Stream } from "effect/Stream";
 import * as S from "sury/src/S.res.mjs";
 import * as Projection from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 import * as QueryDbRuntime from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";

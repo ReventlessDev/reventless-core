@@ -10,7 +10,8 @@
  *   → PluginExtensionPoint_Plugin mapping → publishToEventTopic / callHandler
  */
 
-import { Effect, Stream } from "effect";
+import { Effect } from "effect/Effect";
+import { Stream } from "effect/Stream";
 import { Make as PluginEPPluginMake } from "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs";
 import { Make as ExtensionPointOperationsMake } from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Operations.res.mjs";
 import * as PluginExtensionPointSpec from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
