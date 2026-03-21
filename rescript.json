@@ -20,7 +20,6 @@
     "@reventlessdev/reventless-core",
     "@reventlessdev/reventless-in-memory",
     "@reventlessdev/reventless-aws",
-    "@reventlessdev/reventless-layer-builder",
     "@reventlessdev/online-shop-hybrid-platform-aws"
   ],
   "sources": [],

@@ -19,7 +19,6 @@ let config_excludeScopes = [
   "types",
   "opentelemetry",
   "aws-sdk",
-  "smithy",
   "sigstore",
   "npmcli",
   "gar"

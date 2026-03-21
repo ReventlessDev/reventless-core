@@ -25,7 +25,9 @@ let config: DependencyBundler_Config.t = {
     "types",
     "opentelemetry",
     "aws-sdk",
-    "smithy",
+    // @smithy/* is provided by the Lambda runtime, but ESM imports from
+    // layer code cannot resolve it via NODE_PATH. Include it in the layer
+    // so ESM resolution finds it under /opt/nodejs/node_modules/.
     "sigstore",
     "npmcli",
     "gar",

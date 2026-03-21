@@ -54,6 +54,7 @@ function buildAndArchive(wrapperPath) {
     target: "node22",
     external: [
       "@aws-sdk/*",
+      "@smithy/*",
       // Layer-provided packages — must match what reventless-layer-builder produces.
       // User domain code (Spec, Behavior) is resolved via absolute paths and won't match.
       "effect",
