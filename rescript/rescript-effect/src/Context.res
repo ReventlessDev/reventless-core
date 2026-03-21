@@ -37,5 +37,5 @@ let loggerTag: Context.tag<Logger.t> = Context.genericTag("MyApp/Logger")
 > **Note** Keys must be globally unique within the application. Use a namespaced
 string (e.g. `"MyApp/Logger"`) to avoid collisions with third-party services.
 */
-@module("effect") @scope("Context")
+@module("effect/Context")
 external genericTag: string => tag<'a> = "GenericTag"

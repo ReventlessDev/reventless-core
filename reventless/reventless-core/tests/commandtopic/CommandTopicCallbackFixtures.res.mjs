@@ -2,8 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as CommandTopic_Callback$ReventlessCore from "../../src/components/CommandTopic/CommandTopic_Callback.res.mjs";
@@ -45,7 +45,7 @@ let commandHandlerShouldThrow = {
 };
 
 function commandsHandler(stream) {
-  return Effect.Effect.map(Stream.runCollect(stream), items => {
+  return Effect.map(Stream.runCollect(stream), items => {
     if (commandHandlerShouldThrow.contents) {
       Stdlib_JsError.throwWithMessage("commandsHandler failed");
     }

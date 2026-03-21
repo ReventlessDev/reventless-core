@@ -2,8 +2,8 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect$1 from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect$1 from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../../util/ScheduleOps.res.mjs";
@@ -16,7 +16,7 @@ function Make(Spec) {
         let cmdJson = action._2;
         let reference = action._1;
         let aggregateName = action._0;
-        return Effect$1.Effect.catchAll(Effect.trySync(err => {
+        return Effect$1.catchAll(Effect.trySync(err => {
           let errMsg = Util_Error$ReventlessCore.messageFromUnknown(err, "unknown");
           return [
             {
@@ -34,12 +34,12 @@ function Make(Spec) {
           };
         }), param => {
           let errorResult = param[0];
-          return Effect$1.Effect.map(Effect$1.Effect.logError(param[1]), () => errorResult);
+          return Effect$1.map(Effect$1.logError(param[1]), () => errorResult);
         });
       }
       let handler = action._1;
       let reference$1 = action._0;
-      return Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(err => {
+      return Effect$1.catchAll(Effect$1.map(Effect.tryPromise(err => {
         let errMsg = Util_Error$ReventlessCore.messageFromUnknown(err, "unknown");
         return [
           {
@@ -53,12 +53,12 @@ function Make(Spec) {
         _0: reference$1
       })), param => {
         let errorResult = param[0];
-        return Effect$1.Effect.map(Effect$1.Effect.logError(param[1]), () => errorResult);
+        return Effect$1.map(Effect$1.logError(param[1]), () => errorResult);
       });
     };
-    let handleIncomingCommands = stream => Effect$1.Effect.flatMap(Stream.runCollect(stream), topicItems => {
+    let handleIncomingCommands = stream => Effect$1.flatMap(Stream.runCollect(stream), topicItems => {
       let commandActions = mapIncomingCommands(topicItems, Mappings.mappings, Spec.scheduler, Spec.queryEngine, Spec.resourceNaming, Spec.commandTopicResources);
-      return Effect$1.Effect.all(commandActions.map(applyCommandAction), {
+      return Effect$1.all(commandActions.map(applyCommandAction), {
         concurrency: "unbounded"
       });
     });

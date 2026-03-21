@@ -2,9 +2,9 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
-import * as Effect from "effect";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
 S.enableJson();
@@ -61,7 +61,7 @@ function Make(Spec) {
         } catch (raw_exn$1) {
           let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
           let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
-          Effect.Effect.runSync(Effect.Effect.logError(`InboundTranslationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
+          Effect.runSync(Effect.logError(`InboundTranslationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
           commandJson = undefined;
         }
         if (commandJson !== undefined) {

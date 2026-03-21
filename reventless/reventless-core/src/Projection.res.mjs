@@ -2,9 +2,10 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
@@ -87,17 +88,17 @@ async function handleAction(action, operations, subIdConfig) {
   let saveBatch = operations.saveBatch;
   let save = operations.save;
   let loadStream = operations.loadStream;
-  let loadAtMost = (n, id) => Effect.Effect.runPromise(Effect.Effect.catchAll(Effect.Effect.map(Stream.runCollect(Effect.Stream.take(loadStream(id), n)), states => ({
+  let loadAtMost = (n, id) => Effect.runPromise(Effect.catchAll(Effect.map(Stream.runCollect(Stream$1.take(loadStream(id), n)), states => ({
     TAG: "Ok",
     _0: states
-  })), e => Effect.Effect.succeed({
+  })), e => Effect.succeed({
     TAG: "Error",
     _0: e
   })));
-  let loadAll = id => Effect.Effect.runPromise(Effect.Effect.catchAll(Effect.Effect.map(Stream.runCollect(loadStream(id)), states => ({
+  let loadAll = id => Effect.runPromise(Effect.catchAll(Effect.map(Stream.runCollect(loadStream(id)), states => ({
     TAG: "Ok",
     _0: states
-  })), e => Effect.Effect.succeed({
+  })), e => Effect.succeed({
     TAG: "Error",
     _0: e
   })));

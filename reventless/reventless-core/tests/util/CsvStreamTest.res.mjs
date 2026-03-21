@@ -2,9 +2,10 @@
 
 import * as Fs from "fs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as CsvStream$ReventlessCore from "../../src/util/CsvStream.res.mjs";
 
 let fileCounter = {
@@ -21,24 +22,24 @@ function writeTempCsv(content) {
 describe("CsvStream.parseRows", () => {
   test("parses all rows from a small CSV file", async () => {
     let path = writeTempCsv("name,age\nAlice,30\nBob,25");
-    let rows = await Effect.Effect.runPromise(Stream.runCollect(CsvStream$ReventlessCore.parseRows(path)));
+    let rows = await Effect.runPromise(Stream.runCollect(CsvStream$ReventlessCore.parseRows(path)));
     expect(rows.length).toBe(2);
   });
   test("emits rows in file order", async () => {
     let path = writeTempCsv("name\nfirst\nsecond\nthird");
-    let first = await Effect.Effect.runPromise(Stream.runHead(CsvStream$ReventlessCore.parseRows(path)));
+    let first = await Effect.runPromise(Stream.runHead(CsvStream$ReventlessCore.parseRows(path)));
     let name = Stdlib_Option.flatMap(first, row => row["name"]);
     expect(name).toEqual("first");
   });
   test("take(2) returns only 2 rows", async () => {
     let dataRows = Stdlib_Array.make(10, 0).map((i, param) => `row-` + i.toString()).join("\n");
     let path = writeTempCsv("name\n" + dataRows);
-    let result = await Effect.Effect.runPromise(Stream.runCollect(Effect.Stream.take(CsvStream$ReventlessCore.parseRows(path), 2)));
+    let result = await Effect.runPromise(Stream.runCollect(Stream$1.take(CsvStream$ReventlessCore.parseRows(path), 2)));
     expect(result.length).toBe(2);
   });
   test("empty CSV file (header only) returns empty stream", async () => {
     let path = writeTempCsv("name");
-    let rows = await Effect.Effect.runPromise(Stream.runCollect(CsvStream$ReventlessCore.parseRows(path)));
+    let rows = await Effect.runPromise(Stream.runCollect(CsvStream$ReventlessCore.parseRows(path)));
     expect(rows.length).toBe(0);
   });
 });

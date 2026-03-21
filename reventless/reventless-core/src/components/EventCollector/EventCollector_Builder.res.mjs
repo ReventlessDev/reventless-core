@@ -2,14 +2,14 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
-import * as Effect$1 from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stream from "effect/Stream";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "./EventCollector.res.mjs";
 
 function makeStreamHandler(eventCollector, schema, jsonEventsHandler) {
-  let jsonHandler = stream => jsonEventsHandler(Effect$1.Stream.mapEffect(stream, json => Effect.trySync(_exn => "decode error", () => S.parseOrThrow(json, schema))));
+  let jsonHandler = stream => jsonEventsHandler(Stream.mapEffect(stream, json => Effect.trySync(_exn => "decode error", () => S.parseOrThrow(json, schema))));
   let channel = eventCollector.channel;
   return channel.handleChannelEvent(jsonHandler);
 }

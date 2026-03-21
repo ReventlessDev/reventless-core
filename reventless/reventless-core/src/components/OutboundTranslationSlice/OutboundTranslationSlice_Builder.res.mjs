@@ -2,10 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Effect from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
@@ -56,7 +57,7 @@ function Make(RuntimeEnvironment) {
         });
         let eventCollector = Component$ReventlessCore.operations(queryDb).apply(queryDbOps => {
           let ec = SpecificEventCollector.make(Spec.name, allEventTopics, opts);
-          let jsonEventsHandler = stream => Effect.Effect.flatMap(Stream.runCollect(Effect.Stream.flatMap(Effect.Stream.mapEffect(stream, json => Effect.Effect.sync(() => {
+          let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(Stream$1.flatMap(Stream$1.mapEffect(stream, json => Effect.sync(() => {
             try {
               return [S.parseJsonOrThrow(json, Spec.DcbEventLogSpec.eventSchema)];
             } catch (raw_exn) {
@@ -64,7 +65,7 @@ function Make(RuntimeEnvironment) {
               console.log("OutboundTranslationSlice: Failed to decode event:", exn);
               return [];
             }
-          })), events => Effect.Stream.fromIterable(events))), eventsArr => Effect.Effect.promise(async () => {
+          })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
             Callback.phase1(eventsArr);
             let pj = publishJsonsRef.contents;
             if (pj !== undefined) {

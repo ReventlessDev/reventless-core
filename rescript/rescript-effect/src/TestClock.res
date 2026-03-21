@@ -35,7 +35,7 @@ Advances the virtual clock by `duration`, running all scheduled effects on or be
 Effects are run in chronological order. If advancing triggers a `Schedule`, all
 recurrences that fall within the new time are fired.
 */
-@module("effect") @scope("TestClock")
+@module("effect/TestClock")
 external adjust: Duration.t => Effect.t<unit, 'e, 'r> = "adjust"
 
 /**
@@ -43,5 +43,5 @@ Returns the current virtual clock time in milliseconds as an `Effect`.
 
 > **Note** `currentTimeMillis` is an Effect value (not a function call) — no `()` needed.
 */
-@module("effect") @scope("TestClock")
+@module("effect/TestClock")
 external currentTimeMillis: Effect.t<int, 'e, 'r> = "currentTimeMillis"

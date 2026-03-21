@@ -25,5 +25,5 @@ The `TestContext` layer — provides `TestClock` and other test services.
 Provide this to an `Effect` before running it in tests to enable
 `TestClock.adjust`, `TestClock.currentTimeMillis`, etc.
 */
-@module("effect") @scope("TestContext")
+@module("effect/TestContext")
 external testContext: layer = "TestContext"

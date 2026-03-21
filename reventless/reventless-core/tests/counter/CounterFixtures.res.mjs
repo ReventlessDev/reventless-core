@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
+import * as Effect from "effect/Effect";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as Counter_Callback$ReventlessCore from "../../src/components/Counter/Counter_Callback.res.mjs";
 
@@ -29,7 +29,7 @@ async function mockCountsDbCount(id, field, delta) {
 }
 
 function mockJsonEventsHandler(stream) {
-  return Effect.Effect.map(Stream.runCollect(stream), chunk => {
+  return Effect.map(Stream.runCollect(stream), chunk => {
     capturedEventBatches.contents = capturedEventBatches.contents.concat([chunk]);
   });
 }

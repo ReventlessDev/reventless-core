@@ -31,7 +31,7 @@ No construction effects, no dependencies — the simplest way to provide a servi
 > **Note** The JS name is `succeed`; this binding uses `succeed_` to avoid
 shadowing `Effect.succeed` and to sidestep `effect` as a future OCaml keyword.
 */
-@module("effect") @scope("Layer")
+@module("effect/Layer")
 external succeed_: (Context.tag<'a>, 'a) => t<'a, 'e, unit> = "succeed"
 
 /**
@@ -43,7 +43,7 @@ requires other services as inputs.
 > **Note** The JS name is `effect`; this binding uses `effect_` to avoid the
 `effect` OCaml 5 keyword.
 */
-@module("effect") @scope("Layer")
+@module("effect/Layer")
 external effect_: (Context.tag<'a>, Effect.t<'a, 'e, 'r>) => t<'a, 'e, 'r> = "effect"
 
 // ─── Composing layers ─────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ layer requires whatever `outer` still needs after `inner` is applied.
 > **Note** `Effect.provide` already accepts a `Layer` directly. Use `Layer.provide`
 only when *composing layers together* before supplying them to an effect.
 */
-@module("effect") @scope("Layer")
+@module("effect/Layer")
 external provide: (t<'a, 'e, 'r>, t<'r, 'e, 'r2>) => t<'a, 'e, 'r2> = "provide"
 
 // ─── Merge (not bound) ────────────────────────────────────────────────────

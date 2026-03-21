@@ -21,7 +21,7 @@ Waits for the fiber to complete and returns its success value.
 
 If the fiber failed, the failure is propagated into the current fiber's error channel.
 */
-@module("effect") @scope("Fiber")
+@module("effect/Fiber")
 external join: t<'a, 'e> => Effect.t<'a, 'e, 'r> = "join"
 
 /**
@@ -30,7 +30,7 @@ Interrupts the fiber, triggering its finalizers.
 Returns the fiber's `Exit` once interruption completes. Interruption is
 propagated to all child fibers of the interrupted fiber.
 */
-@module("effect") @scope("Fiber")
+@module("effect/Fiber")
 external interrupt: t<'a, 'e> => Effect.t<Exit.t<'a, 'e>, 'e2, 'r> = "interrupt"
 
 /**
@@ -38,7 +38,7 @@ Waits for all fibers in parallel and collects their success values into an array
 
 If any fiber fails, the failure is propagated and remaining fibers are interrupted.
 */
-@module("effect") @scope("Fiber")
+@module("effect/Fiber")
 external joinAll: array<t<'a, 'e>> => Effect.t<array<'a>, 'e, 'r> = "joinAll"
 
 /**
@@ -48,12 +48,12 @@ Use this when you want to inspect the outcome of each fiber regardless of succes
 
 > **Note** Effect v3 exports this as `awaitAll` (not `collectAll`). This binding maps to the correct JS name.
 */
-@module("effect") @scope("Fiber")
+@module("effect/Fiber")
 external collectAll: array<t<'a, 'e>> => Effect.t<array<Exit.t<'a, 'e>>, 'e2, 'r> = "awaitAll"
 
 /**
 Non-blocking poll — returns the fiber's `Exit` if it has already completed, or `None` if still running.
 */
-@module("effect") @scope("Fiber")
+@module("effect/Fiber")
 external _poll: t<'a, 'e> => Effect.t<EffectOption.t<Exit.t<'a, 'e>>, 'e2, 'r> = "poll"
 let poll = fiber => fiber->_poll->Effect.map(EffectOption.toOption)

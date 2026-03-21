@@ -42,38 +42,38 @@ module TRef = {
   type t<'a>
 
   /** Creates a new `TRef` with `initial` value as an STM computation. */
-  @module("effect") @scope("TRef")
+  @module("effect/TRef")
   external make: 'a => stm<t<'a>, 'e, 'r> = "make"
 
   /** Reads the current value of the `TRef` in the current transaction. */
-  @module("effect") @scope("TRef")
+  @module("effect/TRef")
   external get: t<'a> => stm<'a, 'e, 'r> = "get"
 
   /** Sets the `TRef` to `value` in the current transaction. */
-  @module("effect") @scope("TRef")
+  @module("effect/TRef")
   external set: (t<'a>, 'a) => stm<unit, 'e, 'r> = "set"
 
   /** Applies a pure function to update the `TRef` value in the current transaction. */
-  @module("effect") @scope("TRef")
+  @module("effect/TRef")
   external update: (t<'a>, 'a => 'a) => stm<unit, 'e, 'r> = "update"
 
   /** Atomically applies `f`, storing the new value and returning the old one. */
-  @module("effect") @scope("TRef")
+  @module("effect/TRef")
   external getAndUpdate: (t<'a>, 'a => 'a) => stm<'a, 'e, 'r> = "getAndUpdate"
 
   /** Atomically applies `f` to produce both a result `'b` and a new value in one step. */
-  @module("effect") @scope("TRef")
+  @module("effect/TRef")
   external modify: (t<'a>, 'a => ('b, 'a)) => stm<'b, 'e, 'r> = "modify"
 }
 
 // ─── STM construction ────────────────────────────────────────────────────
 
 /** Creates an STM computation that always succeeds with `value`. */
-@module("effect") @scope("STM")
+@module("effect/STM")
 external succeed: 'a => t<'a, 'e, 'r> = "succeed"
 
 /** Creates an STM computation that always fails with the given typed error. */
-@module("effect") @scope("STM")
+@module("effect/STM")
 external fail: 'e => t<'a, 'e, 'r> = "fail"
 
 /**
@@ -82,21 +82,21 @@ Retries the current transaction.
 The transaction will re-run when any `TRef` it has read changes value.
 Use to implement blocking transactional reads (e.g. wait until a queue has items).
 */
-@module("effect") @scope("STM")
+@module("effect/STM")
 external retry: t<'a, 'e, 'r> = "retry"
 
 // ─── STM transformation ──────────────────────────────────────────────────
 
 /** Transforms the success value with a pure function. */
-@module("effect") @scope("STM")
+@module("effect/STM")
 external map: (t<'a, 'e, 'r>, 'a => 'b) => t<'b, 'e, 'r> = "map"
 
 /** Chains STM computations — applies `f` to the success value, producing the next STM step. */
-@module("effect") @scope("STM")
+@module("effect/STM")
 external flatMap: (t<'a, 'e, 'r>, 'a => t<'b, 'e, 'r>) => t<'b, 'e, 'r> = "flatMap"
 
 /** Sequences two STM computations, discarding the first result. */
-@module("effect") @scope("STM")
+@module("effect/STM")
 external zipRight: (t<'a, 'e, 'r>, t<'b, 'e, 'r>) => t<'b, 'e, 'r> = "zipRight"
 
 // ─── Running STM ─────────────────────────────────────────────────────────
@@ -111,5 +111,5 @@ before commit, the transaction retries automatically. Once committed, all
 > **Note** Transactions cannot be nested inside other `Effect`s directly —
 always commit at a `Stm.commit` boundary.
 */
-@module("effect") @scope("STM")
+@module("effect/STM")
 external commit: t<'a, 'e, 'r> => Effect.t<'a, 'e, 'r> = "commit"

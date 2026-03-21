@@ -2,13 +2,14 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
@@ -215,7 +216,7 @@ function MakeWithConfig(Config) {
         return null;
       }
       if (id.length > 0 && id !== resourceName) {
-        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         let item = items[0];
         if (item !== undefined) {
           return item;
@@ -405,7 +406,7 @@ function MakeWithConfig(Config) {
       TAG: "Ok",
       _0: Stdlib_Option.getOr(store.contents[id], [])
     });
-    let pluginOps_loadStream = id => Effect.Stream.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
+    let pluginOps_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
     let pluginOps_save = async (id, state, param, param$1) => {
       store.contents[id] = [state];
       syncAll();
@@ -455,7 +456,7 @@ function MakeWithConfig(Config) {
     };
     Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
     Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Effect.Stream.fromIterable(allItems.contents));
+    Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     plugins$1.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
@@ -568,7 +569,7 @@ function MakeWithConfig(Config) {
       if (ops === undefined) {
         return null;
       }
-      let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
       return Stdlib_Option.getOr(items[0], null);
     };
     queryResolvers[listQueryField] = async (_root, _args) => {
@@ -606,7 +607,7 @@ function MakeWithConfig(Config) {
       console.log(`[Admin] ` + field + `(` + id + `): received command (msgId: ` + msgId + `)`);
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops !== undefined) {
-        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         let json = items[0];
         if (json !== undefined) {
           let exit = 0;
@@ -676,7 +677,7 @@ function MakeWithConfig(Config) {
         return null;
       }
       if (id.length > 0 && id !== listQueryField) {
-        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         return Stdlib_Option.getOr(items[0], null);
       }
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
@@ -965,7 +966,7 @@ function Make($star) {
         return null;
       }
       if (id.length > 0 && id !== resourceName) {
-        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         let item = items[0];
         if (item !== undefined) {
           return item;
@@ -1159,7 +1160,7 @@ function Make($star) {
       TAG: "Ok",
       _0: Stdlib_Option.getOr(store.contents[id], [])
     });
-    let pluginOps_loadStream = id => Effect.Stream.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
+    let pluginOps_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
     let pluginOps_save = async (id, state, param, param$1) => {
       store.contents[id] = [state];
       syncAll();
@@ -1209,7 +1210,7 @@ function Make($star) {
     };
     Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
     Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Effect.Stream.fromIterable(allItems.contents));
+    Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     plugins$1.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
@@ -1322,7 +1323,7 @@ function Make($star) {
       if (ops === undefined) {
         return null;
       }
-      let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
       return Stdlib_Option.getOr(items[0], null);
     };
     queryResolvers[listQueryField] = async (_root, _args) => {
@@ -1360,7 +1361,7 @@ function Make($star) {
       console.log(`[Admin] ` + field + `(` + id + `): received command (msgId: ` + msgId + `)`);
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops !== undefined) {
-        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         let json = items[0];
         if (json !== undefined) {
           let exit = 0;
@@ -1430,7 +1431,7 @@ function Make($star) {
         return null;
       }
       if (id.length > 0 && id !== listQueryField) {
-        let items = await Effect.Effect.runPromise(Effect.Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.Effect.succeed([])));
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         return Stdlib_Option.getOr(items[0], null);
       }
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);

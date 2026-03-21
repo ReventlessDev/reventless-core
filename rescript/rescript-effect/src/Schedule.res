@@ -26,7 +26,7 @@ Schedule.exponential(Duration.millis(100))
 ->Schedule.recurs(5)
 ```
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external exponential: Duration.t => t<Duration.t, 'in_, 'r> = "exponential"
 
 /**
@@ -34,7 +34,7 @@ A schedule with a fixed interval between *starts* of consecutive runs.
 
 If a run takes longer than the interval, the next run starts immediately.
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external fixed: Duration.t => t<int, 'in_, 'r> = "fixed"
 
 /**
@@ -42,7 +42,7 @@ A schedule with a fixed delay measured from each *completion*.
 
 Unlike `fixed`, the delay is always the full duration after the previous run finishes.
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external spaced: Duration.t => t<int, 'in_, 'r> = "spaced"
 
 /**
@@ -57,19 +57,19 @@ Schedule.exponential(Duration.millis(200))->Schedule.recurs(4)
 // up to 5 total attempts
 ```
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external recurs: int => t<int, 'in_, 'r> = "recurs"
 
 /** A schedule that recurs exactly once (two total attempts when used with `retry`). */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external once: t<int, 'in_, 'r> = "once"
 
 /** A schedule that repeats indefinitely, producing a monotonically increasing count. */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external forever: t<int, 'in_, 'r> = "forever"
 
 /** A schedule that tracks the total elapsed time as its output value. */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external elapsed: t<Duration.t, 'in_, 'r> = "elapsed"
 
 // ─── Composition ─────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ retries over time and preventing thundering-herd problems after shared failures.
 Schedule.exponential(Duration.seconds(1))->Schedule.jittered
 ```
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external jittered: t<'out, 'in_, 'r> => t<'out, 'in_, 'r> = "jittered"
 
 /**
@@ -100,7 +100,7 @@ Schedule.exponential(Duration.millis(500))
 ->Schedule.whileInput(err => err != StaleState)
 ```
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external whileInput: (t<'out, 'in_, 'r>, 'in_ => bool) => t<'out, 'in_, 'r> = "whileInput"
 
 /**
@@ -115,7 +115,7 @@ Schedule.exponential(Duration.millis(100))
 ->Schedule.whileOutput(elapsed => elapsed < Duration.seconds(30))
 ```
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external whileOutput: (t<'out, 'in_, 'r>, 'out => bool) => t<'out, 'in_, 'r> = "whileOutput"
 
 /**
@@ -123,7 +123,7 @@ Feeds the output of `first` as input to `second` — pipelines two schedules.
 
 Useful for building multi-stage recurrence strategies.
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external compose: (t<'out, 'in_, 'r>, t<'out2, 'out, 'r>) => t<'out2, 'in_, 'r> = "compose"
 
 /**
@@ -131,7 +131,7 @@ Runs both schedules in parallel, using the *longer* delay of the two.
 
 The combined schedule continues as long as *both* constituent schedules continue.
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external union: (t<'out, 'in_, 'r>, t<'out2, 'in_, 'r>) => t<('out, 'out2), 'in_, 'r> = "union"
 
 /**
@@ -139,5 +139,5 @@ Runs both schedules in parallel, using the *shorter* delay of the two.
 
 The combined schedule stops as soon as *either* constituent schedule stops.
 */
-@module("effect") @scope("Schedule")
+@module("effect/Schedule")
 external intersect: (t<'out, 'in_, 'r>, t<'out2, 'in_, 'r>) => t<('out, 'out2), 'in_, 'r> = "intersect"

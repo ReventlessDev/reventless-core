@@ -2,10 +2,10 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
-import * as Effect from "effect";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stream from "effect/Stream";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
@@ -54,7 +54,7 @@ function Make(Projection) {
         TAG: "Ok",
         _0: states(store, extra)
       }),
-      loadStream: id => Effect.Stream.fromIterable(states(store, id)),
+      loadStream: id => Stream.fromIterable(states(store, id)),
       save: (extra, extra$1, extra$2, extra$3) => {
         let match = states(store, extra);
         let exit = 0;

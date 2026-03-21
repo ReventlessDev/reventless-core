@@ -2,10 +2,10 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
-import * as Effect from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
@@ -81,7 +81,7 @@ function Make(Spec) {
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-        Effect.Effect.runSync(Effect.Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to decode outboundItem: ` + errMsg));
+        Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to decode outboundItem: ` + errMsg));
         item = undefined;
       }
       if (item === undefined) {
@@ -111,7 +111,7 @@ function Make(Spec) {
           } catch (raw_exn$2) {
             let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
             let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
-            Effect.Effect.runSync(Effect.Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to encode inbound command: ` + errMsg$1));
+            Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to encode inbound command: ` + errMsg$1));
             commandJson = undefined;
           }
           if (commandJson !== undefined) {
@@ -132,7 +132,7 @@ function Make(Spec) {
             } catch (raw_exn$3) {
               let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
               let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
-              Effect.Effect.runSync(Effect.Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to publish command: ` + errMsg$2));
+              Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to publish command: ` + errMsg$2));
               let newrecord$2 = {...row};
               newrecord$2.retryCount = row.retryCount + 1 | 0;
               newrecord$2.status = "Failed";

@@ -22,7 +22,7 @@ Deferred.await_(d)->Effect.runPromise // suspends until succeeded
 type t<'a, 'e>
 
 /** Creates a new, empty `Deferred`. */
-@module("effect") @scope("Deferred")
+@module("effect/Deferred")
 external make: unit => Effect.t<t<'a, 'e>, 'e2, 'r> = "make"
 
 /**
@@ -30,7 +30,7 @@ Suspends the current fiber until the `Deferred` is completed.
 
 > **Note** `await` is a reserved keyword in ReScript — use `await_` here.
 */
-@module("effect") @scope("Deferred")
+@module("effect/Deferred")
 external await_: t<'a, 'e> => Effect.t<'a, 'e, 'r> = "await"
 
 /**
@@ -39,7 +39,7 @@ Completes the `Deferred` with a success value.
 Returns `true` if this was the first completion; `false` if already completed.
 Only the first call has any effect — subsequent calls are no-ops.
 */
-@module("effect") @scope("Deferred")
+@module("effect/Deferred")
 external succeed: (t<'a, 'e>, 'a) => Effect.t<bool, 'e2, 'r> = "succeed"
 
 /**
@@ -47,7 +47,7 @@ Completes the `Deferred` with a failure.
 
 Returns `true` if this was the first completion.
 */
-@module("effect") @scope("Deferred")
+@module("effect/Deferred")
 external fail: (t<'a, 'e>, 'e) => Effect.t<bool, 'e2, 'r> = "fail"
 
 /**
@@ -55,9 +55,9 @@ Completes the `Deferred` with the result of running an `Effect`.
 
 Returns `true` if this was the first completion.
 */
-@module("effect") @scope("Deferred")
+@module("effect/Deferred")
 external completeWith: (t<'a, 'e>, Effect.t<'a, 'e, 'r>) => Effect.t<bool, 'e2, 'r> = "completeWith"
 
 /** Returns `true` if the `Deferred` has been completed (non-suspending). */
-@module("effect") @scope("Deferred")
+@module("effect/Deferred")
 external isDone: t<'a, 'e> => Effect.t<bool, 'e2, 'r> = "isDone"

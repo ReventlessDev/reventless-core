@@ -2,10 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
-import * as Effect$1 from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect$1 from "effect/Effect";
+import * as Stream from "effect/Stream";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
@@ -21,7 +22,7 @@ function Make(Spec) {
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
       let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-      Effect$1.Effect.runSync(Effect$1.Effect.logError(`SideEffects.map: Couldn't decode meta: ` + errMsg));
+      Effect$1.runSync(Effect$1.logError(`SideEffects.map: Couldn't decode meta: ` + errMsg));
       return;
     }
     if (eventMeta !== undefined) {
@@ -36,18 +37,18 @@ function Make(Spec) {
         return;
       }
     }
-    Effect$1.Effect.runSync(Effect$1.Effect.logError("SideEffects.map: Invalid JSON object"));
+    Effect$1.runSync(Effect$1.logError("SideEffects.map: Invalid JSON object"));
   });
-  let handleJsonEvents = stream => Effect$1.Stream.runDrain(Effect$1.Stream.mapEffect(stream, eventJson$p => {
+  let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => {
     let match = findSideEffect(Spec.sideEffects, eventJson$p);
     if (match === undefined) {
-      return Effect$1.Effect.succeed();
+      return Effect$1.succeed();
     }
     let sideEffect = match[2];
     let eventMeta = match[1];
     let eventObj = match[0];
     let sourceName = sideEffect.Source.name;
-    return Effect$1.Effect.zipRight(Effect$1.Effect.logInfo(`SideEffectHandler.eventsHandler: handling event from source ` + sourceName + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect$1.Effect.catchAll(Effect$1.Effect.flatMap(Effect.trySync(err => {
+    return Effect$1.zipRight(Effect$1.logInfo(`SideEffectHandler.eventsHandler: handling event from source ` + sourceName + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect$1.catchAll(Effect$1.flatMap(Effect.trySync(err => {
       let errMsg = Util_Error$ReventlessCore.messageFromUnknown(err, "unknown");
       return `SideEffectHandler.eventHandler: Couldn't decode event: ` + JSON.stringify(eventJson$p) + ` ` + errMsg;
     }, () => {
@@ -64,14 +65,14 @@ function Make(Spec) {
         if (event !== undefined) {
           let event$1 = Primitive_option.valFromOption(event);
           let eventId$1 = Primitive_option.valFromOption(eventId);
-          return Effect$1.Effect.catchAll(Effect.tryPromise(err => {
+          return Effect$1.catchAll(Effect.tryPromise(err => {
             let errMsg = Util_Error$ReventlessCore.messageFromUnknown(err, "unknown");
             return `SideEffect: Error while processing: ` + errMsg;
-          }, () => sideEffect.execute(eventId$1, eventMeta, event$1, Spec.queryEngine)), errMsg => Effect$1.Effect.logError(errMsg));
+          }, () => sideEffect.execute(eventId$1, eventMeta, event$1, Spec.queryEngine)), errMsg => Effect$1.logError(errMsg));
         }
       }
-      return Effect$1.Effect.logError(`SideEffectHandler.eventHandler: Invalid event ` + JSON.stringify(eventJson$p));
-    }), errMsg => Effect$1.Effect.logError(errMsg)));
+      return Effect$1.logError(`SideEffectHandler.eventHandler: Invalid event ` + JSON.stringify(eventJson$p));
+    }), errMsg => Effect$1.logError(errMsg)));
   }));
   return {
     handleJsonEvents: handleJsonEvents

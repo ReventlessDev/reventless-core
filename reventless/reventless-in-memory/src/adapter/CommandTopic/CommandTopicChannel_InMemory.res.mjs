@@ -2,9 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Deferred from "effect/Deferred";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 
 function Make(Bus) {
@@ -37,18 +39,18 @@ function Make(Bus) {
     let publishJsons = async jsons => {
       await Promise.all(jsons.map(async cmdJson => await Bus.dispatchCommand(name, encodeMessage(cmdJson))));
     };
-    let publishJsonsStream = stream => Effect.Stream.runForEach(Stream.grouped(stream, 10), jsons => Effect.Effect.promise(() => publishJsons(jsons)));
+    let publishJsonsStream = stream => Stream$1.runForEach(Stream.grouped(stream, 10), jsons => Effect.promise(() => publishJsons(jsons)));
     let handleChannelEvent = handleCmds => Pulumi.output((fullBody, _ctx) => {
       let reference = decodeId(fullBody);
       let item = {
         command: fullBody,
         reference: reference
       };
-      return Effect.Effect.map(handleCmds(Effect.Stream.fromIterable([item])), param => {});
+      return Effect.map(handleCmds(Stream$1.fromIterable([item])), param => {});
     });
     let connect = (param, channel, runtime, param$1, param$2) => {
       Bus.registerCommandHandler(channel.parts.name, async (json, ctx) => {
-        let handler = await Effect.Effect.runPromise(Effect.Deferred.await(runtime.parts.handlerDeferred));
+        let handler = await Effect.runPromise(Deferred.await(runtime.parts.handlerDeferred));
         return await handler(json, ctx);
       });
       return [];

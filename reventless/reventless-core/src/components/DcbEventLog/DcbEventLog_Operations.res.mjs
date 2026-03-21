@@ -2,10 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
@@ -42,7 +43,7 @@ function Make(Spec) {
           let err = Primitive_exceptions.internalToException(raw_err);
           if (err.RE_EXN_ID === "JsExn") {
             let errMsg = Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "unknown");
-            return Effect.Effect.runSync(Effect.Effect.logError(`DcbEventLog(` + name + `): EventTopic.publish Error: ` + errMsg));
+            return Effect.runSync(Effect.logError(`DcbEventLog(` + name + `): EventTopic.publish Error: ` + errMsg));
           }
           throw err;
         }
@@ -68,8 +69,8 @@ function Make(Spec) {
         headPosition: rawResult.headPosition
       };
     };
-    let readStream = (query, after) => Effect.Stream.map(Ops.storage.readStream(query, after), decodeEvent);
-    let appendStream = (stream, condition) => Effect.Effect.flatMap(Stream.runCollect(Effect.Stream.map(stream, encodeEvent)), rawEvents => Effect.Effect.promise(() => Ops.storage.append(rawEvents, condition)));
+    let readStream = (query, after) => Stream$1.map(Ops.storage.readStream(query, after), decodeEvent);
+    let appendStream = (stream, condition) => Effect.flatMap(Stream.runCollect(Stream$1.map(stream, encodeEvent)), rawEvents => Effect.promise(() => Ops.storage.append(rawEvents, condition)));
     return {
       Spec: Spec,
       read: read,

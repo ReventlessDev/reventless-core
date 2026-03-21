@@ -11,21 +11,21 @@ Effect.sleep(Duration.seconds(5))
 type t
 
 /** Duration of `n` milliseconds. */
-@module("effect") @scope("Duration")
+@module("effect/Duration")
 external millis: int => t = "millis"
 
 /** Duration of `n` seconds. */
-@module("effect") @scope("Duration")
+@module("effect/Duration")
 external seconds: int => t = "seconds"
 
 /** Duration of `n` minutes. */
-@module("effect") @scope("Duration")
+@module("effect/Duration")
 external minutes: int => t = "minutes"
 
 /** Duration of `n` hours. */
-@module("effect") @scope("Duration")
+@module("effect/Duration")
 external hours: int => t = "hours"
 
 /** Duration of `n` days. */
-@module("effect") @scope("Duration")
+@module("effect/Duration")
 external days: int => t = "days"

@@ -2,11 +2,16 @@
 
 import * as Exit from "@reventlessdev/rescript-effect/src/Exit.res.mjs";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
-import * as Effect$1 from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Exit$1 from "effect/Exit";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Cause from "effect/Cause";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect$1 from "effect/Effect";
+import * as Stream from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Duration from "effect/Duration";
+import * as Schedule from "effect/Schedule";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
@@ -19,7 +24,7 @@ function isTransient(msg) {
   }
 }
 
-let storageRetrySchedule = Effect$1.Schedule.whileInput(Effect$1.Schedule.intersect(Effect$1.Schedule.jittered(Effect$1.Schedule.exponential(Effect$1.Duration.millis(100))), Effect$1.Schedule.recurs(5)), isTransient);
+let storageRetrySchedule = Schedule.whileInput(Schedule.intersect(Schedule.jittered(Schedule.exponential(Duration.millis(100))), Schedule.recurs(5)), isTransient);
 
 function Make(Spec) {
   return Ops => {
@@ -68,18 +73,18 @@ function Make(Spec) {
     let append = async (sequenceNr, id, events$p) => {
       let eventsJson = encodeEvents$p(events$p, id, sequenceNr);
       let idStr = Spec.Id.toString(id);
-      let storageEffect = Effect$1.Effect.retry(Effect$1.Effect.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "storage error"), () => Ops.storage.append(sequenceNr, idStr, eventsJson)), result => {
+      let storageEffect = Effect$1.retry(Effect$1.flatMap(Effect.tryPromise(err => Util_Error$ReventlessCore.messageFromUnknown(err, "storage error"), () => Ops.storage.append(sequenceNr, idStr, eventsJson)), result => {
         if (result.TAG === "Ok") {
-          return Effect$1.Effect.succeed();
+          return Effect$1.succeed();
         } else {
-          return Effect$1.Effect.fail(result._0);
+          return Effect$1.fail(result._0);
         }
       }), storageRetrySchedule);
-      let exit = await Effect$1.Effect.runPromiseExit(storageEffect);
-      if (Effect$1.Exit.isSuccess(exit)) {
+      let exit = await Effect$1.runPromiseExit(storageEffect);
+      if (Exit$1.isSuccess(exit)) {
         return await publishToEventTopic(id, events$p);
       }
-      let failMsg = Exit.match(exit, cause => Stdlib_Option.getOr(Effect$1.Cause.failures(cause)[0], "storage error"), () => "storage error");
+      let failMsg = Exit.match(exit, cause => Stdlib_Option.getOr(Cause.failures(cause)[0], "storage error"), () => "storage error");
       if (failMsg.includes("conflict")) {
         return {
           TAG: "Error",
@@ -126,8 +131,8 @@ function Make(Spec) {
       let id$1 = Spec.Id.toString(id);
       return eventsJson.map(json => decodeEvent(id$1, json));
     };
-    let replayStream = id => Effect$1.Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id)), json => Effect$1.Effect.sync(() => decodeEvent(Spec.Id.toString(id), json)));
-    let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Effect$1.Stream.map(stream, event => {
+    let replayStream = id => Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id)), json => Effect$1.sync(() => decodeEvent(Spec.Id.toString(id), json)));
+    let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Stream.map(stream, event => {
       let json = Message$ReventlessCore.encode(event, Spec.eventSchema);
       let match = Message$ReventlessCore.splitMessage(json);
       return Object.fromEntries([

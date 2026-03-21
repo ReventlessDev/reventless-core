@@ -2,8 +2,9 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect$1 from "effect";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Effect$1 from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
@@ -18,17 +19,17 @@ function putItemConditional(tableName, json) {
 }
 
 function putItemsSequentialConditional(tableName, jsons) {
-  return Stdlib_Array.reduce(jsons, Effect$1.Effect.succeed({
+  return Stdlib_Array.reduce(jsons, Effect$1.succeed({
     TAG: "Ok",
     _0: undefined
-  }), (acc, json) => Effect$1.Effect.flatMap(acc, result => {
+  }), (acc, json) => Effect$1.flatMap(acc, result => {
     if (result.TAG === "Ok") {
-      return Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, json)), param => ({
+      return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, json)), param => ({
         TAG: "Ok",
         _0: undefined
       }));
     } else {
-      return Effect$1.Effect.succeed(result);
+      return Effect$1.succeed(result);
     }
   }));
 }
@@ -44,7 +45,7 @@ function transactWriteConditional(tableName, jsons) {
   let input = {
     TransactItems: transactItems
   };
-  return Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
+  return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
     TAG: "Ok",
     _0: undefined
   }));
@@ -53,7 +54,7 @@ function transactWriteConditional(tableName, jsons) {
 function appendWithCondition(tableName, jsons) {
   let count = jsons.length;
   if (count === 1) {
-    return Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, jsons[0])), param => ({
+    return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, jsons[0])), param => ({
       TAG: "Ok",
       _0: undefined
     }));
@@ -65,10 +66,10 @@ function appendWithCondition(tableName, jsons) {
 }
 
 function append(table) {
-  return (_sequenceNr, _id, jsons) => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(appendWithCondition(table.name, jsons), err => {
+  return (_sequenceNr, _id, jsons) => Effect$1.runPromise(Effect$1.catchAll(appendWithCondition(table.name, jsons), err => {
     switch (err.TAG) {
       case "StaleState" :
-        return Effect$1.Effect.succeed({
+        return Effect$1.succeed({
           TAG: "Error",
           _0: "conflict"
         });
@@ -77,7 +78,7 @@ function append(table) {
         break;
     }
     let msg = DynamoDb_Error$ReventlessAws.message(err);
-    return Effect$1.Effect.succeed({
+    return Effect$1.succeed({
       TAG: "Error",
       _0: `DynamoDB conditional append failed: ` + msg
     });
@@ -85,7 +86,7 @@ function append(table) {
 }
 
 function replayStream(table) {
-  return id => Effect$1.Stream.catchAll(Util_DynamoDb_Runtime$ReventlessAws.queryStream({
+  return id => Stream$1.catchAll(Util_DynamoDb_Runtime$ReventlessAws.queryStream({
     TableName: table.name,
     ConsistentRead: true,
     ExpressionAttributeValues: Object.fromEntries([[
@@ -95,12 +96,12 @@ function replayStream(table) {
     KeyConditionExpression: "id=:id"
   }), err => {
     let msg = DynamoDb_Error$ReventlessAws.message(err);
-    return Effect$1.Stream.fromEffect(Effect$1.Effect.fail(msg));
+    return Stream$1.fromEffect(Effect$1.fail(msg));
   });
 }
 
 function replay(table) {
-  return id => Effect$1.Effect.runPromise(Effect$1.Effect.catchAll(Stream.runCollect(replayStream(table)(id)), msg => Effect$1.Effect.flatMap(Effect$1.Effect.logError(`Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.Effect.fail(msg))));
+  return id => Effect$1.runPromise(Effect$1.catchAll(Stream.runCollect(replayStream(table)(id)), msg => Effect$1.flatMap(Effect$1.logError(`Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.fail(msg))));
 }
 
 function appendStream(table) {
@@ -108,18 +109,18 @@ function appendStream(table) {
     let seqNrRef = {
       contents: startingSeqNr
     };
-    return Effect$1.Stream.runForEach(stream, json => Effect$1.Effect.catchAll(Effect$1.Effect.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(table.name, json)), param => {
+    return Stream$1.runForEach(stream, json => Effect$1.catchAll(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(table.name, json)), param => {
       seqNrRef.contents = seqNrRef.contents + 1 | 0;
     }), err => {
       switch (err.TAG) {
         case "StaleState" :
-          return Effect$1.Effect.fail("conflict");
+          return Effect$1.fail("conflict");
         case "Transient" :
         case "Permanent" :
           break;
       }
       let msg = DynamoDb_Error$ReventlessAws.message(err);
-      return Effect$1.Effect.fail(`DynamoDB appendStream error: ` + msg);
+      return Effect$1.fail(`DynamoDB appendStream error: ` + msg);
     }));
   };
 }

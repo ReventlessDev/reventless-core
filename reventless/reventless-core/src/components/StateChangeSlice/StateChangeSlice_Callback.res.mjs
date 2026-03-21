@@ -2,14 +2,15 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect from "effect";
+import * as Effect from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
 function Make(Spec) {
   let queryEventTypes = DcbTag$Reventless.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
   let handleSingleCommand = (dcbEventLog, command$p) => {
     let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
-    let attempt = retries => Effect.Effect.flatMap(Effect.Stream.runFold(dcbEventLog.readStream(query, undefined), [
+    let attempt = retries => Effect.flatMap(Stream$1.runFold(dcbEventLog.readStream(query, undefined), [
       Spec.initialDecisionModel,
       undefined
     ], (param, se) => [
@@ -20,7 +21,7 @@ function Make(Spec) {
       if (newEvents.TAG === "Ok") {
         let newEvents$1 = newEvents._0;
         if (newEvents$1.length === 0) {
-          return Effect.Effect.map(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): no events generated`), () => ({
+          return Effect.map(Effect.logInfo(`StateChangeSlice(` + Spec.name + `): no events generated`), () => ({
             TAG: "Ok",
             _0: "ok"
           }));
@@ -30,16 +31,16 @@ function Make(Spec) {
           query: query,
           after: condition_after
         };
-        return Effect.Effect.flatMap(Effect.Effect.promise(() => dcbEventLog.append(newEvents$1, condition)), appendResult => {
+        return Effect.flatMap(Effect.promise(() => dcbEventLog.append(newEvents$1, condition)), appendResult => {
           if (appendResult.TAG === "Ok") {
-            return Effect.Effect.map(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): ` + newEvents$1.length.toString() + ` event(s) appended`), () => ({
+            return Effect.map(Effect.logInfo(`StateChangeSlice(` + Spec.name + `): ` + newEvents$1.length.toString() + ` event(s) appended`), () => ({
               TAG: "Ok",
               _0: "ok"
             }));
           } else if (retries > 0) {
-            return Effect.Effect.flatMap(Effect.Effect.logInfo(`StateChangeSlice(` + Spec.name + `): conflict, retrying`), () => attempt(retries - 1 | 0));
+            return Effect.flatMap(Effect.logInfo(`StateChangeSlice(` + Spec.name + `): conflict, retrying`), () => attempt(retries - 1 | 0));
           } else {
-            return Effect.Effect.map(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`), () => ({
+            return Effect.map(Effect.logError(`StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`), () => ({
               TAG: "Error",
               _0: "conflict: retries exhausted"
             }));
@@ -47,16 +48,16 @@ function Make(Spec) {
         });
       }
       let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
-      return Effect.Effect.map(Effect.Effect.logError(`StateChangeSlice(` + Spec.name + `): decide error: ` + errorJson), () => ({
+      return Effect.map(Effect.logError(`StateChangeSlice(` + Spec.name + `): decide error: ` + errorJson), () => ({
         TAG: "Error",
         _0: errorJson
       }));
     });
     return attempt(3);
   };
-  let handleCommands = (dcbEventLog, stream) => Effect.Effect.zipRight(Effect.Effect.logInfo("starting StateChangeSlice.handleCommands"), Stream.runCollect(Effect.Stream.mapEffect(stream, param => {
+  let handleCommands = (dcbEventLog, stream) => Effect.zipRight(Effect.logInfo("starting StateChangeSlice.handleCommands"), Stream.runCollect(Stream$1.mapEffect(stream, param => {
     let reference = param.reference;
-    return Effect.Effect.map(handleSingleCommand(dcbEventLog, param.command), result => {
+    return Effect.map(handleSingleCommand(dcbEventLog, param.command), result => {
       if (result.TAG === "Ok") {
         return {
           TAG: "Ok",

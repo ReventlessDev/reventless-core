@@ -3,10 +3,12 @@
 import * as Uuid from "uuid";
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Effect$1 from "effect";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Queue from "effect/Queue";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect$1 from "effect/Effect";
+import * as Stream$1 from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
@@ -125,7 +127,7 @@ async function queryBySingleTag(table, tagKey, tagValue, after) {
     IndexName: queryParams_IndexName,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
-  return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
+  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
 async function queryByCompositeTags(table, tags, after) {
@@ -158,7 +160,7 @@ async function queryByCompositeTags(table, tags, after) {
     IndexName: queryParams_IndexName,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
-  return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
+  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
 async function scanWithFilter(table, eventTypes, after) {
@@ -190,7 +192,7 @@ async function scanWithFilter(table, eventTypes, after) {
     ExpressionAttributeValues: scanParams_ExpressionAttributeValues,
     FilterExpression: filterExpression
   };
-  return await Effect$1.Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
+  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
 }
 
 async function executeQueryItem(table, queryItem, after) {
@@ -223,9 +225,9 @@ function deduplicateByPosition(events) {
 }
 
 function initSlot(stream) {
-  return Effect$1.Effect.flatMap(Effect$1.Queue.bounded(1), queue => {
-    let producer = Effect$1.Effect.catchAll(Effect$1.Effect.ensuring(Effect$1.Stream.runForEach(stream, event => Effect$1.Effect.map(Effect$1.Queue.offer(queue, event), param => {})), Effect$1.Effect.map(Effect$1.Queue.offer(queue, undefined), param => {})), param => Effect$1.Effect.succeed());
-    return Effect$1.Effect.flatMap(Effect$1.Effect.fork(producer), param => Effect$1.Effect.map(Effect$1.Queue.take(queue), head => ({
+  return Effect$1.flatMap(Queue.bounded(1), queue => {
+    let producer = Effect$1.catchAll(Effect$1.ensuring(Stream$1.runForEach(stream, event => Effect$1.map(Queue.offer(queue, event), param => {})), Effect$1.map(Queue.offer(queue, undefined), param => {})), param => Effect$1.succeed());
+    return Effect$1.flatMap(Effect$1.fork(producer), param => Effect$1.map(Queue.take(queue), head => ({
       queue: queue,
       head: head
     })));
@@ -255,7 +257,7 @@ function dedupByPosition(stream) {
   let lastPos = {
     contents: undefined
   };
-  return Effect$1.Stream.filter(stream, event => {
+  return Stream$1.filter(stream, event => {
     let pos = lastPos.contents;
     if (pos !== undefined && pos === event.position) {
       return false;
@@ -267,19 +269,19 @@ function dedupByPosition(stream) {
 }
 
 function mergeSortedEvents(streams) {
-  return Effect$1.Stream.flatMap(Effect$1.Stream.fromEffect(Effect$1.Effect.all(streams.map(initSlot), {
+  return Stream$1.flatMap(Stream$1.fromEffect(Effect$1.all(streams.map(initSlot), {
     concurrency: "unbounded"
   })), initialSlots => Stream.paginateEffect(initialSlots, slots => {
     let idx = findMinSlotIdx(slots);
     if (idx === undefined) {
-      return Effect$1.Effect.succeed([
+      return Effect$1.succeed([
         [],
         undefined
       ]);
     }
     let slot = slots[idx];
     let emitEvent = Stdlib_Option.getOrThrow(slot.head, undefined);
-    return Effect$1.Effect.map(Effect$1.Queue.take(slot.queue), nextHead => {
+    return Effect$1.map(Queue.take(slot.queue), nextHead => {
       let newSlots = slots.map((s, i) => {
         if (i === idx) {
           return {
@@ -319,7 +321,7 @@ async function writeEventsWithPosition(table, events, basePosition) {
     let position = generatePositionForBatch(basePosition, idx);
     return toItem(position, event);
   });
-  return await Effect$1.Effect.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
+  return await Effect$1.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
 }
 
 function append(table) {
@@ -392,7 +394,7 @@ function queryBySingleTagStream(table, tagKey, tagValue, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -402,7 +404,7 @@ function queryBySingleTagStream(table, tagKey, tagValue, after) {
       params = baseParams;
     }
     return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
-  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.Effect.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
   ]));
@@ -438,7 +440,7 @@ function queryByCompositeTagsStream(table, tags, after) {
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -448,7 +450,7 @@ function queryByCompositeTagsStream(table, tags, after) {
       params = baseParams;
     }
     return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
-  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.Effect.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
   ]));
@@ -483,7 +485,7 @@ function scanWithFilterStream(table, eventTypes, after) {
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
     FilterExpression: filterExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.Effect.map(Effect$1.Effect.catchAll(Effect$1.Effect.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -493,7 +495,7 @@ function scanWithFilterStream(table, eventTypes, after) {
       params = baseParams;
     }
     return DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand(params));
-  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.Effect.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
   ]));
@@ -521,22 +523,22 @@ function readStream(table) {
     let streams = query.map(qi => executeQueryItemStream(table, qi, after));
     let match = streams.length;
     if (match === 0) {
-      return Effect$1.Stream.empty;
+      return Stream$1.empty;
     }
     if (match === 1) {
-      return Effect$1.Stream.map(streams[0], fromItem);
+      return Stream$1.map(streams[0], fromItem);
     }
     let hasScan = query.some(qi => qi.tags === undefined);
     if (hasScan) {
-      return Effect$1.Stream.flatMap(Effect$1.Stream.fromEffect(Effect$1.Effect.map(Effect$1.Effect.all(streams.map(Stream.runCollect), {
+      return Stream$1.flatMap(Stream$1.fromEffect(Effect$1.map(Effect$1.all(streams.map(Stream.runCollect), {
         concurrency: 3
       }), results => {
         let allItems = results.flat().map(fromItem);
         let deduped = deduplicateByPosition(allItems);
         return deduped.toSorted((a, b) => Primitive_string.compare(a.position, b.position));
-      })), events => Effect$1.Stream.fromIterable(events));
+      })), events => Stream$1.fromIterable(events));
     } else {
-      return dedupByPosition(mergeSortedEvents(streams.map(s => Effect$1.Stream.map(s, fromItem))));
+      return dedupByPosition(mergeSortedEvents(streams.map(s => Stream$1.map(s, fromItem))));
     }
   };
 }
