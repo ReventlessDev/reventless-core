@@ -60,12 +60,10 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
     let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
     let queue = channelParts.queue
 
-    let factoryModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointHandlerFactory.mjs",
-    )
-    let requestContextModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-    )
+    let factoryModulePath =
+      "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointHandlerFactory.mjs"
+    let requestContextModulePath =
+      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
     let name = commandTopicResource.name->ReventlessCore.ComponentType.nameOpt(
       ReventlessCore.CommandTopic.componentType,

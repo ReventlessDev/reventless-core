@@ -5,7 +5,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -138,7 +137,6 @@ function finish() {
       let opts = {
         parent: opts_parent
       };
-      let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs");
       let envVars = {};
       let handlerRegistrations = {
         contents: []
@@ -172,12 +170,11 @@ function finish() {
         }
         console.warn(`AggregateRuntime_Builder_Single: no bundled info registered for ` + spec.aggregateName);
       });
-      let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
       let entryPointCode = Util_EntryPoint$ReventlessAws.generateAggregateEntryPoint({
         name: "AllAggregates",
         handlers: handlerRegistrations.contents,
-        factoryModule: factoryModulePath,
-        requestContextModule: requestContextModulePath
+        factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs",
+        requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
       });
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint("AllAggregates", entryPointCode, envVars, match[1], match[2], opts);
       specs.forEach(param => {

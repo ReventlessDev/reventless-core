@@ -28,12 +28,10 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
 
   switch bundledCounterInfos->Dict.get(name) {
   | Some(info) =>
-    let factoryModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterHandlerFactory.mjs",
-    )
-    let requestContextModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-    )
+    let factoryModulePath =
+      "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterHandlerFactory.mjs"
+    let requestContextModulePath =
+      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 

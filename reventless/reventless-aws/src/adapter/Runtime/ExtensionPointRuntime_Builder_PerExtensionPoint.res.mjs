@@ -3,7 +3,6 @@
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
@@ -30,8 +29,6 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     let channel = commandTopic.channel;
     let channelParts = channel.parts;
     let queue = channelParts.queue;
-    let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointHandlerFactory.mjs");
-    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
     let name = ComponentType$ReventlessCore.nameOpt(commandTopicResource.__name, CommandTopic$ReventlessCore.componentType);
     let opts_parent = commandTopicResource;
     let opts = {
@@ -58,8 +55,8 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     let entryPointCode = Util_EntryPoint$ReventlessAws.generateExtensionPointEntryPoint({
       name: epName,
       handler: registration,
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath
+      factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointHandlerFactory.mjs",
+      requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
     });
     return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(name, entryPointCode, envVars, memorySize, timeout, opts));
   }

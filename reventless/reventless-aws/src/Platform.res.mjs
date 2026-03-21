@@ -18,7 +18,6 @@ import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/adm
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
-import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
@@ -358,8 +357,8 @@ function MakeWithConfig(Config) {
     cloner: Config.cloner
   });
   let corePkg = "@reventlessdev/reventless-core/src/admin";
-  let specModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginSpec.res.mjs");
-  let behaviorModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginBehavior.res.mjs");
+  let specModulePath = corePkg + "/PluginSpec.res.mjs";
+  let behaviorModulePath = corePkg + "/PluginBehavior.res.mjs";
   let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
@@ -389,8 +388,8 @@ function MakeWithConfig(Config) {
   let PluginReadModelMappings = {
     mappings: PluginProjection$ReventlessCore.mappings
   };
-  let specModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginReadModelSpec.res.mjs");
-  let mappingsModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginProjection.res.mjs");
+  let specModulePath$1 = corePkg + "/PluginReadModelSpec.res.mjs";
+  let mappingsModulePath = corePkg + "/PluginProjection.res.mjs";
   let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,
@@ -859,8 +858,8 @@ function Make($star) {
     cloner: false
   });
   let corePkg = "@reventlessdev/reventless-core/src/admin";
-  let specModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginSpec.res.mjs");
-  let behaviorModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginBehavior.res.mjs");
+  let specModulePath = corePkg + "/PluginSpec.res.mjs";
+  let behaviorModulePath = corePkg + "/PluginBehavior.res.mjs";
   let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
@@ -890,8 +889,8 @@ function Make($star) {
   let PluginReadModelMappings = {
     mappings: PluginProjection$ReventlessCore.mappings
   };
-  let specModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginReadModelSpec.res.mjs");
-  let mappingsModulePath = Util_Bundle$ReventlessAws.resolveModule(corePkg + "/PluginProjection.res.mjs");
+  let specModulePath$1 = corePkg + "/PluginReadModelSpec.res.mjs";
+  let mappingsModulePath = corePkg + "/PluginProjection.res.mjs";
   let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,

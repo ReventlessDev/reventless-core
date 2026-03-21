@@ -114,10 +114,9 @@ module Make = (C: Config) => {
         | Some(parent) =>
           let opts = {Pulumi.ComponentResource.parent: parent}
 
-          let factoryModulePath = Util_Bundle.resolveModule(C.factoryModulePath)
-          let requestContextModulePath = Util_Bundle.resolveModule(
-            "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-          )
+          let factoryModulePath = C.factoryModulePath
+          let requestContextModulePath =
+            "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
           let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
           let handlerRegistrations = ref([])

@@ -5,7 +5,6 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
@@ -145,10 +144,7 @@ function finish() {
   }
   let specs = Object.values(storedSpecs);
   if (specs.length !== 0) {
-    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
-    let commandTopicFactoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs");
-    let commandGeneratorFactoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/CommandGeneratorHandlerFactory.mjs");
-    let eventMapperFactoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperHandlerFactory.mjs");
+    let requestContextModulePath = "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
     specs.forEach(spec => {
       let info = bundledAggregateInfos[spec.aggregateName];
       if (info !== undefined) {
@@ -173,7 +169,7 @@ function finish() {
         let cmdTopicEntryPointCode = Util_EntryPoint$ReventlessAws.generateAggregateEntryPoint({
           name: spec.aggregateName + "CmdTopic",
           handlers: [cmdTopicRegistration],
-          factoryModule: commandTopicFactoryModulePath,
+          factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs",
           requestContextModule: requestContextModulePath
         });
         let cmdTopicName = baseName + "CmdTopic";
@@ -184,7 +180,7 @@ function finish() {
           cmdGenEnvVars["QUEUE_URL"] = spec.queueUrl;
           let cmdGenEntryPointCode = Util_EntryPoint$ReventlessAws.generateCommandGeneratorEntryPoint({
             name: spec.aggregateName + "CmdGen",
-            factoryModule: commandGeneratorFactoryModulePath,
+            factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/CommandGeneratorHandlerFactory.mjs",
             requestContextModule: requestContextModulePath,
             specModulePath: info.specModulePath,
             behaviorModulePath: info.behaviorModulePath,
@@ -204,7 +200,7 @@ function finish() {
           evtMapperEnvVars["QUEUE_URL"] = spec.queueUrl;
           let evtMapperEntryPointCode = Util_EntryPoint$ReventlessAws.generateEventMapperEntryPoint({
             name: spec.aggregateName + "EvtMapper",
-            factoryModule: eventMapperFactoryModulePath,
+            factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperHandlerFactory.mjs",
             requestContextModule: requestContextModulePath,
             targetSpecModulePath: info.specModulePath,
             mappingsModulePath: match$1,

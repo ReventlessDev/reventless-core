@@ -117,12 +117,10 @@ module Make = (
     let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
     let queue = channelParts.queue
 
-    let factoryModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorHandlerFactory.mjs",
-    )
-    let requestContextModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-    )
+    let factoryModulePath =
+      "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorHandlerFactory.mjs"
+    let requestContextModulePath =
+      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
     envVars->Dict.set("EC_QUEUE_URL", queue.id->Pulumi.Output.asInput)
@@ -201,9 +199,8 @@ module Make = (
       )
       let opts = {Pulumi.ComponentResource.parent: resource}
 
-      let factoryModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatHandlerFactory.mjs",
-      )
+      let factoryModulePath =
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatHandlerFactory.mjs"
 
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
       envVars->Dict.set("EP_QUEUE_URL", epQueueUrl->Pulumi.Output.asInput)
@@ -262,12 +259,10 @@ module Make = (
       let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
       let queue = channelParts.queue
 
-      let factoryModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicHandlerFactory.mjs",
-      )
-      let requestContextModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-      )
+      let factoryModulePath =
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicHandlerFactory.mjs"
+      let requestContextModulePath =
+        "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
       // Get DCB EventLog table name from the DcbEventLog resources (passed via dcbConfig)
       let dcbTableName = switch dcbConfig.dcbTableName {

@@ -178,21 +178,17 @@ let finish = () =>
   if !finished.contents {
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
-      let requestContextModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-      )
+      let requestContextModulePath =
+        "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
-      let commandTopicFactoryModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs",
-      )
+      let commandTopicFactoryModulePath =
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs"
 
-      let commandGeneratorFactoryModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/CommandGeneratorHandlerFactory.mjs",
-      )
+      let commandGeneratorFactoryModulePath =
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/CommandGeneratorHandlerFactory.mjs"
 
-      let eventMapperFactoryModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperHandlerFactory.mjs",
-      )
+      let eventMapperFactoryModulePath =
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperHandlerFactory.mjs"
 
       specs->Array.forEach(spec => {
         switch bundledAggregateInfos->Dict.get(spec.aggregateName) {

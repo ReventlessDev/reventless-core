@@ -54,12 +54,10 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
         ->Array.map(({urn}) => urn)
         ->Pulumi.Output.all
 
-      let factoryModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelHandlerFactory.mjs",
-      )
-      let requestContextModulePath = Util_Bundle.resolveModule(
-        "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-      )
+      let factoryModulePath =
+        "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelHandlerFactory.mjs"
+      let requestContextModulePath =
+        "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
       let name = eventCollectorResource.name->ReventlessCore.ComponentType.nameOpt(
         ReventlessCore.EventCollector.componentType,

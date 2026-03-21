@@ -4,7 +4,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
@@ -35,8 +34,6 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
   let info = bundledReadModelInfos[parentName];
   if (info !== undefined) {
     let sourceUrns = Pulumi.all(Component$ReventlessCore.outputs(eventCollector).resources.map(param => param.urn));
-    let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelHandlerFactory.mjs");
-    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
     let name = ComponentType$ReventlessCore.nameOpt(eventCollectorResource.__name, EventCollector$ReventlessCore.componentType);
     let opts_parent = eventCollectorResource;
     let opts = {
@@ -61,8 +58,8 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     let entryPointCode = Util_EntryPoint$ReventlessAws.generateReadModelEntryPoint({
       name: parentName,
       handlers: [registration],
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath
+      factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelHandlerFactory.mjs",
+      requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
     });
     let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(name, entryPointCode, envVars, memorySize, timeout, opts);
     EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(name, [{

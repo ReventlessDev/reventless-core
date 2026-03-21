@@ -5,7 +5,6 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
@@ -124,8 +123,6 @@ function finish() {
   }
   let specs = Object.values(storedSpecs);
   if (specs.length !== 0) {
-    let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs");
-    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
     specs.forEach(spec => {
       let info = bundledAggregateInfos[spec.aggregateName];
       if (info !== undefined) {
@@ -153,8 +150,8 @@ function finish() {
         let entryPointCode = Util_EntryPoint$ReventlessAws.generateAggregateEntryPoint({
           name: spec.aggregateName,
           handlers: [registration],
-          factoryModule: factoryModulePath,
-          requestContextModule: requestContextModulePath
+          factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs",
+          requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
         });
         let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(name, entryPointCode, envVars, spec.memorySize, spec.timeout, aggregateOpts);
         spec.connects.forEach(connect => connect(runtime));

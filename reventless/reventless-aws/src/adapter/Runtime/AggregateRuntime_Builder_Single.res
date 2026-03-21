@@ -181,9 +181,8 @@ let finish = () =>
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
 
-        let factoryModulePath = Util_Bundle.resolveModule(
-          "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs",
-        )
+        let factoryModulePath =
+          "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs"
 
         // Build env vars and handler registrations
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
@@ -220,9 +219,8 @@ let finish = () =>
           }
         })
 
-        let requestContextModulePath = Util_Bundle.resolveModule(
-          "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-        )
+        let requestContextModulePath =
+          "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
         let entryPointCode = Util_EntryPoint.generateAggregateEntryPoint({
           name: "AllAggregates",

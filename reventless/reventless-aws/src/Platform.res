@@ -521,7 +521,6 @@ module MakeWithConfig = (
 
   // Admin-internal Plugin aggregate — standalone component so the PluginExtensionPoint
   // can publish commands to it and its infrastructure appears in stack outputs.
-  let resolveModule = Util_Bundle.resolveModule
   let corePkg = "@reventlessdev/reventless-core/src/admin"
 
   // Use NoResolver variant — Plugin aggregate is internal (commands come via the
@@ -533,8 +532,8 @@ module MakeWithConfig = (
     ReventlessCore.PluginBehavior,
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
     {
-      let specModulePath = resolveModule(corePkg ++ "/PluginSpec.res.mjs")
-      let behaviorModulePath = resolveModule(corePkg ++ "/PluginBehavior.res.mjs")
+      let specModulePath = corePkg ++ "/PluginSpec.res.mjs"
+      let behaviorModulePath = corePkg ++ "/PluginBehavior.res.mjs"
     },
   )
 
@@ -553,8 +552,8 @@ module MakeWithConfig = (
     ReventlessCore.PluginReadModelSpec,
     PluginReadModelMappings,
     {
-      let specModulePath = resolveModule(corePkg ++ "/PluginReadModelSpec.res.mjs")
-      let mappingsModulePath = resolveModule(corePkg ++ "/PluginProjection.res.mjs")
+      let specModulePath = corePkg ++ "/PluginReadModelSpec.res.mjs"
+      let mappingsModulePath = corePkg ++ "/PluginProjection.res.mjs"
     },
   )
 

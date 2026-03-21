@@ -6,7 +6,6 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -65,8 +64,6 @@ function Make(C) {
         let opts = {
           parent: opts_parent
         };
-        let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule(C.factoryModulePath);
-        let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
         let envVars = {};
         let handlerRegistrations = {
           contents: []
@@ -97,7 +94,7 @@ function Make(C) {
           }
           console.warn(C.builderName + `: no bundled info registered for ` + spec.componentName);
         });
-        let entryPointCode = C.generateEntryPoint(C.name, handlerRegistrations.contents, factoryModulePath, requestContextModulePath);
+        let entryPointCode = C.generateEntryPoint(C.name, handlerRegistrations.contents, C.factoryModulePath, "@reventlessdev/reventless-core/src/RequestContext.res.mjs");
         let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(C.name, entryPointCode, envVars, match[0], match[1], opts);
         let channelSpecs = storedSpecs.map(param => param.channelSpec);
         EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(C.name, channelSpecs, runtime, opts);

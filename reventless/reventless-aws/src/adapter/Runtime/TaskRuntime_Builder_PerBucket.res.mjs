@@ -3,7 +3,6 @@
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
@@ -23,8 +22,6 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, task
   let fullName = Stdlib_Option.getOr(resource.__name, "UnnamedTask") + name;
   let info = bundledTaskBucketInfos[name];
   if (info !== undefined) {
-    let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/TaskHandlerFactory.mjs");
-    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
     let envVars = {};
     let publishToAggregatesEnvVars = {};
     Stdlib_Dict.forEachWithKey(info.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
@@ -35,8 +32,8 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, task
     let entryPointCode = Util_EntryPoint$ReventlessAws.generateTaskBucketEntryPoint({
       name: fullName,
       callbackModulePath: info.callbackModulePath,
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath,
+      factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskHandlerFactory.mjs",
+      requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
       publishToAggregatesEnvVars: publishToAggregatesEnvVars
     });
     return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(fullName, entryPointCode, envVars, memorySize, timeout, {

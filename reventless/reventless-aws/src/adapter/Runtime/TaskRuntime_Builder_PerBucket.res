@@ -31,12 +31,10 @@ let forBucketCallback = (
 
   switch bundledTaskBucketInfos->Dict.get(name) {
   | Some(info) =>
-    let factoryModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskHandlerFactory.mjs",
-    )
-    let requestContextModulePath = Util_Bundle.resolveModule(
-      "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-    )
+    let factoryModulePath =
+      "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskHandlerFactory.mjs"
+    let requestContextModulePath =
+      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
     let publishToAggregatesEnvVars: dict<string> = Dict.make()

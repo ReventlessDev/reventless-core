@@ -3,7 +3,6 @@
 import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
@@ -91,8 +90,6 @@ function Make(EventCollectorChannel) {
     let channel = eventCollector.channel;
     let channelParts = channel.parts;
     let queue = channelParts.queue;
-    let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorHandlerFactory.mjs");
-    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
     let envVars = {};
     envVars["EC_QUEUE_URL"] = queue.id;
     envVars["EP_EVENT_TOPIC_ARN"] = outputOrPlaceholder(config.eventTopicArn);
@@ -104,8 +101,8 @@ function Make(EventCollectorChannel) {
     envVars["CLONER_ENABLED"] = Pulumi.output(config.clonerEnabled ? "true" : "false");
     let entryPointCode = Util_EntryPoint$ReventlessAws.generateAdminEventCollectorEntryPoint({
       name: name,
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath,
+      factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorHandlerFactory.mjs",
+      requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
       queueUrlEnvVar: "EC_QUEUE_URL",
       eventTopicArnEnvVar: "EP_EVENT_TOPIC_ARN",
       pluginReadModelTableEnvVar: "PLUGIN_RM_TABLE",
@@ -134,14 +131,13 @@ function Make(EventCollectorChannel) {
       let opts = {
         parent: opts_parent
       };
-      let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatHandlerFactory.mjs");
       let envVars = {};
       envVars["EP_QUEUE_URL"] = epQueueUrl;
       envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
       envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
       let entryPointCode = Util_EntryPoint$ReventlessAws.generateHeartbeatEntryPoint({
         name: name,
-        factoryModule: factoryModulePath,
+        factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatHandlerFactory.mjs",
         epQueueUrlEnvVar: "EP_QUEUE_URL",
         pluginIdEnvVar: "PLUGIN_ID",
         timeoutEnvVar: "HEARTBEAT_TIMEOUT"
@@ -167,8 +163,6 @@ function Make(EventCollectorChannel) {
     let channel = dcbCommandTopic.channel;
     let channelParts = channel.parts;
     let queue = channelParts.queue;
-    let factoryModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicHandlerFactory.mjs");
-    let requestContextModulePath = Util_Bundle$ReventlessAws.resolveModule("@reventlessdev/reventless-core/src/RequestContext.res.mjs");
     let tableName = dcbConfig.dcbTableName;
     let dcbTableName = tableName !== undefined ? tableName : Pulumi.output("NOT_AVAILABLE");
     let envVars = {};
@@ -179,8 +173,8 @@ function Make(EventCollectorChannel) {
     }));
     let entryPointCode = Util_EntryPoint$ReventlessAws.generateDcbCommandTopicEntryPoint({
       name: name,
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath,
+      factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicHandlerFactory.mjs",
+      requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
       dcbTableEnvVar: "DCB_TABLE",
       queueUrlEnvVar: "QUEUE_URL",
       pluginName: dcbConfig.pluginName,
