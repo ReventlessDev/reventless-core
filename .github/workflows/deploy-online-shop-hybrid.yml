@@ -1,11 +1,11 @@
 # Deploy the online-shop-hybrid example to AWS.
 #
-# Runs after the Release workflow completes on alpha/main — this ensures
-# packages are published before Pulumi runs.
-#
-# The Lambda Layer ARN is read from .github/layer-arn.txt (committed by
-# build-lambda-layer.yml). If a layer build is in progress, the deploy
-# waits for it to complete before proceeding.
+# Triggered by:
+#   - Release completion   → deploys immediately UNLESS a layer build is in
+#     progress (in which case it skips — the layer build completion will
+#     trigger its own deploy with the fresh ARN).
+#   - Build Lambda Layer completion → always deploys with the new layer ARN.
+#   - Manual dispatch → always deploys.
 
 name: Deploy Online Shop Hybrid
 
@@ -22,61 +22,62 @@ permissions:
   actions: read
 
 jobs:
-  wait-for-layer:
-    name: Wait for Lambda Layer
+  gate:
+    name: Check deploy gate
     runs-on: ubuntu-latest
-    # Skip if the triggering workflow failed (but always run on manual dispatch)
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
       layer-arn: ${{ steps.read-arn.outputs.arn }}
     steps:
-      - name: Wait for in-progress layer builds
+      - name: Decide whether to deploy
+        id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # When triggered by Release, a layer build may have just been dispatched.
-          # When triggered by Build Lambda Layer, another build could be queued.
-          # Wait for any in-progress or queued "Build Lambda Layer" runs to finish.
-          MAX_WAIT=600  # 10 minutes
-          INTERVAL=15
-          WAITED=0
+          TRIGGER="${{ github.event.workflow_run.name }}"
 
-          while [ $WAITED -lt $MAX_WAIT ]; do
-            IN_PROGRESS=$(gh run list \
-              --repo "${{ github.repository }}" \
-              --workflow "Build Lambda Layer" \
-              --status in_progress \
-              --json databaseId \
-              --jq 'length')
-            QUEUED=$(gh run list \
-              --repo "${{ github.repository }}" \
-              --workflow "Build Lambda Layer" \
-              --status queued \
-              --json databaseId \
-              --jq 'length')
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual dispatch — deploying"
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-            ACTIVE=$((IN_PROGRESS + QUEUED))
-            if [ "$ACTIVE" -eq 0 ]; then
-              echo "No active layer builds — proceeding"
-              break
-            fi
+          if [[ "$TRIGGER" == "Build Lambda Layer" ]]; then
+            echo "Layer build completed — deploying"
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-            echo "Waiting for $ACTIVE layer build(s) to finish... (${WAITED}s elapsed)"
-            sleep $INTERVAL
-            WAITED=$((WAITED + INTERVAL))
-          done
+          # Triggered by Release — check if a layer build is active.
+          # If so, skip this deploy; the layer build completion will trigger one.
+          IN_PROGRESS=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow "Build Lambda Layer" \
+            --status in_progress \
+            --json databaseId --jq 'length')
+          QUEUED=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow "Build Lambda Layer" \
+            --status queued \
+            --json databaseId --jq 'length')
+          ACTIVE=$((IN_PROGRESS + QUEUED))
 
-          if [ $WAITED -ge $MAX_WAIT ]; then
-            echo "::warning::Timed out waiting for layer build after ${MAX_WAIT}s — deploying with current layer ARN"
+          if [ "$ACTIVE" -gt 0 ]; then
+            echo "Release triggered deploy, but $ACTIVE layer build(s) active — skipping (layer build will trigger deploy)"
+            echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Release triggered deploy, no active layer builds — deploying"
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Read latest layer ARN from repository
+        if: steps.check.outputs.should-deploy == 'true'
         id: read-arn
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # The layer build commits layer-arn.txt after github.sha was set,
-          # so fetch the file from the branch HEAD rather than the checkout.
+          # Fetch from branch HEAD to pick up any ARN committed after github.sha.
           BRANCH="${{ github.event.workflow_run.head_branch || github.ref_name }}"
           ARN=$(gh api "repos/${{ github.repository }}/contents/.github/layer-arn.txt?ref=${BRANCH}" \
             --jq '.content' | base64 -d | tr -d '[:space:]') || ARN=""
@@ -84,11 +85,12 @@ jobs:
           echo "Layer ARN: ${ARN:-(none)}"
 
   deploy:
-    needs: wait-for-layer
+    needs: gate
+    if: needs.gate.outputs.should-deploy == 'true'
     uses: ./.github/workflows/deploy-reventless-aws.yml
     with:
       manifest: examples/online-shop-hybrid/deploy-manifest.yaml
-      layer-arn: ${{ needs.wait-for-layer.outputs.layer-arn }}
+      layer-arn: ${{ needs.gate.outputs.layer-arn }}
     secrets:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
