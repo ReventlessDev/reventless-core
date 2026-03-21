@@ -73,7 +73,7 @@ function buildAndArchive(wrapperPath) {
     banner: {
       js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`,
     },
-    minify: true,
+    minify: false,
     sourcemap: false,
   });
 
