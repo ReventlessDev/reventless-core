@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@0.2.0-alpha.2...@reventlessdev/reventless-layer-builder@3.0.0-alpha.3) (2026-03-22)
+
+### Bug Fixes
+
+* **layer-builder:** fix CJS-via-ESM imports for pacote and treeverse ([03f92c4](https://github.com/ReventlessDev/reventless-core/commit/03f92c406735b117e701e009066db68b6024cfe4))
+* **layer-builder:** include @rescript/runtime in Lambda layer ([292db94](https://github.com/ReventlessDev/reventless-core/commit/292db9477d0d67a814915a995efe388035f1413c))
+* **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
+* **reventless-aws:** use package specifiers for layer-provided modules ([7fdf04b](https://github.com/ReventlessDev/reventless-core/commit/7fdf04b6757a7006d3e425c881212c15a932f469))
+* **reventless-layer-builder:** include [@smithy](https://github.com/smithy) in layer for ESM resolution ([ff7f4ab](https://github.com/ReventlessDev/reventless-core/commit/ff7f4ab4cbcd2fdd203432a48603ee766b662b9e))
+
+
 # [3.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@0.2.0-alpha.2...@reventlessdev/reventless-layer-builder@3.0.0-alpha.2) (2026-03-21)
 
 ### Bug Fixes

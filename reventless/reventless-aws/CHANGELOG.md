@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.19](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.17...@reventlessdev/reventless-aws@3.0.0-alpha.19) (2026-03-22)
+
+### Bug Fixes
+
+* **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
+* **reventless-aws:** use deep effect imports in hand-written handler factories ([7f42d25](https://github.com/ReventlessDev/reventless-core/commit/7f42d25884ddab90fa3e4217ba9ca7db7a664eb3))
+* **reventless-aws:** use namespace imports for effect deep paths ([11bedcf](https://github.com/ReventlessDev/reventless-core/commit/11bedcf48400e1be47deac6234680d2959c0b7e1))
+* **reventless-aws:** use package specifiers for layer-provided modules ([7fdf04b](https://github.com/ReventlessDev/reventless-core/commit/7fdf04b6757a7006d3e425c881212c15a932f469))
+* **reventless-layer-builder:** include [@smithy](https://github.com/smithy) in layer for ESM resolution ([ff7f4ab](https://github.com/ReventlessDev/reventless-core/commit/ff7f4ab4cbcd2fdd203432a48603ee766b662b9e))
+* feat(reventless-aws)!: replace esbuild pipeline with compiled ReScript entry points ([6cb3133](https://github.com/ReventlessDev/reventless-core/commit/6cb313323c73a078d0922fa6b977466f61de74ea))
+
+### BREAKING CHANGES
+
+* esbuild removed from dependencies, `makeBundled` and
+`makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
+`BundledEnvironment` module type removed from Runtime.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [3.0.0-alpha.18](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.17...@reventlessdev/reventless-aws@3.0.0-alpha.18) (2026-03-21)
 
 ### Bug Fixes

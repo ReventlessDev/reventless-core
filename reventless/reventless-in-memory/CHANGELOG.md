@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.14](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.12...@reventlessdev/reventless-in-memory@1.0.0-alpha.14) (2026-03-22)
+
+### Bug Fixes
+
+* **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
+* feat(reventless-aws)!: replace esbuild pipeline with compiled ReScript entry points ([6cb3133](https://github.com/ReventlessDev/reventless-core/commit/6cb313323c73a078d0922fa6b977466f61de74ea))
+
+### BREAKING CHANGES
+
+* esbuild removed from dependencies, `makeBundled` and
+`makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
+`BundledEnvironment` module type removed from Runtime.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [1.0.0-alpha.13](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.12...@reventlessdev/reventless-in-memory@1.0.0-alpha.13) (2026-03-21)
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Online Shop Hybrid example — Catalog plugin (Category aggregate + Product/ProductDemand DCB)",
   "private": true,
   "license": "MIT",
@@ -27,8 +27,8 @@
     }
   },
   "dependencies": {
-    "@reventlessdev/online-shop-hybrid-catalog-spec": "^1.0.0-alpha.1",
-    "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.1",
+    "@reventlessdev/online-shop-hybrid-catalog-spec": "^1.0.0-alpha.2",
+    "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.2",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*",
     "sury": "^11.0.0-alpha.4"

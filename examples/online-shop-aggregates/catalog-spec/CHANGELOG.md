@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.5...@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.6) (2026-03-22)
+
+* feat(reventless-aws)!: replace esbuild pipeline with compiled ReScript entry points ([6cb3133](https://github.com/ReventlessDev/reventless-core/commit/6cb313323c73a078d0922fa6b977466f61de74ea))
+
+### BREAKING CHANGES
+
+* esbuild removed from dependencies, `makeBundled` and
+`makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
+`BundledEnvironment` module type removed from Runtime.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [3.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.4...@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.5) (2026-03-12)
 
 ### Features
