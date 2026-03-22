@@ -19,6 +19,8 @@ module TestEPSpec = {
 
   @schema
   type directive = | DirectiveA
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -87,6 +89,8 @@ module TestMapping = {
 module TestMappings = {
   module Spec = TestEPSpec
   module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
+  let name = "TestMappings"
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(TestMapping)]
 }
 

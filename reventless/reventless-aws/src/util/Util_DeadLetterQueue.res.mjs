@@ -40,11 +40,13 @@ let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
 };`;
 
-let match = Util_Bundle$ReventlessAws.bundleEntryPoint(entryPointCode);
+let archiveContents = {};
 
-let sourceCodeHash = match.sourceCodeHash;
+archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(entryPointCode);
 
-let code = match.code;
+let code = new (Pulumi.asset.AssetArchive)(archiveContents);
+
+let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode);
 
 let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
 
@@ -143,6 +145,7 @@ export {
   opts,
   lambdaRole,
   entryPointCode,
+  archiveContents,
   code,
   sourceCodeHash,
   layers,

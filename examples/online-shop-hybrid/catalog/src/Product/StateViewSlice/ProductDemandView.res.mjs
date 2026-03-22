@@ -4,6 +4,8 @@ import * as S from "sury/src/S.res.mjs";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as CatalogEventLog$CatalogPlugin from "../../Plugin/CatalogEventLog.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
   name: s.m(S.string),
@@ -77,9 +79,10 @@ let eventSchema = CatalogEventLog$CatalogPlugin.eventSchema;
 
 export {
   name,
+  moduleUrl,
   DcbEventLogSpec,
   eventSchema,
   stateSchema,
   project,
 }
-/* stateSchema Not a pure module */
+/* moduleUrl Not a pure module */

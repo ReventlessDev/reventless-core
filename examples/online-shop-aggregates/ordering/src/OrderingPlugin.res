@@ -20,6 +20,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CustomerProjections: Projection.Mappings with module Target := CustomersReadModel = {
     module M = Projection.Mappings.Make(CustomersReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
   }
 
@@ -28,6 +29,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module OrderProjections: Projection.Mappings with module Target := OrdersReadModel = {
     module M = Projection.Mappings.Make(OrdersReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(OrdersProjections.OrderMapping)]
   }
 
@@ -44,6 +46,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     with module Target := AvailableProductsReadModel = {
     module M = Projection.Mappings.Make(AvailableProductsReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [
       module(AvailableProductsProjections.CatalogProductMapping),
     ]
@@ -64,6 +67,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     module type Mapping = ReventlessInfra.ExtensionMapping.T
       with module ExtensionPoint := CatalogSpec.ProductsExtensionPoint
     let name = "OrderingProducts"
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(ProductsProductMapping)]
   }
   module ProductsExtensionMaker = Platform.Extension.Make(
@@ -79,6 +83,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module OrdersEPMappings = {
     module Spec = OrderingSpec.OrdersExtensionPoint
     module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
+    let name = "OrdersEPMappings"
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(OrdersEPOrderMapping)]
   }
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(

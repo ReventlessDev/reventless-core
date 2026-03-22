@@ -111,6 +111,7 @@ source-to-target projections for a read model.
 module type Mappings = {
   module Target: Target // to be removed via destructive replace in functor call
   module type Mapping = Mapping with type targetState = Target.state
+  let moduleUrl: string
   let mappings: array<module(Mapping)>
 }
 

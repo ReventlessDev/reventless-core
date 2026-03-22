@@ -278,6 +278,7 @@ function Make(Spec) {
   };
   let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
     name: PluginExtensionPointSpec$ReventlessInfra.name,
+    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
     eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
     directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
@@ -287,7 +288,8 @@ function Make(Spec) {
       name: PluginSpec$ReventlessCore.name,
       eventSchema: PluginSpec$ReventlessCore.eventSchema,
       errorSchema: PluginSpec$ReventlessCore.errorSchema,
-      commandSchema: PluginSpec$ReventlessCore.commandSchema
+      commandSchema: PluginSpec$ReventlessCore.commandSchema,
+      moduleUrl: PluginSpec$ReventlessCore.moduleUrl
     },
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent

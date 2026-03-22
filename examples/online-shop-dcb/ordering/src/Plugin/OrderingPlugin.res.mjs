@@ -26,6 +26,7 @@ function Make(Platform) {
   let OrderingEventLogMaker = Platform.DcbEventLog.Make(OrderingEventLog$OrderingPlugin);
   let RegisterCustomerSlice = Platform.StateChangeSlice.Make({
     name: RegisterCustomer$OrderingPlugin.name,
+    moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
     initialDecisionModel: RegisterCustomer$OrderingPlugin.initialDecisionModel,
@@ -35,6 +36,7 @@ function Make(Platform) {
   });
   let ChangeEmailSlice = Platform.StateChangeSlice.Make({
     name: ChangeEmail$OrderingPlugin.name,
+    moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
     initialDecisionModel: ChangeEmail$OrderingPlugin.initialDecisionModel,
@@ -44,6 +46,7 @@ function Make(Platform) {
   });
   let ChangeAddressSlice = Platform.StateChangeSlice.Make({
     name: ChangeAddress$OrderingPlugin.name,
+    moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
     initialDecisionModel: ChangeAddress$OrderingPlugin.initialDecisionModel,
@@ -53,6 +56,7 @@ function Make(Platform) {
   });
   let DeactivateCustomerSlice = Platform.StateChangeSlice.Make({
     name: DeactivateCustomer$OrderingPlugin.name,
+    moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
     initialDecisionModel: DeactivateCustomer$OrderingPlugin.initialDecisionModel,
@@ -62,6 +66,7 @@ function Make(Platform) {
   });
   let CustomersViewSlice = Platform.StateViewSlice.Make({
     name: CustomersView$OrderingPlugin.name,
+    moduleUrl: CustomersView$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     eventSchema: CustomersView$OrderingPlugin.eventSchema,
     stateSchema: CustomersView$OrderingPlugin.stateSchema,
@@ -69,6 +74,7 @@ function Make(Platform) {
   });
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
+    moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     initialDecisionModel: PlaceOrder$OrderingPlugin.initialDecisionModel,
@@ -78,6 +84,7 @@ function Make(Platform) {
   });
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
+    moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     initialDecisionModel: ShipOrder$OrderingPlugin.initialDecisionModel,
@@ -87,6 +94,7 @@ function Make(Platform) {
   });
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
     name: CancelOrder$OrderingPlugin.name,
+    moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     initialDecisionModel: CancelOrder$OrderingPlugin.initialDecisionModel,
@@ -96,6 +104,7 @@ function Make(Platform) {
   });
   let AutoShipOrderSlice = Platform.AutomationSlice.Make({
     name: AutoShipOrder$OrderingPlugin.name,
+    moduleUrl: AutoShipOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
     commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
@@ -107,6 +116,7 @@ function Make(Platform) {
   });
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,
+    moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
     inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
@@ -117,6 +127,7 @@ function Make(Platform) {
   });
   let OrdersViewSlice = Platform.StateViewSlice.Make({
     name: OrdersView$OrderingPlugin.name,
+    moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     eventSchema: OrdersView$OrderingPlugin.eventSchema,
     stateSchema: OrdersView$OrderingPlugin.stateSchema,
@@ -124,6 +135,7 @@ function Make(Platform) {
   });
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
+    moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     initialDecisionModel: SyncCatalogProduct$OrderingPlugin.initialDecisionModel,
@@ -133,6 +145,7 @@ function Make(Platform) {
   });
   let AvailableProductsViewSlice = Platform.StateViewSlice.Make({
     name: AvailableProductsView$OrderingPlugin.name,
+    moduleUrl: AvailableProductsView$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     eventSchema: AvailableProductsView$OrderingPlugin.eventSchema,
     stateSchema: AvailableProductsView$OrderingPlugin.stateSchema,
@@ -145,20 +158,24 @@ function Make(Platform) {
       name: $$let.name,
       eventSchema: $$let.eventSchema,
       errorSchema: $$let.errorSchema,
-      commandSchema: $$let.commandSchema
+      commandSchema: $$let.commandSchema,
+      moduleUrl: $$let.moduleUrl
     },
     mapIncomingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
   });
   let name = "OrderingProducts";
+  let moduleUrl = import.meta.url;
   let mappings = [ProductsExtensionMapping];
   let ProductsExtensionMappings = {
     Spec: undefined,
     name: name,
+    moduleUrl: moduleUrl,
     mappings: mappings
   };
   let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPoint$CatalogSpec)({
     name: name,
+    moduleUrl: moduleUrl,
     mappings: mappings
   });
   let OrdersEPMappingT = ExtensionPointMapping$ReventlessInfra.Make(OrdersExtensionPoint$OrderingSpec)({
@@ -167,17 +184,24 @@ function Make(Platform) {
       name: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.name,
       eventSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.eventSchema,
       errorSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.errorSchema,
-      commandSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.commandSchema
+      commandSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.commandSchema,
+      moduleUrl: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.moduleUrl
     },
     mapIncomingCommand: OrdersExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });
+  let name$1 = "OrdersEPMappings";
+  let moduleUrl$1 = import.meta.url;
   let mappings$1 = [OrdersEPMappingT];
   let OrdersEPMappings = {
     Spec: undefined,
+    name: name$1,
+    moduleUrl: moduleUrl$1,
     mappings: mappings$1
   };
   let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPoint$OrderingSpec)({
+    name: name$1,
+    moduleUrl: moduleUrl$1,
     mappings: mappings$1
   });
   let stateChangeSlices = [

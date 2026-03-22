@@ -29,6 +29,7 @@ let translate = input => switch input.status {
 module type Spec = {
   /** Logical name of this inbound translation slice (used as a component prefix). */
   let name: string
+  let moduleUrl: string
 
   /** The DCB event log spec this slice publishes commands to. */
   module DcbEventLogSpec: DcbEventLog.Spec

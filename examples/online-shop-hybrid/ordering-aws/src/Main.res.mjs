@@ -4,6 +4,9 @@ import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi
 import * as OrderingPlugin_Aws from "./OrderingPlugin_Aws.res.mjs";
 import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+import * as PluginRuntime_Builder$ReventlessAws from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res.mjs";
+
+PluginRuntime_Builder$ReventlessAws.registerDcbConfig("Ordering", undefined, undefined, undefined);
 
 let Platform = Platform$ReventlessAws.Make({});
 
@@ -20,4 +23,4 @@ export {
   Ordering,
   $$default as default,
 }
-/* Platform Not a pure module */
+/*  Not a pure module */

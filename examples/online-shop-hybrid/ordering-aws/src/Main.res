@@ -1,5 +1,10 @@
 // Ordering plugin deployment — bundled variant.
 
+let _ = ReventlessAws.PluginRuntime_Builder.registerDcbConfig(
+  ~pluginName="Ordering",
+  (),
+)
+
 module Platform = ReventlessAws.Platform.Make()
 module Ordering = OrderingPlugin_Aws.Make(Platform)
 

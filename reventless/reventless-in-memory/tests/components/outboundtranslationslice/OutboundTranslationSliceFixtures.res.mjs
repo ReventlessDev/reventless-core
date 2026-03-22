@@ -20,6 +20,8 @@ let OrderEventLog = {
   eventSchema: eventSchema
 };
 
+let moduleUrl = import.meta.url;
+
 let outboundItemSchema = S.schema(s => ({
   orderId: s.m(S.string),
   email: s.m(S.string)
@@ -48,6 +50,7 @@ async function translate(_id, _item) {
 
 let SendTrackingEmailSpec = {
   name: "SendTrackingEmail",
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: undefined,
   outboundItemSchema: outboundItemSchema,
   inboundCommandSchema: S.unit,
@@ -56,6 +59,8 @@ let SendTrackingEmailSpec = {
   maxRetries: 3,
   heartbeatInterval: 60
 };
+
+let moduleUrl$1 = import.meta.url;
 
 let outboundItemSchema$1 = S.schema(s => ({
   orderId: s.m(S.string),
@@ -100,6 +105,7 @@ function translate$1(id, item) {
 
 let ProcessPaymentSpec = {
   name: "ProcessPayment",
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   outboundItemSchema: outboundItemSchema$1,
   inboundCommandSchema: inboundCommandSchema,

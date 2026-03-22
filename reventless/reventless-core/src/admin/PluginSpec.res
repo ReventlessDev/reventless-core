@@ -31,3 +31,5 @@ type error =
   | AlreadyConnected
   | IsDisconnected
   | IsInactive
+
+let moduleUrl: string = %raw(`import.meta.url`)

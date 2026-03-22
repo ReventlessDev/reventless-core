@@ -23,6 +23,8 @@ module CmdGenAggSpec = {
 
   @schema
   type error = | InvalidCommand
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -37,6 +39,8 @@ module CmdGenBehavior = {
     commandSchema: CmdGenAggSpec.commandSchema,
     fields: [],
   }
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let init = (_event: CmdGenAggSpec.event): state => ()
   let apply = (_state: state, _event: CmdGenAggSpec.event): state => ()

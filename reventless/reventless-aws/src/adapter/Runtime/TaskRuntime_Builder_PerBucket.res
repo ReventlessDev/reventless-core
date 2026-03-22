@@ -31,31 +31,60 @@ let forBucketCallback = (
 
   switch bundledTaskBucketInfos->Dict.get(name) {
   | Some(info) =>
-    let factoryModulePath =
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskHandlerFactory.mjs"
-    let requestContextModulePath =
-      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
-
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
-    let publishToAggregatesEnvVars: dict<string> = Dict.make()
 
+    // Build publishToAggregates env var mapping
+    let publishToAggregatesEnvVars: dict<string> = Dict.make()
     info.publishToAggregatesQueueUrls->Dict.forEachWithKey((queueUrlOutput, aggName) => {
       let envVar = `PUBLISH_${aggName}_QUEUE_URL`
       envVars->Dict.set(envVar, queueUrlOutput->Pulumi.Output.asInput)
       publishToAggregatesEnvVars->Dict.set(aggName, envVar)
     })
 
-    let entryPointCode = Util_EntryPoint.generateTaskBucketEntryPoint({
-      name: fullName,
-      callbackModulePath: info.callbackModulePath,
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath,
-      publishToAggregatesEnvVars,
+    // Build HANDLER_CONFIG JSON
+    let callbackModule =
+      info.callbackModulePath->JSON.stringifyAny->Option.getOr(`""`)
+    let publishToAggregatesJson =
+      publishToAggregatesEnvVars
+      ->Dict.toArray
+      ->Array.map(((aggName, envVar)) =>
+        `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar->JSON.stringifyAny->Option.getOr(`""`)}`
+      )
+      ->Array.join(",")
+
+    let handlerConfigJson =
+      `{"callbackModule":${callbackModule},"publishToAggregates":{${publishToAggregatesJson}}}`
+    envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Input.make)
+
+    // Build code asset
+    let packageDirs: dict<string> = Dict.make()
+    let pkg = Util_Bundle.extractPackageName(info.callbackModulePath)
+    packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
+
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.res.mjs";`
+
+    let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+    archiveContents->Dict.set(
+      "index.mjs",
+      Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+    )
+    packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+      archiveContents->Dict.set(
+        `node_modules/${pkgName}`,
+        Util_Bundle.createFilteredPackageArchive(pkgRoot)
+        ->Pulumi.Archive.archiveToAssetOrArchive,
+      )
     })
 
-    let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+    let code = Pulumi.Archive.assetArchive(archiveContents)
+    let sourceCodeHash = Util_Bundle.hashString(
+      reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+    )
+
+    let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name=fullName,
-      ~entryPointCode,
+      ~code,
+      ~sourceCodeHash,
       ~envVars,
       ~memorySize,
       ~timeout,

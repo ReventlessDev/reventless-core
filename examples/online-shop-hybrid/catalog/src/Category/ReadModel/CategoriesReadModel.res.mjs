@@ -9,6 +9,8 @@ let stateSchema = S.schema(s => ({
   archived: s.m(S.bool)
 }));
 
+let moduleUrl = import.meta.url;
+
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let Id;
@@ -21,6 +23,7 @@ export {
   Id,
   stateSchema,
   name,
+  moduleUrl,
   config,
   subIdConfig,
 }

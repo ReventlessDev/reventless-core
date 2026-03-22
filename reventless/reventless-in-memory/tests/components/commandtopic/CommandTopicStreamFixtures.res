@@ -14,6 +14,8 @@ module ItemSpec = {
 
   @schema
   type error = | AlreadyExists
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 module StreamBus = InMemory_Bus.Make()

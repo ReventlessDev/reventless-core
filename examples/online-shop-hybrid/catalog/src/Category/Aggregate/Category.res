@@ -23,3 +23,5 @@ type error =
   | CategoryAlreadyExists
   | CategoryNotFound
   | CategoryAlreadyArchived
+
+let moduleUrl: string = %raw(`import.meta.url`)

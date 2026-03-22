@@ -3,6 +3,8 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let commandSchema = S.schema(s => ({
   TAG: "AddProduct",
   productId: s.m(DcbTag$Reventless.string),
@@ -53,6 +55,7 @@ let initialDecisionModel = {
 
 export {
   name,
+  moduleUrl,
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
@@ -60,4 +63,4 @@ export {
   reduce,
   decide,
 }
-/* commandSchema Not a pure module */
+/* moduleUrl Not a pure module */

@@ -6,6 +6,7 @@ import * as InboundTranslationSliceFixtures$ReventlessInMemory from "./InboundTr
 
 let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make({
   name: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.name,
+  moduleUrl: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.moduleUrl,
   DcbEventLogSpec: InboundTranslationSliceFixtures$ReventlessInMemory.OrderEventLog,
   externalInputSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.externalInputSchema,
   commandSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.commandSchema,

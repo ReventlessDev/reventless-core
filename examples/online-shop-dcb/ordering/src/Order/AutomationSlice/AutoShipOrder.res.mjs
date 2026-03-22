@@ -3,6 +3,8 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let todoItemSchema = S.schema(s => ({
   orderId: s.m(S.string)
 }));
@@ -51,6 +53,7 @@ let heartbeatInterval = 60;
 
 export {
   name,
+  moduleUrl,
   DcbEventLogSpec,
   todoItemSchema,
   commandSchema,
@@ -60,4 +63,4 @@ export {
   maxRetries,
   heartbeatInterval,
 }
-/* todoItemSchema Not a pure module */
+/* moduleUrl Not a pure module */

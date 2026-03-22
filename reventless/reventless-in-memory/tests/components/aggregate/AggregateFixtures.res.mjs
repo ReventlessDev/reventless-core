@@ -21,12 +21,15 @@ let eventSchema = S.schema(s => ({
 
 let errorSchema = S.literal("AlreadyExists");
 
+let moduleUrl = import.meta.url;
+
 let ItemSpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  moduleUrl: moduleUrl
 };
 
 let resolverConfig_fields = [];
@@ -35,6 +38,8 @@ let resolverConfig = {
   commandSchema: commandSchema,
   fields: resolverConfig_fields
 };
+
+let moduleUrl$1 = import.meta.url;
 
 function init(_event) {
   return true;
@@ -64,7 +69,8 @@ let ItemBehavior = {
   init: init,
   apply: apply,
   create: create,
-  execute: execute
+  execute: execute,
+  moduleUrl: moduleUrl$1
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -86,7 +92,8 @@ let ItemAgg = ItemAggregateMaker.Make({
   name: name,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  moduleUrl: moduleUrl
 })(ItemBehavior)(NoEventMappings$ReventlessInfra.Make({
   name: name,
   Id: Id$Reventless.$$String,

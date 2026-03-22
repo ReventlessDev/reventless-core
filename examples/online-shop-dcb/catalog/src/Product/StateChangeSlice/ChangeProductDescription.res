@@ -5,6 +5,7 @@ open Reventless
 open CatalogEventLog
 
 let name = "ChangeProductDescription"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 module DcbEventLogSpec = CatalogEventLog
 

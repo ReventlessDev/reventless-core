@@ -13,6 +13,7 @@ open Reventless.Projection
 module ItemReadModelSpec = {
   module Id = Reventless.Id.String
   let name = "TestItemReadModel"
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
   type state = {name: string}
@@ -56,6 +57,7 @@ module ItemMapping = Mapping.Make(
 module ItemMappings: Mappings with module Target := ItemReadModelSpec = {
   module Mappings = Mappings.Make(ItemReadModelSpec)
   module type Mapping = Mappings.Mapping
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(ItemMapping)]
 }
 

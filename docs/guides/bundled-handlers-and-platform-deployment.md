@@ -80,8 +80,8 @@ Bundled handlers are an **AWS deployment concern**. They exist in Layer 3, in AW
 ```
 ┌─────────────────────────────────────────────────────┐
 │  CatalogPlugin.res (Layer 2 — platform-agnostic)    │
-│    Platform.Aggregate.Make(Category, ...)            │
-│    Platform.StateViewSlice.Make(ProductsView)        │
+│    Platform.Aggregate.Make(Category, ...)           │
+│    Platform.StateViewSlice.Make(ProductsView)       │
 └────────────────────┬────────────────────────────────┘
                      │ used by both:
     ┌────────────────┼────────────────────┐

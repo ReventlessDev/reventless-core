@@ -5,6 +5,7 @@ open Reventless.Projection
 open OrderingEventLog
 
 let name = "CustomersView"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 module DcbEventLogSpec = OrderingEventLog
 

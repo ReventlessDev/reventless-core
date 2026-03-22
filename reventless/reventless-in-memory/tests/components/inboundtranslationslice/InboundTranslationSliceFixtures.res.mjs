@@ -13,6 +13,8 @@ let OrderEventLog = {
   eventSchema: eventSchema
 };
 
+let moduleUrl = import.meta.url;
+
 let externalInputSchema = S.schema(s => ({
   paymentId: s.m(S.string),
   orderId: s.m(S.string),
@@ -49,6 +51,7 @@ function translate(input) {
 
 let PaymentWebhookSpec = {
   name: "PaymentWebhook",
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: undefined,
   externalInputSchema: externalInputSchema,
   commandSchema: commandSchema,

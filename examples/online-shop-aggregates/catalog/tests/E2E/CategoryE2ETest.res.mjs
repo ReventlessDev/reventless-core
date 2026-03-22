@@ -28,13 +28,15 @@ let CategoryAgg = AggregateMaker.Make({
   name: Category$CatalogPlugin.name,
   eventSchema: Category$CatalogPlugin.eventSchema,
   errorSchema: Category$CatalogPlugin.errorSchema,
-  commandSchema: Category$CatalogPlugin.commandSchema
+  commandSchema: Category$CatalogPlugin.commandSchema,
+  moduleUrl: Category$CatalogPlugin.moduleUrl
 })({
   resolverConfig: CategoryBehavior$CatalogPlugin.resolverConfig,
   init: CategoryBehavior$CatalogPlugin.init,
   apply: CategoryBehavior$CatalogPlugin.apply,
   create: CategoryBehavior$CatalogPlugin.create,
-  execute: CategoryBehavior$CatalogPlugin.execute
+  execute: CategoryBehavior$CatalogPlugin.execute,
+  moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Category$CatalogPlugin.name,
   Id: Id$Reventless.$$String,

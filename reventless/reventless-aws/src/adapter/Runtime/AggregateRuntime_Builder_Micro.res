@@ -178,18 +178,6 @@ let finish = () =>
   if !finished.contents {
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
-      let requestContextModulePath =
-        "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
-
-      let commandTopicFactoryModulePath =
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs"
-
-      let commandGeneratorFactoryModulePath =
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/CommandGeneratorHandlerFactory.mjs"
-
-      let eventMapperFactoryModulePath =
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperHandlerFactory.mjs"
-
       specs->Array.forEach(spec => {
         switch bundledAggregateInfos->Dict.get(spec.aggregateName) {
         | Some(info) =>
@@ -201,31 +189,53 @@ let finish = () =>
               ReventlessCore.Aggregate.componentType,
             )
 
+          // Collect user packages (shared by CmdTopic and CmdGen)
+          let packageDirs: dict<string> = Dict.make()
+          let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+          let behaviorPkg = Util_Bundle.extractPackageName(info.behaviorModulePath)
+          packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+          packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
+
+          let specModule =
+            info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let behaviorModule =
+            info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
+
+          let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.res.mjs";`
+
           // --- CommandTopic Lambda ---
+          let cmdTopicHandlerConfigOutput =
+            Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
+            ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
+              `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"}]}`
+            )
+
           let cmdTopicEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
-          cmdTopicEnvVars->Dict.set("HANDLER_0_TABLE", info.eventLogTableName->Pulumi.Output.asInput)
-          cmdTopicEnvVars->Dict.set("HANDLER_0_QUEUE_URL", spec.queueUrl->Pulumi.Output.asInput)
-          cmdTopicEnvVars->Dict.set("HANDLER_0_QUEUE_ARN", spec.queueArn->Pulumi.Output.asInput)
+          cmdTopicEnvVars->Dict.set("HANDLER_CONFIG", cmdTopicHandlerConfigOutput->Pulumi.Output.asInput)
 
-          let cmdTopicRegistration: Util_EntryPoint.aggregateHandlerRegistration = {
-            specModulePath: info.specModulePath,
-            behaviorModulePath: info.behaviorModulePath,
-            eventLogTableEnvVar: "HANDLER_0_TABLE",
-            queueUrlEnvVar: "HANDLER_0_QUEUE_URL",
-            queueArnEnvVar: "HANDLER_0_QUEUE_ARN",
-          }
-
-          let cmdTopicEntryPointCode = Util_EntryPoint.generateAggregateEntryPoint({
-            name: spec.aggregateName ++ "CmdTopic",
-            handlers: [cmdTopicRegistration],
-            factoryModule: commandTopicFactoryModulePath,
-            requestContextModule: requestContextModulePath,
+          let cmdTopicArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+          cmdTopicArchiveContents->Dict.set(
+            "index.mjs",
+            Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+          )
+          packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+            cmdTopicArchiveContents->Dict.set(
+              `node_modules/${pkgName}`,
+              Util_Bundle.createFilteredPackageArchive(pkgRoot)
+              ->Pulumi.Archive.archiveToAssetOrArchive,
+            )
           })
 
+          let cmdTopicCode = Pulumi.Archive.assetArchive(cmdTopicArchiveContents)
+          let cmdTopicSourceCodeHash = Util_Bundle.hashString(
+            reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+          )
+
           let cmdTopicName = baseName ++ "CmdTopic"
-          let cmdTopicRuntime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+          let cmdTopicRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
             ~name=cmdTopicName,
-            ~entryPointCode=cmdTopicEntryPointCode,
+            ~code=cmdTopicCode,
+            ~sourceCodeHash=cmdTopicSourceCodeHash,
             ~envVars=cmdTopicEnvVars,
             ~memorySize=Math.Int.max(spec.commandTopicMemorySize, 1024),
             ~timeout=Math.Int.max(spec.commandTopicTimeout, 30),
@@ -236,22 +246,38 @@ let finish = () =>
 
           // --- CommandGenerator Lambda ---
           if spec.commandGeneratorConnects->Array.length > 0 {
-            let cmdGenEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
-            cmdGenEnvVars->Dict.set("QUEUE_URL", spec.queueUrl->Pulumi.Output.asInput)
+            let cmdGenHandlerConfigOutput =
+              Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
+              ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
+                `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"}]}`
+              )
 
-            let cmdGenEntryPointCode = Util_EntryPoint.generateCommandGeneratorEntryPoint({
-              name: spec.aggregateName ++ "CmdGen",
-              factoryModule: commandGeneratorFactoryModulePath,
-              requestContextModule: requestContextModulePath,
-              specModulePath: info.specModulePath,
-              behaviorModulePath: info.behaviorModulePath,
-              queueUrlEnvVar: "QUEUE_URL",
+            let cmdGenEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
+            cmdGenEnvVars->Dict.set("HANDLER_CONFIG", cmdGenHandlerConfigOutput->Pulumi.Output.asInput)
+
+            let cmdGenArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+            cmdGenArchiveContents->Dict.set(
+              "index.mjs",
+              Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+            )
+            packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+              cmdGenArchiveContents->Dict.set(
+                `node_modules/${pkgName}`,
+                Util_Bundle.createFilteredPackageArchive(pkgRoot)
+                ->Pulumi.Archive.archiveToAssetOrArchive,
+              )
             })
 
+            let cmdGenCode = Pulumi.Archive.assetArchive(cmdGenArchiveContents)
+            let cmdGenSourceCodeHash = Util_Bundle.hashString(
+              reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+            )
+
             let cmdGenName = baseName ++ "CmdGen"
-            let cmdGenRuntime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+            let cmdGenRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
               ~name=cmdGenName,
-              ~entryPointCode=cmdGenEntryPointCode,
+              ~code=cmdGenCode,
+              ~sourceCodeHash=cmdGenSourceCodeHash,
               ~envVars=cmdGenEnvVars,
               ~memorySize=Math.Int.max(spec.commandGeneratorMemorySize, 1024),
               ~timeout=Math.Int.max(spec.commandGeneratorTimeout, 30),
@@ -267,21 +293,50 @@ let finish = () =>
           switch (spec.eventCollectorChannelSpec, info.mappingsModulePath) {
           | (Some(channelSpec), Some(mappingsModulePath)) =>
             let evtMapperEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
-            evtMapperEnvVars->Dict.set("QUEUE_URL", spec.queueUrl->Pulumi.Output.asInput)
 
-            let evtMapperEntryPointCode = Util_EntryPoint.generateEventMapperEntryPoint({
-              name: spec.aggregateName ++ "EvtMapper",
-              factoryModule: eventMapperFactoryModulePath,
-              requestContextModule: requestContextModulePath,
-              targetSpecModulePath: info.specModulePath,
-              mappingsModulePath,
-              queueUrlEnvVar: "QUEUE_URL",
+            let targetSpecModule =
+              info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let mappingsModuleJson =
+              mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
+
+            let handlerConfigJson =
+              spec.queueUrl
+              ->Pulumi.Output.apply(queueUrl =>
+                `{"targetSpecModule":${targetSpecModule},"mappingsModule":${mappingsModuleJson},"queueUrl":"${queueUrl}"}`
+              )
+            evtMapperEnvVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
+
+            let evtMapperPackageDirs: dict<string> = Dict.make()
+            let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+            let mappingsPkg = Util_Bundle.extractPackageName(mappingsModulePath)
+            evtMapperPackageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+            evtMapperPackageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
+
+            let evtMapperReExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.res.mjs";`
+
+            let evtMapperArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+            evtMapperArchiveContents->Dict.set(
+              "index.mjs",
+              Pulumi.Asset.stringAsset(evtMapperReExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+            )
+            evtMapperPackageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+              evtMapperArchiveContents->Dict.set(
+                `node_modules/${pkgName}`,
+                Util_Bundle.createFilteredPackageArchive(pkgRoot)
+                ->Pulumi.Archive.archiveToAssetOrArchive,
+              )
             })
 
+            let evtMapperCode = Pulumi.Archive.assetArchive(evtMapperArchiveContents)
+            let evtMapperSourceCodeHash = Util_Bundle.hashString(
+              evtMapperReExportCode ++ evtMapperPackageDirs->Dict.keysToArray->Array.join(","),
+            )
+
             let evtMapperName = baseName ++ "EvtMapper"
-            let evtMapperRuntime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+            let evtMapperRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
               ~name=evtMapperName,
-              ~entryPointCode=evtMapperEntryPointCode,
+              ~code=evtMapperCode,
+              ~sourceCodeHash=evtMapperSourceCodeHash,
               ~envVars=evtMapperEnvVars,
               ~memorySize=Math.Int.max(spec.eventCollectorMemorySize, 2048),
               ~timeout=Math.Int.max(spec.eventCollectorTimeout, 180),

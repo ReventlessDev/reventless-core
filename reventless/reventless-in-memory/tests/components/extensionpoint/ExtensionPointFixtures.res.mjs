@@ -14,6 +14,8 @@ let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
 TestRunner$ReventlessInMemory.setup();
 
+let name = "TestEP";
+
 let commandSchema = S.schema(s => ({
   TAG: "Forward",
   targetId: s.m(S.string)
@@ -23,14 +25,17 @@ let eventSchema = S.literal("TEPNoEvent");
 
 let directiveSchema = S.literal("TEPNoDirective");
 
+let moduleUrl = import.meta.url;
+
 let TestEPSpec = {
-  name: "TestEP",
+  name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  directiveSchema: directiveSchema
+  directiveSchema: directiveSchema,
+  moduleUrl: moduleUrl
 };
 
-let name = "TargetAgg";
+let name$1 = "TargetAgg";
 
 let commandSchema$1 = S.schema(s => ({
   TAG: "Execute",
@@ -44,12 +49,15 @@ let eventSchema$1 = S.schema(s => ({
 
 let errorSchema = S.literal("TEAggNoError");
 
+let moduleUrl$1 = import.meta.url;
+
 let TargetAggSpec = {
   Id: undefined,
-  name: name,
+  name: name$1,
   commandSchema: commandSchema$1,
   eventSchema: eventSchema$1,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  moduleUrl: moduleUrl$1
 };
 
 function mapIncomingCommand(_id, cmd, _meta) {
@@ -71,7 +79,13 @@ let ForwardMapping = {
   mapOutgoingEvent: undefined
 };
 
-let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make(TestEPSpec)({
+let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make({
+  name: name,
+  moduleUrl: moduleUrl,
+  commandSchema: commandSchema,
+  eventSchema: eventSchema,
+  directiveSchema: directiveSchema
+})({
   Aggregate: {
     Id: {
       schema: Id$Reventless.StringPure.schema,
@@ -80,25 +94,40 @@ let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make(TestEPSpec)({
       toString: prim => prim,
       cmp: Id$Reventless.StringPure.cmp
     },
-    name: name,
+    name: name$1,
     eventSchema: eventSchema$1,
     errorSchema: errorSchema,
-    commandSchema: commandSchema$1
+    commandSchema: commandSchema$1,
+    moduleUrl: moduleUrl$1
   },
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: undefined
 });
 
+let name$2 = "TestEPMappings";
+
+let moduleUrl$2 = import.meta.url;
+
 let mappings = [TestEPMapping1];
 
 let TestEPMappings = {
   Spec: undefined,
+  name: name$2,
+  moduleUrl: moduleUrl$2,
   mappings: mappings
 };
 
 let EPBuilderWithBus = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
 
-let TestEP = EPBuilderWithBus.Make(TestEPSpec)({
+let TestEP = EPBuilderWithBus.Make({
+  name: name,
+  moduleUrl: moduleUrl,
+  commandSchema: commandSchema,
+  eventSchema: eventSchema,
+  directiveSchema: directiveSchema
+})({
+  name: name$2,
+  moduleUrl: moduleUrl$2,
   mappings: mappings
 });
 

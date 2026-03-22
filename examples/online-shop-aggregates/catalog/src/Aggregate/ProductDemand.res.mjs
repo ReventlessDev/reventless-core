@@ -24,6 +24,8 @@ let eventSchema = S.union([
   }))
 ]);
 
+let moduleUrl = import.meta.url;
+
 let Id;
 
 let name = "ProductDemand";
@@ -36,5 +38,6 @@ export {
   commandSchema,
   eventSchema,
   errorSchema,
+  moduleUrl,
 }
 /* commandSchema Not a pure module */

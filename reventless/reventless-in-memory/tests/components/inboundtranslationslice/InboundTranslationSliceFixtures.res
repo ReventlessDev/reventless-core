@@ -16,6 +16,7 @@ module OrderEventLog = {
 
 module PaymentWebhookSpec = {
   let name = "PaymentWebhook"
+  let moduleUrl: string = %raw(`import.meta.url`)
   module DcbEventLogSpec = OrderEventLog
 
   @schema

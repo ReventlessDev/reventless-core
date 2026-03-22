@@ -38,6 +38,7 @@ let eventLog = OrderingEventLogMaker.make("Ordering", undefined);
 
 let RegisterCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: RegisterCustomer$OrderingPlugin.name,
+  moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
   initialDecisionModel: RegisterCustomer$OrderingPlugin.initialDecisionModel,
@@ -48,6 +49,7 @@ let RegisterCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ChangeEmailMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeEmail$OrderingPlugin.name,
+  moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
   initialDecisionModel: ChangeEmail$OrderingPlugin.initialDecisionModel,
@@ -58,6 +60,7 @@ let ChangeEmailMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ChangeAddressMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeAddress$OrderingPlugin.name,
+  moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
   initialDecisionModel: ChangeAddress$OrderingPlugin.initialDecisionModel,
@@ -68,6 +71,7 @@ let ChangeAddressMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let DeactivateCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: DeactivateCustomer$OrderingPlugin.name,
+  moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
   initialDecisionModel: DeactivateCustomer$OrderingPlugin.initialDecisionModel,
@@ -78,6 +82,7 @@ let DeactivateCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: PlaceOrder$OrderingPlugin.name,
+  moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
   initialDecisionModel: PlaceOrder$OrderingPlugin.initialDecisionModel,
@@ -88,6 +93,7 @@ let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ShipOrder$OrderingPlugin.name,
+  moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: ShipOrder$OrderingPlugin.errorSchema,
   initialDecisionModel: ShipOrder$OrderingPlugin.initialDecisionModel,
@@ -98,6 +104,7 @@ let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let CancelOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: CancelOrder$OrderingPlugin.name,
+  moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: CancelOrder$OrderingPlugin.errorSchema,
   initialDecisionModel: CancelOrder$OrderingPlugin.initialDecisionModel,

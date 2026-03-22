@@ -18,6 +18,7 @@ let Ops = QueryDb_Operations$ReventlessCore.Make({
     cmp: Id$Reventless.StringPure.cmp
   },
   name: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.name,
+  moduleUrl: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.moduleUrl,
   stateSchema: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.stateSchema,
   config: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.config,
   subIdConfig: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.subIdConfig

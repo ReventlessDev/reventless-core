@@ -2,8 +2,9 @@
 
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
-import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
+import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
 let bundledTaskBucketInfos = {};
@@ -29,14 +30,22 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, task
       envVars[envVar] = queueUrlOutput;
       publishToAggregatesEnvVars[aggName] = envVar;
     });
-    let entryPointCode = Util_EntryPoint$ReventlessAws.generateTaskBucketEntryPoint({
-      name: fullName,
-      callbackModulePath: info.callbackModulePath,
-      factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskHandlerFactory.mjs",
-      requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs",
-      publishToAggregatesEnvVars: publishToAggregatesEnvVars
+    let callbackModule = Stdlib_Option.getOr(JSON.stringify(info.callbackModulePath), `""`);
+    let publishToAggregatesJson = Object.entries(publishToAggregatesEnvVars).map(param => Stdlib_Option.getOr(JSON.stringify(param[0]), `""`) + `: ` + Stdlib_Option.getOr(JSON.stringify(param[1]), `""`)).join(",");
+    let handlerConfigJson = `{"callbackModule":` + callbackModule + `,"publishToAggregates":{` + publishToAggregatesJson + `}}`;
+    envVars["HANDLER_CONFIG"] = handlerConfigJson;
+    let packageDirs = {};
+    let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.callbackModulePath);
+    packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.res.mjs";`;
+    let archiveContents = {};
+    archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
+    Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
+      archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
     });
-    return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(fullName, entryPointCode, envVars, memorySize, timeout, {
+    let code = new (Pulumi.asset.AssetArchive)(archiveContents);
+    let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
+    return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(fullName, code, sourceCodeHash, envVars, memorySize, timeout, {
       parent: resource
     }));
   }
@@ -59,4 +68,4 @@ export {
   forBucketCallback,
   finish,
 }
-/* Component-ReventlessCore Not a pure module */
+/* @pulumi/pulumi Not a pure module */

@@ -27,6 +27,8 @@ aggregate-to-extension-point connections.
 module type Mappings = {
   module Spec: ExtensionPointMapping.Spec
   module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
+  let name: string
+  let moduleUrl: string
   let mappings: array<module(Mapping)>
 }
 

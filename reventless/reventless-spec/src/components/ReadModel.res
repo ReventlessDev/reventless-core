@@ -160,6 +160,7 @@ module type Spec = {
 
   /** Logical read model name, used as the DynamoDB table-name prefix. */
   let name: string
+  let moduleUrl: string
 
   /** The projected state type stored in the read model. Must carry `@schema`. */
   @schema

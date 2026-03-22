@@ -13,6 +13,7 @@ type state = {
 }
 
 let name = "Products"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 open Reventless.ReadModel
 let config = config()

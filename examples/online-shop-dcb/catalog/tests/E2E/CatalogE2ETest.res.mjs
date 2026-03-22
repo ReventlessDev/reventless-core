@@ -38,6 +38,7 @@ let eventLog = CatalogEventLogMaker.make("Catalog", undefined);
 
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,
+  moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: AddProduct$CatalogPlugin.errorSchema,
   initialDecisionModel: AddProduct$CatalogPlugin.initialDecisionModel,
@@ -48,6 +49,7 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductName$CatalogPlugin.name,
+  moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   initialDecisionModel: ChangeProductName$CatalogPlugin.initialDecisionModel,
@@ -58,6 +60,7 @@ let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ChangeProductDescriptionMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductDescription$CatalogPlugin.name,
+  moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
   initialDecisionModel: ChangeProductDescription$CatalogPlugin.initialDecisionModel,
@@ -68,6 +71,7 @@ let ChangeProductDescriptionMaker = StateChangeSlice_Builder$ReventlessInMemory.
 
 let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductPrice$CatalogPlugin.name,
+  moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   initialDecisionModel: ChangeProductPrice$CatalogPlugin.initialDecisionModel,
@@ -78,6 +82,7 @@ let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let AddCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddCategory$CatalogPlugin.name,
+  moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: AddCategory$CatalogPlugin.errorSchema,
   initialDecisionModel: AddCategory$CatalogPlugin.initialDecisionModel,
@@ -88,6 +93,7 @@ let AddCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let RenameCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: RenameCategory$CatalogPlugin.name,
+  moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: RenameCategory$CatalogPlugin.errorSchema,
   initialDecisionModel: RenameCategory$CatalogPlugin.initialDecisionModel,
@@ -98,6 +104,7 @@ let RenameCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ArchiveCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ArchiveCategory$CatalogPlugin.name,
+  moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
   initialDecisionModel: ArchiveCategory$CatalogPlugin.initialDecisionModel,

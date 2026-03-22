@@ -18,6 +18,8 @@ let resolverConfig = {
   fields: [],
 }
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 let init = event =>
   switch event {
   | Order.Placed({customerId, productIds}) => Placed({customerId, productIds})

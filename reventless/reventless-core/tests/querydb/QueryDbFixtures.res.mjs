@@ -8,6 +8,8 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 
 S.enableJson();
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   name: s.m(S.string),
   count: s.m(S.int)
@@ -18,6 +20,7 @@ let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 let ItemQueryDbSpec = {
   Id: undefined,
   name: "TestItemQueryDb",
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined

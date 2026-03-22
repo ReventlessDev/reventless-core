@@ -28,6 +28,7 @@ let project = (_, event) => switch event {
 module type Spec = {
   /** Logical name of this view slice (used as a DynamoDB table prefix). */
   let name: string
+  let moduleUrl: string
 
   /** The DCB event log spec this slice subscribes to. */
   module DcbEventLogSpec: DcbEventLog.Spec

@@ -18,6 +18,7 @@ module ItemEventLog = {
 
 module AddItemSpec = {
   let name = "AddItem"
+  let moduleUrl: string = %raw(`import.meta.url`)
   module DcbEventLogSpec = ItemEventLog
 
   @schema

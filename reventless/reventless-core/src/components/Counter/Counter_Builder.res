@@ -20,6 +20,7 @@ module Make = (
     module ReferencesSpec = {
       module Id = Reventless.Id.StringPure
       let name = name ++ "References"
+      let moduleUrl: string = %raw(`import.meta.url`)
       @schema
       type state = Counter_Operations.referencesState
 
@@ -36,6 +37,7 @@ module Make = (
     module CountsSpec = {
       module Id = Reventless.Id.StringPure
       let name = name ++ "Counts"
+      let moduleUrl: string = %raw(`import.meta.url`)
       @schema
       type state = Counter_Callback.countsState
 

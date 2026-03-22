@@ -17,6 +17,7 @@ module OrderEventLog = {
 
 module SendTrackingEmailSpec = {
   let name = "SendTrackingEmail"
+  let moduleUrl: string = %raw(`import.meta.url`)
   module DcbEventLogSpec = OrderEventLog
 
   @schema
@@ -43,6 +44,7 @@ module SendTrackingEmailSpec = {
 
 module ProcessPaymentSpec = {
   let name = "ProcessPayment"
+  let moduleUrl: string = %raw(`import.meta.url`)
   module DcbEventLogSpec = OrderEventLog
 
   @schema

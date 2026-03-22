@@ -6,6 +6,7 @@ import * as OutboundTranslationSliceFixtures$ReventlessInMemory from "./Outbound
 
 let FireForgetCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make({
   name: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.name,
+  moduleUrl: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.moduleUrl,
   DcbEventLogSpec: OutboundTranslationSliceFixtures$ReventlessInMemory.OrderEventLog,
   outboundItemSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.outboundItemSchema,
   inboundCommandSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.inboundCommandSchema,
@@ -17,6 +18,7 @@ let FireForgetCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make({
 
 let CommandBackCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make({
   name: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.name,
+  moduleUrl: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.moduleUrl,
   DcbEventLogSpec: OutboundTranslationSliceFixtures$ReventlessInMemory.OrderEventLog,
   outboundItemSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.outboundItemSchema,
   inboundCommandSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.inboundCommandSchema,

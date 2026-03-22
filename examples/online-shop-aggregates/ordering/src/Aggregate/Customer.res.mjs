@@ -42,6 +42,8 @@ let errorSchema = S.union([
   S.literal("CustomerAlreadyDeactivated")
 ]);
 
+let moduleUrl = import.meta.url;
+
 let Id;
 
 let name = "Customer";
@@ -52,5 +54,6 @@ export {
   commandSchema,
   eventSchema,
   errorSchema,
+  moduleUrl,
 }
 /* commandSchema Not a pure module */

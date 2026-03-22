@@ -33,7 +33,13 @@ let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
 };`
 
-let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleEntryPoint(entryPointCode)
+let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+archiveContents->Dict.set(
+  "index.mjs",
+  Pulumi.Asset.stringAsset(entryPointCode)->Pulumi.Archive.assetToAssetOrArchive,
+)
+let code = Pulumi.Archive.assetArchive(archiveContents)
+let sourceCodeHash = Util_Bundle.hashString(entryPointCode)
 
 let layers =
   Lambda.reventlessLayerArn

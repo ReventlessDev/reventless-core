@@ -108,7 +108,6 @@ module MakeWithConfig = (
     module Bundled = {
       module Make = (
         Spec: Reventless.StateViewSlice.Spec,
-        Config: ReventlessInfra.Platform.BundledSliceConfig,
       ): (
         ReventlessInfra.StateViewSlice.T
           with type dcbEvent = Spec.DcbEventLogSpec.event
@@ -126,7 +125,6 @@ module MakeWithConfig = (
     module Bundled = {
       module Make = (
         Spec: Reventless.AutomationSlice.Spec,
-        Config: ReventlessInfra.Platform.BundledSliceConfig,
       ): (
         ReventlessInfra.AutomationSlice.T
           with type dcbEvent = Spec.DcbEventLogSpec.event
@@ -144,7 +142,6 @@ module MakeWithConfig = (
     module Bundled = {
       module Make = (
         Spec: Reventless.OutboundTranslationSlice.Spec,
-        Config: ReventlessInfra.Platform.BundledSliceConfig,
       ): (
         ReventlessInfra.OutboundTranslationSlice.T
           with type dcbEvent = Spec.DcbEventLogSpec.event

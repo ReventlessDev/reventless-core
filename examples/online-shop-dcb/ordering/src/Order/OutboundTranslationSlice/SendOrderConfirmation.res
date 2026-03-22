@@ -5,6 +5,7 @@
 open OrderingEventLog
 
 let name = "SendOrderConfirmation"
+let moduleUrl: string = %raw(`import.meta.url`)
 module DcbEventLogSpec = OrderingEventLog
 
 @schema

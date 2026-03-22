@@ -1,10 +1,14 @@
-type bundle = {code: Pulumi.Archive.t, sourceCodeHash: string}
+@module("./Util_Bundle.mjs")
+external getModuleSpecifier: string => string = "getModuleSpecifier"
 
 @module("./Util_Bundle.mjs")
-external resolveModule: string => string = "resolveModule"
+external extractPackageName: string => string = "extractPackageName"
 
 @module("./Util_Bundle.mjs")
-external bundleHandler: (~entryPoint: string, ~exportName: string) => bundle = "bundleHandler"
+external resolvePackageRoot: string => string = "resolvePackageRoot"
 
 @module("./Util_Bundle.mjs")
-external bundleEntryPoint: string => bundle = "bundleEntryPoint"
+external hashString: string => string = "hashString"
+
+@module("./Util_Bundle.mjs")
+external createFilteredPackageArchive: string => Pulumi.Archive.t = "createFilteredPackageArchive"

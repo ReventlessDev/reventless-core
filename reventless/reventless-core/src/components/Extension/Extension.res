@@ -27,5 +27,6 @@ module type Mappings = {
   module Spec: ReventlessInfra.ExtensionMapping.Spec
   module type Mapping = ReventlessInfra.ExtensionMapping.T with module ExtensionPoint := Spec
   let name: string
+  let moduleUrl: string
   let mappings: array<module(Mapping)>
 }

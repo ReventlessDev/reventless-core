@@ -4,9 +4,6 @@
 
 open Reventless.Projection
 
-let resolveModule = ReventlessAws.Util_Bundle.resolveModule
-let catalogPkg = "@reventlessdev/online-shop-hybrid-catalog/src"
-
 // DCB config registered in index.mjs (before ReScript module init)
 
 module Make = (
@@ -19,20 +16,13 @@ module Make = (
     CatalogPlugin.Category,
     CatalogPlugin.CategoryBehavior,
     ReventlessInfra.NoEventMappings.Make(CatalogPlugin.Category),
-    {
-      let specModulePath = resolveModule(
-        catalogPkg ++ "/Category/Aggregate/Category.res.mjs",
-      )
-      let behaviorModulePath = resolveModule(
-        catalogPkg ++ "/Category/Aggregate/CategoryBehavior.res.mjs",
-      )
-    },
   )
 
   // ── Categories ReadModel (BUNDLED) ───────────────────────────
   module CategoryProjections: Mappings with module Target := CatalogPlugin.CategoriesReadModel = {
     module M = Mappings.Make(CatalogPlugin.CategoriesReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [
       module(CatalogPlugin.CategoriesProjections.CategoryMapping),
     ]
@@ -41,14 +31,6 @@ module Make = (
   module CategoryReadModel = ReventlessAws.ReadModel_Builder_Single.Make(
     CatalogPlugin.CategoriesReadModel,
     CategoryProjections,
-    {
-      let specModulePath = resolveModule(
-        catalogPkg ++ "/Category/ReadModel/CategoriesReadModel.res.mjs",
-      )
-      let mappingsModulePath = resolveModule(
-        catalogPkg ++ "/Category/ReadModel/CategoriesProjections.res.mjs",
-      )
-    },
   )
 
   // ── Product/ProductDemand DCB (standard — via Platform) ──────
@@ -64,18 +46,9 @@ module Make = (
     CatalogPlugin.RecordProductDemand,
   )
 
-  module ProductsViewSlice = Platform.StateViewSlice.Bundled.Make(CatalogPlugin.ProductsView, {
-    let specModulePath = resolveModule(
-      catalogPkg ++ "/Product/StateViewSlice/ProductsView.res.mjs",
-    )
-  })
+  module ProductsViewSlice = Platform.StateViewSlice.Bundled.Make(CatalogPlugin.ProductsView)
   module ProductDemandViewSlice = Platform.StateViewSlice.Bundled.Make(
     CatalogPlugin.ProductDemandView,
-    {
-      let specModulePath = resolveModule(
-        catalogPkg ++ "/Product/StateViewSlice/ProductDemandView.res.mjs",
-      )
-    },
   )
 
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(CatalogPlugin.ImportProduct)
@@ -88,19 +61,14 @@ module Make = (
   module ProductsEPMappings = {
     module Spec = CatalogSpec.ProductsExtensionPoint
     module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
+    let name = "ProductsEPMappings"
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
-  let catalogSpecPkg = "@reventlessdev/online-shop-hybrid-catalog-spec/src"
   module ProductsExtensionPointMaker = ReventlessAws.ExtensionPoint_Builder.Make(
     CatalogSpec.ProductsExtensionPoint,
     ProductsEPMappings,
     {
-      let specModulePath = resolveModule(
-        catalogSpecPkg ++ "/ProductsExtensionPoint.res.mjs",
-      )
-      let mappingsModulePath = resolveModule(
-        catalogPkg ++ "/ExtensionPoint/ProductsExtensionPointMapping.res.mjs",
-      )
       let publishToAggregatesQueueUrls = Dict.make()
     },
   )
@@ -115,6 +83,7 @@ module Make = (
     module type Mapping = ReventlessInfra.ExtensionMapping.T
       with module ExtensionPoint := Spec
     let name = "CatalogDemand"
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
   }
   module OrdersExtensionMaker = Platform.Extension.Make(

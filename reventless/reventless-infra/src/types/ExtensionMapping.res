@@ -83,6 +83,7 @@ against the extension point's command / event / directive types.
 */
 module type Spec = {
   let name: string
+  let moduleUrl: string
 
   @schema
   type command
@@ -141,6 +142,9 @@ module NoAggregate = {
 
   @schema
   type error = unit
+
+  let commandSchema = S.unit
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 open PluginExtensionPointSpec
@@ -179,6 +183,7 @@ module type Mappings = {
   module Spec: Spec
   module type Mapping = T with module ExtensionPoint := Spec
   let name: string
+  let moduleUrl: string
   let mappings: array<module(Mapping)>
 }
 

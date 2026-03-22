@@ -19,6 +19,8 @@ let OrderEventLog = {
   eventSchema: eventSchema
 };
 
+let moduleUrl = import.meta.url;
+
 let todoItemSchema = S.schema(s => ({
   orderId: s.m(S.string),
   address: s.m(S.string)
@@ -63,6 +65,7 @@ function process(id, _item) {
 
 let ShipOrderSpec = {
   name: "ShipOrder",
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: undefined,
   todoItemSchema: todoItemSchema,
   commandSchema: commandSchema,
@@ -72,6 +75,8 @@ let ShipOrderSpec = {
   maxRetries: 3,
   heartbeatInterval: 60
 };
+
+let moduleUrl$1 = import.meta.url;
 
 let todoItemSchema$1 = S.schema(s => ({
   orderId: s.m(S.string)
@@ -106,6 +111,7 @@ function process$1(_id, _item) {
 
 let SkipProcessSpec = {
   name: "SkipProcess",
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   todoItemSchema: todoItemSchema$1,
   commandSchema: commandSchema$1,

@@ -37,6 +37,7 @@ let capturedOrders: ref<array<(string, string)>> = ref([])
 
 module TestSideEffect = {
   module Source = TestSEHSource
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let execute = async (
     id: TestSEHSource.Id.t,

@@ -15,6 +15,8 @@ import * as ReadModel_Builder$ReventlessInMemory from "../../../src/components/R
 
 let name = "TestItemReadModel";
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
@@ -24,6 +26,7 @@ let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 let ItemReadModelSpec = {
   Id: undefined,
   name: name,
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined
@@ -73,9 +76,12 @@ Projection$Reventless.Mappings.Make({
   subIdConfig: undefined
 });
 
+let moduleUrl$1 = import.meta.url;
+
 let mappings = [ItemMapping];
 
 let ItemMappings = {
+  moduleUrl: moduleUrl$1,
   mappings: mappings
 };
 
@@ -115,6 +121,7 @@ let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
 let ItemReadModel = ReadModelMaker.Make({
   Id: Id$Reventless.$$String,
   name: name,
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined
@@ -170,4 +177,4 @@ export {
   publishItemCreated,
   loadState,
 }
-/* stateSchema Not a pure module */
+/* moduleUrl Not a pure module */

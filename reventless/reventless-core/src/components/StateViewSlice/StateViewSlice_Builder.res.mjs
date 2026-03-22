@@ -17,10 +17,12 @@ import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventC
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
     let Make = Spec => {
+      let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         name: Spec.name,
+        moduleUrl: moduleUrl,
         stateSchema: Spec.stateSchema,
         config: config,
         subIdConfig: undefined

@@ -36,6 +36,8 @@ let capturedOrders = {
   contents: []
 };
 
+let moduleUrl = import.meta.url;
+
 async function execute(id, _meta, event, _queryEngine) {
   capturedOrders.contents = capturedOrders.contents.concat([[
       id,
@@ -45,6 +47,7 @@ async function execute(id, _meta, event, _queryEngine) {
 
 let TestSideEffect = {
   Source: undefined,
+  moduleUrl: moduleUrl,
   execute: execute
 };
 
@@ -107,6 +110,7 @@ let sideEffects = [{
       },
       eventSchema: eventSchema
     },
+    moduleUrl: moduleUrl,
     execute: execute
   }];
 

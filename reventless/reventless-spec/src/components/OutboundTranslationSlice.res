@@ -39,6 +39,7 @@ let heartbeatInterval = 60
 module type Spec = {
   /** Logical name of this outbound translation slice (used as a component prefix). */
   let name: string
+  let moduleUrl: string
 
   /** The DCB event log spec this slice subscribes to. */
   module DcbEventLogSpec: DcbEventLog.Spec

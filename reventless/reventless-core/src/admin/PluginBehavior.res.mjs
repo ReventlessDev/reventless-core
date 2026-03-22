@@ -31,6 +31,8 @@ let resolverConfig = {
   fields: resolverConfig_fields
 };
 
+let moduleUrl = import.meta.url;
+
 function create(command, context, error) {
   if (typeof command !== "object" && command === "Heartbeat") {
     return ["UnknownPluginDetected"];
@@ -266,6 +268,7 @@ export {
   stateSchema,
   resolverConfig,
   atomicCounter,
+  moduleUrl,
   create,
   execute,
   init,

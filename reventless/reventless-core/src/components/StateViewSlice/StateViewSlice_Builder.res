@@ -25,6 +25,7 @@ module Make = (
     module SvQueryDbSpec = {
       module Id = Reventless.Id.String
       let name = Spec.name
+      let moduleUrl: string = %raw(`import.meta.url`)
       type state = Spec.state
       let stateSchema = Spec.stateSchema
       let config = Reventless.ReadModel.config()

@@ -8,6 +8,7 @@ module Id = Id.String
 type state = {productId: string, name: string, orderCount: int}
 
 let name = "ProductDemand"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 open Reventless.ReadModel
 let config = config()

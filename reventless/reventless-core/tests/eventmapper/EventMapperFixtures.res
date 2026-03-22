@@ -17,6 +17,8 @@ module SourceSpec = {
     | ItemCreated({name: string, price: float})
     | ItemPriceUpdated({newPrice: float})
     | ItemRemoved
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -83,6 +85,8 @@ module CmdSourceSpec = {
   type event =
     | OrderPlaced({orderId: string, amount: float})
     | OrderShipped({orderId: string})
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 module CmdTargetSpec = {
@@ -93,6 +97,8 @@ module CmdTargetSpec = {
   type command =
     | ProcessOrder({orderId: string, amount: float})
     | ShipOrder({orderId: string})
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // Publish mapping: OrderPlaced → ProcessOrder
@@ -139,6 +145,7 @@ module CountOrderMapping = {
 module OrderMappings: EventMapper.Mappings with module Target = CmdTargetSpec = {
   module Target = CmdTargetSpec
   module type Mapping = Reventless.EventMapping.T with module Target := CmdTargetSpec
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(OrderMapping)]
   let counter = None
 }
@@ -146,6 +153,7 @@ module OrderMappings: EventMapper.Mappings with module Target = CmdTargetSpec = 
 module CountOrderMappings: EventMapper.Mappings with module Target = CmdTargetSpec = {
   module Target = CmdTargetSpec
   module type Mapping = Reventless.EventMapping.T with module Target := CmdTargetSpec
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(CountOrderMapping)]
   let counter = None
 }

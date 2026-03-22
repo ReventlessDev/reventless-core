@@ -18,3 +18,5 @@ type event =
 
 @schema
 type error = unit
+
+let moduleUrl: string = %raw(`import.meta.url`)

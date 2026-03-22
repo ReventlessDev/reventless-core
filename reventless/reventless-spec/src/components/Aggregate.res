@@ -50,4 +50,8 @@ module type Spec = {
 
   /** Sury schema for the command type — generated automatically by `@schema`. */
   let commandSchema: S.t<command>
+
+  /** File URL of this module (`import.meta.url`). Used by AWS builders to derive
+      the npm specifier for runtime dynamic imports. */
+  let moduleUrl: string
 }

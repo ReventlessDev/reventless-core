@@ -29,6 +29,7 @@ module Make = (
     module AuditQueryDbSpec = {
       module Id = Reventless.Id.String
       let name = queryDbName
+      let moduleUrl: string = %raw(`import.meta.url`)
       type state = InboundTranslationSlice_Callback.auditRow
       let stateSchema = InboundTranslationSlice_Callback.auditRowSchema
       let config = Reventless.ReadModel.config()

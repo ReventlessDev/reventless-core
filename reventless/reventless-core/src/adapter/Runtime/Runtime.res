@@ -40,32 +40,6 @@ module type Environment = {
   let asEffectHandler: 'a => effectHandler<event, context, 'result, 'error>
 }
 
-type handlerRef = {
-  handlerModule: string,
-  handlerExport: string,
-}
-
-type bundledEnvironmentMaker<'parts> = (
-  ~name: string,
-  ~handlerRef: handlerRef,
-  ~envVars: dict<Pulumi.Input.t<string>>=?,
-  ~memorySize: int=?,
-  ~timeout: int=?,
-  ~opts: Pulumi.ComponentResource.options=?,
-) => environment<'parts>
-
-module type BundledEnvironment = {
-  type event
-  type context
-  type parts
-  let make: environmentMaker<event, context, 'result, parts>
-  let makeBundled: bundledEnvironmentMaker<parts>
-  let groupBySource: event => dict<event>
-  let extractCorrelationId: event => option<string>
-  let asEventHandler: 'a => eventHandler<event, context, 'result>
-  let asEffectHandler: 'a => effectHandler<event, context, 'result, 'error>
-}
-
 type connect<'parts> = (~runtime: environment<'parts>) => unit
 
 type forComponent<'handler, 'parts, 'component> = (

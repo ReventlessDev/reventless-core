@@ -14,7 +14,8 @@ let PluginTest = BehaviorTest$ReventlessCore.Make({
   init: PluginBehavior$ReventlessCore.init,
   apply: PluginBehavior$ReventlessCore.apply,
   create: PluginBehavior$ReventlessCore.create,
-  execute: PluginBehavior$ReventlessCore.execute
+  execute: PluginBehavior$ReventlessCore.execute,
+  moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
 });
 
 PluginTest.describe("PluginBehavior:", () => {

@@ -3,12 +3,15 @@
 import * as S from "sury/src/S.res.mjs";
 import * as SyncCatalogProduct$OrderingPlugin from "../CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let Aggregate = {
   name: SyncCatalogProduct$OrderingPlugin.name,
   Id: undefined,
   commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
   eventSchema: S.unit,
-  errorSchema: S.unit
+  errorSchema: S.unit,
+  moduleUrl: moduleUrl
 };
 
 function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
@@ -48,4 +51,4 @@ let ProductMapping = {
 export {
   ProductMapping,
 }
-/* S Not a pure module */
+/* moduleUrl Not a pure module */

@@ -6,6 +6,8 @@ import * as ExtensionPoint_Operations$ReventlessCore from "../../src/components/
 
 S.enableJson();
 
+let name = "OpsTestEP";
+
 let commandSchema = S.schema(s => ({
   TAG: "OpsEPCmd",
   id: s.m(S.string)
@@ -18,11 +20,14 @@ let eventSchema = S.schema(s => ({
 
 let directiveSchema = S.literal("OpsEPNoDirective");
 
+let moduleUrl = import.meta.url;
+
 let OpsEPSpec = {
-  name: "OpsTestEP",
+  name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  directiveSchema: directiveSchema
+  directiveSchema: directiveSchema,
+  moduleUrl: moduleUrl
 };
 
 let capturedPublished = {
@@ -107,6 +112,8 @@ let TestAsyncMapping = {
   mapOutgoingEvent: mapOutgoingEvent$2
 };
 
+let moduleUrl$1 = import.meta.url;
+
 let mappings = [
   {
     aggregateName: aggregateName,
@@ -127,6 +134,8 @@ let mappings = [
 
 let TestOpsMappings = {
   Spec: undefined,
+  name: "TestOpsMappings",
+  moduleUrl: moduleUrl$1,
   mappings: mappings
 };
 
@@ -187,7 +196,13 @@ let TestOps = {
   resourceNaming: resourceNaming
 };
 
-let EpOps = ExtensionPoint_Operations$ReventlessCore.Make(OpsEPSpec)({
+let EpOps = ExtensionPoint_Operations$ReventlessCore.Make({
+  name: name,
+  moduleUrl: moduleUrl,
+  commandSchema: commandSchema,
+  eventSchema: eventSchema,
+  directiveSchema: directiveSchema
+})({
   mappings: mappings
 })(TestOps);
 

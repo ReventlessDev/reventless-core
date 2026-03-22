@@ -19,3 +19,5 @@ type event =
 
 @schema
 type error = unit // always succeeds — sync is idempotent
+
+let moduleUrl: string = %raw(`import.meta.url`)

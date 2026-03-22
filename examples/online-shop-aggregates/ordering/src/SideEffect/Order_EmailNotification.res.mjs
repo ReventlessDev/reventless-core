@@ -4,6 +4,8 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Order$OrderingPlugin from "../Aggregate/Order.res.mjs";
 import * as EmailService$OrderingPlugin from "../Service/EmailService.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let Source = {
   name: Order$OrderingPlugin.name,
   Id: undefined,
@@ -19,7 +21,8 @@ async function execute(orderId, _meta, event, _queryEngine) {
 }
 
 export {
+  moduleUrl,
   Source,
   execute,
 }
-/* Id-Reventless Not a pure module */
+/* moduleUrl Not a pure module */

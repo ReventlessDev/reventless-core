@@ -3,12 +3,15 @@
 import * as S from "sury/src/S.res.mjs";
 import * as OrderingEventLog$OrderingPlugin from "../Plugin/OrderingEventLog.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let Aggregate = {
   name: "OrderingEventLog",
   Id: undefined,
-  commandSchema: S.unit,
   eventSchema: OrderingEventLog$OrderingPlugin.eventSchema,
-  errorSchema: S.unit
+  errorSchema: S.unit,
+  commandSchema: S.unit,
+  moduleUrl: moduleUrl
 };
 
 function mapIncomingCommand(_id, _command, _meta) {
@@ -54,4 +57,4 @@ export {
   mapIncomingCommand,
   mapOutgoingEvent,
 }
-/* S Not a pure module */
+/* moduleUrl Not a pure module */

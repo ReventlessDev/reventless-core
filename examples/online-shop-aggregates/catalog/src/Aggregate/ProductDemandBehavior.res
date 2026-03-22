@@ -11,6 +11,8 @@ type state = {recordedOrderIds: array<string>}
 
 let resolverConfig = {Behavior.commandSchema, fields: []}
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 let init = event =>
   switch event {
   | Recorded({orderId}) => {recordedOrderIds: [orderId]}

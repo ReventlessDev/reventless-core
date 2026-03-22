@@ -5,9 +5,7 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
 module AggregateRuntimeBuilder = AggregateRuntime_Builder_Micro
 
-module type Config = {
-  let specModulePath: string
-  let behaviorModulePath: string
+module type MappingsConfig = {
   let mappingsModulePath: option<string>
 }
 
@@ -15,7 +13,7 @@ module Make = (
   Spec: Reventless.Aggregate.Spec,
   Behavior: Reventless.Behavior.T with module Spec := Spec,
   EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
-  Config: Config,
+  MappingsConfig: MappingsConfig,
 ): (
   ReventlessInfra.Aggregate.T
     with type api = CommandGeneratorResolvers.api
@@ -49,10 +47,10 @@ module Make = (
 
     AggregateRuntimeBuilder.registerAggregate(
       ~aggregateName=Spec.name,
-      ~specModulePath=Config.specModulePath,
-      ~behaviorModulePath=Config.behaviorModulePath,
+      ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+      ~behaviorModulePath=Util_Bundle.getModuleSpecifier(Behavior.moduleUrl),
       ~eventLogTableName,
-      ~mappingsModulePath=?Config.mappingsModulePath,
+      ~mappingsModulePath=?MappingsConfig.mappingsModulePath,
     )
 
     aggregate

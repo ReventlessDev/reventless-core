@@ -2,21 +2,31 @@
 
 import * as Util_BundleMjs from "./Util_Bundle.mjs";
 
-function resolveModule(prim) {
-  return Util_BundleMjs.resolveModule(prim);
+function getModuleSpecifier(prim) {
+  return Util_BundleMjs.getModuleSpecifier(prim);
 }
 
-function bundleHandler(prim0, prim1) {
-  return Util_BundleMjs.bundleHandler(prim0, prim1);
+function extractPackageName(prim) {
+  return Util_BundleMjs.extractPackageName(prim);
 }
 
-function bundleEntryPoint(prim) {
-  return Util_BundleMjs.bundleEntryPoint(prim);
+function resolvePackageRoot(prim) {
+  return Util_BundleMjs.resolvePackageRoot(prim);
+}
+
+function hashString(prim) {
+  return Util_BundleMjs.hashString(prim);
+}
+
+function createFilteredPackageArchive(prim) {
+  return Util_BundleMjs.createFilteredPackageArchive(prim);
 }
 
 export {
-  resolveModule,
-  bundleHandler,
-  bundleEntryPoint,
+  getModuleSpecifier,
+  extractPackageName,
+  resolvePackageRoot,
+  hashString,
+  createFilteredPackageArchive,
 }
 /* ./Util_Bundle.mjs Not a pure module */

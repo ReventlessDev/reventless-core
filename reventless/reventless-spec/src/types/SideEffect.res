@@ -32,6 +32,7 @@ module NotifyOnCategoryAdded: SideEffect.T = {
 */
 module type T = {
   module Source: Source
+  let moduleUrl: string
   /**
   Called once for each event emitted by `Source`.
 

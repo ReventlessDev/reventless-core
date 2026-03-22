@@ -35,6 +35,7 @@ type objectEvent = {
 
 module TestCommandSpec = {
   let name = "TestStateChangeSlice"
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   module DcbEventLogSpec = TestEventLogSpec
 

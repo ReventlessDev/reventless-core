@@ -13,6 +13,8 @@ module Aggregate = {
   @schema type command = unit
   @schema type event = CatalogEventLog.event
   @schema type error = unit
+  let commandSchema = S.unit
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []

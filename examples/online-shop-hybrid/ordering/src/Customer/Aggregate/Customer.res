@@ -25,3 +25,5 @@ type error =
   | CustomerAlreadyRegistered
   | CustomerNotFound
   | CustomerAlreadyDeactivated
+
+let moduleUrl: string = %raw(`import.meta.url`)

@@ -5,6 +5,7 @@ open Reventless
 open CatalogEventLog
 
 let name = "AddCategory"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 module DcbEventLogSpec = CatalogEventLog
 

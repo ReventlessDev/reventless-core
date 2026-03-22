@@ -33,6 +33,8 @@ let executeCallCount = {
   contents: 0
 };
 
+let moduleUrl = import.meta.url;
+
 async function execute(id, _meta, event, _queryEngine) {
   executeCallCount.contents = executeCallCount.contents + 1 | 0;
   if (executeThrowOnCall.contents > 0 && executeCallCount.contents === executeThrowOnCall.contents) {
@@ -58,6 +60,7 @@ let TestSideEffect_Source = {
 
 let TestSideEffect = {
   Source: TestSideEffect_Source,
+  moduleUrl: moduleUrl,
   execute: execute
 };
 

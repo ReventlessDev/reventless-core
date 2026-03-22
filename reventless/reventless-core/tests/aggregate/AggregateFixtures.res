@@ -22,6 +22,8 @@ module AggSpec = {
   type error =
     | AlreadyExists
     | NotFound
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -36,6 +38,8 @@ module TestBehavior = {
     commandSchema: AggSpec.commandSchema,
     fields: ["name"],
   }
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let init = (event: AggSpec.event): state =>
     switch event {

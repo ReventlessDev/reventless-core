@@ -3,6 +3,8 @@
 import * as S from "sury/src/S.res.mjs";
 import * as CatalogEventLog$CatalogPlugin from "../../Plugin/CatalogEventLog.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   categoryId: s.m(S.string),
   name: s.m(S.string),
@@ -56,9 +58,10 @@ let eventSchema = CatalogEventLog$CatalogPlugin.eventSchema;
 
 export {
   name,
+  moduleUrl,
   DcbEventLogSpec,
   eventSchema,
   stateSchema,
   project,
 }
-/* stateSchema Not a pure module */
+/* moduleUrl Not a pure module */

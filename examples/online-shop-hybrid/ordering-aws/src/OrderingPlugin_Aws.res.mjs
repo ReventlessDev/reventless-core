@@ -6,7 +6,6 @@ import * as Customer$OrderingPlugin from "@reventlessdev/online-shop-hybrid-orde
 import * as ShipOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/ShipOrder.res.mjs";
 import * as OrdersView$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateViewSlice/OrdersView.res.mjs";
 import * as PlaceOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/PlaceOrder.res.mjs";
-import * as Util_Bundle$ReventlessAws from "@reventlessdev/reventless-aws/src/util/Util_Bundle.res.mjs";
 import * as CancelOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/CancelOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as CustomerBehavior$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/Aggregate/CustomerBehavior.res.mjs";
@@ -27,56 +26,50 @@ import * as Aggregate_Builder_Single$ReventlessAws from "@reventlessdev/reventle
 import * as ReadModel_Builder_Single$ReventlessAws from "@reventlessdev/reventless-aws/src/components/ReadModel_Builder_Single.res.mjs";
 import * as OrdersExtensionPointMapping$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
 
-let orderingPkg = "@reventlessdev/online-shop-hybrid-ordering/src";
-
 function Make(Platform) {
-  let specModulePath = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/Customer/Aggregate/Customer.res.mjs");
-  let behaviorModulePath = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/Customer/Aggregate/CustomerBehavior.res.mjs");
   let CustomerAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: Customer$OrderingPlugin.name,
     eventSchema: Customer$OrderingPlugin.eventSchema,
     errorSchema: Customer$OrderingPlugin.errorSchema,
-    commandSchema: Customer$OrderingPlugin.commandSchema
+    commandSchema: Customer$OrderingPlugin.commandSchema,
+    moduleUrl: Customer$OrderingPlugin.moduleUrl
   })({
     resolverConfig: CustomerBehavior$OrderingPlugin.resolverConfig,
     init: CustomerBehavior$OrderingPlugin.init,
     apply: CustomerBehavior$OrderingPlugin.apply,
     create: CustomerBehavior$OrderingPlugin.create,
-    execute: CustomerBehavior$OrderingPlugin.execute
+    execute: CustomerBehavior$OrderingPlugin.execute,
+    moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
     Id: Id$Reventless.$$String,
     commandSchema: Customer$OrderingPlugin.commandSchema
-  }))({
-    specModulePath: specModulePath,
-    behaviorModulePath: behaviorModulePath
-  });
+  }));
   Projection$Reventless.Mappings.Make({
     Id: Id$Reventless.$$String,
     name: CustomersReadModel$OrderingPlugin.name,
     stateSchema: CustomersReadModel$OrderingPlugin.stateSchema,
     subIdConfig: undefined
   });
+  let moduleUrl = import.meta.url;
   let mappings = [CustomersProjections$OrderingPlugin.CustomerMapping];
   let CustomerProjections = {
+    moduleUrl: moduleUrl,
     mappings: mappings
   };
-  let specModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/Customer/ReadModel/CustomersReadModel.res.mjs");
-  let mappingsModulePath = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/Customer/ReadModel/CustomersProjections.res.mjs");
   let CustomerReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: CustomersReadModel$OrderingPlugin.name,
+    moduleUrl: CustomersReadModel$OrderingPlugin.moduleUrl,
     stateSchema: CustomersReadModel$OrderingPlugin.stateSchema,
     config: CustomersReadModel$OrderingPlugin.config,
     subIdConfig: undefined
-  })(CustomerProjections)({
-    specModulePath: specModulePath$1,
-    mappingsModulePath: mappingsModulePath
-  });
+  })(CustomerProjections);
   let OrderingEventLogMaker = Platform.DcbEventLog.Make(OrderingEventLog$OrderingPlugin);
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
+    moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     initialDecisionModel: PlaceOrder$OrderingPlugin.initialDecisionModel,
@@ -86,6 +79,7 @@ function Make(Platform) {
   });
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
+    moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     initialDecisionModel: ShipOrder$OrderingPlugin.initialDecisionModel,
@@ -95,6 +89,7 @@ function Make(Platform) {
   });
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
     name: CancelOrder$OrderingPlugin.name,
+    moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     initialDecisionModel: CancelOrder$OrderingPlugin.initialDecisionModel,
@@ -104,6 +99,7 @@ function Make(Platform) {
   });
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
+    moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     initialDecisionModel: SyncCatalogProduct$OrderingPlugin.initialDecisionModel,
@@ -111,9 +107,9 @@ function Make(Platform) {
     decide: SyncCatalogProduct$OrderingPlugin.decide,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
   });
-  let specModulePath$2 = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/Order/AutomationSlice/AutoShipOrder.res.mjs");
   let AutoShipOrderSlice = Platform.AutomationSlice.Bundled.Make({
     name: AutoShipOrder$OrderingPlugin.name,
+    moduleUrl: AutoShipOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
     commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
@@ -122,12 +118,10 @@ function Make(Platform) {
     process: AutoShipOrder$OrderingPlugin.process,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
     heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
-  })({
-    specModulePath: specModulePath$2
   });
-  let specModulePath$3 = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs");
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Bundled.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,
+    moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
     inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
@@ -135,28 +129,22 @@ function Make(Platform) {
     translate: SendOrderConfirmation$OrderingPlugin.translate,
     maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
     heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
-  })({
-    specModulePath: specModulePath$3
   });
-  let specModulePath$4 = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/Order/StateViewSlice/OrdersView.res.mjs");
   let OrdersViewSlice = Platform.StateViewSlice.Bundled.Make({
     name: OrdersView$OrderingPlugin.name,
+    moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     eventSchema: OrdersView$OrderingPlugin.eventSchema,
     stateSchema: OrdersView$OrderingPlugin.stateSchema,
     project: OrdersView$OrderingPlugin.project
-  })({
-    specModulePath: specModulePath$4
   });
-  let specModulePath$5 = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/CatalogProduct/StateViewSlice/AvailableProductsView.res.mjs");
   let AvailableProductsViewSlice = Platform.StateViewSlice.Bundled.Make({
     name: AvailableProductsView$OrderingPlugin.name,
+    moduleUrl: AvailableProductsView$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     eventSchema: AvailableProductsView$OrderingPlugin.eventSchema,
     stateSchema: AvailableProductsView$OrderingPlugin.stateSchema,
     project: AvailableProductsView$OrderingPlugin.project
-  })({
-    specModulePath: specModulePath$5
   });
   let $$let = ProductsExtension$OrderingPlugin.ProductMapping.Aggregate;
   let ProductsExtensionMapping = ExtensionMapping$ReventlessInfra.Make(ProductsExtensionPoint$CatalogSpec)({
@@ -165,20 +153,24 @@ function Make(Platform) {
       name: $$let.name,
       eventSchema: $$let.eventSchema,
       errorSchema: $$let.errorSchema,
-      commandSchema: $$let.commandSchema
+      commandSchema: $$let.commandSchema,
+      moduleUrl: $$let.moduleUrl
     },
     mapIncomingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
   });
   let name = "OrderingProducts";
+  let moduleUrl$1 = import.meta.url;
   let mappings$1 = [ProductsExtensionMapping];
   let ProductsExtensionMappings = {
     Spec: undefined,
     name: name,
+    moduleUrl: moduleUrl$1,
     mappings: mappings$1
   };
   let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPoint$CatalogSpec)({
     name: name,
+    moduleUrl: moduleUrl$1,
     mappings: mappings$1
   });
   let OrdersEPMappingT = ExtensionPointMapping$ReventlessInfra.Make(OrdersExtensionPoint$OrderingSpec)({
@@ -187,25 +179,27 @@ function Make(Platform) {
       name: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.name,
       eventSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.eventSchema,
       errorSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.errorSchema,
-      commandSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.commandSchema
+      commandSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.commandSchema,
+      moduleUrl: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.moduleUrl
     },
     mapIncomingCommand: OrdersExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });
+  let name$1 = "OrdersEPMappings";
+  let moduleUrl$2 = import.meta.url;
   let mappings$2 = [OrdersEPMappingT];
   let OrdersEPMappings = {
     Spec: undefined,
+    name: name$1,
+    moduleUrl: moduleUrl$2,
     mappings: mappings$2
   };
-  let orderingSpecPkg = "@reventlessdev/online-shop-hybrid-ordering-spec/src";
-  let specModulePath$6 = Util_Bundle$ReventlessAws.resolveModule(orderingSpecPkg + "/OrdersExtensionPoint.res.mjs");
-  let mappingsModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(orderingPkg + "/ExtensionPoint/OrdersExtensionPointMapping.res.mjs");
   let publishToAggregatesQueueUrls = {};
   let OrdersExtensionPointMaker = ExtensionPoint_Builder$ReventlessAws.Make(OrdersExtensionPoint$OrderingSpec)({
+    name: name$1,
+    moduleUrl: moduleUrl$2,
     mappings: mappings$2
   })({
-    specModulePath: specModulePath$6,
-    mappingsModulePath: mappingsModulePath$1,
     publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
   });
   let stateChangeSlices = [
@@ -248,18 +242,13 @@ function Make(Platform) {
     ProductsExtensionMaker: ProductsExtensionMaker,
     OrdersEPMappingT: OrdersEPMappingT,
     OrdersEPMappings: OrdersEPMappings,
-    orderingSpecPkg: orderingSpecPkg,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
     DcbSpec: DcbSpec,
     make: make
   };
 }
 
-let resolveModule = Util_Bundle$ReventlessAws.resolveModule;
-
 export {
-  resolveModule,
-  orderingPkg,
   Make,
 }
 /* Id-Reventless Not a pure module */

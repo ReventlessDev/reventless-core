@@ -27,8 +27,7 @@
     "@reventlessdev/reventless-core": "^3.0.0-alpha.18",
     "@reventlessdev/reventless-infra": "^3.0.0-alpha.10",
     "@reventlessdev/reventless-interop": "^1.0.0-alpha.5",
-    "@reventlessdev/reventless-spec": "^3.0.0-alpha.9",
-    "esbuild": "^0.25.0"
+    "@reventlessdev/reventless-spec": "^3.0.0-alpha.9"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",

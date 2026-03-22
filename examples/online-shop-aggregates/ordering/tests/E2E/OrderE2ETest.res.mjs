@@ -28,13 +28,15 @@ let OrderAgg = AggregateMaker.Make({
   name: Order$OrderingPlugin.name,
   eventSchema: Order$OrderingPlugin.eventSchema,
   errorSchema: Order$OrderingPlugin.errorSchema,
-  commandSchema: Order$OrderingPlugin.commandSchema
+  commandSchema: Order$OrderingPlugin.commandSchema,
+  moduleUrl: Order$OrderingPlugin.moduleUrl
 })({
   resolverConfig: OrderBehavior$OrderingPlugin.resolverConfig,
   init: OrderBehavior$OrderingPlugin.init,
   apply: OrderBehavior$OrderingPlugin.apply,
   create: OrderBehavior$OrderingPlugin.create,
-  execute: OrderBehavior$OrderingPlugin.execute
+  execute: OrderBehavior$OrderingPlugin.execute,
+  moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Order$OrderingPlugin.name,
   Id: Id$Reventless.$$String,

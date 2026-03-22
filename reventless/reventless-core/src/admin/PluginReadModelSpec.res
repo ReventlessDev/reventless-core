@@ -34,6 +34,7 @@ type queryResult = {
 }
 
 let name = "Plugin"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 open Reventless.ReadModel
 let config = config()

@@ -6,6 +6,7 @@ open Reventless
 open OrderingEventLog
 
 let name = "AutoShipOrder"
+let moduleUrl: string = %raw(`import.meta.url`)
 module DcbEventLogSpec = OrderingEventLog
 
 @schema

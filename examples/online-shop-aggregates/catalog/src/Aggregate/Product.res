@@ -24,3 +24,5 @@ type event =
 type error =
   | ProductAlreadyExists
   | ProductNotFound
+
+let moduleUrl: string = %raw(`import.meta.url`)

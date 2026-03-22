@@ -16,6 +16,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CustomerProjections: Mappings with module Target := CustomersReadModel = {
     module M = Mappings.Make(CustomersReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
   }
 
@@ -46,6 +47,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     module type Mapping = ReventlessInfra.ExtensionMapping.T
       with module ExtensionPoint := Spec
     let name = "OrderingProducts"
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(ProductsExtensionMapping)]
   }
   module ProductsExtensionMaker = Platform.Extension.Make(
@@ -61,6 +63,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module OrdersEPMappings = {
     module Spec = OrderingSpec.OrdersExtensionPoint
     module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
+    let name = "OrdersEPMappings"
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(OrdersEPMappingT)]
   }
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(

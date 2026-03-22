@@ -25,12 +25,15 @@ let eventSchema = S.schema(s => ({
 
 let errorSchema = S.literal("AlreadyExists");
 
+let moduleUrl = import.meta.url;
+
 let ItemSpec = {
   Id: undefined,
   name: "TestCommandTopicItem",
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  moduleUrl: moduleUrl
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});

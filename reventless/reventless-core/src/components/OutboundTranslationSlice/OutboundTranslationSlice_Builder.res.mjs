@@ -22,10 +22,12 @@ function Make(RuntimeEnvironment) {
     let Make = Spec => {
       let Callback = OutboundTranslationSlice_Callback$ReventlessCore.Make(Spec);
       let queryDbName = Spec.name + "Todo";
+      let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         name: queryDbName,
+        moduleUrl: moduleUrl,
         stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema,
         config: config,
         subIdConfig: undefined

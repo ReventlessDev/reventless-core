@@ -2,10 +2,6 @@ module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module EventCollectorRuntimeBuilder = AutomationSliceRuntime_Builder_Single
 
-module type Config = {
-  let specModulePath: string
-}
-
 module Make = (Api: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
@@ -21,7 +17,6 @@ module Make = (Api: {
 
   module Make = (
     Spec: Reventless.AutomationSlice.Spec,
-    Config: Config,
   ): (
     ReventlessCore.AutomationSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
@@ -44,7 +39,8 @@ module Make = (Api: {
 
       EventCollectorRuntimeBuilder.registerAutomationSlice(
         ~name=Spec.name,
-        ~specModulePath=Config.specModulePath,
+        ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+        ~callbackType="automation",
         ~queryDbTableName,
       )
 

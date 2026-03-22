@@ -30,6 +30,12 @@ let dcbConfigRef: ref<bundledDcbConfig> = ref({
   stateChangeSliceSpecPaths: [],
 })
 
+let registeredSliceSpecPaths: array<string> = []
+
+let registerStateChangeSliceSpec = (specModulePath: string) => {
+  let _ = registeredSliceSpecPaths->Array.push(specModulePath)
+}
+
 let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceSpecPaths=[], ()) => {
   dcbConfigRef := {pluginName, dcbTableName, stateChangeSliceSpecPaths}
   stateChangeSliceSpecPaths->Array.length
@@ -117,47 +123,48 @@ module Make = (
     let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
     let queue = channelParts.queue
 
-    let factoryModulePath =
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorHandlerFactory.mjs"
-    let requestContextModulePath =
-      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
-
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
-    envVars->Dict.set("EC_QUEUE_URL", queue.id->Pulumi.Output.asInput)
-    envVars->Dict.set("EP_EVENT_TOPIC_ARN", config.eventTopicArn->outputOrPlaceholder)
-    envVars->Dict.set("PLUGIN_RM_TABLE", config.pluginReadModelTableName->outputOrPlaceholder)
-    envVars->Dict.set("SCHEDULER_ROLE_ARN", config.schedulerRoleArn->outputOrPlaceholder)
-    envVars->Dict.set(
-      "SCHEDULER_QUEUE_ARN",
-      config.schedulerQueueArn->outputOrPlaceholder,
-    )
-    envVars->Dict.set(
-      "SCHEDULER_QUEUE_NAME",
-      config.schedulerQueueName->outputOrPlaceholder,
-    )
-    envVars->Dict.set("APPSYNC_API_ID", config.appSyncApiId->outputOrPlaceholder)
-    envVars->Dict.set(
-      "CLONER_ENABLED",
-      (config.clonerEnabled ? "true" : "false")->Pulumi.Output.make->Pulumi.Output.asInput,
+
+    // Build HANDLER_CONFIG JSON with all admin config values
+    let handlerConfigJson =
+      Pulumi.Output.all([
+        queue.id,
+        config.eventTopicArn->outputOrPlaceholder->Obj.magic,
+        config.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
+        config.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
+        config.schedulerQueueArn->outputOrPlaceholder->Obj.magic,
+        config.schedulerQueueName->outputOrPlaceholder->Obj.magic,
+        config.appSyncApiId->outputOrPlaceholder->Obj.magic,
+      ])
+      ->Pulumi.Output.apply(values => {
+        let queueUrl = values->Array.getUnsafe(0)
+        let eventTopicArn = values->Array.getUnsafe(1)
+        let rmTable = values->Array.getUnsafe(2)
+        let schedRoleArn = values->Array.getUnsafe(3)
+        let schedQueueArn = values->Array.getUnsafe(4)
+        let schedQueueName = values->Array.getUnsafe(5)
+        let appSyncApiId = values->Array.getUnsafe(6)
+        let clonerEnabled = config.clonerEnabled ? "true" : "false"
+        `{"queueUrl":"${queueUrl}","eventTopicArn":"${eventTopicArn}","pluginReadModelTableName":"${rmTable}","schedulerRoleArn":"${schedRoleArn}","schedulerQueueArn":"${schedQueueArn}","schedulerQueueName":"${schedQueueName}","appSyncApiId":"${appSyncApiId}","clonerEnabled":${clonerEnabled}}`
+      })
+    envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
+
+    // No user packages — all framework imports are in the Layer
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.res.mjs";`
+
+    let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+    archiveContents->Dict.set(
+      "index.mjs",
+      Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
     )
 
-    let entryPointCode = Util_EntryPoint.generateAdminEventCollectorEntryPoint({
-      name,
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath,
-      queueUrlEnvVar: "EC_QUEUE_URL",
-      eventTopicArnEnvVar: "EP_EVENT_TOPIC_ARN",
-      pluginReadModelTableEnvVar: "PLUGIN_RM_TABLE",
-      schedulerRoleArnEnvVar: "SCHEDULER_ROLE_ARN",
-      schedulerQueueArnEnvVar: "SCHEDULER_QUEUE_ARN",
-      schedulerQueueNameEnvVar: "SCHEDULER_QUEUE_NAME",
-      appSyncApiIdEnvVar: "APPSYNC_API_ID",
-      clonerEnabledEnvVar: "CLONER_ENABLED",
-    })
+    let code = Pulumi.Archive.assetArchive(archiveContents)
+    let sourceCodeHash = Util_Bundle.hashString(reExportCode)
 
-    let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+    let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
-      ~entryPointCode,
+      ~code,
+      ~sourceCodeHash,
       ~envVars,
       ~memorySize,
       ~timeout,
@@ -199,9 +206,6 @@ module Make = (
       )
       let opts = {Pulumi.ComponentResource.parent: resource}
 
-      let factoryModulePath =
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatHandlerFactory.mjs"
-
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
       envVars->Dict.set("EP_QUEUE_URL", epQueueUrl->Pulumi.Output.asInput)
       envVars->Dict.set(
@@ -213,17 +217,20 @@ module Make = (
         hbConfig.heartbeatTimeout->Int.toString->Pulumi.Output.make->Pulumi.Output.asInput,
       )
 
-      let entryPointCode = Util_EntryPoint.generateHeartbeatEntryPoint({
-        name,
-        factoryModule: factoryModulePath,
-        epQueueUrlEnvVar: "EP_QUEUE_URL",
-        pluginIdEnvVar: "PLUGIN_ID",
-        timeoutEnvVar: "HEARTBEAT_TIMEOUT",
-      })
+      // Static re-export from Layer entry point — no esbuild, no user packages
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs";`
+      let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+      archiveContents->Dict.set(
+        "index.mjs",
+        Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+      )
+      let code = Pulumi.Archive.assetArchive(archiveContents)
+      let sourceCodeHash = Util_Bundle.hashString(reExportCode)
 
-      let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+      let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
         ~name,
-        ~entryPointCode,
+        ~code,
+        ~sourceCodeHash,
         ~envVars,
         ~memorySize,
         ~timeout,
@@ -245,7 +252,9 @@ module Make = (
     dcbCommandTopic,
   ) => {
     let dcbConfig = dcbConfigRef.contents
-    if dcbConfig.stateChangeSliceSpecPaths->Array.length == 0 {
+    // Merge spec paths: auto-registered (from moduleUrl) + manually registered (from registerDcbConfig)
+    let allSpecPaths = registeredSliceSpecPaths->Array.concat(dcbConfig.stateChangeSliceSpecPaths)
+    if allSpecPaths->Array.length == 0 {
       Console.warn("PluginRuntime_Builder: forDcbCommandTopic skipped (no slice specs)")
     } else {
       let commandTopicResource = dcbCommandTopic->ReventlessCore.Component.toPulumiResource
@@ -259,11 +268,6 @@ module Make = (
       let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
       let queue = channelParts.queue
 
-      let factoryModulePath =
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicHandlerFactory.mjs"
-      let requestContextModulePath =
-        "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
-
       // Get DCB EventLog table name from the DcbEventLog resources (passed via dcbConfig)
       let dcbTableName = switch dcbConfig.dcbTableName {
       | Some(tableName) => tableName
@@ -274,24 +278,52 @@ module Make = (
       envVars->Dict.set("DCB_TABLE", dcbTableName->Pulumi.Output.asInput)
       envVars->Dict.set("QUEUE_URL", queue.id->Pulumi.Output.asInput)
 
-      let stateChangeSliceSpecs: array<Util_EntryPoint.dcbSliceSpec> =
-        dcbConfig.stateChangeSliceSpecPaths->Array.map(specModulePath => {
-          Util_EntryPoint.specModulePath: specModulePath,
-        })
+      // Build HANDLER_CONFIG JSON with all slice spec module paths
+      let sliceSpecsJson =
+        allSpecPaths
+        ->Array.map(p => p->JSON.stringifyAny->Option.getOr(`""`))
+        ->Array.join(",")
 
-      let entryPointCode = Util_EntryPoint.generateDcbCommandTopicEntryPoint({
-        name,
-        factoryModule: factoryModulePath,
-        requestContextModule: requestContextModulePath,
-        dcbTableEnvVar: "DCB_TABLE",
-        queueUrlEnvVar: "QUEUE_URL",
-        pluginName: dcbConfig.pluginName,
-        stateChangeSliceSpecs,
+      let handlerConfigJson =
+        Pulumi.Output.all2((dcbTableName, queue.id))
+        ->Pulumi.Output.apply(((table, queueUrl)) => {
+          let pluginName =
+            dcbConfig.pluginName->JSON.stringifyAny->Option.getOr(`""`)
+          `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginName},"stateChangeSliceModules":[${sliceSpecsJson}]}`
+        })
+      envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
+
+      // Build code asset
+      let packageDirs: dict<string> = Dict.make()
+      allSpecPaths->Array.forEach(specPath => {
+        let pkg = Util_Bundle.extractPackageName(specPath)
+        packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
       })
 
-      let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.res.mjs";`
+
+      let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+      archiveContents->Dict.set(
+        "index.mjs",
+        Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+      )
+      packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+        archiveContents->Dict.set(
+          `node_modules/${pkgName}`,
+          Util_Bundle.createFilteredPackageArchive(pkgRoot)
+          ->Pulumi.Archive.archiveToAssetOrArchive,
+        )
+      })
+
+      let code = Pulumi.Archive.assetArchive(archiveContents)
+      let sourceCodeHash = Util_Bundle.hashString(
+        reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+      )
+
+      let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
         ~name,
-        ~entryPointCode,
+        ~code,
+        ~sourceCodeHash,
         ~envVars,
         ~memorySize,
         ~timeout,

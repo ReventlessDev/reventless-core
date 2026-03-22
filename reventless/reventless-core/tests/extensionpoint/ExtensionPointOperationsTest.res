@@ -21,6 +21,8 @@ module OpsEPSpec = {
 
   @schema
   type directive = | OpsEPNoDirective
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -123,6 +125,8 @@ module TestAsyncMapping = {
 module TestOpsMappings = {
   module Spec = OpsEPSpec
   module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := OpsEPSpec
+  let name = "TestOpsMappings"
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [
     module(TestPublishMapping),
     module(TestCallMapping),

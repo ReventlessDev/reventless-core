@@ -15,6 +15,8 @@ let resolverConfig = {
   fields: resolverConfig_fields
 };
 
+let moduleUrl = import.meta.url;
+
 function init(event) {
   if (event.TAG === "Recorded") {
     return {
@@ -80,6 +82,7 @@ export {
   Spec,
   stateSchema,
   resolverConfig,
+  moduleUrl,
   init,
   apply,
   create,

@@ -4,7 +4,6 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as Category$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/Aggregate/Category.res.mjs";
 import * as AddProduct$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChangeSlice/AddProduct.res.mjs";
-import * as Util_Bundle$ReventlessAws from "@reventlessdev/reventless-aws/src/util/Util_Bundle.res.mjs";
 import * as ProductsView$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewSlice/ProductsView.res.mjs";
 import * as ImportProduct$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslationSlice/ImportProduct.res.mjs";
 import * as CatalogEventLog$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Plugin/CatalogEventLog.res.mjs";
@@ -27,56 +26,50 @@ import * as ChangeProductDescription$CatalogPlugin from "@reventlessdev/online-s
 import * as ReadModel_Builder_Single$ReventlessAws from "@reventlessdev/reventless-aws/src/components/ReadModel_Builder_Single.res.mjs";
 import * as ProductsExtensionPointMapping$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
 
-let catalogPkg = "@reventlessdev/online-shop-hybrid-catalog/src";
-
 function Make(Platform) {
-  let specModulePath = Util_Bundle$ReventlessAws.resolveModule(catalogPkg + "/Category/Aggregate/Category.res.mjs");
-  let behaviorModulePath = Util_Bundle$ReventlessAws.resolveModule(catalogPkg + "/Category/Aggregate/CategoryBehavior.res.mjs");
   let CategoryAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: Category$CatalogPlugin.name,
     eventSchema: Category$CatalogPlugin.eventSchema,
     errorSchema: Category$CatalogPlugin.errorSchema,
-    commandSchema: Category$CatalogPlugin.commandSchema
+    commandSchema: Category$CatalogPlugin.commandSchema,
+    moduleUrl: Category$CatalogPlugin.moduleUrl
   })({
     resolverConfig: CategoryBehavior$CatalogPlugin.resolverConfig,
     init: CategoryBehavior$CatalogPlugin.init,
     apply: CategoryBehavior$CatalogPlugin.apply,
     create: CategoryBehavior$CatalogPlugin.create,
-    execute: CategoryBehavior$CatalogPlugin.execute
+    execute: CategoryBehavior$CatalogPlugin.execute,
+    moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Category$CatalogPlugin.name,
     Id: Id$Reventless.$$String,
     commandSchema: Category$CatalogPlugin.commandSchema
-  }))({
-    specModulePath: specModulePath,
-    behaviorModulePath: behaviorModulePath
-  });
+  }));
   Projection$Reventless.Mappings.Make({
     Id: Id$Reventless.$$String,
     name: CategoriesReadModel$CatalogPlugin.name,
     stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
     subIdConfig: undefined
   });
+  let moduleUrl = import.meta.url;
   let mappings = [CategoriesProjections$CatalogPlugin.CategoryMapping];
   let CategoryProjections = {
+    moduleUrl: moduleUrl,
     mappings: mappings
   };
-  let specModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(catalogPkg + "/Category/ReadModel/CategoriesReadModel.res.mjs");
-  let mappingsModulePath = Util_Bundle$ReventlessAws.resolveModule(catalogPkg + "/Category/ReadModel/CategoriesProjections.res.mjs");
   let CategoryReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: CategoriesReadModel$CatalogPlugin.name,
+    moduleUrl: CategoriesReadModel$CatalogPlugin.moduleUrl,
     stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
     config: CategoriesReadModel$CatalogPlugin.config,
     subIdConfig: undefined
-  })(CategoryProjections)({
-    specModulePath: specModulePath$1,
-    mappingsModulePath: mappingsModulePath
-  });
+  })(CategoryProjections);
   let CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog$CatalogPlugin);
   let AddProductSlice = Platform.StateChangeSlice.Make({
     name: AddProduct$CatalogPlugin.name,
+    moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
     initialDecisionModel: AddProduct$CatalogPlugin.initialDecisionModel,
@@ -86,6 +79,7 @@ function Make(Platform) {
   });
   let ChangeProductNameSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductName$CatalogPlugin.name,
+    moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
     initialDecisionModel: ChangeProductName$CatalogPlugin.initialDecisionModel,
@@ -95,6 +89,7 @@ function Make(Platform) {
   });
   let ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductDescription$CatalogPlugin.name,
+    moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
     initialDecisionModel: ChangeProductDescription$CatalogPlugin.initialDecisionModel,
@@ -104,6 +99,7 @@ function Make(Platform) {
   });
   let ChangeProductPriceSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductPrice$CatalogPlugin.name,
+    moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
     initialDecisionModel: ChangeProductPrice$CatalogPlugin.initialDecisionModel,
@@ -113,6 +109,7 @@ function Make(Platform) {
   });
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
+    moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
     initialDecisionModel: RecordProductDemand$CatalogPlugin.initialDecisionModel,
@@ -120,28 +117,25 @@ function Make(Platform) {
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });
-  let specModulePath$2 = Util_Bundle$ReventlessAws.resolveModule(catalogPkg + "/Product/StateViewSlice/ProductsView.res.mjs");
   let ProductsViewSlice = Platform.StateViewSlice.Bundled.Make({
     name: ProductsView$CatalogPlugin.name,
+    moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     eventSchema: ProductsView$CatalogPlugin.eventSchema,
     stateSchema: ProductsView$CatalogPlugin.stateSchema,
     project: ProductsView$CatalogPlugin.project
-  })({
-    specModulePath: specModulePath$2
   });
-  let specModulePath$3 = Util_Bundle$ReventlessAws.resolveModule(catalogPkg + "/Product/StateViewSlice/ProductDemandView.res.mjs");
   let ProductDemandViewSlice = Platform.StateViewSlice.Bundled.Make({
     name: ProductDemandView$CatalogPlugin.name,
+    moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     eventSchema: ProductDemandView$CatalogPlugin.eventSchema,
     stateSchema: ProductDemandView$CatalogPlugin.stateSchema,
     project: ProductDemandView$CatalogPlugin.project
-  })({
-    specModulePath: specModulePath$3
   });
   let ImportProductSlice = Platform.InboundTranslationSlice.Make({
     name: ImportProduct$CatalogPlugin.name,
+    moduleUrl: ImportProduct$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
     commandSchema: ImportProduct$CatalogPlugin.commandSchema,
@@ -153,25 +147,27 @@ function Make(Platform) {
       name: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.name,
       eventSchema: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.eventSchema,
       errorSchema: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.errorSchema,
-      commandSchema: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.commandSchema
+      commandSchema: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.commandSchema,
+      moduleUrl: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.moduleUrl
     },
     mapIncomingCommand: ProductsExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
     mapOutgoingEvent: ProductsExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
   });
+  let name = "ProductsEPMappings";
+  let moduleUrl$1 = import.meta.url;
   let mappings$1 = [ProductsEPMappingT];
   let ProductsEPMappings = {
     Spec: undefined,
+    name: name,
+    moduleUrl: moduleUrl$1,
     mappings: mappings$1
   };
-  let catalogSpecPkg = "@reventlessdev/online-shop-hybrid-catalog-spec/src";
-  let specModulePath$4 = Util_Bundle$ReventlessAws.resolveModule(catalogSpecPkg + "/ProductsExtensionPoint.res.mjs");
-  let mappingsModulePath$1 = Util_Bundle$ReventlessAws.resolveModule(catalogPkg + "/ExtensionPoint/ProductsExtensionPointMapping.res.mjs");
   let publishToAggregatesQueueUrls = {};
   let ProductsExtensionPointMaker = ExtensionPoint_Builder$ReventlessAws.Make(ProductsExtensionPoint$CatalogSpec)({
+    name: name,
+    moduleUrl: moduleUrl$1,
     mappings: mappings$1
   })({
-    specModulePath: specModulePath$4,
-    mappingsModulePath: mappingsModulePath$1,
     publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
   });
   let $$let = OrdersExtension$CatalogPlugin.DemandMapping.Aggregate;
@@ -181,20 +177,24 @@ function Make(Platform) {
       name: $$let.name,
       eventSchema: $$let.eventSchema,
       errorSchema: $$let.errorSchema,
-      commandSchema: $$let.commandSchema
+      commandSchema: $$let.commandSchema,
+      moduleUrl: $$let.moduleUrl
     },
     mapIncomingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapOutgoingEvent
   });
-  let name = "CatalogDemand";
+  let name$1 = "CatalogDemand";
+  let moduleUrl$2 = import.meta.url;
   let mappings$2 = [OrdersDemandMapping];
   let OrdersExtensionMappings = {
     Spec: undefined,
-    name: name,
+    name: name$1,
+    moduleUrl: moduleUrl$2,
     mappings: mappings$2
   };
   let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)({
-    name: name,
+    name: name$1,
+    moduleUrl: moduleUrl$2,
     mappings: mappings$2
   });
   let stateChangeSlices = [
@@ -235,7 +235,6 @@ function Make(Platform) {
     ImportProductSlice: ImportProductSlice,
     ProductsEPMappingT: ProductsEPMappingT,
     ProductsEPMappings: ProductsEPMappings,
-    catalogSpecPkg: catalogSpecPkg,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersDemandMapping: OrdersDemandMapping,
     OrdersExtensionMappings: OrdersExtensionMappings,
@@ -245,11 +244,7 @@ function Make(Platform) {
   };
 }
 
-let resolveModule = Util_Bundle$ReventlessAws.resolveModule;
-
 export {
-  resolveModule,
-  catalogPkg,
   Make,
 }
 /* Id-Reventless Not a pure module */

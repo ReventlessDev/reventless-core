@@ -142,6 +142,7 @@ function Make(Spec) {
   let $$let = ExtensionMapping$ReventlessInfra.NoAggregate.Id;
   let ConnectPluginMapping = ExtensionMapping$ReventlessInfra.Make({
     name: PluginExtensionPointSpec$ReventlessInfra.name,
+    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
     eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
     directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
@@ -157,25 +158,30 @@ function Make(Spec) {
       name: ExtensionMapping$ReventlessInfra.NoAggregate.name,
       eventSchema: ExtensionMapping$ReventlessInfra.NoAggregate.eventSchema,
       errorSchema: ExtensionMapping$ReventlessInfra.NoAggregate.errorSchema,
-      commandSchema: ExtensionMapping$ReventlessInfra.NoAggregate.commandSchema
+      commandSchema: ExtensionMapping$ReventlessInfra.NoAggregate.commandSchema,
+      moduleUrl: ExtensionMapping$ReventlessInfra.NoAggregate.moduleUrl
     },
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined
   });
   let name = "Connect";
+  let moduleUrl = import.meta.url;
   let mappings = [ConnectPluginMapping];
   let ConnectPluginMappings = {
     Spec: undefined,
     name: name,
+    moduleUrl: moduleUrl,
     mappings: mappings
   };
   let include = Extension_Builder$ReventlessCore.Make({
     name: PluginExtensionPointSpec$ReventlessInfra.name,
+    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
     eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
     directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
   })({
     name: name,
+    moduleUrl: moduleUrl,
     mappings: mappings
   });
   return {

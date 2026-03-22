@@ -12,7 +12,10 @@ import * as Extension_Operations$ReventlessCore from "./Extension_Operations.res
 function Make(Spec) {
   return Mappings => {
     let make = (publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Extension$ReventlessCore.componentType), Spec.name + ("." + Mappings.name), (extra, extra$1) => {
-      let Operations = Extension_Operations$ReventlessCore.Make(Spec)(Mappings)({
+      let Operations = Extension_Operations$ReventlessCore.Make(Spec)({
+        name: Mappings.name,
+        mappings: Mappings.mappings
+      })({
         publishToAggregates: publishToAggregates,
         publishToPluginExtensionPoint: publishToPluginExtensionPoint,
         readModelNamesForSourceName: readModelNamesForSourceName,

@@ -3,12 +3,15 @@
 import * as S from "sury/src/S.res.mjs";
 import * as CatalogEventLog$CatalogPlugin from "../Plugin/CatalogEventLog.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let Aggregate = {
   name: "CatalogEventLog",
   Id: undefined,
-  commandSchema: S.unit,
   eventSchema: CatalogEventLog$CatalogPlugin.eventSchema,
-  errorSchema: S.unit
+  errorSchema: S.unit,
+  commandSchema: S.unit,
+  moduleUrl: moduleUrl
 };
 
 function mapIncomingCommand(_id, _command, _meta) {
@@ -53,4 +56,4 @@ export {
   mapIncomingCommand,
   mapOutgoingEvent,
 }
-/* S Not a pure module */
+/* moduleUrl Not a pure module */

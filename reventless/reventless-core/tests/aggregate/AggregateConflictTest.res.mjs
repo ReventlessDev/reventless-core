@@ -22,12 +22,15 @@ let eventSchema = S.schema(s => ({
 
 let errorSchema = S.literal("AlreadyExists");
 
+let moduleUrl = import.meta.url;
+
 let AggSpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  moduleUrl: moduleUrl
 };
 
 let resolverConfig_fields = ["name"];
@@ -36,6 +39,8 @@ let resolverConfig = {
   commandSchema: commandSchema,
   fields: resolverConfig_fields
 };
+
+let moduleUrl$1 = import.meta.url;
 
 function init(event) {
   return {
@@ -63,6 +68,7 @@ function execute(_state, _command, _ctx, _errHandler) {
 let TestBehavior = {
   Spec: undefined,
   resolverConfig: resolverConfig,
+  moduleUrl: moduleUrl$1,
   init: init,
   apply: apply,
   create: create,
@@ -176,13 +182,15 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   name: name,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  moduleUrl: moduleUrl
 })({
   resolverConfig: resolverConfig,
   init: init,
   apply: apply,
   create: create,
-  execute: execute
+  execute: execute,
+  moduleUrl: moduleUrl$1
 })({
   Spec: {
     Id: {
@@ -195,7 +203,8 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
     name: name,
     eventSchema: eventSchema,
     errorSchema: errorSchema,
-    commandSchema: commandSchema
+    commandSchema: commandSchema,
+    moduleUrl: moduleUrl
   },
   EventLog: {
     Spec: {

@@ -2,10 +2,11 @@
 
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
-import * as Util_EntryPoint$ReventlessAws from "../../util/Util_EntryPoint.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
 let bundledInfos = {};
@@ -36,29 +37,31 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     };
     let envVars = {};
     envVars["EP_QUEUE_URL"] = queue.id;
-    envVars["EP_QUEUE_ARN"] = queue.arn;
     let publishToAggregatesEnvVars = {};
     Stdlib_Dict.forEachWithKey(matchedInfo.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
       let envVar = `PTA_` + aggName + `_QUEUE_URL`;
       envVars[envVar] = queueUrlOutput;
       publishToAggregatesEnvVars[aggName] = envVar;
     });
-    let registration_specModulePath = matchedInfo.specModulePath;
-    let registration_mappingsModulePath = matchedInfo.mappingsModulePath;
-    let registration = {
-      specModulePath: registration_specModulePath,
-      mappingsModulePath: registration_mappingsModulePath,
-      queueUrlEnvVar: "EP_QUEUE_URL",
-      queueArnEnvVar: "EP_QUEUE_ARN",
-      publishToAggregatesEnvVars: publishToAggregatesEnvVars
-    };
-    let entryPointCode = Util_EntryPoint$ReventlessAws.generateExtensionPointEntryPoint({
-      name: epName,
-      handler: registration,
-      factoryModule: "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointHandlerFactory.mjs",
-      requestContextModule: "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
+    let specModule = Stdlib_Option.getOr(JSON.stringify(matchedInfo.specModulePath), `""`);
+    let mappingsModule = Stdlib_Option.getOr(JSON.stringify(matchedInfo.mappingsModulePath), `""`);
+    let publishToAggregatesJson = Object.entries(publishToAggregatesEnvVars).map(param => Stdlib_Option.getOr(JSON.stringify(param[0]), `""`) + `: ` + Stdlib_Option.getOr(JSON.stringify(param[1]), `""`)).join(",");
+    let handlerConfigJson = queue.id.apply(queueUrl => `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queueUrl":"` + queueUrl + `","publishToAggregates":{` + publishToAggregatesJson + `}}`);
+    envVars["HANDLER_CONFIG"] = handlerConfigJson;
+    let packageDirs = {};
+    let specPkg = Util_Bundle$ReventlessAws.extractPackageName(matchedInfo.specModulePath);
+    let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(matchedInfo.mappingsModulePath);
+    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+    packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.res.mjs";`;
+    let archiveContents = {};
+    archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
+    Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
+      archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
     });
-    return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeBundledFromEntryPoint(name, entryPointCode, envVars, memorySize, timeout, opts));
+    let code = new (Pulumi.asset.AssetArchive)(archiveContents);
+    let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
+    return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, code, sourceCodeHash, envVars, memorySize, timeout, opts));
   }
   console.warn(`ExtensionPointRuntime_Builder_PerExtensionPoint: no bundled info for ` + epName);
 }
@@ -74,4 +77,4 @@ export {
   registerExtensionPoint,
   forCommandTopic,
 }
-/* Component-ReventlessCore Not a pure module */
+/* @pulumi/pulumi Not a pure module */

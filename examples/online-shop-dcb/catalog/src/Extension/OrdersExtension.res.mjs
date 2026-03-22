@@ -3,12 +3,15 @@
 import * as S from "sury/src/S.res.mjs";
 import * as RecordProductDemand$CatalogPlugin from "../Product/StateChangeSlice/RecordProductDemand.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let Aggregate = {
   name: RecordProductDemand$CatalogPlugin.name,
   Id: undefined,
   commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
   eventSchema: S.unit,
-  errorSchema: S.unit
+  errorSchema: S.unit,
+  moduleUrl: moduleUrl
 };
 
 function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
@@ -47,4 +50,4 @@ let DemandMapping = {
 export {
   DemandMapping,
 }
-/* S Not a pure module */
+/* moduleUrl Not a pure module */

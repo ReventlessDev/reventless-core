@@ -25,10 +25,13 @@ let eventSchema = S.union([
   S.literal("ItemRemoved")
 ]);
 
+let moduleUrl = import.meta.url;
+
 let SourceSpec = {
   Id: undefined,
   name: name,
-  eventSchema: eventSchema
+  eventSchema: eventSchema,
+  moduleUrl: moduleUrl
 };
 
 let name$1 = "ItemCatalog";
@@ -121,10 +124,13 @@ let eventSchema$1 = S.union([
   }))
 ]);
 
+let moduleUrl$1 = import.meta.url;
+
 let CmdSourceSpec = {
   Id: undefined,
   name: name$2,
-  eventSchema: eventSchema$1
+  eventSchema: eventSchema$1,
+  moduleUrl: moduleUrl$1
 };
 
 let name$3 = "TestCmdTarget";
@@ -141,10 +147,13 @@ let commandSchema = S.union([
   }))
 ]);
 
+let moduleUrl$2 = import.meta.url;
+
 let CmdTargetSpec = {
   Id: undefined,
   name: name$3,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  moduleUrl: moduleUrl$2
 };
 
 function map$1(id, event, _queryEngine) {
@@ -199,6 +208,8 @@ let CountOrderMapping = {
   map: map$2
 };
 
+(import.meta.url);
+
 let mappings = [{
     Source: {
       name: name$2,
@@ -217,7 +228,8 @@ let mappings = [{
 let OrderMappings_Target = {
   Id: Id$Reventless.StringPure,
   name: name$3,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  moduleUrl: moduleUrl$2
 };
 
 let OrderMappings = {
@@ -225,6 +237,8 @@ let OrderMappings = {
   mappings: mappings,
   counter: undefined
 };
+
+(import.meta.url);
 
 let mappings$1 = [{
     Source: {
@@ -244,7 +258,8 @@ let mappings$1 = [{
 let CountOrderMappings_Target = {
   Id: Id$Reventless.StringPure,
   name: name$3,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  moduleUrl: moduleUrl$2
 };
 
 let CountOrderMappings = {

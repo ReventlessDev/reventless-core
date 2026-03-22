@@ -24,6 +24,8 @@ let stateSchema = S.schema(s => ({
   apiSchemaFragment: s.m(Plugin$Reventless.apiSchemaFragmentOptionSchema)
 }));
 
+let moduleUrl = import.meta.url;
+
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let Id;
@@ -37,6 +39,7 @@ export {
   statusSchema,
   stateSchema,
   name,
+  moduleUrl,
   config,
   subIdConfig,
 }

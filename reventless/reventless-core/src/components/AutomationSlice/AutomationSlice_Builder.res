@@ -35,6 +35,7 @@ module Make = (
     module TodoQueryDbSpec = {
       module Id = Reventless.Id.String
       let name = queryDbName
+      let moduleUrl: string = %raw(`import.meta.url`)
       type state = AutomationSlice_Callback.todoRow
       let stateSchema = AutomationSlice_Callback.todoRowSchema
       let config = Reventless.ReadModel.config()

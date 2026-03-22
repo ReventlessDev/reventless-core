@@ -52,79 +52,18 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
   }
 }
 
-let makeBundled: ReventlessCore.Runtime.bundledEnvironmentMaker<parts> = (
-  ~name,
-  ~handlerRef: ReventlessCore.Runtime.handlerRef,
-  ~envVars=Dict.make(),
-  ~memorySize: int=1024,
-  ~timeout: int=30,
-  ~opts=?,
-) => {
-  open PulumiAws
-  let opts =
-    opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
-
-  let lambdaRole = IAM.Role.makeWithDefaultPolicy(
-    ~name,
-    ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
-    ~opts?,
-  )
-
-  let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleHandler(
-    ~entryPoint=handlerRef.handlerModule,
-    ~exportName=handlerRef.handlerExport,
-  )
-
-  let layers =
-    Lambda.reventlessLayerArn
-    ->Option.map(arn => [arn->Pulumi.Input.make])
-    ->Option.getOr([])
-    ->Pulumi.Input.make
-
-  let variables = Dict.fromArray([
-    ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
-  ])
-  envVars->Dict.forEachWithKey((value, key) => {
-    variables->Dict.set(key, value)
-  })
-
-  let lambda = Lambda.Function.make(
-    ~name,
-    ~args={
-      handler: "index.handler"->Pulumi.Input.make,
-      runtime: "nodejs22.x"->Pulumi.Input.make,
-      code: code->Pulumi.Input.make,
-      sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
-      role: lambdaRole.arn->Pulumi.Output.asInput,
-      memorySize: memorySize->Pulumi.Input.make,
-      timeout: timeout->Pulumi.Input.make,
-      layers,
-      tags: AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
-      environment: ({Lambda.Function.variables: variables}: Lambda.Function.functionEnvironment)
-        ->Pulumi.Input.make,
-    },
-    ~opts?,
-  )
-
-  {
-    parts: {lambda: lambda->Pulumi.Output.make, lambdaRole},
-    resources: [
-      lambda->Util.Lambda.functionToResource,
-      Util_IAM_Role.toResource(lambdaRole),
-    ],
-  }
-}
-
-let makeBundledFromEntryPoint: (
+let makeFromCodeAsset: (
   ~name: string,
-  ~entryPointCode: string,
+  ~code: Pulumi.Archive.t,
+  ~sourceCodeHash: string,
   ~envVars: dict<Pulumi.Input.t<string>>=?,
   ~memorySize: int=?,
   ~timeout: int=?,
   ~opts: Pulumi.ComponentResource.options=?,
 ) => ReventlessCore.Runtime.environment<parts> = (
   ~name,
-  ~entryPointCode,
+  ~code,
+  ~sourceCodeHash,
   ~envVars=Dict.make(),
   ~memorySize: int=1024,
   ~timeout: int=30,
@@ -139,8 +78,6 @@ let makeBundledFromEntryPoint: (
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
     ~opts?,
   )
-
-  let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleEntryPoint(entryPointCode)
 
   let layers =
     Lambda.reventlessLayerArn

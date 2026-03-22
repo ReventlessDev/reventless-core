@@ -138,10 +138,7 @@ module MakeWithConfig = (
     ): (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
     ) =>
-      Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings, {
-        let specModulePath = ""
-        let behaviorModulePath = ""
-      })
+      Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
@@ -154,10 +151,7 @@ module MakeWithConfig = (
         and type api = Types.AppSync.api
         and type role = Types.AppSync.role
     ) =>
-      ReadModel_Builder_Single.Make(Spec, Mappings, {
-        let specModulePath = ""
-        let mappingsModulePath = ""
-      })
+      ReadModel_Builder_Single.Make(Spec, Mappings)
   }
 
   module ExtensionPoint = {
@@ -166,8 +160,6 @@ module MakeWithConfig = (
       Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
     ): ReventlessInfra.ExtensionPoint.T =>
       ExtensionPoint_Builder.Make(Spec, Mappings, {
-        let specModulePath = ""
-        let mappingsModulePath = ""
         let publishToAggregatesQueueUrls = Dict.make()
       })
   }
@@ -521,8 +513,6 @@ module MakeWithConfig = (
 
   // Admin-internal Plugin aggregate — standalone component so the PluginExtensionPoint
   // can publish commands to it and its infrastructure appears in stack outputs.
-  let corePkg = "@reventlessdev/reventless-core/src/admin"
-
   // Use NoResolver variant — Plugin aggregate is internal (commands come via the
   // ExtensionPoint's publishToAggregates, not through AppSync mutations).
   module PluginAggregate: (
@@ -531,10 +521,6 @@ module MakeWithConfig = (
     ReventlessCore.PluginSpec,
     ReventlessCore.PluginBehavior,
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
-    {
-      let specModulePath = corePkg ++ "/PluginSpec.res.mjs"
-      let behaviorModulePath = corePkg ++ "/PluginBehavior.res.mjs"
-    },
   )
 
   // Admin-internal Plugin read model — standalone component for the Plugin QueryDb
@@ -543,6 +529,7 @@ module MakeWithConfig = (
     with module Target := ReventlessCore.PluginReadModelSpec = {
     module M = Reventless.Projection.Mappings.Make(ReventlessCore.PluginReadModelSpec)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = ReventlessCore.PluginProjection.mappings->Obj.magic
   }
 
@@ -551,10 +538,6 @@ module MakeWithConfig = (
   module PluginReadModel = ReadModel_Builder_NoResolver.Make(
     ReventlessCore.PluginReadModelSpec,
     PluginReadModelMappings,
-    {
-      let specModulePath = corePkg ++ "/PluginReadModelSpec.res.mjs"
-      let mappingsModulePath = corePkg ++ "/PluginProjection.res.mjs"
-    },
   )
 
   module type PluginMaker = {

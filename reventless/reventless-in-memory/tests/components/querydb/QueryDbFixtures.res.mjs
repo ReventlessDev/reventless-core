@@ -11,6 +11,8 @@ import * as QueryDbStorage_InMemory$ReventlessInMemory from "../../../src/adapte
 
 let name = "TestItemQueryDb";
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   name: s.m(S.string),
   count: s.m(S.int)
@@ -21,6 +23,7 @@ let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 let ItemQueryDbSpec = {
   Id: undefined,
   name: name,
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined
@@ -43,6 +46,7 @@ let QueryDbMaker = QueryDb_Builder$ReventlessCore.Make({
     cmp: Id$Reventless.StringPure.cmp
   },
   name: name,
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined
@@ -58,4 +62,4 @@ export {
   QueryDbMaker,
   queryDb,
 }
-/* stateSchema Not a pure module */
+/* moduleUrl Not a pure module */

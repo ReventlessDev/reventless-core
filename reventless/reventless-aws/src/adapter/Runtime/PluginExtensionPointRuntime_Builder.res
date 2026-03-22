@@ -45,17 +45,11 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
   commandTopic,
 ) => {
   let commandTopicResource = commandTopic->ReventlessCore.Component.toPulumiResource
-  let epName = commandTopicResource.name->Option.getOr("Unnamed")
   let info = bundledInfo.contents
 
   let channel = commandTopic->ReventlessCore.CommandTopic_Adapter.channel
   let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
   let queue = channelParts.queue
-
-  let factoryModulePath =
-    "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointHandlerFactory.mjs"
-  let requestContextModulePath =
-    "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
 
   let name = commandTopicResource.name->ReventlessCore.ComponentType.nameOpt(
     ReventlessCore.CommandTopic.componentType,
@@ -63,36 +57,14 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
   let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
 
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
-  envVars->Dict.set("EP_QUEUE_URL", queue.id->Pulumi.Output.asInput)
-  envVars->Dict.set("EP_QUEUE_ARN", queue.arn->Pulumi.Output.asInput)
 
-  // Plugin ReadModel table — placeholder if not available (queryEngine will fail same as non-bundled)
-  envVars->Dict.set(
-    "PLUGIN_RM_TABLE",
-    switch info.pluginReadModelTableName {
-    | Some(tableName) => tableName->Pulumi.Output.asInput
+  let outputOrPlaceholder = opt =>
+    switch opt {
+    | Some(v) => v->Pulumi.Output.asInput
     | None => "NOT_AVAILABLE"->Pulumi.Output.make->Pulumi.Output.asInput
-    },
-  )
+    }
 
-  // Scheduler role ARN — placeholder if not available (scheduler will be stubbed at runtime)
-  envVars->Dict.set(
-    "SCHEDULER_ROLE_ARN",
-    switch info.schedulerRoleArn {
-    | Some(arn) => arn->Pulumi.Output.asInput
-    | None => "NOT_AVAILABLE"->Pulumi.Output.make->Pulumi.Output.asInput
-    },
-  )
-
-  // Use EP's own CommandTopic queue as the scheduler target (for disconnect timeout events)
-  envVars->Dict.set("SCHEDULER_QUEUE_ARN", queue.arn->Pulumi.Output.asInput)
-  envVars->Dict.set(
-    "SCHEDULER_QUEUE_NAME",
-    queue.id->Pulumi.Output.apply(id =>
-      id->String.split("/")->Array.at(-1)->Option.getOr(id)
-    )->Pulumi.Output.asInput,
-  )
-
+  // Build publishToAggregates env var mapping
   let publishToAggregatesEnvVars: dict<string> = Dict.make()
   info.publishToAggregatesQueueUrls->Dict.forEachWithKey((queueUrlOutput, aggName) => {
     let envVar = `PTA_${aggName}_QUEUE_URL`
@@ -100,26 +72,54 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
     publishToAggregatesEnvVars->Dict.set(aggName, envVar)
   })
 
-  let registration: Util_EntryPoint.pluginExtensionPointRegistration = {
-    queueUrlEnvVar: "EP_QUEUE_URL",
-    queueArnEnvVar: "EP_QUEUE_ARN",
-    publishToAggregatesEnvVars,
-    pluginReadModelTableEnvVar: "PLUGIN_RM_TABLE",
-    schedulerRoleArnEnvVar: "SCHEDULER_ROLE_ARN",
-    schedulerQueueArnEnvVar: "SCHEDULER_QUEUE_ARN",
-    schedulerQueueNameEnvVar: "SCHEDULER_QUEUE_NAME",
-  }
+  let publishToAggregatesJson =
+    publishToAggregatesEnvVars
+    ->Dict.toArray
+    ->Array.map(((aggName, envVar)) =>
+      `${aggName->JSON.stringifyAny->Option.getOr(`""`)}: ${envVar->JSON.stringifyAny->Option.getOr(`""`)}`
+    )
+    ->Array.join(",")
 
-  let entryPointCode = Util_EntryPoint.generatePluginExtensionPointEntryPoint({
-    name: epName,
-    handler: registration,
-    factoryModule: factoryModulePath,
-    requestContextModule: requestContextModulePath,
-  })
+  // Build HANDLER_CONFIG JSON
+  let queueName =
+    queue.id->Pulumi.Output.apply(id =>
+      id->String.split("/")->Array.at(-1)->Option.getOr(id)
+    )
 
-  let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+  let handlerConfigJson =
+    Pulumi.Output.all([
+      queue.id,
+      info.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
+      info.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
+      queue.arn,
+      queueName,
+    ])
+    ->Pulumi.Output.apply(values => {
+      let queueUrl = values->Array.getUnsafe(0)
+      let rmTable = values->Array.getUnsafe(1)
+      let schedRoleArn = values->Array.getUnsafe(2)
+      let schedQueueArn = values->Array.getUnsafe(3)
+      let schedQueueName = values->Array.getUnsafe(4)
+      `{"queueUrl":"${queueUrl}","pluginReadModelTableName":"${rmTable}","schedulerRoleArn":"${schedRoleArn}","schedulerQueueArn":"${schedQueueArn}","schedulerQueueName":"${schedQueueName}","publishToAggregates":{${publishToAggregatesJson}}}`
+    })
+  envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
+
+  // No user packages — all framework imports are in the Layer
+  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.res.mjs";`
+
+  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+  archiveContents->Dict.set(
+    "index.mjs",
+    Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+  )
+
+  let code = Pulumi.Archive.assetArchive(archiveContents)
+  let sourceCodeHash = Util_Bundle.hashString(reExportCode)
+
+  let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name,
-    ~entryPointCode,
+    ~code,
+    ~sourceCodeHash,
     ~envVars,
     ~memorySize,
     ~timeout,

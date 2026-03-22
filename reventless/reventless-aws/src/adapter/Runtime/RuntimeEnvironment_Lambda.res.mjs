@@ -11,7 +11,6 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
-import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
@@ -35,13 +34,12 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   };
 }
 
-function makeBundled(name, handlerRef, envVarsOpt, memorySizeOpt, timeoutOpt, opts) {
+function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, opts) {
   let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  let match = Util_Bundle$ReventlessAws.bundleHandler(handlerRef.handlerModule, handlerRef.handlerExport);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
   let variables = Object.fromEntries([[
       "Environment",
@@ -53,7 +51,7 @@ function makeBundled(name, handlerRef, envVarsOpt, memorySizeOpt, timeoutOpt, op
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: "nodejs22.x",
-    code: match.code,
+    code: code,
     role: lambdaRole.arn,
     memorySize: memorySize,
     timeout: timeout,
@@ -62,48 +60,7 @@ function makeBundled(name, handlerRef, envVarsOpt, memorySizeOpt, timeoutOpt, op
     environment: {
       variables: variables
     },
-    sourceCodeHash: match.sourceCodeHash
-  }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  return {
-    parts: {
-      lambda: Pulumi.output(lambda),
-      lambdaRole: lambdaRole
-    },
-    resources: [
-      Util_Lambda$ReventlessAws.functionToResource(lambda),
-      Util_IAM_Role$ReventlessAws.toResource(lambdaRole)
-    ]
-  };
-}
-
-function makeBundledFromEntryPoint(name, entryPointCode, envVarsOpt, memorySizeOpt, timeoutOpt, opts) {
-  let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
-  let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
-  let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
-  let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  let match = Util_Bundle$ReventlessAws.bundleEntryPoint(entryPointCode);
-  let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
-  let variables = Object.fromEntries([[
-      "Environment",
-      Pulumi.getStack()
-    ]]);
-  Stdlib_Dict.forEachWithKey(envVars, (value, key) => {
-    variables[key] = value;
-  });
-  let lambda = new (Aws.lambda.Function)(name, {
-    handler: "index.handler",
-    runtime: "nodejs22.x",
-    code: match.code,
-    role: lambdaRole.arn,
-    memorySize: memorySize,
-    timeout: timeout,
-    layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
-    environment: {
-      variables: variables
-    },
-    sourceCodeHash: match.sourceCodeHash
+    sourceCodeHash: sourceCodeHash
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   return {
     parts: {
@@ -143,8 +100,7 @@ function extractCorrelationId(event) {
 
 export {
   make,
-  makeBundled,
-  makeBundledFromEntryPoint,
+  makeFromCodeAsset,
   groupBySource,
   extractCorrelationId,
 }

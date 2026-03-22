@@ -24,3 +24,5 @@ type error =
   | OrderNotFound
   | OrderAlreadyShipped
   | OrderAlreadyCancelled
+
+let moduleUrl: string = %raw(`import.meta.url`)

@@ -1,4 +1,4 @@
 name: online-shop-hybrid-catalog-aws
 runtime: nodejs
-main: src/index.mjs
+main: src/Main.res.mjs
 description: Online Shop Hybrid — Catalog plugin stack

@@ -6,6 +6,8 @@ import * as ExtensionPoint_Callback$ReventlessCore from "../../src/components/Ex
 
 S.enableJson();
 
+let name = "TestExtensionPoint";
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "RouteToAgg",
@@ -24,11 +26,14 @@ let eventSchema = S.schema(s => ({
 
 let directiveSchema = S.literal("DirectiveA");
 
+let moduleUrl = import.meta.url;
+
 let TestEPSpec = {
-  name: "TestExtensionPoint",
+  name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  directiveSchema: directiveSchema
+  directiveSchema: directiveSchema,
+  moduleUrl: moduleUrl
 };
 
 let capturedPublishedCmds = {
@@ -74,6 +79,8 @@ let TestMapping = {
   mapOutgoingEvent: undefined
 };
 
+let moduleUrl$1 = import.meta.url;
+
 let mappings = [{
     aggregateName: aggregateName,
     mapIncomingCommands: mapIncomingCommands,
@@ -82,6 +89,8 @@ let mappings = [{
 
 let TestMappings = {
   Spec: undefined,
+  name: "TestMappings",
+  moduleUrl: moduleUrl$1,
   mappings: mappings
 };
 
@@ -141,7 +150,13 @@ let TestCallbackSpec = {
   resourceNaming: resourceNaming
 };
 
-let TestHandler = ExtensionPoint_Callback$ReventlessCore.Make(TestCallbackSpec)(TestEPSpec)({
+let TestHandler = ExtensionPoint_Callback$ReventlessCore.Make(TestCallbackSpec)({
+  name: name,
+  moduleUrl: moduleUrl,
+  commandSchema: commandSchema,
+  eventSchema: eventSchema,
+  directiveSchema: directiveSchema
+})({
   mappings: mappings
 });
 

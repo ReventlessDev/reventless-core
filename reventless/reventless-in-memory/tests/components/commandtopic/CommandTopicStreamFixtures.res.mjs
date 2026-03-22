@@ -27,12 +27,15 @@ let eventSchema = S.schema(s => ({
 
 let errorSchema = S.literal("AlreadyExists");
 
+let moduleUrl = import.meta.url;
+
 let ItemSpec = {
   Id: undefined,
   name: "StreamCmdItem",
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  moduleUrl: moduleUrl
 };
 
 let StreamBus = InMemory_Bus$ReventlessInMemory.Make({});

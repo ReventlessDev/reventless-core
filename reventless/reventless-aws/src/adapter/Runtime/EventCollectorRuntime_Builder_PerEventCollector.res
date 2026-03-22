@@ -54,47 +54,59 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
         ->Array.map(({urn}) => urn)
         ->Pulumi.Output.all
 
-      let factoryModulePath =
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelHandlerFactory.mjs"
-      let requestContextModulePath =
-        "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
-
       let name = eventCollectorResource.name->ReventlessCore.ComponentType.nameOpt(
         ReventlessCore.EventCollector.componentType,
       )
       let opts = {Pulumi.ComponentResource.parent: eventCollectorResource}
 
-      let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
-      envVars->Dict.set("HANDLER_0_TABLE", info.queryDbTableName->Pulumi.Output.asInput)
+      // Build HANDLER_CONFIG with single handler
+      let specModule =
+        info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+      let mappingsModule =
+        info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
-      let _ = sourceUrns->Pulumi.Output.apply(urns => {
-        urns->Array.forEachWithIndex((urn, j) => {
-          let envVar = if j == 0 {
-            "HANDLER_0_SOURCE_URN"
-          } else {
-            `HANDLER_0_SOURCE_URN_${j->Int.toString}`
-          }
-          envVars->Dict.set(envVar, urn->Pulumi.Input.make)
+      let handlerConfigOutput =
+        Pulumi.Output.all2((info.queryDbTableName, sourceUrns))
+        ->Pulumi.Output.apply(((tableName, urns)) => {
+          let sourceUrn = urns->Array.getUnsafe(0)
+          `{"handlers":[{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}]}`
         })
+
+      let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
+      envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+
+      // Collect user packages
+      let packageDirs: dict<string> = Dict.make()
+      let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+      let mappingsPkg = Util_Bundle.extractPackageName(info.mappingsModulePath)
+      packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+      packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
+
+      // Build AssetArchive: static re-export + user packages
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.res.mjs";`
+
+      let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+      archiveContents->Dict.set(
+        "index.mjs",
+        Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+      )
+      packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+        archiveContents->Dict.set(
+          `node_modules/${pkgName}`,
+          Util_Bundle.createFilteredPackageArchive(pkgRoot)
+          ->Pulumi.Archive.archiveToAssetOrArchive,
+        )
       })
 
-      let registration: Util_EntryPoint.readModelRegistration = {
-        specModulePath: info.specModulePath,
-        mappingsModulePath: info.mappingsModulePath,
-        queryDbTableEnvVar: "HANDLER_0_TABLE",
-        sourceUrnEnvVar: "HANDLER_0_SOURCE_URN",
-      }
+      let code = Pulumi.Archive.assetArchive(archiveContents)
+      let sourceCodeHash = Util_Bundle.hashString(
+        reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+      )
 
-      let entryPointCode = Util_EntryPoint.generateReadModelEntryPoint({
-        name: parentName,
-        handlers: [registration],
-        factoryModule: factoryModulePath,
-        requestContextModule: requestContextModulePath,
-      })
-
-      let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+      let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
         ~name,
-        ~entryPointCode,
+        ~code,
+        ~sourceCodeHash,
         ~envVars,
         ~memorySize,
         ~timeout,

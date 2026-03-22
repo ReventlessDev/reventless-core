@@ -18,6 +18,7 @@ module OrderEventLog = {
 
 module ShipOrderSpec = {
   let name = "ShipOrder"
+  let moduleUrl: string = %raw(`import.meta.url`)
   module DcbEventLogSpec = OrderEventLog
 
   @schema
@@ -47,6 +48,7 @@ module ShipOrderSpec = {
 // Spec where process returns None (skips processing)
 module SkipProcessSpec = {
   let name = "SkipProcess"
+  let moduleUrl: string = %raw(`import.meta.url`)
   module DcbEventLogSpec = OrderEventLog
 
   @schema

@@ -35,6 +35,7 @@ let eventLog = OrderingEventLogMaker.make("Ordering", undefined);
 
 let SyncCatalogProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: SyncCatalogProduct$OrderingPlugin.name,
+  moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
   initialDecisionModel: SyncCatalogProduct$OrderingPlugin.initialDecisionModel,
@@ -45,6 +46,7 @@ let SyncCatalogProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: PlaceOrder$OrderingPlugin.name,
+  moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
   initialDecisionModel: PlaceOrder$OrderingPlugin.initialDecisionModel,
@@ -55,6 +57,7 @@ let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ShipOrder$OrderingPlugin.name,
+  moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: ShipOrder$OrderingPlugin.errorSchema,
   initialDecisionModel: ShipOrder$OrderingPlugin.initialDecisionModel,
@@ -65,6 +68,7 @@ let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let CancelOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: CancelOrder$OrderingPlugin.name,
+  moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: CancelOrder$OrderingPlugin.errorSchema,
   initialDecisionModel: CancelOrder$OrderingPlugin.initialDecisionModel,

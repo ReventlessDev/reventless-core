@@ -7,6 +7,7 @@ import * as AutomationSliceFixtures$ReventlessInMemory from "./AutomationSliceFi
 
 let Callback = AutomationSlice_Callback$ReventlessCore.Make({
   name: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.name,
+  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.moduleUrl,
   DcbEventLogSpec: AutomationSliceFixtures$ReventlessInMemory.OrderEventLog,
   todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.todoItemSchema,
   commandSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.commandSchema,
@@ -19,6 +20,7 @@ let Callback = AutomationSlice_Callback$ReventlessCore.Make({
 
 let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make({
   name: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.name,
+  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.moduleUrl,
   DcbEventLogSpec: AutomationSliceFixtures$ReventlessInMemory.OrderEventLog,
   todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.todoItemSchema,
   commandSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.commandSchema,

@@ -7,6 +7,7 @@ S.enableJson()
 module ItemQueryDbSpec = {
   module Id = Reventless.Id.StringPure
   let name = "TestItemQueryDb"
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
   type state = {name: string, count: int}

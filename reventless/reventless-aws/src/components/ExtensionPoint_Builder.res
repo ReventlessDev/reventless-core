@@ -3,8 +3,6 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint
 
 module type Config = {
-  let specModulePath: string
-  let mappingsModulePath: string
   let publishToAggregatesQueueUrls: dict<Pulumi.Output.t<string>>
 }
 
@@ -24,8 +22,8 @@ module Make = (
 
   ExtensionPointRuntimeBuilder.registerExtensionPoint(
     ~name=Spec.name,
-    ~specModulePath=Config.specModulePath,
-    ~mappingsModulePath=Config.mappingsModulePath,
+    ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+    ~mappingsModulePath=Util_Bundle.getModuleSpecifier(Mappings.moduleUrl),
     ~publishToAggregatesQueueUrls=Config.publishToAggregatesQueueUrls,
   )
 

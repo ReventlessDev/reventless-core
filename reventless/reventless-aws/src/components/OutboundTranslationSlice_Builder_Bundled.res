@@ -11,10 +11,6 @@ module EventCollectorRuntimeBuilder = {
   let finish = Inner.finish
 }
 
-module type Config = {
-  let specModulePath: string
-}
-
 module Make = (Api: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
@@ -30,7 +26,6 @@ module Make = (Api: {
 
   module Make = (
     Spec: Reventless.OutboundTranslationSlice.Spec,
-    Config: Config,
   ): (
     ReventlessCore.OutboundTranslationSlice.T
       with type dcbEvent = Spec.DcbEventLogSpec.event
@@ -53,7 +48,8 @@ module Make = (Api: {
 
       AutomationSliceRuntime_Builder_Single.registerAutomationSlice(
         ~name=Spec.name,
-        ~specModulePath=Config.specModulePath,
+        ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+        ~callbackType="outbound",
         ~queryDbTableName,
       )
 

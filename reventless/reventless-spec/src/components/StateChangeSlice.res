@@ -37,6 +37,7 @@ let commandSchema = S.schema(s =>
 module type Spec = {
   /** Logical name of this slice (used as a command topic prefix). */
   let name: string
+  let moduleUrl: string
 
   /** The DCB event log spec this slice appends events to. */
   module DcbEventLogSpec: DcbEventLog.Spec

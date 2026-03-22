@@ -2,8 +2,10 @@
 
 
 function Make(Target) {
+  let moduleUrl = import.meta.url;
   let mappings = [];
   return {
+    moduleUrl: moduleUrl,
     mappings: mappings,
     counter: undefined
   };

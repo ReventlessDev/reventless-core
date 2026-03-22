@@ -28,36 +28,64 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
 
   switch bundledCounterInfos->Dict.get(name) {
   | Some(info) =>
-    let factoryModulePath =
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterHandlerFactory.mjs"
-    let requestContextModulePath =
-      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
-
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 
     let countsTableName = (countsDb.resources->Array.getUnsafe(0)).name
-    envVars->Dict.set("COUNTER_COUNTS_TABLE", countsTableName->Pulumi.Output.asInput)
-    envVars->Dict.set("COUNTER_PUBLISH_QUEUE_URL", info.publishQueueUrl->Pulumi.Output.asInput)
-    envVars->Dict.set("COUNTER_REFERENCES_STREAM_ARN", referencesStream.urn->Pulumi.Output.asInput)
-    envVars->Dict.set("COUNTER_COUNTS_STREAM_ARN", countsStream.urn->Pulumi.Output.asInput)
 
-    let entryPointCode = Util_EntryPoint.generateCounterEntryPoint({
-      name,
-      specModulePath: info.specModulePath,
-      mappingsModulePath: info.mappingsModulePath,
-      factoryModule: factoryModulePath,
-      requestContextModule: requestContextModulePath,
-      countsTableEnvVar: "COUNTER_COUNTS_TABLE",
-      publishQueueUrlEnvVar: "COUNTER_PUBLISH_QUEUE_URL",
-      referencesStreamArnEnvVar: "COUNTER_REFERENCES_STREAM_ARN",
-      countsStreamArnEnvVar: "COUNTER_COUNTS_STREAM_ARN",
+    let targetSpecModule =
+      info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+    let mappingsModule =
+      info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
+
+    let handlerConfigJson =
+      Pulumi.Output.all3((countsTableName, info.publishQueueUrl, referencesStream.urn))
+      ->Pulumi.Output.apply(((table, queueUrl, refArn)) => {
+        let countsArn = "" // Will be set separately
+        `{"targetSpecModule":${targetSpecModule},"mappingsModule":${mappingsModule},"countsTableName":"${table}","publishQueueUrl":"${queueUrl}","referencesStreamArn":"${refArn}","countsStreamArn":"${countsArn}"}`
+      })
+
+    // countsStreamArn is in a separate Output — merge into config
+    let fullHandlerConfigJson =
+      Pulumi.Output.all2((handlerConfigJson, countsStream.urn))
+      ->Pulumi.Output.apply(((config, countsArn)) =>
+        config->String.replace(`"countsStreamArn":""`, `"countsStreamArn":"${countsArn}"`)
+      )
+
+    envVars->Dict.set("HANDLER_CONFIG", fullHandlerConfigJson->Pulumi.Output.asInput)
+
+    // Build code asset
+    let packageDirs: dict<string> = Dict.make()
+    let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+    let mappingsPkg = Util_Bundle.extractPackageName(info.mappingsModulePath)
+    packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+    packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
+
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.res.mjs";`
+
+    let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+    archiveContents->Dict.set(
+      "index.mjs",
+      Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+    )
+    packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+      archiveContents->Dict.set(
+        `node_modules/${pkgName}`,
+        Util_Bundle.createFilteredPackageArchive(pkgRoot)
+        ->Pulumi.Archive.archiveToAssetOrArchive,
+      )
     })
+
+    let code = Pulumi.Archive.assetArchive(archiveContents)
+    let sourceCodeHash = Util_Bundle.hashString(
+      reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+    )
 
     let componentOpts: Pulumi.ComponentResource.options = {parent: ?opts.parent}
 
-    let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+    let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
-      ~entryPointCode,
+      ~code,
+      ~sourceCodeHash,
       ~envVars,
       ~memorySize=1024,
       ~timeout=30,

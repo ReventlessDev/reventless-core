@@ -5,6 +5,7 @@ open Reventless.Projection
 open CatalogEventLog
 
 let name = "ProductDemandView"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 module DcbEventLogSpec = CatalogEventLog
 

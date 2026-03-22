@@ -216,6 +216,7 @@ module Make = (Spec: Spec) => {
     module Spec = PluginExtensionPointSpec
     module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
     let name = "Connect"
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(ConnectPluginMapping)]
   }
 

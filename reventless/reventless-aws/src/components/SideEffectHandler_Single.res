@@ -3,11 +3,7 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
 module EventCollectorRuntimeBuilder = SideEffectHandlerRuntime_Builder_Single
 
-module type Config = {
-  let sideEffectModulePaths: array<string>
-}
-
-module Make = (Config: Config): ReventlessCore.SideEffectHandler.T => {
+module Make = (): ReventlessCore.SideEffectHandler.T => {
   module Inner = ReventlessCore.SideEffectHandler_Builder.Make(
     RuntimeEnvironment,
     EventCollectorChannel,
@@ -42,9 +38,15 @@ module Make = (Config: Config): ReventlessCore.SideEffectHandler.T => {
       ~opts?,
     )
 
+    // Derive npm specifiers from moduleUrl on each SideEffect module
+    let sideEffectModulePaths = sideEffects->Array.map(
+      (module(SE: Reventless.SideEffect.T)) =>
+        Util_Bundle.getModuleSpecifier(SE.moduleUrl),
+    )
+
     EventCollectorRuntimeBuilder.registerSideEffectHandler(
       ~sideEffectHandlerName=name,
-      ~sideEffectModulePaths=Config.sideEffectModulePaths,
+      ~sideEffectModulePaths,
     )
 
     component

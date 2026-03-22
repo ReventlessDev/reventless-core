@@ -22,6 +22,8 @@ module CGSpec = {
 
   @schema
   type error = | CGAlreadyExists
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -36,6 +38,8 @@ module CGBehavior = {
     commandSchema: CGSpec.commandSchema,
     fields: ["name"],
   }
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let init = (event: CGSpec.event): state =>
     switch event {

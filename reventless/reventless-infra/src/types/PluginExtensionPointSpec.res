@@ -38,3 +38,5 @@ type directive =
   | DoConnectPlugin(pluginDefinition)
   | DoDisconnectPlugin(pluginDefinition)
   | ForwardCommand(forwardCommand)
+
+let moduleUrl: string = %raw(`import.meta.url`)

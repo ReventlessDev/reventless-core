@@ -115,4 +115,8 @@ module type T = {
     Message.context,
     Handler.errorHandler<Spec.error, Spec.command, Spec.event>,
   ) => array<Spec.event>
+
+  /** File URL of this module (`import.meta.url`). Used by AWS builders to derive
+      the npm specifier for runtime dynamic imports. */
+  let moduleUrl: string
 }

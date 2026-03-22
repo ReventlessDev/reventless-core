@@ -30,6 +30,7 @@ module CategoryMappings: Mappings with module Target := CategoriesReadModel = {
 module type Mappings = {
   module Target: Reventless.EventMapping.Target
   module type Mapping = Reventless.EventMapping.T with module Target := Target
+  let moduleUrl: string
   let mappings: array<module(Mapping)>
   /** Optional counter component for threshold-based command triggers. */
   let counter: option<module(Counter.T)>

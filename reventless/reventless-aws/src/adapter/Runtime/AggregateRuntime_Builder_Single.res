@@ -181,37 +181,33 @@ let finish = () =>
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
 
-        let factoryModulePath =
-          "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs"
-
-        // Build env vars and handler registrations
-        let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
-        let handlerRegistrations = ref([])
-        let idx = ref(0)
+        // Build HANDLER_CONFIG as a single JSON env var.
+        // Each handler's dynamic values (table name, queue URL/ARN) are Pulumi Outputs
+        // that resolve at deploy time. Static values (module paths) are plain strings.
+        let handlerOutputs: array<Pulumi.Output.t<string>> = []
+        let packageDirs: dict<string> = Dict.make()
 
         specs->Array.forEach(spec => {
           switch bundledAggregateInfos->Dict.get(spec.aggregateName) {
           | Some(info) =>
-            let i = idx.contents
-            let iStr = i->Int.toString
-            let tableEnvVar = `HANDLER_${iStr}_TABLE`
-            let queueUrlEnvVar = `HANDLER_${iStr}_QUEUE_URL`
-            let queueArnEnvVar = `HANDLER_${iStr}_QUEUE_ARN`
+            // Collect unique user packages for the code asset
+            let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+            let behaviorPkg = Util_Bundle.extractPackageName(info.behaviorModulePath)
+            packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+            packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
 
-            envVars->Dict.set(tableEnvVar, info.eventLogTableName->Pulumi.Output.asInput)
-            envVars->Dict.set(queueUrlEnvVar, spec.queueUrl->Pulumi.Output.asInput)
-            envVars->Dict.set(queueArnEnvVar, spec.queueArn->Pulumi.Output.asInput)
+            // Combine the three Output values into a JSON object string
+            let specModule =
+              info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let behaviorModule =
+              info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
-            let registration: Util_EntryPoint.aggregateHandlerRegistration = {
-              specModulePath: info.specModulePath,
-              behaviorModulePath: info.behaviorModulePath,
-              eventLogTableEnvVar: tableEnvVar,
-              queueUrlEnvVar,
-              queueArnEnvVar,
-            }
-            handlerRegistrations :=
-              handlerRegistrations.contents->Array.concat([registration])
-            idx := i + 1
+            let handlerJson =
+              Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
+              ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
+                `{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"}`
+              )
+            let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             Console.warn(
               `AggregateRuntime_Builder_Single: no bundled info registered for ${spec.aggregateName}`,
@@ -219,19 +215,40 @@ let finish = () =>
           }
         })
 
-        let requestContextModulePath =
-          "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
+        let handlerConfigOutput =
+          Pulumi.Output.all(handlerOutputs)
+          ->Pulumi.Output.apply(handlers =>
+            `{"handlers":[${handlers->Array.join(",")}]}`
+          )
 
-        let entryPointCode = Util_EntryPoint.generateAggregateEntryPoint({
-          name: "AllAggregates",
-          handlers: handlerRegistrations.contents,
-          factoryModule: factoryModulePath,
-          requestContextModule: requestContextModulePath,
+        let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
+        envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+
+        // Build AssetArchive: static re-export + user packages
+        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.res.mjs";`
+
+        let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+        archiveContents->Dict.set(
+          "index.mjs",
+          Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+        )
+        packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+          archiveContents->Dict.set(
+            `node_modules/${pkgName}`,
+            Util_Bundle.createFilteredPackageArchive(pkgRoot)
+            ->Pulumi.Archive.archiveToAssetOrArchive,
+          )
         })
 
-        let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+        let code = Pulumi.Archive.assetArchive(archiveContents)
+        let sourceCodeHash = Util_Bundle.hashString(
+          reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+        )
+
+        let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllAggregates",
-          ~entryPointCode,
+          ~code,
+          ~sourceCodeHash,
           ~envVars,
           ~memorySize,
           ~timeout,

@@ -34,6 +34,7 @@ let eventLog = CatalogEventLogMaker.make("Catalog", undefined);
 
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,
+  moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: AddProduct$CatalogPlugin.errorSchema,
   initialDecisionModel: AddProduct$CatalogPlugin.initialDecisionModel,
@@ -44,6 +45,7 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductName$CatalogPlugin.name,
+  moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   initialDecisionModel: ChangeProductName$CatalogPlugin.initialDecisionModel,
@@ -54,6 +56,7 @@ let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 
 let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductPrice$CatalogPlugin.name,
+  moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   initialDecisionModel: ChangeProductPrice$CatalogPlugin.initialDecisionModel,

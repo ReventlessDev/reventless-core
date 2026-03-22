@@ -19,6 +19,8 @@ let resolverConfig = {
 
 let atomicCounter = None
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 let create: Behavior.create<command, event, error> = (command, context, error) =>
   switch command {
   | Heartbeat => [UnknownPluginDetected]

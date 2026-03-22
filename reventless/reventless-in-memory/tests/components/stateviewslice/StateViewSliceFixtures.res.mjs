@@ -33,6 +33,8 @@ let ItemEventLog = {
 
 let name = "ItemsView";
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   id: s.m(S.string),
   name: s.m(S.string)
@@ -70,6 +72,7 @@ function project(param, event) {
 
 let ItemsViewSpec = {
   name: name,
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: undefined,
   eventSchema: eventSchema,
   stateSchema: stateSchema,
@@ -90,6 +93,7 @@ let SVMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
 
 let ItemsViewMaker = SVMaker.Make({
   name: name,
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: ItemEventLog,
   eventSchema: eventSchema,
   stateSchema: stateSchema,

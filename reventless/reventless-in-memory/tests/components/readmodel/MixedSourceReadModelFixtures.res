@@ -13,6 +13,7 @@ open Reventless.Projection
 module MixedReadModelSpec = {
   module Id = Reventless.Id.String
   let name = "TestMixedReadModel"
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
   type state = {
@@ -93,6 +94,7 @@ module DcbMapping = Mapping.Make(
 module MixedMappings: Mappings with module Target := MixedReadModelSpec = {
   module Mappings = Mappings.Make(MixedReadModelSpec)
   module type Mapping = Mappings.Mapping
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(AggregateMapping), module(DcbMapping)]
 }
 

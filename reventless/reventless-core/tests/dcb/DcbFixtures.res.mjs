@@ -50,6 +50,8 @@ let objectEventSchema = S.schema(s => ({
   data: s.m(S.string)
 }));
 
+let moduleUrl = import.meta.url;
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "CreateItem",
@@ -135,6 +137,7 @@ let TestCommandSpec_initialDecisionModel = {
 
 let TestCommandSpec = {
   name: "TestStateChangeSlice",
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: undefined,
   commandSchema: commandSchema,
   errorSchema: errorSchema,

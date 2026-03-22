@@ -111,7 +111,13 @@ export const handler = async (event) => {
     },
   }));
 };`
-  let {code, sourceCodeHash}: Util_Bundle.bundle = Util_Bundle.bundleEntryPoint(entryPointCode)
+  let clonerArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+  clonerArchiveContents->Dict.set(
+    "index.mjs",
+    Pulumi.Asset.stringAsset(entryPointCode)->Pulumi.Archive.assetToAssetOrArchive,
+  )
+  let code = Pulumi.Archive.assetArchive(clonerArchiveContents)
+  let sourceCodeHash = Util_Bundle.hashString(entryPointCode)
 
   let layers =
     Lambda.reventlessLayerArn

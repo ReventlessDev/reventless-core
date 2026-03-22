@@ -13,7 +13,8 @@ let include = BehaviorTest$ReventlessInMemory.Make({
   init: ProductBehavior$CatalogPlugin.init,
   apply: ProductBehavior$CatalogPlugin.apply,
   create: ProductBehavior$CatalogPlugin.create,
-  execute: ProductBehavior$CatalogPlugin.execute
+  execute: ProductBehavior$CatalogPlugin.execute,
+  moduleUrl: ProductBehavior$CatalogPlugin.moduleUrl
 });
 
 let describe = include.describe;

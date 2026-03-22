@@ -17,6 +17,8 @@ module ItemSpec = {
 
   @schema
   type error = | AlreadyExists
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -30,6 +32,8 @@ module ItemBehavior: ReventlessCore.Behavior.T with module Spec := ItemSpec = {
     commandSchema: ItemSpec.commandSchema,
     fields: [],
   }
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let init = (_event: ItemSpec.event) => true
   let apply = (_state, _event: ItemSpec.event) => true

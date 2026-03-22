@@ -19,6 +19,7 @@ module Make = (Target: Reventless.EventMapping.Target): (
   EventMapper.Mappings with module Target := Target
 ) => {
   module type Mapping = Reventless.EventMapping.T with module Target := Target
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings = []
   let counter = None
 }

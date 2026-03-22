@@ -42,6 +42,7 @@ that extensions and aggregates exchange through this extension point.
 */
 module type Spec = {
   let name: string
+  let moduleUrl: string
 
   @schema
   type command

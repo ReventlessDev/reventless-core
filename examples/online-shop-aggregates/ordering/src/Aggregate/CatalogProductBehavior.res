@@ -11,6 +11,8 @@ type state = {name: string, price: float}
 
 let resolverConfig = {Behavior.commandSchema, fields: []}
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 let init = event =>
   switch event {
   | Synced({name, price}) => {name, price}

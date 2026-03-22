@@ -1,5 +1,7 @@
 // Send an order confirmation email when an order is placed.
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 module Source = {
   let name = Order.name
   module Id = Order.Id

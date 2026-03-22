@@ -28,6 +28,7 @@ let executeCallCount = ref(0)
 
 module TestSideEffect: Reventless.SideEffect.T = {
   module Source = TestSource
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let execute = async (id, _meta, event, _queryEngine) => {
     executeCallCount := executeCallCount.contents + 1

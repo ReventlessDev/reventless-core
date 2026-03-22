@@ -2,6 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductBecameAvailable",
@@ -24,8 +26,9 @@ let directiveSchema = S.unit;
 
 export {
   name,
+  moduleUrl,
   commandSchema,
   eventSchema,
   directiveSchema,
 }
-/* eventSchema Not a pure module */
+/* moduleUrl Not a pure module */

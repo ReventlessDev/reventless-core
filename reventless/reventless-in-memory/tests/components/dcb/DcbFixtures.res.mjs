@@ -26,6 +26,8 @@ let ItemEventLog = {
 
 let name = "AddItem";
 
+let moduleUrl = import.meta.url;
+
 let commandSchema = S.schema(s => ({
   TAG: "AddItem",
   id: s.m(DcbTag$Reventless.string),
@@ -58,6 +60,7 @@ function decide(model, command) {
 
 let AddItemSpec = {
   name: name,
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: undefined,
   errorSchema: errorSchema,
   initialDecisionModel: false,
@@ -86,6 +89,7 @@ let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined);
 
 let AddItemMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: name,
+  moduleUrl: moduleUrl,
   DcbEventLogSpec: ItemEventLog,
   errorSchema: errorSchema,
   initialDecisionModel: false,

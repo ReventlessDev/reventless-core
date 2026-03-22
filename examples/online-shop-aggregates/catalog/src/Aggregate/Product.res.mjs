@@ -49,6 +49,8 @@ let errorSchema = S.union([
   S.literal("ProductNotFound")
 ]);
 
+let moduleUrl = import.meta.url;
+
 let Id;
 
 let name = "Product";
@@ -59,5 +61,6 @@ export {
   commandSchema,
   eventSchema,
   errorSchema,
+  moduleUrl,
 }
 /* commandSchema Not a pure module */

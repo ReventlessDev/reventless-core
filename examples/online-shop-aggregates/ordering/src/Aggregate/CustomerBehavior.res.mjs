@@ -20,6 +20,8 @@ let resolverConfig = {
   fields: resolverConfig_fields
 };
 
+let moduleUrl = import.meta.url;
+
 function init(event) {
   if (typeof event !== "object") {
     throw {
@@ -126,6 +128,7 @@ export {
   Spec,
   stateSchema,
   resolverConfig,
+  moduleUrl,
   init,
   apply,
   create,

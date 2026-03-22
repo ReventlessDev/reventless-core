@@ -125,25 +125,17 @@ function MakeWithConfig(Config) {
     api: appSyncApi,
     apiRole: appSyncApiRole
   };
-  let Make = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)({
-    specModulePath: "",
-    behaviorModulePath: ""
-  })));
+  let Make = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
   let Aggregate = {
     Make: Make
   };
-  let Make$1 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings)({
-    specModulePath: "",
-    mappingsModulePath: ""
-  }));
+  let Make$1 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings));
   let ReadModel = {
     Make: Make$1
   };
   let Make$2 = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
     return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      specModulePath: "",
-      mappingsModulePath: "",
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
@@ -356,50 +348,44 @@ function MakeWithConfig(Config) {
     splitApi: Config.splitApi,
     cloner: Config.cloner
   });
-  let corePkg = "@reventlessdev/reventless-core/src/admin";
-  let specModulePath = corePkg + "/PluginSpec.res.mjs";
-  let behaviorModulePath = corePkg + "/PluginBehavior.res.mjs";
   let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
-    commandSchema: PluginSpec$ReventlessCore.commandSchema
+    commandSchema: PluginSpec$ReventlessCore.commandSchema,
+    moduleUrl: PluginSpec$ReventlessCore.moduleUrl
   })({
     resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
     init: PluginBehavior$ReventlessCore.init,
     apply: PluginBehavior$ReventlessCore.apply,
     create: PluginBehavior$ReventlessCore.create,
-    execute: PluginBehavior$ReventlessCore.execute
+    execute: PluginBehavior$ReventlessCore.execute,
+    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
-  }))({
-    specModulePath: specModulePath,
-    behaviorModulePath: behaviorModulePath
-  });
+  }));
   Projection$Reventless.Mappings.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     subIdConfig: undefined
   });
+  let moduleUrl = import.meta.url;
   let PluginReadModelMappings = {
+    moduleUrl: moduleUrl,
     mappings: PluginProjection$ReventlessCore.mappings
   };
-  let specModulePath$1 = corePkg + "/PluginReadModelSpec.res.mjs";
-  let mappingsModulePath = corePkg + "/PluginProjection.res.mjs";
   let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginReadModelSpec$ReventlessCore.moduleUrl,
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     config: PluginReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
-  })(PluginReadModelMappings)({
-    specModulePath: specModulePath$1,
-    mappingsModulePath: mappingsModulePath
-  });
+  })(PluginReadModelMappings);
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
@@ -628,25 +614,17 @@ function Make($star) {
     api: appSyncApi,
     apiRole: appSyncApiRole
   };
-  let Make$1 = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)({
-    specModulePath: "",
-    behaviorModulePath: ""
-  })));
+  let Make$1 = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
   let Aggregate = {
     Make: Make$1
   };
-  let Make$2 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings)({
-    specModulePath: "",
-    mappingsModulePath: ""
-  }));
+  let Make$2 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings));
   let ReadModel = {
     Make: Make$2
   };
   let Make$3 = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
     return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      specModulePath: "",
-      mappingsModulePath: "",
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
@@ -857,50 +835,44 @@ function Make($star) {
     splitApi: true,
     cloner: false
   });
-  let corePkg = "@reventlessdev/reventless-core/src/admin";
-  let specModulePath = corePkg + "/PluginSpec.res.mjs";
-  let behaviorModulePath = corePkg + "/PluginBehavior.res.mjs";
   let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,
     errorSchema: PluginSpec$ReventlessCore.errorSchema,
-    commandSchema: PluginSpec$ReventlessCore.commandSchema
+    commandSchema: PluginSpec$ReventlessCore.commandSchema,
+    moduleUrl: PluginSpec$ReventlessCore.moduleUrl
   })({
     resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
     init: PluginBehavior$ReventlessCore.init,
     apply: PluginBehavior$ReventlessCore.apply,
     create: PluginBehavior$ReventlessCore.create,
-    execute: PluginBehavior$ReventlessCore.execute
+    execute: PluginBehavior$ReventlessCore.execute,
+    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
-  }))({
-    specModulePath: specModulePath,
-    behaviorModulePath: behaviorModulePath
-  });
+  }));
   Projection$Reventless.Mappings.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     subIdConfig: undefined
   });
+  let moduleUrl = import.meta.url;
   let PluginReadModelMappings = {
+    moduleUrl: moduleUrl,
     mappings: PluginProjection$ReventlessCore.mappings
   };
-  let specModulePath$1 = corePkg + "/PluginReadModelSpec.res.mjs";
-  let mappingsModulePath = corePkg + "/PluginProjection.res.mjs";
   let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginReadModelSpec$ReventlessCore.moduleUrl,
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     config: PluginReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
-  })(PluginReadModelMappings)({
-    specModulePath: specModulePath$1,
-    mappingsModulePath: mappingsModulePath
-  });
+  })(PluginReadModelMappings);
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));

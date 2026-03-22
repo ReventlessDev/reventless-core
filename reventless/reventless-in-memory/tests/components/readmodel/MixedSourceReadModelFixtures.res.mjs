@@ -15,6 +15,8 @@ import * as ReadModel_Builder$ReventlessInMemory from "../../../src/components/R
 
 let name = "TestMixedReadModel";
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   name: s.m(S.string),
   source: s.m(S.string)
@@ -25,6 +27,7 @@ let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 let MixedReadModelSpec = {
   Id: undefined,
   name: name,
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined
@@ -147,12 +150,15 @@ Projection$Reventless.Mappings.Make({
   subIdConfig: undefined
 });
 
+let moduleUrl$1 = import.meta.url;
+
 let mappings = [
   AggregateMapping,
   DcbMapping
 ];
 
 let MixedMappings = {
+  moduleUrl: moduleUrl$1,
   mappings: mappings
 };
 
@@ -220,6 +226,7 @@ let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
 let MixedRM = ReadModelMaker.Make({
   Id: Id$Reventless.$$String,
   name: name,
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined
@@ -294,4 +301,4 @@ export {
   publishDcbEvent,
   loadState,
 }
-/* stateSchema Not a pure module */
+/* moduleUrl Not a pure module */

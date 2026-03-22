@@ -15,10 +15,12 @@ function Make(QueryDbStorage) {
     let Make = Spec => {
       let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(Spec);
       let queryDbName = Spec.name + "Audit";
+      let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         name: queryDbName,
+        moduleUrl: moduleUrl,
         stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
         config: config,
         subIdConfig: undefined

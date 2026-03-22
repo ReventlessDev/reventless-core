@@ -2,6 +2,7 @@
 // Extensions subscribing to this EP receive product availability events.
 
 let name = "Catalog.Products"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 @schema
 type command = unit // read-only: no inbound commands

@@ -11,6 +11,7 @@ function setup(_queryEngine, _queryBucketName, _opts) {
           Id: Id$Reventless.$$String,
           eventSchema: Order_EmailNotification$OrderingPlugin.Source.eventSchema
         },
+        moduleUrl: Order_EmailNotification$OrderingPlugin.moduleUrl,
         execute: Order_EmailNotification$OrderingPlugin.execute
       }]
   };

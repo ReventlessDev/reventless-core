@@ -124,7 +124,7 @@ function MakeWithConfig(Config) {
     Make: Make$5
   };
   let Make$6 = Spec => StateViewSliceMaker.Make(Spec);
-  let Make$7 = Spec => (Config => StateViewSliceMaker.Make(Spec));
+  let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
   let Bundled = {
     Make: Make$7
   };
@@ -133,7 +133,7 @@ function MakeWithConfig(Config) {
     Bundled: Bundled
   };
   let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
-  let Make$9 = Spec => (Config => AutomationSliceMaker.Make(Spec));
+  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
   let Bundled$1 = {
     Make: Make$9
   };
@@ -142,7 +142,7 @@ function MakeWithConfig(Config) {
     Bundled: Bundled$1
   };
   let Make$10 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Make$11 = Spec => (Config => OutboundTranslationSliceMaker.Make(Spec));
+  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
   let Bundled$2 = {
     Make: Make$11
   };
@@ -875,7 +875,7 @@ function Make($star) {
     Make: Make$6
   };
   let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
-  let Make$8 = Spec => (Config => StateViewSliceMaker.Make(Spec));
+  let Make$8 = Spec => StateViewSliceMaker.Make(Spec);
   let Bundled = {
     Make: Make$8
   };
@@ -884,7 +884,7 @@ function Make($star) {
     Bundled: Bundled
   };
   let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
-  let Make$10 = Spec => (Config => AutomationSliceMaker.Make(Spec));
+  let Make$10 = Spec => AutomationSliceMaker.Make(Spec);
   let Bundled$1 = {
     Make: Make$10
   };
@@ -893,7 +893,7 @@ function Make($star) {
     Bundled: Bundled$1
   };
   let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Make$12 = Spec => (Config => OutboundTranslationSliceMaker.Make(Spec));
+  let Make$12 = Spec => OutboundTranslationSliceMaker.Make(Spec);
   let Bundled$2 = {
     Make: Make$12
   };

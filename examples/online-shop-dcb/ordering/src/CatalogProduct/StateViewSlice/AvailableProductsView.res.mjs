@@ -3,6 +3,8 @@
 import * as S from "sury/src/S.res.mjs";
 import * as OrderingEventLog$OrderingPlugin from "../../Plugin/OrderingEventLog.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
   name: s.m(S.string),
@@ -49,9 +51,10 @@ let eventSchema = OrderingEventLog$OrderingPlugin.eventSchema;
 
 export {
   name,
+  moduleUrl,
   DcbEventLogSpec,
   eventSchema,
   stateSchema,
   project,
 }
-/* stateSchema Not a pure module */
+/* moduleUrl Not a pure module */

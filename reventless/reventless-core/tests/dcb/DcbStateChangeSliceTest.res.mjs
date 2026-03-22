@@ -40,6 +40,7 @@ let testDcbEventLog = {
 
 let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({
   name: DcbFixtures$ReventlessCore.TestCommandSpec.name,
+  moduleUrl: DcbFixtures$ReventlessCore.TestCommandSpec.moduleUrl,
   DcbEventLogSpec: DcbFixtures$ReventlessCore.TestEventLogSpec,
   errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
   initialDecisionModel: DcbFixtures$ReventlessCore.TestCommandSpec.initialDecisionModel,

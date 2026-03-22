@@ -28,13 +28,15 @@ let ProductAgg = AggregateMaker.Make({
   name: Product$CatalogPlugin.name,
   eventSchema: Product$CatalogPlugin.eventSchema,
   errorSchema: Product$CatalogPlugin.errorSchema,
-  commandSchema: Product$CatalogPlugin.commandSchema
+  commandSchema: Product$CatalogPlugin.commandSchema,
+  moduleUrl: Product$CatalogPlugin.moduleUrl
 })({
   resolverConfig: ProductBehavior$CatalogPlugin.resolverConfig,
   init: ProductBehavior$CatalogPlugin.init,
   apply: ProductBehavior$CatalogPlugin.apply,
   create: ProductBehavior$CatalogPlugin.create,
-  execute: ProductBehavior$CatalogPlugin.execute
+  execute: ProductBehavior$CatalogPlugin.execute,
+  moduleUrl: ProductBehavior$CatalogPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Product$CatalogPlugin.name,
   Id: Id$Reventless.$$String,

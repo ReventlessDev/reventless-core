@@ -1,7 +1,5 @@
-import * as esbuild from "esbuild";
 import * as path from "path";
 import * as fs from "fs";
-import * as os from "os";
 import * as crypto from "crypto";
 import * as pulumi from "@pulumi/pulumi";
 import { createRequire } from "module";
@@ -9,146 +7,106 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
 /**
- * Find the project root by walking up from this file until we find node_modules.
- * Used so esbuild can resolve dependencies when bundling from temp directories.
+ * Convert an import.meta.url file URL to an npm module specifier.
+ * Walks up from the file to find the nearest package.json, reads the package name,
+ * and constructs the npm specifier from packageName + relative path.
+ *
+ * @param {string} importMetaUrl - file:// URL from import.meta.url
+ * @returns {string} - npm specifier (e.g. "@reventlessdev/catalog/src/Category.res.mjs")
  */
-function findProjectRoot() {
-  let dir = path.dirname(new URL(import.meta.url).pathname);
+export function getModuleSpecifier(importMetaUrl) {
+  const filePath = new URL(importMetaUrl).pathname;
+  let dir = path.dirname(filePath);
   while (dir !== "/") {
-    const candidate = path.join(dir, "node_modules");
-    if (fs.existsSync(candidate)) {
-      return dir;
+    const pkgPath = path.join(dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      if (pkg.name) {
+        const relPath = path.relative(dir, filePath);
+        return pkg.name + "/" + relPath;
+      }
     }
     dir = path.dirname(dir);
   }
-  return process.cwd();
+  throw new Error(`No package.json found for ${filePath}`);
 }
 
-const projectRoot = findProjectRoot();
-
 /**
- * Resolve a module specifier to an absolute file path.
- * Works for package names, relative paths, and scoped packages.
+ * Extract the npm package name from a module specifier.
+ * Handles scoped packages (@scope/pkg/path) and unscoped (pkg/path).
  *
- * @param {string} specifier - Module specifier (e.g. "@reventlessdev/reventless-aws/src/...")
- * @returns {string} - Absolute file path
+ * @param {string} specifier - Module specifier (e.g. "@reventlessdev/catalog/src/Foo.res.mjs")
+ * @returns {string} - Package name (e.g. "@reventlessdev/catalog")
  */
-export function resolveModule(specifier) {
-  return require.resolve(specifier);
+export function extractPackageName(specifier) {
+  const parts = specifier.split("/");
+  if (specifier.startsWith("@")) {
+    return parts[0] + "/" + parts[1];
+  }
+  return parts[0];
 }
 
 /**
- * Run esbuild on a wrapper file and return an AssetArchive.
- * Internal helper shared by bundleHandler and bundleEntryPoint.
+ * Resolve the root directory of an npm package.
+ *
+ * @param {string} packageName - Package name (e.g. "@reventlessdev/catalog")
+ * @returns {string} - Absolute path to package root directory
  */
-function buildAndArchive(wrapperPath) {
-  const tmpDir = path.dirname(wrapperPath);
-  const outPath = path.join(tmpDir, "index.mjs");
+export function resolvePackageRoot(packageName) {
+  const pkgJsonPath = require.resolve(packageName + "/package.json");
+  return path.dirname(pkgJsonPath);
+}
 
-  const result = esbuild.buildSync({
-    entryPoints: [wrapperPath],
-    bundle: true,
-    outfile: outPath,
-    format: "esm",
-    platform: "node",
-    target: "node22",
-    external: [
-      "@aws-sdk/*",
-      "@smithy/*",
-      // Layer-provided packages — must match what reventless-layer-builder produces.
-      // User domain code (Spec, Behavior) is resolved via absolute paths and won't match.
-      "effect",
-      "effect/*",
-      "sury",
-      "sury/*",
-      "@reventlessdev/*",
-      "@rescript/*",
-      "@standard-schema/*",
-      "uuid",
-      "hash-object",
-    ],
-    // Resolve dependencies from the project root so temp-dir entry points
-    // can find packages like "effect", "@reventlessdev/*", etc.
-    absWorkingDir: projectRoot,
-    nodePaths: [path.join(projectRoot, "node_modules")],
-    banner: {
-      js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`,
-    },
-    minify: false,
-    sourcemap: false,
-  });
+/**
+ * Compute a SHA256 hash of a string, returned as base64.
+ *
+ * @param {string} str - Input string
+ * @returns {string} - Base64-encoded SHA256 hash
+ */
+export function hashString(str) {
+  return crypto.createHash("sha256").update(str).digest("base64");
+}
 
-  if (result.errors.length > 0) {
-    throw new Error(`esbuild bundling failed: ${JSON.stringify(result.errors)}`);
+/**
+ * Create a filtered AssetArchive from a package directory.
+ * Only includes runtime-essential files: *.res.mjs and package.json.
+ * Excludes lib/, tests/, __mocks__/, *.res, CHANGELOG, README, node_modules/, etc.
+ *
+ * @param {string} packageRoot - Absolute path to package root directory
+ * @returns {pulumi.asset.AssetArchive} - Archive with only runtime files
+ */
+export function createFilteredPackageArchive(packageRoot) {
+  const assets = {};
+
+  function walk(dir, prefix) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const name = entry.name;
+      // Skip non-runtime directories
+      if (entry.isDirectory()) {
+        if (
+          name === "node_modules" ||
+          name === "lib" ||
+          name === "tests" ||
+          name === "test" ||
+          name === "__mocks__" ||
+          name === "__tests__" ||
+          name === ".git" ||
+          name === "coverage"
+        ) {
+          continue;
+        }
+        walk(path.join(dir, name), prefix ? prefix + "/" + name : name);
+        continue;
+      }
+      // Include only *.res.mjs and package.json
+      if (name === "package.json" || name.endsWith(".res.mjs")) {
+        const relPath = prefix ? prefix + "/" + name : name;
+        assets[relPath] = new pulumi.asset.FileAsset(path.join(dir, name));
+      }
+    }
   }
 
-  // Read bundled output as string — StringAsset is path-independent,
-  // so Pulumi only sees content changes, not temp directory path changes.
-  const bundledCode = fs.readFileSync(outPath, "utf-8");
-
-  // Clean up temp directory — content is in memory now
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-
-  const sourceCodeHash = crypto
-    .createHash("sha256")
-    .update(bundledCode)
-    .digest("base64");
-
-
-  return {
-    code: new pulumi.asset.AssetArchive({
-      "index.mjs": new pulumi.asset.StringAsset(bundledCode),
-    }),
-    sourceCodeHash,
-  };
-}
-
-/**
- * Create a stable temp directory based on content hash.
- * esbuild embeds the entry point path as a comment in its output,
- * so a random temp dir name causes non-deterministic bundles.
- */
-function stableTmpDir(content) {
-  const hash = crypto.createHash("sha256").update(content).digest("hex").slice(0, 16);
-  const dir = path.join(os.tmpdir(), `reventless-bundle-${hash}`);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-/**
- * Bundle a handler module into a self-contained Lambda deployment package.
- * Creates a wrapper that re-exports the named export as "handler".
- *
- * @param {string} entryPoint - Absolute path to the compiled .res.mjs handler module
- * @param {string} exportName - The exported function name (e.g. "handleQueueEvent")
- * @returns {pulumi.asset.AssetArchive} - Archive containing the bundled index.mjs
- */
-export function bundleHandler(entryPoint, exportName) {
-  const wrapperCode = `import { ${exportName} } from ${JSON.stringify(entryPoint)};
-export const handler = ${exportName};
-`;
-  const tmpDir = stableTmpDir(wrapperCode);
-  const wrapperPath = path.join(tmpDir, "wrapper.mjs");
-  fs.writeFileSync(wrapperPath, wrapperCode);
-
-  return buildAndArchive(wrapperPath);
-}
-
-/**
- * Bundle an arbitrary entry point string into a Lambda deployment package.
- * Use this for handlers that need custom setup (e.g. reading env vars,
- * composing multiple imports, calling factory functions).
- *
- * The entryPointCode must export a `handler` function.
- *
- * @param {string} entryPointCode - JavaScript module code to bundle
- * @returns {pulumi.asset.AssetArchive} - Archive containing the bundled index.mjs
- */
-export function bundleEntryPoint(entryPointCode) {
-  const tmpDir = stableTmpDir(entryPointCode);
-  const wrapperPath = path.join(tmpDir, "wrapper.mjs");
-
-  fs.writeFileSync(wrapperPath, entryPointCode);
-
-  return buildAndArchive(wrapperPath);
+  walk(packageRoot, "");
+  return new pulumi.asset.AssetArchive(assets);
 }

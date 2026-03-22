@@ -166,11 +166,6 @@ let finish = () =>
   if !finished.contents {
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
-      let factoryModulePath =
-        "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateHandlerFactory.mjs"
-      let requestContextModulePath =
-        "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
-
       specs->Array.forEach(spec => {
         switch bundledAggregateInfos->Dict.get(spec.aggregateName) {
         | Some(info) =>
@@ -182,33 +177,53 @@ let finish = () =>
               ReventlessCore.Aggregate.componentType,
             )
 
+          // Build HANDLER_CONFIG with single handler
+          let specModule =
+            info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let behaviorModule =
+            info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
+
+          let handlerConfigOutput =
+            Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
+            ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
+              `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"}]}`
+            )
+
           let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
-          let tableEnvVar = "HANDLER_0_TABLE"
-          let queueUrlEnvVar = "HANDLER_0_QUEUE_URL"
-          let queueArnEnvVar = "HANDLER_0_QUEUE_ARN"
+          envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
 
-          envVars->Dict.set(tableEnvVar, info.eventLogTableName->Pulumi.Output.asInput)
-          envVars->Dict.set(queueUrlEnvVar, spec.queueUrl->Pulumi.Output.asInput)
-          envVars->Dict.set(queueArnEnvVar, spec.queueArn->Pulumi.Output.asInput)
+          // Collect user packages
+          let packageDirs: dict<string> = Dict.make()
+          let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+          let behaviorPkg = Util_Bundle.extractPackageName(info.behaviorModulePath)
+          packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+          packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
 
-          let registration: Util_EntryPoint.aggregateHandlerRegistration = {
-            specModulePath: info.specModulePath,
-            behaviorModulePath: info.behaviorModulePath,
-            eventLogTableEnvVar: tableEnvVar,
-            queueUrlEnvVar,
-            queueArnEnvVar,
-          }
+          // Build AssetArchive: static re-export + user packages
+          let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.res.mjs";`
 
-          let entryPointCode = Util_EntryPoint.generateAggregateEntryPoint({
-            name: spec.aggregateName,
-            handlers: [registration],
-            factoryModule: factoryModulePath,
-            requestContextModule: requestContextModulePath,
+          let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+          archiveContents->Dict.set(
+            "index.mjs",
+            Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+          )
+          packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+            archiveContents->Dict.set(
+              `node_modules/${pkgName}`,
+              Util_Bundle.createFilteredPackageArchive(pkgRoot)
+              ->Pulumi.Archive.archiveToAssetOrArchive,
+            )
           })
 
-          let runtime = RuntimeEnvironment_Lambda.makeBundledFromEntryPoint(
+          let code = Pulumi.Archive.assetArchive(archiveContents)
+          let sourceCodeHash = Util_Bundle.hashString(
+            reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+          )
+
+          let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
             ~name,
-            ~entryPointCode,
+            ~code,
+            ~sourceCodeHash,
             ~envVars,
             ~memorySize=spec.memorySize,
             ~timeout=spec.timeout,

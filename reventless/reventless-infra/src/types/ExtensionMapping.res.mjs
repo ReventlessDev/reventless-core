@@ -15,12 +15,15 @@ let Id = {
   cmp: cmp
 };
 
+let moduleUrl = import.meta.url;
+
 let NoAggregate = {
   name: "NoAggregate",
   Id: Id,
-  commandSchema: S.unit,
   eventSchema: S.unit,
-  errorSchema: S.unit
+  errorSchema: S.unit,
+  commandSchema: S.unit,
+  moduleUrl: moduleUrl
 };
 
 function Make(Spec) {
@@ -189,4 +192,4 @@ export {
   NoAggregate,
   Make,
 }
-/* S Not a pure module */
+/* moduleUrl Not a pure module */

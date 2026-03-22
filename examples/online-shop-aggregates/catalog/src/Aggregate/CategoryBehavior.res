@@ -16,6 +16,8 @@ let resolverConfig = {
   fields: [],
 }
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 let init = event =>
   switch event {
   | Added({name}) => Active({name: name})

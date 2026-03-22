@@ -5,6 +5,7 @@ open Reventless
 open OrderingEventLog
 
 let name = "SyncCatalogProduct"
+let moduleUrl: string = %raw(`import.meta.url`)
 
 module DcbEventLogSpec = OrderingEventLog
 

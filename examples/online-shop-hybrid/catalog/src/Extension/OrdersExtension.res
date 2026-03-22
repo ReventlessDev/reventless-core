@@ -17,6 +17,7 @@ module DemandMapping = {
     let commandSchema = Target.commandSchema
     @schema type event = unit // unused: mapOutgoingEvent = None
     @schema type error = unit
+    let moduleUrl: string = %raw(`import.meta.url`)
   }
 
   open Source

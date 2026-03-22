@@ -27,12 +27,15 @@ let eventSchema = S.union([
 
 let errorSchema = S.literal("InvalidCommand");
 
+let moduleUrl = import.meta.url;
+
 let CmdGenAggSpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
-  errorSchema: errorSchema
+  errorSchema: errorSchema,
+  moduleUrl: moduleUrl
 };
 
 let resolverConfig_fields = [];
@@ -41,6 +44,8 @@ let resolverConfig = {
   commandSchema: commandSchema,
   fields: resolverConfig_fields
 };
+
+let moduleUrl$1 = import.meta.url;
 
 function init(_event) {
   
@@ -72,6 +77,7 @@ function execute(_state, _command, _ctx, _errHandler) {
 let CmdGenBehavior = {
   Spec: undefined,
   resolverConfig: resolverConfig,
+  moduleUrl: moduleUrl$1,
   init: init,
   apply: apply,
   create: create,
@@ -101,13 +107,15 @@ let TestGenerator = CommandGenerator_Callback$ReventlessCore.Make(MockPublishSpe
   name: name,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  moduleUrl: moduleUrl
 })({
   resolverConfig: resolverConfig,
   init: init,
   apply: apply,
   create: create,
-  execute: execute
+  execute: execute,
+  moduleUrl: moduleUrl$1
 });
 
 function makeZeroParamPayload(id, command) {

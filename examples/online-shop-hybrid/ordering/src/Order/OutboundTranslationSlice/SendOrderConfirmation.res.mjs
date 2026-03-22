@@ -6,6 +6,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as EmailService$OrderingPlugin from "../../Service/EmailService.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let outboundItemSchema = S.schema(s => ({
   orderId: s.m(S.string),
   customerId: s.m(S.string)
@@ -54,6 +56,7 @@ let heartbeatInterval = 60;
 
 export {
   name,
+  moduleUrl,
   DcbEventLogSpec,
   outboundItemSchema,
   inboundCommandSchema,
@@ -62,4 +65,4 @@ export {
   maxRetries,
   heartbeatInterval,
 }
-/* outboundItemSchema Not a pure module */
+/* moduleUrl Not a pure module */

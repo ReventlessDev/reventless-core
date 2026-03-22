@@ -26,6 +26,7 @@ function Make(QueryDbStorage) {
           parent: opts2_parent
         };
         let name = extra$1 + "References";
+        let moduleUrl = import.meta.url;
         let config = ReadModel$Reventless.config(undefined, undefined, undefined);
         let ReferencesDb = QueryDb_Builder$ReventlessCore.Make({
           Id: {
@@ -36,11 +37,13 @@ function Make(QueryDbStorage) {
             cmp: Id$Reventless.StringPure.cmp
           },
           name: name,
+          moduleUrl: moduleUrl,
           stateSchema: Counter_Operations$ReventlessCore.referencesStateSchema,
           config: config,
           subIdConfig: undefined
         })(QueryDbStorage)(QueryDb_Adapter$ReventlessCore.NoResolvers(QueryDbStorage));
         let name$1 = extra$1 + "Counts";
+        let moduleUrl$1 = import.meta.url;
         let config$1 = ReadModel$Reventless.config(undefined, undefined, undefined);
         let CountsDb = QueryDb_Builder$ReventlessCore.Make({
           Id: {
@@ -51,6 +54,7 @@ function Make(QueryDbStorage) {
             cmp: Id$Reventless.StringPure.cmp
           },
           name: name$1,
+          moduleUrl: moduleUrl$1,
           stateSchema: Counter_Callback$ReventlessCore.countsStateSchema,
           config: config$1,
           subIdConfig: undefined

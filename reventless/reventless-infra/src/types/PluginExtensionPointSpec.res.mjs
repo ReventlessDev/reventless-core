@@ -77,6 +77,8 @@ let directiveSchema = S.union([
   }))
 ]);
 
+let moduleUrl = import.meta.url;
+
 let name = "Core.Plugin";
 
 let nameSchema = Plugin$Reventless.nameSchema;
@@ -112,5 +114,6 @@ export {
   commandSchema,
   eventSchema,
   directiveSchema,
+  moduleUrl,
 }
 /* forwardCommandSchema Not a pure module */

@@ -28,6 +28,8 @@ module TestEPSpec = {
 
   @schema
   type directive = | TEPNoDirective // unused — mapIncomingCommand only uses PublishCommand
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -46,6 +48,8 @@ module TargetAggSpec = {
 
   @schema
   type error = | TEAggNoError // unused but required by Aggregate.Spec
+
+  let moduleUrl: string = %raw(`import.meta.url`)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -88,6 +92,8 @@ module TestEPMapping1 = ReventlessInfra.ExtensionPointMapping.Make(TestEPSpec, F
 module TestEPMappings = {
   module Spec = TestEPSpec
   module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := TestEPSpec
+  let name = "TestEPMappings"
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(TestEPMapping1)]
 }
 
