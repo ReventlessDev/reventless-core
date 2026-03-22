@@ -49,8 +49,19 @@ jobs:
             exit 0
           fi
 
-          # Triggered by Release — check if a layer build is active.
-          # If so, skip this deploy; the layer build completion will trigger one.
+          # Triggered by Release — check if the release included reventless-aws.
+          # If so, a layer build was dispatched; defer to its completion trigger
+          # to deploy with the fresh ARN.
+          RELEASE_SHA="${{ github.event.workflow_run.head_sha }}"
+          AWS_TAGS=$(gh api "repos/${{ github.repository }}/git/matching-refs/tags/@reventlessdev/reventless-aws@" \
+            --jq "[.[] | select(.object.sha == \"$RELEASE_SHA\")] | length" 2>/dev/null || echo "0")
+          if [ "$AWS_TAGS" -gt 0 ]; then
+            echo "Release includes reventless-aws — deferring to layer build trigger"
+            echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Also check if a layer build is active (queued, waiting, or in progress).
           IN_PROGRESS=$(gh run list \
             --repo "${{ github.repository }}" \
             --workflow "Build Lambda Layer" \
@@ -61,7 +72,12 @@ jobs:
             --workflow "Build Lambda Layer" \
             --status queued \
             --json databaseId --jq 'length')
-          ACTIVE=$((IN_PROGRESS + QUEUED))
+          WAITING=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow "Build Lambda Layer" \
+            --status waiting \
+            --json databaseId --jq 'length')
+          ACTIVE=$((IN_PROGRESS + QUEUED + WAITING))
 
           if [ "$ACTIVE" -gt 0 ]; then
             echo "Release triggered deploy, but $ACTIVE layer build(s) active — skipping (layer build will trigger deploy)"

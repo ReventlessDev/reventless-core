@@ -119,10 +119,10 @@ jobs:
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
-            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push
+            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
           else
             echo "Creating regular release versions"
-            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push
+            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
           fi
 
           echo "Lerna version completed successfully"
@@ -243,7 +243,14 @@ jobs:
         if: steps.changes.outputs.count != '0'
         run: |
           BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
-          git push --follow-tags origin $BRANCH_NAME
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH_NAME" && \
+            git push --follow-tags origin "$BRANCH_NAME" && exit 0
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+          echo "All push attempts failed"
+          exit 1
 
       - name: Create GitHub releases
         if: steps.changes.outputs.count != '0'

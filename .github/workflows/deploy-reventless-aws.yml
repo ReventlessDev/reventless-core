@@ -489,4 +489,12 @@ jobs:
           git add .github/last-deploy-sha.txt
           git diff --cached --quiet && echo "SHA unchanged" && exit 0
           git commit -m "chore(ci): record successful deploy at ${{ github.sha }} [skip ci]"
-          git push
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH" && \
+            git push && exit 0
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+          echo "All push attempts failed"
+          exit 1

@@ -2,8 +2,6 @@ name: Build Lambda Layer
 
 on:
   push:
-    tags:
-      - "@reventlessdev/reventless-aws@*"
     branches: [main, beta, alpha]
     paths:
       - "reventless/reventless-layer-builder/**"
@@ -108,8 +106,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .github/layer-arn.txt
-          git commit -m "chore(ci): update Lambda Layer ARN to $LAYER_ARN [skip ci]" || echo "No change to layer ARN"
-          git push
+          git commit -m "chore(ci): update Lambda Layer ARN to $LAYER_ARN [skip ci]" || { echo "No change to layer ARN"; exit 0; }
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH" && \
+            git push && exit 0
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+          echo "All push attempts failed"
+          exit 1
 
       - name: Upload zip as release asset and append layer ARN
         env:
