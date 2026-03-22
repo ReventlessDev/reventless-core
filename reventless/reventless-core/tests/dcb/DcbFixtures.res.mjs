@@ -9,6 +9,8 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 S.enableJson();
 
+let moduleUrl = import.meta.url;
+
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemCreated",
@@ -29,6 +31,7 @@ let eventSchema = S.union([
 ]);
 
 let TestEventLogSpec = {
+  moduleUrl: moduleUrl,
   eventSchema: eventSchema
 };
 
@@ -50,7 +53,7 @@ let objectEventSchema = S.schema(s => ({
   data: s.m(S.string)
 }));
 
-let moduleUrl = import.meta.url;
+let moduleUrl$1 = import.meta.url;
 
 let commandSchema = S.union([
   S.schema(s => ({
@@ -137,7 +140,7 @@ let TestCommandSpec_initialDecisionModel = {
 
 let TestCommandSpec = {
   name: "TestStateChangeSlice",
-  moduleUrl: moduleUrl,
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   commandSchema: commandSchema,
   errorSchema: errorSchema,

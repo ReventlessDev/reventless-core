@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 module OrderEventLog = {
+  let moduleUrl: string = %raw(`import.meta.url`)
   @schema
   type event =
     | PaymentConfirmed({orderId: @s.matches(Reventless.DcbTag.string) string, paymentId: string})

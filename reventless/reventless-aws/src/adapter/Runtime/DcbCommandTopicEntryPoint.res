@@ -22,6 +22,7 @@ type handlerConfig = {
   queueUrl: string,
   pluginName: string,
   stateChangeSliceModules: array<string>,
+  dcbEventLogModule: option<string>,
 }
 
 type config = handlerConfig
@@ -60,6 +61,11 @@ external handleQueueEvent: ('a, 'b) => 'c = "handleQueueEvent"
 
 @module("@reventlessdev/reventless-core/src/Message.res.mjs")
 external decodeCommand': ('a, 'b, 'c) => 'd = "decodeCommand$p"
+
+@module(
+  "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs"
+)
+external sqsPublishJsons: ('a, string) => 'b = "publishJsons"
 
 @module("@reventlessdev/reventless-spec/src/types/Id.res.mjs")
 external idStringSchema: 'a = "$$String"
@@ -115,6 +121,8 @@ external requestContextTag: 'a = "tag"
 
 @get external getRecords: 'a => Nullable.t<array<'b>> = "Records"
 @get external getBody: 'a => Nullable.t<string> = "body"
+@get external getCommand: 'a => Nullable.t<string> = "command"
+@get external getArguments: 'a => Nullable.t<'b> = "arguments"
 
 // === Object/field accessors ===
 
@@ -192,8 +200,9 @@ let getIdStringSchema: unit => 'a = %raw(`() => idStringSchema.schema`)
 // === Initialization ===
 
 type sqsHandler
+type cmdGenHandler
 
-let buildHandler = async (): sqsHandler => {
+let buildHandler = async (): (sqsHandler, cmdGenHandler) => {
   let configStr = env->Dict.get("HANDLER_CONFIG")->Option.getOr(`{}`)
   let config: config = configStr->JSON.parseOrThrow->Obj.magic
 
@@ -204,6 +213,18 @@ let buildHandler = async (): sqsHandler => {
     dcbReadStream(resolvedTable),
   )
 
+  // Import DCB event log module once (shared by all slices)
+  // module DcbEventLogSpec = X compiles to undefined in ESM; import separately and patch
+  let importAndPatchDcbEventLogSpec: ('a, option<string>) => promise<'a> = %raw(`
+    async function(spec, dcbEventLogModulePath) {
+      if (!importAndPatchDcbEventLogSpec._mod && dcbEventLogModulePath) {
+        importAndPatchDcbEventLogSpec._mod = await dynamicImport(dcbEventLogModulePath);
+      }
+      var mod = importAndPatchDcbEventLogSpec._mod;
+      return mod ? Object.assign({}, spec, { DcbEventLogSpec: mod }) : spec;
+    }
+  `)
+
   // Build handler routing table: commandTypeName → jsonCommandsHandler
   let handlersByType: dict<'a> = Dict.make()
 
@@ -211,6 +232,7 @@ let buildHandler = async (): sqsHandler => {
     ->Array.map(async modPath => {
       let specModule = await dynamicImport(modPath)
       let patchedSpec = patchSpecId(specModule)
+      let patchedSpec = await importAndPatchDcbEventLogSpec(patchedSpec, config.dcbEventLogModule)
 
       let dcbEventLogSpec = patchedSpec->getDcbEventLogSpec
 
@@ -285,7 +307,41 @@ let buildHandler = async (): sqsHandler => {
   }
 
   let resolvedQueue = makeQueueRef(config.queueUrl)
-  Obj.magic(handleQueueEvent(resolvedQueue, compositeJsonCommandsHandler))
+  let sqsHandler = Obj.magic(handleQueueEvent(resolvedQueue, compositeJsonCommandsHandler))
+
+  // Build AppSync command generator: publishes to SQS, returns msgId
+  // DCB commands come from multiple slices with different schemas — skip schema validation here.
+  // The SQS handler validates each command against its slice's schema.
+  // AppSync command generator: builds command JSON from resolver payload, publishes to SQS
+  let mkCmdGenHandler: ('a, string) => cmdGenHandler = %raw(`
+    function(publishFn, pluginName) {
+      return function(payload) {
+        var msgId = crypto.randomUUID();
+        // DCB commands may not have an 'id' field — use the first argument value as entity ID
+        var args = payload.arguments;
+        var id = args.id;
+        if (!id) {
+          // Find the first field ending in 'Id' (e.g., productId, orderId)
+          for (var key of Object.keys(args)) {
+            if (key.endsWith('Id') && typeof args[key] === 'string') { id = args[key]; break; }
+          }
+        }
+        if (!id) id = msgId; // fallback to message ID
+        var ip = payload.meta && payload.meta.ip && Array.isArray(payload.meta.ip) ? payload.meta.ip[0] || "" : "";
+        var user = payload.meta && payload.meta.user ? payload.meta.user : "";
+        var meta = { service: pluginName, time: new Date().toISOString(), ip: ip, user: user, msgId: msgId, correlationId: msgId };
+        var obj = JSON.parse(JSON.stringify(args));
+        delete obj.id;
+        var params = Object.entries(obj);
+        var commandJson = params.length > 0 ? Object.fromEntries([["TAG", payload.command]].concat(params)) : payload.command;
+        return publishFn([{id: id, meta: meta, commandJson: commandJson}]).then(function() { return msgId; });
+      };
+    }
+  `)
+  let publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO")
+  let cmdGenHandler = mkCmdGenHandler(publishJsons, config.pluginName)
+
+  (sqsHandler, cmdGenHandler)
 }
 
 let initPromise = buildHandler()
@@ -293,12 +349,24 @@ let initPromise = buildHandler()
 // === Exported handler ===
 
 let handler = async (event, context) => {
-  let sqsHandler = await initPromise
+  let (sqsHandler, cmdGenHandler) = await initPromise
 
-  let records = event->getRecords->Nullable.toOption->Option.getOr([])
-  let correlationId = extractCorrelationId(records)
+  // Route 1: AppSync direct invocation (CommandGenerator)
+  switch (event->getCommand->Nullable.toOption, event->getArguments->Nullable.toOption) {
+  | (Some(_), Some(_)) =>
+    Console.log("----- dcbCommandTopicHandler: AppSync direct invocation")
+    let result: string = await (Obj.magic(cmdGenHandler): 'a => promise<string>)(event)
+    result
 
-  Console.log(`----- dcbCommandTopicHandler: processing ${records->Array.length->Int.toString} record(s)`)
-  let _ = await runEffect(correlationId, callHandler(sqsHandler, event, context))
-  ""
+  // Route 2: SQS CommandTopic events
+  | _ =>
+    let records = event->getRecords->Nullable.toOption->Option.getOr([])
+    let correlationId = extractCorrelationId(records)
+
+    Console.log(
+      `----- dcbCommandTopicHandler: processing ${records->Array.length->Int.toString} record(s)`,
+    )
+    let _ = await runEffect(correlationId, callHandler(sqsHandler, event, context))
+    ""
+  }
 }

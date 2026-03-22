@@ -931,6 +931,8 @@ type event =
   | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
+
+let moduleUrl: string = %raw(`import.meta.url`)
 ```
 
 Key points:
@@ -939,6 +941,7 @@ Key points:
 - For cross-entity commands, use `array<@s.matches(DcbTag.string) string>` on array fields that reference other entities (see [Cross-Entity Queries](#cross-entity-queries-tagged-arrays) below)
 - All entity types (Product, Category, etc.) share the same event log
 - The event log file has no `name` or `Id` — it's just a type definition
+- **`let moduleUrl`** — required. The framework uses this at deploy time to locate the event log module at runtime, so that entry points can dynamically import it and reconstruct the `DcbEventLogSpec` on each slice (ReScript module aliases like `module DcbEventLogSpec = CatalogEventLog` compile to `undefined` in ESM output)
 
 ---
 

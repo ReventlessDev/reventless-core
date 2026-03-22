@@ -52,7 +52,11 @@ function Make(DcbEventLogStorage) {
       if (dcbSpec === undefined) {
         return emptyResult;
       }
-      let DcbEventLogSpec = dcbSpec;
+      let DcbEventLogSpec_eventSchema = dcbSpec.eventSchema;
+      let DcbEventLogSpec = {
+        moduleUrl: "",
+        eventSchema: DcbEventLogSpec_eventSchema
+      };
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogSpec)(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, opts);
       Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents, hook => hook(dcbEventLog));

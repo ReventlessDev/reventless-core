@@ -64,7 +64,9 @@ async function buildAllHandlers() {
   let handlers = {};
   await Promise.all(config.handlers.map(async h => {
     let specModule = await dynamicImport(h.specModule);
-    let jsonEventsHandler = buildJsonEventsHandler(specModule, h.queryDbTableName);
+    let modPath = h.dcbEventLogModule;
+    let patchedSpec = modPath !== undefined ? (await dynamicImport(modPath), (Object.assign({}, specModule, { DcbEventLogSpec: _eventLogModule }))) : specModule;
+    let jsonEventsHandler = buildJsonEventsHandler(patchedSpec, h.queryDbTableName);
     let handler = (event, context) => EventCollectorChannel_DynamoDbStream_RuntimeResMjs.handleStreamEvent(jsonEventsHandler, event, context);
     handlers[h.sourceUrn] = handler;
   }));

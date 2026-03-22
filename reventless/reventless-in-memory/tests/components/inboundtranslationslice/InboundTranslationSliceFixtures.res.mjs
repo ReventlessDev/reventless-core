@@ -3,6 +3,8 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let eventSchema = S.schema(s => ({
   TAG: "PaymentConfirmed",
   orderId: s.m(DcbTag$Reventless.string),
@@ -10,10 +12,11 @@ let eventSchema = S.schema(s => ({
 }));
 
 let OrderEventLog = {
+  moduleUrl: moduleUrl,
   eventSchema: eventSchema
 };
 
-let moduleUrl = import.meta.url;
+let moduleUrl$1 = import.meta.url;
 
 let externalInputSchema = S.schema(s => ({
   paymentId: s.m(S.string),
@@ -51,7 +54,7 @@ function translate(input) {
 
 let PaymentWebhookSpec = {
   name: "PaymentWebhook",
-  moduleUrl: moduleUrl,
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   externalInputSchema: externalInputSchema,
   commandSchema: commandSchema,
@@ -62,4 +65,4 @@ export {
   OrderEventLog,
   PaymentWebhookSpec,
 }
-/* eventSchema Not a pure module */
+/* moduleUrl Not a pure module */

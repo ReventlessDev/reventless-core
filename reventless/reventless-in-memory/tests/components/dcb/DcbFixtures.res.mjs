@@ -14,6 +14,8 @@ import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "../../../src/components/DcbEventLog_Builder.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "../../../src/components/StateChangeSlice_Builder.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let eventSchema = S.schema(s => ({
   TAG: "ItemAdded",
   id: s.m(DcbTag$Reventless.string),
@@ -21,12 +23,13 @@ let eventSchema = S.schema(s => ({
 }));
 
 let ItemEventLog = {
+  moduleUrl: moduleUrl,
   eventSchema: eventSchema
 };
 
 let name = "AddItem";
 
-let moduleUrl = import.meta.url;
+let moduleUrl$1 = import.meta.url;
 
 let commandSchema = S.schema(s => ({
   TAG: "AddItem",
@@ -60,7 +63,7 @@ function decide(model, command) {
 
 let AddItemSpec = {
   name: name,
-  moduleUrl: moduleUrl,
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   errorSchema: errorSchema,
   initialDecisionModel: false,
@@ -89,7 +92,7 @@ let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined);
 
 let AddItemMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: name,
-  moduleUrl: moduleUrl,
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: ItemEventLog,
   errorSchema: errorSchema,
   initialDecisionModel: false,
@@ -185,4 +188,4 @@ export {
   typeQuery,
   addItemJson,
 }
-/* eventSchema Not a pure module */
+/* moduleUrl Not a pure module */

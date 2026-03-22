@@ -10,6 +10,8 @@ import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_
 import * as DcbEventLog_Builder$ReventlessInMemory from "../../../src/components/DcbEventLog_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "../../../src/components/StateViewSlice_Builder.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemAdded",
@@ -28,12 +30,13 @@ let eventSchema = S.union([
 ]);
 
 let ItemEventLog = {
+  moduleUrl: moduleUrl,
   eventSchema: eventSchema
 };
 
 let name = "ItemsView";
 
-let moduleUrl = import.meta.url;
+let moduleUrl$1 = import.meta.url;
 
 let stateSchema = S.schema(s => ({
   id: s.m(S.string),
@@ -72,7 +75,7 @@ function project(param, event) {
 
 let ItemsViewSpec = {
   name: name,
-  moduleUrl: moduleUrl,
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   eventSchema: eventSchema,
   stateSchema: stateSchema,
@@ -93,7 +96,7 @@ let SVMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
 
 let ItemsViewMaker = SVMaker.Make({
   name: name,
-  moduleUrl: moduleUrl,
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: ItemEventLog,
   eventSchema: eventSchema,
   stateSchema: stateSchema,
@@ -132,4 +135,4 @@ export {
   appendEvent,
   loadState,
 }
-/* eventSchema Not a pure module */
+/* moduleUrl Not a pure module */

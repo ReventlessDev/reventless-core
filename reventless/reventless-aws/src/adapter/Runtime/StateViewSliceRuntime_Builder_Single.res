@@ -115,11 +115,18 @@ let finish = () =>
             let specModule =
               info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
+            let dcbEventLogModuleJson = switch PluginRuntime_Builder.registeredDcbEventLogModulePath.contents {
+            | Some(p) =>
+              let escaped = p->JSON.stringifyAny->Option.getOr(`""`)
+              `,"dcbEventLogModule":${escaped}`
+            | None => ""
+            }
+
             let handlerJson =
               Pulumi.Output.all2((info.queryDbTableName, spec.sourceUrns))
               ->Pulumi.Output.apply(((tableName, urns)) => {
                 let sourceUrn = urns->Array.getUnsafe(0)
-                `{"specModule":${specModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}`
+                `{"specModule":${specModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${dcbEventLogModuleJson}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

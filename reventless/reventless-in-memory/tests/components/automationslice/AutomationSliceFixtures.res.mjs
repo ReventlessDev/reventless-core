@@ -3,6 +3,8 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
@@ -16,10 +18,11 @@ let eventSchema = S.union([
 ]);
 
 let OrderEventLog = {
+  moduleUrl: moduleUrl,
   eventSchema: eventSchema
 };
 
-let moduleUrl = import.meta.url;
+let moduleUrl$1 = import.meta.url;
 
 let todoItemSchema = S.schema(s => ({
   orderId: s.m(S.string),
@@ -65,7 +68,7 @@ function process(id, _item) {
 
 let ShipOrderSpec = {
   name: "ShipOrder",
-  moduleUrl: moduleUrl,
+  moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   todoItemSchema: todoItemSchema,
   commandSchema: commandSchema,
@@ -76,7 +79,7 @@ let ShipOrderSpec = {
   heartbeatInterval: 60
 };
 
-let moduleUrl$1 = import.meta.url;
+let moduleUrl$2 = import.meta.url;
 
 let todoItemSchema$1 = S.schema(s => ({
   orderId: s.m(S.string)
@@ -111,7 +114,7 @@ function process$1(_id, _item) {
 
 let SkipProcessSpec = {
   name: "SkipProcess",
-  moduleUrl: moduleUrl$1,
+  moduleUrl: moduleUrl$2,
   DcbEventLogSpec: undefined,
   todoItemSchema: todoItemSchema$1,
   commandSchema: commandSchema$1,
@@ -127,4 +130,4 @@ export {
   ShipOrderSpec,
   SkipProcessSpec,
 }
-/* eventSchema Not a pure module */
+/* moduleUrl Not a pure module */

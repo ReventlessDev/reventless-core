@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as PluginRuntime_Builder$ReventlessAws from "./PluginRuntime_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -98,13 +99,21 @@ function finish() {
           packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
           let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
           let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);
+          let p = PluginRuntime_Builder$ReventlessAws.registeredDcbEventLogModulePath.contents;
+          let dcbEventLogModuleJson;
+          if (p !== undefined) {
+            let escaped = Stdlib_Option.getOr(JSON.stringify(p), `""`);
+            dcbEventLogModuleJson = `,"dcbEventLogModule":` + escaped;
+          } else {
+            dcbEventLogModuleJson = "";
+          }
           let handlerJson = Pulumi.all([
             info.queryDbTableName,
             dcbQueueUrl,
             spec.sourceUrns
           ]).apply(param => {
             let sourceUrn = param[2][0];
-            return `{"specModule":` + specModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + sourceUrn + `"}`;
+            return `{"specModule":` + specModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + sourceUrn + `"` + dcbEventLogModuleJson + `}`;
           });
           handlerOutputs.push(handlerJson);
           return;

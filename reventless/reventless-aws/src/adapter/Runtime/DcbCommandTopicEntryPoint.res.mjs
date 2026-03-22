@@ -74,14 +74,22 @@ async function buildHandler() {
   let config = JSON.parse(configStr);
   let resolvedTable = mkNameObj(config.dcbEventLogTableName);
   let rawStorageOps = mkStorageOps(DcbEventLogStorage_DynamoDb_RuntimeResMjs.read(resolvedTable), DcbEventLogStorage_DynamoDb_RuntimeResMjs.append(resolvedTable), DcbEventLogStorage_DynamoDb_RuntimeResMjs.readStream(resolvedTable));
+  let importAndPatchDcbEventLogSpec = (async function(spec, dcbEventLogModulePath) {
+      if (!importAndPatchDcbEventLogSpec._mod && dcbEventLogModulePath) {
+        importAndPatchDcbEventLogSpec._mod = await dynamicImport(dcbEventLogModulePath);
+      }
+      var mod = importAndPatchDcbEventLogSpec._mod;
+      return mod ? Object.assign({}, spec, { DcbEventLogSpec: mod }) : spec;
+    });
   let handlersByType = {};
   await Promise.all(config.stateChangeSliceModules.map(async modPath => {
     let specModule = await dynamicImport(modPath);
     let patchedSpec = HandlerFactoryHelpersResMjs.patchSpecId(specModule);
-    let dcbEventLogSpec = patchedSpec.DcbEventLogSpec;
+    let patchedSpec$1 = await importAndPatchDcbEventLogSpec(patchedSpec, config.dcbEventLogModule);
+    let dcbEventLogSpec = patchedSpec$1.DcbEventLogSpec;
     let dcbEventLogOps = DcbEventLog_OperationsResMjs.Make(dcbEventLogSpec)(mkDcbEventLogOpsArg(dcbEventLogSpec, config.pluginName, rawStorageOps, noopPublishJson()));
-    let sliceCallback = StateChangeSlice_CallbackResMjs.Make(patchedSpec);
-    let commandSchema = patchedSpec.commandSchema;
+    let sliceCallback = StateChangeSlice_CallbackResMjs.Make(patchedSpec$1);
+    let commandSchema = patchedSpec$1.commandSchema;
     let typeNames = DcbTagResMjs.extractEventTypes(commandSchema);
     let jsonHandler = stream => {
       let decodedStream = Stream.flatMap(Stream.mapEffect(stream, cmd => Effect.sync(() => {
@@ -125,17 +133,52 @@ async function buildHandler() {
     return Effect.succeed([]);
   }));
   let resolvedQueue = HandlerFactoryHelpersResMjs.makeQueueRef(config.queueUrl);
-  return CommandTopicChannel_SQS_RuntimeResMjs.handleQueueEvent(resolvedQueue, compositeJsonCommandsHandler);
+  let sqsHandler = CommandTopicChannel_SQS_RuntimeResMjs.handleQueueEvent(resolvedQueue, compositeJsonCommandsHandler);
+  let mkCmdGenHandler = (function(publishFn, pluginName) {
+      return function(payload) {
+        var msgId = crypto.randomUUID();
+        // DCB commands may not have an 'id' field — use the first argument value as entity ID
+        var args = payload.arguments;
+        var id = args.id;
+        if (!id) {
+          // Find the first field ending in 'Id' (e.g., productId, orderId)
+          for (var key of Object.keys(args)) {
+            if (key.endsWith('Id') && typeof args[key] === 'string') { id = args[key]; break; }
+          }
+        }
+        if (!id) id = msgId; // fallback to message ID
+        var ip = payload.meta && payload.meta.ip && Array.isArray(payload.meta.ip) ? payload.meta.ip[0] || "" : "";
+        var user = payload.meta && payload.meta.user ? payload.meta.user : "";
+        var meta = { service: pluginName, time: new Date().toISOString(), ip: ip, user: user, msgId: msgId, correlationId: msgId };
+        var obj = JSON.parse(JSON.stringify(args));
+        delete obj.id;
+        var params = Object.entries(obj);
+        var commandJson = params.length > 0 ? Object.fromEntries([["TAG", payload.command]].concat(params)) : payload.command;
+        return publishFn([{id: id, meta: meta, commandJson: commandJson}]).then(function() { return msgId; });
+      };
+    });
+  let publishJsons = CommandTopicChannel_SQS_RuntimeResMjs.publishJsons(resolvedQueue, "SQS_FIFO");
+  let cmdGenHandler = mkCmdGenHandler(publishJsons, config.pluginName);
+  return [
+    sqsHandler,
+    cmdGenHandler
+  ];
 }
 
 let initPromise = buildHandler();
 
 async function handler(event, context) {
-  let sqsHandler = await initPromise;
+  let match = await initPromise;
+  let match$1 = event.command;
+  let match$2 = event.arguments;
+  if (!(match$1 == null) && !(match$2 == null)) {
+    console.log("----- dcbCommandTopicHandler: AppSync direct invocation");
+    return await match[1](event);
+  }
   let records = Stdlib_Option.getOr(Primitive_option.fromNullable(event.Records), []);
   let correlationId = extractCorrelationId(records);
   console.log(`----- dcbCommandTopicHandler: processing ` + records.length.toString() + ` record(s)`);
-  await runEffect(correlationId, callHandler(sqsHandler, event, context));
+  await runEffect(correlationId, callHandler(match[0], event, context));
   return "";
 }
 

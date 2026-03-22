@@ -20,6 +20,7 @@ type handlerConfig = {
   specModule: string,
   queryDbTableName: string,
   sourceUrn: string,
+  dcbEventLogModule: option<string>,
 }
 
 type config = {handlers: array<handlerConfig>}
@@ -212,7 +213,14 @@ let buildAllHandlers = async (): dict<streamHandler> => {
   let _ = await config.handlers
     ->Array.map(async h => {
       let specModule = await dynamicImport(h.specModule)
-      let jsonEventsHandler = buildJsonEventsHandler(specModule, h.queryDbTableName)
+      // Patch DcbEventLogSpec from separately imported event log module
+      let patchedSpec = switch h.dcbEventLogModule {
+      | Some(modPath) =>
+        let _eventLogModule = await dynamicImport(modPath)
+        %raw(`Object.assign({}, specModule, { DcbEventLogSpec: _eventLogModule })`)
+      | None => specModule
+      }
+      let jsonEventsHandler = buildJsonEventsHandler(patchedSpec, h.queryDbTableName)
 
       let handler = (event, context) =>
         handleStreamEvent(jsonEventsHandler, event, context)

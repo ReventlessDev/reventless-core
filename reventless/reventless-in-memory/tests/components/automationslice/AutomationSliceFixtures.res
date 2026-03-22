@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 
 module OrderEventLog = {
+  let moduleUrl: string = %raw(`import.meta.url`)
   @schema
   type event =
     | OrderPlaced({orderId: @s.matches(Reventless.DcbTag.string) string, address: string})

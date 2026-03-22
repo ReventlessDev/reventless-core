@@ -22,6 +22,7 @@ type handlerConfig = {
   queryDbTableName: string,
   dcbQueueUrl: string,
   sourceUrn: string,
+  dcbEventLogModule: option<string>,
 }
 
 type config = {handlers: array<handlerConfig>}
@@ -205,12 +206,19 @@ let buildAllHandlers = async (): dict<streamHandler> => {
   let _ = await config.handlers
     ->Array.map(async h => {
       let specModule = await dynamicImport(h.specModule)
+      // Patch DcbEventLogSpec from separately imported event log module
+      let patchedSpec = switch h.dcbEventLogModule {
+      | Some(modPath) =>
+        let _eventLogModule = await dynamicImport(modPath)
+        %raw(`Object.assign({}, specModule, { DcbEventLogSpec: _eventLogModule })`)
+      | None => specModule
+      }
       let callbackMake = switch h.callbackType {
       | "outbound" => outboundTranslationSliceCallbackMake
       | _ => automationSliceCallbackMake
       }
 
-      let handler = buildHandler(specModule, callbackMake, h.queryDbTableName, h.dcbQueueUrl)
+      let handler = buildHandler(patchedSpec, callbackMake, h.queryDbTableName, h.dcbQueueUrl)
       handlers->Dict.set(h.sourceUrn, Obj.magic(handler))
     })
     ->Promise.all

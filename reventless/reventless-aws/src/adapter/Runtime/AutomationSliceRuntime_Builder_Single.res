@@ -127,11 +127,18 @@ let finish = () =>
             let callbackType =
               info.callbackType->JSON.stringifyAny->Option.getOr(`""`)
 
+            let dcbEventLogModuleJson = switch PluginRuntime_Builder.registeredDcbEventLogModulePath.contents {
+            | Some(p) =>
+              let escaped = p->JSON.stringifyAny->Option.getOr(`""`)
+              `,"dcbEventLogModule":${escaped}`
+            | None => ""
+            }
+
             let handlerJson =
               Pulumi.Output.all3((info.queryDbTableName, dcbQueueUrl, spec.sourceUrns))
               ->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
                 let sourceUrn = urns->Array.getUnsafe(0)
-                `{"specModule":${specModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${sourceUrn}"}`
+                `{"specModule":${specModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${sourceUrn}"${dcbEventLogModuleJson}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

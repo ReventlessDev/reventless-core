@@ -3,6 +3,7 @@ S.enableJson()
 // --- Test Event Log Spec (events with DCB tags) ---
 
 module TestEventLogSpec = {
+  let moduleUrl: string = %raw(`import.meta.url`)
   @schema
   type event =
     | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})

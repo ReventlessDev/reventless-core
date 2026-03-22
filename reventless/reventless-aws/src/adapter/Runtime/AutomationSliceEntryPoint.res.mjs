@@ -84,9 +84,11 @@ async function buildAllHandlers() {
   let handlers = {};
   await Promise.all(config.handlers.map(async h => {
     let specModule = await dynamicImport(h.specModule);
+    let modPath = h.dcbEventLogModule;
+    let patchedSpec = modPath !== undefined ? (await dynamicImport(modPath), (Object.assign({}, specModule, { DcbEventLogSpec: _eventLogModule }))) : specModule;
     let match = h.callbackType;
     let callbackMake = match === "outbound" ? prim => OutboundTranslationSlice_CallbackResMjs.Make(prim) : prim => AutomationSlice_CallbackResMjs.Make(prim);
-    let handler = buildHandler(specModule, callbackMake, h.queryDbTableName, h.dcbQueueUrl);
+    let handler = buildHandler(patchedSpec, callbackMake, h.queryDbTableName, h.dcbQueueUrl);
     handlers[h.sourceUrn] = handler;
   }));
   return handlers;

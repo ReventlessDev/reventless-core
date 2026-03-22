@@ -39,6 +39,7 @@ module Make = (
     switch dcbSpec {
     | Some(module(DcbSpec)) => {
         module DcbEventLogSpec = {
+          let moduleUrl = ""
           @schema
           type event = DcbSpec.event
         }

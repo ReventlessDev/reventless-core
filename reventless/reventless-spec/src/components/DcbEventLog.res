@@ -18,6 +18,8 @@ type event =
 ```
 */
 module type Spec = {
+  let moduleUrl: string
+
   /** The union of all event types stored in this DCB event log. Must carry `@schema`. */
   @schema
   type event

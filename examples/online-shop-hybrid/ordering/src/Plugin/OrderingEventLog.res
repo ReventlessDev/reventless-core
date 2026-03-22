@@ -3,6 +3,7 @@
 // aggregate's own event log, not here.
 
 open Reventless
+let moduleUrl: string = %raw(`import.meta.url`)
 @schema
 type event =
   | OrderPlaced({

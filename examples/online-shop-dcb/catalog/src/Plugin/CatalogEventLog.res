@@ -2,6 +2,7 @@
 // All events for the Catalog plugin live in this shared log, tagged by their entity ID.
 
 open Reventless
+let moduleUrl: string = %raw(`import.meta.url`)
 @schema
 type event =
   | ProductAdded({

@@ -8,6 +8,7 @@ open TestFixtures
 // ─────────────────────────────────────────────────────────────
 
 module ItemEventLog = {
+  let moduleUrl: string = %raw(`import.meta.url`)
   @schema
   type event = ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
 }
