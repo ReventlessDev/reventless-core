@@ -14,7 +14,7 @@ module ProductMapping = Mapping.Make(
     let map = ({event, id, _}) =>
       switch event {
       | Added({name}) =>
-        Set(id, {ProductDemandReadModel.productId: id, name, orderCount: 0})
+        Set(id, {ProductDemandReadModel.name: name, orderCount: 0})
       | _ => Ignore
       }
   },

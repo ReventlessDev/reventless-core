@@ -12,7 +12,7 @@ module CatalogProductMapping = Mapping.Make(
     let map = ({event, id, _}) =>
       switch event {
       | Synced({name, price}) =>
-        Set(id, {AvailableProductsReadModel.productId: id, name, price})
+        Set(id, {AvailableProductsReadModel.name: name, price})
       | PriceUpdated({price}) =>
         Update(id, state => {...state, price})
       }

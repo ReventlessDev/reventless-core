@@ -12,7 +12,7 @@ module CategoryMapping = Mapping.Make(
     let map = ({event, id, _}) =>
       switch event {
       | Added({name}) =>
-        Set(id, {CategoriesReadModel.categoryId: id, name, archived: false})
+        Set(id, {CategoriesReadModel.name: name, archived: false})
       | Renamed({name}) => Update(id, state => {...state, name})
       | Archived => Update(id, state => {...state, archived: true})
       }

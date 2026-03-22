@@ -12,7 +12,7 @@ module ProductMapping = Mapping.Make(
     let map = ({event, id, _}) =>
       switch event {
       | Added({name, description, price}) =>
-        Set(id, {ProductsReadModel.productId: id, name, description, price})
+        Set(id, {ProductsReadModel.name: name, description, price})
       | NameUpdated({name}) => Update(id, state => {...state, name})
       | DescriptionUpdated({description}) =>
         Update(id, state => {...state, description})

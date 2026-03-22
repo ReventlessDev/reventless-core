@@ -6,7 +6,6 @@ module Id = Id.String
 
 @schema
 type state = {
-  categoryId: string,
   name: string,
   archived: bool,
 }

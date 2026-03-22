@@ -5,7 +5,7 @@ open Reventless
 module Id = Id.String
 
 @schema
-type state = {productId: string, name: string, orderCount: int}
+type state = {name: string, orderCount: int}
 
 let name = "ProductDemand"
 let moduleUrl: string = %raw(`import.meta.url`)

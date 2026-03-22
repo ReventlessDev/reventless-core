@@ -6,7 +6,6 @@ module Id = Id.String
 
 @schema
 type state = {
-  customerId: string,
   email: string,
   address: string,
   deactivated: bool,

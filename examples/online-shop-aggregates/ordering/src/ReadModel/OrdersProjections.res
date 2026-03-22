@@ -12,7 +12,7 @@ module OrderMapping = Mapping.Make(
     let map = ({event, id, _}) =>
       switch event {
       | Placed({customerId, productIds}) =>
-        Set(id, {OrdersReadModel.orderId: id, customerId, productIds, status: "placed"})
+        Set(id, {OrdersReadModel.customerId: customerId, productIds, status: "placed"})
       | Shipped => Update(id, state => {...state, status: "shipped"})
       | Cancelled(_) => Update(id, state => {...state, status: "cancelled"})
       }
