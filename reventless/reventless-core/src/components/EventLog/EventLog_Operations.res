@@ -40,10 +40,10 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     [
       ("id", id->Message.encode(Spec.Id.schema)),
       (
-        "sequenceNr",
+        "seq",
         JSON.Encode.string(sequenceNr->Int.toString->String.padStart(9, "0")),
       ),
-      ("type", JSON.String(eventType)),
+      ("event", JSON.String(eventType)),
       ("data", JSON.Object(data)),
     ]
     ->Array.concat(event'.meta->Message.decomposeMeta)
@@ -111,7 +111,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     try {
       JSON.Decode.object(json)
       ->Option.map(dict =>
-        switch (dict->Dict.get("type"), dict->Dict.get("data")) {
+        switch (dict->Dict.get("event"), dict->Dict.get("data")) {
         | (Some(JSON.String(eventType)), Some(JSON.Object(data))) =>
           Message.combineMessage(eventType, data)
         | (Some(JSON.String(eventType)), None) => Message.combineMessage(eventType, Dict.make())
@@ -155,7 +155,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
       stream->Stream.map(event => {
         let json = event->Message.encode(Spec.eventSchema)
         let (eventType, data) = json->Message.splitMessage
-        [("type", JSON.String(eventType)), ("data", JSON.Object(data))]
+        [("event", JSON.String(eventType)), ("data", JSON.Object(data))]
         ->Dict.fromArray
         ->JSON.Encode.object
       }),

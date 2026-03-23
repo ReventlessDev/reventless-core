@@ -38,11 +38,11 @@ function Make(Spec) {
           Message$ReventlessCore.encode(id, Spec.Id.schema)
         ],
         [
-          "sequenceNr",
+          "seq",
           sequenceNr.toString().padStart(9, "0")
         ],
         [
-          "type",
+          "event",
           match[0]
         ],
         [
@@ -100,7 +100,7 @@ function Make(Spec) {
     let decodeEvent = (id, json) => {
       try {
         return Message$ReventlessCore.decode(Stdlib_Option.getOrThrow(Stdlib_Option.map(Stdlib_JSON.Decode.object(json), dict => {
-          let match = dict["type"];
+          let match = dict["event"];
           let match$1 = dict["data"];
           if (typeof match === "string") {
             if (match$1 !== undefined) {
@@ -137,7 +137,7 @@ function Make(Spec) {
       let match = Message$ReventlessCore.splitMessage(json);
       return Object.fromEntries([
         [
-          "type",
+          "event",
           match[0]
         ],
         [

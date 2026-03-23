@@ -64,7 +64,8 @@ function buildHandler(specModule, callbackMake, queryDbTableName, dcbQueueUrl) {
   let eventSchema = specModule.DcbEventLogSpec.eventSchema;
   let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(Stream.flatMap(Stream.mapEffect(stream, json => Effect.sync(() => {
     try {
-      return [SResMjs.parseJsonOrThrow(json, eventSchema)];
+      let eventJson = Stdlib_Option.getOr(Primitive_option.fromNullable(json.event), json);
+      return [SResMjs.parseJsonOrThrow(eventJson, eventSchema)];
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       console.log("AutomationSlice: Failed to decode event:", exn);

@@ -10,7 +10,7 @@ let buildJsonEvent' = dict =>
     ("meta", dict->ReventlessCore.Message.composeMeta),
     (
       "event",
-      switch (dict->Dict.get("type"), dict->Dict.get("data")) {
+      switch (dict->Dict.get("event"), dict->Dict.get("data")) {
       | (Some(JSON.String(eventType)), Some(JSON.Object(data))) =>
         ReventlessCore.Message.combineMessage(eventType, data)
       | (Some(JSON.String(eventType)), None) =>

@@ -35,7 +35,7 @@ let toItem = (position: string, event: ReventlessCore.DcbEventLog_Adapter.rawSto
   // Use "id" with value "dcb" for single partition (required by Util_DynamoDb table structure)
   item->Dict.set("id", "dcb"->JSON.Encode.string)
   item->Dict.set("position", position->JSON.Encode.string)
-  item->Dict.set("eventType", event.eventType->JSON.Encode.string)
+  item->Dict.set("event", event.eventType->JSON.Encode.string)
   item->Dict.set("data", event.data)
 
   // Add tags array
@@ -74,7 +74,7 @@ let fromItem = (item: JSON.t): ReventlessCore.DcbEventLog_Adapter.rawSequencedEv
     ->Option.getOrThrow
 
     let eventType = obj
-    ->Dict.get("eventType")
+    ->Dict.get("event")
     ->Option.flatMap(JSON.Decode.string)
     ->Option.getOrThrow
 
@@ -186,14 +186,15 @@ let scanWithFilter = async (
 
   let filterParts = []
 
-  // Add eventType filter
+  // Add event type filter
   switch eventTypes {
   | None => ()
   | Some(types) => {
+      expressionAttributeNames->Dict.set("#evt", "event")
       let typeConditions = types->Array.mapWithIndex((typ, idx) => {
         let placeholder = `:type${idx->Int.toString}`
         expressionAttributeValues->Dict.set(placeholder, typ->JSON.Encode.string)
-        `eventType = ${placeholder}`
+        `#evt = ${placeholder}`
       })
       filterParts->Array.push(`(${typeConditions->Array.join(" OR ")})`)
     }
@@ -557,10 +558,11 @@ let scanWithFilterStream = (
   switch eventTypes {
   | None => ()
   | Some(types) => {
+      expressionAttributeNames->Dict.set("#evt", "event")
       let typeConditions = types->Array.mapWithIndex((typ, idx) => {
         let placeholder = `:type${idx->Int.toString}`
         expressionAttributeValues->Dict.set(placeholder, typ->JSON.Encode.string)
-        `eventType = ${placeholder}`
+        `#evt = ${placeholder}`
       })
       filterParts->Array.push(`(${typeConditions->Array.join(" OR ")})`)
     }

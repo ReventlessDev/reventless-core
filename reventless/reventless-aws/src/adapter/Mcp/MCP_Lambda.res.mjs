@@ -119,7 +119,7 @@ async function readEventLogHistory(tableName, entityId, limit, after) {
       entityId
     ],
     [
-      "sequenceNr",
+      "seq",
       afterSeq
     ]
   ]));
@@ -144,7 +144,7 @@ async function readEventLogHistory(tableName, entityId, limit, after) {
     ];
   let hasMore = match[1];
   let limited = match[0];
-  let nextAfter = hasMore ? Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(limited.at(-1), Stdlib_JSON.Decode.object), obj => obj["sequenceNr"]), Stdlib_JSON.Decode.string) : undefined;
+  let nextAfter = hasMore ? Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(limited.at(-1), Stdlib_JSON.Decode.object), obj => obj["seq"]), Stdlib_JSON.Decode.string) : undefined;
   return paginatedResponse(limited, hasMore, nextAfter);
 }
 
@@ -172,7 +172,7 @@ async function readDcbEventLogHistory(tableName, entityId, limit, after) {
       e.position
     ],
     [
-      "eventType",
+      "event",
       e.eventType
     ],
     [

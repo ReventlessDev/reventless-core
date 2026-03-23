@@ -385,7 +385,7 @@ module MakeWithConfig = (
                 switch e->JSON.Decode.object {
                 | Some(obj) =>
                   obj
-                  ->Dict.get("sequenceNr")
+                  ->Dict.get("seq")
                   ->Option.flatMap(JSON.Decode.string)
                 | None => None
                 }
@@ -403,7 +403,7 @@ module MakeWithConfig = (
                 let serialized = filtered->Array.map(e =>
                   Dict.fromArray([
                     ("position", JSON.Encode.string(e.position)),
-                    ("eventType", JSON.Encode.string(e.eventType)),
+                    ("event", JSON.Encode.string(e.eventType)),
                     ("data", e.data),
                     (
                       "tags",

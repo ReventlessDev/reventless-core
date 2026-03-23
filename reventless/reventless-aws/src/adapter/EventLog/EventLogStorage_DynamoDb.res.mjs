@@ -12,10 +12,10 @@ function make(name, opts) {
       type: "S"
     },
     {
-      name: "sequenceNr",
+      name: "seq",
       type: "S"
     }
-  ], undefined, undefined, "sequenceNr", AWS_Tags$ReventlessAws.make(name, EventLog$ReventlessCore.componentType), opts, name);
+  ], undefined, undefined, "seq", AWS_Tags$ReventlessAws.make(name, EventLog$ReventlessCore.componentType), opts, name);
   return {
     resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => ({

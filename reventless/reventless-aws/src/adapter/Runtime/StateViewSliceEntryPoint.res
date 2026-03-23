@@ -139,6 +139,11 @@ let callHandler: ('a, 'b, 'c) => 'd = %raw(`(h, e, c) => h(e, c)`)
 @get external getDcbEventLogSpec: 'a => 'b = "DcbEventLogSpec"
 @get external getEventSchema: 'a => 'b = "eventSchema"
 
+// Extract the "event" field from the DynamoDB stream JSON envelope.
+// buildJsonEvent' wraps DynamoDB records as {id, meta, event: <variant_json>},
+// but eventSchema expects just the variant JSON.
+@get external getEventField: 'a => Nullable.t<'b> = "event"
+
 // === Routing helpers ===
 
 let runEffect = (correlationId, effect) =>
@@ -180,7 +185,8 @@ let buildJsonEventsHandler = (specModule, queryDbTableName) => {
         streamMapEffect(stream, json =>
           effectSync(() => {
             try {
-              project(None, parseJsonOrThrow(json, eventSchema))
+              let eventJson = json->getEventField->Nullable.toOption->Option.getOr(json)
+              project(None, parseJsonOrThrow(eventJson, eventSchema))
             } catch {
             | exn =>
               Console.log2("StateViewSlice: Failed to decode event:", exn)

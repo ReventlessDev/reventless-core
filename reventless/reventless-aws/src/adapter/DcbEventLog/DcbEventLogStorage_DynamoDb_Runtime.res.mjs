@@ -42,7 +42,7 @@ function toItem(position, event) {
   let item = {};
   item["id"] = "dcb";
   item["position"] = position;
-  item["eventType"] = event.eventType;
+  item["event"] = event.eventType;
   item["data"] = event.data;
   let tagsJson = event.tags.map(tag => Object.fromEntries([
     [
@@ -72,7 +72,7 @@ function fromItem(item) {
     return Stdlib_JsError.throwWithMessage("Invalid DcbEventLog item: not an object");
   }
   let position = Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(obj["position"], Stdlib_JSON.Decode.string), undefined);
-  let eventType = Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(obj["eventType"], Stdlib_JSON.Decode.string), undefined);
+  let eventType = Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(obj["event"], Stdlib_JSON.Decode.string), undefined);
   let data = Stdlib_Option.getOrThrow(obj["data"], undefined);
   let tags = Stdlib_Option.mapOr(Stdlib_Option.flatMap(obj["tags"], Stdlib_JSON.Decode.array), [], tagArray => Stdlib_Array.filterMap(tagArray, tagJson => {
     let tagObj = Stdlib_JSON.Decode.object(tagJson);
@@ -168,10 +168,11 @@ async function scanWithFilter(table, eventTypes, after) {
   let expressionAttributeNames = {};
   let filterParts = [];
   if (eventTypes !== undefined) {
+    expressionAttributeNames["#evt"] = "event";
     let typeConditions = eventTypes.map((typ, idx) => {
       let placeholder = `:type` + idx.toString();
       expressionAttributeValues[placeholder] = typ;
-      return `eventType = ` + placeholder;
+      return `#evt = ` + placeholder;
     });
     filterParts.push(`(` + typeConditions.join(" OR ") + `)`);
   }
@@ -461,10 +462,11 @@ function scanWithFilterStream(table, eventTypes, after) {
   let expressionAttributeNames = {};
   let filterParts = [];
   if (eventTypes !== undefined) {
+    expressionAttributeNames["#evt"] = "event";
     let typeConditions = eventTypes.map((typ, idx) => {
       let placeholder = `:type` + idx.toString();
       expressionAttributeValues[placeholder] = typ;
-      return `eventType = ` + placeholder;
+      return `#evt = ` + placeholder;
     });
     filterParts.push(`(` + typeConditions.join(" OR ") + `)`);
   }

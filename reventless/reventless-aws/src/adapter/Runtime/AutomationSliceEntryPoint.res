@@ -117,6 +117,7 @@ external makeQueueRef: string => 'a = "makeQueueRef"
 @get external getPhase2: 'a => 'b = "phase2"
 @get external getDcbEventLogSpec: 'a => 'b = "DcbEventLogSpec"
 @get external getEventSchema: 'a => 'b = "eventSchema"
+@get external getEventField: 'a => Nullable.t<'b> = "event"
 
 let mkSubEvent: array<'a> => 'b = %raw(`(records) => ({Records: records})`)
 let mkCtx: option<string> => 'a = %raw(`(cid) => ({correlationId: cid || "unknown"})`)
@@ -170,7 +171,8 @@ let buildHandler = (specModule, callbackMake, queryDbTableName, dcbQueueUrl) => 
           streamMapEffect(stream, json =>
             effectSync(() => {
               try {
-                [parseJsonOrThrow(json, eventSchema)]
+                let eventJson = json->getEventField->Nullable.toOption->Option.getOr(json)
+                [parseJsonOrThrow(eventJson, eventSchema)]
               } catch {
               | exn =>
                 Console.log2("AutomationSlice: Failed to decode event:", exn)

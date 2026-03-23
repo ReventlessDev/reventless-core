@@ -49,7 +49,8 @@ function buildJsonEventsHandler(specModule, queryDbTableName) {
   let project = specModule.project;
   return stream => Stream.runForEach(Stream.flatMap(Stream.mapEffect(stream, json => Effect.sync(() => {
     try {
-      return project(undefined, SResMjs.parseJsonOrThrow(json, eventSchema));
+      let eventJson = Stdlib_Option.getOr(Primitive_option.fromNullable(json.event), json);
+      return project(undefined, SResMjs.parseJsonOrThrow(eventJson, eventSchema));
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       console.log("StateViewSlice: Failed to decode event:", exn);

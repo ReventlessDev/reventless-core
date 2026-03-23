@@ -8,7 +8,7 @@ import * as DynamoDb_Util_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/s
 import * as Util_AdapterRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
 
 function buildJsonEvent$p(dict) {
-  let match = dict["type"];
+  let match = dict["event"];
   let match$1 = dict["data"];
   let tmp;
   tmp = match !== undefined ? (

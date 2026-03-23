@@ -14,7 +14,7 @@ function putItemConditional(tableName, json) {
   return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
     Item: json,
     TableName: tableName,
-    ConditionExpression: "attribute_not_exists(sequenceNr)"
+    ConditionExpression: "attribute_not_exists(seq)"
   }));
 }
 
@@ -39,7 +39,7 @@ function transactWriteConditional(tableName, jsons) {
     Put: {
       Item: json,
       TableName: tableName,
-      ConditionExpression: "attribute_not_exists(sequenceNr)"
+      ConditionExpression: "attribute_not_exists(seq)"
     }
   }));
   let input = {
