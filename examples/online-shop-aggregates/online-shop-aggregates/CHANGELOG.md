@@ -1,3 +1,4 @@
+
 # Change Log
 
 All notable changes to this project will be documented in this file.
@@ -16,18 +17,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * GraphQL/MCP field names change from Core_ to Admin_
 prefix (e.g. Core_Plugin → Admin_Plugin). makePlatform no longer accepts
 ~extensionPoints, ~aggregates, ~readModels, ~dcbSpec parameters.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates@1.0.0-alpha.2...@reventlessdev/online-shop-aggregates@1.0.0-alpha.3) (2026-03-14)
 
 ### Features
 
 * add optional DCB spec support to Core module and consolidate builder helpers ([06a5e6f](https://github.com/ReventlessDev/reventless-core/commit/06a5e6f2eeadbabd20fb7197318d760b91c34925))
-
-
 # 1.0.0-alpha.2 (2026-03-08)
 
 ### Features

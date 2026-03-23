@@ -1,3 +1,4 @@
+
 # Change Log
 
 All notable changes to this project will be documented in this file.
@@ -15,14 +16,8 @@ now returns result<array<event>, error> instead of using errorHandler callback.
 StateChangeSlice type decisionModel renamed to state. Projection.Mapping.map
 renamed to project. StateViewSlice.project takes one argument instead of two.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * DcbEventLog.Spec now requires `let moduleUrl: string` field.
 Add `let moduleUrl: string = %raw(\`import.meta.url\`)` to event log modules.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.9](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.8...@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.9) (2026-03-22)
 
 * feat(reventless-aws)!: replace esbuild pipeline with compiled ReScript entry points ([6cb3133](https://github.com/ReventlessDev/reventless-core/commit/6cb313323c73a078d0922fa6b977466f61de74ea))
@@ -32,11 +27,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * esbuild removed from dependencies, `makeBundled` and
 `makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
 `BundledEnvironment` module type removed from Runtime.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.7...@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.8) (2026-03-16)
 
 * feat!: auto-detect plugin version from package.json via V8 stack trace ([e172673](https://github.com/ReventlessDev/reventless-core/commit/e17267390c197fa34052cef8325c579bb781419f))
@@ -44,47 +34,30 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ### BREAKING CHANGES
 
 * Plugin.make no longer accepts ~version.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.6...@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.7) (2026-03-12)
 
 ### Features
 
 * **deps:** upgrade rescript to 12.2 and migrate Belt usages to stdlib ([eaa96ea](https://github.com/ReventlessDev/reventless-core/commit/eaa96ea61ca40d61573fb5fe2002a1f73d43ce3e))
-
-
 # [1.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.5...@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.6) (2026-03-08)
 
 ### Features
 
 * replace explicit queryMode with automatic schema-driven DCB query construction ([8df4350](https://github.com/ReventlessDev/reventless-core/commit/8df4350c37f1f15678f4796f229647eaeb3e8222))
-
-
 # 1.0.0-alpha.5 (2026-03-08)
 
 ### Features
 
 * **examples:** add AutomationSlice, InboundTranslationSlice, and OutboundTranslationSlice to DCB online shop ([6e2da0a](https://github.com/ReventlessDev/reventless-core/commit/6e2da0a2629085750bdd707feb961e4e65c2c70c))
 * restructure DCB example into online-shop-dcb with spec packages ([0ee5a10](https://github.com/ReventlessDev/reventless-core/commit/0ee5a10c55248c8e27087f69cdce61a24f98027f))
-
-
 # [1.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-ordering@1.0.0-alpha.3...@reventlessdev/example-dcb-ordering@1.0.0-alpha.4) (2026-03-03)
 
 ### Features
 
 * **api:** implement Api component with GraphQL fragment generation and schema stitching ([c882d3a](https://github.com/ReventlessDev/reventless-core/commit/c882d3aae8722cf6cbe9b4fbf9518d9f434ce06a))
-
-
 # [1.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-ordering@1.0.0-alpha.2...@reventlessdev/example-dcb-ordering@1.0.0-alpha.3) (2026-03-02)
 
 **Note:** Version bump only for package @reventlessdev/example-dcb-ordering
-
-
-
-
 
 # [1.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/example-dcb-ordering@1.0.0-alpha.1...@reventlessdev/example-dcb-ordering@1.0.0-alpha.2) (2026-03-02)
 
@@ -97,11 +70,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * **examples/dcb:** OrderCancelled now carries `productIds: array<string>`
 so the OrdersExtensionPoint can decompose cancellations into per-product
 ItemOrderCancelled events.
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-
 # 1.0.0-alpha.1 (2026-03-01)
 
 * feat(reventless-spec)!: swap namespaces — spec→Reventless, core→ReventlessCore ([0fcf24e](https://github.com/ReventlessDev/reventless-core/commit/0fcf24e3fc1dcc88e9ee741dc99eb7bd726f9fd7))
@@ -116,5 +84,3 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 package namespace renamed from Reventless to ReventlessCore.
 All usages of ReventlessSpec.* must be updated to Reventless.*;
 all usages of Reventless.* (core) in dependent packages must be updated to ReventlessCore.*
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>

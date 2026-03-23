@@ -16,17 +16,10 @@ now returns result<array<event>, error> instead of using errorHandler callback.
 StateChangeSlice type decisionModel renamed to state. Projection.Mapping.map
 renamed to project. StateViewSlice.project takes one argument instead of two.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * DynamoDB attribute names changed. Existing event log tables require migration.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * DcbEventLog.Spec now requires `let moduleUrl: string` field.
 Add `let moduleUrl: string = %raw(\`import.meta.url\`)` to event log modules.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.14](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.12...@reventlessdev/reventless-in-memory@1.0.0-alpha.14) (2026-03-22)
 
 ### Bug Fixes
@@ -39,25 +32,16 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * esbuild removed from dependencies, `makeBundled` and
 `makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
 `BundledEnvironment` module type removed from Runtime.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.13](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.12...@reventlessdev/reventless-in-memory@1.0.0-alpha.13) (2026-03-21)
 
 ### Bug Fixes
 
 * **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
-
-
 # [1.0.0-alpha.12](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.11...@reventlessdev/reventless-in-memory@1.0.0-alpha.12) (2026-03-20)
 
 ### Features
 
 * **aws:** expose api/apiRole in Platform.T and remove unused MakeBundled modules ([a3be4cc](https://github.com/ReventlessDev/reventless-core/commit/a3be4cc5dc6041fb70c8e44a9e48f0a4f730242a))
-
-
 # [1.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.10...@reventlessdev/reventless-in-memory@1.0.0-alpha.11) (2026-03-17)
 
 ### Bug Fixes
@@ -66,8 +50,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ### Features
 
 * **reventless-aws:** implement per-plugin deployment with runtime schema stitching ([f16714c](https://github.com/ReventlessDev/reventless-core/commit/f16714c5d2b3ad869863ac30dc55ef3e1570bf4f))
-
-
 # [1.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.9...@reventlessdev/reventless-in-memory@1.0.0-alpha.10) (2026-03-16)
 
 * feat!: unify DCB and Aggregate command generation paths ([8c9bbad](https://github.com/ReventlessDev/reventless-core/commit/8c9bbad14082e7b696da35f5abb337520b1c8683))
@@ -82,15 +64,9 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
 * DCB mutation return value changes from "ok" to a UUID.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * GraphQL/MCP field names change from Core_ to Admin_
 prefix (e.g. Core_Plugin → Admin_Plugin). makePlatform no longer accepts
 ~extensionPoints, ~aggregates, ~readModels, ~dcbSpec parameters.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.9](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.8...@reventlessdev/reventless-in-memory@1.0.0-alpha.9) (2026-03-14)
 
 ### Bug Fixes
@@ -100,23 +76,17 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
 * add optional DCB spec support to Core module and consolidate builder helpers ([06a5e6f](https://github.com/ReventlessDev/reventless-core/commit/06a5e6f2eeadbabd20fb7197318d760b91c34925))
 * implement hybrid API/MCP schema split (core vs plugins) ([4f84866](https://github.com/ReventlessDev/reventless-core/commit/4f848667c0814533b2f3a294350c4310c61d9fc7))
-
-
 # [1.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.7...@reventlessdev/reventless-in-memory@1.0.0-alpha.8) (2026-03-12)
 
 ### Features
 
 * capitalize and prefix Core_ on GraphQL/MCP queries and mutations ([769420b](https://github.com/ReventlessDev/reventless-core/commit/769420b47ce35aba46d248d1529f7c72c7df9c0e))
 * unify schema generation pipeline across GraphQL and MCP protocols ([84e05ae](https://github.com/ReventlessDev/reventless-core/commit/84e05aeca8c13000040d1230502b07350ab5daeb))
-
-
 # [1.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.6...@reventlessdev/reventless-in-memory@1.0.0-alpha.7) (2026-03-12)
 
 ### Features
 
 * **deps:** upgrade rescript to 12.2 and migrate Belt usages to stdlib ([eaa96ea](https://github.com/ReventlessDev/reventless-core/commit/eaa96ea61ca40d61573fb5fe2002a1f73d43ce3e))
-
-
 # [1.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.4...@reventlessdev/reventless-in-memory@1.0.0-alpha.6) (2026-03-08)
 
 ### Bug Fixes
@@ -142,8 +112,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * migrate logging to Effect built-in logger and provide RequestContext ([e9ec682](https://github.com/ReventlessDev/reventless-core/commit/e9ec6822ea924fc1561bfd886e4232cb5e2a8250))
 * replace explicit queryMode with automatic schema-driven DCB query construction ([8df4350](https://github.com/ReventlessDev/reventless-core/commit/8df4350c37f1f15678f4796f229647eaeb3e8222))
 * replace timestamp-based sequenceNr with integer sequence numbers and optimistic locking ([50b7d3e](https://github.com/ReventlessDev/reventless-core/commit/50b7d3e9901daafc6dff8c9492a789bc700e9099))
-
-
 # [1.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.4...@reventlessdev/reventless-in-memory@1.0.0-alpha.5) (2026-03-08)
 
 ### Bug Fixes
@@ -167,23 +135,15 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * harmonize error handling and retry with Effect across all AWS adapters ([a817bde](https://github.com/ReventlessDev/reventless-core/commit/a817bde2fbbda314ebdbc69aee17de717ee059ed))
 * make Logger injectable at Platform level and replace Console.log in runtime builders ([5c5dd5b](https://github.com/ReventlessDev/reventless-core/commit/5c5dd5bc07c14c13a9fc5d857d26387e14d06dd6))
 * migrate logging to Effect built-in logger and provide RequestContext ([e9ec682](https://github.com/ReventlessDev/reventless-core/commit/e9ec6822ea924fc1561bfd886e4232cb5e2a8250))
-
-
 # [1.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.3...@reventlessdev/reventless-in-memory@1.0.0-alpha.4) (2026-03-03)
 
 ### Features
 
 * **api:** implement Api component with GraphQL fragment generation and schema stitching ([c882d3a](https://github.com/ReventlessDev/reventless-core/commit/c882d3aae8722cf6cbe9b4fbf9518d9f434ce06a))
 * **platform:** expose Plugin, Core, makeScheduler, makePlatform via Platform.T ([0df4bf3](https://github.com/ReventlessDev/reventless-core/commit/0df4bf333ea4f9c0e51e96df1ad0da4ab471ffe8))
-
-
 # [1.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.2...@reventlessdev/reventless-in-memory@1.0.0-alpha.3) (2026-03-02)
 
 **Note:** Version bump only for package @reventlessdev/reventless-in-memory
-
-
-
-
 
 # 1.0.0-alpha.2 (2026-03-01)
 
@@ -207,7 +167,6 @@ package namespace renamed from Reventless to ReventlessCore.
 All usages of ReventlessSpec.* must be updated to Reventless.*;
 all usages of Reventless.* (core) in dependent packages must be updated to ReventlessCore.*
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 * package renamed for consistency with sibling packages
 and the repository name. ReScript namespace "Reventless" is unchanged —
 no source code updates required.
@@ -218,5 +177,3 @@ no source code updates required.
 - Root package.json and rescript.json renamed to "reventless-monorepo" to
   avoid name collision that caused ReScript to skip building the sub-package
 - Updated recompiled .res.mjs output files with new relative import paths
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>

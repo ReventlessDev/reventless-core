@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra
 
-
-
-
-
 # [3.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.10...@reventlessdev/reventless-infra@3.0.0-alpha.11) (2026-03-22)
 
 * feat(reventless-aws)!: replace esbuild pipeline with compiled ReScript entry points ([6cb3133](https://github.com/ReventlessDev/reventless-core/commit/6cb313323c73a078d0922fa6b977466f61de74ea))
@@ -20,19 +16,12 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * esbuild removed from dependencies, `makeBundled` and
 `makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
 `BundledEnvironment` module type removed from Runtime.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [3.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.9...@reventlessdev/reventless-infra@3.0.0-alpha.10) (2026-03-20)
 
 ### Features
 
 * **aws:** expose api/apiRole in Platform.T and remove unused MakeBundled modules ([a3be4cc](https://github.com/ReventlessDev/reventless-core/commit/a3be4cc5dc6041fb70c8e44a9e48f0a4f730242a))
 * **aws:** replace CallbackFunction with bundled Lambda handlers ([6f6200b](https://github.com/ReventlessDev/reventless-core/commit/6f6200b0796e5f414493f50fd2f13dd6c7871ef4))
-
-
 # [3.0.0-alpha.9](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.8...@reventlessdev/reventless-infra@3.0.0-alpha.9) (2026-03-17)
 
 ### Bug Fixes
@@ -41,8 +30,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ### Features
 
 * **reventless-aws:** implement per-plugin deployment with runtime schema stitching ([f16714c](https://github.com/ReventlessDev/reventless-core/commit/f16714c5d2b3ad869863ac30dc55ef3e1570bf4f))
-
-
 # [3.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.7...@reventlessdev/reventless-infra@3.0.0-alpha.8) (2026-03-16)
 
 * feat!: auto-detect plugin version from package.json via V8 stack trace ([e172673](https://github.com/ReventlessDev/reventless-core/commit/e17267390c197fa34052cef8325c579bb781419f))
@@ -56,15 +43,9 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
 * Plugin.make no longer accepts ~version.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * GraphQL/MCP field names change from Core_ to Admin_
 prefix (e.g. Core_Plugin → Admin_Plugin). makePlatform no longer accepts
 ~extensionPoints, ~aggregates, ~readModels, ~dcbSpec parameters.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [3.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.6...@reventlessdev/reventless-infra@3.0.0-alpha.7) (2026-03-14)
 
 ### Bug Fixes
@@ -73,23 +54,17 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ### Features
 
 * add optional DCB spec support to Core module and consolidate builder helpers ([06a5e6f](https://github.com/ReventlessDev/reventless-core/commit/06a5e6f2eeadbabd20fb7197318d760b91c34925))
-
-
 # [3.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.5...@reventlessdev/reventless-infra@3.0.0-alpha.6) (2026-03-12)
 
 ### Features
 
 * capitalize and prefix Core_ on GraphQL/MCP queries and mutations ([769420b](https://github.com/ReventlessDev/reventless-core/commit/769420b47ce35aba46d248d1529f7c72c7df9c0e))
 * unify schema generation pipeline across GraphQL and MCP protocols ([84e05ae](https://github.com/ReventlessDev/reventless-core/commit/84e05aeca8c13000040d1230502b07350ab5daeb))
-
-
 # [3.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.4...@reventlessdev/reventless-infra@3.0.0-alpha.5) (2026-03-12)
 
 ### Features
 
 * **deps:** upgrade rescript to 12.2 and migrate Belt usages to stdlib ([eaa96ea](https://github.com/ReventlessDev/reventless-core/commit/eaa96ea61ca40d61573fb5fe2002a1f73d43ce3e))
-
-
 # [3.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.2...@reventlessdev/reventless-infra@3.0.0-alpha.4) (2026-03-08)
 
 ### Bug Fixes
@@ -101,8 +76,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * add MCP event history resources and fix QueryDb/MCP resource bugs ([3197d4f](https://github.com/ReventlessDev/reventless-core/commit/3197d4fb52a7b20bc68cd3088d9d6fac21a41f6f))
 * add MCP server layer for AI-native access to Reventless ([4b288bc](https://github.com/ReventlessDev/reventless-core/commit/4b288bce2fc17c28c32c6778028becb0cde4c544))
 * add TranslationSlice components with docs and webhook backlog plan ([7362a8f](https://github.com/ReventlessDev/reventless-core/commit/7362a8f26bca2eaad9d99488ec597c426635659d))
-
-
 # [3.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.2...@reventlessdev/reventless-infra@3.0.0-alpha.3) (2026-03-08)
 
 ### Bug Fixes
@@ -114,16 +87,12 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * add MCP event history resources and fix QueryDb/MCP resource bugs ([3197d4f](https://github.com/ReventlessDev/reventless-core/commit/3197d4fb52a7b20bc68cd3088d9d6fac21a41f6f))
 * add MCP server layer for AI-native access to Reventless ([4b288bc](https://github.com/ReventlessDev/reventless-core/commit/4b288bce2fc17c28c32c6778028becb0cde4c544))
 * add TranslationSlice components with docs and webhook backlog plan ([7362a8f](https://github.com/ReventlessDev/reventless-core/commit/7362a8f26bca2eaad9d99488ec597c426635659d))
-
-
 # [3.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-infra@3.0.0-alpha.1...@reventlessdev/reventless-infra@3.0.0-alpha.2) (2026-03-03)
 
 ### Features
 
 * **api:** implement Api component with GraphQL fragment generation and schema stitching ([c882d3a](https://github.com/ReventlessDev/reventless-core/commit/c882d3aae8722cf6cbe9b4fbf9518d9f434ce06a))
 * **platform:** expose Plugin, Core, makeScheduler, makePlatform via Platform.T ([0df4bf3](https://github.com/ReventlessDev/reventless-core/commit/0df4bf333ea4f9c0e51e96df1ad0da4ab471ffe8))
-
-
 # 3.0.0-alpha.1 (2026-03-02)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

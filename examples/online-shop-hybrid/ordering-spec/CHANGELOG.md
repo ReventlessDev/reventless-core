@@ -12,26 +12,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * esbuild removed from dependencies, `makeBundled` and
 `makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
 `BundledEnvironment` module type removed from Runtime.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.1](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-ordering-spec@0.1.0-alpha.1...@reventlessdev/online-shop-hybrid-ordering-spec@1.0.0-alpha.1) (2026-03-17)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-spec
-
-
-
-
 
 # [0.1.0-alpha.1](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-ordering-spec@0.1.0-alpha.0...@reventlessdev/online-shop-hybrid-ordering-spec@0.1.0-alpha.1) (2026-03-12)
 
 ### Features
 
 * **deps:** upgrade rescript to 12.2 and migrate Belt usages to stdlib ([eaa96ea](https://github.com/ReventlessDev/reventless-core/commit/eaa96ea61ca40d61573fb5fe2002a1f73d43ce3e))
-
-
 # 0.1.0-alpha.0 (2026-03-08)
 
 ### Features

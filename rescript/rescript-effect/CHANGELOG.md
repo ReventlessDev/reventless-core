@@ -8,22 +8,16 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Bug Fixes
 
 * **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
-
-
 # [0.1.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-effect@0.1.0-alpha.4...@reventlessdev/rescript-effect@0.1.0-alpha.5) (2026-03-21)
 
 ### Bug Fixes
 
 * **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
-
-
 # [0.1.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-effect@0.1.0-alpha.3...@reventlessdev/rescript-effect@0.1.0-alpha.4) (2026-03-12)
 
 ### Features
 
 * **deps:** upgrade rescript to 12.2 and migrate Belt usages to stdlib ([eaa96ea](https://github.com/ReventlessDev/reventless-core/commit/eaa96ea61ca40d61573fb5fe2002a1f73d43ce3e))
-
-
 # [0.1.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-effect@0.1.0-alpha.2...@reventlessdev/rescript-effect@0.1.0-alpha.3) (2026-03-08)
 
 ### Bug Fixes
@@ -33,15 +27,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 * add effect-based handlers with Effect service injection at dispatch ([7ab3b3e](https://github.com/ReventlessDev/reventless-core/commit/7ab3b3e8a48890f2248b113328914755f604c07e))
 * migrate logging to Effect built-in logger and provide RequestContext ([e9ec682](https://github.com/ReventlessDev/reventless-core/commit/e9ec6822ea924fc1561bfd886e4232cb5e2a8250))
-
-
 # [0.1.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-effect@0.1.0-alpha.1...@reventlessdev/rescript-effect@0.1.0-alpha.2) (2026-03-02)
 
 ### Bug Fixes
 
 * **rescript:** stable .res.mjs output for all rescript binding packages ([6d8f8cb](https://github.com/ReventlessDev/reventless-core/commit/6d8f8cbd6ca5152a29bfe1a598a193e4c92549b1))
-
-
 # 0.1.0-alpha.1 (2026-03-01)
 
 ### Features

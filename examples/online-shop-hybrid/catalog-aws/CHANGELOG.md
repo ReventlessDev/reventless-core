@@ -12,11 +12,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * esbuild removed from dependencies, `makeBundled` and
 `makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
 `BundledEnvironment` module type removed from Runtime.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [1.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-catalog-aws@1.0.0-alpha.1...@reventlessdev/online-shop-hybrid-catalog-aws@1.0.0-alpha.2) (2026-03-20)
 
 ### Bug Fixes
@@ -27,8 +22,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * **aws:** implement bundled DCB CommandTopic, Heartbeat, and EP fix ([4ae72ec](https://github.com/ReventlessDev/reventless-core/commit/4ae72ec20d7ea1941e9b02dc7f06461c5fff06c4))
 * **aws:** replace CallbackFunction with bundled Lambda handlers ([6f6200b](https://github.com/ReventlessDev/reventless-core/commit/6f6200b0796e5f414493f50fd2f13dd6c7871ef4))
 * **interop:** add component-level resolved output types and export plugin outputs from deployPlugin ([b502cbf](https://github.com/ReventlessDev/reventless-core/commit/b502cbf189f024f8bb3fd19a75bf5d76c7de2236))
-
-
 # 1.0.0-alpha.1 (2026-03-17)
 
 ### Bug Fixes

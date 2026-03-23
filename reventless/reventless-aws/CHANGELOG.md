@@ -16,17 +16,10 @@ now returns result<array<event>, error> instead of using errorHandler callback.
 StateChangeSlice type decisionModel renamed to state. Projection.Mapping.map
 renamed to project. StateViewSlice.project takes one argument instead of two.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * DynamoDB attribute names changed. Existing event log tables require migration.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * DcbEventLog.Spec now requires `let moduleUrl: string` field.
 Add `let moduleUrl: string = %raw(\`import.meta.url\`)` to event log modules.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [3.0.0-alpha.19](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.17...@reventlessdev/reventless-aws@3.0.0-alpha.19) (2026-03-22)
 
 ### Bug Fixes
@@ -43,11 +36,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * esbuild removed from dependencies, `makeBundled` and
 `makeBundledFromEntryPoint` removed from RuntimeEnvironment_Lambda,
 `BundledEnvironment` module type removed from Runtime.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [3.0.0-alpha.18](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.17...@reventlessdev/reventless-aws@3.0.0-alpha.18) (2026-03-21)
 
 ### Bug Fixes
@@ -55,8 +43,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * **rescript-effect:** use deep imports to avoid loading effect barrel ([1823358](https://github.com/ReventlessDev/reventless-core/commit/18233588d3564d8b4d158b949e734cbb92720fcd))
 * **reventless-aws:** use deep effect imports in hand-written handler factories ([7f42d25](https://github.com/ReventlessDev/reventless-core/commit/7f42d25884ddab90fa3e4217ba9ca7db7a664eb3))
 * **reventless-aws:** use package specifiers for layer-provided modules ([7fdf04b](https://github.com/ReventlessDev/reventless-core/commit/7fdf04b6757a7006d3e425c881212c15a932f469))
-
-
 # [3.0.0-alpha.17](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.16...@reventlessdev/reventless-aws@3.0.0-alpha.17) (2026-03-20)
 
 ### Bug Fixes
@@ -72,8 +58,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * **aws:** implement split API and fix bundled handler issues ([a3dfa79](https://github.com/ReventlessDev/reventless-core/commit/a3dfa79612eca4c4f57fabac7768f7bbda511eae))
 * **aws:** replace CallbackFunction with bundled Lambda handlers ([6f6200b](https://github.com/ReventlessDev/reventless-core/commit/6f6200b0796e5f414493f50fd2f13dd6c7871ef4))
 * **interop:** add component-level resolved output types and export plugin outputs from deployPlugin ([b502cbf](https://github.com/ReventlessDev/reventless-core/commit/b502cbf189f024f8bb3fd19a75bf5d76c7de2236))
-
-
 # [3.0.0-alpha.16](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.15...@reventlessdev/reventless-aws@3.0.0-alpha.16) (2026-03-17)
 
 ### Bug Fixes
@@ -83,8 +67,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 ### Features
 
 * **reventless-aws:** implement per-plugin deployment with runtime schema stitching ([f16714c](https://github.com/ReventlessDev/reventless-core/commit/f16714c5d2b3ad869863ac30dc55ef3e1570bf4f))
-
-
 # [3.0.0-alpha.15](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.14...@reventlessdev/reventless-aws@3.0.0-alpha.15) (2026-03-16)
 
 * feat!: unify DCB and Aggregate command generation paths ([8c9bbad](https://github.com/ReventlessDev/reventless-core/commit/8c9bbad14082e7b696da35f5abb337520b1c8683))
@@ -98,15 +80,9 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
 * DCB mutation return value changes from "ok" to a UUID.
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * GraphQL/MCP field names change from Core_ to Admin_
 prefix (e.g. Core_Plugin → Admin_Plugin). makePlatform no longer accepts
 ~extensionPoints, ~aggregates, ~readModels, ~dcbSpec parameters.
-
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-
-
-
 # [3.0.0-alpha.14](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.13...@reventlessdev/reventless-aws@3.0.0-alpha.14) (2026-03-14)
 
 ### Bug Fixes
@@ -116,23 +92,17 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 
 * add optional DCB spec support to Core module and consolidate builder helpers ([06a5e6f](https://github.com/ReventlessDev/reventless-core/commit/06a5e6f2eeadbabd20fb7197318d760b91c34925))
 * implement hybrid API/MCP schema split (core vs plugins) ([4f84866](https://github.com/ReventlessDev/reventless-core/commit/4f848667c0814533b2f3a294350c4310c61d9fc7))
-
-
 # [3.0.0-alpha.13](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.12...@reventlessdev/reventless-aws@3.0.0-alpha.13) (2026-03-12)
 
 ### Features
 
 * capitalize and prefix Core_ on GraphQL/MCP queries and mutations ([769420b](https://github.com/ReventlessDev/reventless-core/commit/769420b47ce35aba46d248d1529f7c72c7df9c0e))
 * unify schema generation pipeline across GraphQL and MCP protocols ([84e05ae](https://github.com/ReventlessDev/reventless-core/commit/84e05aeca8c13000040d1230502b07350ab5daeb))
-
-
 # [3.0.0-alpha.12](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.11...@reventlessdev/reventless-aws@3.0.0-alpha.12) (2026-03-12)
 
 ### Features
 
 * **deps:** upgrade rescript to 12.2 and migrate Belt usages to stdlib ([eaa96ea](https://github.com/ReventlessDev/reventless-core/commit/eaa96ea61ca40d61573fb5fe2002a1f73d43ce3e))
-
-
 # [3.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.9...@reventlessdev/reventless-aws@3.0.0-alpha.11) (2026-03-08)
 
 ### Bug Fixes
@@ -152,8 +122,6 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * make Logger injectable at Platform level and replace Console.log in runtime builders ([5c5dd5b](https://github.com/ReventlessDev/reventless-core/commit/5c5dd5bc07c14c13a9fc5d857d26387e14d06dd6))
 * migrate logging to Effect built-in logger and provide RequestContext ([e9ec682](https://github.com/ReventlessDev/reventless-core/commit/e9ec6822ea924fc1561bfd886e4232cb5e2a8250))
 * replace timestamp-based sequenceNr with integer sequence numbers and optimistic locking ([50b7d3e](https://github.com/ReventlessDev/reventless-core/commit/50b7d3e9901daafc6dff8c9492a789bc700e9099))
-
-
 # [3.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.9...@reventlessdev/reventless-aws@3.0.0-alpha.10) (2026-03-08)
 
 ### Bug Fixes
@@ -172,31 +140,19 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 * lift AWS runtime handlers into pure Effect pipelines ([136f1c0](https://github.com/ReventlessDev/reventless-core/commit/136f1c0712a65e46d4be292c42b1d02babcc2f1b))
 * make Logger injectable at Platform level and replace Console.log in runtime builders ([5c5dd5b](https://github.com/ReventlessDev/reventless-core/commit/5c5dd5bc07c14c13a9fc5d857d26387e14d06dd6))
 * migrate logging to Effect built-in logger and provide RequestContext ([e9ec682](https://github.com/ReventlessDev/reventless-core/commit/e9ec6822ea924fc1561bfd886e4232cb5e2a8250))
-
-
 # [3.0.0-alpha.9](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.8...@reventlessdev/reventless-aws@3.0.0-alpha.9) (2026-03-03)
 
 ### Features
 
 * **api:** implement Api component with GraphQL fragment generation and schema stitching ([c882d3a](https://github.com/ReventlessDev/reventless-core/commit/c882d3aae8722cf6cbe9b4fbf9518d9f434ce06a))
 * **platform:** expose Plugin, Core, makeScheduler, makePlatform via Platform.T ([0df4bf3](https://github.com/ReventlessDev/reventless-core/commit/0df4bf333ea4f9c0e51e96df1ad0da4ab471ffe8))
-
-
 # [3.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.7...@reventlessdev/reventless-aws@3.0.0-alpha.8) (2026-03-02)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
 
-
-
-
-
 # [3.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.6...@reventlessdev/reventless-aws@3.0.0-alpha.7) (2026-03-02)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
-
-
-
-
 
 # [3.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.5...@reventlessdev/reventless-aws@3.0.0-alpha.6) (2026-03-01)
 
@@ -214,7 +170,6 @@ package namespace renamed from Reventless to ReventlessCore.
 All usages of ReventlessSpec.* must be updated to Reventless.*;
 all usages of Reventless.* (core) in dependent packages must be updated to ReventlessCore.*
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 * package renamed for consistency with sibling packages
 and the repository name. ReScript namespace "Reventless" is unchanged —
 no source code updates required.
@@ -225,11 +180,6 @@ no source code updates required.
 - Root package.json and rescript.json renamed to "reventless-monorepo" to
   avoid name collision that caused ReScript to skip building the sub-package
 - Updated recompiled .res.mjs output files with new relative import paths
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-
-
-
 # [3.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.4...@reventlessdev/reventless-aws@3.0.0-alpha.5) (2026-02-18)
 
 ### Bug Fixes
@@ -240,15 +190,9 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 * **dcb:** add DynamoDB adapter with dynamic GSI generation ([820aa82](https://github.com/ReventlessDev/reventless-core/commit/820aa82e116774c77bf3abdb2228232e67cfa4c3))
 * **dcb:** integrate DCB into Plugin component ([f44c2bf](https://github.com/ReventlessDev/reventless-core/commit/f44c2bf21d13a22c64e1b49829d04ebe34aece71))
 * **dcb:** shared event log and schema-based command routing per plugin ([2464ae4](https://github.com/ReventlessDev/reventless-core/commit/2464ae41f589cc0a224de2f81e186091700d91ee))
-
-
 # [3.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.3...@reventlessdev/reventless-aws@3.0.0-alpha.4) (2026-02-14)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
-
-
-
-
 
 # [3.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.2...@reventlessdev/reventless-aws@3.0.0-alpha.3) (2026-02-13)
 
@@ -257,54 +201,29 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ### BREAKING CHANGES
 
 * Builder functions now require explicit resourceNaming and runtimeOps parameters
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
-
-
-
 # [3.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.1...@reventlessdev/reventless-aws@3.0.0-alpha.2) (2026-02-12)
-
-
 ### Bug Fixes
 
 * remove all ReScript compiler warnings across packages ([a943a21](https://github.com/ReventlessDev/reventless-core/commit/a943a2107aac1a2b27a72ffe3aab9bd15e61b6c0))
 
-
-
-
-
 # [3.0.0-alpha.1](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.0...@reventlessdev/reventless-aws@3.0.0-alpha.1) (2026-02-12)
-
-
 ### Bug Fixes
 
 * exclude private packages from versioning and automate doc CHANGELOG updates ([7581d78](https://github.com/ReventlessDev/reventless-core/commit/7581d78e9825fa6d837da8a136b361dee821660f))
 
-
-
-
-
 # 3.0.0-alpha.0 (2026-02-12)
-
-
 ### Bug Fixes
 
 * **publish:** add publishConfig to packages for GitHub Package Registry ([987a00a](https://github.com/ReventlessDev/reventless-core/commit/987a00af049fed112aa91fd53d8fad719cd80c94))
-
-
 ### Code Refactoring
 
 * rename Behaviour to Behavior (British to American spelling) ([6575f44](https://github.com/ReventlessDev/reventless-core/commit/6575f4415fa0fb27472f3520038f158dd624da03))
-
-
 ### Reverts
 
 * Revert "reventless-aws: configure QueryEngine_DynamoDb to use ConsistentRead" ([9bd8457](https://github.com/ReventlessDev/reventless-core/commit/9bd84579973a5ff5cf0e3a8902dbd341c696c1fd))
 * Revert "reventless & reventless-aws: add lambdas to component resources array (#101)" ([ee1e03f](https://github.com/ReventlessDev/reventless-core/commit/ee1e03fed9c95a055f22814f545e0046fc2fa044)), closes [#101](https://github.com/ReventlessDev/reventless-core/issues/101)
 * Revert "wrap Lambda.CallbackFunction param policies into Pulumi.Input" ([b023c23](https://github.com/ReventlessDev/reventless-core/commit/b023c23ef8f252b00796a062826daabd519f7cac))
 * Revert "reventless-aws: add func resource to CommandGenerator, CommandTopic, Counter, EventCollector adapters" ([2b287ba](https://github.com/ReventlessDev/reventless-core/commit/2b287ba446dabfa9d78c3bcd8de49abfea84b0ba))
-
-
 ### BREAKING CHANGES
 
 * All references to Behaviour module must be updated to Behavior
