@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.20](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.19...@reventlessdev/reventless-aws@3.0.0-alpha.20) (2026-03-23)
+
+* refactor!: streamline component function naming to unified two-function pattern ([06814fd](https://github.com/ReventlessDev/reventless-core/commit/06814fd8589cf05ce8a9f9654552e7d5cd9c6bf2))
+* fix(reventless-aws)!: fix DcbEventLog DynamoDB stream event decoding and normalize field names ([c83d38a](https://github.com/ReventlessDev/reventless-core/commit/c83d38abbeb225cf68fdc22a0210da46f249a558))
+* fix(reventless-aws)!: resolve DcbEventLogSpec undefined at runtime and add AppSync routing ([85138a3](https://github.com/ReventlessDev/reventless-core/commit/85138a39afe97047ea5f063508994e20544eb780))
+
+### BREAKING CHANGES
+
+* All component function signatures changed. Behavior.decide
+now returns result<array<event>, error> instead of using errorHandler callback.
+StateChangeSlice type decisionModel renamed to state. Projection.Mapping.map
+renamed to project. StateViewSlice.project takes one argument instead of two.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+* DynamoDB attribute names changed. Existing event log tables require migration.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+* DcbEventLog.Spec now requires `let moduleUrl: string` field.
+Add `let moduleUrl: string = %raw(\`import.meta.url\`)` to event log modules.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [3.0.0-alpha.19](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.17...@reventlessdev/reventless-aws@3.0.0-alpha.19) (2026-03-22)
 
 ### Bug Fixes

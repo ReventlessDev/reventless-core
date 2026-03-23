@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.12](https://github.com/ReventlessDev/reventless-core/compare/doc@1.0.0-alpha.11...doc@1.0.0-alpha.12) (2026-03-23)
+
+* refactor!: streamline component function naming to unified two-function pattern ([06814fd](https://github.com/ReventlessDev/reventless-core/commit/06814fd8589cf05ce8a9f9654552e7d5cd9c6bf2))
+
+### BREAKING CHANGES
+
+* All component function signatures changed. Behavior.decide
+now returns result<array<event>, error> instead of using errorHandler callback.
+StateChangeSlice type decisionModel renamed to state. Projection.Mapping.map
+renamed to project. StateViewSlice.project takes one argument instead of two.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [1.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/doc@1.0.0-alpha.10...doc@1.0.0-alpha.11) (2026-03-16)
 
 * feat!: replace Core component with Platform_Admin, rename schema prefix Core_ → Admin_ ([940263d](https://github.com/ReventlessDev/reventless-core/commit/940263d8b39e28f4c874af3b0335ae81444928c4))

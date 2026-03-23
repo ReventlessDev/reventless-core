@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-ordering@3.0.0-alpha.7...@reventlessdev/online-shop-aggregates-ordering@3.0.0-alpha.8) (2026-03-23)
+
+* refactor!: streamline component function naming to unified two-function pattern ([06814fd](https://github.com/ReventlessDev/reventless-core/commit/06814fd8589cf05ce8a9f9654552e7d5cd9c6bf2))
+
+### BREAKING CHANGES
+
+* All component function signatures changed. Behavior.decide
+now returns result<array<event>, error> instead of using errorHandler callback.
+StateChangeSlice type decisionModel renamed to state. Projection.Mapping.map
+renamed to project. StateViewSlice.project takes one argument instead of two.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
+
 # [3.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-ordering@3.0.0-alpha.6...@reventlessdev/online-shop-aggregates-ordering@3.0.0-alpha.7) (2026-03-22)
 
 * feat(reventless-aws)!: replace esbuild pipeline with compiled ReScript entry points ([6cb3133](https://github.com/ReventlessDev/reventless-core/commit/6cb313323c73a078d0922fa6b977466f61de74ea))
