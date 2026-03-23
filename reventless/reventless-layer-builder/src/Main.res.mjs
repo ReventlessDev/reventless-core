@@ -32,6 +32,9 @@ let config_excludeModules = [
   "tweetnacl",
   "bcrypt-pbkdf",
   "asn1",
+  "esbuild",
+  "@reventlessdev/rescript-pulumi-pulumi",
+  "@reventlessdev/rescript-pulumi-aws",
   "esprima",
   "acorn",
   "source-map",
@@ -66,7 +69,39 @@ let config_excludeModules = [
   "ramda",
   "lodash",
   "graphql",
-  "jsonschema2graphql"
+  "jsonschema2graphql",
+  "debug",
+  "ms",
+  "semver",
+  "graceful-fs",
+  "js-yaml",
+  "argparse",
+  "camelcase",
+  "escalade",
+  "proc-log",
+  "ansi-regex",
+  "ansi-styles",
+  "strip-ansi",
+  "color-convert",
+  "color-name",
+  "merge-stream",
+  "signal-exit",
+  "module-details-from-path",
+  "punycode",
+  "wrappy",
+  "once",
+  "function-bind",
+  "hasown",
+  "is-core-module",
+  "path-parse",
+  "resolve",
+  "supports-preserve-symlinks-flag",
+  "safer-buffer",
+  "sprintf-js",
+  "type-fest",
+  "inherits",
+  "minipass",
+  "minizlib"
 ];
 
 let config_includeModules = ["@rescript/runtime"];
@@ -89,7 +124,7 @@ let config_postProcess = Object.fromEntries([
   ],
   [
     "@reventlessdev/reventless-core",
-    DependencyBundler_PostProcess.reventlessCore
+    DependencyBundler_PostProcess.reventlessCoreDeploytime
   ],
   [
     "@reventlessdev/rescript-effect",
@@ -109,6 +144,8 @@ let config_postProcess = Object.fromEntries([
   ]
 ]);
 
+let config_rootPostProcess = DependencyBundler_PostProcess.reventlessAwsDeploytime;
+
 let config = {
   sourcePackageName: "@reventlessdev/reventless-aws",
   sourcePackageVersion: sourcePackageVersion,
@@ -118,7 +155,8 @@ let config = {
   excludeModules: config_excludeModules,
   includeModules: config_includeModules,
   registryOpts: config_registryOpts,
-  postProcess: config_postProcess
+  postProcess: config_postProcess,
+  rootPostProcess: config_rootPostProcess
 };
 
 DependencyBundler.build(config);

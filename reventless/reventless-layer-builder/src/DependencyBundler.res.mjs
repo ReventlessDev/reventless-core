@@ -35,6 +35,7 @@ async function doPostProcessing(node, pathToSavedDependencies, fn, spinner) {
 }
 
 async function build(config) {
+  let rootPostProcess = config.rootPostProcess;
   let postProcess = config.postProcess;
   let registryOpts = config.registryOpts;
   let excludeModules = config.excludeModules;
@@ -56,6 +57,12 @@ async function build(config) {
   spinner.start("extract source package");
   await Pacote.default.extract(sourcePackageSpec, rootPath, registryOpts);
   spinner.succeed(undefined);
+  if (rootPostProcess !== undefined) {
+    spinner.start("postprocess source package");
+    console.log("");
+    await rootPostProcess(0, rootPath);
+    spinner.succeed(undefined);
+  }
   spinner.start("build dependency tree");
   let arboristConfig = Object.fromEntries(Belt_Array.concatMany([
     Object.entries(registryOpts),

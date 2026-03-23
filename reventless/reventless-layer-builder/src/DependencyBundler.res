@@ -25,6 +25,7 @@ let build = async (config: DependencyBundler_Config.t) => {
     excludeModules,
     ?includeModules,
     postProcess,
+    ?rootPostProcess,
     registryOpts,
   } = config
   let includeModules = includeModules->Option.getOr([])
@@ -53,6 +54,16 @@ let build = async (config: DependencyBundler_Config.t) => {
   let _ = spinner->Ora.start("extract source package")
   let _ = await Pacote.extract(sourcePackageSpec, rootPath, opts)
   let _ = spinner->Ora.succeed(())
+
+  // --- post-process root module ---
+  switch rootPostProcess {
+  | Some(rootFn) =>
+    let _ = spinner->Ora.start("postprocess source package")
+    Console.log("")
+    await rootFn(Obj.magic(0), rootPath)
+    let _ = spinner->Ora.succeed(())
+  | None => ()
+  }
 
   // --- build dependency tree ---
   let _ = spinner->Ora.start("build dependency tree")

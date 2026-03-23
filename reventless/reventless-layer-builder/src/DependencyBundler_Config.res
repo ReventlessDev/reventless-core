@@ -10,4 +10,5 @@ type t = {
   includeModules?: array<string>,
   registryOpts: Dict.t<string>,
   postProcess: postProcessMap,
+  rootPostProcess?: DependencyBundler_PostProcess.postProcessFn,
 }

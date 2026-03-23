@@ -20,12 +20,64 @@ async function rescriptDependent(_node, cwd) {
   ]);
 }
 
-async function reventlessCore(_node, cwd) {
-  return await Rimraf.rimraf([
+async function reventlessCoreDeploytime(_node, cwd) {
+  let rmDirs = Rimraf.rimraf([
     Nodepath.resolve(cwd, "coverage"),
     Nodepath.resolve(cwd, "scripts"),
     Nodepath.resolve(cwd, "test-helper"),
     Nodepath.resolve(cwd, "tests")
+  ]);
+  let rmBuilders = Rimraf.rimraf("**/*_Builder*.res.mjs", {
+    glob: {
+      cwd: cwd
+    }
+  });
+  let rmAdapters = Rimraf.rimraf("**/*_Adapter*.res.mjs", {
+    glob: {
+      cwd: cwd
+    }
+  });
+  let rmDeploytime = Rimraf.rimraf([
+    Nodepath.resolve(cwd, "src", "util", "Util_Pulumi.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "Util_Adapter.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "OutputLogger.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "OutputFailsafeDeploytime.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "Util_StackRefs.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "Interstack.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "ResourceQuery.res.mjs"),
+    Nodepath.resolve(cwd, "src", "components", "Cloner.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "CsvStream.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "CSV.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "FTP.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "FTPHandler.res.mjs"),
+    Nodepath.resolve(cwd, "src", "util", "Hash.res.mjs"),
+    Nodepath.resolve(cwd, "src", "admin", "Platform_Admin.res.mjs"),
+    Nodepath.resolve(cwd, "src", "adapter", "Adapter.res.mjs"),
+    Nodepath.resolve(cwd, "src", "adapter", "AdapterDeploytime.res.mjs")
+  ]);
+  await Promise.all([
+    rmDirs,
+    rmBuilders,
+    rmAdapters
+  ]);
+  await rmDeploytime;
+}
+
+async function reventlessAwsDeploytime(_node, cwd) {
+  let runtimeDir = Nodepath.resolve(cwd, "src", "adapter", "Runtime");
+  let rmBuilders = Rimraf.rimraf(Nodepath.resolve(runtimeDir, "*Runtime_Builder*"), {
+    glob: {
+      cwd: runtimeDir
+    }
+  });
+  let rmEnv = Rimraf.rimraf(Nodepath.resolve(runtimeDir, "RuntimeEnvironment*"), {
+    glob: {
+      cwd: runtimeDir
+    }
+  });
+  await Promise.all([
+    rmBuilders,
+    rmEnv
   ]);
 }
 
@@ -57,7 +109,8 @@ async function deleteLodashExtras(_node, cwd) {
 
 export {
   rescriptDependent,
-  reventlessCore,
+  reventlessCoreDeploytime,
+  reventlessAwsDeploytime,
   deleteTests,
   deleteEffectSrc,
   deleteTestsAndExamples,
