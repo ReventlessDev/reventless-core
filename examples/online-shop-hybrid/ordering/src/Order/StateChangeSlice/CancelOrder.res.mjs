@@ -15,16 +15,16 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyShipped")
 ]);
 
-let initialDecisionModel_productIds = [];
+let initialState_productIds = [];
 
-let initialDecisionModel = {
+let initialState = {
   exists: false,
   shipped: false,
   cancelled: false,
-  productIds: initialDecisionModel_productIds
+  productIds: initialState_productIds
 };
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "OrderPlaced" :
       return {
@@ -35,32 +35,32 @@ function reduce(model, event) {
       };
     case "OrderShipped" :
       return {
-        exists: model.exists,
+        exists: state.exists,
         shipped: true,
-        cancelled: model.cancelled,
-        productIds: model.productIds
+        cancelled: state.cancelled,
+        productIds: state.productIds
       };
     case "OrderCancelled" :
       return {
-        exists: model.exists,
-        shipped: model.shipped,
+        exists: state.exists,
+        shipped: state.shipped,
         cancelled: true,
-        productIds: model.productIds
+        productIds: state.productIds
       };
     case "CatalogProductSynced" :
     case "CatalogProductPriceChanged" :
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
-  if (model.exists) {
-    if (model.shipped) {
+function decide(state, command) {
+  if (state.exists) {
+    if (state.shipped) {
       return {
         TAG: "Error",
         _0: "OrderAlreadyShipped"
       };
-    } else if (model.cancelled) {
+    } else if (state.cancelled) {
       return {
         TAG: "Ok",
         _0: []
@@ -71,7 +71,7 @@ function decide(model, command) {
         _0: [{
             TAG: "OrderCancelled",
             orderId: command.orderId,
-            productIds: model.productIds
+            productIds: state.productIds
           }]
       };
     }
@@ -93,8 +93,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

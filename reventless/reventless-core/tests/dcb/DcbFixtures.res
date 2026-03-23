@@ -51,26 +51,26 @@ module TestCommandSpec = {
     | ItemAlreadyExists
     | ItemNotFound
 
-  type decisionModel = {exists: bool, currentName: option<string>}
-  let initialDecisionModel = {exists: false, currentName: None}
+  type state = {exists: bool, currentName: option<string>}
+  let initialState = {exists: false, currentName: None}
 
-  let reduce = (model, event) =>
+  let evolve = (state, event) =>
     switch event {
     | TestEventLogSpec.ItemCreated({name}) => {exists: true, currentName: Some(name)}
-    | TestEventLogSpec.ItemRenamed({newName}) => {...model, currentName: Some(newName)}
-    | _ => model
+    | TestEventLogSpec.ItemRenamed({newName}) => {...state, currentName: Some(newName)}
+    | _ => state
     }
 
-  let decide = (model, command) =>
+  let decide = (state, command) =>
     switch command {
     | CreateItem({itemId, name}) =>
-      if model.exists {
+      if state.exists {
         Error(ItemAlreadyExists)
       } else {
         Ok([TestEventLogSpec.ItemCreated({itemId, name})])
       }
     | RenameItem({itemId, newName}) =>
-      if !model.exists {
+      if !state.exists {
         Error(ItemNotFound)
       } else {
         Ok([TestEventLogSpec.ItemRenamed({itemId, newName})])

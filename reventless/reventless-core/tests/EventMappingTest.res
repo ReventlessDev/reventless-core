@@ -53,11 +53,9 @@ module type Aggregate = {
   module Spec: Reventless.Aggregate.Spec
   module Behavior: ReventlessCore.Behavior.T
 
-  let apply': (Behavior.state, Spec.event) => Behavior.state
   let currentState: array<Spec.event> => Behavior.state
-  let errors: array<Spec.error>
-  let errorHandler: ReventlessCore.Message.errorHandler<Spec.error, Spec.command, Spec.event>
-  let exec: (ReventlessCore.Message.context, Spec.command, array<Spec.event>) => array<Spec.event>
+  let errors: ref<array<Spec.error>>
+  let exec: (Spec.command, array<Spec.event>) => array<Spec.event>
 }
 
 module MakeAggregate = (
@@ -67,33 +65,19 @@ module MakeAggregate = (
   module Spec = Spec
   module Behavior = Behavior
 
-  let apply' = (state, event) => Behavior.apply(state, event)
-
   let currentState = events =>
-    events
-    ->Array.slice(~start=1)
-    ->Array.reduce(Behavior.init(events->Array.getUnsafe(0)), apply')
+    events->Array.reduce(Behavior.initialState, Behavior.evolve)
 
   let errors = ref([])
 
-  let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := Array.concat(errors.contents, [error])
-    []
-  }
-
-  let exec = (context, command, history): array<Spec.event> => {
+  let exec = (command, history): array<Spec.event> => {
     errors := []
-    switch history {
-    | [] => Behavior.create(command, context, errorHandler)
-    | history =>
-      try Behavior.execute(
-        history->currentState,
-        command,
-        TestFixtures.context,
-        errorHandler,
-      ) catch {
-      | ReventlessCore.Message.InvalidEvent(_) => []
-      }
+    let state = currentState(history)
+    switch Behavior.decide(state, command) {
+    | Ok(events) => events
+    | Error(error) =>
+      errors := [error]
+      []
     }
   }
 }
@@ -163,11 +147,7 @@ module Make = (
  */
 
   let whenSourceCmd = async (sourceId, cmd, (targetHistory, sourceHistory)) => {
-    let sourceEvents = SourceAggregate.exec(
-      {...TestFixtures.context, id: sourceId},
-      cmd,
-      sourceHistory,
-    )
+    let sourceEvents = SourceAggregate.exec(cmd, sourceHistory)
     // sourceEvents->logSourceEvents;
     let targetActions =
       sourceEvents
@@ -197,7 +177,7 @@ module Make = (
         ->Dict.get(id)
         ->Option.getOr([])
         ->Array.concat(targetEvents->Dict.get(id)->Option.getOr([]))
-      let newEvents = TargetAggregate.exec({...TestFixtures.context, id}, command, targetHistory)
+      let newEvents = TargetAggregate.exec(command, targetHistory)
       targetEvents->Dict.set(
         id,
         targetEvents->Dict.get(id)->Option.getOr([])->Array.concat(newEvents),

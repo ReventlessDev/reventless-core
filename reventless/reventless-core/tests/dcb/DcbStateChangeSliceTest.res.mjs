@@ -43,8 +43,8 @@ let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({
   moduleUrl: DcbFixtures$ReventlessCore.TestCommandSpec.moduleUrl,
   DcbEventLogSpec: DcbFixtures$ReventlessCore.TestEventLogSpec,
   errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
-  initialDecisionModel: DcbFixtures$ReventlessCore.TestCommandSpec.initialDecisionModel,
-  reduce: DcbFixtures$ReventlessCore.TestCommandSpec.reduce,
+  initialState: DcbFixtures$ReventlessCore.TestCommandSpec.initialState,
+  evolve: DcbFixtures$ReventlessCore.TestCommandSpec.evolve,
   decide: DcbFixtures$ReventlessCore.TestCommandSpec.decide,
   commandSchema: DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema
 });

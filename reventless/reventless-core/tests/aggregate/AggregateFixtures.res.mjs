@@ -47,6 +47,14 @@ let AggSpec = {
   moduleUrl: moduleUrl
 };
 
+let stateSchema = S.union([
+  S.literal("NotCreated"),
+  S.schema(s => ({
+    TAG: "Created",
+    name: s.m(S.string)
+  }))
+]);
+
 let resolverConfig_fields = ["name"];
 
 let resolverConfig = {
@@ -56,60 +64,60 @@ let resolverConfig = {
 
 let moduleUrl$1 = import.meta.url;
 
-function init(event) {
+function evolve(_state, event) {
   if (event.TAG === "Created") {
     return {
+      TAG: "Created",
       name: event.name
     };
   } else {
     return {
+      TAG: "Created",
       name: event.newName
     };
   }
 }
 
-function apply(_state, event) {
-  if (event.TAG === "Created") {
+function decide(state, command) {
+  if (typeof state !== "object") {
+    if (command.TAG === "Create") {
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "Created",
+            name: command.name
+          }]
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: "NotFound"
+      };
+    }
+  } else if (command.TAG === "Create") {
     return {
-      name: event.name
+      TAG: "Error",
+      _0: "AlreadyExists"
     };
   } else {
     return {
-      name: event.newName
+      TAG: "Ok",
+      _0: [{
+          TAG: "Renamed",
+          newName: command.newName
+        }]
     };
-  }
-}
-
-function create(command, _ctx, _errHandler) {
-  if (command.TAG === "Create") {
-    return [{
-        TAG: "Created",
-        name: command.name
-      }];
-  } else {
-    return [];
-  }
-}
-
-function execute(_state, command, _ctx, _errHandler) {
-  if (command.TAG === "Create") {
-    return [];
-  } else {
-    return [{
-        TAG: "Renamed",
-        newName: command.newName
-      }];
   }
 }
 
 let TestBehavior = {
   Spec: undefined,
+  stateSchema: stateSchema,
+  initialState: "NotCreated",
   resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute
+  evolve: evolve,
+  decide: decide
 };
 
 function makeMockEL() {
@@ -205,11 +213,10 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   commandSchema: commandSchema,
   moduleUrl: moduleUrl
 })({
+  initialState: "NotCreated",
   resolverConfig: resolverConfig,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute,
+  evolve: evolve,
+  decide: decide,
   moduleUrl: moduleUrl$1
 })({
   Spec: {

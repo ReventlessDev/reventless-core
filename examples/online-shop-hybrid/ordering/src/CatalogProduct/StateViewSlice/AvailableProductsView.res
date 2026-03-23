@@ -15,13 +15,10 @@ type event = OrderingEventLog.event
 @schema
 type state = {productId: string, name: string, price: float}
 
-let project = (state, event) =>
+let project = event =>
   switch event {
   | CatalogProductSynced({productId, name, price}) => [Set(productId, {productId, name, price})]
   | CatalogProductPriceChanged({productId, price}) =>
-    switch state {
-    | Some(p) => [Set(productId, {...p, price})]
-    | None => []
-    }
+    [Update(productId, p => {...p, price})]
   | _ => []
   }

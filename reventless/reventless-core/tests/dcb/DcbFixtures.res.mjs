@@ -74,9 +74,9 @@ let errorSchema = S.union([
   S.literal("ItemNotFound")
 ]);
 
-function reduce(model, event) {
+function evolve(state, event) {
   if (typeof event !== "object") {
-    return model;
+    return state;
   }
   switch (event.TAG) {
     case "ItemCreated" :
@@ -86,22 +86,22 @@ function reduce(model, event) {
       };
     case "ItemRenamed" :
       return {
-        exists: model.exists,
+        exists: state.exists,
         currentName: event.newName
       };
     case "CountUpdated" :
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
+function decide(state, command) {
   if (typeof command !== "object") {
     return {
       TAG: "Ok",
       _0: []
     };
   } else if (command.TAG === "CreateItem") {
-    if (model.exists) {
+    if (state.exists) {
       return {
         TAG: "Error",
         _0: "ItemAlreadyExists"
@@ -116,7 +116,7 @@ function decide(model, command) {
           }]
       };
     }
-  } else if (model.exists) {
+  } else if (state.exists) {
     return {
       TAG: "Ok",
       _0: [{
@@ -133,7 +133,7 @@ function decide(model, command) {
   }
 }
 
-let TestCommandSpec_initialDecisionModel = {
+let TestCommandSpec_initialState = {
   exists: false,
   currentName: undefined
 };
@@ -144,8 +144,8 @@ let TestCommandSpec = {
   DcbEventLogSpec: undefined,
   commandSchema: commandSchema,
   errorSchema: errorSchema,
-  initialDecisionModel: TestCommandSpec_initialDecisionModel,
-  reduce: reduce,
+  initialState: TestCommandSpec_initialState,
+  evolve: evolve,
   decide: decide
 };
 

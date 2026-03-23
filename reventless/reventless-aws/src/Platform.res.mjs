@@ -356,11 +356,10 @@ function MakeWithConfig(Config) {
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl
   })({
+    initialState: PluginBehavior$ReventlessCore.initialState,
     resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
-    init: PluginBehavior$ReventlessCore.init,
-    apply: PluginBehavior$ReventlessCore.apply,
-    create: PluginBehavior$ReventlessCore.create,
-    execute: PluginBehavior$ReventlessCore.execute,
+    evolve: PluginBehavior$ReventlessCore.evolve,
+    decide: PluginBehavior$ReventlessCore.decide,
     moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
@@ -843,11 +842,10 @@ function Make($star) {
     commandSchema: PluginSpec$ReventlessCore.commandSchema,
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl
   })({
+    initialState: PluginBehavior$ReventlessCore.initialState,
     resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
-    init: PluginBehavior$ReventlessCore.init,
-    apply: PluginBehavior$ReventlessCore.apply,
-    create: PluginBehavior$ReventlessCore.create,
-    execute: PluginBehavior$ReventlessCore.execute,
+    evolve: PluginBehavior$ReventlessCore.evolve,
+    decide: PluginBehavior$ReventlessCore.decide,
     moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,

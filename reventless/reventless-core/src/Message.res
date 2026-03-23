@@ -160,11 +160,6 @@ let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) =
   now->Float.toString ++ ("-" ++ (String.repeat("0", 9 - milLength) ++ milString))
 }
 
-type errorHandler<'error, 'command, 'event> = (
-  'error,
-  'command,
-  Reventless.Message.context,
-) => array<'event>
 
 let generateMeta = (~service, ~ip="", ~user="unknown") => {
   let msgId = uuid()

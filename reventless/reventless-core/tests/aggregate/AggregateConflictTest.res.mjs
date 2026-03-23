@@ -33,6 +33,10 @@ let AggSpec = {
   moduleUrl: moduleUrl
 };
 
+let initialState = {
+  name: ""
+};
+
 let resolverConfig_fields = ["name"];
 
 let resolverConfig = {
@@ -42,37 +46,29 @@ let resolverConfig = {
 
 let moduleUrl$1 = import.meta.url;
 
-function init(event) {
+function evolve(_state, event) {
   return {
     name: event.name
   };
 }
 
-function apply(_state, event) {
+function decide(_state, command) {
   return {
-    name: event.name
+    TAG: "Ok",
+    _0: [{
+        TAG: "Created",
+        name: command.name
+      }]
   };
-}
-
-function create(command, _ctx, _errHandler) {
-  return [{
-      TAG: "Created",
-      name: command.name
-    }];
-}
-
-function execute(_state, _command, _ctx, _errHandler) {
-  return [];
 }
 
 let TestBehavior = {
   Spec: undefined,
+  initialState: initialState,
   resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute
+  evolve: evolve,
+  decide: decide
 };
 
 function makeMockEL() {
@@ -185,11 +181,10 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   commandSchema: commandSchema,
   moduleUrl: moduleUrl
 })({
+  initialState: initialState,
   resolverConfig: resolverConfig,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute,
+  evolve: evolve,
+  decide: decide,
   moduleUrl: moduleUrl$1
 })({
   Spec: {

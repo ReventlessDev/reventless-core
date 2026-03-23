@@ -6,6 +6,7 @@ import * as Message$ReventlessCore from "../Message.res.mjs";
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 
 let stateSchema = S.union([
+  S.literal("NotConnected"),
   S.literal("Detected"),
   S.schema(s => ({
     TAG: "Connected",
@@ -33,32 +34,48 @@ let resolverConfig = {
 
 let moduleUrl = import.meta.url;
 
-function create(command, context, error) {
-  if (typeof command !== "object" && command === "Heartbeat") {
-    return ["UnknownPluginDetected"];
-  } else {
-    return error("NotExisting", command, context);
-  }
-}
-
-function execute(state, command, context, error) {
+function decide(state, command) {
   if (typeof state !== "object") {
-    if (typeof command !== "object") {
-      if (command === "Heartbeat") {
-        return ["UnknownPluginDetected"];
+    if (state === "NotConnected") {
+      if (typeof command !== "object" && command === "Heartbeat") {
+        return {
+          TAG: "Ok",
+          _0: ["UnknownPluginDetected"]
+        };
       } else {
-        return [];
+        return {
+          TAG: "Error",
+          _0: "NotExisting"
+        };
+      }
+    } else if (typeof command !== "object") {
+      if (command === "Heartbeat") {
+        return {
+          TAG: "Ok",
+          _0: ["UnknownPluginDetected"]
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
       }
     } else if (command.TAG === "Connect") {
-      return [{
-          TAG: "Connected",
-          _0: command._0
-        }];
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "Connected",
+            _0: command._0
+          }]
+      };
     } else {
-      return [{
-          TAG: "IncompatiblePluginDetected",
-          _0: command._0
-        }];
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "IncompatiblePluginDetected",
+            _0: command._0
+          }]
+      };
     }
   }
   switch (state.TAG) {
@@ -66,111 +83,169 @@ function execute(state, command, context, error) {
       let pluginDefinition = state._0;
       if (typeof command === "object") {
         if (command.TAG === "Connect") {
-          return error("AlreadyConnected", command, context);
+          return {
+            TAG: "Error",
+            _0: "AlreadyConnected"
+          };
         } else {
-          return [{
-              TAG: "IncompatiblePluginDetected",
-              _0: command._0
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "IncompatiblePluginDetected",
+                _0: command._0
+              }]
+          };
         }
       }
       switch (command) {
         case "Heartbeat" :
-          return [];
+          return {
+            TAG: "Ok",
+            _0: []
+          };
         case "Disconnect" :
-          return [{
-              TAG: "Disconnected",
-              _0: pluginDefinition
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "Disconnected",
+                _0: pluginDefinition
+              }]
+          };
         case "Activate" :
-          return error("AlreadyConnected", command, context);
+          return {
+            TAG: "Error",
+            _0: "AlreadyConnected"
+          };
         case "Deactivate" :
-          return [{
-              TAG: "Deactivated",
-              _0: pluginDefinition
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "Deactivated",
+                _0: pluginDefinition
+              }]
+          };
       }
     case "Disconnected" :
       let pluginDefinition$1 = state._0;
       if (typeof command === "object") {
         if (command.TAG === "ReportIncompatibility") {
-          return [{
-              TAG: "IncompatiblePluginDetected",
-              _0: command._0
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "IncompatiblePluginDetected",
+                _0: command._0
+              }]
+          };
         } else {
-          return error("IsDisconnected", command, context);
+          return {
+            TAG: "Error",
+            _0: "IsDisconnected"
+          };
         }
       }
       switch (command) {
         case "Heartbeat" :
-          return [{
-              TAG: "Reconnected",
-              _0: pluginDefinition$1
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "Reconnected",
+                _0: pluginDefinition$1
+              }]
+          };
         case "Deactivate" :
-          return [{
-              TAG: "Deactivated",
-              _0: pluginDefinition$1
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "Deactivated",
+                _0: pluginDefinition$1
+              }]
+          };
         default:
-          return error("IsDisconnected", command, context);
+          return {
+            TAG: "Error",
+            _0: "IsDisconnected"
+          };
       }
     case "Inactive" :
       if (typeof command === "object") {
         if (command.TAG === "ReportIncompatibility") {
-          return [{
-              TAG: "IncompatiblePluginDetected",
-              _0: command._0
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "IncompatiblePluginDetected",
+                _0: command._0
+              }]
+          };
         } else {
-          return error("IsInactive", command, context);
+          return {
+            TAG: "Error",
+            _0: "IsInactive"
+          };
         }
       }
       switch (command) {
         case "Heartbeat" :
-          return [];
+          return {
+            TAG: "Ok",
+            _0: []
+          };
         case "Activate" :
-          return [{
-              TAG: "Activated",
-              _0: state._0
-            }];
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "Activated",
+                _0: state._0
+              }]
+          };
         default:
-          return error("IsInactive", command, context);
+          return {
+            TAG: "Error",
+            _0: "IsInactive"
+          };
       }
   }
 }
 
-function init(event) {
-  if (typeof event !== "object") {
-    return "Detected";
-  }
-  throw {
-    RE_EXN_ID: Message$ReventlessCore.InvalidEvent,
-    _1: Message$ReventlessCore.encode(event, PluginSpec$ReventlessCore.eventSchema),
-    Error: new Error()
-  };
-}
-
-function apply(state, event) {
+function evolve(state, event) {
   if (typeof state !== "object") {
-    if (typeof event !== "object") {
-      return state;
-    }
-    switch (event.TAG) {
-      case "Connected" :
-        return {
-          TAG: "Connected",
-          _0: event._0
-        };
-      case "IncompatiblePluginDetected" :
+    if (state === "NotConnected") {
+      if (typeof event !== "object") {
+        return "Detected";
+      }
+      switch (event.TAG) {
+        case "Connected" :
+          return {
+            TAG: "Connected",
+            _0: event._0
+          };
+        case "IncompatiblePluginDetected" :
+          return state;
+        default:
+          throw {
+            RE_EXN_ID: Message$ReventlessCore.InvalidEvent,
+            _1: Message$ReventlessCore.encode(event, PluginSpec$ReventlessCore.eventSchema),
+            Error: new Error()
+          };
+      }
+    } else {
+      if (typeof event !== "object") {
         return state;
-      default:
-        throw {
-          RE_EXN_ID: Message$ReventlessCore.InvalidEvent,
-          _1: Message$ReventlessCore.encode(event, PluginSpec$ReventlessCore.eventSchema),
-          Error: new Error()
-        };
+      }
+      switch (event.TAG) {
+        case "Connected" :
+          return {
+            TAG: "Connected",
+            _0: event._0
+          };
+        case "IncompatiblePluginDetected" :
+          return state;
+        default:
+          throw {
+            RE_EXN_ID: Message$ReventlessCore.InvalidEvent,
+            _1: Message$ReventlessCore.encode(event, PluginSpec$ReventlessCore.eventSchema),
+            Error: new Error()
+          };
+      }
     }
   } else {
     switch (state.TAG) {
@@ -261,17 +336,18 @@ function apply(state, event) {
 
 let Spec;
 
+let initialState = "NotConnected";
+
 let atomicCounter;
 
 export {
   Spec,
   stateSchema,
+  initialState,
   resolverConfig,
   atomicCounter,
   moduleUrl,
-  create,
-  execute,
-  init,
-  apply,
+  decide,
+  evolve,
 }
 /* stateSchema Not a pure module */

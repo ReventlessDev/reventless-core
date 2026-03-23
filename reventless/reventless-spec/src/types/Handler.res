@@ -28,21 +28,3 @@ Used by read model projections and extension points.
 */
 type eventsHandler<'id, 'event> = ('id, array<Message.event'<'id, 'event>>) => promise<unit>
 
-/**
-Pure error recovery function called by the aggregate runtime when `execute` or `create`
-returns an error.
-
-Returns a list of compensating events to emit instead of propagating the error.
-Return an empty array to silently discard the failed command.
-
-@example
-```rescript
-let onError: Handler.errorHandler<Category.error, Category.command, Category.event> =
-  (error, _cmd, _ctx) => switch error {
-    | CategoryAlreadyExists => [] // silently discard
-    | CategoryNotFound => []
-    | CategoryAlreadyArchived => []
-  }
-```
-*/
-type errorHandler<'error, 'command, 'event> = ('error, 'command, Message.context) => array<'event>

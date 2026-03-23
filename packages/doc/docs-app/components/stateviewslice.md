@@ -97,7 +97,7 @@ module MySpec: StateViewSlice.Spec = {
     items: dict<item>,
   }
 
-  let project = (state, event) =>
+  let project = event =>
     switch event {
     | Created({id, name}) => [Projection.Action.Set(id, {name})]
     | Updated({id, name}) => [Projection.Action.Set(id, {name})]
@@ -118,7 +118,7 @@ module MySpec = MyStateViewSliceSpec  // defines module matching StateViewSlice.
 | `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
 | `event` | `@schema` [type](./rescript-syntax.md#ppx) | Event type using `@schema` [ppx](./rescript-syntax.md#ppx) for auto-generated schema |
 | `state` | `@schema` [type](./rescript-syntax.md#ppx) | State type for the read model (schema auto-generated) |
-| `project` | `(option<state>, event) => array<Projection.action<state>>` | Function to transform event into state actions |
+| `project` | `event => array<Projection.action<state>>` | Function to transform event into state actions |
 
 ## Runtime Behavior
 
@@ -135,7 +135,7 @@ Storage: DynamoDB { class: aws-service }
 
 DcbEventLog -> EventCollector: new events published
 EventCollector -> StateViewSlice: "eventsHandler(events)"
-StateViewSlice -> StateViewSlice: "project(currentState, event)"
+StateViewSlice -> StateViewSlice: "project(event)"
 StateViewSlice -> StateViewSlice: Generate Projection.actions
 StateViewSlice -> QueryDb: "handleActions(actions)"
 QueryDb -> Storage: "Load current state (if needed)"
@@ -151,7 +151,7 @@ StateViewSlice uses Projection actions to update state:
 
 ```rescript
 // Example projection actions
-let project = (currentState, event) =>
+let project = event =>
   switch event {
   | ItemCreated({itemId, name}) =>
     [Projection.Create(itemId, {name, createdAt: Js.Date.now()})]

@@ -20,7 +20,6 @@ describe("CategoryProjection:", () => {
     TAG: "Added",
     name: "Electronics"
   }), {
-    categoryId: "id",
     name: "Electronics",
     archived: false
   }));
@@ -31,7 +30,6 @@ describe("CategoryProjection:", () => {
     TAG: "Renamed",
     name: "Consumer Electronics"
   }), {
-    categoryId: "id",
     name: "Consumer Electronics",
     archived: false
   }));
@@ -39,7 +37,6 @@ describe("CategoryProjection:", () => {
       TAG: "Added",
       name: "Electronics"
     }]), "Archived"), {
-    categoryId: "id",
     name: "Electronics",
     archived: true
   }));

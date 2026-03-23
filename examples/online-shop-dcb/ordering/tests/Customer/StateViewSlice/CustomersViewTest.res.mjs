@@ -22,7 +22,7 @@ function applyFirstUpdate(actions, baseState) {
 }
 
 Jest.describe("CustomersView.project:", () => {
-  Jest.test("CustomerRegistered creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(CustomersView$OrderingPlugin.project(undefined, {
+  Jest.test("CustomerRegistered creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(CustomersView$OrderingPlugin.project({
     TAG: "CustomerRegistered",
     customerId: "cust-1",
     email: "alice@example.com",
@@ -37,7 +37,7 @@ Jest.describe("CustomersView.project:", () => {
         deactivated: false
       }
     }]));
-  Jest.test("EmailChanged Update function changes email", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CustomersView$OrderingPlugin.project(undefined, {
+  Jest.test("EmailChanged Update function changes email", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CustomersView$OrderingPlugin.project({
     TAG: "EmailChanged",
     customerId: "cust-1",
     email: "alice2@example.com"
@@ -47,7 +47,7 @@ Jest.describe("CustomersView.project:", () => {
     address: "123 Main St",
     deactivated: false
   }));
-  Jest.test("AddressChanged Update function changes address", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CustomersView$OrderingPlugin.project(undefined, {
+  Jest.test("AddressChanged Update function changes address", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CustomersView$OrderingPlugin.project({
     TAG: "AddressChanged",
     customerId: "cust-1",
     address: "789 Pine Rd"
@@ -57,7 +57,7 @@ Jest.describe("CustomersView.project:", () => {
     address: "789 Pine Rd",
     deactivated: false
   }));
-  Jest.test("CustomerDeactivated Update function sets deactivated=true", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CustomersView$OrderingPlugin.project(undefined, {
+  Jest.test("CustomerDeactivated Update function sets deactivated=true", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CustomersView$OrderingPlugin.project({
     TAG: "CustomerDeactivated",
     customerId: "cust-1"
   }), baseCustomer)), {
@@ -66,7 +66,7 @@ Jest.describe("CustomersView.project:", () => {
     address: "123 Main St",
     deactivated: true
   }));
-  Jest.test("Order events return empty (not handled by CustomersView)", () => Jest.Expect.toEqual(Jest.Expect.expect(CustomersView$OrderingPlugin.project(undefined, {
+  Jest.test("Order events return empty (not handled by CustomersView)", () => Jest.Expect.toEqual(Jest.Expect.expect(CustomersView$OrderingPlugin.project({
     TAG: "OrderPlaced",
     orderId: "ord-1",
     customerId: "cust-1",

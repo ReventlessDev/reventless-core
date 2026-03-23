@@ -41,8 +41,8 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: AddProduct$CatalogPlugin.errorSchema,
-  initialDecisionModel: AddProduct$CatalogPlugin.initialDecisionModel,
-  reduce: AddProduct$CatalogPlugin.reduce,
+  initialState: AddProduct$CatalogPlugin.initialState,
+  evolve: AddProduct$CatalogPlugin.evolve,
   decide: AddProduct$CatalogPlugin.decide,
   commandSchema: AddProduct$CatalogPlugin.commandSchema
 });
@@ -52,8 +52,8 @@ let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
-  initialDecisionModel: ChangeProductName$CatalogPlugin.initialDecisionModel,
-  reduce: ChangeProductName$CatalogPlugin.reduce,
+  initialState: ChangeProductName$CatalogPlugin.initialState,
+  evolve: ChangeProductName$CatalogPlugin.evolve,
   decide: ChangeProductName$CatalogPlugin.decide,
   commandSchema: ChangeProductName$CatalogPlugin.commandSchema
 });
@@ -63,8 +63,8 @@ let ChangeProductDescriptionMaker = StateChangeSlice_Builder$ReventlessInMemory.
   moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
-  initialDecisionModel: ChangeProductDescription$CatalogPlugin.initialDecisionModel,
-  reduce: ChangeProductDescription$CatalogPlugin.reduce,
+  initialState: ChangeProductDescription$CatalogPlugin.initialState,
+  evolve: ChangeProductDescription$CatalogPlugin.evolve,
   decide: ChangeProductDescription$CatalogPlugin.decide,
   commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema
 });
@@ -74,8 +74,8 @@ let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
-  initialDecisionModel: ChangeProductPrice$CatalogPlugin.initialDecisionModel,
-  reduce: ChangeProductPrice$CatalogPlugin.reduce,
+  initialState: ChangeProductPrice$CatalogPlugin.initialState,
+  evolve: ChangeProductPrice$CatalogPlugin.evolve,
   decide: ChangeProductPrice$CatalogPlugin.decide,
   commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
 });
@@ -85,8 +85,8 @@ let AddCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: AddCategory$CatalogPlugin.errorSchema,
-  initialDecisionModel: AddCategory$CatalogPlugin.initialDecisionModel,
-  reduce: AddCategory$CatalogPlugin.reduce,
+  initialState: AddCategory$CatalogPlugin.initialState,
+  evolve: AddCategory$CatalogPlugin.evolve,
   decide: AddCategory$CatalogPlugin.decide,
   commandSchema: AddCategory$CatalogPlugin.commandSchema
 });
@@ -96,8 +96,8 @@ let RenameCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: RenameCategory$CatalogPlugin.errorSchema,
-  initialDecisionModel: RenameCategory$CatalogPlugin.initialDecisionModel,
-  reduce: RenameCategory$CatalogPlugin.reduce,
+  initialState: RenameCategory$CatalogPlugin.initialState,
+  evolve: RenameCategory$CatalogPlugin.evolve,
   decide: RenameCategory$CatalogPlugin.decide,
   commandSchema: RenameCategory$CatalogPlugin.commandSchema
 });
@@ -107,8 +107,8 @@ let ArchiveCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
-  initialDecisionModel: ArchiveCategory$CatalogPlugin.initialDecisionModel,
-  reduce: ArchiveCategory$CatalogPlugin.reduce,
+  initialState: ArchiveCategory$CatalogPlugin.initialState,
+  evolve: ArchiveCategory$CatalogPlugin.evolve,
   decide: ArchiveCategory$CatalogPlugin.decide,
   commandSchema: ArchiveCategory$CatalogPlugin.commandSchema
 });

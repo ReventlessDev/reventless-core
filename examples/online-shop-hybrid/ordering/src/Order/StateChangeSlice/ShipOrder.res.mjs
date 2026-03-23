@@ -15,7 +15,7 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyCancelled")
 ]);
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "OrderPlaced" :
       return {
@@ -25,30 +25,30 @@ function reduce(model, event) {
       };
     case "OrderShipped" :
       return {
-        exists: model.exists,
+        exists: state.exists,
         shipped: true,
-        cancelled: model.cancelled
+        cancelled: state.cancelled
       };
     case "OrderCancelled" :
       return {
-        exists: model.exists,
-        shipped: model.shipped,
+        exists: state.exists,
+        shipped: state.shipped,
         cancelled: true
       };
     case "CatalogProductSynced" :
     case "CatalogProductPriceChanged" :
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
-  if (model.exists) {
-    if (model.cancelled) {
+function decide(state, command) {
+  if (state.exists) {
+    if (state.cancelled) {
       return {
         TAG: "Error",
         _0: "OrderAlreadyCancelled"
       };
-    } else if (model.shipped) {
+    } else if (state.shipped) {
       return {
         TAG: "Ok",
         _0: []
@@ -74,7 +74,7 @@ let name = "ShipOrder";
 
 let DcbEventLogSpec;
 
-let initialDecisionModel = {
+let initialState = {
   exists: false,
   shipped: false,
   cancelled: false
@@ -86,8 +86,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

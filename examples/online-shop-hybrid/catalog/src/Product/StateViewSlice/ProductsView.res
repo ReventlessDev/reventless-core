@@ -15,7 +15,7 @@ type event = CatalogEventLog.event
 @schema
 type state = {productId: string, name: string, description: string, price: float}
 
-let project = (_, event) =>
+let project = event =>
   switch event {
   | ProductAdded({productId, name, description, price}) => [
       Set(productId, {productId, name, description, price}),

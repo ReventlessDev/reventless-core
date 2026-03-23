@@ -15,23 +15,23 @@ type command = DeactivateCustomer({customerId: @s.matches(DcbTag.string) string}
 @schema
 type error = CustomerNotFound
 
-type decisionModel = {exists: bool, deactivated: bool}
+type state = {exists: bool, deactivated: bool}
 
-let initialDecisionModel = {exists: false, deactivated: false}
+let initialState = {exists: false, deactivated: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | CustomerRegistered(_) => {exists: true, deactivated: false}
-  | CustomerDeactivated(_) => {...model, deactivated: true}
-  | _ => model
+  | CustomerDeactivated(_) => {...state, deactivated: true}
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | DeactivateCustomer({customerId: theId}) =>
-    if !model.exists {
+    if !state.exists {
       Error(CustomerNotFound)
-    } else if model.deactivated {
+    } else if state.deactivated {
       Ok([]) // idempotent — already deactivated
     } else {
       Ok([CustomerDeactivated({customerId: theId})])

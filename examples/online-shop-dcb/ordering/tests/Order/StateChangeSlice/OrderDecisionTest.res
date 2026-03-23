@@ -1,15 +1,15 @@
 // Pure unit tests for Order StateChangeSlice decision logic.
-// Tests reduce and decide functions for PlaceOrder, ShipOrder, and CancelOrder.
+// Tests evolve and decide functions for PlaceOrder, ShipOrder, and CancelOrder.
 
 open Jest
 open Expect
 
 describe("PlaceOrder:", () => {
-  describe("reduce", () => {
+  describe("evolve", () => {
     test("OrderPlaced sets exists=true", () =>
       expect(
-        PlaceOrder.reduce(
-          PlaceOrder.initialDecisionModel,
+        PlaceOrder.evolve(
+          PlaceOrder.initialState,
           OrderingEventLog.OrderPlaced({
             orderId: "ord-1",
             customerId: "cust-1",
@@ -19,17 +19,17 @@ describe("PlaceOrder:", () => {
       )->toEqual({PlaceOrder.exists: true})
     )
 
-    test("Customer events do not change model", () =>
+    test("Customer events do not change state", () =>
       expect(
-        PlaceOrder.reduce(
-          PlaceOrder.initialDecisionModel,
+        PlaceOrder.evolve(
+          PlaceOrder.initialState,
           OrderingEventLog.CustomerRegistered({
             customerId: "cust-1",
             email: "alice@example.com",
             address: "123 Main St",
           }),
         ),
-      )->toEqual(PlaceOrder.initialDecisionModel)
+      )->toEqual(PlaceOrder.initialState)
     )
   })
 
@@ -37,7 +37,7 @@ describe("PlaceOrder:", () => {
     test("on non-existent order produces OrderPlaced", () =>
       expect(
         PlaceOrder.decide(
-          PlaceOrder.initialDecisionModel,
+          PlaceOrder.initialState,
           PlaceOrder.PlaceOrder({
             orderId: "ord-1",
             customerId: "cust-1",
@@ -71,13 +71,13 @@ describe("PlaceOrder:", () => {
 })
 
 describe("ShipOrder:", () => {
-  let placedModel: ShipOrder.decisionModel = {exists: true, shipped: false, cancelled: false}
+  let placedState: ShipOrder.state = {exists: true, shipped: false, cancelled: false}
 
-  describe("reduce", () => {
+  describe("evolve", () => {
     test("OrderPlaced sets exists=true", () =>
       expect(
-        ShipOrder.reduce(
-          ShipOrder.initialDecisionModel,
+        ShipOrder.evolve(
+          ShipOrder.initialState,
           OrderingEventLog.OrderPlaced({
             orderId: "ord-1",
             customerId: "cust-1",
@@ -89,14 +89,14 @@ describe("ShipOrder:", () => {
 
     test("OrderShipped sets shipped=true", () =>
       expect(
-        ShipOrder.reduce(placedModel, OrderingEventLog.OrderShipped({orderId: "ord-1"})),
+        ShipOrder.evolve(placedState, OrderingEventLog.OrderShipped({orderId: "ord-1"})),
       )->toEqual({ShipOrder.exists: true, shipped: true, cancelled: false})
     )
 
     test("OrderCancelled sets cancelled=true", () =>
       expect(
-        ShipOrder.reduce(
-          placedModel,
+        ShipOrder.evolve(
+          placedState,
           OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}),
         ),
       )->toEqual({ShipOrder.exists: true, shipped: false, cancelled: true})
@@ -107,7 +107,7 @@ describe("ShipOrder:", () => {
     test("on non-existent order returns OrderNotFound", () =>
       expect(
         ShipOrder.decide(
-          ShipOrder.initialDecisionModel,
+          ShipOrder.initialState,
           ShipOrder.ShipOrder({orderId: "ord-1"}),
         ),
       )->toEqual(Error(ShipOrder.OrderNotFound))
@@ -116,7 +116,7 @@ describe("ShipOrder:", () => {
     test("on cancelled order returns OrderAlreadyCancelled", () =>
       expect(
         ShipOrder.decide(
-          {...placedModel, cancelled: true},
+          {...placedState, cancelled: true},
           ShipOrder.ShipOrder({orderId: "ord-1"}),
         ),
       )->toEqual(Error(ShipOrder.OrderAlreadyCancelled))
@@ -125,7 +125,7 @@ describe("ShipOrder:", () => {
     test("on already shipped order returns Ok([]) (idempotent)", () =>
       expect(
         ShipOrder.decide(
-          {...placedModel, shipped: true},
+          {...placedState, shipped: true},
           ShipOrder.ShipOrder({orderId: "ord-1"}),
         ),
       )->toEqual(Ok([]))
@@ -133,14 +133,14 @@ describe("ShipOrder:", () => {
 
     test("on placed order produces OrderShipped", () =>
       expect(
-        ShipOrder.decide(placedModel, ShipOrder.ShipOrder({orderId: "ord-1"})),
+        ShipOrder.decide(placedState, ShipOrder.ShipOrder({orderId: "ord-1"})),
       )->toEqual(Ok([OrderingEventLog.OrderShipped({orderId: "ord-1"})]))
     )
   })
 })
 
 describe("CancelOrder:", () => {
-  let placedModel: CancelOrder.decisionModel = {
+  let placedState: CancelOrder.state = {
     exists: true,
     shipped: false,
     cancelled: false,
@@ -151,7 +151,7 @@ describe("CancelOrder:", () => {
     test("on non-existent order returns OrderNotFound", () =>
       expect(
         CancelOrder.decide(
-          CancelOrder.initialDecisionModel,
+          CancelOrder.initialState,
           CancelOrder.CancelOrder({orderId: "ord-1"}),
         ),
       )->toEqual(Error(CancelOrder.OrderNotFound))
@@ -160,7 +160,7 @@ describe("CancelOrder:", () => {
     test("on shipped order returns OrderAlreadyShipped", () =>
       expect(
         CancelOrder.decide(
-          {...placedModel, shipped: true},
+          {...placedState, shipped: true},
           CancelOrder.CancelOrder({orderId: "ord-1"}),
         ),
       )->toEqual(Error(CancelOrder.OrderAlreadyShipped))
@@ -169,7 +169,7 @@ describe("CancelOrder:", () => {
     test("on already cancelled order returns Ok([]) (idempotent)", () =>
       expect(
         CancelOrder.decide(
-          {...placedModel, cancelled: true},
+          {...placedState, cancelled: true},
           CancelOrder.CancelOrder({orderId: "ord-1"}),
         ),
       )->toEqual(Ok([]))
@@ -177,7 +177,7 @@ describe("CancelOrder:", () => {
 
     test("on placed order produces OrderCancelled", () =>
       expect(
-        CancelOrder.decide(placedModel, CancelOrder.CancelOrder({orderId: "ord-1"})),
+        CancelOrder.decide(placedState, CancelOrder.CancelOrder({orderId: "ord-1"})),
       )->toEqual(
         Ok([OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})]),
       )

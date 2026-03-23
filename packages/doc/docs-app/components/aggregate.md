@@ -121,8 +121,8 @@ Event Variant Constructors should be formulated in past tense.
 
 ### error
 
-The error type declares possible unrecoverable errors of the aggregate.  
-Only values of this type can be passed to the Behavior's [error function](#errors). The semantic may be chossen by the developer, but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
+The error type declares possible unrecoverable errors of the aggregate.
+The semantic may be chosen by the developer, but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
 ## Behavior
 
@@ -130,8 +130,8 @@ The aggregate specific business logic is implemented in a behavior module.
 
 It defines:
 
-- how to calculate the current state out of historic events.
-- how to react to commands based on the current state.
+- the initial state and how to evolve it from historic events.
+- how to decide on commands based on the current state.
 
 ### Example
 
@@ -142,72 +142,47 @@ open Customer
 let resolverConfig = {
   open Behavior
   {
-    commandDecoder: command_decode,
+    commandSchema,
     fields: ["Customer_Create", "Customer_ChangeAddress", "Customer_ChangeName", "Customer_Delete"],
   }
 }
 
-let atomicCounter = None
-
-let invalidEvent = event =>
-  Js.Exn.raiseError("InvalidEvent: " ++ event_encode(event)->Js.Json.stringify)
-
-@decco
+@schema
 type state = {
   address: address,
   name: name,
   deleted: bool,
 }
 
-// command => list(event)
-let create: Behavior.create<command, event, error> = (. command, context, error) =>
-  switch command {
-  | Create(customer) => [Created(customer)]
-  | ChangeAddress(_)
-  | ChangeName(_)
-  | Delete =>
-    error(NotExisting, command, context)
-  }
-
-// (state, command) => list(event)
-let execute: Behavior.execute<state, command, event, error> = (. state, command, context, error) =>
-  switch (command, state) {
-  | (Create(customer), {deleted: true}) => [Created(customer)]
-  | (Create(_), {deleted: false}) => error(AlreadyExisting, command, context)
-
-  | (ChangeAddress(_), {deleted: true}) => error(NotExisting, command, context)
-  | (ChangeAddress(address), {address: oldAddress}) if address != oldAddress => [
-      AddressChanged(address),
-    ]
-  | (ChangeAddress(_), _) => [Unchanged]
-
-  | (ChangeName(_), {deleted: true}) => error(NotExisting, command, context)
-  | (ChangeName(name), {name: oldName}) if name != oldName => [NameChanged(name)]
-  | (ChangeName(_), _) => [Unchanged]
-
-  | (Delete, {deleted: true}) => [Unchanged]
-  | (Delete, {deleted: false}) => [Deleted]
-  }
-
-// event => state
-let init: Behavior.init<state, event> = (. event) =>
-  switch event {
-  | Created({Customer.address: address, name}) => {address, name, deleted: false}
-  | AddressChanged(_)
-  | NameChanged(_)
-  | Unchanged
-  | Deleted =>
-    invalidEvent(event)
-  }
+let initialState = {address: "", name: "", deleted: true}
 
 // (state, event) => state
-let apply: Behavior.apply<state, event> = (. state: state, event) =>
+let evolve = (state, event) =>
   switch event {
+  | Created({Customer.address: address, name}) => {address, name, deleted: false}
   | AddressChanged(address) => {...state, address}
   | NameChanged(name) => {...state, name}
   | Unchanged => state
   | Deleted => {...state, deleted: true}
-  | Created(_) => {...state, deleted: false}
+  }
+
+// (state, command) => result<array<event>, error>
+let decide = (state, command) =>
+  switch (command, state) {
+  | (Create(customer), {deleted: true}) => Ok([Created(customer)])
+  | (Create(_), {deleted: false}) => Error(AlreadyExisting)
+
+  | (ChangeAddress(_), {deleted: true}) => Error(NotExisting)
+  | (ChangeAddress(address), {address: oldAddress}) if address != oldAddress =>
+    Ok([AddressChanged(address)])
+  | (ChangeAddress(_), _) => Ok([Unchanged])
+
+  | (ChangeName(_), {deleted: true}) => Error(NotExisting)
+  | (ChangeName(name), {name: oldName}) if name != oldName => Ok([NameChanged(name)])
+  | (ChangeName(_), _) => Ok([Unchanged])
+
+  | (Delete, {deleted: true}) => Ok([Unchanged])
+  | (Delete, {deleted: false}) => Ok([Deleted])
   }
 ```
 
@@ -217,7 +192,7 @@ This is a module alias to the [Aggregate Spec](#aggregate-spec) to be used.
 
 ### state
 
-Defines the type of the state, which will be calculated ([init](#init) / [apply](#apply) function) based on historic events.  
+Defines the type of the state, which will be calculated by the [`evolve`](#evolve) function based on historic events, starting from [`initialState`](#initialstate).
 You can choose whatever type suites your needs. Very often this will be a [record](../rescript-syntax.md#record-type).
 
 ### resolverConfig
@@ -226,34 +201,20 @@ The `resolverConfig` controls the connections of the API to the Aggregate (the n
 
 `resolverConfig` is a record containing these fields:
 
-- `commandDecoder`: function to decode incoming `json` into the `command` type (this usually equates to `Spec.command_decode`)
+- `commandSchema`: the schema for the command type (auto-generated by `@schema`)
 - `fields`: array of strings equal to mutations in the (GraphQL) [API schema](./api.md#schema), that should trigger the creation of a command for this aggregate: by convention and to avoid naming collisions, the field is usually named in a pattern of `<AggregateName>_<commandName>`
 
-### init
+### initialState
 
-The `init` function calculates the initial state based on the first event for a specific Aggregate instance (selected by the aggregate id).
+The `initialState` value is the starting state before any events have been applied. This represents the state of a "not yet created" aggregate instance.
 
-Further state updates are calculated by the [`apply`](#apply) function.
+### evolve
 
-### apply
+The `evolve` function calculates the next state based on the current state and the next event. It combines the former `init` and `apply` functions into a single function, with `initialState` providing the starting value.
 
-The `apply` function calculates the next state based on the current state and the next event.
+### decide
 
-### create
-
-The `create` function calculates inital event(s) based on the given command. If necessary, the message's context is also available for processing. Validation of the command shall be done here as well.
-
-#### errors
-
-The create and execute functions supply an `errorHandler` function in it's arguments. The function takes `Spec.error` (describing the kind of observed error), `Spec.command` (the command, which was processed, when the error was detected) and `Message.context` (for further details).
-
-As of now this function is implemented in the framework and can't be changed: It basically just logs out a well-formated error message.
-
-### execute
-
-The `execute` function calculates event(s) based on the current state and given command. If necessary, the message's context is also available for processing. Validation of the command shall be done here as well.
-
-The [`errorHandler`](#errors) function is the same for the `create` and `execute` functions.
+The `decide` function takes the current state and a command, and returns `result<array<event>, error>`. It combines the former `create` and `execute` functions into a single function. Return `Ok([...events])` for accepted commands and `Error(error)` for rejected commands.
 
 ### Call Sequence
 
@@ -268,28 +229,28 @@ EventLog: Event Log { class: event-log }
 CommandSource -> Aggregate: "Command1 (very first Command for this id)"
 Aggregate -> EventLog: "replay(id)"
 EventLog --> Aggregate: "[] (no events yet)"
-Aggregate -> Behavior: "create(Command1)"
-Behavior --> Aggregate: event1
+Aggregate -> Behavior: "decide(initialState, Command1)"
+Behavior --> Aggregate: "Ok([event1])"
 Aggregate -> EventLog: "append(event1)"
 
 CommandSource -> Aggregate: "Command2 (second Command for this id)"
 Aggregate -> EventLog: "replay(id)"
 EventLog --> Aggregate: "[event1] (one event persisted)"
-Aggregate -> Behavior: "init(event1)"
+Aggregate -> Behavior: "evolve(initialState, event1)"
 Behavior --> Aggregate: state1
-Aggregate -> Behavior: "execute(state1, Command2)"
-Behavior --> Aggregate: event2
+Aggregate -> Behavior: "decide(state1, Command2)"
+Behavior --> Aggregate: "Ok([event2])"
 Aggregate -> EventLog: "append(event2)"
 
 CommandSource -> Aggregate: "Command3 (third Command for this id)"
 Aggregate -> EventLog: "replay(id)"
 EventLog --> Aggregate: "[event1, event2] (two events persisted)"
-Aggregate -> Behavior: "init(event1)"
+Aggregate -> Behavior: "evolve(initialState, event1)"
 Behavior --> Aggregate: state1
-Aggregate -> Behavior: "apply(state1, event2)"
+Aggregate -> Behavior: "evolve(state1, event2)"
 Behavior --> Aggregate: state2
-Aggregate -> Behavior: "execute(state2, Command3)"
-Behavior --> Aggregate: event3
+Aggregate -> Behavior: "decide(state2, Command3)"
+Behavior --> Aggregate: "Ok([event3])"
 Aggregate -> EventLog: "append(event3)"
 ```
 

@@ -5,7 +5,7 @@ import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Category$CatalogPlugin from "../Aggregate/Category.res.mjs";
 import * as CategoriesReadModel$CatalogPlugin from "./CategoriesReadModel.res.mjs";
 
-function map(param) {
+function project(param) {
   let event = param.event;
   let id = param.id;
   if (typeof event !== "object") {
@@ -13,7 +13,6 @@ function map(param) {
       TAG: "Update",
       _0: id,
       _1: state => ({
-        categoryId: state.categoryId,
         name: state.name,
         archived: true
       })
@@ -24,7 +23,6 @@ function map(param) {
       TAG: "Set",
       _0: id,
       _1: {
-        categoryId: id,
         name: event.name,
         archived: false
       }
@@ -35,7 +33,6 @@ function map(param) {
     TAG: "Update",
     _0: id,
     _1: state => ({
-      categoryId: state.categoryId,
       name: name,
       archived: state.archived
     })
@@ -52,7 +49,7 @@ let CategoryMapping = Projection$Reventless.Mapping.Make({
   stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
 export {

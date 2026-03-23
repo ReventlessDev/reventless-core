@@ -16,19 +16,6 @@ module Make = (
 ): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  // Behavior error callback — logs the error and returns [] (no events generated).
-  // Called synchronously by Behavior.execute/create, so uses Effect.runSync for logging.
-  let errorHandler = (error, command, context: Message.context) => {
-    let errorJson = error->Message.encode(Spec.errorSchema)->JSON.stringify
-    let commandJsonStr = command->Message.encode(Spec.commandSchema)->JSON.stringify
-    let serviceName = Spec.name
-    let id = context.id
-    Effect.logError(
-      `Behavior error ${errorJson} in ${serviceName}(${id}): Command: ${commandJsonStr}`,
-    )->Effect.runSync
-    []
-  }
-
   @inline
   let eventName: Message.event'<Spec.Id.t, Spec.event> => string = event' =>
     event'.event
@@ -52,14 +39,6 @@ module Make = (
       dict->Dict.toArray->Array.map(((id, items)) => (id->Spec.Id.makeFromString, items))
     )
 
-  let apply' = (stateOpt, event) =>
-    switch stateOpt {
-    | Some(state) => Some(Behavior.apply(state, event))
-    | None => Some(Behavior.init(event))
-    }
-
-  let updateState = (stateOpt, events) => events->Array.reduce(stateOpt, apply')
-
   let updateMeta = (command': Message.command'<'id, 'command>) => {
     ...command'.meta,
     time: Message.nowAsISOString(),
@@ -67,48 +46,26 @@ module Make = (
   }
 
   // Folds a single command into the running accumulator: (currentState, collectedEvents).
-  // Delegates to Behavior.execute (existing aggregate) or Behavior.create (new aggregate).
+  // Delegates to Behavior.decide and handles errors by logging and continuing.
   // Short-circuits on prior Error — subsequent commands in the batch are skipped.
   let processCommand = (acc, command': Message.command'<Spec.Id.t, Spec.command>) =>
     switch acc {
-    | Ok((stateO, events)) =>
+    | Ok((state, events)) =>
       let runBehavior = () =>
-        switch stateO {
-        | Some(state) =>
-          let generatedEvents = try Behavior.execute(
-            state,
-            command'.command,
-            {
-              id: command'.id->Spec.Id.toString,
-              meta: command'.meta,
-            },
-            errorHandler,
-          ) catch {
-          | Message.InvalidEvent(event) =>
-            Effect.logError(
-              `Behavior.execute: InvalidEvent ${event
-                ->JSON.stringifyAny
-                ->Option.getOr("")}`,
-            )->Effect.runSync
-            []
-          }
+        switch Behavior.decide(state, command'.command) {
+        | Ok(generatedEvents) =>
+          let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
           Ok((
-            updateState(stateO, generatedEvents),
+            newState,
             Array.concat(events, [(generatedEvents, command'->updateMeta)]),
           ))
-        | None =>
-          let generatedEvents = Behavior.create(
-            command'.command,
-            {
-              id: command'.id->Spec.Id.toString,
-              meta: command'.meta,
-            },
-            errorHandler,
-          )
-          Ok((
-            updateState(None, generatedEvents),
-            Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-          ))
+        | Error(error) =>
+          let errorJson = error->Message.encode(Spec.errorSchema)->JSON.stringify
+          let id = command'.id->Spec.Id.toString
+          Effect.logError(
+            `Behavior error ${errorJson} in ${Spec.name}(${id})`,
+          )->Effect.runSync
+          Ok((state, events))
         }
       Effect.succeed(runBehavior())
     | Error(_) as error => Effect.succeed(error)
@@ -129,7 +86,7 @@ module Make = (
       ->Array.unzip
 
     Ops.eventLog.replayStream(id)
-    ->Stream.runFold((None, 0), ((st, n), ev) => (apply'(st, ev), n + 1))
+    ->Stream.runFold((Behavior.initialState, 0), ((st, n), ev) => (Behavior.evolve(st, ev), n + 1))
     ->Effect.tap(_ =>
       Effect.logInfo(`finished eventLogReplayStream for id ${id->Spec.Id.toString}`)
     )

@@ -9,7 +9,7 @@ module ProductMapping = Mapping.Make(
   ProductsReadModel,
   {
     open Product
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Added({name, description, price}) =>
         Set(id, {ProductsReadModel.name: name, description, price})

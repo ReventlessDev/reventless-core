@@ -23,7 +23,6 @@ describe("CustomersView.project:", () => {
   test("CustomerRegistered creates new state", () =>
     expect(
       CustomersView.project(
-        None,
         OrderingEventLog.CustomerRegistered({
           customerId: "cust-1",
           email: "alice@example.com",
@@ -46,7 +45,6 @@ describe("CustomersView.project:", () => {
   test("EmailChanged Update function changes email", () =>
     expect(
       CustomersView.project(
-        None,
         OrderingEventLog.EmailChanged({customerId: "cust-1", email: "alice2@example.com"}),
       )->applyFirstUpdate(baseCustomer),
     )->toEqual({...baseCustomer, email: "alice2@example.com"})
@@ -55,7 +53,6 @@ describe("CustomersView.project:", () => {
   test("AddressChanged Update function changes address", () =>
     expect(
       CustomersView.project(
-        None,
         OrderingEventLog.AddressChanged({customerId: "cust-1", address: "789 Pine Rd"}),
       )->applyFirstUpdate(baseCustomer),
     )->toEqual({...baseCustomer, address: "789 Pine Rd"})
@@ -64,7 +61,6 @@ describe("CustomersView.project:", () => {
   test("CustomerDeactivated Update function sets deactivated=true", () =>
     expect(
       CustomersView.project(
-        None,
         OrderingEventLog.CustomerDeactivated({customerId: "cust-1"}),
       )->applyFirstUpdate(baseCustomer),
     )->toEqual({...baseCustomer, deactivated: true})
@@ -73,7 +69,6 @@ describe("CustomersView.project:", () => {
   test("Order events return empty (not handled by CustomersView)", () =>
     expect(
       CustomersView.project(
-        None,
         OrderingEventLog.OrderPlaced({
           orderId: "ord-1",
           customerId: "cust-1",

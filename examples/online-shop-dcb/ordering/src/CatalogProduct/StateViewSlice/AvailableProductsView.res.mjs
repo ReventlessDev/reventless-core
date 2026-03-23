@@ -11,7 +11,7 @@ let stateSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-function project(state, event) {
+function project(event) {
   switch (event.TAG) {
     case "CatalogProductSynced" :
       let productId = event.productId;
@@ -25,19 +25,16 @@ function project(state, event) {
           }
         }];
     case "CatalogProductPriceChanged" :
-      if (state !== undefined) {
-        return [{
-            TAG: "Set",
-            _0: event.productId,
-            _1: {
-              productId: state.productId,
-              name: state.name,
-              price: event.price
-            }
-          }];
-      } else {
-        return [];
-      }
+      let price = event.price;
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: p => ({
+            productId: p.productId,
+            name: p.name,
+            price: price
+          })
+        }];
     default:
       return [];
   }

@@ -11,18 +11,8 @@ module type Spec = {
   type error
 }
 
-type init<'state, 'event> = 'event => 'state
-type apply<'state, 'event> = ('state, 'event) => 'state
-
-type create<'command, 'event, 'error> = (
-  'command,
-  Message.context,
-  Message.errorHandler<'error, 'command, 'event>,
-) => array<'event>
-
-type execute<'state, 'command, 'event, 'error> = (
+type evolve<'state, 'event> = ('state, 'event) => 'state
+type decide<'state, 'command, 'event, 'error> = (
   'state,
   'command,
-  Message.context,
-  Message.errorHandler<'error, 'command, 'event>,
-) => array<'event>
+) => result<array<'event>, 'error>

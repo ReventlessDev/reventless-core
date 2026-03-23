@@ -12,7 +12,7 @@ let stateSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-function project(param, event) {
+function project(event) {
   switch (event.TAG) {
     case "ProductAdded" :
       let productId = event.productId;

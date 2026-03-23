@@ -231,7 +231,7 @@ Conventions:
 
 ### Behaviors
 
-A behavior implements the aggregate state machine: initialization, event application, and command handling.
+A behavior implements the aggregate state machine: state evolution from events, and command decisions.
 
 **`ProductBehavior.res`**:
 ```rescript
@@ -248,16 +248,10 @@ let resolverConfig = {
   fields: [],
 }
 
-// Initialize state from the first event (aggregate creation)
-let init = event =>
-  switch event {
-  | Added({name, description, price}) => {name, description, price}
-  | NameUpdated(_) | DescriptionUpdated(_) | PriceUpdated(_) =>
-    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
-  }
+let initialState = {name: "", description: "", price: 0.0}
 
-// Apply subsequent events to existing state
-let apply = (state, event) =>
+// Evolve state from events
+let evolve = (state, event) =>
   switch event {
   | Added({name, description, price}) => {name, description, price}
   | NameUpdated({name}) => {...state, name}
@@ -265,39 +259,32 @@ let apply = (state, event) =>
   | PriceUpdated({price}) => {...state, price}
   }
 
-// Handle commands when aggregate does NOT exist yet
-let create = (command, _context, errorHandler) =>
+// Decide on commands: return Ok(events) or Error(error)
+let decide = (state, command) =>
   switch command {
-  | Add({name, description, price}) => [Added({name, description, price})]
-  | UpdateName(_) | UpdateDescription(_) | UpdatePrice(_) =>
-    errorHandler(ProductNotFound, command, _context)
-  }
-
-// Handle commands when aggregate already exists
-let execute = (state, command, context, errorHandler) =>
-  switch command {
-  | Add(_) => errorHandler(ProductAlreadyExists, command, context)
-  | UpdateName({name}) if name == state.name => []         // idempotent
-  | UpdateName({name}) => [NameUpdated({name: name})]
-  | UpdateDescription({description}) if description == state.description => []
-  | UpdateDescription({description}) => [DescriptionUpdated({description: description})]
-  | UpdatePrice({price}) if price == state.price => []
-  | UpdatePrice({price}) => [PriceUpdated({price: price})]
+  | Add({name, description, price}) if state.name == "" =>
+    Ok([Added({name, description, price})])
+  | Add(_) => Error(ProductAlreadyExists)
+  | UpdateName({name}) if name == state.name => Ok([])         // idempotent
+  | UpdateName({name}) => Ok([NameUpdated({name: name})])
+  | UpdateDescription({description}) if description == state.description => Ok([])
+  | UpdateDescription({description}) => Ok([DescriptionUpdated({description: description})])
+  | UpdatePrice({price}) if price == state.price => Ok([])
+  | UpdatePrice({price}) => Ok([PriceUpdated({price: price})])
   }
 ```
 
-**Four handler functions:**
+**Three behavior definitions:**
 
-| Function | When called | Returns |
-|----------|-------------|---------|
-| `init` | First event replayed (aggregate creation) | Initial state |
-| `apply` | Each subsequent event during replay | Updated state |
-| `create` | Command arrives, no aggregate exists | Events to emit |
-| `execute` | Command arrives, aggregate exists | Events to emit |
+| Definition | Purpose | Type |
+|------------|---------|------|
+| `initialState` | Starting state before any events | `state` |
+| `evolve` | Fold events into state | `(state, event) => state` |
+| `decide` | Accept or reject a command | `(state, command) => result<array<event>, error>` |
 
-**Idempotency pattern:** Return `[]` (empty event list) when a command would produce no change. This makes retries safe.
+**Idempotency pattern:** Return `Ok([])` (empty event list) when a command would produce no change. This makes retries safe.
 
-**Error handling:** Call `errorHandler(error, command, context)` for domain violations. The framework routes errors to the caller.
+**Error handling:** Return `Error(error)` for domain violations. The framework routes errors to the caller.
 
 ---
 
@@ -346,7 +333,7 @@ module ProductMapping = Mapping.Make(
   ProductsReadModel, // Target read model
   {
     open Product     // Open aggregate for unqualified event access
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Added({name, description, price}) =>
         Set(id, {ProductsReadModel.productId: id, name, description, price})
@@ -378,7 +365,7 @@ module ProductMapping = Mapping.Make(
   ProductDemandReadModel,
   {
     open Product
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Added({name}) =>
         Set(id, {ProductDemandReadModel.productId: id, name, orderCount: 0})
@@ -392,7 +379,7 @@ module ProductDemandMapping = Mapping.Make(
   ProductDemandReadModel,
   {
     open ProductDemand
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Recorded(_) =>
         Update(id, (state: ProductDemandReadModel.state) => {
@@ -872,10 +859,10 @@ These aggregates:
 
 ### Behavior patterns
 
-- **Idempotency** — return `[]` when a command produces no change
-- **`create` vs `execute`** — `create` handles the first command (no state exists), `execute` handles all subsequent commands
-- **Error variants** — define explicit domain errors, not generic strings
-- **`init` guard** — throw `InvalidEvent` for events that cannot create an aggregate
+- **Idempotency** — return `Ok([])` when a command produces no change
+- **`decide`** — a single function handles all commands; use pattern matching on state to distinguish "not yet created" from "existing"
+- **Error variants** — define explicit domain errors, not generic strings; return `Error(variant)` from `decide`
+- **`initialState`** — defines the starting state before any events (represents "not yet created")
 
 ### Module opens
 
@@ -904,7 +891,7 @@ The DCB example lives in `examples/online-shop-dcb/` and mirrors the same online
 | Aspect | Aggregates | DCB |
 |--------|-----------|-----|
 | Event storage | One event stream per aggregate instance | One shared event log per bounded context |
-| Write-side | Behavior (`init`/`apply`/`create`/`execute`) | StateChangeSlice (`initialDecisionModel`/`reduce`/`decide`) |
+| Write-side | Behavior (`initialState`/`evolve`/`decide`) | StateChangeSlice (`initialState`/`evolve`/`decide`) |
 | Read-side | ReadModel + Projection mappings | StateViewSlice (`project`) |
 | Entity filtering | Implicit (stream per ID) | Explicit (`@s.matches(DcbTag.string)` on entity ID fields) |
 | State model | Full aggregate state rebuilt from events | Minimal decision model — only what's needed to accept/reject |
@@ -947,7 +934,7 @@ Key points:
 
 ### StateChangeSlice
 
-A StateChangeSlice handles commands using a **decision model** — a minimal projection of past events that captures only the information needed to accept or reject a command.
+A StateChangeSlice handles commands using a **state** (decision model) — a minimal projection of past events that captures only the information needed to accept or reject a command.
 
 **`AddProduct.res`**:
 ```rescript
@@ -970,20 +957,20 @@ type command =
 @schema
 type error = | ProductAlreadyExists
 
-type decisionModel = {exists: bool}
+type state = {exists: bool}
 
-let initialDecisionModel = {exists: false}
+let initialState = {exists: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ProductAdded(_) => {exists: true}
-  | _ => model
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | AddProduct({productId, name, description, price}) =>
-    if model.exists {
+    if state.exists {
       Error(ProductAlreadyExists)
     } else {
       Ok([ProductAdded({productId, name, description, price})])
@@ -999,16 +986,15 @@ let decide = (model, command) =>
 | `module DcbEventLogSpec` | Links to the shared event log |
 | `command` | Commands this slice handles (with `@s.matches` tags) |
 | `error` | Domain error variants |
-| `decisionModel` | Minimal state needed for command decisions |
-| `initialDecisionModel` | Starting value before any events |
-| `reduce` | Fold events into the decision model (like `apply` in aggregates) |
+| `state` | Minimal state needed for command decisions |
+| `initialState` | Starting value before any events |
+| `evolve` | Fold events into state |
 | `decide` | Accept or reject a command → `Ok(events)` or `Error(error)` |
 
 **Contrast with aggregates:**
-- `reduce` replaces `init` + `apply` — there's no separate creation path
-- `decide` replaces `create` + `execute` — returns `Result` instead of using an error handler
-- The decision model is typically much smaller than full aggregate state (e.g., `{exists: bool}` vs the entire product record)
-- The `reduce` function receives ALL events from the log (filtered by entity ID tag), so use `| _ => model` to skip irrelevant ones
+- Both approaches now use the same naming: `initialState`/`evolve`/`decide`
+- The state (decision model) is typically much smaller than full aggregate state (e.g., `{exists: bool}` vs the entire product record)
+- The `evolve` function receives ALL events from the log (filtered by entity ID tag), so use `| _ => state` to skip irrelevant ones
 
 #### Cross-Entity Queries (Tagged Arrays)
 
@@ -1065,7 +1051,7 @@ type event = CatalogEventLog.event
 @schema
 type state = {productId: string, name: string, description: string, price: float}
 
-let project = (_, event) =>
+let project = event =>
   switch event {
   | ProductAdded({productId, name, description, price}) => [
       Set(productId, {productId, name, description, price}),
@@ -1413,7 +1399,7 @@ module CategoryMapping = {
   let sourceName = "Category"  // aggregate name
   @schema type sourceEvent = Category.event
   type targetState = myState
-  let map = (msg) => switch msg.event {
+  let project = (msg) => switch msg.event {
   | Added({name}) => Create(msg.id, {categoryName: name})
   | _ => Ignore
   }
@@ -1423,7 +1409,7 @@ module CatalogDcbMapping = {
   let sourceName = "CatalogDcbEventLog"  // <pluginName> ++ "DcbEventLog"
   @schema type sourceEvent = CatalogEventLog.event
   type targetState = myState
-  let map = (msg) => switch msg.event {
+  let project = (msg) => switch msg.event {
   | ProductAdded({productId, name}) => Create(productId, {productName: name})
   | _ => Ignore
   }

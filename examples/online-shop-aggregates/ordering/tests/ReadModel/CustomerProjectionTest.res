@@ -13,8 +13,7 @@ describe("CustomerProjection:", () => {
       }),
     )
     ->thenState({
-      CustomersReadModel.customerId: "id",
-      email: "alice@example.com",
+      CustomersReadModel.email: "alice@example.com",
       address: "123 Main St",
       deactivated: false,
     })
@@ -29,8 +28,7 @@ describe("CustomerProjection:", () => {
     ])
     ->whenEvent(Customer.EmailUpdated({email: "alice2@example.com"}))
     ->thenState({
-      CustomersReadModel.customerId: "id",
-      email: "alice2@example.com",
+      CustomersReadModel.email: "alice2@example.com",
       address: "123 Main St",
       deactivated: false,
     })
@@ -45,8 +43,7 @@ describe("CustomerProjection:", () => {
     ])
     ->whenEvent(Customer.AddressUpdated({address: "789 Pine Rd"}))
     ->thenState({
-      CustomersReadModel.customerId: "id",
-      email: "alice@example.com",
+      CustomersReadModel.email: "alice@example.com",
       address: "789 Pine Rd",
       deactivated: false,
     })
@@ -61,8 +58,7 @@ describe("CustomerProjection:", () => {
     ])
     ->whenEvent(Customer.Deactivated)
     ->thenState({
-      CustomersReadModel.customerId: "id",
-      email: "alice@example.com",
+      CustomersReadModel.email: "alice@example.com",
       address: "123 Main St",
       deactivated: true,
     })

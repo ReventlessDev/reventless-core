@@ -5,7 +5,7 @@ import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as Customer$OrderingPlugin from "../Aggregate/Customer.res.mjs";
 import * as CustomersReadModel$OrderingPlugin from "./CustomersReadModel.res.mjs";
 
-function map(param) {
+function project(param) {
   let event = param.event;
   let id = param.id;
   if (typeof event !== "object") {
@@ -13,7 +13,6 @@ function map(param) {
       TAG: "Update",
       _0: id,
       _1: state => ({
-        customerId: state.customerId,
         email: state.email,
         address: state.address,
         deactivated: true
@@ -26,7 +25,6 @@ function map(param) {
         TAG: "Set",
         _0: id,
         _1: {
-          customerId: id,
           email: event.email,
           address: event.address,
           deactivated: false
@@ -38,7 +36,6 @@ function map(param) {
         TAG: "Update",
         _0: id,
         _1: state => ({
-          customerId: state.customerId,
           email: email,
           address: state.address,
           deactivated: state.deactivated
@@ -50,7 +47,6 @@ function map(param) {
         TAG: "Update",
         _0: id,
         _1: state => ({
-          customerId: state.customerId,
           email: state.email,
           address: address,
           deactivated: state.deactivated
@@ -69,7 +65,7 @@ let CustomerMapping = Projection$Reventless.Mapping.Make({
   stateSchema: CustomersReadModel$OrderingPlugin.stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
 export {

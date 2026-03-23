@@ -15,23 +15,23 @@ type command = ArchiveCategory({categoryId: @s.matches(DcbTag.string) string})
 @schema
 type error = CategoryNotFound
 
-type decisionModel = {exists: bool, archived: bool}
+type state = {exists: bool, archived: bool}
 
-let initialDecisionModel = {exists: false, archived: false}
+let initialState = {exists: false, archived: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | CategoryAdded(_) => {exists: true, archived: false}
-  | CategoryArchived(_) => {...model, archived: true}
-  | _ => model
+  | CategoryArchived(_) => {...state, archived: true}
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | ArchiveCategory({categoryId: theId}) =>
-    if !model.exists {
+    if !state.exists {
       Error(CategoryNotFound)
-    } else if model.archived {
+    } else if state.archived {
       Ok([]) // idempotent — already archived
     } else {
       Ok([CategoryArchived({categoryId: theId})])

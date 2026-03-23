@@ -4,7 +4,6 @@ import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
 let stateSchema = S.schema(s => ({
-  customerId: s.m(S.string),
   email: s.m(S.string),
   address: s.m(S.string),
   deactivated: s.m(S.bool)

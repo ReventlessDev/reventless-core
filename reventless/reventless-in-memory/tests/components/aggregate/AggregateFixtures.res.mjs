@@ -41,35 +41,32 @@ let resolverConfig = {
 
 let moduleUrl$1 = import.meta.url;
 
-function init(_event) {
+function evolve(_state, _event) {
   return true;
 }
 
-function apply(_state, _event) {
-  return true;
-}
-
-function create(command, _meta, _errorHandler) {
-  return [{
-      TAG: "ItemCreated",
-      name: command.name
-    }];
-}
-
-function execute(state, command, meta, errorHandler) {
+function decide(state, command) {
   if (state) {
-    return errorHandler("AlreadyExists", command, meta);
+    return {
+      TAG: "Error",
+      _0: "AlreadyExists"
+    };
   } else {
-    return create(command, meta, errorHandler);
+    return {
+      TAG: "Ok",
+      _0: [{
+          TAG: "ItemCreated",
+          name: command.name
+        }]
+    };
   }
 }
 
 let ItemBehavior = {
+  initialState: false,
   resolverConfig: resolverConfig,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute,
+  evolve: evolve,
+  decide: decide,
   moduleUrl: moduleUrl$1
 };
 

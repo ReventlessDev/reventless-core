@@ -1,39 +1,33 @@
 // CatalogProduct aggregate behavior.
 // Idempotently syncs Catalog product state into Ordering.
 
-open Reventless
 open CatalogProduct
 
 module Spec = CatalogProduct
 
 @schema
-type state = {name: string, price: float}
+type state =
+  | NotCreated
+  | Created({name: string, price: float})
 
-let resolverConfig = {Behavior.commandSchema, fields: []}
+let resolverConfig = {Reventless.Behavior.commandSchema, fields: []}
 
 let moduleUrl: string = %raw(`import.meta.url`)
 
-let init = event =>
-  switch event {
-  | Synced({name, price}) => {name, price}
-  | PriceUpdated(_) =>
-    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
+let initialState = NotCreated
+
+let evolve = (state, event) =>
+  switch (state, event) {
+  | (NotCreated, Synced({name, price})) => Created({name, price})
+  | (Created(_), Synced({name, price})) => Created({name, price})
+  | (Created(s), PriceUpdated({price})) => Created({...s, price})
+  | (NotCreated, PriceUpdated(_)) => state
   }
 
-let apply = (state, event) =>
-  switch event {
-  | Synced({name, price}) => {name, price}
-  | PriceUpdated({price}) => {...state, price}
-  }
-
-let create = (command, _context, _errorHandler) =>
-  switch command {
-  | Sync({name, price}) => [Synced({name, price})]
-  | UpdatePrice(_) => [] // no aggregate yet — idempotent
-  }
-
-let execute = (_state, command, _context, _errorHandler) =>
-  switch command {
-  | Sync(_) => [] // already exists — idempotent
-  | UpdatePrice({price}) => [PriceUpdated({price: price})]
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, Sync({name, price})) => Ok([Synced({name, price})])
+  | (NotCreated, UpdatePrice(_)) => Ok([]) // no aggregate yet — idempotent
+  | (Created(_), Sync(_)) => Ok([]) // already exists — idempotent
+  | (Created(_), UpdatePrice({price})) => Ok([PriceUpdated({price: price})])
   }

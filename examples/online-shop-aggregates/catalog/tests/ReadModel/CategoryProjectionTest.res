@@ -14,8 +14,7 @@ describe("CategoryProjection:", () => {
     givenEvents([Category.Added({name: "Electronics"})])
     ->whenEvent(Category.Renamed({name: "Consumer Electronics"}))
     ->thenState({
-      CategoriesReadModel.categoryId: "id",
-      name: "Consumer Electronics",
+      CategoriesReadModel.name: "Consumer Electronics",
       archived: false,
     })
   )

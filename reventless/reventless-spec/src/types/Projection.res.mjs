@@ -4,7 +4,7 @@
 function Make(Source) {
   return Target => (MappingImpl => ({
     SourceId: Source.Id,
-    map: MappingImpl.map,
+    project: MappingImpl.project,
     sourceEventSchema: Source.eventSchema,
     sourceName: Source.name,
     subIdConfig: Target.subIdConfig,

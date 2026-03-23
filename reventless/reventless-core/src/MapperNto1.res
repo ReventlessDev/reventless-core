@@ -35,7 +35,7 @@ module type Mapping = {
   let sourceName: string
   type target
 
-  let map: JSON.t => Spec.action<string, target>
+  let project: JSON.t => Spec.action<string, target>
 }
 
 module type Mappings = {
@@ -65,7 +65,7 @@ module Mapper = (
       sourceName,
       Mappings.mappings,
     )->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
-      try Some(json->Mapping.map) catch {
+      try Some(json->Mapping.project) catch {
       | exn =>
         let errMsg =
           exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")

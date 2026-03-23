@@ -44,37 +44,33 @@ let resolverConfig = {
 
 let moduleUrl$1 = import.meta.url;
 
-function init(event) {
+let initialState = {
+  name: ""
+};
+
+function evolve(_state, event) {
   return {
     name: event.name
   };
 }
 
-function apply(_state, event) {
+function decide(_state, command) {
   return {
-    name: event.name
+    TAG: "Ok",
+    _0: [{
+        TAG: "CGItemCreated",
+        name: command.name
+      }]
   };
-}
-
-function create(command, _ctx, _errHandler) {
-  return [{
-      TAG: "CGItemCreated",
-      name: command.name
-    }];
-}
-
-function execute(_state, _command, _ctx, _errHandler) {
-  return [];
 }
 
 let CGBehavior = {
   Spec: undefined,
   resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute
+  initialState: initialState,
+  evolve: evolve,
+  decide: decide
 };
 
 let CGMaker = CommandGenerator_Builder$ReventlessCore.Make({
@@ -91,11 +87,10 @@ let CGMaker = CommandGenerator_Builder$ReventlessCore.Make({
   commandSchema: commandSchema,
   moduleUrl: moduleUrl
 })({
+  initialState: initialState,
   resolverConfig: resolverConfig,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute,
+  evolve: evolve,
+  decide: decide,
   moduleUrl: moduleUrl$1
 })(CommandGeneratorResolvers_InMemory$ReventlessInMemory);
 

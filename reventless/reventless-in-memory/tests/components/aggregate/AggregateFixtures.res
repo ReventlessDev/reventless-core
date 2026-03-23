@@ -28,6 +28,8 @@ module ItemSpec = {
 module ItemBehavior: ReventlessCore.Behavior.T with module Spec := ItemSpec = {
   type state = bool // true = item exists
 
+  let initialState = false
+
   let resolverConfig: ReventlessCore.Behavior.resolverConfig<ItemSpec.command> = {
     commandSchema: ItemSpec.commandSchema,
     fields: [],
@@ -35,19 +37,15 @@ module ItemBehavior: ReventlessCore.Behavior.T with module Spec := ItemSpec = {
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let init = (_event: ItemSpec.event) => true
-  let apply = (_state, _event: ItemSpec.event) => true
+  let evolve = (_state, _event: ItemSpec.event) => true
 
-  let create = (command: ItemSpec.command, _meta, _errorHandler) =>
-    switch command {
-    | ItemSpec.CreateItem({name}) => [ItemSpec.ItemCreated({name: name})]
-    }
-
-  let execute = (state, command, meta, errorHandler) =>
+  let decide = (state, command: ItemSpec.command) =>
     if state {
-      errorHandler(ItemSpec.AlreadyExists, command, meta)
+      Error(ItemSpec.AlreadyExists)
     } else {
-      create(command, meta, errorHandler)
+      switch command {
+      | ItemSpec.CreateItem({name}) => Ok([ItemSpec.ItemCreated({name: name})])
+      }
     }
 }
 

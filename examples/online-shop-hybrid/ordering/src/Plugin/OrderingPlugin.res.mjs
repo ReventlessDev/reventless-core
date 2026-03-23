@@ -32,11 +32,10 @@ function Make(Platform) {
     commandSchema: Customer$OrderingPlugin.commandSchema,
     moduleUrl: Customer$OrderingPlugin.moduleUrl
   })({
+    initialState: CustomerBehavior$OrderingPlugin.initialState,
     resolverConfig: CustomerBehavior$OrderingPlugin.resolverConfig,
-    init: CustomerBehavior$OrderingPlugin.init,
-    apply: CustomerBehavior$OrderingPlugin.apply,
-    create: CustomerBehavior$OrderingPlugin.create,
-    execute: CustomerBehavior$OrderingPlugin.execute,
+    evolve: CustomerBehavior$OrderingPlugin.evolve,
+    decide: CustomerBehavior$OrderingPlugin.decide,
     moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
@@ -69,8 +68,8 @@ function Make(Platform) {
     moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
-    initialDecisionModel: PlaceOrder$OrderingPlugin.initialDecisionModel,
-    reduce: PlaceOrder$OrderingPlugin.reduce,
+    initialState: PlaceOrder$OrderingPlugin.initialState,
+    evolve: PlaceOrder$OrderingPlugin.evolve,
     decide: PlaceOrder$OrderingPlugin.decide,
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema
   });
@@ -79,8 +78,8 @@ function Make(Platform) {
     moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
-    initialDecisionModel: ShipOrder$OrderingPlugin.initialDecisionModel,
-    reduce: ShipOrder$OrderingPlugin.reduce,
+    initialState: ShipOrder$OrderingPlugin.initialState,
+    evolve: ShipOrder$OrderingPlugin.evolve,
     decide: ShipOrder$OrderingPlugin.decide,
     commandSchema: ShipOrder$OrderingPlugin.commandSchema
   });
@@ -89,8 +88,8 @@ function Make(Platform) {
     moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
-    initialDecisionModel: CancelOrder$OrderingPlugin.initialDecisionModel,
-    reduce: CancelOrder$OrderingPlugin.reduce,
+    initialState: CancelOrder$OrderingPlugin.initialState,
+    evolve: CancelOrder$OrderingPlugin.evolve,
     decide: CancelOrder$OrderingPlugin.decide,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema
   });
@@ -130,8 +129,8 @@ function Make(Platform) {
     moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
     DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
-    initialDecisionModel: SyncCatalogProduct$OrderingPlugin.initialDecisionModel,
-    reduce: SyncCatalogProduct$OrderingPlugin.reduce,
+    initialState: SyncCatalogProduct$OrderingPlugin.initialState,
+    evolve: SyncCatalogProduct$OrderingPlugin.evolve,
     decide: SyncCatalogProduct$OrderingPlugin.decide,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
   });

@@ -21,20 +21,20 @@ type command =
 @schema
 type error = ProductAlreadyExists
 
-type decisionModel = {exists: bool}
+type state = {exists: bool}
 
-let initialDecisionModel = {exists: false}
+let initialState = {exists: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ProductAdded(_) => {exists: true}
-  | _ => model
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | AddProduct({productId, name, description, price}) =>
-    if model.exists {
+    if state.exists {
       Error(ProductAlreadyExists)
     } else {
       Ok([ProductAdded({productId, name, description, price})])

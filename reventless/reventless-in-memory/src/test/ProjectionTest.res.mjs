@@ -48,7 +48,7 @@ function Make(Projection) {
     store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
   };
   let update = async (store, events$p) => {
-    let actions = events$p.map(event$p => Projection.map(event$p));
+    let actions = events$p.map(event$p => Projection.project(event$p));
     await Projection$ReventlessCore.handleActions(actions, {
       load: extra => Promise.resolve({
         TAG: "Ok",

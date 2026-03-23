@@ -12,7 +12,7 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CategoryNotFound");
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "CategoryAdded" :
       return {
@@ -21,17 +21,17 @@ function reduce(model, event) {
       };
     case "CategoryArchived" :
       return {
-        exists: model.exists,
+        exists: state.exists,
         archived: true
       };
     default:
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
-  if (model.exists) {
-    if (model.archived) {
+function decide(state, command) {
+  if (state.exists) {
+    if (state.archived) {
       return {
         TAG: "Ok",
         _0: []
@@ -57,7 +57,7 @@ let name = "ArchiveCategory";
 
 let DcbEventLogSpec;
 
-let initialDecisionModel = {
+let initialState = {
   exists: false,
   archived: false
 };
@@ -68,8 +68,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

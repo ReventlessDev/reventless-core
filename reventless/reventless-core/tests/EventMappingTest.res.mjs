@@ -3,43 +3,28 @@
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as Message$ReventlessCore from "../src/Message.res.mjs";
-import * as TestFixtures$ReventlessCore from "./TestFixtures.res.mjs";
 
 function MakeAggregate(Spec) {
   return Behavior => {
-    let apply$p = (state, event) => Behavior.apply(state, event);
-    let currentState = events => Stdlib_Array.reduce(events.slice(1), Behavior.init(events[0]), apply$p);
+    let currentState = events => Stdlib_Array.reduce(events, Behavior.initialState, Behavior.evolve);
     let errors = {
       contents: []
     };
-    let errorHandler = (error, param, param$1) => {
-      errors.contents = errors.contents.concat([error]);
-      return [];
-    };
-    let exec = (context, command, history) => {
+    let exec = (command, history) => {
       errors.contents = [];
-      if (history.length === 0) {
-        return Behavior.create(command, context, errorHandler);
+      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
+      let events = Behavior.decide(state, command);
+      if (events.TAG === "Ok") {
+        return events._0;
       }
-      try {
-        return Behavior.execute(currentState(history), command, TestFixtures$ReventlessCore.context, errorHandler);
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
-          return [];
-        }
-        throw exn;
-      }
+      errors.contents = [events._0];
+      return [];
     };
     return {
       Spec: Spec,
       Behavior: Behavior,
-      apply$p: apply$p,
       currentState: currentState,
       errors: errors,
-      errorHandler: errorHandler,
       exec: exec
     };
   };
@@ -47,53 +32,31 @@ function MakeAggregate(Spec) {
 
 function Make(Source) {
   return SourceBehavior => (Target => (TargetBehavior => (EventMapping => {
-    let apply$p = (state, event) => SourceBehavior.apply(state, event);
-    let currentState = events => Stdlib_Array.reduce(events.slice(1), SourceBehavior.init(events[0]), apply$p);
     let errors = {
       contents: []
     };
-    let errorHandler = (error, param, param$1) => {
-      errors.contents = errors.contents.concat([error]);
+    let exec = (command, history) => {
+      errors.contents = [];
+      let state = Stdlib_Array.reduce(history, SourceBehavior.initialState, SourceBehavior.evolve);
+      let events = SourceBehavior.decide(state, command);
+      if (events.TAG === "Ok") {
+        return events._0;
+      }
+      errors.contents = [events._0];
       return [];
     };
-    let exec = (context, command, history) => {
-      errors.contents = [];
-      if (history.length === 0) {
-        return SourceBehavior.create(command, context, errorHandler);
-      }
-      try {
-        return SourceBehavior.execute(currentState(history), command, TestFixtures$ReventlessCore.context, errorHandler);
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
-          return [];
-        }
-        throw exn;
-      }
-    };
-    let apply$p$1 = (state, event) => TargetBehavior.apply(state, event);
-    let currentState$1 = events => Stdlib_Array.reduce(events.slice(1), TargetBehavior.init(events[0]), apply$p$1);
     let errors$1 = {
       contents: []
     };
-    let errorHandler$1 = (error, param, param$1) => {
-      errors$1.contents = errors$1.contents.concat([error]);
-      return [];
-    };
-    let exec$1 = (context, command, history) => {
+    let exec$1 = (command, history) => {
       errors$1.contents = [];
-      if (history.length === 0) {
-        return TargetBehavior.create(command, context, errorHandler$1);
+      let state = Stdlib_Array.reduce(history, TargetBehavior.initialState, TargetBehavior.evolve);
+      let events = TargetBehavior.decide(state, command);
+      if (events.TAG === "Ok") {
+        return events._0;
       }
-      try {
-        return TargetBehavior.execute(currentState$1(history), command, TestFixtures$ReventlessCore.context, errorHandler$1);
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
-          return [];
-        }
-        throw exn;
-      }
+      errors$1.contents = [events._0];
+      return [];
     };
     let queryEngine_scan = (param, param$1, param$2) => Promise.resolve([]);
     let queryEngine_query = (param, param$1, param$2, param$3, param$4, param$5, param$6) => Promise.resolve([]);
@@ -107,10 +70,7 @@ function Make(Source) {
       sourceHistory
     ];
     let whenSourceCmd = async (sourceId, cmd, param) => {
-      let sourceEvents = exec({
-        id: sourceId,
-        meta: TestFixtures$ReventlessCore.context.meta
-      }, cmd, param[1]);
+      let sourceEvents = exec(cmd, param[1]);
       let targetActions = sourceEvents.map(sourceEvent => EventMapping.map(Source.Id.makeFromString(sourceId), sourceEvent, queryEngine)).flat();
       let targetHistories = Object.fromEntries(param[0]);
       let commands = (await Promise.all(targetActions.map(async action => {
@@ -130,10 +90,7 @@ function Make(Source) {
       return Stdlib_Array.reduce(commands, {}, (targetEvents, param) => {
         let id = Target.Id.toString(param[0]);
         let targetHistory = Stdlib_Option.getOr(targetHistories[id], []).concat(Stdlib_Option.getOr(targetEvents[id], []));
-        let newEvents = exec$1({
-          id: id,
-          meta: TestFixtures$ReventlessCore.context.meta
-        }, param[1], targetHistory);
+        let newEvents = exec$1(param[1], targetHistory);
         targetEvents[id] = Stdlib_Option.getOr(targetEvents[id], []).concat(newEvents);
         return targetEvents;
       });

@@ -20,7 +20,7 @@ type state = {
   status: string, // "placed" | "shipped" | "cancelled"
 }
 
-let project = (_, event) =>
+let project = event =>
   switch event {
   | OrderPlaced({orderId, customerId, productIds}) => [
       Set(orderId, {orderId, customerId, productIds, status: "placed"}),

@@ -59,7 +59,7 @@ describe("DcbEventLog.readStream (in-memory adapter)", () => {
     })
   })
 
-  describe("fold patterns — (decisionModel, headPosition) used in StateChangeSlice_Callback", () => {
+  describe("fold patterns — (state, headPosition) used in StateChangeSlice_Callback", () => {
     testPromise("runFold extracts last headPosition for append condition", async () => {
       let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
       let _ = await dispatch(addItemJson("fold-1", "FoldItem"), "fold-1")
@@ -79,9 +79,9 @@ describe("DcbEventLog.readStream (in-memory adapter)", () => {
   })
 
   describe("StateChangeSlice regression — second command sees first event via stream fold", () => {
-    testPromise("second AddItem with same ID is rejected (decision model sees existing event)", async () => {
+    testPromise("second AddItem with same ID is rejected (state sees existing event)", async () => {
       // First command succeeds → ItemAdded event stored
-      // Second command: readStream folds all events → decisionModel = true (exists)
+      // Second command: readStream folds all events → state = true (exists)
       // decide(true, AddItem) → Error(ItemAlreadyExists) → no new events
       let id = "dup-test-stream"
       let _ = await dispatch(addItemJson(id, "First"), id)

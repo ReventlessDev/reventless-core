@@ -5,7 +5,7 @@ import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as CatalogProduct$OrderingPlugin from "../Aggregate/CatalogProduct.res.mjs";
 import * as AvailableProductsReadModel$OrderingPlugin from "./AvailableProductsReadModel.res.mjs";
 
-function map(param) {
+function project(param) {
   let event = param.event;
   let id = param.id;
   if (event.TAG === "Synced") {
@@ -13,7 +13,6 @@ function map(param) {
       TAG: "Set",
       _0: id,
       _1: {
-        productId: id,
         name: event.name,
         price: event.price
       }
@@ -24,7 +23,6 @@ function map(param) {
     TAG: "Update",
     _0: id,
     _1: state => ({
-      productId: state.productId,
       name: state.name,
       price: price
     })
@@ -41,7 +39,7 @@ let CatalogProductMapping = Projection$Reventless.Mapping.Make({
   stateSchema: AvailableProductsReadModel$OrderingPlugin.stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
 export {

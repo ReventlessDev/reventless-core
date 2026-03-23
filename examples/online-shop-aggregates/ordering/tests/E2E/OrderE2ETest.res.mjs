@@ -31,11 +31,10 @@ let OrderAgg = AggregateMaker.Make({
   commandSchema: Order$OrderingPlugin.commandSchema,
   moduleUrl: Order$OrderingPlugin.moduleUrl
 })({
+  initialState: OrderBehavior$OrderingPlugin.initialState,
   resolverConfig: OrderBehavior$OrderingPlugin.resolverConfig,
-  init: OrderBehavior$OrderingPlugin.init,
-  apply: OrderBehavior$OrderingPlugin.apply,
-  create: OrderBehavior$OrderingPlugin.create,
-  execute: OrderBehavior$OrderingPlugin.execute,
+  evolve: OrderBehavior$OrderingPlugin.evolve,
+  decide: OrderBehavior$OrderingPlugin.decide,
   moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Order$OrderingPlugin.name,

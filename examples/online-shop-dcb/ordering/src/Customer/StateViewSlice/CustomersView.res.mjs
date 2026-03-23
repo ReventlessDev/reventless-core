@@ -12,7 +12,7 @@ let stateSchema = S.schema(s => ({
   deactivated: s.m(S.bool)
 }));
 
-function project(param, event) {
+function project(event) {
   switch (event.TAG) {
     case "CustomerRegistered" :
       let customerId = event.customerId;

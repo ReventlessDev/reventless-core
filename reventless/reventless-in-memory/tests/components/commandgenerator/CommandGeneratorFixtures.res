@@ -41,24 +41,17 @@ module CGBehavior = {
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let init = (event: CGSpec.event): state =>
+  let initialState = {name: ""}
+
+  let evolve = (_state: state, event: CGSpec.event): state =>
     switch event {
     | CGItemCreated({name}) => {name: name}
     }
 
-  let apply = (_state: state, event: CGSpec.event): state =>
-    switch event {
-    | CGItemCreated({name}) => {name: name}
-    }
-
-  let create = (command: CGSpec.command, _ctx, _errHandler): array<CGSpec.event> =>
+  let decide = (_state: state, command: CGSpec.command): result<array<CGSpec.event>, CGSpec.error> =>
     switch command {
-    | CreateCGItem({name}) => [CGSpec.CGItemCreated({name: name})]
+    | CreateCGItem({name}) => Ok([CGSpec.CGItemCreated({name: name})])
     }
-
-  let execute = (_state: state, _command: CGSpec.command, _ctx, _errHandler): array<
-    CGSpec.event,
-  > => []
 }
 
 // ─────────────────────────────────────────────────────────────

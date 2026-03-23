@@ -9,7 +9,7 @@ module OrderMapping = Mapping.Make(
   OrdersReadModel,
   {
     open Order
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Placed({customerId, productIds}) =>
         Set(id, {OrdersReadModel.customerId: customerId, productIds, status: "placed"})

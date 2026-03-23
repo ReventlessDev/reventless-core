@@ -32,7 +32,11 @@ module AggSpec = {
 
 module TestBehavior = {
   module Spec = AggSpec
-  type state = {name: string}
+
+  @schema
+  type state = NotCreated | Created({name: string})
+
+  let initialState = NotCreated
 
   let resolverConfig: Reventless.Behavior.resolverConfig<AggSpec.command> = {
     commandSchema: AggSpec.commandSchema,
@@ -41,28 +45,18 @@ module TestBehavior = {
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let init = (event: AggSpec.event): state =>
+  let evolve = (_state: state, event: AggSpec.event): state =>
     switch event {
-    | Created({name}) => {name: name}
-    | Renamed({newName}) => {name: newName}
+    | AggSpec.Created({name}) => Created({name: name})
+    | AggSpec.Renamed({newName}) => Created({name: newName})
     }
 
-  let apply = (_state: state, event: AggSpec.event): state =>
-    switch event {
-    | Created({name}) => {name: name}
-    | Renamed({newName}) => {name: newName}
-    }
-
-  let create = (command: AggSpec.command, _ctx, _errHandler): array<AggSpec.event> =>
-    switch command {
-    | Create({name}) => [AggSpec.Created({name: name})]
-    | Rename(_) => []
-    }
-
-  let execute = (_state: state, command: AggSpec.command, _ctx, _errHandler): array<AggSpec.event> =>
-    switch command {
-    | Create(_) => []
-    | Rename({newName}) => [AggSpec.Renamed({newName: newName})]
+  let decide = (state: state, command: AggSpec.command): result<array<AggSpec.event>, AggSpec.error> =>
+    switch (state, command) {
+    | (NotCreated, Create({name})) => Ok([AggSpec.Created({name: name})])
+    | (NotCreated, Rename(_)) => Error(NotFound)
+    | (Created(_), Create(_)) => Error(AlreadyExists)
+    | (Created(_), Rename({newName})) => Ok([AggSpec.Renamed({newName: newName})])
     }
 }
 

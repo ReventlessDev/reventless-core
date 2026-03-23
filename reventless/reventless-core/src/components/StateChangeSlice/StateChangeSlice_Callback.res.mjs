@@ -11,10 +11,10 @@ function Make(Spec) {
   let handleSingleCommand = (dcbEventLog, command$p) => {
     let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
     let attempt = retries => Effect.flatMap(Stream$1.runFold(dcbEventLog.readStream(query, undefined), [
-      Spec.initialDecisionModel,
+      Spec.initialState,
       undefined
     ], (param, se) => [
-      Spec.reduce(param[0], se.event),
+      Spec.evolve(param[0], se.event),
       se.position
     ]), param => {
       let newEvents = Spec.decide(param[0], command$p.command);

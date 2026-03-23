@@ -7,8 +7,8 @@ import * as ChangeProductPrice$CatalogPlugin from "../../src/Product/StateChange
 import * as ChangeProductDescription$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductDescription.res.mjs";
 
 Jest.describe("AddProduct:", () => {
-  Jest.describe("reduce", () => {
-    Jest.test("ProductAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.reduce(AddProduct$CatalogPlugin.initialDecisionModel, {
+  Jest.describe("evolve", () => {
+    Jest.test("ProductAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.evolve(AddProduct$CatalogPlugin.initialState, {
       TAG: "ProductAdded",
       productId: "p1",
       name: "Laptop",
@@ -17,14 +17,14 @@ Jest.describe("AddProduct:", () => {
     })), {
       exists: true
     }));
-    Jest.test("other events do not change model", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.reduce(AddProduct$CatalogPlugin.initialDecisionModel, {
+    Jest.test("other events do not change state", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.evolve(AddProduct$CatalogPlugin.initialState, {
       TAG: "ProductDemandRecorded",
       productId: "p1",
       orderId: "ord-1"
-    })), AddProduct$CatalogPlugin.initialDecisionModel));
+    })), AddProduct$CatalogPlugin.initialState));
   });
   Jest.describe("decide", () => {
-    Jest.test("on non-existent product produces ProductAdded", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.decide(AddProduct$CatalogPlugin.initialDecisionModel, {
+    Jest.test("on non-existent product produces ProductAdded", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.decide(AddProduct$CatalogPlugin.initialState, {
       TAG: "AddProduct",
       productId: "p1",
       name: "Laptop",
@@ -56,12 +56,12 @@ Jest.describe("AddProduct:", () => {
 });
 
 Jest.describe("ChangeProductName:", () => {
-  let existingModel = {
+  let existingState = {
     exists: true,
     currentName: "Laptop"
   };
-  Jest.describe("reduce", () => {
-    Jest.test("ProductAdded sets exists=true and currentName", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.reduce(ChangeProductName$CatalogPlugin.initialDecisionModel, {
+  Jest.describe("evolve", () => {
+    Jest.test("ProductAdded sets exists=true and currentName", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.evolve(ChangeProductName$CatalogPlugin.initialState, {
       TAG: "ProductAdded",
       productId: "p1",
       name: "Laptop",
@@ -71,7 +71,7 @@ Jest.describe("ChangeProductName:", () => {
       exists: true,
       currentName: "Laptop"
     }));
-    Jest.test("ProductNameChanged updates currentName", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.reduce(existingModel, {
+    Jest.test("ProductNameChanged updates currentName", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.evolve(existingState, {
       TAG: "ProductNameChanged",
       productId: "p1",
       name: "Gaming Laptop"
@@ -81,7 +81,7 @@ Jest.describe("ChangeProductName:", () => {
     }));
   });
   Jest.describe("decide", () => {
-    Jest.test("on non-existent product returns ProductNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.decide(ChangeProductName$CatalogPlugin.initialDecisionModel, {
+    Jest.test("on non-existent product returns ProductNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.decide(ChangeProductName$CatalogPlugin.initialState, {
       TAG: "ChangeProductName",
       productId: "p1",
       name: "Gaming Laptop"
@@ -89,7 +89,7 @@ Jest.describe("ChangeProductName:", () => {
       TAG: "Error",
       _0: "ProductNotFound"
     }));
-    Jest.test("same name produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.decide(existingModel, {
+    Jest.test("same name produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.decide(existingState, {
       TAG: "ChangeProductName",
       productId: "p1",
       name: "Laptop"
@@ -97,7 +97,7 @@ Jest.describe("ChangeProductName:", () => {
       TAG: "Ok",
       _0: []
     }));
-    Jest.test("new name produces ProductNameChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.decide(existingModel, {
+    Jest.test("new name produces ProductNameChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.decide(existingState, {
       TAG: "ChangeProductName",
       productId: "p1",
       name: "Gaming Laptop"
@@ -113,12 +113,12 @@ Jest.describe("ChangeProductName:", () => {
 });
 
 Jest.describe("ChangeProductDescription:", () => {
-  let existingModel = {
+  let existingState = {
     exists: true,
     currentDescription: "A laptop"
   };
   Jest.describe("decide", () => {
-    Jest.test("on non-existent product returns ProductNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductDescription$CatalogPlugin.decide(ChangeProductDescription$CatalogPlugin.initialDecisionModel, {
+    Jest.test("on non-existent product returns ProductNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductDescription$CatalogPlugin.decide(ChangeProductDescription$CatalogPlugin.initialState, {
       TAG: "ChangeProductDescription",
       productId: "p1",
       description: "A high-end laptop"
@@ -126,7 +126,7 @@ Jest.describe("ChangeProductDescription:", () => {
       TAG: "Error",
       _0: "ProductNotFound"
     }));
-    Jest.test("same description produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductDescription$CatalogPlugin.decide(existingModel, {
+    Jest.test("same description produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductDescription$CatalogPlugin.decide(existingState, {
       TAG: "ChangeProductDescription",
       productId: "p1",
       description: "A laptop"
@@ -134,7 +134,7 @@ Jest.describe("ChangeProductDescription:", () => {
       TAG: "Ok",
       _0: []
     }));
-    Jest.test("new description produces ProductDescriptionChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductDescription$CatalogPlugin.decide(existingModel, {
+    Jest.test("new description produces ProductDescriptionChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductDescription$CatalogPlugin.decide(existingState, {
       TAG: "ChangeProductDescription",
       productId: "p1",
       description: "A high-end laptop"
@@ -150,12 +150,12 @@ Jest.describe("ChangeProductDescription:", () => {
 });
 
 Jest.describe("ChangeProductPrice:", () => {
-  let existingModel = {
+  let existingState = {
     exists: true,
     currentPrice: 999.99
   };
   Jest.describe("decide", () => {
-    Jest.test("on non-existent product returns ProductNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductPrice$CatalogPlugin.decide(ChangeProductPrice$CatalogPlugin.initialDecisionModel, {
+    Jest.test("on non-existent product returns ProductNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductPrice$CatalogPlugin.decide(ChangeProductPrice$CatalogPlugin.initialState, {
       TAG: "ChangeProductPrice",
       productId: "p1",
       price: 899.99
@@ -163,7 +163,7 @@ Jest.describe("ChangeProductPrice:", () => {
       TAG: "Error",
       _0: "ProductNotFound"
     }));
-    Jest.test("same price produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductPrice$CatalogPlugin.decide(existingModel, {
+    Jest.test("same price produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductPrice$CatalogPlugin.decide(existingState, {
       TAG: "ChangeProductPrice",
       productId: "p1",
       price: 999.99
@@ -171,7 +171,7 @@ Jest.describe("ChangeProductPrice:", () => {
       TAG: "Ok",
       _0: []
     }));
-    Jest.test("new price produces ProductPriceChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductPrice$CatalogPlugin.decide(existingModel, {
+    Jest.test("new price produces ProductPriceChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductPrice$CatalogPlugin.decide(existingState, {
       TAG: "ChangeProductPrice",
       productId: "p1",
       price: 899.99

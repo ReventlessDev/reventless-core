@@ -14,18 +14,18 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CustomerAlreadyRegistered");
 
-function reduce(model, event) {
+function evolve(state, event) {
   if (event.TAG === "CustomerRegistered") {
     return {
       exists: true
     };
   } else {
-    return model;
+    return state;
   }
 }
 
-function decide(model, command) {
-  if (model.exists) {
+function decide(state, command) {
+  if (state.exists) {
     return {
       TAG: "Error",
       _0: "CustomerAlreadyRegistered"
@@ -47,7 +47,7 @@ let name = "RegisterCustomer";
 
 let DcbEventLogSpec;
 
-let initialDecisionModel = {
+let initialState = {
   exists: false
 };
 
@@ -57,8 +57,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

@@ -15,7 +15,7 @@ type event = OrderingEventLog.event
 @schema
 type state = {customerId: string, email: string, address: string, deactivated: bool}
 
-let project = (_, event) =>
+let project = event =>
   switch event {
   | CustomerRegistered({customerId, email, address}) => [
       Set(customerId, {customerId, email, address, deactivated: false}),

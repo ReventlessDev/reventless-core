@@ -20,20 +20,20 @@ type command =
 @schema
 type error = OrderAlreadyPlaced
 
-type decisionModel = {exists: bool}
+type state = {exists: bool}
 
-let initialDecisionModel = {exists: false}
+let initialState = {exists: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | OrderPlaced(_) => {exists: true}
-  | _ => model
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | PlaceOrder({orderId, customerId, productIds}) =>
-    if model.exists {
+    if state.exists {
       Error(OrderAlreadyPlaced)
     } else {
       Ok([OrderPlaced({orderId, customerId, productIds})])

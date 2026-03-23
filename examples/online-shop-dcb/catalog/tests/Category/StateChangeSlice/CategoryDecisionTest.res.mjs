@@ -6,8 +6,8 @@ import * as RenameCategory$CatalogPlugin from "../../../src/Category/StateChange
 import * as ArchiveCategory$CatalogPlugin from "../../../src/Category/StateChangeSlice/ArchiveCategory.res.mjs";
 
 Jest.describe("AddCategory:", () => {
-  Jest.describe("reduce", () => {
-    Jest.test("CategoryAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.reduce(AddCategory$CatalogPlugin.initialDecisionModel, {
+  Jest.describe("evolve", () => {
+    Jest.test("CategoryAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.evolve(AddCategory$CatalogPlugin.initialState, {
       TAG: "CategoryAdded",
       categoryId: "c1",
       name: "Electronics"
@@ -15,7 +15,7 @@ Jest.describe("AddCategory:", () => {
       exists: true,
       archived: false
     }));
-    Jest.test("CategoryArchived sets archived=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.reduce({
+    Jest.test("CategoryArchived sets archived=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.evolve({
       exists: true,
       archived: false
     }, {
@@ -25,16 +25,16 @@ Jest.describe("AddCategory:", () => {
       exists: true,
       archived: true
     }));
-    Jest.test("Product events do not change model", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.reduce(AddCategory$CatalogPlugin.initialDecisionModel, {
+    Jest.test("Product events do not change state", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.evolve(AddCategory$CatalogPlugin.initialState, {
       TAG: "ProductAdded",
       productId: "p1",
       name: "Laptop",
       description: "A laptop",
       price: 999.99
-    })), AddCategory$CatalogPlugin.initialDecisionModel));
+    })), AddCategory$CatalogPlugin.initialState));
   });
   Jest.describe("decide", () => {
-    Jest.test("on non-existent category produces CategoryAdded", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.decide(AddCategory$CatalogPlugin.initialDecisionModel, {
+    Jest.test("on non-existent category produces CategoryAdded", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.decide(AddCategory$CatalogPlugin.initialState, {
       TAG: "AddCategory",
       categoryId: "c1",
       name: "Electronics"
@@ -61,7 +61,7 @@ Jest.describe("AddCategory:", () => {
 });
 
 Jest.describe("RenameCategory:", () => Jest.describe("decide", () => {
-  Jest.test("on non-existent category returns CategoryNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(RenameCategory$CatalogPlugin.decide(RenameCategory$CatalogPlugin.initialDecisionModel, {
+  Jest.test("on non-existent category returns CategoryNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(RenameCategory$CatalogPlugin.decide(RenameCategory$CatalogPlugin.initialState, {
     TAG: "RenameCategory",
     categoryId: "c1",
     name: "Consumer Electronics"
@@ -98,7 +98,7 @@ Jest.describe("RenameCategory:", () => Jest.describe("decide", () => {
 }));
 
 Jest.describe("ArchiveCategory:", () => Jest.describe("decide", () => {
-  Jest.test("on non-existent category returns CategoryNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ArchiveCategory$CatalogPlugin.decide(ArchiveCategory$CatalogPlugin.initialDecisionModel, {
+  Jest.test("on non-existent category returns CategoryNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ArchiveCategory$CatalogPlugin.decide(ArchiveCategory$CatalogPlugin.initialState, {
     TAG: "ArchiveCategory",
     categoryId: "c1"
   })), {

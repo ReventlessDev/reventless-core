@@ -26,6 +26,8 @@ module TestBehavior = {
   module Spec = AggSpec
   type state = {name: string}
 
+  let initialState = {name: ""}
+
   let resolverConfig: Reventless.Behavior.resolverConfig<AggSpec.command> = {
     commandSchema: AggSpec.commandSchema,
     fields: ["name"],
@@ -33,23 +35,15 @@ module TestBehavior = {
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let init = (event: AggSpec.event): state =>
+  let evolve = (_state: state, event: AggSpec.event): state =>
     switch event {
     | Created({name}) => {name: name}
     }
 
-  let apply = (_state: state, event: AggSpec.event): state =>
-    switch event {
-    | Created({name}) => {name: name}
-    }
-
-  let create = (command: AggSpec.command, _ctx, _errHandler): array<AggSpec.event> =>
+  let decide = (_state: state, command: AggSpec.command): result<array<AggSpec.event>, AggSpec.error> =>
     switch command {
-    | Create({name}) => [AggSpec.Created({name: name})]
+    | Create({name}) => Ok([AggSpec.Created({name: name})])
     }
-
-  let execute = (_state: state, _command: AggSpec.command, _ctx, _errHandler): array<AggSpec.event> =>
-    []
 }
 
 type mockEL = {

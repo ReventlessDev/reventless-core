@@ -5,7 +5,7 @@ import * as Product$CatalogPlugin from "../Aggregate/Product.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as ProductsReadModel$CatalogPlugin from "./ProductsReadModel.res.mjs";
 
-function map(param) {
+function project(param) {
   let event = param.event;
   let id = param.id;
   switch (event.TAG) {
@@ -14,7 +14,6 @@ function map(param) {
         TAG: "Set",
         _0: id,
         _1: {
-          productId: id,
           name: event.name,
           description: event.description,
           price: event.price
@@ -26,7 +25,6 @@ function map(param) {
         TAG: "Update",
         _0: id,
         _1: state => ({
-          productId: state.productId,
           name: name,
           description: state.description,
           price: state.price
@@ -38,7 +36,6 @@ function map(param) {
         TAG: "Update",
         _0: id,
         _1: state => ({
-          productId: state.productId,
           name: state.name,
           description: description,
           price: state.price
@@ -50,7 +47,6 @@ function map(param) {
         TAG: "Update",
         _0: id,
         _1: state => ({
-          productId: state.productId,
           name: state.name,
           description: state.description,
           price: price
@@ -69,7 +65,7 @@ let ProductMapping = Projection$Reventless.Mapping.Make({
   stateSchema: ProductsReadModel$CatalogPlugin.stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
 export {

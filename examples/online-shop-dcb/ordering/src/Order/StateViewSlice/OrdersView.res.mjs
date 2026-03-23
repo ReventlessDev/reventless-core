@@ -12,7 +12,7 @@ let stateSchema = S.schema(s => ({
   status: s.m(S.string)
 }));
 
-function project(param, event) {
+function project(event) {
   switch (event.TAG) {
     case "OrderPlaced" :
       let orderId = event.orderId;

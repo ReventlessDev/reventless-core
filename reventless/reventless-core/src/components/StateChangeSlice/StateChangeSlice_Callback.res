@@ -34,12 +34,12 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
 
     let rec attempt = (~retries) =>
       dcbEventLog.readStream(~query)
-      ->Stream.runFold((Spec.initialDecisionModel, None), ((dm, _pos), se) => (
-        Spec.reduce(dm, se.event),
+      ->Stream.runFold((Spec.initialState, None), ((dm, _pos), se) => (
+        Spec.evolve(dm, se.event),
         Some(se.position),
       ))
-      ->Effect.flatMap(((decisionModel, headPosition)) =>
-        switch Spec.decide(decisionModel, command'.command) {
+      ->Effect.flatMap(((state, headPosition)) =>
+        switch Spec.decide(state, command'.command) {
         | Ok(newEvents) if newEvents->Array.length == 0 =>
           Effect.logInfo(`StateChangeSlice(${Spec.name}): no events generated`)->Effect.map(_ => Ok(
             "ok",

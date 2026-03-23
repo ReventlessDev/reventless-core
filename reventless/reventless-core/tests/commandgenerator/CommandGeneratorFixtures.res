@@ -42,19 +42,16 @@ module CmdGenBehavior = {
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let init = (_event: CmdGenAggSpec.event): state => ()
-  let apply = (_state: state, _event: CmdGenAggSpec.event): state => ()
+  let initialState = ()
 
-  let create = (command: CmdGenAggSpec.command, _ctx, _errHandler): array<CmdGenAggSpec.event> =>
+  let evolve = (_state: state, _event: CmdGenAggSpec.event): state => ()
+
+  let decide = (_state: state, command: CmdGenAggSpec.command): result<array<CmdGenAggSpec.event>, CmdGenAggSpec.error> =>
     switch command {
-    | Create => [CmdGenAggSpec.Created]
-    | CreateWithName({name}) => [CmdGenAggSpec.CreatedWithName({name: name})]
-    | Invalid => []
+    | Create => Ok([CmdGenAggSpec.Created])
+    | CreateWithName({name}) => Ok([CmdGenAggSpec.CreatedWithName({name: name})])
+    | Invalid => Ok([])
     }
-
-  let execute = (_state: state, _command: CmdGenAggSpec.command, _ctx, _errHandler): array<
-    CmdGenAggSpec.event,
-  > => []
 }
 
 // ─────────────────────────────────────────────────────────────

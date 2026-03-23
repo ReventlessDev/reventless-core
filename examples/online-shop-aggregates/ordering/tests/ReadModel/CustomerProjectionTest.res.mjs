@@ -21,7 +21,6 @@ describe("CustomerProjection:", () => {
     email: "alice@example.com",
     address: "123 Main St"
   }), {
-    customerId: "id",
     email: "alice@example.com",
     address: "123 Main St",
     deactivated: false
@@ -34,7 +33,6 @@ describe("CustomerProjection:", () => {
     TAG: "EmailUpdated",
     email: "alice2@example.com"
   }), {
-    customerId: "id",
     email: "alice2@example.com",
     address: "123 Main St",
     deactivated: false
@@ -47,7 +45,6 @@ describe("CustomerProjection:", () => {
     TAG: "AddressUpdated",
     address: "789 Pine Rd"
   }), {
-    customerId: "id",
     email: "alice@example.com",
     address: "789 Pine Rd",
     deactivated: false
@@ -57,7 +54,6 @@ describe("CustomerProjection:", () => {
       email: "alice@example.com",
       address: "123 Main St"
     }]), "Deactivated"), {
-    customerId: "id",
     email: "alice@example.com",
     address: "123 Main St",
     deactivated: true

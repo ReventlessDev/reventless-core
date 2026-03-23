@@ -15,22 +15,13 @@ type event = CatalogEventLog.event
 @schema
 type state = {productId: string, name: string, orderCount: int}
 
-let project = (state, event) =>
+let project = event =>
   switch event {
   | ProductAdded({productId, name}) =>
-    switch state {
-    | None => [Set(productId, {productId, name, orderCount: 0})]
-    | Some(s) => [Set(productId, {...s, name})]
-    }
+    [UpdateWithDefault(productId, {productId, name, orderCount: 0}, s => {...s, name})]
   | ProductDemandRecorded({productId}) =>
-    switch state {
-    | Some(s) => [Set(productId, {...s, orderCount: s.orderCount + 1})]
-    | None => []
-    }
+    [Update(productId, s => {...s, orderCount: s.orderCount + 1})]
   | ProductDemandRevoked({productId}) =>
-    switch state {
-    | Some(s) => [Set(productId, {...s, orderCount: max(0, s.orderCount - 1)})]
-    | None => []
-    }
+    [Update(productId, s => {...s, orderCount: max(0, s.orderCount - 1)})]
   | _ => []
   }

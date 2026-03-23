@@ -60,7 +60,7 @@ function Make(RuntimeEnvironment) {
           let ec = SpecificEventCollector.make(Spec.name, allEventTopics, opts);
           let jsonEventsHandler = stream => Stream.runForEach(Stream.flatMap(Stream.mapEffect(stream, json => Effect.sync(() => {
             try {
-              return Spec.project(undefined, S.parseJsonOrThrow(json, Spec.DcbEventLogSpec.eventSchema));
+              return Spec.project(S.parseJsonOrThrow(json, Spec.DcbEventLogSpec.eventSchema));
             } catch (raw_exn) {
               let exn = Primitive_exceptions.internalToException(raw_exn);
               console.log("StateViewSlice: Failed to decode event:", exn);

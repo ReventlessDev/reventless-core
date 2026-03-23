@@ -44,7 +44,7 @@ describe("DcbEventLog.readStream (in-memory adapter)", () => {
       expect(result.length).toBe(1);
     });
   });
-  describe("fold patterns — (decisionModel, headPosition) used in StateChangeSlice_Callback", () => {
+  describe("fold patterns — (state, headPosition) used in StateChangeSlice_Callback", () => {
     test("runFold extracts last headPosition for append condition", async () => {
       let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessInMemory.eventLog));
       await DcbFixtures$ReventlessInMemory.dispatch(DcbFixtures$ReventlessInMemory.addItemJson("fold-1", "FoldItem"), "fold-1");
@@ -70,7 +70,7 @@ describe("DcbEventLog.readStream (in-memory adapter)", () => {
     });
   });
   describe("StateChangeSlice regression — second command sees first event via stream fold", () => {
-    test("second AddItem with same ID is rejected (decision model sees existing event)", async () => {
+    test("second AddItem with same ID is rejected (state sees existing event)", async () => {
       let id = "dup-test-stream";
       await DcbFixtures$ReventlessInMemory.dispatch(DcbFixtures$ReventlessInMemory.addItemJson(id, "First"), id);
       let countBefore = DcbFixtures$ReventlessInMemory.capturedEventCount.contents;

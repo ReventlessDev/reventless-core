@@ -4,7 +4,6 @@ import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
 let stateSchema = S.schema(s => ({
-  categoryId: s.m(S.string),
   name: s.m(S.string),
   archived: s.m(S.bool)
 }));

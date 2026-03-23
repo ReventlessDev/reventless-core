@@ -13,7 +13,7 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("ProductNotFound");
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "ProductAdded" :
       return {
@@ -22,23 +22,23 @@ function reduce(model, event) {
       };
     case "ProductPriceChanged" :
       return {
-        exists: model.exists,
+        exists: state.exists,
         currentPrice: event.price
       };
     default:
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
-  if (!model.exists) {
+function decide(state, command) {
+  if (!state.exists) {
     return {
       TAG: "Error",
       _0: "ProductNotFound"
     };
   }
   let price = command.price;
-  if (price === model.currentPrice) {
+  if (price === state.currentPrice) {
     return {
       TAG: "Ok",
       _0: []
@@ -59,7 +59,7 @@ let name = "ChangeProductPrice";
 
 let DcbEventLogSpec;
 
-let initialDecisionModel = {
+let initialState = {
   exists: false,
   currentPrice: 0.0
 };
@@ -70,8 +70,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

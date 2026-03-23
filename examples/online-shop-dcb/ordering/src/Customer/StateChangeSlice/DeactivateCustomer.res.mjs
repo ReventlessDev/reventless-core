@@ -12,7 +12,7 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CustomerNotFound");
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "CustomerRegistered" :
       return {
@@ -21,17 +21,17 @@ function reduce(model, event) {
       };
     case "CustomerDeactivated" :
       return {
-        exists: model.exists,
+        exists: state.exists,
         deactivated: true
       };
     default:
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
-  if (model.exists) {
-    if (model.deactivated) {
+function decide(state, command) {
+  if (state.exists) {
+    if (state.deactivated) {
       return {
         TAG: "Ok",
         _0: []
@@ -57,7 +57,7 @@ let name = "DeactivateCustomer";
 
 let DcbEventLogSpec;
 
-let initialDecisionModel = {
+let initialState = {
   exists: false,
   deactivated: false
 };
@@ -68,8 +68,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

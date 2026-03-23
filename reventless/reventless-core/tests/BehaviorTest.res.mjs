@@ -6,43 +6,25 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../src/Message.res.mjs";
-import * as TestFixtures$ReventlessCore from "./TestFixtures.res.mjs";
 
 function Make(Spec) {
   return Behavior => {
     S.enableJson();
-    let apply$p = (state, event) => Behavior.apply(state, event);
-    let currentState = events => Stdlib_Array.reduce(events.slice(1), Behavior.init(events[0]), apply$p);
     let errors = {
       contents: []
     };
-    let errorHandler = (error, param, param$1) => {
-      errors.contents = errors.contents.concat([error]);
+    let givenEvents = events => events;
+    let whenCmd = (history, cmd) => {
+      errors.contents = [];
+      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
+      let events = Behavior.decide(state, cmd);
+      if (events.TAG === "Ok") {
+        return events._0;
+      }
+      errors.contents = [events._0];
       return [];
     };
-    let exec = (history, context, command) => {
-      errors.contents = [];
-      if (history.length === 0) {
-        return Behavior.create(command, context, errorHandler);
-      }
-      try {
-        return Behavior.execute(currentState(history), command, TestFixtures$ReventlessCore.context, errorHandler);
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        if (exn.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
-          return [];
-        }
-        throw exn;
-      }
-    };
-    let givenEvents = events => events;
-    let whenCmd = (history, cmd) => exec(history, TestFixtures$ReventlessCore.context, cmd);
-    let whenCmdWithId = (history, id, cmd) => exec(history, {
-      id: id,
-      meta: TestFixtures$ReventlessCore.context.meta
-    }, cmd);
     let thenEvents = (events, expectedEvents) => Jest.Expect.toEqual(Jest.Expect.expect([
       errors.contents.length,
       events
@@ -139,7 +121,6 @@ function Make(Spec) {
       test: Jest.test,
       givenEvents: givenEvents,
       whenCmd: whenCmd,
-      whenCmdWithId: whenCmdWithId,
       thenEvent: thenEvent,
       thenCompareEvent: thenCompareEvent,
       thenNoEvent: thenNoEvent,

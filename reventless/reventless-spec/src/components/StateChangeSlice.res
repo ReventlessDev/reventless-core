@@ -3,7 +3,7 @@ Module type for a DCB write-side state change slice specification.
 
 A `StateChangeSlice` is the DCB equivalent of an aggregate: it processes
 commands by reading the relevant events from a shared `DcbEventLog`, building
-a `decisionModel` (ephemeral read model), and appending new events conditioned
+a `state` (ephemeral read model), and appending new events conditioned
 on no concurrent changes to the same entities.
 
 @example
@@ -15,18 +15,18 @@ module DcbEventLogSpec = CatalogEventLog
 @schema type command = AddCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
 @schema type error = CategoryAlreadyExists
 
-type decisionModel = {exists: bool, archived: bool}
-let initialDecisionModel = {exists: false, archived: false}
+type state = {exists: bool, archived: bool}
+let initialState = {exists: false, archived: false}
 
-let reduce = (model, event) => switch event {
+let evolve = (state, event) => switch event {
   | CategoryAdded(_) => {exists: true, archived: false}
-  | CategoryArchived(_) => {...model, archived: true}
-  | _ => model
+  | CategoryArchived(_) => {...state, archived: true}
+  | _ => state
 }
 
-let decide = (model, command) => switch command {
+let decide = (state, command) => switch command {
   | AddCategory({categoryId, name}) =>
-    if model.exists { Error(CategoryAlreadyExists) }
+    if state.exists { Error(CategoryAlreadyExists) }
     else { Ok([CategoryAdded({categoryId, name})]) }
 }
 
@@ -51,25 +51,25 @@ module type Spec = {
   type error
 
   /**
-  The ephemeral decision model built by replaying relevant events.
+  The ephemeral state built by replaying relevant events.
   Not persisted — reconstructed for each command by reading from the DCB log.
   */
-  type decisionModel
+  type state
 
-  /** The initial (empty) decision model before any events have been applied. */
-  let initialDecisionModel: decisionModel
+  /** The initial (empty) state before any events have been applied. */
+  let initialState: state
 
   /**
-  Folds one DCB event into the decision model during the read phase.
+  Folds one DCB event into the state during the read phase.
   Must be a pure function — no side effects.
   */
-  let reduce: (decisionModel, DcbEventLogSpec.event) => decisionModel
+  let evolve: (state, DcbEventLogSpec.event) => state
 
   /**
-  Decides what events to append given the current decision model and the command.
+  Decides what events to append given the current state and the command.
   Return `Ok(events)` to append, or `Error(error)` to reject the command.
   */
-  let decide: (decisionModel, command) => result<array<DcbEventLogSpec.event>, error>
+  let decide: (state, command) => result<array<DcbEventLogSpec.event>, error>
 
   /** Schema for the command type — used to extract DCB tags for the conditional read. */
   let commandSchema: S.t<command>

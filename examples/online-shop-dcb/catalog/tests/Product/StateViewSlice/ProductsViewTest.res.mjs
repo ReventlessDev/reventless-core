@@ -22,7 +22,7 @@ function applyFirstUpdate(actions, baseState) {
 }
 
 Jest.describe("ProductsView.project:", () => {
-  Jest.test("ProductAdded creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(ProductsView$CatalogPlugin.project(undefined, {
+  Jest.test("ProductAdded creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(ProductsView$CatalogPlugin.project({
     TAG: "ProductAdded",
     productId: "p1",
     name: "Laptop",
@@ -38,7 +38,7 @@ Jest.describe("ProductsView.project:", () => {
         price: 999.99
       }
     }]));
-  Jest.test("ProductNameChanged Update function changes name", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project(undefined, {
+  Jest.test("ProductNameChanged Update function changes name", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project({
     TAG: "ProductNameChanged",
     productId: "p1",
     name: "Gaming Laptop"
@@ -48,7 +48,7 @@ Jest.describe("ProductsView.project:", () => {
     description: "A laptop",
     price: 999.99
   }));
-  Jest.test("ProductDescriptionChanged Update function changes description", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project(undefined, {
+  Jest.test("ProductDescriptionChanged Update function changes description", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project({
     TAG: "ProductDescriptionChanged",
     productId: "p1",
     description: "A high-end laptop"
@@ -58,7 +58,7 @@ Jest.describe("ProductsView.project:", () => {
     description: "A high-end laptop",
     price: 999.99
   }));
-  Jest.test("ProductPriceChanged Update function changes price", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project(undefined, {
+  Jest.test("ProductPriceChanged Update function changes price", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project({
     TAG: "ProductPriceChanged",
     productId: "p1",
     price: 899.99
@@ -68,7 +68,7 @@ Jest.describe("ProductsView.project:", () => {
     description: "A laptop",
     price: 899.99
   }));
-  Jest.test("Category events return empty (not handled by ProductsView)", () => Jest.Expect.toEqual(Jest.Expect.expect(ProductsView$CatalogPlugin.project(undefined, {
+  Jest.test("Category events return empty (not handled by ProductsView)", () => Jest.Expect.toEqual(Jest.Expect.expect(ProductsView$CatalogPlugin.project({
     TAG: "CategoryAdded",
     categoryId: "c1",
     name: "Books"

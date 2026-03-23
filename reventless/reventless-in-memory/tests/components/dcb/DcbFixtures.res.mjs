@@ -39,12 +39,12 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("ItemAlreadyExists");
 
-function reduce(_model, _event) {
+function evolve(_state, _event) {
   return true;
 }
 
-function decide(model, command) {
-  if (model) {
+function decide(state, command) {
+  if (state) {
     return {
       TAG: "Error",
       _0: "ItemAlreadyExists"
@@ -66,8 +66,8 @@ let AddItemSpec = {
   moduleUrl: moduleUrl$1,
   DcbEventLogSpec: undefined,
   errorSchema: errorSchema,
-  initialDecisionModel: false,
-  reduce: reduce,
+  initialState: false,
+  evolve: evolve,
   decide: decide,
   commandSchema: commandSchema
 };
@@ -95,8 +95,8 @@ let AddItemMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: moduleUrl$1,
   DcbEventLogSpec: ItemEventLog,
   errorSchema: errorSchema,
-  initialDecisionModel: false,
-  reduce: reduce,
+  initialState: false,
+  evolve: evolve,
   decide: decide,
   commandSchema: commandSchema
 });

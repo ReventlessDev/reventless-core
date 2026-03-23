@@ -22,7 +22,6 @@ describe("ProductProjection:", () => {
     description: "A laptop",
     price: 999.99
   }), {
-    productId: "id",
     name: "Laptop",
     description: "A laptop",
     price: 999.99
@@ -36,7 +35,6 @@ describe("ProductProjection:", () => {
     TAG: "NameUpdated",
     name: "Gaming Laptop"
   }), {
-    productId: "id",
     name: "Gaming Laptop",
     description: "A laptop",
     price: 999.99
@@ -50,7 +48,6 @@ describe("ProductProjection:", () => {
     TAG: "DescriptionUpdated",
     description: "A high-end laptop"
   }), {
-    productId: "id",
     name: "Laptop",
     description: "A high-end laptop",
     price: 999.99
@@ -64,7 +61,6 @@ describe("ProductProjection:", () => {
     TAG: "PriceUpdated",
     price: 899.99
   }), {
-    productId: "id",
     name: "Laptop",
     description: "A laptop",
     price: 899.99

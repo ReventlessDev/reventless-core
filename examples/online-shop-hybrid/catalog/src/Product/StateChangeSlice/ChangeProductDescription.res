@@ -16,26 +16,26 @@ type command =
 @schema
 type error = ProductNotFound
 
-type decisionModel = {exists: bool, currentDescription: string}
+type state = {exists: bool, currentDescription: string}
 
-let initialDecisionModel = {exists: false, currentDescription: ""}
+let initialState = {exists: false, currentDescription: ""}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ProductAdded({description}) => {exists: true, currentDescription: description}
   | ProductDescriptionChanged({description}) => {
-      ...model,
+      ...state,
       currentDescription: description,
     }
-  | _ => model
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | ChangeProductDescription({productId, description}) =>
-    if !model.exists {
+    if !state.exists {
       Error(ProductNotFound)
-    } else if description == model.currentDescription {
+    } else if description == state.currentDescription {
       Ok([]) // idempotent — description unchanged
     } else {
       Ok([ProductDescriptionChanged({productId, description})])

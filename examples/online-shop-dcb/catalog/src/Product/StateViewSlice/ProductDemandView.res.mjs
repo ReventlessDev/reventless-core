@@ -12,60 +12,45 @@ let stateSchema = S.schema(s => ({
   orderCount: s.m(S.int)
 }));
 
-function project(state, event) {
+function project(event) {
   switch (event.TAG) {
     case "ProductAdded" :
       let name = event.name;
       let productId = event.productId;
-      if (state !== undefined) {
-        return [{
-            TAG: "Set",
-            _0: productId,
-            _1: {
-              productId: state.productId,
-              name: name,
-              orderCount: state.orderCount
-            }
-          }];
-      } else {
-        return [{
-            TAG: "Set",
-            _0: productId,
-            _1: {
-              productId: productId,
-              name: name,
-              orderCount: 0
-            }
-          }];
-      }
+      return [{
+          TAG: "UpdateWithDefault",
+          _0: productId,
+          _1: {
+            productId: productId,
+            name: name,
+            orderCount: 0
+          },
+          _2: s => ({
+            productId: s.productId,
+            name: name,
+            orderCount: s.orderCount
+          })
+        }];
     case "ProductDemandRecorded" :
-      if (state !== undefined) {
-        return [{
-            TAG: "Set",
-            _0: event.productId,
-            _1: {
-              productId: state.productId,
-              name: state.name,
-              orderCount: state.orderCount + 1 | 0
-            }
-          }];
-      } else {
-        return [];
-      }
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: s => ({
+            productId: s.productId,
+            name: s.name,
+            orderCount: s.orderCount + 1 | 0
+          })
+        }];
     case "ProductDemandRevoked" :
-      if (state !== undefined) {
-        return [{
-            TAG: "Set",
-            _0: event.productId,
-            _1: {
-              productId: state.productId,
-              name: state.name,
-              orderCount: Primitive_int.max(0, state.orderCount - 1 | 0)
-            }
-          }];
-      } else {
-        return [];
-      }
+      return [{
+          TAG: "Update",
+          _0: event.productId,
+          _1: s => ({
+            productId: s.productId,
+            name: s.name,
+            orderCount: Primitive_int.max(0, s.orderCount - 1 | 0)
+          })
+        }];
     default:
       return [];
   }

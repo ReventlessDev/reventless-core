@@ -41,8 +41,8 @@ let RegisterCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
-  initialDecisionModel: RegisterCustomer$OrderingPlugin.initialDecisionModel,
-  reduce: RegisterCustomer$OrderingPlugin.reduce,
+  initialState: RegisterCustomer$OrderingPlugin.initialState,
+  evolve: RegisterCustomer$OrderingPlugin.evolve,
   decide: RegisterCustomer$OrderingPlugin.decide,
   commandSchema: RegisterCustomer$OrderingPlugin.commandSchema
 });
@@ -52,8 +52,8 @@ let ChangeEmailMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
-  initialDecisionModel: ChangeEmail$OrderingPlugin.initialDecisionModel,
-  reduce: ChangeEmail$OrderingPlugin.reduce,
+  initialState: ChangeEmail$OrderingPlugin.initialState,
+  evolve: ChangeEmail$OrderingPlugin.evolve,
   decide: ChangeEmail$OrderingPlugin.decide,
   commandSchema: ChangeEmail$OrderingPlugin.commandSchema
 });
@@ -63,8 +63,8 @@ let ChangeAddressMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
-  initialDecisionModel: ChangeAddress$OrderingPlugin.initialDecisionModel,
-  reduce: ChangeAddress$OrderingPlugin.reduce,
+  initialState: ChangeAddress$OrderingPlugin.initialState,
+  evolve: ChangeAddress$OrderingPlugin.evolve,
   decide: ChangeAddress$OrderingPlugin.decide,
   commandSchema: ChangeAddress$OrderingPlugin.commandSchema
 });
@@ -74,8 +74,8 @@ let DeactivateCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
-  initialDecisionModel: DeactivateCustomer$OrderingPlugin.initialDecisionModel,
-  reduce: DeactivateCustomer$OrderingPlugin.reduce,
+  initialState: DeactivateCustomer$OrderingPlugin.initialState,
+  evolve: DeactivateCustomer$OrderingPlugin.evolve,
   decide: DeactivateCustomer$OrderingPlugin.decide,
   commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema
 });
@@ -85,8 +85,8 @@ let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
-  initialDecisionModel: PlaceOrder$OrderingPlugin.initialDecisionModel,
-  reduce: PlaceOrder$OrderingPlugin.reduce,
+  initialState: PlaceOrder$OrderingPlugin.initialState,
+  evolve: PlaceOrder$OrderingPlugin.evolve,
   decide: PlaceOrder$OrderingPlugin.decide,
   commandSchema: PlaceOrder$OrderingPlugin.commandSchema
 });
@@ -96,8 +96,8 @@ let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: ShipOrder$OrderingPlugin.errorSchema,
-  initialDecisionModel: ShipOrder$OrderingPlugin.initialDecisionModel,
-  reduce: ShipOrder$OrderingPlugin.reduce,
+  initialState: ShipOrder$OrderingPlugin.initialState,
+  evolve: ShipOrder$OrderingPlugin.evolve,
   decide: ShipOrder$OrderingPlugin.decide,
   commandSchema: ShipOrder$OrderingPlugin.commandSchema
 });
@@ -107,8 +107,8 @@ let CancelOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
   DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
   errorSchema: CancelOrder$OrderingPlugin.errorSchema,
-  initialDecisionModel: CancelOrder$OrderingPlugin.initialDecisionModel,
-  reduce: CancelOrder$OrderingPlugin.reduce,
+  initialState: CancelOrder$OrderingPlugin.initialState,
+  evolve: CancelOrder$OrderingPlugin.evolve,
   decide: CancelOrder$OrderingPlugin.decide,
   commandSchema: CancelOrder$OrderingPlugin.commandSchema
 });

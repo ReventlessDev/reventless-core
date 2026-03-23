@@ -7,8 +7,8 @@ import * as RegisterCustomer$OrderingPlugin from "../../../src/Customer/StateCha
 import * as DeactivateCustomer$OrderingPlugin from "../../../src/Customer/StateChangeSlice/DeactivateCustomer.res.mjs";
 
 Jest.describe("RegisterCustomer:", () => {
-  Jest.describe("reduce", () => {
-    Jest.test("CustomerRegistered sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.reduce(RegisterCustomer$OrderingPlugin.initialDecisionModel, {
+  Jest.describe("evolve", () => {
+    Jest.test("CustomerRegistered sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.evolve(RegisterCustomer$OrderingPlugin.initialState, {
       TAG: "CustomerRegistered",
       customerId: "cust-1",
       email: "alice@example.com",
@@ -16,15 +16,15 @@ Jest.describe("RegisterCustomer:", () => {
     })), {
       exists: true
     }));
-    Jest.test("Order events do not change model", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.reduce(RegisterCustomer$OrderingPlugin.initialDecisionModel, {
+    Jest.test("Order events do not change state", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.evolve(RegisterCustomer$OrderingPlugin.initialState, {
       TAG: "OrderPlaced",
       orderId: "ord-1",
       customerId: "cust-1",
       productIds: ["prod-1"]
-    })), RegisterCustomer$OrderingPlugin.initialDecisionModel));
+    })), RegisterCustomer$OrderingPlugin.initialState));
   });
   Jest.describe("decide", () => {
-    Jest.test("on non-existent customer produces CustomerRegistered", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.decide(RegisterCustomer$OrderingPlugin.initialDecisionModel, {
+    Jest.test("on non-existent customer produces CustomerRegistered", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.decide(RegisterCustomer$OrderingPlugin.initialState, {
       TAG: "RegisterCustomer",
       customerId: "cust-1",
       email: "alice@example.com",
@@ -53,13 +53,13 @@ Jest.describe("RegisterCustomer:", () => {
 });
 
 Jest.describe("ChangeEmail:", () => {
-  let activeModel = {
+  let activeState = {
     exists: true,
     deactivated: false,
     currentEmail: "alice@example.com"
   };
   Jest.describe("decide", () => {
-    Jest.test("on non-existent customer returns CustomerNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeEmail$OrderingPlugin.decide(ChangeEmail$OrderingPlugin.initialDecisionModel, {
+    Jest.test("on non-existent customer returns CustomerNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeEmail$OrderingPlugin.decide(ChangeEmail$OrderingPlugin.initialState, {
       TAG: "ChangeEmail",
       customerId: "cust-1",
       email: "new@example.com"
@@ -79,7 +79,7 @@ Jest.describe("ChangeEmail:", () => {
       TAG: "Error",
       _0: "CustomerAlreadyDeactivated"
     }));
-    Jest.test("same email produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeEmail$OrderingPlugin.decide(activeModel, {
+    Jest.test("same email produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeEmail$OrderingPlugin.decide(activeState, {
       TAG: "ChangeEmail",
       customerId: "cust-1",
       email: "alice@example.com"
@@ -87,7 +87,7 @@ Jest.describe("ChangeEmail:", () => {
       TAG: "Ok",
       _0: []
     }));
-    Jest.test("new email produces EmailChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeEmail$OrderingPlugin.decide(activeModel, {
+    Jest.test("new email produces EmailChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeEmail$OrderingPlugin.decide(activeState, {
       TAG: "ChangeEmail",
       customerId: "cust-1",
       email: "alice2@example.com"
@@ -103,13 +103,13 @@ Jest.describe("ChangeEmail:", () => {
 });
 
 Jest.describe("ChangeAddress:", () => {
-  let activeModel = {
+  let activeState = {
     exists: true,
     deactivated: false,
     currentAddress: "123 Main St"
   };
   Jest.describe("decide", () => {
-    Jest.test("on non-existent customer returns CustomerNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeAddress$OrderingPlugin.decide(ChangeAddress$OrderingPlugin.initialDecisionModel, {
+    Jest.test("on non-existent customer returns CustomerNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeAddress$OrderingPlugin.decide(ChangeAddress$OrderingPlugin.initialState, {
       TAG: "ChangeAddress",
       customerId: "cust-1",
       address: "789 Pine Rd"
@@ -117,7 +117,7 @@ Jest.describe("ChangeAddress:", () => {
       TAG: "Error",
       _0: "CustomerNotFound"
     }));
-    Jest.test("same address produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeAddress$OrderingPlugin.decide(activeModel, {
+    Jest.test("same address produces no events (idempotent)", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeAddress$OrderingPlugin.decide(activeState, {
       TAG: "ChangeAddress",
       customerId: "cust-1",
       address: "123 Main St"
@@ -125,7 +125,7 @@ Jest.describe("ChangeAddress:", () => {
       TAG: "Ok",
       _0: []
     }));
-    Jest.test("new address produces AddressChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeAddress$OrderingPlugin.decide(activeModel, {
+    Jest.test("new address produces AddressChanged", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeAddress$OrderingPlugin.decide(activeState, {
       TAG: "ChangeAddress",
       customerId: "cust-1",
       address: "789 Pine Rd"
@@ -141,7 +141,7 @@ Jest.describe("ChangeAddress:", () => {
 });
 
 Jest.describe("DeactivateCustomer:", () => Jest.describe("decide", () => {
-  Jest.test("on non-existent customer returns CustomerNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(DeactivateCustomer$OrderingPlugin.decide(DeactivateCustomer$OrderingPlugin.initialDecisionModel, {
+  Jest.test("on non-existent customer returns CustomerNotFound", () => Jest.Expect.toEqual(Jest.Expect.expect(DeactivateCustomer$OrderingPlugin.decide(DeactivateCustomer$OrderingPlugin.initialState, {
     TAG: "DeactivateCustomer",
     customerId: "cust-1"
   })), {

@@ -5,10 +5,13 @@ module Spec = PluginSpec
 
 @schema
 type state =
+  | NotConnected
   | Detected
   | Connected(pluginDefinition)
   | Disconnected(pluginDefinition)
   | Inactive(pluginDefinition)
+
+let initialState = NotConnected
 
 let resolverConfig = {
   {
@@ -21,79 +24,77 @@ let atomicCounter = None
 
 let moduleUrl: string = %raw(`import.meta.url`)
 
-let create: Behavior.create<command, event, error> = (command, context, error) =>
-  switch command {
-  | Heartbeat => [UnknownPluginDetected]
-  | Connect(_)
-  | Disconnect
-  | Activate
-  | Deactivate
-  | ReportIncompatibility(_) =>
-    error(NotExisting, command, context)
-  }
-
-let execute: Behavior.execute<state, command, event, error> = (state, command, context, error) =>
+let decide = (state, command) =>
   switch state {
-  | Detected =>
+  | NotConnected =>
     switch command {
-    | Connect(pluginDefinition) => [(Connected(pluginDefinition): event)]
-    | Heartbeat => [UnknownPluginDetected]
-    | ReportIncompatibility(pluginDefinition) => [IncompatiblePluginDetected(pluginDefinition)]
+    | Heartbeat => Ok([UnknownPluginDetected])
+    | Connect(_)
     | Disconnect
     | Activate
-    | Deactivate => []
+    | Deactivate
+    | ReportIncompatibility(_) =>
+      Error(NotExisting)
+    }
+  | Detected =>
+    switch command {
+    | Connect(pluginDefinition) => Ok([(Connected(pluginDefinition): event)])
+    | Heartbeat => Ok([UnknownPluginDetected])
+    | ReportIncompatibility(pluginDefinition) => Ok([IncompatiblePluginDetected(pluginDefinition)])
+    | Disconnect
+    | Activate
+    | Deactivate => Ok([])
     }
   | Connected(pluginDefinition) =>
     switch command {
-    | Disconnect => [Disconnected(pluginDefinition)]
-    | Deactivate => [Deactivated(pluginDefinition)]
-    | Heartbeat => [] // ignore
-    | ReportIncompatibility(incompatibleDef) => [IncompatiblePluginDetected(incompatibleDef)]
+    | Disconnect => Ok([Disconnected(pluginDefinition)])
+    | Deactivate => Ok([Deactivated(pluginDefinition)])
+    | Heartbeat => Ok([]) // ignore
+    | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)
     | Activate =>
-      error(AlreadyConnected, command, context)
+      Error(AlreadyConnected)
     }
   | Disconnected(pluginDefinition) =>
     switch command {
-    | Heartbeat => [Reconnected(pluginDefinition)]
-    | Deactivate => [Deactivated(pluginDefinition)]
-    | ReportIncompatibility(incompatibleDef) => [IncompatiblePluginDetected(incompatibleDef)]
+    | Heartbeat => Ok([Reconnected(pluginDefinition)])
+    | Deactivate => Ok([Deactivated(pluginDefinition)])
+    | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)
     | Disconnect
     | Activate =>
-      error(IsDisconnected, command, context)
+      Error(IsDisconnected)
     }
   | Inactive(pluginDefinition) =>
     switch command {
-    | Activate => [Activated(pluginDefinition)]
-    | Heartbeat => [] // ignore
-    | ReportIncompatibility(incompatibleDef) => [IncompatiblePluginDetected(incompatibleDef)]
+    | Activate => Ok([Activated(pluginDefinition)])
+    | Heartbeat => Ok([]) // ignore
+    | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)
     | Disconnect
     | Deactivate =>
-      error(IsInactive, command, context)
+      Error(IsInactive)
     }
   }
 
-let init: Behavior.init<state, event> = event =>
-  switch event {
-  | UnknownPluginDetected => Detected
-  | Connected(_)
-  | Reconnected(_)
-  | Disconnected(_)
-  | Activated(_)
-  | Deactivated(_)
-  | IncompatiblePluginDetected(_) =>
-    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
-  }
-
-let apply: Behavior.apply<state, event> = (state: state, event) =>
+let evolve = (state: state, event) =>
   switch state {
+  | NotConnected =>
+    switch event {
+    | UnknownPluginDetected => Detected
+    | Connected(pluginDefinition) => Connected(pluginDefinition)
+    | IncompatiblePluginDetected(_) => state
+    | Reconnected(_)
+    | Disconnected(_)
+    | Activated(_)
+    | Deactivated(_) =>
+      throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
+    }
   | Detected =>
     switch event {
     | UnknownPluginDetected => state
     | Connected(pluginDefinition) => Connected(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state // no state change; observation only
+    | IncompatiblePluginDetected(_) => state
     | Reconnected(_)
     | Disconnected(_)
     | Activated(_)
@@ -104,7 +105,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     switch event {
     | Disconnected(_) => Disconnected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state // no state change; observation only
+    | IncompatiblePluginDetected(_) => state
     | UnknownPluginDetected
     | Connected(_)
     | Reconnected(_)
@@ -115,7 +116,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
     switch event {
     | Reconnected(_) => Connected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state // no state change; observation only
+    | IncompatiblePluginDetected(_) => state
     | UnknownPluginDetected
     | Connected(_)
     | Disconnected(_)
@@ -125,7 +126,7 @@ let apply: Behavior.apply<state, event> = (state: state, event) =>
   | Inactive(pluginDefinition) =>
     switch event {
     | Activated(_) => Disconnected(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state // no state change; observation only
+    | IncompatiblePluginDetected(_) => state
     | UnknownPluginDetected
     | Connected(_)
     | Reconnected(_)

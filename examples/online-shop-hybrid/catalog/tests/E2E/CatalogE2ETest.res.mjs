@@ -37,8 +37,8 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: AddProduct$CatalogPlugin.errorSchema,
-  initialDecisionModel: AddProduct$CatalogPlugin.initialDecisionModel,
-  reduce: AddProduct$CatalogPlugin.reduce,
+  initialState: AddProduct$CatalogPlugin.initialState,
+  evolve: AddProduct$CatalogPlugin.evolve,
   decide: AddProduct$CatalogPlugin.decide,
   commandSchema: AddProduct$CatalogPlugin.commandSchema
 });
@@ -48,8 +48,8 @@ let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
-  initialDecisionModel: ChangeProductName$CatalogPlugin.initialDecisionModel,
-  reduce: ChangeProductName$CatalogPlugin.reduce,
+  initialState: ChangeProductName$CatalogPlugin.initialState,
+  evolve: ChangeProductName$CatalogPlugin.evolve,
   decide: ChangeProductName$CatalogPlugin.decide,
   commandSchema: ChangeProductName$CatalogPlugin.commandSchema
 });
@@ -59,8 +59,8 @@ let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
   DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
   errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
-  initialDecisionModel: ChangeProductPrice$CatalogPlugin.initialDecisionModel,
-  reduce: ChangeProductPrice$CatalogPlugin.reduce,
+  initialState: ChangeProductPrice$CatalogPlugin.initialState,
+  evolve: ChangeProductPrice$CatalogPlugin.evolve,
   decide: ChangeProductPrice$CatalogPlugin.decide,
   commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
 });

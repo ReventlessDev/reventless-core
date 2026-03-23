@@ -31,11 +31,10 @@ let CustomerAgg = AggregateMaker.Make({
   commandSchema: Customer$OrderingPlugin.commandSchema,
   moduleUrl: Customer$OrderingPlugin.moduleUrl
 })({
+  initialState: CustomerBehavior$OrderingPlugin.initialState,
   resolverConfig: CustomerBehavior$OrderingPlugin.resolverConfig,
-  init: CustomerBehavior$OrderingPlugin.init,
-  apply: CustomerBehavior$OrderingPlugin.apply,
-  create: CustomerBehavior$OrderingPlugin.create,
-  execute: CustomerBehavior$OrderingPlugin.execute,
+  evolve: CustomerBehavior$OrderingPlugin.evolve,
+  decide: CustomerBehavior$OrderingPlugin.decide,
   moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Customer$OrderingPlugin.name,

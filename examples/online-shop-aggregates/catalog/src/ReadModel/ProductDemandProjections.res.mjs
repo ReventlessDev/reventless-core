@@ -7,15 +7,13 @@ import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as ProductDemand$CatalogPlugin from "../Aggregate/ProductDemand.res.mjs";
 import * as ProductDemandReadModel$CatalogPlugin from "./ProductDemandReadModel.res.mjs";
 
-function map(param) {
+function project(param) {
   let event = param.event;
-  let id = param.id;
   if (event.TAG === "Added") {
     return {
       TAG: "Set",
-      _0: id,
+      _0: param.id,
       _1: {
-        productId: id,
         name: event.name,
         orderCount: 0
       }
@@ -35,17 +33,16 @@ let ProductMapping = Projection$Reventless.Mapping.Make({
   stateSchema: ProductDemandReadModel$CatalogPlugin.stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
-function map$1(param) {
+function project$1(param) {
   let id = param.id;
   if (param.event.TAG === "Recorded") {
     return {
       TAG: "Update",
       _0: id,
       _1: state => ({
-        productId: state.productId,
         name: state.name,
         orderCount: state.orderCount + 1 | 0
       })
@@ -55,7 +52,6 @@ function map$1(param) {
       TAG: "Update",
       _0: id,
       _1: state => ({
-        productId: state.productId,
         name: state.name,
         orderCount: Primitive_int.max(0, state.orderCount - 1 | 0)
       })
@@ -73,7 +69,7 @@ let ProductDemandMapping = Projection$Reventless.Mapping.Make({
   stateSchema: ProductDemandReadModel$CatalogPlugin.stateSchema,
   subIdConfig: undefined
 })({
-  map: map$1
+  project: project$1
 });
 
 export {

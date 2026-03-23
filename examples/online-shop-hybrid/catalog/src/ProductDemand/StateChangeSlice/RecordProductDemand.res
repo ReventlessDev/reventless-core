@@ -17,30 +17,30 @@ type command =
 @schema
 type error = unit // always succeeds — demand recording is idempotent
 
-type decisionModel = {recordedOrderIds: array<string>}
-let initialDecisionModel = {recordedOrderIds: []}
+type state = {recordedOrderIds: array<string>}
+let initialState = {recordedOrderIds: []}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ProductDemandRecorded({orderId}) => {
-      recordedOrderIds: Array.concat(model.recordedOrderIds, [orderId]),
+      recordedOrderIds: Array.concat(state.recordedOrderIds, [orderId]),
     }
   | ProductDemandRevoked({orderId}) => {
-      recordedOrderIds: model.recordedOrderIds->Array.filter(id => id !== orderId),
+      recordedOrderIds: state.recordedOrderIds->Array.filter(id => id !== orderId),
     }
-  | _ => model
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | RecordDemand({productId, orderId}) =>
-    if model.recordedOrderIds->Array.includes(orderId) {
+    if state.recordedOrderIds->Array.includes(orderId) {
       Ok([]) // idempotent
     } else {
       Ok([ProductDemandRecorded({productId, orderId})])
     }
   | RevokeDemand({productId, orderId}) =>
-    if !(model.recordedOrderIds->Array.includes(orderId)) {
+    if !(state.recordedOrderIds->Array.includes(orderId)) {
       Ok([]) // idempotent
     } else {
       Ok([ProductDemandRevoked({productId, orderId})])

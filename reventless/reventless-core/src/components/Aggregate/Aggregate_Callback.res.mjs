@@ -5,20 +5,11 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 
 function Make(Spec) {
   return Behavior => (Ops => {
-    let errorHandler = (error, command, context) => {
-      let errorJson = JSON.stringify(Message$ReventlessCore.encode(error, Spec.errorSchema));
-      let commandJsonStr = JSON.stringify(Message$ReventlessCore.encode(command, Spec.commandSchema));
-      let id = context.id;
-      Effect.runSync(Effect.logError(`Behavior error ` + errorJson + ` in ` + Spec.name + `(` + id + `): Command: ` + commandJsonStr));
-      return [];
-    };
     let groupTopicItemsByIdStream = stream => Effect.map(Stream.runFold(stream, {}, (dict, item) => {
       let id = Spec.Id.toString(item.command.id);
       let existing = Stdlib_Option.getOr(dict[id], []);
@@ -28,13 +19,6 @@ function Make(Spec) {
       Spec.Id.makeFromString(param[0]),
       param[1]
     ]));
-    let apply$p = (stateOpt, event) => {
-      if (stateOpt !== undefined) {
-        return Primitive_option.some(Behavior.apply(Primitive_option.valFromOption(stateOpt), event));
-      } else {
-        return Primitive_option.some(Behavior.init(event));
-      }
-    };
     let updateMeta = command$p => {
       let init = command$p.meta;
       return {
@@ -54,10 +38,10 @@ function Make(Spec) {
       let commands$p = match[1];
       let references = match[0];
       return Effect.flatMap(Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id), [
-        undefined,
+        Behavior.initialState,
         0
       ], (param, ev) => [
-        apply$p(param[0], ev),
+        Behavior.evolve(param[0], ev),
         param[1] + 1 | 0
       ]), param => Effect.logInfo(`finished eventLogReplayStream for id ` + Spec.Id.toString(id))), param => {
         let sequenceNr = param[1];
@@ -73,47 +57,31 @@ function Make(Spec) {
           }
           let match = acc._0;
           let events = match[1];
-          let stateO = match[0];
+          let state = match[0];
           let runBehavior = () => {
-            if (stateO !== undefined) {
-              let generatedEvents;
-              try {
-                generatedEvents = Behavior.execute(Primitive_option.valFromOption(stateO), command$p.command, {
-                  id: Spec.Id.toString(command$p.id),
-                  meta: command$p.meta
-                }, errorHandler);
-              } catch (raw_event) {
-                let event = Primitive_exceptions.internalToException(raw_event);
-                if (event.RE_EXN_ID === Message$ReventlessCore.InvalidEvent) {
-                  Effect.runSync(Effect.logError(`Behavior.execute: InvalidEvent ` + Stdlib_Option.getOr(JSON.stringify(event._1), "")));
-                  generatedEvents = [];
-                } else {
-                  throw event;
-                }
-              }
+            let generatedEvents = Behavior.decide(state, command$p.command);
+            if (generatedEvents.TAG === "Ok") {
+              let generatedEvents$1 = generatedEvents._0;
+              let newState = Stdlib_Array.reduce(generatedEvents$1, state, Behavior.evolve);
               return {
                 TAG: "Ok",
                 _0: [
-                  Stdlib_Array.reduce(generatedEvents, stateO, apply$p),
+                  newState,
                   events.concat([[
-                      generatedEvents,
+                      generatedEvents$1,
                       updateMeta(command$p)
                     ]])
                 ]
               };
             }
-            let generatedEvents$1 = Behavior.create(command$p.command, {
-              id: Spec.Id.toString(command$p.id),
-              meta: command$p.meta
-            }, errorHandler);
+            let errorJson = JSON.stringify(Message$ReventlessCore.encode(generatedEvents._0, Spec.errorSchema));
+            let id = Spec.Id.toString(command$p.id);
+            Effect.runSync(Effect.logError(`Behavior error ` + errorJson + ` in ` + Spec.name + `(` + id + `)`));
             return {
               TAG: "Ok",
               _0: [
-                Stdlib_Array.reduce(generatedEvents$1, undefined, apply$p),
-                events.concat([[
-                    generatedEvents$1,
-                    updateMeta(command$p)
-                  ]])
+                state,
+                events
               ]
             };
           };

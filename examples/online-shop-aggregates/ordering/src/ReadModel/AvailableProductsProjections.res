@@ -9,7 +9,7 @@ module CatalogProductMapping = Mapping.Make(
   AvailableProductsReadModel,
   {
     open CatalogProduct
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Synced({name, price}) =>
         Set(id, {AvailableProductsReadModel.name: name, price})

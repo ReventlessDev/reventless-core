@@ -10,11 +10,10 @@ let PluginTest = BehaviorTest$ReventlessCore.Make({
   eventSchema: PluginSpec$ReventlessCore.eventSchema,
   errorSchema: PluginSpec$ReventlessCore.errorSchema
 })({
+  initialState: PluginBehavior$ReventlessCore.initialState,
   resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
-  init: PluginBehavior$ReventlessCore.init,
-  apply: PluginBehavior$ReventlessCore.apply,
-  create: PluginBehavior$ReventlessCore.create,
-  execute: PluginBehavior$ReventlessCore.execute,
+  evolve: PluginBehavior$ReventlessCore.evolve,
+  decide: PluginBehavior$ReventlessCore.decide,
   moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
 });
 

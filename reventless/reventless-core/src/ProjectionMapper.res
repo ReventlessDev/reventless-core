@@ -34,7 +34,7 @@ module Make = (
       module GenericMapping = {
         let sourceName = M.sourceName
         module Source = Projection.Mapping.MakeGenericSource(M)
-        let map = MapperNto1.makeGenericMap(Source.decode', M.map)
+        let project = MapperNto1.makeGenericMap(Source.decode', M.project)
       }
       module(GenericMapping: Mapping)
     })

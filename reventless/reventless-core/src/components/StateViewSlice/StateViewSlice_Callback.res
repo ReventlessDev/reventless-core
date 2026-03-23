@@ -17,7 +17,7 @@ module Make = (Spec: Reventless.StateViewSlice.Spec): (T with module Spec = Spec
     queryDbOps: queryDbOperations,
     events: array<Spec.DcbEventLogSpec.event>,
   ) => {
-    let actions = events->Array.flatMap(event => Spec.project(None, event))
+    let actions = events->Array.flatMap(event => Spec.project(event))
     await Projection.handleActions(actions, queryDbOps, None)
   }
 }

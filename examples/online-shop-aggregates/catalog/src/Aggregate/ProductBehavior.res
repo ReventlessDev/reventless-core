@@ -1,58 +1,47 @@
 // Product aggregate behavior.
 // Implements the state machine for adding and updating products.
 
-open Reventless
 open Product
 
 module Spec = Product
 
 @schema
-type state = {name: string, description: string, price: float}
+type state =
+  | NotCreated
+  | Created({name: string, description: string, price: float})
 
 let resolverConfig = {
-  Behavior.commandSchema,
+  Reventless.Behavior.commandSchema,
   fields: [],
 }
 
 let moduleUrl: string = %raw(`import.meta.url`)
 
-let init = event =>
-  switch event {
-  | Added({name, description, price}) => {name, description, price}
-  | NameUpdated(_)
-  | DescriptionUpdated(_)
-  | PriceUpdated(_) =>
-    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
+let initialState = NotCreated
+
+let evolve = (state, event) =>
+  switch (state, event) {
+  | (NotCreated, Added({name, description, price})) => Created({name, description, price})
+  | (Created(_), Added({name, description, price})) => Created({name, description, price})
+  | (Created(s), NameUpdated({name})) => Created({...s, name})
+  | (Created(s), DescriptionUpdated({description})) => Created({...s, description})
+  | (Created(s), PriceUpdated({price})) => Created({...s, price})
+  | (NotCreated, _) => state
   }
 
-let apply = (state, event) =>
-  switch event {
-  | Added({name, description, price}) => {name, description, price}
-  | NameUpdated({name}) => {...state, name}
-  | DescriptionUpdated({description}) => {...state, description}
-  | PriceUpdated({price}) => {...state, price}
-  }
-
-let create = (command, _context, errorHandler) =>
-  switch command {
-  | Add({name, description, price}) => [
-      Added({name, description, price}),
-    ]
-  | UpdateName(_)
-  | UpdateDescription(_)
-  | UpdatePrice(_) =>
-    errorHandler(ProductNotFound, command, _context)
-  }
-
-let execute = (state, command, context, errorHandler) =>
-  switch command {
-  | Add(_) => errorHandler(ProductAlreadyExists, command, context)
-  | UpdateName({name}) if name == state.name => []
-  | UpdateName({name}) => [NameUpdated({name: name})]
-  | UpdateDescription({description}) if description == state.description => []
-  | UpdateDescription({description}) => [
-      DescriptionUpdated({description: description}),
-    ]
-  | UpdatePrice({price}) if price == state.price => []
-  | UpdatePrice({price}) => [PriceUpdated({price: price})]
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, Add({name, description, price})) =>
+    Ok([Added({name, description, price})])
+  | (NotCreated, UpdateName(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdateDescription(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdatePrice(_)) => Error(ProductNotFound)
+  | (Created(_), Add(_)) => Error(ProductAlreadyExists)
+  | (Created(s), UpdateName({name})) if name == s.name => Ok([])
+  | (Created(_), UpdateName({name})) => Ok([NameUpdated({name: name})])
+  | (Created(s), UpdateDescription({description})) if description == s.description => Ok([])
+  | (Created(_), UpdateDescription({description})) =>
+    Ok([DescriptionUpdated({description: description})])
+  | (Created(s), UpdatePrice({price})) if price == s.price => Ok([])
+  | (Created(_), UpdatePrice({price})) => Ok([PriceUpdated({price: price})])
   }

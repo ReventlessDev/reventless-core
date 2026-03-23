@@ -71,7 +71,7 @@ module Make = (
             stream
             ->Stream.mapEffect(json =>
               Effect.sync(() =>
-                try Spec.project(None, json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema))
+                try Spec.project(json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema))
                 catch {
                 | exn =>
                   Console.log2("StateViewSlice: Failed to decode event:", exn)

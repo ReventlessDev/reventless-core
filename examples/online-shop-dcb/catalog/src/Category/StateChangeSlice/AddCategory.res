@@ -15,21 +15,21 @@ type command = AddCategory({categoryId: @s.matches(DcbTag.string) string, name: 
 @schema
 type error = CategoryAlreadyExists
 
-type decisionModel = {exists: bool, archived: bool}
+type state = {exists: bool, archived: bool}
 
-let initialDecisionModel = {exists: false, archived: false}
+let initialState = {exists: false, archived: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | CategoryAdded(_) => {exists: true, archived: false}
-  | CategoryArchived(_) => {...model, archived: true}
-  | _ => model
+  | CategoryArchived(_) => {...state, archived: true}
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | AddCategory({categoryId, name}) =>
-    if model.exists {
+    if state.exists {
       Error(CategoryAlreadyExists)
     } else {
       Ok([CategoryAdded({categoryId, name})])

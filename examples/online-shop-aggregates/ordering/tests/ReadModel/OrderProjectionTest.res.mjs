@@ -24,7 +24,6 @@ describe("OrderProjection:", () => {
       "prod-2"
     ]
   }), {
-    orderId: "id",
     customerId: "cust-1",
     productIds: [
       "prod-1",
@@ -37,7 +36,6 @@ describe("OrderProjection:", () => {
       customerId: "cust-1",
       productIds: ["prod-1"]
     }]), "Shipped"), {
-    orderId: "id",
     customerId: "cust-1",
     productIds: ["prod-1"],
     status: "shipped"
@@ -50,7 +48,6 @@ describe("OrderProjection:", () => {
     TAG: "Cancelled",
     productIds: ["prod-1"]
   }), {
-    orderId: "id",
     customerId: "cust-1",
     productIds: ["prod-1"],
     status: "cancelled"

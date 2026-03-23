@@ -1,16 +1,16 @@
 // Pure unit tests for Product StateChangeSlice decision logic.
-// Tests reduce and decide functions for AddProduct, ChangeProductName,
+// Tests evolve and decide functions for AddProduct, ChangeProductName,
 // ChangeProductDescription, and ChangeProductPrice synchronously.
 
 open Jest
 open Expect
 
 describe("AddProduct:", () => {
-  describe("reduce", () => {
+  describe("evolve", () => {
     test("ProductAdded sets exists=true", () =>
       expect(
-        AddProduct.reduce(
-          AddProduct.initialDecisionModel,
+        AddProduct.evolve(
+          AddProduct.initialState,
           CatalogEventLog.ProductAdded({
             productId: "p1",
             name: "Laptop",
@@ -21,13 +21,13 @@ describe("AddProduct:", () => {
       )->toEqual({AddProduct.exists: true})
     )
 
-    test("other events do not change model", () =>
+    test("other events do not change state", () =>
       expect(
-        AddProduct.reduce(
-          AddProduct.initialDecisionModel,
+        AddProduct.evolve(
+          AddProduct.initialState,
           CatalogEventLog.ProductDemandRecorded({productId: "p1", orderId: "ord-1"}),
         ),
-      )->toEqual(AddProduct.initialDecisionModel)
+      )->toEqual(AddProduct.initialState)
     )
   })
 
@@ -35,7 +35,7 @@ describe("AddProduct:", () => {
     test("on non-existent product produces ProductAdded", () =>
       expect(
         AddProduct.decide(
-          AddProduct.initialDecisionModel,
+          AddProduct.initialState,
           AddProduct.AddProduct({
             productId: "p1",
             name: "Laptop",
@@ -72,13 +72,13 @@ describe("AddProduct:", () => {
 })
 
 describe("ChangeProductName:", () => {
-  let existingModel: ChangeProductName.decisionModel = {exists: true, currentName: "Laptop"}
+  let existingState: ChangeProductName.state = {exists: true, currentName: "Laptop"}
 
-  describe("reduce", () => {
+  describe("evolve", () => {
     test("ProductAdded sets exists=true and currentName", () =>
       expect(
-        ChangeProductName.reduce(
-          ChangeProductName.initialDecisionModel,
+        ChangeProductName.evolve(
+          ChangeProductName.initialState,
           CatalogEventLog.ProductAdded({
             productId: "p1",
             name: "Laptop",
@@ -91,8 +91,8 @@ describe("ChangeProductName:", () => {
 
     test("ProductNameChanged updates currentName", () =>
       expect(
-        ChangeProductName.reduce(
-          existingModel,
+        ChangeProductName.evolve(
+          existingState,
           CatalogEventLog.ProductNameChanged({productId: "p1", name: "Gaming Laptop"}),
         ),
       )->toEqual({ChangeProductName.exists: true, currentName: "Gaming Laptop"})
@@ -103,7 +103,7 @@ describe("ChangeProductName:", () => {
     test("on non-existent product returns ProductNotFound", () =>
       expect(
         ChangeProductName.decide(
-          ChangeProductName.initialDecisionModel,
+          ChangeProductName.initialState,
           ChangeProductName.ChangeProductName({productId: "p1", name: "Gaming Laptop"}),
         ),
       )->toEqual(Error(ChangeProductName.ProductNotFound))
@@ -112,7 +112,7 @@ describe("ChangeProductName:", () => {
     test("same name produces no events (idempotent)", () =>
       expect(
         ChangeProductName.decide(
-          existingModel,
+          existingState,
           ChangeProductName.ChangeProductName({productId: "p1", name: "Laptop"}),
         ),
       )->toEqual(Ok([]))
@@ -121,7 +121,7 @@ describe("ChangeProductName:", () => {
     test("new name produces ProductNameChanged", () =>
       expect(
         ChangeProductName.decide(
-          existingModel,
+          existingState,
           ChangeProductName.ChangeProductName({productId: "p1", name: "Gaming Laptop"}),
         ),
       )->toEqual(Ok([CatalogEventLog.ProductNameChanged({productId: "p1", name: "Gaming Laptop"})]))
@@ -130,7 +130,7 @@ describe("ChangeProductName:", () => {
 })
 
 describe("ChangeProductDescription:", () => {
-  let existingModel: ChangeProductDescription.decisionModel = {
+  let existingState: ChangeProductDescription.state = {
     exists: true,
     currentDescription: "A laptop",
   }
@@ -139,7 +139,7 @@ describe("ChangeProductDescription:", () => {
     test("on non-existent product returns ProductNotFound", () =>
       expect(
         ChangeProductDescription.decide(
-          ChangeProductDescription.initialDecisionModel,
+          ChangeProductDescription.initialState,
           ChangeProductDescription.ChangeProductDescription({
             productId: "p1",
             description: "A high-end laptop",
@@ -151,7 +151,7 @@ describe("ChangeProductDescription:", () => {
     test("same description produces no events (idempotent)", () =>
       expect(
         ChangeProductDescription.decide(
-          existingModel,
+          existingState,
           ChangeProductDescription.ChangeProductDescription({
             productId: "p1",
             description: "A laptop",
@@ -163,7 +163,7 @@ describe("ChangeProductDescription:", () => {
     test("new description produces ProductDescriptionChanged", () =>
       expect(
         ChangeProductDescription.decide(
-          existingModel,
+          existingState,
           ChangeProductDescription.ChangeProductDescription({
             productId: "p1",
             description: "A high-end laptop",
@@ -182,13 +182,13 @@ describe("ChangeProductDescription:", () => {
 })
 
 describe("ChangeProductPrice:", () => {
-  let existingModel: ChangeProductPrice.decisionModel = {exists: true, currentPrice: 999.99}
+  let existingState: ChangeProductPrice.state = {exists: true, currentPrice: 999.99}
 
   describe("decide", () => {
     test("on non-existent product returns ProductNotFound", () =>
       expect(
         ChangeProductPrice.decide(
-          ChangeProductPrice.initialDecisionModel,
+          ChangeProductPrice.initialState,
           ChangeProductPrice.ChangeProductPrice({productId: "p1", price: 899.99}),
         ),
       )->toEqual(Error(ChangeProductPrice.ProductNotFound))
@@ -197,7 +197,7 @@ describe("ChangeProductPrice:", () => {
     test("same price produces no events (idempotent)", () =>
       expect(
         ChangeProductPrice.decide(
-          existingModel,
+          existingState,
           ChangeProductPrice.ChangeProductPrice({productId: "p1", price: 999.99}),
         ),
       )->toEqual(Ok([]))
@@ -206,7 +206,7 @@ describe("ChangeProductPrice:", () => {
     test("new price produces ProductPriceChanged", () =>
       expect(
         ChangeProductPrice.decide(
-          existingModel,
+          existingState,
           ChangeProductPrice.ChangeProductPrice({productId: "p1", price: 899.99}),
         ),
       )->toEqual(Ok([CatalogEventLog.ProductPriceChanged({productId: "p1", price: 899.99})]))

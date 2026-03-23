@@ -23,7 +23,6 @@ describe("ProductsView.project:", () => {
   test("ProductAdded creates new state", () =>
     expect(
       ProductsView.project(
-        None,
         CatalogEventLog.ProductAdded({
           productId: "p1",
           name: "Laptop",
@@ -42,7 +41,6 @@ describe("ProductsView.project:", () => {
   test("ProductNameChanged Update function changes name", () =>
     expect(
       ProductsView.project(
-        None,
         CatalogEventLog.ProductNameChanged({productId: "p1", name: "Gaming Laptop"}),
       )->applyFirstUpdate(baseProduct),
     )->toEqual({...baseProduct, name: "Gaming Laptop"})
@@ -51,7 +49,6 @@ describe("ProductsView.project:", () => {
   test("ProductDescriptionChanged Update function changes description", () =>
     expect(
       ProductsView.project(
-        None,
         CatalogEventLog.ProductDescriptionChanged({
           productId: "p1",
           description: "A high-end laptop",
@@ -63,7 +60,6 @@ describe("ProductsView.project:", () => {
   test("ProductPriceChanged Update function changes price", () =>
     expect(
       ProductsView.project(
-        None,
         CatalogEventLog.ProductPriceChanged({productId: "p1", price: 899.99}),
       )->applyFirstUpdate(baseProduct),
     )->toEqual({...baseProduct, price: 899.99})
@@ -71,7 +67,7 @@ describe("ProductsView.project:", () => {
 
   test("Category events return empty (not handled by ProductsView)", () =>
     expect(
-      ProductsView.project(None, CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Books"})),
+      ProductsView.project(CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Books"})),
     )->toEqual([])
   )
 })

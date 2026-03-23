@@ -28,8 +28,8 @@ function Make(Platform) {
     moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
-    initialDecisionModel: AddProduct$CatalogPlugin.initialDecisionModel,
-    reduce: AddProduct$CatalogPlugin.reduce,
+    initialState: AddProduct$CatalogPlugin.initialState,
+    evolve: AddProduct$CatalogPlugin.evolve,
     decide: AddProduct$CatalogPlugin.decide,
     commandSchema: AddProduct$CatalogPlugin.commandSchema
   });
@@ -38,8 +38,8 @@ function Make(Platform) {
     moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
-    initialDecisionModel: ChangeProductName$CatalogPlugin.initialDecisionModel,
-    reduce: ChangeProductName$CatalogPlugin.reduce,
+    initialState: ChangeProductName$CatalogPlugin.initialState,
+    evolve: ChangeProductName$CatalogPlugin.evolve,
     decide: ChangeProductName$CatalogPlugin.decide,
     commandSchema: ChangeProductName$CatalogPlugin.commandSchema
   });
@@ -48,8 +48,8 @@ function Make(Platform) {
     moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
-    initialDecisionModel: ChangeProductDescription$CatalogPlugin.initialDecisionModel,
-    reduce: ChangeProductDescription$CatalogPlugin.reduce,
+    initialState: ChangeProductDescription$CatalogPlugin.initialState,
+    evolve: ChangeProductDescription$CatalogPlugin.evolve,
     decide: ChangeProductDescription$CatalogPlugin.decide,
     commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema
   });
@@ -58,8 +58,8 @@ function Make(Platform) {
     moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
-    initialDecisionModel: ChangeProductPrice$CatalogPlugin.initialDecisionModel,
-    reduce: ChangeProductPrice$CatalogPlugin.reduce,
+    initialState: ChangeProductPrice$CatalogPlugin.initialState,
+    evolve: ChangeProductPrice$CatalogPlugin.evolve,
     decide: ChangeProductPrice$CatalogPlugin.decide,
     commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
   });
@@ -76,8 +76,8 @@ function Make(Platform) {
     moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: AddCategory$CatalogPlugin.errorSchema,
-    initialDecisionModel: AddCategory$CatalogPlugin.initialDecisionModel,
-    reduce: AddCategory$CatalogPlugin.reduce,
+    initialState: AddCategory$CatalogPlugin.initialState,
+    evolve: AddCategory$CatalogPlugin.evolve,
     decide: AddCategory$CatalogPlugin.decide,
     commandSchema: AddCategory$CatalogPlugin.commandSchema
   });
@@ -86,8 +86,8 @@ function Make(Platform) {
     moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: RenameCategory$CatalogPlugin.errorSchema,
-    initialDecisionModel: RenameCategory$CatalogPlugin.initialDecisionModel,
-    reduce: RenameCategory$CatalogPlugin.reduce,
+    initialState: RenameCategory$CatalogPlugin.initialState,
+    evolve: RenameCategory$CatalogPlugin.evolve,
     decide: RenameCategory$CatalogPlugin.decide,
     commandSchema: RenameCategory$CatalogPlugin.commandSchema
   });
@@ -96,8 +96,8 @@ function Make(Platform) {
     moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
-    initialDecisionModel: ArchiveCategory$CatalogPlugin.initialDecisionModel,
-    reduce: ArchiveCategory$CatalogPlugin.reduce,
+    initialState: ArchiveCategory$CatalogPlugin.initialState,
+    evolve: ArchiveCategory$CatalogPlugin.evolve,
     decide: ArchiveCategory$CatalogPlugin.decide,
     commandSchema: ArchiveCategory$CatalogPlugin.commandSchema
   });
@@ -122,8 +122,8 @@ function Make(Platform) {
     moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
     DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
-    initialDecisionModel: RecordProductDemand$CatalogPlugin.initialDecisionModel,
-    reduce: RecordProductDemand$CatalogPlugin.reduce,
+    initialState: RecordProductDemand$CatalogPlugin.initialState,
+    evolve: RecordProductDemand$CatalogPlugin.evolve,
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });

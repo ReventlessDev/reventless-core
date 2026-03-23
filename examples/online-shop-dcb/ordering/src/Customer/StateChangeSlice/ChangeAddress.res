@@ -17,30 +17,30 @@ type error =
   | CustomerNotFound
   | CustomerAlreadyDeactivated
 
-type decisionModel = {exists: bool, deactivated: bool, currentAddress: string}
+type state = {exists: bool, deactivated: bool, currentAddress: string}
 
-let initialDecisionModel = {exists: false, deactivated: false, currentAddress: ""}
+let initialState = {exists: false, deactivated: false, currentAddress: ""}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | CustomerRegistered({address}) => {
       exists: true,
       deactivated: false,
       currentAddress: address,
     }
-  | AddressChanged({address}) => {...model, currentAddress: address}
-  | CustomerDeactivated(_) => {...model, deactivated: true}
-  | _ => model
+  | AddressChanged({address}) => {...state, currentAddress: address}
+  | CustomerDeactivated(_) => {...state, deactivated: true}
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | ChangeAddress({customerId, address}) =>
-    if !model.exists {
+    if !state.exists {
       Error(CustomerNotFound)
-    } else if model.deactivated {
+    } else if state.deactivated {
       Error(CustomerAlreadyDeactivated)
-    } else if address == model.currentAddress {
+    } else if address == state.currentAddress {
       Ok([]) // idempotent — address unchanged
     } else {
       Ok([AddressChanged({customerId, address})])

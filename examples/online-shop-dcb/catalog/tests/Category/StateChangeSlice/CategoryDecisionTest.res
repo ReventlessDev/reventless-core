@@ -1,15 +1,15 @@
 // Pure unit tests for Category StateChangeSlice decision logic.
-// Tests reduce and decide functions for AddCategory, RenameCategory, and ArchiveCategory.
+// Tests evolve and decide functions for AddCategory, RenameCategory, and ArchiveCategory.
 
 open Jest
 open Expect
 
 describe("AddCategory:", () => {
-  describe("reduce", () => {
+  describe("evolve", () => {
     test("CategoryAdded sets exists=true", () =>
       expect(
-        AddCategory.reduce(
-          AddCategory.initialDecisionModel,
+        AddCategory.evolve(
+          AddCategory.initialState,
           CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Electronics"}),
         ),
       )->toEqual({AddCategory.exists: true, archived: false})
@@ -17,17 +17,17 @@ describe("AddCategory:", () => {
 
     test("CategoryArchived sets archived=true", () =>
       expect(
-        AddCategory.reduce(
+        AddCategory.evolve(
           {AddCategory.exists: true, archived: false},
           CatalogEventLog.CategoryArchived({categoryId: "c1"}),
         ),
       )->toEqual({AddCategory.exists: true, archived: true})
     )
 
-    test("Product events do not change model", () =>
+    test("Product events do not change state", () =>
       expect(
-        AddCategory.reduce(
-          AddCategory.initialDecisionModel,
+        AddCategory.evolve(
+          AddCategory.initialState,
           CatalogEventLog.ProductAdded({
             productId: "p1",
             name: "Laptop",
@@ -35,7 +35,7 @@ describe("AddCategory:", () => {
             price: 999.99,
           }),
         ),
-      )->toEqual(AddCategory.initialDecisionModel)
+      )->toEqual(AddCategory.initialState)
     )
   })
 
@@ -43,7 +43,7 @@ describe("AddCategory:", () => {
     test("on non-existent category produces CategoryAdded", () =>
       expect(
         AddCategory.decide(
-          AddCategory.initialDecisionModel,
+          AddCategory.initialState,
           AddCategory.AddCategory({categoryId: "c1", name: "Electronics"}),
         ),
       )->toEqual(Ok([CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Electronics"})]))
@@ -65,7 +65,7 @@ describe("RenameCategory:", () => {
     test("on non-existent category returns CategoryNotFound", () =>
       expect(
         RenameCategory.decide(
-          RenameCategory.initialDecisionModel,
+          RenameCategory.initialState,
           RenameCategory.RenameCategory({categoryId: "c1", name: "Consumer Electronics"}),
         ),
       )->toEqual(Error(RenameCategory.CategoryNotFound))
@@ -98,7 +98,7 @@ describe("ArchiveCategory:", () => {
     test("on non-existent category returns CategoryNotFound", () =>
       expect(
         ArchiveCategory.decide(
-          ArchiveCategory.initialDecisionModel,
+          ArchiveCategory.initialState,
           ArchiveCategory.ArchiveCategory({categoryId: "c1"}),
         ),
       )->toEqual(Error(ArchiveCategory.CategoryNotFound))

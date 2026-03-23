@@ -17,28 +17,28 @@ type error =
   | OrderNotFound
   | OrderAlreadyShipped
 
-type decisionModel = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
+type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
 
-let initialDecisionModel = {exists: false, shipped: false, cancelled: false, productIds: []}
+let initialState = {exists: false, shipped: false, cancelled: false, productIds: []}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | OrderPlaced({productIds}) => {exists: true, shipped: false, cancelled: false, productIds}
-  | OrderShipped(_) => {...model, shipped: true}
-  | OrderCancelled(_) => {...model, cancelled: true}
-  | _ => model
+  | OrderShipped(_) => {...state, shipped: true}
+  | OrderCancelled(_) => {...state, cancelled: true}
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | CancelOrder({orderId: theId}) =>
-    if !model.exists {
+    if !state.exists {
       Error(OrderNotFound)
-    } else if model.shipped {
+    } else if state.shipped {
       Error(OrderAlreadyShipped)
-    } else if model.cancelled {
+    } else if state.cancelled {
       Ok([]) // idempotent — already cancelled
     } else {
-      Ok([OrderCancelled({orderId: theId, productIds: model.productIds})])
+      Ok([OrderCancelled({orderId: theId, productIds: state.productIds})])
     }
   }

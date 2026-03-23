@@ -9,11 +9,10 @@ let include = BehaviorTest$ReventlessInMemory.Make({
   eventSchema: Order$OrderingPlugin.eventSchema,
   errorSchema: Order$OrderingPlugin.errorSchema
 })({
+  initialState: OrderBehavior$OrderingPlugin.initialState,
   resolverConfig: OrderBehavior$OrderingPlugin.resolverConfig,
-  init: OrderBehavior$OrderingPlugin.init,
-  apply: OrderBehavior$OrderingPlugin.apply,
-  create: OrderBehavior$OrderingPlugin.create,
-  execute: OrderBehavior$OrderingPlugin.execute,
+  evolve: OrderBehavior$OrderingPlugin.evolve,
+  decide: OrderBehavior$OrderingPlugin.decide,
   moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl
 });
 
@@ -118,8 +117,6 @@ describe("OrderBehavior:", () => {
 
 let Spec = include.Spec;
 
-let whenCmdWithId = include.whenCmdWithId;
-
 let thenCompareEvent = include.thenCompareEvent;
 
 let thenEventWithError = include.thenEventWithError;
@@ -136,7 +133,6 @@ export {
   test,
   givenEvents,
   whenCmd,
-  whenCmdWithId,
   thenEvent,
   thenCompareEvent,
   thenNoEvent,

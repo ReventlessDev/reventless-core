@@ -11,7 +11,7 @@ module ProductMapping = Mapping.Make(
   ProductDemandReadModel,
   {
     open Product
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Added({name}) =>
         Set(id, {ProductDemandReadModel.name: name, orderCount: 0})
@@ -25,7 +25,7 @@ module ProductDemandMapping = Mapping.Make(
   ProductDemandReadModel,
   {
     open ProductDemand
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Recorded(_) =>
         Update(id, (state: ProductDemandReadModel.state) => {...state, orderCount: state.orderCount + 1})

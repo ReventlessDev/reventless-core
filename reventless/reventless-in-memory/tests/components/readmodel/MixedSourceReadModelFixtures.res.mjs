@@ -71,7 +71,7 @@ let DcbSource = {
   eventSchema: eventSchema$1
 };
 
-function map(msg) {
+function project(msg) {
   let match = msg.event;
   if (match.TAG === "AggregateItemCreated") {
     return {
@@ -104,10 +104,10 @@ let AggregateMapping = Projection$Reventless.Mapping.Make({
   stateSchema: stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
-function map$1(msg) {
+function project$1(msg) {
   let match = msg.event;
   if (match.TAG === "DcbItemAdded") {
     return {
@@ -140,7 +140,7 @@ let DcbMapping = Projection$Reventless.Mapping.Make({
   stateSchema: stateSchema,
   subIdConfig: undefined
 })({
-  map: map$1
+  project: project$1
 });
 
 Projection$Reventless.Mappings.Make({

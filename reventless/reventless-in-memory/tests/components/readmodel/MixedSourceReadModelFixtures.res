@@ -61,7 +61,7 @@ module AggregateMapping = Mapping.Make(
   AggregateSource,
   MixedReadModelSpec,
   {
-    let map = (msg: Message.event'<string, AggregateSource.event>) =>
+    let project = (msg: Message.event'<string, AggregateSource.event>) =>
       switch msg.event {
       | AggregateItemCreated({name}) =>
         Create(msg.id, ({name, source: "aggregate"}: MixedReadModelSpec.state))
@@ -78,7 +78,7 @@ module DcbMapping = Mapping.Make(
   DcbSource,
   MixedReadModelSpec,
   {
-    let map = (msg: Message.event'<string, DcbSource.event>) =>
+    let project = (msg: Message.event'<string, DcbSource.event>) =>
       switch msg.event {
       | DcbItemAdded({name}) =>
         Create(msg.id, ({name, source: "dcb"}: MixedReadModelSpec.state))

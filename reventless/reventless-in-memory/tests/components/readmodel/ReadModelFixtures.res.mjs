@@ -45,7 +45,7 @@ let ItemEventSource = {
   eventSchema: eventSchema
 };
 
-function map(msg) {
+function project(msg) {
   let match = msg.event;
   return {
     TAG: "Create",
@@ -66,7 +66,7 @@ let ItemMapping = Projection$Reventless.Mapping.Make({
   stateSchema: stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
 Projection$Reventless.Mappings.Make({

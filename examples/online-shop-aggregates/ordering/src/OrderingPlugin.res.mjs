@@ -33,11 +33,10 @@ function Make(Platform) {
     commandSchema: Customer$OrderingPlugin.commandSchema,
     moduleUrl: Customer$OrderingPlugin.moduleUrl
   })({
+    initialState: CustomerBehavior$OrderingPlugin.initialState,
     resolverConfig: CustomerBehavior$OrderingPlugin.resolverConfig,
-    init: CustomerBehavior$OrderingPlugin.init,
-    apply: CustomerBehavior$OrderingPlugin.apply,
-    create: CustomerBehavior$OrderingPlugin.create,
-    execute: CustomerBehavior$OrderingPlugin.execute,
+    evolve: CustomerBehavior$OrderingPlugin.evolve,
+    decide: CustomerBehavior$OrderingPlugin.decide,
     moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
@@ -52,11 +51,10 @@ function Make(Platform) {
     commandSchema: Order$OrderingPlugin.commandSchema,
     moduleUrl: Order$OrderingPlugin.moduleUrl
   })({
+    initialState: OrderBehavior$OrderingPlugin.initialState,
     resolverConfig: OrderBehavior$OrderingPlugin.resolverConfig,
-    init: OrderBehavior$OrderingPlugin.init,
-    apply: OrderBehavior$OrderingPlugin.apply,
-    create: OrderBehavior$OrderingPlugin.create,
-    execute: OrderBehavior$OrderingPlugin.execute,
+    evolve: OrderBehavior$OrderingPlugin.evolve,
+    decide: OrderBehavior$OrderingPlugin.decide,
     moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl
   })({
     moduleUrl: Order_EventMappings$OrderingPlugin.moduleUrl,
@@ -111,11 +109,10 @@ function Make(Platform) {
     commandSchema: CatalogProduct$OrderingPlugin.commandSchema,
     moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl
   })({
+    initialState: CatalogProductBehavior$OrderingPlugin.initialState,
     resolverConfig: CatalogProductBehavior$OrderingPlugin.resolverConfig,
-    init: CatalogProductBehavior$OrderingPlugin.init,
-    apply: CatalogProductBehavior$OrderingPlugin.apply,
-    create: CatalogProductBehavior$OrderingPlugin.create,
-    execute: CatalogProductBehavior$OrderingPlugin.execute,
+    evolve: CatalogProductBehavior$OrderingPlugin.evolve,
+    decide: CatalogProductBehavior$OrderingPlugin.decide,
     moduleUrl: CatalogProductBehavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: CatalogProduct$OrderingPlugin.name,

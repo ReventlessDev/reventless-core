@@ -7,7 +7,6 @@ module type T = {
   let givenEvents: array<Spec.event> => array<Spec.event>
 
   let whenCmd: (array<Spec.event>, Spec.command) => array<Spec.event>
-  let whenCmdWithId: (array<Spec.event>, string, Spec.command) => array<Spec.event>
 
   let thenEvent: (array<Spec.event>, Spec.event) => Jest.assertion
   let thenCompareEvent: (
@@ -37,39 +36,24 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
   let describe = Jest.describe
   let test = Jest.test
 
-  let apply' = (state, event) => Behavior.apply(state, event)
-
   let currentState = events =>
-    events
-    ->Array.slice(~start=1)
-    ->Array.reduce(Behavior.init(events->Array.getUnsafe(0)), apply')
+    events->Array.reduce(Behavior.initialState, Behavior.evolve)
 
   let errors = ref([])
 
-  let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := Array.concat(errors.contents, [error])
-    []
-  }
-
-  let exec = (history, context, command): array<Spec.event> => {
+  let exec = (history, command): array<Spec.event> => {
     errors := []
-    switch history {
-    | [] => Behavior.create(command, context, errorHandler)
-    | history =>
-      try Behavior.execute(
-        currentState(history),
-        command,
-        TestFixtures.context,
-        errorHandler,
-      ) catch {
-      | ReventlessCore.Message.InvalidEvent(_) => []
-      }
+    let state = currentState(history)
+    switch Behavior.decide(state, command) {
+    | Ok(events) => events
+    | Error(error) =>
+      errors := [error]
+      []
     }
   }
 
   let givenEvents = events => events
-  let whenCmd = (history, cmd) => history->exec(TestFixtures.context, cmd)
-  let whenCmdWithId = (history, id, cmd) => history->exec({...TestFixtures.context, id}, cmd)
+  let whenCmd = (history, cmd) => history->exec(cmd)
 
   open Jest.Expect
 
@@ -97,9 +81,6 @@ module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spe
     "Errors occured: " ++
     errors.contents
     ->Array.map(err =>
-      /* NOTE: this process is very fragile!!
-              it relies on decco decoding the error-varints to arrays of string
- */
       err
       ->Message.encode(Spec.errorSchema)
       ->JSON.Decode.array

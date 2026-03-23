@@ -27,7 +27,7 @@ function Mapper(Spec) {
     let findMappings = (sourceNameOpt, mappings) => Stdlib_Option.mapOr(sourceNameOpt, [], sourceName => mappings.filter(Mapping => Mapping.sourceName === sourceName));
     let map = (sourceName, json) => Stdlib_Array.filterMap(findMappings(sourceName, Mappings.mappings), Mapping => {
       try {
-        return Primitive_option.some(Mapping.map(json));
+        return Primitive_option.some(Mapping.project(json));
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");

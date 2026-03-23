@@ -31,11 +31,10 @@ let ProductAgg = AggregateMaker.Make({
   commandSchema: Product$CatalogPlugin.commandSchema,
   moduleUrl: Product$CatalogPlugin.moduleUrl
 })({
+  initialState: ProductBehavior$CatalogPlugin.initialState,
   resolverConfig: ProductBehavior$CatalogPlugin.resolverConfig,
-  init: ProductBehavior$CatalogPlugin.init,
-  apply: ProductBehavior$CatalogPlugin.apply,
-  create: ProductBehavior$CatalogPlugin.create,
-  execute: ProductBehavior$CatalogPlugin.execute,
+  evolve: ProductBehavior$CatalogPlugin.evolve,
+  decide: ProductBehavior$CatalogPlugin.decide,
   moduleUrl: ProductBehavior$CatalogPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Product$CatalogPlugin.name,

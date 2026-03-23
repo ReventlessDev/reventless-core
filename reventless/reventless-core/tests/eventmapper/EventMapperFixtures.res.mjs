@@ -51,7 +51,7 @@ let TargetSpec = {
   subIdConfig: undefined
 };
 
-function map(msg) {
+function project(msg) {
   let match = msg.event;
   if (typeof match !== "object") {
     return {
@@ -90,7 +90,7 @@ let ItemMapping = Projection$Reventless.Mapping.Make({
   stateSchema: stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
 let testMeta = {
@@ -156,7 +156,7 @@ let CmdTargetSpec = {
   moduleUrl: moduleUrl$2
 };
 
-function map$1(id, event, _queryEngine) {
+function map(id, event, _queryEngine) {
   if (event.TAG === "OrderPlaced") {
     return [{
         TAG: "Publish",
@@ -182,10 +182,10 @@ function map$1(id, event, _queryEngine) {
 let OrderMapping = {
   Source: undefined,
   Target: undefined,
-  map: map$1
+  map: map
 };
 
-function map$2(_id, event, _queryEngine) {
+function map$1(_id, event, _queryEngine) {
   if (event.TAG === "OrderPlaced") {
     return [{
         TAG: "Count",
@@ -205,7 +205,7 @@ function map$2(_id, event, _queryEngine) {
 let CountOrderMapping = {
   Source: undefined,
   Target: undefined,
-  map: map$2
+  map: map$1
 };
 
 (import.meta.url);
@@ -222,7 +222,7 @@ let mappings = [{
       },
       eventSchema: eventSchema$1
     },
-    map: map$1
+    map: map
   }];
 
 let OrderMappings_Target = {
@@ -252,7 +252,7 @@ let mappings$1 = [{
       },
       eventSchema: eventSchema$1
     },
-    map: map$2
+    map: map$1
   }];
 
 let CountOrderMappings_Target = {

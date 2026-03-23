@@ -30,26 +30,26 @@ type error =
   | OrderAlreadyPlaced
   | ProductsNotAvailable({missing: array<string>})
 
-type decisionModel = {exists: bool, availableProductIds: Set.t<string>}
+type state = {exists: bool, availableProductIds: Set.t<string>}
 
-let initialDecisionModel = {exists: false, availableProductIds: Set.make()}
+let initialState = {exists: false, availableProductIds: Set.make()}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
-  | OrderPlaced(_) => {exists: true, availableProductIds: model.availableProductIds}
+  | OrderPlaced(_) => {exists: true, availableProductIds: state.availableProductIds}
   | CatalogProductSynced({productId}) =>
-    model.availableProductIds->Set.add(productId)
-    model
-  | _ => model
+    state.availableProductIds->Set.add(productId)
+    state
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | PlaceOrder({orderId, customerId, productId: productIds}) =>
-    if model.exists {
+    if state.exists {
       Error(OrderAlreadyPlaced)
     } else {
-      let missing = productIds->Array.filter(pid => !(model.availableProductIds->Set.has(pid)))
+      let missing = productIds->Array.filter(pid => !(state.availableProductIds->Set.has(pid)))
       if missing->Array.length > 0 {
         Error(ProductsNotAvailable({missing: missing}))
       } else {

@@ -9,7 +9,7 @@ module CustomerMapping = Mapping.Make(
   CustomersReadModel,
   {
     open Customer
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Registered({email, address}) =>
         Set(id, {CustomersReadModel.email: email, address, deactivated: false})

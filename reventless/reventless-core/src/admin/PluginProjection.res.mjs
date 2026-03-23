@@ -18,7 +18,7 @@ let Util = {
   extractExtensionNames: extractExtensionNames
 };
 
-function map(param) {
+function project(param) {
   let event = param.event;
   let match = param.meta;
   let id = param.id;
@@ -223,7 +223,7 @@ let PluginMapping = Projection$Reventless.Mapping.Make({
   stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
   subIdConfig: undefined
 })({
-  map: map
+  project: project
 });
 
 let Mappings = Projection$Reventless.Mappings.Make({

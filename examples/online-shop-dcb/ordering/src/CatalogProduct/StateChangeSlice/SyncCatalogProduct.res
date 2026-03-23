@@ -17,17 +17,17 @@ type command =
 @schema
 type error = unit // always succeeds — sync is idempotent
 
-type decisionModel = {name: string, price: float}
-let initialDecisionModel = {name: "", price: 0.0}
+type state = {name: string, price: float}
+let initialState = {name: "", price: 0.0}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | CatalogProductSynced({name, price}) => {name, price}
-  | CatalogProductPriceChanged({price}) => {...model, price}
-  | _ => model
+  | CatalogProductPriceChanged({price}) => {...state, price}
+  | _ => state
   }
 
-let decide = (_model, command) =>
+let decide = (_state, command) =>
   switch command {
   | SyncNewProduct({productId, name, price}) => Ok([CatalogProductSynced({productId, name, price})])
   | ChangeSyncedPrice({productId, price}) => Ok([CatalogProductPriceChanged({productId, price})])

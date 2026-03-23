@@ -9,7 +9,7 @@ module CategoryMapping = Mapping.Make(
   CategoriesReadModel,
   {
     open Category
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
       | Added({name}) =>
         Set(id, {CategoriesReadModel.name: name, archived: false})

@@ -25,13 +25,13 @@ module type Target = {
 The outcome of a projection mapping — what to do with the read model state
 after processing a source event.
 
-Returned as an array from a `Projection.Mapping` `map` function.
-Return `[Ignore]` (or `[]`) when an event should not affect the read model.
+Returned from a `Projection.Mapping` `project` function.
+Return `Ignore` (or `[]`) when an event should not affect the read model.
 
 @example
 ```rescript
 // CategoriesProjections.res
-let map = ({event, id, _}) => switch event {
+let project = ({event, id, _}) => switch event {
   | CategoryAdded({categoryId, name}) =>
     Set(id, {CategoriesReadModel.categoryId, name, archived: false})
   | CategoryRenamed({name}) => Update(id, state => {...state, name})
@@ -83,7 +83,7 @@ type action<'id, 'state> =
 A compiled single-source-to-single-target mapping.
 
 Created by `Projection.Mapping.Make(Source, Target, MappingImpl)`.
-The `map` function receives a full `Message.event'` envelope and returns
+The `project` function receives a full `Message.event'` envelope and returns
 one `action` value.
 */
 module type Mapping = {
@@ -95,7 +95,7 @@ module type Mapping = {
   @schema
   type targetState
 
-  let map: Message.event'<string, sourceEvent> => action<string, targetState>
+  let project: Message.event'<string, sourceEvent> => action<string, targetState>
   let sourceEventSchema: S.t<sourceEvent>
   let sourceName: string
   let subIdConfig: option<ReadModel.subIdConfig<targetState>>
@@ -118,7 +118,7 @@ module type Mappings = {
 module type MappingImpl = {
   type sourceEvent
   type targetState
-  let map: Message.event'<string, sourceEvent> => action<string, targetState>
+  let project: Message.event'<string, sourceEvent> => action<string, targetState>
 }
 
 /**
@@ -131,7 +131,7 @@ module CategoryMapping = Projection.Mapping.Make(
   Category,
   CategoriesReadModel,
   {
-    let map = ({event, id, _}) => switch event {
+    let project = ({event, id, _}) => switch event {
       | CategoryAdded({categoryId, name}) =>
         Set(id, {CategoriesReadModel.categoryId, name, archived: false})
       | CategoryRenamed({name}) => Update(id, state => {...state, name})
@@ -152,7 +152,7 @@ module Mapping = {
     type sourceEvent = Source.event
     @schema
     type targetState = Target.state
-    let map = MappingImpl.map
+    let project = MappingImpl.project
     let sourceName = Source.name
     let subIdConfig = Target.subIdConfig
   }

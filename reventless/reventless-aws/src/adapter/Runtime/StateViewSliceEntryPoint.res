@@ -186,7 +186,7 @@ let buildJsonEventsHandler = (specModule, queryDbTableName) => {
           effectSync(() => {
             try {
               let eventJson = json->getEventField->Nullable.toOption->Option.getOr(json)
-              project(None, parseJsonOrThrow(eventJson, eventSchema))
+              project(parseJsonOrThrow(eventJson, eventSchema))
             } catch {
             | exn =>
               Console.log2("StateViewSlice: Failed to decode event:", exn)

@@ -15,23 +15,23 @@ type command = ChangeProductName({productId: @s.matches(DcbTag.string) string, n
 @schema
 type error = ProductNotFound
 
-type decisionModel = {exists: bool, currentName: string}
+type state = {exists: bool, currentName: string}
 
-let initialDecisionModel = {exists: false, currentName: ""}
+let initialState = {exists: false, currentName: ""}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ProductAdded({name}) => {exists: true, currentName: name}
-  | ProductNameChanged({name}) => {...model, currentName: name}
-  | _ => model
+  | ProductNameChanged({name}) => {...state, currentName: name}
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | ChangeProductName({productId, name}) =>
-    if !model.exists {
+    if !state.exists {
       Error(ProductNotFound)
-    } else if name == model.currentName {
+    } else if name == state.currentName {
       Ok([]) // idempotent — name unchanged
     } else {
       Ok([ProductNameChanged({productId, name})])

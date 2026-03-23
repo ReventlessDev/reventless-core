@@ -5,14 +5,14 @@ import * as EventMapperFixtures$ReventlessCore from "./EventMapperFixtures.res.m
 
 Jest.describe("Mapping.Make:", () => {
   Jest.describe("sourceName", () => Jest.test("equals source spec name", () => Jest.Expect.toBe(Jest.Expect.expect(EventMapperFixtures$ReventlessCore.ItemMapping.sourceName), "SourceAggregate")));
-  Jest.describe("map", () => {
+  Jest.describe("project", () => {
     Jest.test("ItemCreated maps to Create action", () => {
       let event$p = EventMapperFixtures$ReventlessCore.makeSourceEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget",
         price: 9.99
       });
-      let action = EventMapperFixtures$ReventlessCore.ItemMapping.map(event$p);
+      let action = EventMapperFixtures$ReventlessCore.ItemMapping.project(event$p);
       if (typeof action !== "object") {
         return Jest.fail("Expected Create action");
       }
@@ -35,7 +35,7 @@ Jest.describe("Mapping.Make:", () => {
         TAG: "ItemPriceUpdated",
         newPrice: 14.99
       });
-      let action = EventMapperFixtures$ReventlessCore.ItemMapping.map(event$p);
+      let action = EventMapperFixtures$ReventlessCore.ItemMapping.project(event$p);
       if (typeof action !== "object" || action.TAG !== "Update") {
         return Jest.fail("Expected Update action");
       } else {
@@ -44,7 +44,7 @@ Jest.describe("Mapping.Make:", () => {
     });
     Jest.test("ItemRemoved maps to Delete action", () => {
       let event$p = EventMapperFixtures$ReventlessCore.makeSourceEvent$p("item-1", "ItemRemoved");
-      let action = EventMapperFixtures$ReventlessCore.ItemMapping.map(event$p);
+      let action = EventMapperFixtures$ReventlessCore.ItemMapping.project(event$p);
       if (typeof action !== "object" || action.TAG !== "Delete") {
         return Jest.fail("Expected Delete action");
       } else {
@@ -56,7 +56,7 @@ Jest.describe("Mapping.Make:", () => {
         TAG: "ItemPriceUpdated",
         newPrice: 14.99
       });
-      let action = EventMapperFixtures$ReventlessCore.ItemMapping.map(event$p);
+      let action = EventMapperFixtures$ReventlessCore.ItemMapping.project(event$p);
       if (typeof action !== "object") {
         return Jest.fail("Expected Update action");
       }

@@ -15,7 +15,7 @@ type event = CatalogEventLog.event
 @schema
 type state = {categoryId: string, name: string, archived: bool}
 
-let project = (_, event) =>
+let project = event =>
   switch event {
   | CategoryAdded({categoryId, name}) => [
       Set(categoryId, {categoryId, name, archived: false}),

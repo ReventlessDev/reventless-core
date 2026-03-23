@@ -19,7 +19,7 @@ CommandTopic: Command Topic { class: command-topic }
 StateChangeSlice: StateChangeSlice { class: state-change-slice }
 
 CommandTopic -> StateChangeSlice: commands { class: command-flow }
-StateChangeSlice -> DcbEventLog: read/reduce { class: event-flow }
+StateChangeSlice -> DcbEventLog: read/evolve { class: event-flow }
 DcbEventLog -> StateChangeSlice: events { class: event-flow }
 StateChangeSlice -> DcbEventLog: decide/append { class: event-flow }
 
@@ -32,7 +32,7 @@ The **StateChangeSlice** is a DCB (Dynamic Consistency Boundary) component that 
 
 ## Purpose and Responsibilities
 
-- **Responsibility**: Process commands using a decision model built from event history; append new events to the shared DcbEventLog; handle optimistic concurrency conflicts
+- **Responsibility**: Process commands using a state (decision model) built from event history; append new events to the shared DcbEventLog; handle optimistic concurrency conflicts
 - **In**: Commands from CommandTopic (routed by command type)
 - **Out**: Events to DcbEventLog (via append operation)
 - **Key Feature**: Multiple slices can coexist in a single plugin, each handling different command types but sharing the same event log
@@ -68,9 +68,9 @@ DCBArchitecture: DCB Architecture {
   Registry -> Slices.Slice2: dispatches to { class: command-flow }
   Registry -> Slices.SliceN: dispatches to { class: command-flow }
 
-  Slices.Slice1 -> DcbEventLog: read/reduce/append { class: event-flow }
-  Slices.Slice2 -> DcbEventLog: read/reduce/append { class: event-flow }
-  Slices.SliceN -> DcbEventLog: read/reduce/append { class: event-flow }
+  Slices.Slice1 -> DcbEventLog: read/evolve/append { class: event-flow }
+  Slices.Slice2 -> DcbEventLog: read/evolve/append { class: event-flow }
+  Slices.SliceN -> DcbEventLog: read/evolve/append { class: event-flow }
 }
 ```
 
@@ -82,7 +82,7 @@ The StateChangeSlice component requires a spec that defines its name, command ty
 module type Spec = {
   let name: string
 
-EventLogSpec:  module Dcb DcbEventLog.Spec
+  module DcbEventLogSpec: DcbEventLog.Spec
 
   @schema
   type command
@@ -90,11 +90,11 @@ EventLogSpec:  module Dcb DcbEventLog.Spec
   @schema
   type error
 
-  type decisionModel
-  let initialDecisionModel: decisionModel
+  type state
+  let initialState: state
 
-  let reduce: (decisionModel, DcbEventLogSpec.event) => decisionModel
-  let decide: (decisionModel, command) => result<array<DcbEventLogSpec.event>, error>
+  let evolve: (state, DcbEventLogSpec.event) => state
+  let decide: (state, command) => result<array<DcbEventLogSpec.event>, error>
 }
 ```
 
@@ -106,10 +106,10 @@ EventLogSpec:  module Dcb DcbEventLog.Spec
 | `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
 | `command` | `@schema` [type](./rescript-syntax.md#ppx) | Command type using `@schema` [ppx](./rescript-syntax.md#ppx) for auto-generated schema |
 | `error` | `@schema type` | Error type for command processing failures |
-| `decisionModel` | `type` | The state type built from accumulated events |
-| `initialDecisionModel` | `decisionModel` | Starting state for new aggregates/entities |
-| `reduce` | `(decisionModel, event) => decisionModel` | Fold function to accumulate events into state |
-| `decide` | `(decisionModel, command) => result<events, error>` | Business logic to produce events from command |
+| `state` | `type` | The state type built from accumulated events |
+| `initialState` | `state` | Starting state for new aggregates/entities |
+| `evolve` | `(state, event) => state` | Fold function to accumulate events into state |
+| `decide` | `(state, command) => result<events, error>` | Business logic to produce events from command |
 
 ## Runtime Behavior
 
@@ -128,8 +128,8 @@ StateChangeSlice -> StateChangeSlice: "Build query from command schema"
 StateChangeSlice -> DcbEventLog: "readStream(~query)"
 DcbEventLog -> Storage: Query events by tags
 Storage --> DcbEventLog: events
-StateChangeSlice -> StateChangeSlice: "reduce(events) → decisionModel"
-StateChangeSlice -> StateChangeSlice: "decide(decisionModel, command)"
+StateChangeSlice -> StateChangeSlice: "evolve(events) → state"
+StateChangeSlice -> StateChangeSlice: "decide(state, command)"
 StateChangeSlice -> DcbEventLog: "append(events, ~condition)"
 DcbEventLog -> Storage: "Write events (conditional)"
 Storage --> DcbEventLog: position

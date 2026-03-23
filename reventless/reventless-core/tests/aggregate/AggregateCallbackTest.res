@@ -30,7 +30,7 @@ describe("Aggregate_Callback.handleCommands:", () => {
 
   describe("behavior returns no events", () => {
     testPromise("Rename on new aggregate returns Ok with no event stored", async () => {
-      // Rename on empty history: Behavior.create is called; create returns []
+      // Rename on empty history: Behavior.decide(NotCreated, Rename) returns Error(NotFound)
       let results =
         await Stream.fromIterable([
           makeTopicItem("ref-1", AggSpec.Rename({newName: "Gadget"})),

@@ -18,7 +18,6 @@ describe("CategoriesView.project:", () => {
   test("CategoryAdded creates new state", () =>
     expect(
       CategoriesView.project(
-        None,
         CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Electronics"}),
       ),
     )->toEqual([
@@ -32,7 +31,6 @@ describe("CategoriesView.project:", () => {
   test("CategoryRenamed Update function changes name", () =>
     expect(
       CategoriesView.project(
-        None,
         CatalogEventLog.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, name: "Consumer Electronics"})
@@ -41,7 +39,6 @@ describe("CategoriesView.project:", () => {
   test("CategoryArchived Update function sets archived=true", () =>
     expect(
       CategoriesView.project(
-        None,
         CatalogEventLog.CategoryArchived({categoryId: "c1"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, archived: true})
@@ -50,7 +47,6 @@ describe("CategoriesView.project:", () => {
   test("Product events return empty (not handled by CategoriesView)", () =>
     expect(
       CategoriesView.project(
-        None,
         CatalogEventLog.ProductAdded({
           productId: "p1",
           name: "Laptop",

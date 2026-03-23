@@ -28,13 +28,13 @@ module AddItemSpec = {
   @schema
   type error = ItemAlreadyExists
 
-  type decisionModel = bool // true = item exists
-  let initialDecisionModel = false
+  type state = bool // true = item exists
+  let initialState = false
 
-  let reduce = (_model, _event) => true // any event means item exists
+  let evolve = (_state, _event) => true // any event means item exists
 
-  let decide = (model, command) =>
-    if model {
+  let decide = (state, command) =>
+    if state {
       Error(ItemAlreadyExists)
     } else {
       switch command {

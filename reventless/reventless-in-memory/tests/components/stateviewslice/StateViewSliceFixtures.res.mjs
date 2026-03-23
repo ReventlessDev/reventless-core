@@ -43,7 +43,7 @@ let stateSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
-function project(param, event) {
+function project(event) {
   switch (event.TAG) {
     case "ItemAdded" :
       let id = event.id;

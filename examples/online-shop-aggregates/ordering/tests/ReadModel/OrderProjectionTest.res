@@ -13,34 +13,27 @@ describe("OrderProjection:", () => {
       }),
     )
     ->thenState({
-      OrdersReadModel.orderId: "id",
-      customerId: "cust-1",
+      OrdersReadModel.customerId: "cust-1",
       productIds: ["prod-1", "prod-2"],
       status: "placed",
     })
   )
 
   test("Shipped after placing updates status to shipped", () =>
-    givenEvents([
-      Order.Placed({customerId: "cust-1", productIds: ["prod-1"]}),
-    ])
+    givenEvents([Order.Placed({customerId: "cust-1", productIds: ["prod-1"]})])
     ->whenEvent(Order.Shipped)
     ->thenState({
-      OrdersReadModel.orderId: "id",
-      customerId: "cust-1",
+      OrdersReadModel.customerId: "cust-1",
       productIds: ["prod-1"],
       status: "shipped",
     })
   )
 
   test("Cancelled after placing updates status to cancelled", () =>
-    givenEvents([
-      Order.Placed({customerId: "cust-1", productIds: ["prod-1"]}),
-    ])
+    givenEvents([Order.Placed({customerId: "cust-1", productIds: ["prod-1"]})])
     ->whenEvent(Order.Cancelled({productIds: ["prod-1"]}))
     ->thenState({
-      OrdersReadModel.orderId: "id",
-      customerId: "cust-1",
+      OrdersReadModel.customerId: "cust-1",
       productIds: ["prod-1"],
       status: "cancelled",
     })

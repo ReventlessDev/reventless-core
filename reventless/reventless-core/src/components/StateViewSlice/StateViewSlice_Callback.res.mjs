@@ -4,7 +4,7 @@ import * as Projection$ReventlessCore from "../../Projection.res.mjs";
 
 function Make(Spec) {
   let eventsHandler = async (queryDbOps, events) => {
-    let actions = events.flatMap(event => Spec.project(undefined, event));
+    let actions = events.flatMap(event => Spec.project(event));
     return await Projection$ReventlessCore.handleActions(actions, queryDbOps, undefined);
   };
   return {

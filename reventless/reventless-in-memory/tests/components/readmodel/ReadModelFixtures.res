@@ -43,7 +43,7 @@ module ItemMapping = Mapping.Make(
   ItemEventSource,
   ItemReadModelSpec,
   {
-    let map = (msg: Message.event'<string, ItemEventSource.event>) =>
+    let project = (msg: Message.event'<string, ItemEventSource.event>) =>
       switch msg.event {
       | ItemCreated({name}) => Create(msg.id, ({name: name}: ItemReadModelSpec.state))
       }

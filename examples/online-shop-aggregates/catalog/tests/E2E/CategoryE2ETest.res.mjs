@@ -31,11 +31,10 @@ let CategoryAgg = AggregateMaker.Make({
   commandSchema: Category$CatalogPlugin.commandSchema,
   moduleUrl: Category$CatalogPlugin.moduleUrl
 })({
+  initialState: CategoryBehavior$CatalogPlugin.initialState,
   resolverConfig: CategoryBehavior$CatalogPlugin.resolverConfig,
-  init: CategoryBehavior$CatalogPlugin.init,
-  apply: CategoryBehavior$CatalogPlugin.apply,
-  create: CategoryBehavior$CatalogPlugin.create,
-  execute: CategoryBehavior$CatalogPlugin.execute,
+  evolve: CategoryBehavior$CatalogPlugin.evolve,
+  decide: CategoryBehavior$CatalogPlugin.decide,
   moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Category$CatalogPlugin.name,

@@ -20,37 +20,37 @@ let errorSchema = S.union([
   }))
 ]);
 
-let initialDecisionModel_availableProductIds = new Set();
+let initialState_availableProductIds = new Set();
 
-let initialDecisionModel = {
+let initialState = {
   exists: false,
-  availableProductIds: initialDecisionModel_availableProductIds
+  availableProductIds: initialState_availableProductIds
 };
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "OrderPlaced" :
       return {
         exists: true,
-        availableProductIds: model.availableProductIds
+        availableProductIds: state.availableProductIds
       };
     case "CatalogProductSynced" :
-      model.availableProductIds.add(event.productId);
-      return model;
+      state.availableProductIds.add(event.productId);
+      return state;
     default:
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
-  if (model.exists) {
+function decide(state, command) {
+  if (state.exists) {
     return {
       TAG: "Error",
       _0: "OrderAlreadyPlaced"
     };
   }
   let productIds = command.productId;
-  let missing = productIds.filter(pid => !model.availableProductIds.has(pid));
+  let missing = productIds.filter(pid => !state.availableProductIds.has(pid));
   if (missing.length !== 0) {
     return {
       TAG: "Error",
@@ -82,8 +82,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

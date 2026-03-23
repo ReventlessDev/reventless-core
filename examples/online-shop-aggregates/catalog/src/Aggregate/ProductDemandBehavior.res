@@ -1,51 +1,45 @@
 // ProductDemand aggregate behavior.
 // Idempotently records and revokes order demand per product.
 
-open Reventless
 open ProductDemand
 
 module Spec = ProductDemand
 
 @schema
-type state = {recordedOrderIds: array<string>}
+type state =
+  | NotCreated
+  | Created({recordedOrderIds: array<string>})
 
-let resolverConfig = {Behavior.commandSchema, fields: []}
+let resolverConfig = {Reventless.Behavior.commandSchema, fields: []}
 
 let moduleUrl: string = %raw(`import.meta.url`)
 
-let init = event =>
-  switch event {
-  | Recorded({orderId}) => {recordedOrderIds: [orderId]}
-  | Revoked(_) =>
-    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
+let initialState = NotCreated
+
+let evolve = (state, event) =>
+  switch (state, event) {
+  | (NotCreated, Recorded({orderId})) => Created({recordedOrderIds: [orderId]})
+  | (Created(s), Recorded({orderId})) =>
+    Created({recordedOrderIds: Array.concat(s.recordedOrderIds, [orderId])})
+  | (Created(s), Revoked({orderId})) =>
+    Created({recordedOrderIds: s.recordedOrderIds->Array.filter(id => id !== orderId)})
+  | (NotCreated, Revoked(_)) => state
   }
 
-let apply = (state, event) =>
-  switch event {
-  | Recorded({orderId}) =>
-    {recordedOrderIds: Array.concat(state.recordedOrderIds, [orderId])}
-  | Revoked({orderId}) =>
-    {recordedOrderIds: state.recordedOrderIds->Array.filter(id => id !== orderId)}
-  }
-
-let create = (command, _context, _errorHandler) =>
-  switch command {
-  | Record({orderId}) => [Recorded({orderId: orderId})]
-  | Revoke(_) => [] // nothing recorded yet — idempotent
-  }
-
-let execute = (state, command, _context, _errorHandler) =>
-  switch command {
-  | Record({orderId}) =>
-    if state.recordedOrderIds->Array.includes(orderId) {
-      [] // idempotent
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, Record({orderId})) => Ok([Recorded({orderId: orderId})])
+  | (NotCreated, Revoke(_)) => Ok([]) // nothing recorded yet — idempotent
+  | (Created(s), Record({orderId})) =>
+    if s.recordedOrderIds->Array.includes(orderId) {
+      Ok([]) // idempotent
     } else {
-      [Recorded({orderId: orderId})]
+      Ok([Recorded({orderId: orderId})])
     }
-  | Revoke({orderId}) =>
-    if !(state.recordedOrderIds->Array.includes(orderId)) {
-      [] // idempotent
+  | (Created(s), Revoke({orderId})) =>
+    if !(s.recordedOrderIds->Array.includes(orderId)) {
+      Ok([]) // idempotent
     } else {
-      [Revoked({orderId: orderId})]
+      Ok([Revoked({orderId: orderId})])
     }
   }

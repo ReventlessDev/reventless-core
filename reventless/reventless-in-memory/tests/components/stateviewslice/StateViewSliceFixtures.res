@@ -31,7 +31,7 @@ module ItemsViewSpec = {
   @schema
   type state = {id: string, name: string}
 
-  let project = (_, event) =>
+  let project = event =>
     switch event {
     | ItemEventLog.ItemAdded({id, name}) => [Set(id, {id, name})]
     | ItemEventLog.ItemRenamed({id, name}) => [Update(id, s => {...s, name})]

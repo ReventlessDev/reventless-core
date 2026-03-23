@@ -26,10 +26,10 @@ function Make(Target) {
     };
     let mappings = Mappings.mappings.map(M => {
       let Source = Projection$ReventlessCore.Mapping.MakeGenericSource(M);
-      let map = MapperNto1$ReventlessCore.makeGenericMap(Source.decode$p, M.map);
+      let project = MapperNto1$ReventlessCore.makeGenericMap(Source.decode$p, M.project);
       return {
         sourceName: M.sourceName,
-        map: map
+        project: project
       };
     });
     return MapperNto1$ReventlessCore.Mapper({})(GenericTarget)({

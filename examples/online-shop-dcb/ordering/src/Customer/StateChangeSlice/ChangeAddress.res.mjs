@@ -16,7 +16,7 @@ let errorSchema = S.union([
   S.literal("CustomerAlreadyDeactivated")
 ]);
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "CustomerRegistered" :
       return {
@@ -26,36 +26,36 @@ function reduce(model, event) {
       };
     case "AddressChanged" :
       return {
-        exists: model.exists,
-        deactivated: model.deactivated,
+        exists: state.exists,
+        deactivated: state.deactivated,
         currentAddress: event.address
       };
     case "CustomerDeactivated" :
       return {
-        exists: model.exists,
+        exists: state.exists,
         deactivated: true,
-        currentAddress: model.currentAddress
+        currentAddress: state.currentAddress
       };
     default:
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
-  if (!model.exists) {
+function decide(state, command) {
+  if (!state.exists) {
     return {
       TAG: "Error",
       _0: "CustomerNotFound"
     };
   }
-  if (model.deactivated) {
+  if (state.deactivated) {
     return {
       TAG: "Error",
       _0: "CustomerAlreadyDeactivated"
     };
   }
   let address = command.address;
-  if (address === model.currentAddress) {
+  if (address === state.currentAddress) {
     return {
       TAG: "Ok",
       _0: []
@@ -76,7 +76,7 @@ let name = "ChangeAddress";
 
 let DcbEventLogSpec;
 
-let initialDecisionModel = {
+let initialState = {
   exists: false,
   deactivated: false,
   currentAddress: ""
@@ -88,8 +88,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

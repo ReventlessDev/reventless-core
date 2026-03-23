@@ -11,7 +11,7 @@ let stateSchema = S.schema(s => ({
   archived: s.m(S.bool)
 }));
 
-function project(param, event) {
+function project(event) {
   switch (event.TAG) {
     case "CategoryAdded" :
       let categoryId = event.categoryId;

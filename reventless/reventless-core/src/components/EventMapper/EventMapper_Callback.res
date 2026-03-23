@@ -101,7 +101,7 @@ module MakeCounterHandler = (
     )
 
   // Shared event processing logic used by both Counter and EventCollector handlers.
-  // For each event: finds the mapping, decodes id+event, runs Mapping.map, then splits
+  // For each event: finds the mapping, decodes id+event, runs Mapping.map (EventMapping), then splits
   // the resulting actions into (publisherEntries, counterActions).
   let commonEventsHandler = async eventsJson' => {
     let eventsCount = eventsJson'->Array.length

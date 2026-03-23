@@ -17,7 +17,6 @@ describe("ProductProjection:", () => {
       }),
     )
     ->thenState({
-      productId: "id",
       name: "Laptop",
       description: "A laptop",
       price: 999.99,
@@ -34,7 +33,6 @@ describe("ProductProjection:", () => {
     ])
     ->whenEvent(NameUpdated({name: "Gaming Laptop"}))
     ->thenState({
-      productId: "id",
       name: "Gaming Laptop",
       description: "A laptop",
       price: 999.99,
@@ -51,7 +49,6 @@ describe("ProductProjection:", () => {
     ])
     ->whenEvent(DescriptionUpdated({description: "A high-end laptop"}))
     ->thenState({
-      productId: "id",
       name: "Laptop",
       description: "A high-end laptop",
       price: 999.99,
@@ -68,7 +65,6 @@ describe("ProductProjection:", () => {
     ])
     ->whenEvent(PriceUpdated({price: 899.99}))
     ->thenState({
-      productId: "id",
       name: "Laptop",
       description: "A laptop",
       price: 899.99,

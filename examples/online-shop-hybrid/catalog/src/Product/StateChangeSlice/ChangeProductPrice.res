@@ -15,23 +15,23 @@ type command = ChangeProductPrice({productId: @s.matches(DcbTag.string) string, 
 @schema
 type error = ProductNotFound
 
-type decisionModel = {exists: bool, currentPrice: float}
+type state = {exists: bool, currentPrice: float}
 
-let initialDecisionModel = {exists: false, currentPrice: 0.0}
+let initialState = {exists: false, currentPrice: 0.0}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ProductAdded({price}) => {exists: true, currentPrice: price}
-  | ProductPriceChanged({price}) => {...model, currentPrice: price}
-  | _ => model
+  | ProductPriceChanged({price}) => {...state, currentPrice: price}
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | ChangeProductPrice({productId, price}) =>
-    if !model.exists {
+    if !state.exists {
       Error(ProductNotFound)
-    } else if price == model.currentPrice {
+    } else if price == state.currentPrice {
       Ok([]) // idempotent — price unchanged
     } else {
       Ok([ProductPriceChanged({productId, price})])

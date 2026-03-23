@@ -32,11 +32,10 @@ function Make(Platform) {
     commandSchema: Product$CatalogPlugin.commandSchema,
     moduleUrl: Product$CatalogPlugin.moduleUrl
   })({
+    initialState: ProductBehavior$CatalogPlugin.initialState,
     resolverConfig: ProductBehavior$CatalogPlugin.resolverConfig,
-    init: ProductBehavior$CatalogPlugin.init,
-    apply: ProductBehavior$CatalogPlugin.apply,
-    create: ProductBehavior$CatalogPlugin.create,
-    execute: ProductBehavior$CatalogPlugin.execute,
+    evolve: ProductBehavior$CatalogPlugin.evolve,
+    decide: ProductBehavior$CatalogPlugin.decide,
     moduleUrl: ProductBehavior$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Product$CatalogPlugin.name,
@@ -51,11 +50,10 @@ function Make(Platform) {
     commandSchema: Category$CatalogPlugin.commandSchema,
     moduleUrl: Category$CatalogPlugin.moduleUrl
   })({
+    initialState: CategoryBehavior$CatalogPlugin.initialState,
     resolverConfig: CategoryBehavior$CatalogPlugin.resolverConfig,
-    init: CategoryBehavior$CatalogPlugin.init,
-    apply: CategoryBehavior$CatalogPlugin.apply,
-    create: CategoryBehavior$CatalogPlugin.create,
-    execute: CategoryBehavior$CatalogPlugin.execute,
+    evolve: CategoryBehavior$CatalogPlugin.evolve,
+    decide: CategoryBehavior$CatalogPlugin.decide,
     moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Category$CatalogPlugin.name,
@@ -110,11 +108,10 @@ function Make(Platform) {
     commandSchema: ProductDemand$CatalogPlugin.commandSchema,
     moduleUrl: ProductDemand$CatalogPlugin.moduleUrl
   })({
+    initialState: ProductDemandBehavior$CatalogPlugin.initialState,
     resolverConfig: ProductDemandBehavior$CatalogPlugin.resolverConfig,
-    init: ProductDemandBehavior$CatalogPlugin.init,
-    apply: ProductDemandBehavior$CatalogPlugin.apply,
-    create: ProductDemandBehavior$CatalogPlugin.create,
-    execute: ProductDemandBehavior$CatalogPlugin.execute,
+    evolve: ProductDemandBehavior$CatalogPlugin.evolve,
+    decide: ProductDemandBehavior$CatalogPlugin.decide,
     moduleUrl: ProductDemandBehavior$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: ProductDemand$CatalogPlugin.name,

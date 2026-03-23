@@ -44,7 +44,7 @@ module ItemMapping = Mapping.Make(
   SourceSpec,
   TargetSpec,
   {
-    let map = (msg: Message.event'<string, SourceSpec.event>) =>
+    let project = (msg: Message.event'<string, SourceSpec.event>) =>
       switch msg.event {
       | ItemCreated({name, price}) => Create(msg.id, ({name, price}: TargetSpec.state))
       | ItemPriceUpdated({newPrice}) => Update(msg.id, s => {...s, price: newPrice})

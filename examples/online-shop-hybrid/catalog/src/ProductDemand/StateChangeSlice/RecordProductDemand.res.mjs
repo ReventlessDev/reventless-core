@@ -18,30 +18,30 @@ let commandSchema = S.union([
   }))
 ]);
 
-let initialDecisionModel = {
+let initialState = {
   recordedOrderIds: []
 };
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "ProductDemandRecorded" :
       return {
-        recordedOrderIds: model.recordedOrderIds.concat([event.orderId])
+        recordedOrderIds: state.recordedOrderIds.concat([event.orderId])
       };
     case "ProductDemandRevoked" :
       let orderId = event.orderId;
       return {
-        recordedOrderIds: model.recordedOrderIds.filter(id => id !== orderId)
+        recordedOrderIds: state.recordedOrderIds.filter(id => id !== orderId)
       };
     default:
-      return model;
+      return state;
   }
 }
 
-function decide(model, command) {
+function decide(state, command) {
   if (command.TAG === "RecordDemand") {
     let orderId = command.orderId;
-    if (model.recordedOrderIds.includes(orderId)) {
+    if (state.recordedOrderIds.includes(orderId)) {
       return {
         TAG: "Ok",
         _0: []
@@ -58,7 +58,7 @@ function decide(model, command) {
     }
   }
   let orderId$1 = command.orderId;
-  if (model.recordedOrderIds.includes(orderId$1)) {
+  if (state.recordedOrderIds.includes(orderId$1)) {
     return {
       TAG: "Ok",
       _0: [{
@@ -87,8 +87,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

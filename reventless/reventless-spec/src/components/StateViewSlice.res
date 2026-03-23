@@ -14,7 +14,7 @@ module DcbEventLogSpec = CatalogEventLog
 @schema type event = CatalogEventLog.event
 @schema type state = {categoryId: string, name: string, archived: bool}
 
-let project = (_, event) => switch event {
+let project = event => switch event {
   | CategoryAdded({categoryId, name}) =>
     [Set(categoryId, {categoryId, name, archived: false})]
   | CategoryRenamed({categoryId, name}) =>
@@ -50,11 +50,7 @@ module type Spec = {
 
   /**
   Projects one DCB event into read model actions.
-
-  - `option<state>` — the current state (`None` if the row does not exist yet)
-  - `DcbEventLogSpec.event` — the incoming event from the shared log
-
   Return `[]` for events this slice does not care about.
   */
-  let project: (option<state>, DcbEventLogSpec.event) => array<Projection.action<string, state>>
+  let project: DcbEventLogSpec.event => array<Projection.action<string, state>>
 }

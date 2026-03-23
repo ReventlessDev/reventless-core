@@ -47,41 +47,41 @@ let resolverConfig = {
 
 let moduleUrl$1 = import.meta.url;
 
-function init(_event) {
+function evolve(_state, _event) {
   
 }
 
-function apply(_state, _event) {
-  
-}
-
-function create(command, _ctx, _errHandler) {
+function decide(_state, command) {
   if (typeof command !== "object") {
     if (command === "Create") {
-      return ["Created"];
+      return {
+        TAG: "Ok",
+        _0: ["Created"]
+      };
     } else {
-      return [];
+      return {
+        TAG: "Ok",
+        _0: []
+      };
     }
   } else {
-    return [{
-        TAG: "CreatedWithName",
-        name: command.name
-      }];
+    return {
+      TAG: "Ok",
+      _0: [{
+          TAG: "CreatedWithName",
+          name: command.name
+        }]
+    };
   }
-}
-
-function execute(_state, _command, _ctx, _errHandler) {
-  return [];
 }
 
 let CmdGenBehavior = {
   Spec: undefined,
   resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute
+  initialState: undefined,
+  evolve: evolve,
+  decide: decide
 };
 
 let capturedCmds = {
@@ -110,11 +110,10 @@ let TestGenerator = CommandGenerator_Callback$ReventlessCore.Make(MockPublishSpe
   commandSchema: commandSchema,
   moduleUrl: moduleUrl
 })({
+  initialState: undefined,
   resolverConfig: resolverConfig,
-  init: init,
-  apply: apply,
-  create: create,
-  execute: execute,
+  evolve: evolve,
+  decide: decide,
   moduleUrl: moduleUrl$1
 });
 

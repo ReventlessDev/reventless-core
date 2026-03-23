@@ -212,7 +212,7 @@ module Mapping = Reventless.Projection.Mapping.Make(
   Customer,
   Customer_ReadModelSpec,
   {
-    let map = ({event, id}) => {
+    let project = ({event, id}) => {
       switch event {
       | Customer.Created({Customer.name: name, address}) => Create(id, {name, address})
       | AddressChanged(address) => Update(id, state => {...state, address})
@@ -229,7 +229,7 @@ include Mapping
 
 In order to update a Read Model by Events from an Aggregate, a Projection from that Aggregate to the Read Model must be provided.
 
-You do so by calling the Reventless.Projection.Mapping.Make [module function](../rescript-syntax.md#functors) with the [Aggregate Spec](aggregate.md#aggregate-spec), the [Read Model Spec](#read-model-spec) and a `map` function to create a `Mapping` module. The `map` function receives the event, the id and the event meta data and returns an `action` that is applied to the Query DB. These actions are supported:
+You do so by calling the Reventless.Projection.Mapping.Make [module function](../rescript-syntax.md#functors) with the [Aggregate Spec](aggregate.md#aggregate-spec), the [Read Model Spec](#read-model-spec) and a `project` function to create a `Mapping` module. The `project` function receives the event, the id and the event meta data and returns an `action` that is applied to the Query DB. These actions are supported:
 
 - **Single state**
   - Create:

@@ -9,10 +9,9 @@ module CategoryMapping = Mapping.Make(
   CategoriesReadModel,
   {
     open Category
-    let map = ({event, id, _}) =>
+    let project = ({event, id, _}) =>
       switch event {
-      | Added({name}) =>
-        Set(id, {CategoriesReadModel.name: name, archived: false})
+      | Added({name}) => Set(id, {CategoriesReadModel.name, archived: false})
       | Renamed({name}) => Update(id, state => {...state, name})
       | Archived => Update(id, state => {...state, archived: true})
       }

@@ -19,7 +19,7 @@ let commandSchema = S.union([
   }))
 ]);
 
-function reduce(model, event) {
+function evolve(state, event) {
   switch (event.TAG) {
     case "CatalogProductSynced" :
       return {
@@ -28,15 +28,15 @@ function reduce(model, event) {
       };
     case "CatalogProductPriceChanged" :
       return {
-        name: model.name,
+        name: state.name,
         price: event.price
       };
     default:
-      return model;
+      return state;
   }
 }
 
-function decide(_model, command) {
+function decide(_state, command) {
   if (command.TAG === "SyncNewProduct") {
     return {
       TAG: "Ok",
@@ -65,7 +65,7 @@ let DcbEventLogSpec;
 
 let errorSchema = S.unit;
 
-let initialDecisionModel = {
+let initialState = {
   name: "",
   price: 0.0
 };
@@ -76,8 +76,8 @@ export {
   DcbEventLogSpec,
   commandSchema,
   errorSchema,
-  initialDecisionModel,
-  reduce,
+  initialState,
+  evolve,
   decide,
 }
 /* moduleUrl Not a pure module */

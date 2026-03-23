@@ -13,7 +13,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
   PluginSpec,
   PluginReadModelSpec,
   {
-    let map = ({event, id, meta: {time, user}}) => {
+    let project = ({event, id, meta: {time, user}}) => {
       let statusChange = {
         at: time,
         by: user,

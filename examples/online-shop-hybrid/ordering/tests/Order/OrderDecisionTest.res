@@ -1,5 +1,5 @@
 // Pure unit tests for Order StateChangeSlice decision logic.
-// Tests PlaceOrder, ShipOrder, CancelOrder.
+// Tests PlaceOrder, ShipOrder, CancelOrder evolve and decide functions.
 
 open Jest
 open Expect
@@ -11,11 +11,11 @@ describe("PlaceOrder:", () => {
     {PlaceOrder.exists: false, availableProductIds: s}
   }
 
-  describe("reduce", () => {
+  describe("evolve", () => {
     test(
       "OrderPlaced sets exists=true",
       () => {
-        let model = PlaceOrder.reduce(
+        let state = PlaceOrder.evolve(
           withProducts(["prod-1"]),
           OrderingEventLog.OrderPlaced({
             orderId: "ord-1",
@@ -23,33 +23,33 @@ describe("PlaceOrder:", () => {
             productIds: ["prod-1"],
           }),
         )
-        expect(model.exists)->toBe(true)
+        expect(state.exists)->toBe(true)
       },
     )
 
     test(
       "CatalogProductSynced adds to availableProductIds",
       () => {
-        let model = PlaceOrder.reduce(
-          PlaceOrder.initialDecisionModel,
+        let state = PlaceOrder.evolve(
+          PlaceOrder.initialState,
           OrderingEventLog.CatalogProductSynced({
             productId: "prod-1",
             name: "Widget",
             price: 9.99,
           }),
         )
-        expect(model.availableProductIds->Set.has("prod-1"))->toBe(true)
+        expect(state.availableProductIds->Set.has("prod-1"))->toBe(true)
       },
     )
 
     test(
-      "other events do not change model",
+      "other events do not change state",
       () => {
-        let model = PlaceOrder.reduce(
-          PlaceOrder.initialDecisionModel,
+        let state = PlaceOrder.evolve(
+          PlaceOrder.initialState,
           OrderingEventLog.OrderShipped({orderId: "ord-1"}),
         )
-        expect(model.exists)->toBe(false)
+        expect(state.exists)->toBe(false)
       },
     )
   })
@@ -96,10 +96,10 @@ describe("PlaceOrder:", () => {
     test(
       "on existing order returns OrderAlreadyPlaced",
       () => {
-        let model = withProducts(["prod-1"])
+        let state = withProducts(["prod-1"])
         expect(
           PlaceOrder.decide(
-            {...model, exists: true},
+            {...state, exists: true},
             PlaceOrder.PlaceOrder({
               orderId: "ord-1",
               customerId: "cust-1",
@@ -118,7 +118,7 @@ describe("ShipOrder:", () => {
       "on non-existent order returns OrderNotFound",
       () =>
         expect(
-          ShipOrder.decide(ShipOrder.initialDecisionModel, ShipOrder.ShipOrder({orderId: "ord-1"})),
+          ShipOrder.decide(ShipOrder.initialState, ShipOrder.ShipOrder({orderId: "ord-1"})),
         )->toEqual(Error(ShipOrder.OrderNotFound)),
     )
 
@@ -164,7 +164,7 @@ describe("CancelOrder:", () => {
       () =>
         expect(
           CancelOrder.decide(
-            CancelOrder.initialDecisionModel,
+            CancelOrder.initialState,
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Error(CancelOrder.OrderNotFound)),
