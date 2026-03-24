@@ -17,6 +17,12 @@ let testStateSchema = S.schema(s => ({
   active: s.m(S.bool)
 }));
 
+let svStateSchema = S.schema(s => ({
+  productId: s.m(DcbTag$Reventless.string),
+  name: s.m(S.string),
+  price: s.m(S.float)
+}));
+
 let addCommandSchema = S.schema(s => ({
   productId: s.m(DcbTag$Reventless.string),
   name: s.m(S.string)
@@ -101,6 +107,65 @@ describe("GraphQL_SchemaInspector", () => {
       expect(Stdlib_Option.isSome(result.listQuery)).toBe(true);
       let listQ = Stdlib_Option.getOrThrow(result.listQuery, undefined);
       expect(listQ.includes("Catalog_Products")).toBe(true);
+    });
+  });
+  describe("includeIdParam — ReadModel vs StateViewSlice", () => {
+    test("ReadModel fragment: query has (id: ID!) and type has injected id: ID!", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "RM_Product",
+          listFieldName: "RM_Products",
+          returnTypeName: "RMProduct",
+          stateSchema: testStateSchema,
+          authorization: undefined,
+          includeIdParam: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("RM_Product(id: ID!): RMProduct")).toBe(true);
+      expect(sdl.includes("type RMProduct")).toBe(true);
+      let typeLines = sdl.split("\n");
+      let idFieldInType = typeLines.some(line => {
+        if (line.trim() === "id: ID!") {
+          return !line.includes("(");
+        } else {
+          return false;
+        }
+      });
+      expect(idFieldInType).toBe(true);
+    });
+    test("StateViewSlice fragment: query has no (id: ID!) and type has no injected id", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "SV_Item",
+          listFieldName: "SV_Items",
+          returnTypeName: "SVItem",
+          stateSchema: svStateSchema,
+          authorization: undefined,
+          includeIdParam: false
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("SV_Item: SVItem")).toBe(true);
+      expect(sdl.includes("SV_Item(id: ID!)")).toBe(false);
+      expect(sdl.includes("type SVItem")).toBe(true);
+      expect(sdl.includes("productId: ID!")).toBe(true);
+      let typeSection = Stdlib_Option.getOr(sdl.split("type SVItem")[1], "");
+      let typeEnd = typeSection.indexOf("}");
+      let typeEnd$1 = typeEnd >= 0 ? typeEnd : typeSection.length;
+      let typeBody = typeSection.slice(0, typeEnd$1);
+      let hasInjectedId = typeBody.split("\n").some(line => line.trim() === "id: ID!");
+      expect(hasInjectedId).toBe(false);
+    });
+    test("default includeIdParam (omitted) behaves like ReadModel", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Default_Thing",
+          listFieldName: "Default_Things",
+          returnTypeName: "DefaultThing",
+          stateSchema: testStateSchema,
+          authorization: undefined
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("Default_Thing(id: ID!): DefaultThing")).toBe(true);
     });
   });
   describe("inspectFragment", () => {
@@ -212,6 +277,7 @@ export {
   numberSchema,
   boolSchema,
   testStateSchema,
+  svStateSchema,
   addCommandSchema,
   unionCommandSchema,
 }

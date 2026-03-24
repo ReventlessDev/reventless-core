@@ -22,6 +22,13 @@ type testState = {
 }
 
 @schema
+type svState = {
+  productId: @s.matches(Reventless.DcbTag.string) string,
+  name: string,
+  price: float,
+}
+
+@schema
 type addCommand = {
   productId: @s.matches(Reventless.DcbTag.string) string,
   name: string,
@@ -128,6 +135,88 @@ describe("GraphQL_SchemaInspector", () => {
       expect(result.listQuery->Option.isSome)->toBe(true)
       let listQ = result.listQuery->Option.getOrThrow
       expect(listQ->String.includes("Catalog_Products"))->toBe(true)
+    })
+  })
+
+  // ── includeIdParam Tests ──────────────────────────────────────────────────
+
+  describe("includeIdParam — ReadModel vs StateViewSlice", () => {
+    testPromise("ReadModel fragment: query has (id: ID!) and type has injected id: ID!", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "RM_Product",
+            listFieldName: "RM_Products",
+            returnTypeName: "RMProduct",
+            stateSchema: testStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      expect(sdl->String.includes("RM_Product(id: ID!): RMProduct"))->toBe(true)
+      expect(sdl->String.includes("type RMProduct"))->toBe(true)
+      // The type should have an injected id: ID! field (first field in the type)
+      let typeLines = sdl->String.split("\n")
+      let idFieldInType = typeLines->Array.some(line =>
+        line->String.trim == "id: ID!" &&
+          !(line->String.includes("("))
+      )
+      expect(idFieldInType)->toBe(true)
+    })
+
+    testPromise("StateViewSlice fragment: query has no (id: ID!) and type has no injected id", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "SV_Item",
+            listFieldName: "SV_Items",
+            returnTypeName: "SVItem",
+            stateSchema: svStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: false,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      // Single query should NOT have (id: ID!) parameter
+      expect(sdl->String.includes("SV_Item: SVItem"))->toBe(true)
+      expect(sdl->String.includes("SV_Item(id: ID!)"))->toBe(false)
+      // The type should NOT have an injected id: ID! field
+      expect(sdl->String.includes("type SVItem"))->toBe(true)
+      expect(sdl->String.includes("productId: ID!"))->toBe(true)
+      // Count id: ID! occurrences — should be zero (productId uses ID! but "id: ID!" standalone should not appear)
+      let typeSection = sdl->String.split("type SVItem")->Array.get(1)->Option.getOr("")
+      let typeEnd = typeSection->String.indexOf("}")
+      let typeEnd = typeEnd >= 0 ? typeEnd : typeSection->String.length
+      let typeBody = typeSection->String.slice(~start=0, ~end=typeEnd)
+      let hasInjectedId = typeBody->String.split("\n")->Array.some(line =>
+        line->String.trim == "id: ID!"
+      )
+      expect(hasInjectedId)->toBe(false)
+    })
+
+    testPromise("default includeIdParam (omitted) behaves like ReadModel", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Default_Thing",
+            listFieldName: "Default_Things",
+            returnTypeName: "DefaultThing",
+            stateSchema: testStateSchema->S.castToUnknown,
+            authorization: None,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      expect(sdl->String.includes("Default_Thing(id: ID!): DefaultThing"))->toBe(true)
     })
   })
 

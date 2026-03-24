@@ -24,23 +24,44 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | Some({singleFieldName}) => singleFieldName
   | None => name->Resolver.Templates.uncapitalize
   }
-  let resolverByIdSingle = Resolver.makeUnitResolver(
-    ~name=fieldNameForSingle->String.capitalize,
-    ~api,
-    ~dataSourceName,
-    ~type_="Query"->Pulumi.Input.make,
-    ~field=fieldNameForSingle->Pulumi.Input.make,
-    ~requestTemplate=switch subIdField {
-    | Some(sortField) => Resolver.Templates.queryByIdSort(sortField)
-    | None => Resolver.Templates.getItemById
-    },
-    ~responseTemplate=switch subIdField {
-    | Some(_) => Resolver.Templates.firstResult
-    | None => Resolver.Templates.result
-    },
-    ~opts,
-  )
-  let resolverByIdMultiple =
+
+  // Resolve includeIdParam flag from registry (defaults to true for ReadModels)
+  let includeIdParam = switch registryEntry {
+  | Some({includeIdParam}) => includeIdParam
+  | None => true
+  }
+
+  let resolverByIdSingle = if includeIdParam {
+    Resolver.makeUnitResolver(
+      ~name=fieldNameForSingle->String.capitalize,
+      ~api,
+      ~dataSourceName,
+      ~type_="Query"->Pulumi.Input.make,
+      ~field=fieldNameForSingle->Pulumi.Input.make,
+      ~requestTemplate=switch subIdField {
+      | Some(sortField) => Resolver.Templates.queryByIdSort(sortField)
+      | None => Resolver.Templates.getItemById
+      },
+      ~responseTemplate=switch subIdField {
+      | Some(_) => Resolver.Templates.firstResult
+      | None => Resolver.Templates.result
+      },
+      ~opts,
+    )
+  } else {
+    Resolver.makeUnitResolver(
+      ~name=fieldNameForSingle->String.capitalize,
+      ~api,
+      ~dataSourceName,
+      ~type_="Query"->Pulumi.Input.make,
+      ~field=fieldNameForSingle->Pulumi.Input.make,
+      ~requestTemplate=Resolver.Templates.listAllItems,
+      ~responseTemplate=Resolver.Templates.firstResult,
+      ~opts,
+    )
+  }
+
+  let resolverByIdMultiple = if includeIdParam {
     subIdField->Option.map(_sortField =>
       Resolver.makeUnitResolver(
         ~name=fieldNameForSingle->String.capitalize ++ "ById",
@@ -53,6 +74,9 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~opts,
       )
     )
+  } else {
+    None
+  }
 
   let fieldNameForAll = switch registryEntry {
   | Some({listFieldName}) => listFieldName
