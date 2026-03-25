@@ -24,6 +24,8 @@ function makeQueueRef(prim) {
   return HandlerFactoryHelpersResMjs.makeQueueRef(prim);
 }
 
+let mkTopicItem = ((command, reference) => ({command, reference}));
+
 let mkNameObj = ((name) => ({name}));
 
 let mkDcbEventLogOpsArg = ((spec, name, storage, publishJson) => ({
@@ -92,12 +94,12 @@ async function buildHandler() {
     let commandSchema = patchedSpec$1.commandSchema;
     let typeNames = DcbTagResMjs.extractEventTypes(commandSchema);
     let jsonHandler = stream => {
-      let decodedStream = Stream.flatMap(Stream.mapEffect(stream, cmd => Effect.sync(() => {
+      let decodedStream = Stream.flatMap(Stream.mapEffect(stream, topicItem => Effect.sync(() => {
         try {
-          let decoded = MessageResMjs.decodeCommand$p(cmd, getIdStringSchema(), commandSchema);
+          let decoded = MessageResMjs.decodeCommand$p(topicItem.command, getIdStringSchema(), commandSchema);
           return {
             TAG: "Some",
-            _0: decoded
+            _0: mkTopicItem(decoded, topicItem.reference)
           };
         } catch (exn) {
           return {
@@ -118,12 +120,12 @@ async function buildHandler() {
       handlersByType[typeName] = jsonHandler;
     });
   }));
-  let compositeJsonCommandsHandler = stream => Stream.runCollect(Stream.mapEffect(stream, cmd => {
-    let typeNameOpt = extractTypeName(cmd);
+  let compositeJsonCommandsHandler = stream => Stream.runCollect(Stream.mapEffect(stream, topicItem => {
+    let typeNameOpt = extractTypeName(topicItem.command);
     if (typeNameOpt !== undefined) {
       let handler = handlersByType[typeNameOpt];
       if (handler !== undefined) {
-        return handler(Stream.make(cmd));
+        return handler(Stream.make(topicItem));
       } else {
         console.warn(`DCB: no handler for command type: ` + typeNameOpt);
         return Effect.succeed([]);
@@ -186,6 +188,7 @@ export {
   dynamicImport,
   patchSpecId,
   makeQueueRef,
+  mkTopicItem,
   mkNameObj,
   mkDcbEventLogOpsArg,
   mkStorageOps,

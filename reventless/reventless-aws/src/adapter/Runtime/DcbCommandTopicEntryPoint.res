@@ -131,6 +131,12 @@ external requestContextTag: 'a = "tag"
 @get external getDcbEventLogSpec: 'a => 'b = "DcbEventLogSpec"
 @get external getCommandSchema: 'a => 'b = "commandSchema"
 
+// === TopicItem field accessors ===
+// handleQueueEvent wraps each SQS record as {command: JSON.t, reference: string}
+@get external getTopicCommand: 'a => 'b = "command"
+@get external getTopicReference: 'a => string = "reference"
+let mkTopicItem: ('a, string) => 'b = %raw(`(command, reference) => ({command, reference})`)
+
 let mkNameObj: string => 'a = %raw(`(name) => ({name})`)
 
 let mkDcbEventLogOpsArg: ('a, string, 'b, 'c) => 'd = %raw(`
@@ -249,18 +255,21 @@ let buildHandler = async (): (sqsHandler, cmdGenHandler) => {
       let commandSchema = patchedSpec->getCommandSchema
       let typeNames = extractEventTypes(commandSchema)
 
-      // Build jsonHandler that decodes commands and delegates to sliceCallback
+      // Build jsonHandler that decodes commands and delegates to sliceCallback.
+      // Input stream contains topicItems: {command: JSON.t, reference: string}.
+      // Must unwrap .command for decoding, then re-wrap with reference for the
+      // downstream handleCommands which expects Stream.t<topicItem<command'>>.
       let jsonHandler: 'a => 'b = stream => {
         let decodedStream = streamFlatMap(
-          streamMapEffect(stream, cmd => {
+          streamMapEffect(stream, topicItem => {
             effectSync(() => {
               try {
                 let decoded = decodeCommand'(
-                  cmd,
+                  topicItem->getTopicCommand,
                   getIdStringSchema(),
                   commandSchema,
                 )
-                {"TAG": "Some", "_0": decoded}
+                {"TAG": "Some", "_0": mkTopicItem(decoded, topicItem->getTopicReference)}
               } catch {
               | _ => {"TAG": "None", "_0": Obj.magic(0)}
               }
@@ -283,16 +292,18 @@ let buildHandler = async (): (sqsHandler, cmdGenHandler) => {
     })
     ->Promise.all
 
-  // Composite handler: routes by message type
+  // Composite handler: routes by message type.
+  // Stream contains topicItems: {command: JSON.t, reference: string}.
+  // Extract type name from the inner .command JSON, not the wrapper.
   let compositeJsonCommandsHandler: 'a => 'b = stream => {
     streamRunCollect(
-      streamMapEffect(stream, cmd => {
-        let typeNameOpt = extractTypeName(cmd)
+      streamMapEffect(stream, topicItem => {
+        let typeNameOpt = extractTypeName(topicItem->getTopicCommand)
         switch typeNameOpt {
         | Some(typeName) =>
           switch handlersByType->Dict.get(typeName) {
           | Some(handler) =>
-            let singleStream = streamMake(cmd)
+            let singleStream = streamMake(topicItem)
             handler(singleStream)
           | None =>
             Console.warn(`DCB: no handler for command type: ${typeName}`)
