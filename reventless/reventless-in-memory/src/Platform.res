@@ -42,7 +42,6 @@ module MakeWithConfig = (
   module ReadModelMaker = ReadModel_Builder.Make(Bus)
   module ExtensionPointMaker = ExtensionPoint_Builder.Make(Bus)
   module TaskMaker = Task_Builder.Make(Bus)
-  module DcbEventLogMaker = DcbEventLog_Builder.Make(Bus)
   module StateViewSliceMaker = StateViewSlice_Builder.Make(Bus)
   module AutomationSliceMaker = AutomationSlice_Builder.Make(Bus)
   module OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder.Make(Bus)
@@ -94,24 +93,21 @@ module MakeWithConfig = (
   module StateChangeSlice = {
     module Make = (Spec: Reventless.StateChangeSlice.Spec): (
       ReventlessInfra.StateChangeSlice.T
-        with type dcbEvent = Spec.DcbEventLogSpec.event
-        and module Spec = Spec
+        with module Spec = Spec
     ) => StateChangeSlice_Builder.Make(Spec)
   }
 
   module StateViewSlice = {
     module Make = (Spec: Reventless.StateViewSlice.Spec): (
       ReventlessInfra.StateViewSlice.T
-        with type dcbEvent = Spec.DcbEventLogSpec.event
-        and module Spec = Spec
+        with module Spec = Spec
     ) => StateViewSliceMaker.Make(Spec)
     module Bundled = {
       module Make = (
         Spec: Reventless.StateViewSlice.Spec,
       ): (
         ReventlessInfra.StateViewSlice.T
-          with type dcbEvent = Spec.DcbEventLogSpec.event
-          and module Spec = Spec
+          with module Spec = Spec
       ) => StateViewSliceMaker.Make(Spec)
     }
   }
@@ -119,16 +115,14 @@ module MakeWithConfig = (
   module AutomationSlice = {
     module Make = (Spec: Reventless.AutomationSlice.Spec): (
       ReventlessInfra.AutomationSlice.T
-        with type dcbEvent = Spec.DcbEventLogSpec.event
-        and module Spec = Spec
+        with module Spec = Spec
     ) => AutomationSliceMaker.Make(Spec)
     module Bundled = {
       module Make = (
         Spec: Reventless.AutomationSlice.Spec,
       ): (
         ReventlessInfra.AutomationSlice.T
-          with type dcbEvent = Spec.DcbEventLogSpec.event
-          and module Spec = Spec
+          with module Spec = Spec
       ) => AutomationSliceMaker.Make(Spec)
     }
   }
@@ -136,16 +130,14 @@ module MakeWithConfig = (
   module OutboundTranslationSlice = {
     module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
       ReventlessInfra.OutboundTranslationSlice.T
-        with type dcbEvent = Spec.DcbEventLogSpec.event
-        and module Spec = Spec
+        with module Spec = Spec
     ) => OutboundTranslationSliceMaker.Make(Spec)
     module Bundled = {
       module Make = (
         Spec: Reventless.OutboundTranslationSlice.Spec,
       ): (
         ReventlessInfra.OutboundTranslationSlice.T
-          with type dcbEvent = Spec.DcbEventLogSpec.event
-          and module Spec = Spec
+          with module Spec = Spec
       ) => OutboundTranslationSliceMaker.Make(Spec)
     }
   }
@@ -153,15 +145,8 @@ module MakeWithConfig = (
   module InboundTranslationSlice = {
     module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (
       ReventlessInfra.InboundTranslationSlice.T
-        with type dcbEvent = Spec.DcbEventLogSpec.event
-        and module Spec = Spec
+        with module Spec = Spec
     ) => InboundTranslationSliceMaker.Make(Spec)
-  }
-
-  module DcbEventLog = {
-    module Make = (Spec: Reventless.DcbEventLog.Spec): (
-      ReventlessInfra.DcbEventLog.T with module Spec = Spec
-    ) => DcbEventLogMaker.Make(Spec)
   }
 
   // Empty base fragment — no types, no mutations, no queries.

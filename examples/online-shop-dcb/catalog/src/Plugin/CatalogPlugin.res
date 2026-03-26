@@ -3,8 +3,6 @@
 // ProductsExtensionPoint (outbound), and the OrdersExtension (inbound).
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
-
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
   module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
   module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription)
@@ -62,10 +60,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
   module DcbSpec = {
-    @schema
-    type event = CatalogEventLog.event
     let stateChangeSlices: array<
-      module(ReventlessInfra.StateChangeSlice.T with type dcbEvent = event),
+      module(ReventlessInfra.StateChangeSlice.T),
     > = [
       module(AddProductSlice),
       module(ChangeProductNameSlice),
@@ -77,20 +73,20 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       module(RecordProductDemandSlice),
     ]
     let stateViewSlices: array<
-      module(ReventlessInfra.StateViewSlice.T with type dcbEvent = event),
+      module(ReventlessInfra.StateViewSlice.T),
     > = [
       module(ProductsViewSlice),
       module(CategoriesViewSlice),
       module(ProductDemandViewSlice),
     ]
     let automationSlices: array<
-      module(ReventlessInfra.AutomationSlice.T with type dcbEvent = event),
+      module(ReventlessInfra.AutomationSlice.T),
     > = []
     let outboundTranslationSlices: array<
-      module(ReventlessInfra.OutboundTranslationSlice.T with type dcbEvent = event),
+      module(ReventlessInfra.OutboundTranslationSlice.T),
     > = []
     let inboundTranslationSlices: array<
-      module(ReventlessInfra.InboundTranslationSlice.T with type dcbEvent = event),
+      module(ReventlessInfra.InboundTranslationSlice.T),
     > = [module(ImportProductSlice)]
   }
 

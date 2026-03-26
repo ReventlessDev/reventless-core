@@ -16,13 +16,11 @@ let toResolvedOutputs = (
   })
 
 module type T = {
-  type dcbEvent
   module Spec: Reventless.StateChangeSlice.Spec
-  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
   type component = Component.t<t, outputs, operations>
 
   let make: (
-    ~dcbEventLog: dcbEventLogComponent,
+    ~dcbEventLog: DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

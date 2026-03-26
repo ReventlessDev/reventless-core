@@ -50,20 +50,13 @@ Jest.describe("OrdersView.project:", () => {
   }));
   Jest.test("OrderCancelled Update function sets status to cancelled", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(OrdersView$OrderingPlugin.project({
     TAG: "OrderCancelled",
-    orderId: "ord-1",
-    productIds: ["prod-1"]
+    orderId: "ord-1"
   }), baseOrder)), {
     orderId: "ord-1",
     customerId: "cust-1",
     productIds: baseOrder_productIds,
     status: "cancelled"
   }));
-  Jest.test("Customer events return empty (not handled by OrdersView)", () => Jest.Expect.toEqual(Jest.Expect.expect(OrdersView$OrderingPlugin.project({
-    TAG: "CustomerRegistered",
-    customerId: "cust-1",
-    email: "alice@example.com",
-    address: "123 Main St"
-  })), []));
 });
 
 export {

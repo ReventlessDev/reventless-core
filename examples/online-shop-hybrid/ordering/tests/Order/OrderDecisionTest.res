@@ -17,11 +17,7 @@ describe("PlaceOrder:", () => {
       () => {
         let state = PlaceOrder.evolve(
           withProducts(["prod-1"]),
-          OrderingEventLog.OrderPlaced({
-            orderId: "ord-1",
-            customerId: "cust-1",
-            productIds: ["prod-1"],
-          }),
+          PlaceOrder.OrderPlaced,
         )
         expect(state.exists)->toBe(true)
       },
@@ -32,24 +28,9 @@ describe("PlaceOrder:", () => {
       () => {
         let state = PlaceOrder.evolve(
           PlaceOrder.initialState,
-          OrderingEventLog.CatalogProductSynced({
-            productId: "prod-1",
-            name: "Widget",
-            price: 9.99,
-          }),
+          PlaceOrder.CatalogProductSynced({productId: "prod-1"}),
         )
         expect(state.availableProductIds->Set.has("prod-1"))->toBe(true)
-      },
-    )
-
-    test(
-      "other events do not change state",
-      () => {
-        let state = PlaceOrder.evolve(
-          PlaceOrder.initialState,
-          OrderingEventLog.OrderShipped({orderId: "ord-1"}),
-        )
-        expect(state.exists)->toBe(false)
       },
     )
   })
@@ -69,7 +50,7 @@ describe("PlaceOrder:", () => {
           ),
         )->toEqual(
           Ok([
-            OrderingEventLog.OrderPlaced({
+            PlaceOrder.OrderPlaced({
               orderId: "ord-1",
               customerId: "cust-1",
               productIds: ["prod-1", "prod-2"],
@@ -130,7 +111,7 @@ describe("ShipOrder:", () => {
             {ShipOrder.exists: true, shipped: false, cancelled: false},
             ShipOrder.ShipOrder({orderId: "ord-1"}),
           ),
-        )->toEqual(Ok([OrderingEventLog.OrderShipped({orderId: "ord-1"})])),
+        )->toEqual(Ok([ShipOrder.OrderShipped({orderId: "ord-1"})])),
     )
 
     test(
@@ -179,7 +160,7 @@ describe("CancelOrder:", () => {
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(
-          Ok([OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})]),
+          Ok([CancelOrder.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})]),
         ),
     )
 

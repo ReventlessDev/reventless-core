@@ -7,22 +7,9 @@ import * as ChangeProductPrice$CatalogPlugin from "../../src/Product/StateChange
 import * as ChangeProductDescription$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductDescription.res.mjs";
 
 Jest.describe("AddProduct:", () => {
-  Jest.describe("evolve", () => {
-    Jest.test("ProductAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.evolve(AddProduct$CatalogPlugin.initialState, {
-      TAG: "ProductAdded",
-      productId: "p1",
-      name: "Laptop",
-      description: "A laptop",
-      price: 999.99
-    })), {
-      exists: true
-    }));
-    Jest.test("other events do not change state", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.evolve(AddProduct$CatalogPlugin.initialState, {
-      TAG: "ProductDemandRecorded",
-      productId: "p1",
-      orderId: "ord-1"
-    })), AddProduct$CatalogPlugin.initialState));
-  });
+  Jest.describe("evolve", () => Jest.test("ProductAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.evolve(AddProduct$CatalogPlugin.initialState, "ProductAdded")), {
+    exists: true
+  })));
   Jest.describe("decide", () => {
     Jest.test("on non-existent product produces ProductAdded", () => Jest.Expect.toEqual(Jest.Expect.expect(AddProduct$CatalogPlugin.decide(AddProduct$CatalogPlugin.initialState, {
       TAG: "AddProduct",
@@ -63,17 +50,13 @@ Jest.describe("ChangeProductName:", () => {
   Jest.describe("evolve", () => {
     Jest.test("ProductAdded sets exists=true and currentName", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.evolve(ChangeProductName$CatalogPlugin.initialState, {
       TAG: "ProductAdded",
-      productId: "p1",
-      name: "Laptop",
-      description: "A laptop",
-      price: 999.99
+      name: "Laptop"
     })), {
       exists: true,
       currentName: "Laptop"
     }));
     Jest.test("ProductNameChanged updates currentName", () => Jest.Expect.toEqual(Jest.Expect.expect(ChangeProductName$CatalogPlugin.evolve(existingState, {
       TAG: "ProductNameChanged",
-      productId: "p1",
       name: "Gaming Laptop"
     })), {
       exists: true,

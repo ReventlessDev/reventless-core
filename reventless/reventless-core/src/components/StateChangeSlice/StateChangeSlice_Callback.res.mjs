@@ -2,20 +2,47 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
 
 function Make(Spec) {
-  let queryEventTypes = DcbTag$Reventless.extractEventTypes(Spec.DcbEventLogSpec.eventSchema);
+  let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
+  let queryEventTypes = decoder.eventTypes;
+  let encodeProducedEvent = event => {
+    let json = S.reverseConvertToJsonOrThrow(event, Spec.producedEventSchema);
+    let match = Message$ReventlessCore.splitMessage(json);
+    let tags = DcbTag$Reventless.extractTags(Spec.producedEventSchema, event);
+    return {
+      eventType: match[0],
+      data: match[1],
+      tags: tags
+    };
+  };
   let handleSingleCommand = (dcbEventLog, command$p) => {
     let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
-    let attempt = retries => Effect.flatMap(Stream$1.runFold(dcbEventLog.readStream(query, undefined), [
+    let attempt = retries => Effect.flatMap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, undefined), raw => {
+      let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
+      return Stdlib_Option.map(decoded, event => [
+        event,
+        raw.position
+      ]);
+    }), opt => {
+      if (opt !== undefined) {
+        return Stream$1.fromIterable([opt]);
+      } else {
+        return Stream$1.empty;
+      }
+    }), [
       Spec.initialState,
       undefined
-    ], (param, se) => [
-      Spec.evolve(param[0], se.event),
-      se.position
+    ], (param, param$1) => [
+      Spec.evolve(param[0], param$1[0]),
+      param$1[1]
     ]), param => {
       let newEvents = Spec.decide(param[0], command$p.command);
       if (newEvents.TAG === "Ok") {
@@ -26,12 +53,13 @@ function Make(Spec) {
             _0: "ok"
           }));
         }
+        let rawEvents = newEvents$1.map(encodeProducedEvent);
         let condition_after = param[1];
         let condition = {
           query: query,
           after: condition_after
         };
-        return Effect.flatMap(Effect.promise(() => dcbEventLog.append(newEvents$1, condition)), appendResult => {
+        return Effect.flatMap(Effect.promise(() => dcbEventLog.append(rawEvents, condition)), appendResult => {
           if (appendResult.TAG === "Ok") {
             return Effect.map(Effect.logInfo(`StateChangeSlice(` + Spec.name + `): ` + newEvents$1.length.toString() + ` event(s) appended`), () => ({
               TAG: "Ok",

@@ -1,12 +1,8 @@
-module Make = (Spec: Reventless.DcbEventLog.Spec): (
-  ReventlessCore.DcbEventLog.T with module Spec = Spec
-) => {
-  PluginRuntime_Builder.registerDcbEventLogModulePath(
-    Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
-  )
-  include ReventlessCore.DcbEventLog_Builder.Make(
-    Spec,
-    DcbEventLogStorage.DynamoDb,
-    EventTopicPublisher.DynamoDbStream,
-  )
-}
+// AWS DcbEventLog builder — no longer used directly.
+// The DcbEventLog is created internally by Dcb_Builder via ReventlessCore.DcbEventLog_Builder.
+// This module is retained for potential future use.
+
+include ReventlessCore.DcbEventLog_Builder.Make(
+  DcbEventLogStorage.DynamoDb,
+  EventTopicPublisher.DynamoDbStream,
+)

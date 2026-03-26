@@ -55,6 +55,32 @@ let objectEventSchema = S.schema(s => ({
 
 let moduleUrl$1 = import.meta.url;
 
+let producedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ItemCreated",
+    itemId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ItemRenamed",
+    itemId: s.m(DcbTag$Reventless.string),
+    newName: s.m(S.string)
+  }))
+]);
+
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ItemCreated",
+    itemId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ItemRenamed",
+    itemId: s.m(DcbTag$Reventless.string),
+    newName: s.m(S.string)
+  }))
+]);
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "CreateItem",
@@ -75,22 +101,16 @@ let errorSchema = S.union([
 ]);
 
 function evolve(state, event) {
-  if (typeof event !== "object") {
-    return state;
-  }
-  switch (event.TAG) {
-    case "ItemCreated" :
-      return {
-        exists: true,
-        currentName: event.name
-      };
-    case "ItemRenamed" :
-      return {
-        exists: state.exists,
-        currentName: event.newName
-      };
-    case "CountUpdated" :
-      return state;
+  if (event.TAG === "ItemCreated") {
+    return {
+      exists: true,
+      currentName: event.name
+    };
+  } else {
+    return {
+      exists: state.exists,
+      currentName: event.newName
+    };
   }
 }
 
@@ -141,7 +161,8 @@ let TestCommandSpec_initialState = {
 let TestCommandSpec = {
   name: "TestStateChangeSlice",
   moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: undefined,
+  producedEventSchema: producedEventSchema,
+  consumedEventSchema: consumedEventSchema,
   commandSchema: commandSchema,
   errorSchema: errorSchema,
   initialState: TestCommandSpec_initialState,

@@ -29,7 +29,6 @@ import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginProjection.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
-import * as DcbEventLog_Builder$ReventlessAws from "./components/DcbEventLog_Builder.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./adapter/Cloner/ClonerRunner_Fargate.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
@@ -174,16 +173,12 @@ function MakeWithConfig(Config) {
   let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled$2 = OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$6 = DcbEventLog_Builder$ReventlessAws.Make;
-  let DcbEventLog = {
-    Make: Make$6
-  };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$7 = FragmentConfig => {
+  let Make$6 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -196,7 +191,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$7
+    Make: Make$6
   };
   Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
   Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
@@ -555,7 +550,6 @@ function MakeWithConfig(Config) {
       }
     },
     InboundTranslationSlice: InboundTranslationSlice,
-    DcbEventLog: DcbEventLog,
     Api: Api,
     mcpSupported: false,
     Plugin: Plugin,
@@ -662,16 +656,12 @@ function Make($star) {
   let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let Bundled$2 = OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$7 = DcbEventLog_Builder$ReventlessAws.Make;
-  let DcbEventLog = {
-    Make: Make$7
-  };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$8 = FragmentConfig => {
+  let Make$7 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -683,7 +673,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$8
+    Make: Make$7
   };
   Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
   Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
@@ -1045,7 +1035,6 @@ function Make($star) {
     AutomationSlice: AutomationSlice,
     OutboundTranslationSlice: OutboundTranslationSlice,
     InboundTranslationSlice: InboundTranslationSlice,
-    DcbEventLog: DcbEventLog,
     Api: Api,
     mcpSupported: false,
     Plugin: Plugin,

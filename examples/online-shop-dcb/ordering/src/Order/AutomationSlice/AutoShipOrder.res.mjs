@@ -5,6 +5,17 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "OrderShipped",
+    orderId: s.m(S.string)
+  }))
+]);
+
 let todoItemSchema = S.schema(s => ({
   orderId: s.m(S.string)
 }));
@@ -28,7 +39,9 @@ function collect(event) {
 }
 
 function resolve(event) {
-  if (event.TAG === "OrderShipped") {
+  if (event.TAG === "OrderPlaced") {
+    return;
+  } else {
     return event.orderId;
   }
 }
@@ -45,8 +58,6 @@ function process(id, _item) {
 
 let name = "AutoShipOrder";
 
-let DcbEventLogSpec;
-
 let maxRetries = 3;
 
 let heartbeatInterval = 60;
@@ -54,7 +65,7 @@ let heartbeatInterval = 60;
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  consumedEventSchema,
   todoItemSchema,
   commandSchema,
   collect,

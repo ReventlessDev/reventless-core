@@ -32,14 +32,11 @@ let slice = SendTrackingEmailSlice.make(~dcbEventLog=log, ~publishJsons=publishJ
 type t
 
 module type T = {
-  /** The DCB event type this slice operates on (fixed by `Spec.DcbEventLogSpec.event`). */
-  type dcbEvent
   module Spec: Reventless.OutboundTranslationSlice.Spec
-  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
   let make: (
-    ~dcbEventLog: dcbEventLogComponent,
+    ~dcbEventLog: DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

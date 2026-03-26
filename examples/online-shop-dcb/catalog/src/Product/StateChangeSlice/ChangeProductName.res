@@ -2,12 +2,24 @@
 // Requires product to exist; idempotent when name is unchanged.
 
 open Reventless
-open CatalogEventLog
 
 let name = "ChangeProductName"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = CatalogEventLog
+type state = {exists: bool, currentName: string}
+
+let initialState = {exists: false, currentName: ""}
+
+@schema
+type consumedEvent =
+  | ProductAdded({name: string})
+  | ProductNameChanged({name: string})
+
+let evolve = (state, event) =>
+  switch event {
+  | ProductAdded({name}) => {exists: true, currentName: name}
+  | ProductNameChanged({name}) => {...state, currentName: name}
+  }
 
 @schema
 type command = ChangeProductName({productId: @s.matches(DcbTag.string) string, name: string})
@@ -15,16 +27,8 @@ type command = ChangeProductName({productId: @s.matches(DcbTag.string) string, n
 @schema
 type error = ProductNotFound
 
-type state = {exists: bool, currentName: string}
-
-let initialState = {exists: false, currentName: ""}
-
-let evolve = (state, event) =>
-  switch event {
-  | ProductAdded({name}) => {exists: true, currentName: name}
-  | ProductNameChanged({name}) => {...state, currentName: name}
-  | _ => state
-  }
+@schema
+type producedEvent = ProductNameChanged({productId: @s.matches(DcbTag.string) string, name: string})
 
 let decide = (state, command) =>
   switch command {

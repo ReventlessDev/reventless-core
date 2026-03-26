@@ -2,12 +2,24 @@
 // Requires product to exist; idempotent when price is unchanged.
 
 open Reventless
-open CatalogEventLog
 
 let name = "ChangeProductPrice"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = CatalogEventLog
+type state = {exists: bool, currentPrice: float}
+
+let initialState = {exists: false, currentPrice: 0.0}
+
+@schema
+type consumedEvent =
+  | ProductAdded({price: float})
+  | ProductPriceChanged({price: float})
+
+let evolve = (state, event) =>
+  switch event {
+  | ProductAdded({price}) => {exists: true, currentPrice: price}
+  | ProductPriceChanged({price}) => {...state, currentPrice: price}
+  }
 
 @schema
 type command = ChangeProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
@@ -15,16 +27,9 @@ type command = ChangeProductPrice({productId: @s.matches(DcbTag.string) string, 
 @schema
 type error = ProductNotFound
 
-type state = {exists: bool, currentPrice: float}
-
-let initialState = {exists: false, currentPrice: 0.0}
-
-let evolve = (state, event) =>
-  switch event {
-  | ProductAdded({price}) => {exists: true, currentPrice: price}
-  | ProductPriceChanged({price}) => {...state, currentPrice: price}
-  | _ => state
-  }
+@schema
+type producedEvent =
+  | ProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
 
 let decide = (state, command) =>
   switch command {

@@ -1,9 +1,8 @@
-// Ordering DCB event log specification (hybrid).
+// Ordering DCB event log type definition (hybrid).
 // Contains only Order + CatalogProduct events. Customer events live in the Customer
 // aggregate's own event log, not here.
 
 open Reventless
-let moduleUrl: string = %raw(`import.meta.url`)
 @schema
 type event =
   | OrderPlaced({

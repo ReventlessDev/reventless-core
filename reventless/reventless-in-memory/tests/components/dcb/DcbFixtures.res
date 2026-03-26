@@ -4,11 +4,10 @@
 open TestFixtures
 
 // ─────────────────────────────────────────────────────────────
-// Minimal DcbEventLog spec
+// Event type definition for the DcbEventLog
 // ─────────────────────────────────────────────────────────────
 
 module ItemEventLog = {
-  let moduleUrl: string = %raw(`import.meta.url`)
   @schema
   type event = ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
 }
@@ -20,7 +19,12 @@ module ItemEventLog = {
 module AddItemSpec = {
   let name = "AddItem"
   let moduleUrl: string = %raw(`import.meta.url`)
-  module DcbEventLogSpec = ItemEventLog
+
+  @schema
+  type producedEvent = ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
+
+  @schema
+  type consumedEvent = ItemAdded
 
   @schema
   type command = AddItem({id: @s.matches(Reventless.DcbTag.string) string, name: string})
@@ -33,12 +37,12 @@ module AddItemSpec = {
 
   let evolve = (_state, _event) => true // any event means item exists
 
-  let decide = (state, command) =>
+  let decide = (state, command): result<array<producedEvent>, error> =>
     if state {
       Error(ItemAlreadyExists)
     } else {
       switch command {
-      | AddItem({id, name}) => Ok([ItemEventLog.ItemAdded({id, name})])
+      | AddItem({id, name}) => Ok([ItemAdded({id, name})])
       }
     }
 
@@ -67,8 +71,7 @@ let _ = TestRunner.setup()
 // Build DcbEventLog
 // ─────────────────────────────────────────────────────────────
 
-module DcbEventLogMaker = DcbEventLog_Builder.Make(Bus)
-module ItemEventLogMaker = DcbEventLogMaker.Make(ItemEventLog)
+module ItemEventLogMaker = DcbEventLog_Builder.Make(Bus)
 let eventLog = ItemEventLogMaker.make(~name="ItemEventLog")
 
 // ─────────────────────────────────────────────────────────────

@@ -1,42 +1,18 @@
 module Make = (
-  Spec: Reventless.DcbEventLog.Spec,
   Storage: DcbEventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
-): (DcbEventLog.T with module Spec = Spec) => {
-  module Spec = Spec
+): DcbEventLog.T => {
 
-  // DcbEventLog.Spec has the same shape as EventTopic.Spec minus Id
-  // We need an EventTopic.Spec to build the EventTopic
+  // DcbEventLog uses a generic JSON event topic (no typed event schema needed)
   module EventTopicSpec = {
     module Id = Reventless.Id.String
     @schema
-    type event = Spec.event
+    type event = JSON.t
   }
 
-  type component = Component.t<
-    DcbEventLog.t,
-    DcbEventLog.outputs,
-    DcbEventLog.operations<Spec.event>,
-  >
+  type component = ReventlessInfra.DcbEventLog.component
 
-  // Extract indexes from event schema
-  let indexes: array<string> = {
-    let taggedFields = Reventless.DcbTag.extractTaggedFields(Spec.eventSchema)
-
-    // Create single-tag indexes
-    let singleTagIndexes = taggedFields->Array.map(tagKey => `tag_${tagKey}`)
-
-    // Add composite index if there are multiple tagged fields
-    let compositeIndex = if taggedFields->Array.length > 1 {
-      ["tag_composite"]
-    } else {
-      []
-    }
-
-    Array.concat(singleTagIndexes, compositeIndex)
-  }
-
-  let construct = (self, name) => {
+  let construct = (indexes, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let storage = Storage.make(
@@ -56,17 +32,13 @@ module Make = (
       (storage.operations, eventTopic->Component.operations)
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply(((storageOps, eventTopicOps)) => {
-        module Ops = DcbEventLog_Operations.Make(
-          Spec,
-          {
-            module Spec = Spec
-            let name = name
-            let storage = storageOps
-            let publishJson = eventTopicOps.publishJson
-          },
-        )
+        module Ops = DcbEventLog_Operations.Make({
+          let name = name
+          let storage = storageOps
+          let publishJson = eventTopicOps.publishJson
+        })
 
-        let ops: DcbEventLog.operations<_> = {
+        let ops: DcbEventLog.operations = {
           read: Ops.read,
           append: Ops.append,
           readStream: Ops.readStream,
@@ -83,11 +55,11 @@ module Make = (
     self->Component.setOutputs(outputs)
   }
 
-  let make = (~name, ~opts=?): component =>
+  let make = (~name, ~indexes=[], ~opts=?): component =>
     Component.make(
       ~componentType=DcbEventLog.componentType->ComponentType.toString,
       ~name,
-      ~construct,
+      ~construct=construct(indexes, ...),
       ~opts,
     )
 }

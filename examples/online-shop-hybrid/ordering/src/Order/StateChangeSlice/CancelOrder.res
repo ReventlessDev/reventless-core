@@ -2,12 +2,26 @@
 // Requires order to exist and not be shipped; idempotent if already cancelled.
 
 open Reventless
-open OrderingEventLog
 
 let name = "CancelOrder"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = OrderingEventLog
+type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
+
+let initialState = {exists: false, shipped: false, cancelled: false, productIds: []}
+
+@schema
+type consumedEvent =
+  | OrderPlaced({productIds: array<string>})
+  | OrderShipped
+  | OrderCancelled
+
+let evolve = (state, event) =>
+  switch event {
+  | OrderPlaced({productIds}) => {exists: true, shipped: false, cancelled: false, productIds}
+  | OrderShipped => {...state, shipped: true}
+  | OrderCancelled => {...state, cancelled: true}
+  }
 
 @schema
 type command = CancelOrder({orderId: @s.matches(DcbTag.string) string})
@@ -17,17 +31,12 @@ type error =
   | OrderNotFound
   | OrderAlreadyShipped
 
-type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
-
-let initialState = {exists: false, shipped: false, cancelled: false, productIds: []}
-
-let evolve = (state, event) =>
-  switch event {
-  | OrderPlaced({productIds}) => {exists: true, shipped: false, cancelled: false, productIds}
-  | OrderShipped(_) => {...state, shipped: true}
-  | OrderCancelled(_) => {...state, cancelled: true}
-  | _ => state
-  }
+@schema
+type producedEvent =
+  | OrderCancelled({
+      orderId: @s.matches(DcbTag.string) string,
+      productIds: array<string>,
+    })
 
 let decide = (state, command) =>
   switch command {

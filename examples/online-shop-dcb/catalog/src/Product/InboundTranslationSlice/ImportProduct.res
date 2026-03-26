@@ -2,11 +2,9 @@
 // Receives external supplier JSON, validates and translates to an AddProduct command.
 
 open Reventless
-open CatalogEventLog
 
 let name = "ImportProduct"
 let moduleUrl: string = %raw(`import.meta.url`)
-module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type externalInput = {

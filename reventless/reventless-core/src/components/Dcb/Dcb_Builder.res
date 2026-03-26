@@ -38,18 +38,61 @@ module Make = (
   ): dcbResult => {
     switch dcbSpec {
     | Some(module(DcbSpec)) => {
-        module DcbEventLogSpec = {
-          let moduleUrl = ""
-          @schema
-          type event = DcbSpec.event
+        // Run validation: check produced vs consumed event compatibility
+        let produced =
+          DcbSpec.stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
+            (Sc.Spec.name, Sc.Spec.producedEventSchema->S.castToUnknown)
+          )
+        let consumed =
+          DcbSpec.stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
+            (Sc.Spec.name, Sc.Spec.consumedEventSchema->S.castToUnknown)
+          )
+          ->Array.concat(
+            DcbSpec.stateViewSlices->Array.map((module(V: StateViewSlice.T)) =>
+              (V.Spec.name, V.Spec.consumedEventSchema->S.castToUnknown)
+            ),
+          )
+          ->Array.concat(
+            DcbSpec.automationSlices->Array.map((module(A: AutomationSlice.T)) =>
+              (A.Spec.name, A.Spec.consumedEventSchema->S.castToUnknown)
+            ),
+          )
+          ->Array.concat(
+            DcbSpec.outboundTranslationSlices->Array.map((module(O: OutboundTranslationSlice.T)) =>
+              (O.Spec.name, O.Spec.consumedEventSchema->S.castToUnknown)
+            ),
+          )
+
+        switch Reventless.DcbValidation.validateProducedAndConsumed(~produced, ~consumed) {
+        | Error(errors) =>
+          errors->Array.forEach(err =>
+            Console.error(`DCB validation error (${err.sliceName}): ${err.message}`)
+          )
+        | Ok() => ()
         }
 
+        // Extract tagged fields from all produced event schemas for DynamoDB GSI creation
+        let indexes =
+          produced
+          ->Array.flatMap(((_, schema)) => Reventless.DcbTag.extractTaggedFields(schema))
+          ->(arr => {
+            let seen = Set.make()
+            arr->Array.filter(f => {
+              if seen->Set.has(f) {
+                false
+              } else {
+                seen->Set.add(f)
+                true
+              }
+            })
+          })
+          ->Array.map(tagKey => `tag_${tagKey}`)
+
         module DcbEventLog = DcbEventLog_Builder.Make(
-          DcbEventLogSpec,
           DcbEventLogStorage,
           DcbEventTopicPublisher,
         )
-        let dcbEventLog = DcbEventLog.make(~name, ~opts)
+        let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~opts)
 
         // Notify platform hook that DCB EventLog was created (AWS extracts table name)
         Plugin_Helpers.onDcbEventLogCreated.contents->Option.forEach(hook =>
@@ -80,9 +123,7 @@ module Make = (
 
         let stateChangeSlicesOutputs =
           DcbSpec.stateChangeSlices
-          ->Array.map((
-            module(StateChangeSlice: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
+          ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
             let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~opts)
             (StateChangeSlice.Spec.name, ch->Component.outputs)
           })
@@ -92,7 +133,7 @@ module Make = (
         switch Plugin_Helpers.mutationResolverHook.contents {
         | Some(registerResolver) =>
           DcbSpec.stateChangeSlices->Array.forEach((
-            module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+            module(S: StateChangeSlice.T),
           ) => {
             registerResolver(
               ~kind=Dcb,
@@ -111,7 +152,7 @@ module Make = (
             ->Component.operations
             ->Pulumi.Output.apply(ops => {
               DcbSpec.stateChangeSlices->Array.forEach((
-                module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+                module(S: StateChangeSlice.T),
               ) => {
                 let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
                 let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
@@ -128,28 +169,28 @@ module Make = (
 
         // Populate query field names registry for all slice types BEFORE creating them
         DcbSpec.stateViewSlices->Array.forEach((
-          module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
+          module(V: StateViewSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
           Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(V.Spec.name, qn)
         })
 
         DcbSpec.automationSlices->Array.forEach((
-          module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
+          module(A: AutomationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
           Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(A.queryDbName, qn)
         })
 
         DcbSpec.outboundTranslationSlices->Array.forEach((
-          module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+          module(O: OutboundTranslationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=O.queryDbName)
           Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(O.queryDbName, qn)
         })
 
         DcbSpec.inboundTranslationSlices->Array.forEach((
-          module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+          module(I: InboundTranslationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
           Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(I.queryDbName, qn)
@@ -158,9 +199,7 @@ module Make = (
         // Create StateViewSlices
         let stateViewSlicesOutputs =
           DcbSpec.stateViewSlices
-          ->Array.map((
-            module(StateViewSlice: StateViewSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
+          ->Array.map((module(StateViewSlice: StateViewSlice.T)) => {
             let sv = StateViewSlice.make(~dcbEventLog, ~opts)
             (StateViewSlice.Spec.name, sv->Component.outputs)
           })
@@ -169,7 +208,7 @@ module Make = (
         // Create AutomationSlices
         let automationSlicesOutputs =
           DcbSpec.automationSlices
-          ->Array.map((module(AutoSlice: AutomationSlice.T with type dcbEvent = DcbSpec.event)) => {
+          ->Array.map((module(AutoSlice: AutomationSlice.T)) => {
             let as_ = AutoSlice.make(~dcbEventLog, ~publishJsons, ~opts)
             (AutoSlice.Spec.name, as_->Component.outputs)
           })
@@ -178,9 +217,7 @@ module Make = (
         // Create OutboundTranslationSlices
         let outboundTranslationSlicesOutputs =
           DcbSpec.outboundTranslationSlices
-          ->Array.map((
-            module(OTS: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
-          ) => {
+          ->Array.map((module(OTS: OutboundTranslationSlice.T)) => {
             let ots = OTS.make(~dcbEventLog, ~publishJsons, ~opts)
             (OTS.Spec.name, ots->Component.outputs)
           })
@@ -189,7 +226,7 @@ module Make = (
         // Create InboundTranslationSlices
         let inboundTranslationSliceData =
           DcbSpec.inboundTranslationSlices->Array.map((
-            module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+            module(ITS: InboundTranslationSlice.T),
           ) => {
             let its = ITS.make(~publishJsons, ~opts)
             let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
@@ -305,7 +342,7 @@ module Make = (
         // Collect DCB mutation field names + TAGs for AppSync resolver creation
         let dcbMutationData =
           DcbSpec.stateChangeSlices->Array.map((
-            module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+            module(S: StateChangeSlice.T),
           ) => {
             let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
             let constructorNames =
@@ -361,7 +398,7 @@ module Make = (
         // DCB-specific API schema entries
         let mutationEntriesFromSlices =
           DcbSpec.stateChangeSlices->Array.map((
-            module(S: StateChangeSlice.T with type dcbEvent = DcbSpec.event),
+            module(S: StateChangeSlice.T),
           ) => {
             ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
             commandSchema: S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
@@ -369,14 +406,14 @@ module Make = (
 
         let mutationEntriesFromInboundSlices =
           DcbSpec.inboundTranslationSlices->Array.map((
-            module(ITS: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+            module(ITS: InboundTranslationSlice.T),
           ) => {
             ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)],
             commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
           })
 
         let stateViewEntries = DcbSpec.stateViewSlices->Array.map((
-          module(V: StateViewSlice.T with type dcbEvent = DcbSpec.event),
+          module(V: StateViewSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
           {
@@ -390,7 +427,7 @@ module Make = (
         })
 
         let automationEntries = DcbSpec.automationSlices->Array.map((
-          module(A: AutomationSlice.T with type dcbEvent = DcbSpec.event),
+          module(A: AutomationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
           {
@@ -403,7 +440,7 @@ module Make = (
         })
 
         let outboundEntries = DcbSpec.outboundTranslationSlices->Array.map((
-          module(O: OutboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+          module(O: OutboundTranslationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=O.queryDbName)
           {
@@ -416,7 +453,7 @@ module Make = (
         })
 
         let inboundEntries = DcbSpec.inboundTranslationSlices->Array.map((
-          module(I: InboundTranslationSlice.T with type dcbEvent = DcbSpec.event),
+          module(I: InboundTranslationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
           {
@@ -427,6 +464,12 @@ module Make = (
             authorization: None,
           }
         })
+
+        // Collect all event schemas from produced events for eventLogEntries
+        let allProducedSchemas =
+          DcbSpec.stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
+            Sc.Spec.producedEventSchema->S.castToUnknown
+          )
 
         {
           dcbEventLogOutputs: Some(dcbEventLog->Component.outputs),
@@ -441,13 +484,18 @@ module Make = (
             ->Array.concat(automationEntries)
             ->Array.concat(outboundEntries)
             ->Array.concat(inboundEntries),
-          eventLogEntries: [
-            {
-              ReventlessInfra.Api.busKey: name ++ "DcbEventLog",
-              displayName: name,
-              eventSchema: DcbSpec.eventSchema->S.castToUnknown,
-            },
-          ],
+          eventLogEntries: if allProducedSchemas->Array.length > 0 {
+            // Use the first produced event schema as representative for the event log
+            [
+              {
+                ReventlessInfra.Api.busKey: name ++ "DcbEventLog",
+                displayName: name,
+                eventSchema: allProducedSchemas->Array.getUnsafe(0),
+              },
+            ]
+          } else {
+            []
+          },
         }
       }
     | None => emptyResult

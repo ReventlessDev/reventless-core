@@ -5,6 +5,25 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.literal("CategoryAdded"),
+  S.literal("CategoryArchived")
+]);
+
+function evolve(state, event) {
+  if (event === "CategoryAdded") {
+    return {
+      exists: true,
+      archived: false
+    };
+  } else {
+    return {
+      exists: state.exists,
+      archived: true
+    };
+  }
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "ArchiveCategory",
   categoryId: s.m(DcbTag$Reventless.string)
@@ -12,22 +31,10 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CategoryNotFound");
 
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "CategoryAdded" :
-      return {
-        exists: true,
-        archived: false
-      };
-    case "CategoryArchived" :
-      return {
-        exists: state.exists,
-        archived: true
-      };
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "CategoryArchived",
+  categoryId: s.m(DcbTag$Reventless.string)
+}));
 
 function decide(state, command) {
   if (state.exists) {
@@ -55,8 +62,6 @@ function decide(state, command) {
 
 let name = "ArchiveCategory";
 
-let DcbEventLogSpec;
-
 let initialState = {
   exists: false,
   archived: false
@@ -65,11 +70,12 @@ let initialState = {
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

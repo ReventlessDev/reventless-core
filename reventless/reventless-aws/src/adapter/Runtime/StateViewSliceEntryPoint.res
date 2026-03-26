@@ -20,7 +20,6 @@ type handlerConfig = {
   specModule: string,
   queryDbTableName: string,
   sourceUrn: string,
-  dcbEventLogModule: option<string>,
 }
 
 type config = {handlers: array<handlerConfig>}
@@ -136,8 +135,7 @@ let callHandler: ('a, 'b, 'c) => 'd = %raw(`(h, e, c) => h(e, c)`)
 // === Spec module accessors ===
 
 @get external getProject: 'a => 'b = "project"
-@get external getDcbEventLogSpec: 'a => 'b = "DcbEventLogSpec"
-@get external getEventSchema: 'a => 'b = "eventSchema"
+@get external getConsumedEventSchema: 'a => 'b = "consumedEventSchema"
 
 // Extract the "event" field from the DynamoDB stream JSON envelope.
 // buildJsonEvent' wraps DynamoDB records as {id, meta, event: <variant_json>},
@@ -175,7 +173,7 @@ let buildJsonEventsHandler = (specModule, queryDbTableName) => {
     qdbDeleteBatch(table),
   )
 
-  let eventSchema = specModule->getDcbEventLogSpec->getEventSchema
+  let eventSchema = specModule->getConsumedEventSchema
   let project = specModule->getProject
 
   // Replicate the inline jsonEventsHandler from StateViewSlice_Builder.construct
@@ -219,14 +217,7 @@ let buildAllHandlers = async (): dict<streamHandler> => {
   let _ = await config.handlers
     ->Array.map(async h => {
       let specModule = await dynamicImport(h.specModule)
-      // Patch DcbEventLogSpec from separately imported event log module
-      let patchedSpec = switch h.dcbEventLogModule {
-      | Some(modPath) =>
-        let _eventLogModule = await dynamicImport(modPath)
-        %raw(`Object.assign({}, specModule, { DcbEventLogSpec: _eventLogModule })`)
-      | None => specModule
-      }
-      let jsonEventsHandler = buildJsonEventsHandler(patchedSpec, h.queryDbTableName)
+      let jsonEventsHandler = buildJsonEventsHandler(specModule, h.queryDbTableName)
 
       let handler = (event, context) =>
         handleStreamEvent(jsonEventsHandler, event, context)

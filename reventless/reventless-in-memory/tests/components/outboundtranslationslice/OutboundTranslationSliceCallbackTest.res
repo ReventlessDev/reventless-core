@@ -46,11 +46,6 @@ describe("OutboundTranslationSlice Callback", () => {
       expect(items->Dict.toArray->Array.length)->toBe(2)
     })
 
-    testPromise("irrelevant event does not create an item", async () => {
-      FireForgetCallback.phase1([PaymentReceived({orderId: "ord-1", amount: 100.0})])
-      let items = FireForgetCallback.todoItems.contents
-      expect(items->Dict.toArray->Array.length)->toBe(0)
-    })
   })
 
   describe("Phase 2 — translate (fire-and-forget)", () => {

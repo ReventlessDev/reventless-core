@@ -11,26 +11,9 @@ describe("RegisterCustomer:", () => {
       expect(
         RegisterCustomer.evolve(
           RegisterCustomer.initialState,
-          OrderingEventLog.CustomerRegistered({
-            customerId: "cust-1",
-            email: "alice@example.com",
-            address: "123 Main St",
-          }),
+          RegisterCustomer.CustomerRegistered,
         ),
       )->toEqual({RegisterCustomer.exists: true})
-    )
-
-    test("Order events do not change state", () =>
-      expect(
-        RegisterCustomer.evolve(
-          RegisterCustomer.initialState,
-          OrderingEventLog.OrderPlaced({
-            orderId: "ord-1",
-            customerId: "cust-1",
-            productIds: ["prod-1"],
-          }),
-        ),
-      )->toEqual(RegisterCustomer.initialState)
     )
   })
 
@@ -47,7 +30,7 @@ describe("RegisterCustomer:", () => {
         ),
       )->toEqual(
         Ok([
-          OrderingEventLog.CustomerRegistered({
+          RegisterCustomer.CustomerRegistered({
             customerId: "cust-1",
             email: "alice@example.com",
             address: "123 Main St",
@@ -113,7 +96,7 @@ describe("ChangeEmail:", () => {
           ChangeEmail.ChangeEmail({customerId: "cust-1", email: "alice2@example.com"}),
         ),
       )->toEqual(
-        Ok([OrderingEventLog.EmailChanged({customerId: "cust-1", email: "alice2@example.com"})]),
+        Ok([ChangeEmail.EmailChanged({customerId: "cust-1", email: "alice2@example.com"})]),
       )
     )
   })
@@ -152,7 +135,7 @@ describe("ChangeAddress:", () => {
           ChangeAddress.ChangeAddress({customerId: "cust-1", address: "789 Pine Rd"}),
         ),
       )->toEqual(
-        Ok([OrderingEventLog.AddressChanged({customerId: "cust-1", address: "789 Pine Rd"})]),
+        Ok([ChangeAddress.AddressChanged({customerId: "cust-1", address: "789 Pine Rd"})]),
       )
     )
   })
@@ -185,7 +168,7 @@ describe("DeactivateCustomer:", () => {
           DeactivateCustomer.DeactivateCustomer({customerId: "cust-1"}),
         ),
       )->toEqual(
-        Ok([OrderingEventLog.CustomerDeactivated({customerId: "cust-1"})]),
+        Ok([DeactivateCustomer.CustomerDeactivated({customerId: "cust-1"})]),
       )
     )
   })

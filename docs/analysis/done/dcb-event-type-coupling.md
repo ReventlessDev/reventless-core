@@ -236,20 +236,23 @@ Each slice's `evolve` receives the **full** DCB event union. Even though most sl
 
 **StateChangeSlice** — currently the tightest coupling point. Today a slice references `DcbEventLogSpec.event` in both `evolve` and `decide`. Under Option B, each slice declares two local types:
 
+- **`producedEvent`**: The events this slice emits from `decide`. Must include all fields and all `@s.matches(DcbTag.string)` tag annotations — the framework uses these for storage indexing and tag extraction.
+- **`consumedEvent`**: The events this slice reads in `evolve` to build its decision model. Only needs the fields required for the decision — extra fields from the produced shape are ignored. Tag annotations are not needed because consumed events are already decoded from storage; tags are only relevant for query construction (from commands) and storage (from produced events).
+
 ```rescript
 // AddCategory.res (StateChangeSlice)
 let name = "AddCategory"
 
-// Events this slice PRODUCES (returned from decide)
+// PRODUCED: full shape, all fields, all tag annotations
 @schema type producedEvent =
   | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
 
-// Events this slice READS to build its decision model (used in evolve)
-// This is the union of events from OTHER slices that matter to this decision.
-// Often identical to producedEvent, but may include events from other slices.
+// CONSUMED: only what matters for the decision — here, nothing beyond "it happened"
+// The tag-based query already filtered to the right categoryId, so the evolve
+// function only needs to know WHICH event occurred, not what fields it carried.
 @schema type consumedEvent =
-  | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
-  | CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
+  | CategoryAdded
+  | CategoryArchived
 
 @schema type command = AddCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
 @schema type error = CategoryAlreadyExists
@@ -257,13 +260,13 @@ let name = "AddCategory"
 type state = {exists: bool, archived: bool}
 let initialState = {exists: false, archived: false}
 
-// evolve receives ONLY consumedEvent — no wildcard needed
+// evolve receives ONLY consumedEvent — no wildcard, no unused fields, no payloads
 let evolve = (state, event) => switch event {
-  | CategoryAdded(_) => {exists: true, archived: false}
-  | CategoryArchived(_) => {...state, archived: true}
+  | CategoryAdded => {exists: true, archived: false}
+  | CategoryArchived => {...state, archived: true}
 }
 
-// decide returns producedEvent — only events this slice is allowed to emit
+// decide returns producedEvent — full shape with all fields and tags
 let decide = (state, command) => switch command {
   | AddCategory({categoryId, name}) =>
     if state.exists { Error(CategoryAlreadyExists) }
@@ -271,14 +274,40 @@ let decide = (state, command) => switch command {
 }
 ```
 
-Key difference from today: `evolve` receives `consumedEvent` (a slice-local type), not `CatalogEventLog.event` (the global union). The `_ => state` wildcard is gone — the compiler checks exhaustiveness over only the events this slice declared it cares about.
+Consumed events exist on a spectrum from payload-less to partial projection to full shape, depending on what the slice's `evolve` function actually needs:
 
-**StateViewSlice** — the `project` function currently receives `DcbEventLogSpec.event`. Under Option B, it declares its own consumed event type:
+```rescript
+// Payload-less — "I only care that it happened"
+@schema type consumedEvent = | CategoryAdded | CategoryArchived
+
+// Partial projection — "I need some fields for the decision"
+@schema type consumedEvent = | ProductAdded({productId: string})
+
+// Full shape — "I need all fields" (e.g., a view that projects everything)
+@schema type consumedEvent = | ProductAdded({productId: string, name: string, description: string, price: float})
+```
+
+Key differences from today:
+- `evolve` receives `consumedEvent` (a slice-local type), not `CatalogEventLog.event` (the global union). The `_ => state` wildcard is gone — the compiler checks exhaustiveness over only the events this slice declared it cares about.
+- Consumed events are **projections** — they declare only the fields needed for the decision, or no fields at all. A `CategoryAdded` event stored with `{categoryId, name}` can be consumed as a payload-less `CategoryAdded` when the slice only needs to know it happened. sury naturally handles field subsetting: extra fields in JSON are ignored when parsing against a schema with fewer fields.
+- Tag annotations (`@s.matches`) appear only on `producedEvent` and `command` — never on `consumedEvent`. Tags serve query construction and storage indexing, both of which are producer-side concerns.
+
+**Payload-less consumed events and sury**: There is a known constraint today that payload-less variants serialize as bare JSON strings in sury, while stored events are JSON objects (`{"TAG": "CategoryAdded", "categoryId": "...", ...}`). This means `S.parseJson` with a payload-less variant schema would fail against a stored object. Under Option B, the framework controls the decode path for consumed events and can handle this:
+
+1. The framework already knows the event type from `raw.eventType` (extracted during storage)
+2. For payload-less consumed variants: match `raw.eventType` against the variant name and construct the value directly — bypass sury
+3. For consumed variants with fields: use sury to parse only the declared fields from `raw.data`
+
+This makes payload-less consumed events a framework-level feature, not a sury limitation. The constraint that produced events must have inline record payloads (needed for tag extraction and storage) remains unchanged — but consumers are free to ignore the payload entirely.
+
+**StateViewSlice** — the `project` function currently receives `DcbEventLogSpec.event`. Under Option B, it declares its own consumed event type. Unlike StateChangeSlice, a view typically needs more fields (it builds a read model), but it still only declares the fields it projects:
 
 ```rescript
 // CategoriesView.res (StateViewSlice)
 let name = "CategoriesView"
 
+// No producedEvent — views don't produce events
+// consumedEvent includes only the fields needed for the projection, no tags
 @schema type consumedEvent =
   | CategoryAdded({categoryId: string, name: string})
   | CategoryRenamed({categoryId: string, name: string})
@@ -297,7 +326,9 @@ let project = event => switch event {
 }
 ```
 
-**AutomationSlice, OutboundTranslationSlice** — same pattern. `collect` and `resolve` receive `consumedEvent` instead of the global union.
+Notice that `CategoriesView` consumes `CategoryAdded({categoryId, name})` (needs both fields for the read model) while `AddCategory` consumes `CategoryAdded` with no payload (only needs to know it happened). Each slice declares exactly the projection of fields it needs — from nothing to everything.
+
+**AutomationSlice, OutboundTranslationSlice** — same pattern. `collect` and `resolve` receive `consumedEvent` with only the fields relevant to their work. An `AutoShipOrder` slice might consume `OrderPlaced({orderId})` even though the produced event has `OrderPlaced({orderId, customerId, items, totalPrice})`. A simple completion check might consume `OrderShipped` as payload-less.
 
 **InboundTranslationSlice** — no change needed. It does not consume events from the log; it only produces commands.
 
@@ -549,15 +580,19 @@ Similarly for `AutomationSlice.Spec` (`collect` and `resolve` receive `consumedE
 
 5. **Easier cross-slice consumption**: A StateChangeSlice that needs to read events from another slice just adds those variants to its `consumedEvent` type. The type declarations make the dependency explicit and local.
 
+6. **Consumed events as minimal projections**: Consumed event types exist on a spectrum — from payload-less (`| CategoryAdded`) to partial (`| ProductAdded({productId})`) to full shape. No tag annotations needed. This makes consumed events lightweight and self-documenting: reading a slice's `consumedEvent` immediately tells you exactly which fields from which events drive this slice's logic. It also eliminates the duplication problem — consumed events are intentionally different from produced events, not imperfect copies of them.
+
+7. **Payload-less consumed events become possible**: Today, all DCB events must have inline record payloads (sury limitation). Under Option B, consumed events can be payload-less because the framework handles decoding via TAG matching rather than sury. Many `evolve` functions only check "did this event happen?" — payload-less variants make that pattern explicit and noise-free.
+
 **Negative consequences:**
 
-1. **No compile-time guarantee of event shape consistency**: If `AddProduct` produces `ProductAdded({productId, name, price})` and `ProductsView` consumes `ProductAdded({productId, name, price, description})` with an extra field, the mismatch is a runtime error, not a compile error. Today the shared union type prevents this.
+1. **No compile-time guarantee that consumed fields exist in produced events**: If `ProductsView` consumes `ProductAdded({productId, name, description})` but the producer only emits `ProductAdded({productId, name})` (missing `description`), sury will parse the stored JSON and silently produce `undefined` for the missing field — a runtime error. Today the shared union type prevents this because both sides reference the same type. The deploy-time validation (see B.8) catches this, but it's a later feedback loop than a compile error.
 
-2. **Event type string collisions**: Two slices could independently define `| ProductAdded(...)` with different payloads. The framework must detect this at build time (schema merge) and fail with a clear error.
+2. **Payload divergence across producers**: Multiple slices may legitimately produce the same event TAG (e.g., `AddProduct` and `CloneProduct` both produce `ProductAdded`). But since each slice declares its own `producedEvent` type independently, the payloads can accidentally diverge. The framework must detect mismatched fields at build time (see "payload equivalence" validation in B.8).
 
-3. **Duplicate type declarations**: The same event variant may appear in multiple slices' `consumedEvent` types. `CategoryAdded` might be declared in `AddCategory.producedEvent`, `ArchiveCategory.consumedEvent`, and `CategoriesView.consumedEvent`. Changes to the event shape must be updated in all copies. This is the same problem as protobuf message definitions appearing in multiple consumers — solvable with shared event modules (see mitigation below).
+3. **Consumed event declarations diverge from produced shape**: The same event TAG appears in multiple slices' `consumedEvent` types with different field subsets. This is intentional (each slice projects only what it needs), but it means there is no single place to see the "full shape" of an event. The produced event is the authoritative shape; consumed events are projections of it. This is a mental model shift.
 
-4. **Schema merge complexity**: The framework must merge event schemas from all slices at build time. This requires matching variants by TAG name, verifying payload compatibility, and producing a combined schema. This is non-trivial new logic.
+4. **Schema merge and validation complexity**: The framework must collect schemas from all slices at build time, match variants by TAG name, verify that every consumed field exists in the corresponding produced event, and produce a combined schema for storage. This is non-trivial new logic — particularly the structural subtype check between consumed and produced schemas.
 
 5. **Conditional append scope**: Currently the conditional append checks against `queryEventTypes` derived from the global union. Under Option B, the query uses only the slice's consumed event types. This means a StateChangeSlice for Categories won't detect concurrent Product events — which is actually correct (it shouldn't care), but it's a subtle change in the concurrency model.
 
@@ -565,29 +600,59 @@ Similarly for `AutomationSlice.Spec` (`collect` and `resolve` receive `consumedE
 
 #### B.8 Mitigations for the Downsides
 
-**Event shape consistency** — provide an optional pattern for shared event definitions:
+**Deploy-time structural subtype validation** — the framework's schema merge step validates consumed events against produced events at deploy time (Pulumi). This is the primary safety mechanism that replaces the compile-time shared union:
+
+1. **Payload equivalence across producers**: Multiple slices may produce the same event type TAG — this is a valid pattern (e.g., `AddProduct` and `CloneProduct` both produce `ProductAdded`). However, all producers of the same TAG must declare identical field names, types, and tag annotations (`@s.matches`). If `AddProduct` produces `ProductAdded({productId: @s.matches(DcbTag.string) string, name, price})` and `CloneProduct` produces `ProductAdded({productId: string, name})`, the deploy fails for two reasons: missing `price` field and missing `@s.matches` tag annotation on `productId`. Tag annotations must match because they determine storage indexing (`tag_productId` GSI entries) and query routing — if one producer tags a field and another doesn't, consumers relying on tag-filtered queries would miss events from the untagged producer.
+
+2. **Consumed fields must exist in produced shape**: For each consumed event variant, the framework looks up the produced event with the same TAG name and verifies that every field in the consumed schema exists in the produced schema with a compatible type. Payload-less consumed variants are always valid — they require no fields at all. Examples:
+   - Produced: `ProductAdded({productId: string, name: string, description: string, price: float})`
+   - Consumed: `ProductAdded` — valid (payload-less, only checks existence)
+   - Consumed: `ProductAdded({productId: string, name: string})` — valid (field subset)
+   - Consumed: `ProductAdded({productId: string, rating: float})` — **deploy error**: `rating` not found in produced `ProductAdded`
+
+3. **Every consumed event type has a producer**: If a slice consumes `| ProductArchived(...)` but no slice produces it, the deploy fails. This catches typos and stale references.
+
+4. **Tag completeness on produced events**: The framework verifies that produced events carry the same tag annotations needed for query routing. Since tags only appear on `producedEvent`, this is a straightforward check against the DynamoDB GSI configuration.
+
+These checks provide safety comparable to the compile-time union — the feedback loop is slightly later (deploy time vs compile time) but still before any code reaches runtime. sury's schema introspection API (`S.toDefinition`, field enumeration) makes the structural comparison implementable without custom parsing.
+
+**Validation must run in all environments, not just AWS deploys** — the structural subtype validation logic must be provider-agnostic and run identically in the InMemory provider. This ensures that local development and integration tests catch mismatches before code reaches a Pulumi deploy. The validation function should live in `reventless-core` (not `reventless-aws`) and be called by every platform's `Plugin.make` / `Dcb_Builder.construct`, including `InMemory_Plugin`. A consumed event that references a nonexistent produced field should fail just as loudly in `npm test` as in `pulumi up`.
+
+**Automated validation tests** — beyond the framework's built-in deploy-time check, each plugin should include a unit test that validates all consumed events against produced events. This test imports the plugin's `DcbSpec` and calls the framework's validation function directly:
 
 ```rescript
-// catalog-events/ProductAdded.res — shared event definition module
-@schema type t = {productId: @s.matches(DcbTag.string) string, name: string, description: string, price: float}
-
-// AddProduct.res — references the shared definition
-@schema type producedEvent = | ProductAdded(ProductAdded.t)
-
-// ProductsView.res — references the same shared definition
-@schema type consumedEvent =
-  | ProductAdded(ProductAdded.t)
-  | ProductNameChanged(ProductNameChanged.t)
+// CatalogPluginValidationTest.res
+testPromise("all consumed events are compatible with produced events", async () => {
+  let result = DcbValidation.validateConsumedEvents(module(CatalogPlugin.DcbSpec))
+  expect(result)->toEqual(Ok())
+})
 ```
 
-This is strictly optional — slices can inline their event payloads if they prefer. But for teams that want compile-time consistency, the shared modules provide it without requiring a monolithic union.
+This test runs on every test run (`npm test`) — it is the earliest possible feedback loop, faster than both deploy-time and InMemory platform startup. It catches:
+- Consumed fields that don't exist in the produced event
+- Consumed events with no matching producer
+- Payload divergence across multiple producers of the same event TAG
+- Type mismatches between consumed and produced field types
 
-**Build-time validation** — the framework's schema merge step can verify:
-- No two slices produce the same event type TAG (uniqueness of producers)
-- When multiple slices consume the same event type, their payload schemas are compatible (structural subtyping)
-- Every consumed event type has at least one producer (no dangling references)
+The framework should provide `DcbValidation.validateConsumedEvents` as a first-class testing utility, making it trivial for every plugin to add this one-line test. For projects using the example structure, the test can even be auto-generated by `reventless-gen`.
 
-These checks run at deploy time (Pulumi), catching mismatches before runtime.
+**Optional shared event payload modules** — for teams that want compile-time consistency within the same codebase, provide a pattern for shared event payload definitions:
+
+```rescript
+// catalog-events/ProductAdded.res — canonical payload definition
+@schema type t = {productId: @s.matches(DcbTag.string) string, name: string, description: string, price: float}
+
+// AddProduct.res — produced event references the full canonical type
+@schema type producedEvent = | ProductAdded(ProductAdded.t)
+
+// AddCategory.res — consumed event can still use a local projection
+// (only needs productId to check cross-entity constraints)
+@schema type consumedEvent =
+  | ProductAdded({productId: string})
+  | CategoryAdded({categoryId: string})
+```
+
+This is strictly optional. Slices can always inline their consumed event payloads with only the fields they need. But sharing the `ProductAdded.t` module across producers ensures that the produced shape is defined in exactly one place. Consumers choose whether to reference the full type or declare a minimal projection.
 
 **Migration path** — the transition can be incremental:
 1. Add `producedEvent` and `consumedEvent` as optional new fields in the spec types

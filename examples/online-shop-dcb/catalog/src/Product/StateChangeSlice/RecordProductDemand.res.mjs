@@ -5,6 +5,33 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let initialState = {
+  recordedOrderIds: []
+};
+
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductDemandRecorded",
+    orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRevoked",
+    orderId: s.m(S.string)
+  }))
+]);
+
+function evolve(state, event) {
+  if (event.TAG === "ProductDemandRecorded") {
+    return {
+      recordedOrderIds: state.recordedOrderIds.concat([event.orderId])
+    };
+  }
+  let orderId = event.orderId;
+  return {
+    recordedOrderIds: state.recordedOrderIds.filter(id => id !== orderId)
+  };
+}
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "RecordDemand",
@@ -18,25 +45,18 @@ let commandSchema = S.union([
   }))
 ]);
 
-let initialState = {
-  recordedOrderIds: []
-};
-
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "ProductDemandRecorded" :
-      return {
-        recordedOrderIds: state.recordedOrderIds.concat([event.orderId])
-      };
-    case "ProductDemandRevoked" :
-      let orderId = event.orderId;
-      return {
-        recordedOrderIds: state.recordedOrderIds.filter(id => id !== orderId)
-      };
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductDemandRecorded",
+    productId: s.m(DcbTag$Reventless.string),
+    orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRevoked",
+    productId: s.m(DcbTag$Reventless.string),
+    orderId: s.m(S.string)
+  }))
+]);
 
 function decide(state, command) {
   if (command.TAG === "RecordDemand") {
@@ -77,18 +97,17 @@ function decide(state, command) {
 
 let name = "RecordProductDemand";
 
-let DcbEventLogSpec;
-
 let errorSchema = S.unit;
 
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

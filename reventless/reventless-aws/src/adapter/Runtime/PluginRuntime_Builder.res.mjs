@@ -33,16 +33,8 @@ let dcbConfigRef = {
 
 let registeredSliceSpecPaths = [];
 
-let registeredDcbEventLogModulePath = {
-  contents: undefined
-};
-
 function registerStateChangeSliceSpec(specModulePath) {
   registeredSliceSpecPaths.push(specModulePath);
-}
-
-function registerDcbEventLogModulePath(modulePath) {
-  registeredDcbEventLogModulePath.contents = modulePath;
 }
 
 function registerDcbConfig(pluginName, dcbTableName, stateChangeSliceSpecPathsOpt, param) {
@@ -188,20 +180,12 @@ function Make(EventCollectorChannel) {
     envVars["DCB_TABLE"] = dcbTableName;
     envVars["QUEUE_URL"] = queue.id;
     let sliceSpecsJson = allSpecPaths.map(p => Stdlib_Option.getOr(JSON.stringify(p), `""`)).join(",");
-    let p = registeredDcbEventLogModulePath.contents;
-    let dcbEventLogModuleJson;
-    if (p !== undefined) {
-      let escaped = Stdlib_Option.getOr(JSON.stringify(p), `""`);
-      dcbEventLogModuleJson = `,"dcbEventLogModule":` + escaped;
-    } else {
-      dcbEventLogModuleJson = "";
-    }
     let handlerConfigJson = Pulumi.all([
       dcbTableName,
       queue.id
     ]).apply(param => {
       let pluginName = Stdlib_Option.getOr(JSON.stringify(dcbConfig.pluginName), `""`);
-      return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginName + `,"stateChangeSliceModules":[` + sliceSpecsJson + `]` + dcbEventLogModuleJson + `}`;
+      return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginName + `,"stateChangeSliceModules":[` + sliceSpecsJson + `]}`;
     });
     envVars["HANDLER_CONFIG"] = handlerConfigJson;
     let packageDirs = {};
@@ -233,9 +217,7 @@ export {
   configRef,
   dcbConfigRef,
   registeredSliceSpecPaths,
-  registeredDcbEventLogModulePath,
   registerStateChangeSliceSpec,
-  registerDcbEventLogModulePath,
   registerDcbConfig,
   heartbeatConfigRef,
   registerHeartbeatConfig,

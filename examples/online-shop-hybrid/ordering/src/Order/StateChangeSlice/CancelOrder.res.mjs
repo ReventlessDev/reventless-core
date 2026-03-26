@@ -5,6 +5,51 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let initialState_productIds = [];
+
+let initialState = {
+  exists: false,
+  shipped: false,
+  cancelled: false,
+  productIds: initialState_productIds
+};
+
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    productIds: s.m(S.array(S.string))
+  })),
+  S.literal("OrderShipped"),
+  S.literal("OrderCancelled")
+]);
+
+function evolve(state, event) {
+  if (typeof event !== "object") {
+    if (event === "OrderShipped") {
+      return {
+        exists: state.exists,
+        shipped: true,
+        cancelled: state.cancelled,
+        productIds: state.productIds
+      };
+    } else {
+      return {
+        exists: state.exists,
+        shipped: state.shipped,
+        cancelled: true,
+        productIds: state.productIds
+      };
+    }
+  } else {
+    return {
+      exists: true,
+      shipped: false,
+      cancelled: false,
+      productIds: event.productIds
+    };
+  }
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "CancelOrder",
   orderId: s.m(DcbTag$Reventless.string)
@@ -15,43 +60,11 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyShipped")
 ]);
 
-let initialState_productIds = [];
-
-let initialState = {
-  exists: false,
-  shipped: false,
-  cancelled: false,
-  productIds: initialState_productIds
-};
-
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "OrderPlaced" :
-      return {
-        exists: true,
-        shipped: false,
-        cancelled: false,
-        productIds: event.productIds
-      };
-    case "OrderShipped" :
-      return {
-        exists: state.exists,
-        shipped: true,
-        cancelled: state.cancelled,
-        productIds: state.productIds
-      };
-    case "OrderCancelled" :
-      return {
-        exists: state.exists,
-        shipped: state.shipped,
-        cancelled: true,
-        productIds: state.productIds
-      };
-    case "CatalogProductSynced" :
-    case "CatalogProductPriceChanged" :
-      return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "OrderCancelled",
+  orderId: s.m(DcbTag$Reventless.string),
+  productIds: s.m(S.array(S.string))
+}));
 
 function decide(state, command) {
   if (state.exists) {
@@ -85,16 +98,15 @@ function decide(state, command) {
 
 let name = "CancelOrder";
 
-let DcbEventLogSpec;
-
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

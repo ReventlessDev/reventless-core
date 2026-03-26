@@ -12,7 +12,6 @@ import * as ChangeAddress$OrderingPlugin from "../../src/Customer/StateChangeSli
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
-import * as OrderingEventLog$OrderingPlugin from "../../src/Plugin/OrderingEventLog.res.mjs";
 import * as RegisterCustomer$OrderingPlugin from "../../src/Customer/StateChangeSlice/RegisterCustomer.res.mjs";
 import * as DeactivateCustomer$OrderingPlugin from "../../src/Customer/StateChangeSlice/DeactivateCustomer.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/DcbEventLog_Builder.res.mjs";
@@ -30,16 +29,15 @@ Bus.subscribeToEvents("OrderingEventTopic", async (param, param$1, param$2) => {
 
 TestRunner$ReventlessInMemory.setup();
 
-let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
+let OrderingEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let OrderingEventLogMaker = DcbEventLogMaker.Make(OrderingEventLog$OrderingPlugin);
-
-let eventLog = OrderingEventLogMaker.make("Ordering", undefined);
+let eventLog = OrderingEventLogMaker.make("Ordering", undefined, undefined);
 
 let RegisterCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: RegisterCustomer$OrderingPlugin.name,
   moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: RegisterCustomer$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
   errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
   initialState: RegisterCustomer$OrderingPlugin.initialState,
   evolve: RegisterCustomer$OrderingPlugin.evolve,
@@ -50,7 +48,8 @@ let RegisterCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeEmailMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeEmail$OrderingPlugin.name,
   moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: ChangeEmail$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
   errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
   initialState: ChangeEmail$OrderingPlugin.initialState,
   evolve: ChangeEmail$OrderingPlugin.evolve,
@@ -61,7 +60,8 @@ let ChangeEmailMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeAddressMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeAddress$OrderingPlugin.name,
   moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: ChangeAddress$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
   errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
   initialState: ChangeAddress$OrderingPlugin.initialState,
   evolve: ChangeAddress$OrderingPlugin.evolve,
@@ -72,7 +72,8 @@ let ChangeAddressMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let DeactivateCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: DeactivateCustomer$OrderingPlugin.name,
   moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: DeactivateCustomer$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
   errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
   initialState: DeactivateCustomer$OrderingPlugin.initialState,
   evolve: DeactivateCustomer$OrderingPlugin.evolve,
@@ -83,7 +84,8 @@ let DeactivateCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: PlaceOrder$OrderingPlugin.name,
   moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
   errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
   initialState: PlaceOrder$OrderingPlugin.initialState,
   evolve: PlaceOrder$OrderingPlugin.evolve,
@@ -94,7 +96,8 @@ let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ShipOrder$OrderingPlugin.name,
   moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
   errorSchema: ShipOrder$OrderingPlugin.errorSchema,
   initialState: ShipOrder$OrderingPlugin.initialState,
   evolve: ShipOrder$OrderingPlugin.evolve,
@@ -105,7 +108,8 @@ let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let CancelOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: CancelOrder$OrderingPlugin.name,
   moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
   errorSchema: CancelOrder$OrderingPlugin.errorSchema,
   initialState: CancelOrder$OrderingPlugin.initialState,
   evolve: CancelOrder$OrderingPlugin.evolve,
@@ -285,7 +289,6 @@ describe("Ordering DCB E2E:", () => {
 export {
   Bus,
   capturedEventCount,
-  DcbEventLogMaker,
   OrderingEventLogMaker,
   eventLog,
   RegisterCustomerMaker,

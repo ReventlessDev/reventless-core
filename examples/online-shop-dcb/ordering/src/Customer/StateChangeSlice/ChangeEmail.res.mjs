@@ -5,6 +5,40 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "CustomerRegistered",
+    email: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "EmailChanged",
+    email: s.m(S.string)
+  })),
+  S.literal("CustomerDeactivated")
+]);
+
+function evolve(state, event) {
+  if (typeof event !== "object") {
+    return {
+      exists: state.exists,
+      deactivated: true,
+      currentEmail: state.currentEmail
+    };
+  } else if (event.TAG === "CustomerRegistered") {
+    return {
+      exists: true,
+      deactivated: false,
+      currentEmail: event.email
+    };
+  } else {
+    return {
+      exists: state.exists,
+      deactivated: state.deactivated,
+      currentEmail: event.email
+    };
+  }
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "ChangeEmail",
   customerId: s.m(DcbTag$Reventless.string),
@@ -16,30 +50,11 @@ let errorSchema = S.union([
   S.literal("CustomerAlreadyDeactivated")
 ]);
 
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "CustomerRegistered" :
-      return {
-        exists: true,
-        deactivated: false,
-        currentEmail: event.email
-      };
-    case "EmailChanged" :
-      return {
-        exists: state.exists,
-        deactivated: state.deactivated,
-        currentEmail: event.email
-      };
-    case "CustomerDeactivated" :
-      return {
-        exists: state.exists,
-        deactivated: true,
-        currentEmail: state.currentEmail
-      };
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "EmailChanged",
+  customerId: s.m(DcbTag$Reventless.string),
+  email: s.m(S.string)
+}));
 
 function decide(state, command) {
   if (!state.exists) {
@@ -74,8 +89,6 @@ function decide(state, command) {
 
 let name = "ChangeEmail";
 
-let DcbEventLogSpec;
-
 let initialState = {
   exists: false,
   deactivated: false,
@@ -85,11 +98,12 @@ let initialState = {
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

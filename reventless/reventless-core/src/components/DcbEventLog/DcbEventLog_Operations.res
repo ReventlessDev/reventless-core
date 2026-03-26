@@ -1,54 +1,26 @@
 module type Ops = {
-  module Spec: Reventless.DcbEventLog.Spec
   let name: string
   let storage: DcbEventLog_Adapter.operations
   let publishJson: EventTopic.publishJson
 }
 
 module type T = {
-  module Spec: Reventless.DcbEventLog.Spec
-  let read: DcbEventLog.read<Spec.event>
-  let append: DcbEventLog.append<Spec.event>
-  let readStream: DcbEventLog.readStream<Spec.event>
-  let appendStream: DcbEventLog.appendStream<Spec.event>
+  let read: DcbEventLog.read
+  let append: DcbEventLog.append
+  let readStream: DcbEventLog.readStream
+  let appendStream: DcbEventLog.appendStream
 }
 
-module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Spec): (
-  T with module Spec = Spec
-) => {
-  module Spec = Spec
+module Make = (Ops: Ops): T => {
   let name = Ops.name
 
-  let encodeEvent = (event: Spec.event): DcbEventLog_Adapter.rawStoredEvent => {
-    let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
-    let (eventType, data) = json->Message.splitMessage
-    let tags = Reventless.DcbTag.extractTags(Spec.eventSchema, event)
-    {
-      eventType,
-      data: JSON.Object(data),
-      tags,
-    }
-  }
-
-  let decodeEvent = (raw: DcbEventLog_Adapter.rawSequencedEvent): DcbEventLog.sequencedEvent<
-    Spec.event,
-  > => {
-    let json = Message.combineMessage(
-      raw.eventType,
-      raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
-    )
-    let event = json->S.parseJsonOrThrow(Spec.eventSchema)
-    {
-      position: raw.position,
-      event,
-      tags: raw.tags,
-    }
-  }
-
-  let publishToEventTopic = async (events: array<Spec.event>) => {
-    let _ = await events
-    ->Array.map(async event => {
-      let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
+  let publishToEventTopic = async (rawEvents: array<DcbEventLog.rawEvent>) => {
+    let _ = await rawEvents
+    ->Array.map(async rawEvent => {
+      let json = Message.combineMessage(
+        rawEvent.eventType,
+        rawEvent.data->JSON.Decode.object->Option.getOr(Dict.make()),
+      )
       let meta = Message.generateMeta(~service=name)
       try await Ops.publishJson(name, meta, json) catch {
       | JsExn(err) =>
@@ -59,42 +31,44 @@ module Make = (Spec: Reventless.DcbEventLog.Spec, Ops: Ops with module Spec = Sp
     ->Promise.all
   }
 
-  let append = async (
-    events: array<Spec.event>,
-    ~condition: option<Reventless.DcbTag.appendCondition>=?,
+  let append: DcbEventLog.append = async (
+    rawEvents,
+    ~condition=?,
   ) => {
-    let rawEvents = events->Array.map(encodeEvent)
-    let result = await Ops.storage.append(rawEvents, ~condition?)
+    // Adapter rawStoredEvent is structurally identical to infra rawEvent
+    let adapterEvents: array<DcbEventLog_Adapter.rawStoredEvent> = rawEvents->Obj.magic
+    let result = await Ops.storage.append(adapterEvents, ~condition?)
     switch result {
     | Ok(position) =>
-      await publishToEventTopic(events)
+      await publishToEventTopic(rawEvents)
       Ok(position)
     | Error(_) as err => err
     }
   }
 
-  let read = async (
-    ~query: Reventless.DcbTag.query,
-    ~after: option<Reventless.DcbTag.sequencePosition>=?,
+  let read: DcbEventLog.read = async (
+    ~query,
+    ~after=?,
   ) => {
     let rawResult = await Ops.storage.read(~query, ~after?)
-    let events = rawResult.events->Array.map(decodeEvent)
-    let result: DcbEventLog.readResult<_> = {
+    // Adapter rawSequencedEvent is structurally identical to infra rawSequencedEvent
+    let events: array<DcbEventLog.rawSequencedEvent> = rawResult.events->Obj.magic
+    let result: DcbEventLog.readResult = {
       events,
       headPosition: ?rawResult.headPosition,
     }
     result
   }
 
-  let readStream: DcbEventLog.readStream<Spec.event> = (~query, ~after=?) =>
-    Ops.storage.readStream(~query, ~after?)->Stream.map(raw => decodeEvent(raw))
+  let readStream: DcbEventLog.readStream = (~query, ~after=?) =>
+    Ops.storage.readStream(~query, ~after?)->Stream.map(raw => (raw->Obj.magic: DcbEventLog.rawSequencedEvent))
 
   // Streaming append — collects the stream into an array, then makes a single
   // storage.append call to preserve atomicity of the condition check.
   // Does not publish to EventTopic (use case: migration / bulk seeding).
-  let appendStream: DcbEventLog.appendStream<Spec.event> = (stream, ~condition=?) =>
+  let appendStream: DcbEventLog.appendStream = (stream, ~condition=?) =>
     stream
-    ->Stream.map(event => encodeEvent(event))
+    ->Stream.map(rawEvent => (rawEvent->Obj.magic: DcbEventLog_Adapter.rawStoredEvent))
     ->Stream.runCollect
     ->Effect.flatMap(rawEvents => Effect.promise(() => Ops.storage.append(rawEvents, ~condition?)))
 }

@@ -23,8 +23,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CategoryReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoryProjections)
 
   // ── Product/ProductDemand DCB ───────────────────────────────
-  module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
-
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
   module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
   module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription)
@@ -74,32 +72,22 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ── DCB Spec (excludes Category — it's an aggregate) ───────
   module DcbSpec = {
-    @schema
-    type event = CatalogEventLog.event
-    let stateChangeSlices: array<
-      module(ReventlessInfra.StateChangeSlice.T with type dcbEvent = event),
-    > = [
+    let stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)> = [
       module(AddProductSlice),
       module(ChangeProductNameSlice),
       module(ChangeProductDescriptionSlice),
       module(ChangeProductPriceSlice),
       module(RecordProductDemandSlice),
     ]
-    let stateViewSlices: array<
-      module(ReventlessInfra.StateViewSlice.T with type dcbEvent = event),
-    > = [
+    let stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)> = [
       module(ProductsViewSlice),
       module(ProductDemandViewSlice),
     ]
-    let automationSlices: array<
-      module(ReventlessInfra.AutomationSlice.T with type dcbEvent = event),
-    > = []
-    let outboundTranslationSlices: array<
-      module(ReventlessInfra.OutboundTranslationSlice.T with type dcbEvent = event),
-    > = []
-    let inboundTranslationSlices: array<
-      module(ReventlessInfra.InboundTranslationSlice.T with type dcbEvent = event),
-    > = [module(ImportProductSlice)]
+    let automationSlices: array<module(ReventlessInfra.AutomationSlice.T)> = []
+    let outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)> = []
+    let inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)> = [
+      module(ImportProductSlice),
+    ]
   }
 
   // ── Hybrid Plugin Assembly ──────────────────────────────────

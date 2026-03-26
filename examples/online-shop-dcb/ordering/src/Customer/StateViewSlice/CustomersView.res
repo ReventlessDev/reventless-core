@@ -2,18 +2,19 @@
 // Projects customer events from the shared ordering event log into a Customers read model.
 
 open Reventless.Projection
-open OrderingEventLog
 
 let name = "CustomersView"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = OrderingEventLog
-
-@schema
-type event = OrderingEventLog.event
-
 @schema
 type state = {customerId: string, email: string, address: string, deactivated: bool}
+
+@schema
+type consumedEvent =
+  | CustomerRegistered({customerId: string, email: string, address: string})
+  | EmailChanged({customerId: string, email: string})
+  | AddressChanged({customerId: string, address: string})
+  | CustomerDeactivated({customerId: string})
 
 let project = event =>
   switch event {
@@ -25,5 +26,4 @@ let project = event =>
   | CustomerDeactivated({customerId}) => [
       Update(customerId, state => {...state, deactivated: true}),
     ]
-  | _ => [] // Order events are not handled by this view
   }

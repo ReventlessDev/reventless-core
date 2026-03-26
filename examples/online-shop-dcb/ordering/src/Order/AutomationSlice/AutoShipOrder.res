@@ -3,11 +3,14 @@
 // Resolved when OrderShipped arrives.
 
 open Reventless
-open OrderingEventLog
 
 let name = "AutoShipOrder"
 let moduleUrl: string = %raw(`import.meta.url`)
-module DcbEventLogSpec = OrderingEventLog
+
+@schema
+type consumedEvent =
+  | OrderPlaced({orderId: string})
+  | OrderShipped({orderId: string})
 
 @schema
 type todoItem = {orderId: string}
@@ -18,13 +21,13 @@ type command = ShipOrder({orderId: @s.matches(DcbTag.string) string})
 let collect = event =>
   switch event {
   | OrderPlaced({orderId}) => [(orderId, {orderId: orderId})]
-  | _ => []
+  | OrderShipped(_) => []
   }
 
 let resolve = event =>
   switch event {
   | OrderShipped({orderId}) => Some(orderId)
-  | _ => None
+  | OrderPlaced(_) => None
   }
 
 let process = (id, _item) => Some((id, ShipOrder({orderId: id})))

@@ -18,7 +18,7 @@ describe("CategoriesView.project:", () => {
   test("CategoryAdded creates new state", () =>
     expect(
       CategoriesView.project(
-        CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Electronics"}),
+        CategoriesView.CategoryAdded({categoryId: "c1", name: "Electronics"}),
       ),
     )->toEqual([
       Projection.Set(
@@ -31,7 +31,7 @@ describe("CategoriesView.project:", () => {
   test("CategoryRenamed Update function changes name", () =>
     expect(
       CategoriesView.project(
-        CatalogEventLog.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}),
+        CategoriesView.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, name: "Consumer Electronics"})
   )
@@ -39,21 +39,8 @@ describe("CategoriesView.project:", () => {
   test("CategoryArchived Update function sets archived=true", () =>
     expect(
       CategoriesView.project(
-        CatalogEventLog.CategoryArchived({categoryId: "c1"}),
+        CategoriesView.CategoryArchived({categoryId: "c1"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, archived: true})
-  )
-
-  test("Product events return empty (not handled by CategoriesView)", () =>
-    expect(
-      CategoriesView.project(
-        CatalogEventLog.ProductAdded({
-          productId: "p1",
-          name: "Laptop",
-          description: "A laptop",
-          price: 999.99,
-        }),
-      ),
-    )->toEqual([])
   )
 })

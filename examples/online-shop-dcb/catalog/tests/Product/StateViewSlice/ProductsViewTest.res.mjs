@@ -68,11 +68,6 @@ Jest.describe("ProductsView.project:", () => {
     description: "A laptop",
     price: 899.99
   }));
-  Jest.test("Category events return empty (not handled by ProductsView)", () => Jest.Expect.toEqual(Jest.Expect.expect(ProductsView$CatalogPlugin.project({
-    TAG: "CategoryAdded",
-    categoryId: "c1",
-    name: "Books"
-  })), []));
 });
 
 export {

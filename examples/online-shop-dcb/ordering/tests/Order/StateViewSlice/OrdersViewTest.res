@@ -23,7 +23,7 @@ describe("OrdersView.project:", () => {
   test("OrderPlaced creates new state", () =>
     expect(
       OrdersView.project(
-        OrderingEventLog.OrderPlaced({
+        OrdersView.OrderPlaced({
           orderId: "ord-1",
           customerId: "cust-1",
           productIds: ["prod-1"],
@@ -44,7 +44,7 @@ describe("OrdersView.project:", () => {
 
   test("OrderShipped Update function sets status to shipped", () =>
     expect(
-      OrdersView.project(OrderingEventLog.OrderShipped({orderId: "ord-1"}))
+      OrdersView.project(OrdersView.OrderShipped({orderId: "ord-1"}))
       ->applyFirstUpdate(baseOrder),
     )->toEqual({...baseOrder, status: "shipped"})
   )
@@ -52,21 +52,9 @@ describe("OrdersView.project:", () => {
   test("OrderCancelled Update function sets status to cancelled", () =>
     expect(
       OrdersView.project(
-        OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}),
+        OrdersView.OrderCancelled({orderId: "ord-1"}),
       )
       ->applyFirstUpdate(baseOrder),
     )->toEqual({...baseOrder, status: "cancelled"})
-  )
-
-  test("Customer events return empty (not handled by OrdersView)", () =>
-    expect(
-      OrdersView.project(
-        OrderingEventLog.CustomerRegistered({
-          customerId: "cust-1",
-          email: "alice@example.com",
-          address: "123 Main St",
-        }),
-      ),
-    )->toEqual([])
   )
 })

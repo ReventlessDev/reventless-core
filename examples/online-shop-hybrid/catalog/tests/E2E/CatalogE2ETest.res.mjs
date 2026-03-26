@@ -5,7 +5,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as AddProduct$CatalogPlugin from "../../src/Product/StateChangeSlice/AddProduct.res.mjs";
-import * as CatalogEventLog$CatalogPlugin from "../../src/Plugin/CatalogEventLog.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductName.res.mjs";
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
@@ -26,16 +25,15 @@ Bus.subscribeToEvents("CatalogEventTopic", async (param, param$1, param$2) => {
 
 TestRunner$ReventlessInMemory.setup();
 
-let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
+let CatalogEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let CatalogEventLogMaker = DcbEventLogMaker.Make(CatalogEventLog$CatalogPlugin);
-
-let eventLog = CatalogEventLogMaker.make("Catalog", undefined);
+let eventLog = CatalogEventLogMaker.make("Catalog", undefined, undefined);
 
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,
   moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
-  DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+  producedEventSchema: AddProduct$CatalogPlugin.producedEventSchema,
+  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
   errorSchema: AddProduct$CatalogPlugin.errorSchema,
   initialState: AddProduct$CatalogPlugin.initialState,
   evolve: AddProduct$CatalogPlugin.evolve,
@@ -46,7 +44,8 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductName$CatalogPlugin.name,
   moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-  DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+  producedEventSchema: ChangeProductName$CatalogPlugin.producedEventSchema,
+  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
   errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   initialState: ChangeProductName$CatalogPlugin.initialState,
   evolve: ChangeProductName$CatalogPlugin.evolve,
@@ -57,7 +56,8 @@ let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductPrice$CatalogPlugin.name,
   moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
-  DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+  producedEventSchema: ChangeProductPrice$CatalogPlugin.producedEventSchema,
+  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
   errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   initialState: ChangeProductPrice$CatalogPlugin.initialState,
   evolve: ChangeProductPrice$CatalogPlugin.evolve,
@@ -177,7 +177,6 @@ describe("Catalog Hybrid E2E:", () => {
 export {
   Bus,
   capturedDcbEventCount,
-  DcbEventLogMaker,
   CatalogEventLogMaker,
   eventLog,
   AddProductMaker,

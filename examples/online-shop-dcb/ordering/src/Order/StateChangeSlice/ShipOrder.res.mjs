@@ -5,18 +5,14 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
-let commandSchema = S.schema(s => ({
-  TAG: "ShipOrder",
-  orderId: s.m(DcbTag$Reventless.string)
-}));
-
-let errorSchema = S.union([
-  S.literal("OrderNotFound"),
-  S.literal("OrderAlreadyCancelled")
+let consumedEventSchema = S.union([
+  S.literal("OrderPlaced"),
+  S.literal("OrderShipped"),
+  S.literal("OrderCancelled")
 ]);
 
 function evolve(state, event) {
-  switch (event.TAG) {
+  switch (event) {
     case "OrderPlaced" :
       return {
         exists: true,
@@ -35,10 +31,23 @@ function evolve(state, event) {
         shipped: state.shipped,
         cancelled: true
       };
-    default:
-      return state;
   }
 }
+
+let commandSchema = S.schema(s => ({
+  TAG: "ShipOrder",
+  orderId: s.m(DcbTag$Reventless.string)
+}));
+
+let errorSchema = S.union([
+  S.literal("OrderNotFound"),
+  S.literal("OrderAlreadyCancelled")
+]);
+
+let producedEventSchema = S.schema(s => ({
+  TAG: "OrderShipped",
+  orderId: s.m(DcbTag$Reventless.string)
+}));
 
 function decide(state, command) {
   if (state.exists) {
@@ -71,8 +80,6 @@ function decide(state, command) {
 
 let name = "ShipOrder";
 
-let DcbEventLogSpec;
-
 let initialState = {
   exists: false,
   shipped: false,
@@ -82,11 +89,12 @@ let initialState = {
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

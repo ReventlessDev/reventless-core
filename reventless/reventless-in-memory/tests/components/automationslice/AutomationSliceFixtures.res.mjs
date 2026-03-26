@@ -24,6 +24,18 @@ let OrderEventLog = {
 
 let moduleUrl$1 = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    orderId: s.m(S.string),
+    address: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ShipmentCreated",
+    orderId: s.m(S.string)
+  }))
+]);
+
 let todoItemSchema = S.schema(s => ({
   orderId: s.m(S.string),
   address: s.m(S.string)
@@ -69,7 +81,7 @@ function process(id, _item) {
 let ShipOrderSpec = {
   name: "ShipOrder",
   moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: undefined,
+  consumedEventSchema: consumedEventSchema,
   todoItemSchema: todoItemSchema,
   commandSchema: commandSchema,
   collect: collect,
@@ -80,6 +92,17 @@ let ShipOrderSpec = {
 };
 
 let moduleUrl$2 = import.meta.url;
+
+let consumedEventSchema$1 = S.union([
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ShipmentCreated",
+    orderId: s.m(S.string)
+  }))
+]);
 
 let todoItemSchema$1 = S.schema(s => ({
   orderId: s.m(S.string)
@@ -115,7 +138,7 @@ function process$1(_id, _item) {
 let SkipProcessSpec = {
   name: "SkipProcess",
   moduleUrl: moduleUrl$2,
-  DcbEventLogSpec: undefined,
+  consumedEventSchema: consumedEventSchema$1,
   todoItemSchema: todoItemSchema$1,
   commandSchema: commandSchema$1,
   collect: collect$1,

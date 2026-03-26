@@ -3,16 +3,15 @@ open Expect
 
 let mock = DcbFixtures.makeMockStorage()
 
-module TestDcbOps: DcbEventLog_Operations.Ops with module Spec = DcbFixtures.TestEventLogSpec = {
-  module Spec = DcbFixtures.TestEventLogSpec
+module TestDcbOps: DcbEventLog_Operations.Ops = {
   let name = "TestDcbEventLog"
   let storage = mock.operations
   let publishJson = mock.mockPublishJson
 }
 
-module EventLogOps = DcbEventLog_Operations.Make(DcbFixtures.TestEventLogSpec, TestDcbOps)
+module EventLogOps = DcbEventLog_Operations.Make(TestDcbOps)
 
-let testDcbEventLog: DcbEventLog.operations<DcbFixtures.TestEventLogSpec.event> = {
+let testDcbEventLog: DcbEventLog.operations = {
   read: EventLogOps.read,
   append: EventLogOps.append,
   readStream: EventLogOps.readStream,

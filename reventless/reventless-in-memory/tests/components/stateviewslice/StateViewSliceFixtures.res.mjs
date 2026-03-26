@@ -4,13 +4,12 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect/Effect";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "../../../src/components/DcbEventLog_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "../../../src/components/StateViewSlice_Builder.res.mjs";
-
-let moduleUrl = import.meta.url;
 
 let eventSchema = S.union([
   S.schema(s => ({
@@ -30,13 +29,29 @@ let eventSchema = S.union([
 ]);
 
 let ItemEventLog = {
-  moduleUrl: moduleUrl,
   eventSchema: eventSchema
 };
 
 let name = "ItemsView";
 
-let moduleUrl$1 = import.meta.url;
+let moduleUrl = import.meta.url;
+
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ItemAdded",
+    id: s.m(S.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ItemRenamed",
+    id: s.m(S.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ItemRemoved",
+    id: s.m(S.string)
+  }))
+]);
 
 let stateSchema = S.schema(s => ({
   id: s.m(S.string),
@@ -75,9 +90,8 @@ function project(event) {
 
 let ItemsViewSpec = {
   name: name,
-  moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: undefined,
-  eventSchema: eventSchema,
+  moduleUrl: moduleUrl,
+  consumedEventSchema: consumedEventSchema,
   stateSchema: stateSchema,
   project: project
 };
@@ -86,20 +100,17 @@ let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
 TestRunner$ReventlessInMemory.setup();
 
-let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
+let ItemEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let ItemEventLogMaker = DcbEventLogMaker.Make(ItemEventLog);
-
-let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined);
+let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined, undefined);
 
 let SVMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
 
 let ItemsViewMaker = SVMaker.Make({
   name: name,
-  moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: ItemEventLog,
-  eventSchema: eventSchema,
+  moduleUrl: moduleUrl,
   stateSchema: stateSchema,
+  consumedEventSchema: consumedEventSchema,
   project: project
 });
 
@@ -107,9 +118,20 @@ let sv = ItemsViewMaker.make(eventLog, undefined);
 
 let dcbEventTopicResource = Component$ReventlessCore.outputs(eventLog).eventTopic.resources[0];
 
+function encodeEvent(event) {
+  let json = S.reverseConvertToJsonOrThrow(event, eventSchema);
+  let match = Message$ReventlessCore.splitMessage(json);
+  let tags = DcbTag$Reventless.extractTags(eventSchema, event);
+  return {
+    eventType: match[0],
+    data: match[1],
+    tags: tags
+  };
+}
+
 async function appendEvent(event) {
   let ops = await TestRunner$ReventlessInMemory.resolve(ItemEventLogMaker.operations(eventLog));
-  await ops.append([event], undefined);
+  await ops.append([encodeEvent(event)], undefined);
 }
 
 async function loadState(id) {
@@ -125,14 +147,14 @@ export {
   ItemEventLog,
   ItemsViewSpec,
   Bus,
-  DcbEventLogMaker,
   ItemEventLogMaker,
   eventLog,
   SVMaker,
   ItemsViewMaker,
   sv,
   dcbEventTopicResource,
+  encodeEvent,
   appendEvent,
   loadState,
 }
-/* moduleUrl Not a pure module */
+/* eventSchema Not a pure module */

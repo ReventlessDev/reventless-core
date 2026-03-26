@@ -1,0 +1,214 @@
+open Jest
+open Expect
+
+// Test schemas for produced events
+@schema
+type producedA =
+  | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+  | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
+
+@schema
+type producedB =
+  | ItemArchived({itemId: @s.matches(Reventless.DcbTag.string) string})
+
+// A second producer for ItemCreated with matching fields/tags
+@schema
+type producedADuplicate =
+  | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+
+// A second producer for ItemCreated with DIFFERENT fields (missing name)
+@schema
+type producedAMismatchFields =
+  | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string})
+
+// A second producer for ItemCreated with mismatched tag annotations
+@schema
+type producedAMismatchTags =
+  | ItemCreated({itemId: string, name: string})
+
+// A second producer for ItemCreated with mismatched field type
+@schema
+type producedAMismatchType =
+  | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: float})
+
+// Consumed events — full shape
+@schema
+type consumedFull =
+  | ItemCreated({itemId: string, name: string})
+  | ItemRenamed({itemId: string, newName: string})
+
+// Consumed events — partial projection (only itemId)
+@schema
+type consumedPartial =
+  | ItemCreated({itemId: string})
+
+// Consumed events — payload-less
+@schema
+type consumedPayloadLess =
+  | ItemCreated
+  | ItemArchived
+
+// Consumed events — references nonexistent producer
+@schema
+type consumedDangling =
+  | ItemDeleted({itemId: string})
+
+// Consumed events — field not in produced shape
+@schema
+type consumedBadField =
+  | ItemCreated({itemId: string, rating: float})
+
+// Consumed events — type mismatch
+@schema
+type consumedBadType =
+  | ItemCreated({itemId: string, name: float})
+
+let validate = Reventless.DcbValidation.validateProducedAndConsumed
+let u = S.castToUnknown
+
+describe("DcbValidation:", () => {
+  describe("validateProducedAndConsumed", () => {
+    test("passes when all consumed events match produced events", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u), ("ArchiveItem", producedBSchema->u)],
+        ~consumed=[("ItemView", consumedFullSchema->u)],
+      )
+      expect(result)->toEqual(Ok())
+    })
+
+    test("passes with partial field projection", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u)],
+        ~consumed=[("CheckExists", consumedPartialSchema->u)],
+      )
+      expect(result)->toEqual(Ok())
+    })
+
+    test("passes with payload-less consumed events", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u), ("ArchiveItem", producedBSchema->u)],
+        ~consumed=[("CheckExists", consumedPayloadLessSchema->u)],
+      )
+      expect(result)->toEqual(Ok())
+    })
+
+    test("passes when multiple producers have identical shapes and tags", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u), ("CloneItem", producedADuplicateSchema->u)],
+        ~consumed=[],
+      )
+      expect(result)->toEqual(Ok())
+    })
+
+    test("fails when consumed event has no producer", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u)],
+        ~consumed=[("DeleteHandler", consumedDanglingSchema->u)],
+      )
+      switch result {
+      | Error(errors) =>
+        expect(errors->Array.length)->toBe(1)->ignore
+        let err = errors->Array.getUnsafe(0)
+        expect(err.sliceName)->toBe("DeleteHandler")->ignore
+        expect(err.message->String.includes("ItemDeleted"))->toBe(true)->ignore
+        expect(err.message->String.includes("no slice produces it"))->toBe(true)
+      | Ok() => fail("Expected validation error")
+      }
+    })
+
+    test("fails when consumed event references field not in produced shape", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u)],
+        ~consumed=[("RatingView", consumedBadFieldSchema->u)],
+      )
+      switch result {
+      | Error(errors) =>
+        expect(errors->Array.length)->toBe(1)->ignore
+        let err = errors->Array.getUnsafe(0)
+        expect(err.sliceName)->toBe("RatingView")->ignore
+        expect(err.message->String.includes("rating"))->toBe(true)->ignore
+        expect(err.message->String.includes("no field"))->toBe(true)
+      | Ok() => fail("Expected validation error")
+      }
+    })
+
+    test("fails when consumed field type mismatches produced field type", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u)],
+        ~consumed=[("BadTypeView", consumedBadTypeSchema->u)],
+      )
+      switch result {
+      | Error(errors) =>
+        expect(errors->Array.length)->toBe(1)->ignore
+        let err = errors->Array.getUnsafe(0)
+        expect(err.sliceName)->toBe("BadTypeView")->ignore
+        expect(err.message->String.includes("name"))->toBe(true)->ignore
+        expect(err.message->String.includes("float"))->toBe(true)->ignore
+        expect(err.message->String.includes("string"))->toBe(true)
+      | Ok() => fail("Expected validation error")
+      }
+    })
+
+    test("fails when producers have different fields for same TAG", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u), ("ImportItem", producedAMismatchFieldsSchema->u)],
+        ~consumed=[],
+      )
+      switch result {
+      | Error(errors) =>
+        expect(errors->Array.length)->toBeGreaterThanOrEqual(1)->ignore
+        let err = errors->Array.getUnsafe(0)
+        expect(err.message->String.includes("AddItem"))->toBe(true)->ignore
+        expect(err.message->String.includes("ImportItem"))->toBe(true)->ignore
+        expect(err.message->String.includes("name"))->toBe(true)
+      | Ok() => fail("Expected validation error")
+      }
+    })
+
+    test("fails when producers have different tag annotations for same TAG", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u), ("UntaggerItem", producedAMismatchTagsSchema->u)],
+        ~consumed=[],
+      )
+      switch result {
+      | Error(errors) =>
+        expect(errors->Array.length)->toBeGreaterThanOrEqual(1)->ignore
+        let hasTagError = errors->Array.some(err => err.message->String.includes("tag annotations"))
+        expect(hasTagError)->toBe(true)
+      | Ok() => fail("Expected validation error")
+      }
+    })
+
+    test("fails when producers have different field types for same TAG", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u), ("BadTypeItem", producedAMismatchTypeSchema->u)],
+        ~consumed=[],
+      )
+      switch result {
+      | Error(errors) =>
+        expect(errors->Array.length)->toBeGreaterThanOrEqual(1)->ignore
+        let err = errors->Array.getUnsafe(0)
+        expect(err.message->String.includes("name"))->toBe(true)->ignore
+        expect(err.message->String.includes("string"))->toBe(true)->ignore
+        expect(err.message->String.includes("float"))->toBe(true)
+      | Ok() => fail("Expected validation error")
+      }
+    })
+
+    test("passes with empty produced and consumed", () => {
+      let result = validate(~produced=[], ~consumed=[])
+      expect(result)->toEqual(Ok())
+    })
+
+    test("collects multiple errors at once", () => {
+      let result = validate(
+        ~produced=[("AddItem", producedASchema->u)],
+        ~consumed=[("DeleteHandler", consumedDanglingSchema->u), ("BadTypeView", consumedBadTypeSchema->u)],
+      )
+      switch result {
+      | Error(errors) => expect(errors->Array.length)->toBeGreaterThanOrEqual(2)
+      | Ok() => fail("Expected validation errors")
+      }
+    })
+  })
+})

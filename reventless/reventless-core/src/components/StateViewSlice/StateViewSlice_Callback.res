@@ -4,7 +4,7 @@ module type T = {
 
   let eventsHandler: (
     queryDbOperations,
-    array<Spec.DcbEventLogSpec.event>,
+    array<ReventlessInfra.DcbEventLog.rawSequencedEvent>,
   ) => promise<unit>
 }
 
@@ -13,10 +13,19 @@ module Make = (Spec: Reventless.StateViewSlice.Spec): (T with module Spec = Spec
 
   type queryDbOperations = QueryDb.operations<string, Spec.state>
 
+  let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
+
   let eventsHandler = async (
     queryDbOps: queryDbOperations,
-    events: array<Spec.DcbEventLogSpec.event>,
+    rawEvents: array<ReventlessInfra.DcbEventLog.rawSequencedEvent>,
   ) => {
+    let events =
+      rawEvents->Array.filterMap(raw =>
+        decoder.decode(
+          ~eventType=raw.eventType,
+          ~data=raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
+        )
+      )
     let actions = events->Array.flatMap(event => Spec.project(event))
     await Projection.handleActions(actions, queryDbOps, None)
   }

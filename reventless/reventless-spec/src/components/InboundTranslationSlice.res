@@ -15,7 +15,6 @@ External Input -> Anti-Corruption Layer (translate) -> Command
 ```rescript
 // PaymentWebhook.res
 let name = "PaymentWebhook"
-module DcbEventLogSpec = OrderingEventLog
 
 @schema type externalInput = {paymentId: string, orderId: string, status: string}
 @schema type command = ConfirmPayment({orderId: @s.matches(DcbTag.string) string, paymentId: string})
@@ -30,9 +29,6 @@ module type Spec = {
   /** Logical name of this inbound translation slice (used as a component prefix). */
   let name: string
   let moduleUrl: string
-
-  /** The DCB event log spec this slice publishes commands to. */
-  module DcbEventLogSpec: DcbEventLog.Spec
 
   /** The external input type received from the outside world. Must carry `@schema`. */
   @schema

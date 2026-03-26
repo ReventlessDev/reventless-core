@@ -29,7 +29,7 @@ module type T = {
   let todoItems: ref<Dict.t<todoRow>>
 
   /** Phase 1: update TODO list from a batch of events (collect only, no resolve). */
-  let phase1: array<Spec.DcbEventLogSpec.event> => unit
+  let phase1: array<Spec.consumedEvent> => unit
 
   /** Phase 2: translate all pending items, optionally publishing commands via publishJsons. */
   let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
@@ -51,7 +51,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
     correlationId: "",
   }
 
-  let phase1 = (events: array<Spec.DcbEventLogSpec.event>) => {
+  let phase1 = (events: array<Spec.consumedEvent>) => {
     events->Array.forEach(event => {
       // Collect new outbound items
       Spec.collect(event)->Array.forEach(((id, item)) => {

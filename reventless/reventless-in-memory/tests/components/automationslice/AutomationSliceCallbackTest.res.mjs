@@ -5,31 +5,9 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as AutomationSliceFixtures$ReventlessInMemory from "./AutomationSliceFixtures.res.mjs";
 
-let Callback = AutomationSlice_Callback$ReventlessCore.Make({
-  name: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.name,
-  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.moduleUrl,
-  DcbEventLogSpec: AutomationSliceFixtures$ReventlessInMemory.OrderEventLog,
-  todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.todoItemSchema,
-  commandSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.commandSchema,
-  collect: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.collect,
-  resolve: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.resolve,
-  process: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.process,
-  maxRetries: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.maxRetries,
-  heartbeatInterval: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.heartbeatInterval
-});
+let Callback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec);
 
-let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make({
-  name: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.name,
-  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.moduleUrl,
-  DcbEventLogSpec: AutomationSliceFixtures$ReventlessInMemory.OrderEventLog,
-  todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.todoItemSchema,
-  commandSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.commandSchema,
-  collect: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.collect,
-  resolve: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.resolve,
-  process: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.process,
-  maxRetries: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.maxRetries,
-  heartbeatInterval: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.heartbeatInterval
-});
+let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec);
 
 describe("AutomationSlice Callback", () => {
   beforeEach(() => {
@@ -155,8 +133,7 @@ describe("AutomationSlice Callback", () => {
     test("items where process returns None are skipped", async () => {
       SkipCallback.phase1([{
           TAG: "OrderPlaced",
-          orderId: "ord-1",
-          address: "123 Main St"
+          orderId: "ord-1"
         }]);
       let publishedCommands = {
         contents: []

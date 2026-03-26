@@ -13,7 +13,6 @@ Event(s) → TODO List (read model) → Processor → Command → Event(s)
 ```rescript
 // ShipOrder.res
 let name = "ShipOrder"
-module DcbEventLogSpec = OrderingEventLog
 
 @schema type todoItem = {orderId: string, shippingAddress: string}
 @schema type command = CreateShipment({orderId: @s.matches(DcbTag.string) string, address: string})
@@ -41,8 +40,13 @@ module type Spec = {
   let name: string
   let moduleUrl: string
 
-  /** The DCB event log spec this slice subscribes to. */
-  module DcbEventLogSpec: DcbEventLog.Spec
+  /**
+  Events this automation slice consumes for collect/resolve.
+  Only needs the fields required — no tag annotations needed.
+  Must carry `@schema`.
+  */
+  @schema
+  type consumedEvent
 
   /** The TODO item state — what data is accumulated for each pending work item. Must carry `@schema`. */
   @schema
@@ -57,13 +61,13 @@ module type Spec = {
   Each item has an `id` (deduplication key) and the `todoItem` payload.
   Returns empty array if this event is not relevant.
   */
-  let collect: DcbEventLogSpec.event => array<(string, todoItem)>
+  let collect: consumedEvent => array<(string, todoItem)>
 
   /**
   Resolve: check if an incoming event completes a pending TODO item.
   Returns `Some(todoItemId)` if the event marks the item as done, `None` otherwise.
   */
-  let resolve: DcbEventLogSpec.event => option<string>
+  let resolve: consumedEvent => option<string>
 
   /**
   Process: given a pending TODO item, produce a command.

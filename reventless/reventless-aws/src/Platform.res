@@ -190,8 +190,7 @@ module MakeWithConfig = (
   module StateChangeSlice = {
     module Make = (Spec: Reventless.StateChangeSlice.Spec): (
       ReventlessInfra.StateChangeSlice.T
-        with type dcbEvent = Spec.DcbEventLogSpec.event
-        and module Spec = Spec
+        with module Spec = Spec
     ) => StateChangeSlice_Builder.Make(Spec)
   }
 
@@ -208,12 +207,6 @@ module MakeWithConfig = (
     module Bundled = OutboundTranslationSlice_Builder_Bundled.Make(ApiConfig)
   }
   module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(ApiConfig)
-
-  module DcbEventLog = {
-    module Make = (Spec: Reventless.DcbEventLog.Spec): (
-      ReventlessInfra.DcbEventLog.T with module Spec = Spec
-    ) => DcbEventLog_Builder.Make(Spec)
-  }
 
   // Empty base fragment — no types, no mutations, no queries.
   // Used by the plugin Api in split mode so plugin schema has no core fields.

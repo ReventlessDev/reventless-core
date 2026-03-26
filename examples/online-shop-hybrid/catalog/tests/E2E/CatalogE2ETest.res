@@ -28,8 +28,7 @@ let _ = ReventlessInMemory.TestRunner.setup()
 // Build DcbEventLog for Product/ProductDemand
 // ─────────────────────────────────────────────────────────────
 
-module DcbEventLogMaker = ReventlessInMemory.DcbEventLog_Builder.Make(Bus)
-module CatalogEventLogMaker = DcbEventLogMaker.Make(CatalogEventLog)
+module CatalogEventLogMaker = ReventlessInMemory.DcbEventLog_Builder.Make(Bus)
 let eventLog = CatalogEventLogMaker.make(~name="Catalog")
 
 // ─────────────────────────────────────────────────────────────

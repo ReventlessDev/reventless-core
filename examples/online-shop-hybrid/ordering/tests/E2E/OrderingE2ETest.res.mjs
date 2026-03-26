@@ -10,7 +10,6 @@ import * as CancelOrder$OrderingPlugin from "../../src/Order/StateChangeSlice/Ca
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
-import * as OrderingEventLog$OrderingPlugin from "../../src/Plugin/OrderingEventLog.res.mjs";
 import * as SyncCatalogProduct$OrderingPlugin from "../../src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/DcbEventLog_Builder.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/StateChangeSlice_Builder.res.mjs";
@@ -27,16 +26,15 @@ Bus.subscribeToEvents("OrderingEventTopic", async (param, param$1, param$2) => {
 
 TestRunner$ReventlessInMemory.setup();
 
-let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
+let OrderingEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let OrderingEventLogMaker = DcbEventLogMaker.Make(OrderingEventLog$OrderingPlugin);
-
-let eventLog = OrderingEventLogMaker.make("Ordering", undefined);
+let eventLog = OrderingEventLogMaker.make("Ordering", undefined, undefined);
 
 let SyncCatalogProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: SyncCatalogProduct$OrderingPlugin.name,
   moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: SyncCatalogProduct$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
   errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
   initialState: SyncCatalogProduct$OrderingPlugin.initialState,
   evolve: SyncCatalogProduct$OrderingPlugin.evolve,
@@ -47,7 +45,8 @@ let SyncCatalogProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: PlaceOrder$OrderingPlugin.name,
   moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
   errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
   initialState: PlaceOrder$OrderingPlugin.initialState,
   evolve: PlaceOrder$OrderingPlugin.evolve,
@@ -58,7 +57,8 @@ let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ShipOrder$OrderingPlugin.name,
   moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
   errorSchema: ShipOrder$OrderingPlugin.errorSchema,
   initialState: ShipOrder$OrderingPlugin.initialState,
   evolve: ShipOrder$OrderingPlugin.evolve,
@@ -69,7 +69,8 @@ let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let CancelOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: CancelOrder$OrderingPlugin.name,
   moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-  DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+  producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
+  consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
   errorSchema: CancelOrder$OrderingPlugin.errorSchema,
   initialState: CancelOrder$OrderingPlugin.initialState,
   evolve: CancelOrder$OrderingPlugin.evolve,
@@ -253,7 +254,6 @@ describe("Ordering Hybrid E2E:", () => {
 export {
   Bus,
   capturedEventCount,
-  DcbEventLogMaker,
   OrderingEventLogMaker,
   eventLog,
   SyncCatalogProductMaker,

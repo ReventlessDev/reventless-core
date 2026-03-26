@@ -28,8 +28,7 @@ let mkTopicItem = ((command, reference) => ({command, reference}));
 
 let mkNameObj = ((name) => ({name}));
 
-let mkDcbEventLogOpsArg = ((spec, name, storage, publishJson) => ({
-    Spec: spec,
+let mkDcbEventLogOpsArg = ((name, storage, publishJson) => ({
     name,
     storage,
     publishJson,
@@ -76,22 +75,13 @@ async function buildHandler() {
   let config = JSON.parse(configStr);
   let resolvedTable = mkNameObj(config.dcbEventLogTableName);
   let rawStorageOps = mkStorageOps(DcbEventLogStorage_DynamoDb_RuntimeResMjs.read(resolvedTable), DcbEventLogStorage_DynamoDb_RuntimeResMjs.append(resolvedTable), DcbEventLogStorage_DynamoDb_RuntimeResMjs.readStream(resolvedTable));
-  let importAndPatchDcbEventLogSpec = (async function(spec, dcbEventLogModulePath) {
-      if (!importAndPatchDcbEventLogSpec._mod && dcbEventLogModulePath) {
-        importAndPatchDcbEventLogSpec._mod = await dynamicImport(dcbEventLogModulePath);
-      }
-      var mod = importAndPatchDcbEventLogSpec._mod;
-      return mod ? Object.assign({}, spec, { DcbEventLogSpec: mod }) : spec;
-    });
   let handlersByType = {};
+  let sharedDcbEventLogOps = DcbEventLog_OperationsResMjs.Make(mkDcbEventLogOpsArg(config.pluginName, rawStorageOps, noopPublishJson()));
   await Promise.all(config.stateChangeSliceModules.map(async modPath => {
     let specModule = await dynamicImport(modPath);
     let patchedSpec = HandlerFactoryHelpersResMjs.patchSpecId(specModule);
-    let patchedSpec$1 = await importAndPatchDcbEventLogSpec(patchedSpec, config.dcbEventLogModule);
-    let dcbEventLogSpec = patchedSpec$1.DcbEventLogSpec;
-    let dcbEventLogOps = DcbEventLog_OperationsResMjs.Make(dcbEventLogSpec)(mkDcbEventLogOpsArg(dcbEventLogSpec, config.pluginName, rawStorageOps, noopPublishJson()));
-    let sliceCallback = StateChangeSlice_CallbackResMjs.Make(patchedSpec$1);
-    let commandSchema = patchedSpec$1.commandSchema;
+    let sliceCallback = StateChangeSlice_CallbackResMjs.Make(patchedSpec);
+    let commandSchema = patchedSpec.commandSchema;
     let typeNames = DcbTagResMjs.extractEventTypes(commandSchema);
     let jsonHandler = stream => {
       let decodedStream = Stream.flatMap(Stream.mapEffect(stream, topicItem => Effect.sync(() => {
@@ -114,7 +104,7 @@ async function buildHandler() {
           return Stream.empty;
         }
       });
-      return sliceCallback.handleCommands(dcbEventLogOps, decodedStream);
+      return sliceCallback.handleCommands(sharedDcbEventLogOps, decodedStream);
     };
     typeNames.forEach(typeName => {
       handlersByType[typeName] = jsonHandler;

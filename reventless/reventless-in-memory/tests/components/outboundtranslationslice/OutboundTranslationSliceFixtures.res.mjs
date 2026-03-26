@@ -25,15 +25,18 @@ let OrderEventLog = {
 
 let moduleUrl$1 = import.meta.url;
 
+let consumedEventSchema = S.schema(s => ({
+  TAG: "OrderShipped",
+  orderId: s.m(S.string),
+  email: s.m(S.string)
+}));
+
 let outboundItemSchema = S.schema(s => ({
   orderId: s.m(S.string),
   email: s.m(S.string)
 }));
 
 function collect(event) {
-  if (event.TAG !== "OrderShipped") {
-    return [];
-  }
   let orderId = event.orderId;
   return [[
       orderId,
@@ -54,7 +57,7 @@ async function translate(_id, _item) {
 let SendTrackingEmailSpec = {
   name: "SendTrackingEmail",
   moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: undefined,
+  consumedEventSchema: consumedEventSchema,
   outboundItemSchema: outboundItemSchema,
   inboundCommandSchema: S.unit,
   collect: collect,
@@ -64,6 +67,12 @@ let SendTrackingEmailSpec = {
 };
 
 let moduleUrl$2 = import.meta.url;
+
+let consumedEventSchema$1 = S.schema(s => ({
+  TAG: "PaymentReceived",
+  orderId: s.m(S.string),
+  amount: s.m(S.float)
+}));
 
 let outboundItemSchema$1 = S.schema(s => ({
   orderId: s.m(S.string),
@@ -76,9 +85,6 @@ let inboundCommandSchema = S.schema(s => ({
 }));
 
 function collect$1(event) {
-  if (event.TAG === "OrderShipped") {
-    return [];
-  }
   let orderId = event.orderId;
   return [[
       orderId,
@@ -109,7 +115,7 @@ function translate$1(id, item) {
 let ProcessPaymentSpec = {
   name: "ProcessPayment",
   moduleUrl: moduleUrl$2,
-  DcbEventLogSpec: undefined,
+  consumedEventSchema: consumedEventSchema$1,
   outboundItemSchema: outboundItemSchema$1,
   inboundCommandSchema: inboundCommandSchema,
   collect: collect$1,

@@ -22,7 +22,6 @@ let toResolvedOutputs = (
   })
 
 module type T = {
-  type dcbEvent
   module Spec: Reventless.InboundTranslationSlice.Spec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string

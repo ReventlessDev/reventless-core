@@ -17,7 +17,6 @@ Event(s) -> TODO List (read model) -> Translator -> External Service
 ```rescript
 // SendTrackingEmail.res
 let name = "SendTrackingEmail"
-module DcbEventLogSpec = OrderingEventLog
 
 @schema type outboundItem = {orderId: string, email: string}
 @schema type inboundCommand = unit
@@ -41,8 +40,13 @@ module type Spec = {
   let name: string
   let moduleUrl: string
 
-  /** The DCB event log spec this slice subscribes to. */
-  module DcbEventLogSpec: DcbEventLog.Spec
+  /**
+  Events this outbound translation slice consumes for collect.
+  Only needs the fields required — no tag annotations needed.
+  Must carry `@schema`.
+  */
+  @schema
+  type consumedEvent
 
   /** The outbound item state -- what data is accumulated for each pending external call. Must carry `@schema`. */
   @schema
@@ -57,7 +61,7 @@ module type Spec = {
   Each item has an `id` (deduplication key) and the `outboundItem` payload.
   Returns empty array if this event is not relevant.
   */
-  let collect: DcbEventLogSpec.event => array<(string, outboundItem)>
+  let collect: consumedEvent => array<(string, outboundItem)>
 
   /**
   Translate: call the external service for a single outbound item.

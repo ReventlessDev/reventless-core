@@ -2,18 +2,18 @@
 // Projects category events from the shared catalog event log into a Categories read model.
 
 open Reventless.Projection
-open CatalogEventLog
 
 let name = "CategoriesView"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = CatalogEventLog
-
-@schema
-type event = CatalogEventLog.event
-
 @schema
 type state = {categoryId: string, name: string, archived: bool}
+
+@schema
+type consumedEvent =
+  | CategoryAdded({categoryId: string, name: string})
+  | CategoryRenamed({categoryId: string, name: string})
+  | CategoryArchived({categoryId: string})
 
 let project = event =>
   switch event {
@@ -22,5 +22,4 @@ let project = event =>
     ]
   | CategoryRenamed({categoryId, name}) => [Update(categoryId, state => {...state, name})]
   | CategoryArchived({categoryId}) => [Update(categoryId, state => {...state, archived: true})]
-  | _ => [] // Product events are not handled by this view
   }

@@ -2,12 +2,26 @@
 // Requires customer to exist and not be deactivated; idempotent when email is unchanged.
 
 open Reventless
-open OrderingEventLog
 
 let name = "ChangeEmail"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = OrderingEventLog
+type state = {exists: bool, deactivated: bool, currentEmail: string}
+
+let initialState = {exists: false, deactivated: false, currentEmail: ""}
+
+@schema
+type consumedEvent =
+  | CustomerRegistered({email: string})
+  | EmailChanged({email: string})
+  | CustomerDeactivated
+
+let evolve = (state, event) =>
+  switch event {
+  | CustomerRegistered({email}) => {exists: true, deactivated: false, currentEmail: email}
+  | EmailChanged({email}) => {...state, currentEmail: email}
+  | CustomerDeactivated => {...state, deactivated: true}
+  }
 
 @schema
 type command = ChangeEmail({customerId: @s.matches(DcbTag.string) string, email: string})
@@ -17,17 +31,8 @@ type error =
   | CustomerNotFound
   | CustomerAlreadyDeactivated
 
-type state = {exists: bool, deactivated: bool, currentEmail: string}
-
-let initialState = {exists: false, deactivated: false, currentEmail: ""}
-
-let evolve = (state, event) =>
-  switch event {
-  | CustomerRegistered({email}) => {exists: true, deactivated: false, currentEmail: email}
-  | EmailChanged({email}) => {...state, currentEmail: email}
-  | CustomerDeactivated(_) => {...state, deactivated: true}
-  | _ => state
-  }
+@schema
+type producedEvent = EmailChanged({customerId: @s.matches(DcbTag.string) string, email: string})
 
 let decide = (state, command) =>
   switch command {

@@ -95,7 +95,7 @@ describe("AutomationSlice Callback", () => {
     })
 
     testPromise("items where process returns None are skipped", async () => {
-      SkipCallback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
+      SkipCallback.phase1([SkipProcessSpec.OrderPlaced({orderId: "ord-1"})])
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds

@@ -10,26 +10,9 @@ describe("PlaceOrder:", () => {
       expect(
         PlaceOrder.evolve(
           PlaceOrder.initialState,
-          OrderingEventLog.OrderPlaced({
-            orderId: "ord-1",
-            customerId: "cust-1",
-            productIds: ["prod-1"],
-          }),
+          PlaceOrder.OrderPlaced,
         ),
       )->toEqual({PlaceOrder.exists: true})
-    )
-
-    test("Customer events do not change state", () =>
-      expect(
-        PlaceOrder.evolve(
-          PlaceOrder.initialState,
-          OrderingEventLog.CustomerRegistered({
-            customerId: "cust-1",
-            email: "alice@example.com",
-            address: "123 Main St",
-          }),
-        ),
-      )->toEqual(PlaceOrder.initialState)
     )
   })
 
@@ -46,7 +29,7 @@ describe("PlaceOrder:", () => {
         ),
       )->toEqual(
         Ok([
-          OrderingEventLog.OrderPlaced({
+          PlaceOrder.OrderPlaced({
             orderId: "ord-1",
             customerId: "cust-1",
             productIds: ["prod-1", "prod-2"],
@@ -78,27 +61,20 @@ describe("ShipOrder:", () => {
       expect(
         ShipOrder.evolve(
           ShipOrder.initialState,
-          OrderingEventLog.OrderPlaced({
-            orderId: "ord-1",
-            customerId: "cust-1",
-            productIds: ["prod-1"],
-          }),
+          ShipOrder.OrderPlaced,
         ),
       )->toEqual({ShipOrder.exists: true, shipped: false, cancelled: false})
     )
 
     test("OrderShipped sets shipped=true", () =>
       expect(
-        ShipOrder.evolve(placedState, OrderingEventLog.OrderShipped({orderId: "ord-1"})),
+        ShipOrder.evolve(placedState, ShipOrder.OrderShipped),
       )->toEqual({ShipOrder.exists: true, shipped: true, cancelled: false})
     )
 
     test("OrderCancelled sets cancelled=true", () =>
       expect(
-        ShipOrder.evolve(
-          placedState,
-          OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]}),
-        ),
+        ShipOrder.evolve(placedState, ShipOrder.OrderCancelled),
       )->toEqual({ShipOrder.exists: true, shipped: false, cancelled: true})
     )
   })
@@ -134,7 +110,7 @@ describe("ShipOrder:", () => {
     test("on placed order produces OrderShipped", () =>
       expect(
         ShipOrder.decide(placedState, ShipOrder.ShipOrder({orderId: "ord-1"})),
-      )->toEqual(Ok([OrderingEventLog.OrderShipped({orderId: "ord-1"})]))
+      )->toEqual(Ok([ShipOrder.OrderShipped({orderId: "ord-1"})]))
     )
   })
 })
@@ -179,7 +155,7 @@ describe("CancelOrder:", () => {
       expect(
         CancelOrder.decide(placedState, CancelOrder.CancelOrder({orderId: "ord-1"})),
       )->toEqual(
-        Ok([OrderingEventLog.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})]),
+        Ok([CancelOrder.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})]),
       )
     )
   })

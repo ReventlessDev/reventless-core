@@ -10,12 +10,26 @@
 // CatalogProductSynced events. The JSON wire format uses "productId" as well.
 
 open Reventless
-open OrderingEventLog
 
 let name = "PlaceOrder"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = OrderingEventLog
+type state = {exists: bool, availableProductIds: Set.t<string>}
+
+let initialState = {exists: false, availableProductIds: Set.make()}
+
+@schema
+type consumedEvent =
+  | OrderPlaced
+  | CatalogProductSynced({productId: string})
+
+let evolve = (state, event) =>
+  switch event {
+  | OrderPlaced => {exists: true, availableProductIds: state.availableProductIds}
+  | CatalogProductSynced({productId}) =>
+    state.availableProductIds->Set.add(productId)
+    state
+  }
 
 @schema
 type command =
@@ -30,18 +44,13 @@ type error =
   | OrderAlreadyPlaced
   | ProductsNotAvailable({missing: array<string>})
 
-type state = {exists: bool, availableProductIds: Set.t<string>}
-
-let initialState = {exists: false, availableProductIds: Set.make()}
-
-let evolve = (state, event) =>
-  switch event {
-  | OrderPlaced(_) => {exists: true, availableProductIds: state.availableProductIds}
-  | CatalogProductSynced({productId}) =>
-    state.availableProductIds->Set.add(productId)
-    state
-  | _ => state
-  }
+@schema
+type producedEvent =
+  | OrderPlaced({
+      orderId: @s.matches(DcbTag.string) string,
+      customerId: string,
+      productIds: array<string>,
+    })
 
 let decide = (state, command) =>
   switch command {

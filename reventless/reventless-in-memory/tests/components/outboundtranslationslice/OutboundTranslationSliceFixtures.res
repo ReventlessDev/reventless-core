@@ -19,7 +19,10 @@ module OrderEventLog = {
 module SendTrackingEmailSpec = {
   let name = "SendTrackingEmail"
   let moduleUrl: string = %raw(`import.meta.url`)
-  module DcbEventLogSpec = OrderEventLog
+
+  @schema
+  type consumedEvent =
+    | OrderShipped({orderId: string, email: string})
 
   @schema
   type outboundItem = {orderId: string, email: string}
@@ -29,8 +32,7 @@ module SendTrackingEmailSpec = {
 
   let collect = event =>
     switch event {
-    | OrderEventLog.OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
-    | _ => []
+    | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
     }
 
   let translate = async (_id, _item) => Ok(None)
@@ -46,7 +48,10 @@ module SendTrackingEmailSpec = {
 module ProcessPaymentSpec = {
   let name = "ProcessPayment"
   let moduleUrl: string = %raw(`import.meta.url`)
-  module DcbEventLogSpec = OrderEventLog
+
+  @schema
+  type consumedEvent =
+    | PaymentReceived({orderId: string, amount: float})
 
   @schema
   type outboundItem = {orderId: string, amount: float}
@@ -56,8 +61,7 @@ module ProcessPaymentSpec = {
 
   let collect = event =>
     switch event {
-    | OrderEventLog.PaymentReceived({orderId, amount}) => [(orderId, {orderId, amount})]
-    | _ => []
+    | PaymentReceived({orderId, amount}) => [(orderId, {orderId, amount})]
     }
 
   // Simulate calling external payment gateway, then return a command

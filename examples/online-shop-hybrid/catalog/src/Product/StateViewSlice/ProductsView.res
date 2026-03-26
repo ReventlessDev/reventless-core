@@ -2,15 +2,16 @@
 // Projects product events from the shared catalog event log into a Products read model.
 
 open Reventless.Projection
-open CatalogEventLog
 
 let name = "ProductsView"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = CatalogEventLog
-
 @schema
-type event = CatalogEventLog.event
+type consumedEvent =
+  | ProductAdded({productId: string, name: string, description: string, price: float})
+  | ProductNameChanged({productId: string, name: string})
+  | ProductDescriptionChanged({productId: string, description: string})
+  | ProductPriceChanged({productId: string, price: float})
 
 @schema
 type state = {productId: string, name: string, description: string, price: float}
@@ -25,5 +26,4 @@ let project = event =>
       Update(productId, state => {...state, description}),
     ]
   | ProductPriceChanged({productId, price}) => [Update(productId, state => {...state, price})]
-  | _ => []
   }

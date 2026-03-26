@@ -34,7 +34,6 @@ import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-c
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
 import * as MCP_ServerInstance$ReventlessInMemory from "./adapter/MCP_ServerInstance.res.mjs";
-import * as DcbEventLog_Builder$ReventlessInMemory from "./components/DcbEventLog_Builder.res.mjs";
 import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_PluginSpec.res.mjs";
 import * as QueryEngine_InMemory$ReventlessInMemory from "./adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
 import * as ClonerRunner_InMemory$ReventlessInMemory from "./adapter/Cloner/ClonerRunner_InMemory.res.mjs";
@@ -75,7 +74,6 @@ function MakeWithConfig(Config) {
   let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
   let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
   let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
-  let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
   let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
   let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
   let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
@@ -154,16 +152,12 @@ function MakeWithConfig(Config) {
   let InboundTranslationSlice = {
     Make: Make$12
   };
-  let Make$13 = Spec => DcbEventLogMaker.Make(Spec);
-  let DcbEventLog = {
-    Make: Make$13
-  };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$14 = FragmentConfig => {
+  let Make$13 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
     let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
@@ -172,7 +166,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$14
+    Make: Make$13
   };
   Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
     if (kind === "Aggregate") {
@@ -806,7 +800,6 @@ function MakeWithConfig(Config) {
     AutomationSlice: AutomationSlice,
     OutboundTranslationSlice: OutboundTranslationSlice,
     InboundTranslationSlice: InboundTranslationSlice,
-    DcbEventLog: DcbEventLog,
     Api: Api,
     mcpSupported: true,
     Plugin: Plugin,
@@ -826,7 +819,6 @@ function Make($star) {
   let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
   let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
   let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
-  let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
   let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
   let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
   let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
@@ -905,16 +897,12 @@ function Make($star) {
   let InboundTranslationSlice = {
     Make: Make$13
   };
-  let Make$14 = Spec => DcbEventLogMaker.Make(Spec);
-  let DcbEventLog = {
-    Make: Make$14
-  };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$15 = FragmentConfig => {
+  let Make$14 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
     return {
@@ -922,7 +910,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$15
+    Make: Make$14
   };
   Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
     if (kind === "Aggregate") {
@@ -1564,7 +1552,6 @@ function Make($star) {
     AutomationSlice: AutomationSlice,
     OutboundTranslationSlice: OutboundTranslationSlice,
     InboundTranslationSlice: InboundTranslationSlice,
-    DcbEventLog: DcbEventLog,
     Api: Api,
     mcpSupported: true,
     Plugin: Plugin,

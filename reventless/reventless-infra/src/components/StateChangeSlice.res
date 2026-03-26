@@ -25,13 +25,10 @@ let slice = AddCategorySlice.make(~dcbEventLog=log, ~publishJsons=publishJsonsOu
 ```
 */
 module type T = {
-  /** The DCB event type this slice operates on (fixed by `Spec.DcbEventLogSpec.event`). */
-  type dcbEvent
   module Spec: Reventless.StateChangeSlice.Spec
-  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
   type component = Component.t<t, outputs, operations>
   let make: (
-    ~dcbEventLog: dcbEventLogComponent,
+    ~dcbEventLog: DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component

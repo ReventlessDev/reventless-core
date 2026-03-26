@@ -8,15 +8,18 @@ import * as EmailService$OrderingPlugin from "../../Service/EmailService.res.mjs
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.schema(s => ({
+  TAG: "OrderPlaced",
+  orderId: s.m(S.string),
+  customerId: s.m(S.string)
+}));
+
 let outboundItemSchema = S.schema(s => ({
   orderId: s.m(S.string),
   customerId: s.m(S.string)
 }));
 
 function collect(event) {
-  if (event.TAG !== "OrderPlaced") {
-    return [];
-  }
   let orderId = event.orderId;
   return [[
       orderId,
@@ -46,8 +49,6 @@ async function translate(_id, item) {
 
 let name = "SendOrderConfirmation";
 
-let DcbEventLogSpec;
-
 let inboundCommandSchema = S.unit;
 
 let maxRetries = 3;
@@ -57,7 +58,7 @@ let heartbeatInterval = 60;
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  consumedEventSchema,
   outboundItemSchema,
   inboundCommandSchema,
   collect,

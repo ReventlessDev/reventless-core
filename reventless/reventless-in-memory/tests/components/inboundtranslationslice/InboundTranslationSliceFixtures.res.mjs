@@ -55,7 +55,6 @@ function translate(input) {
 let PaymentWebhookSpec = {
   name: "PaymentWebhook",
   moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: undefined,
   externalInputSchema: externalInputSchema,
   commandSchema: commandSchema,
   translate: translate

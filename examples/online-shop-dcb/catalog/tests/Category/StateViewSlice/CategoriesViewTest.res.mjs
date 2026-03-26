@@ -51,13 +51,6 @@ Jest.describe("CategoriesView.project:", () => {
     name: "Electronics",
     archived: true
   }));
-  Jest.test("Product events return empty (not handled by CategoriesView)", () => Jest.Expect.toEqual(Jest.Expect.expect(CategoriesView$CatalogPlugin.project({
-    TAG: "ProductAdded",
-    productId: "p1",
-    name: "Laptop",
-    description: "A laptop",
-    price: 999.99
-  })), []));
 });
 
 export {

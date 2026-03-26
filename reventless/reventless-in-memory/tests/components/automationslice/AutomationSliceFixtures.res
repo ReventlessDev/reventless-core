@@ -20,7 +20,11 @@ module OrderEventLog = {
 module ShipOrderSpec = {
   let name = "ShipOrder"
   let moduleUrl: string = %raw(`import.meta.url`)
-  module DcbEventLogSpec = OrderEventLog
+
+  @schema
+  type consumedEvent =
+    | OrderPlaced({orderId: string, address: string})
+    | ShipmentCreated({orderId: string})
 
   @schema
   type todoItem = {orderId: string, address: string}
@@ -30,14 +34,14 @@ module ShipOrderSpec = {
 
   let collect = event =>
     switch event {
-    | OrderEventLog.OrderPlaced({orderId, address}) => [(orderId, {orderId, address})]
-    | _ => []
+    | OrderPlaced({orderId, address}) => [(orderId, {orderId, address})]
+    | ShipmentCreated(_) => []
     }
 
   let resolve = event =>
     switch event {
-    | OrderEventLog.ShipmentCreated({orderId}) => Some(orderId)
-    | _ => None
+    | ShipmentCreated({orderId}) => Some(orderId)
+    | OrderPlaced(_) => None
     }
 
   let process = (id, _item) => Some((id, CreateShipment({orderId: id})))
@@ -50,7 +54,11 @@ module ShipOrderSpec = {
 module SkipProcessSpec = {
   let name = "SkipProcess"
   let moduleUrl: string = %raw(`import.meta.url`)
-  module DcbEventLogSpec = OrderEventLog
+
+  @schema
+  type consumedEvent =
+    | OrderPlaced({orderId: string})
+    | ShipmentCreated({orderId: string})
 
   @schema
   type todoItem = {orderId: string}
@@ -60,14 +68,14 @@ module SkipProcessSpec = {
 
   let collect = event =>
     switch event {
-    | OrderEventLog.OrderPlaced({orderId}) => [(orderId, {orderId: orderId})]
-    | _ => []
+    | OrderPlaced({orderId}) => [(orderId, {orderId: orderId})]
+    | ShipmentCreated(_) => []
     }
 
   let resolve = event =>
     switch event {
-    | OrderEventLog.ShipmentCreated({orderId}) => Some(orderId)
-    | _ => None
+    | ShipmentCreated({orderId}) => Some(orderId)
+    | OrderPlaced(_) => None
     }
 
   let process = (_id, _item) => None

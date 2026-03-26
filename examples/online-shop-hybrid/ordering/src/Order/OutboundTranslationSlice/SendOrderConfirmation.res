@@ -2,11 +2,12 @@
 // When OrderPlaced is emitted, sends a confirmation email via EmailService.
 // Fire-and-forget pattern (no inbound command).
 
-open OrderingEventLog
-
 let name = "SendOrderConfirmation"
 let moduleUrl: string = %raw(`import.meta.url`)
-module DcbEventLogSpec = OrderingEventLog
+
+@schema
+type consumedEvent =
+  | OrderPlaced({orderId: string, customerId: string})
 
 @schema
 type outboundItem = {orderId: string, customerId: string}
@@ -17,7 +18,6 @@ type inboundCommand = unit
 let collect = event =>
   switch event {
   | OrderPlaced({orderId, customerId}) => [(orderId, {orderId, customerId})]
-  | _ => []
   }
 
 let translate = async (_id, item) => {

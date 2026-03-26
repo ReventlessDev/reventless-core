@@ -61,7 +61,7 @@ function buildHandler(specModule, callbackMake, queryDbTableName, dcbQueueUrl) {
     let items = objectEntries(callback.todoItems.contents);
     await Promise.all(items.map(async entry => await callSave(rawSave, entry[0], entry[1], "Overwrite", undefined)));
   };
-  let eventSchema = specModule.DcbEventLogSpec.eventSchema;
+  let eventSchema = specModule.consumedEventSchema;
   let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(Stream.flatMap(Stream.mapEffect(stream, json => Effect.sync(() => {
     try {
       let eventJson = Stdlib_Option.getOr(Primitive_option.fromNullable(json.event), json);
@@ -85,11 +85,9 @@ async function buildAllHandlers() {
   let handlers = {};
   await Promise.all(config.handlers.map(async h => {
     let specModule = await dynamicImport(h.specModule);
-    let modPath = h.dcbEventLogModule;
-    let patchedSpec = modPath !== undefined ? (await dynamicImport(modPath), (Object.assign({}, specModule, { DcbEventLogSpec: _eventLogModule }))) : specModule;
     let match = h.callbackType;
     let callbackMake = match === "outbound" ? prim => OutboundTranslationSlice_CallbackResMjs.Make(prim) : prim => AutomationSlice_CallbackResMjs.Make(prim);
-    let handler = buildHandler(patchedSpec, callbackMake, h.queryDbTableName, h.dcbQueueUrl);
+    let handler = buildHandler(specModule, callbackMake, h.queryDbTableName, h.dcbQueueUrl);
     handlers[h.sourceUrn] = handler;
   }));
   return handlers;

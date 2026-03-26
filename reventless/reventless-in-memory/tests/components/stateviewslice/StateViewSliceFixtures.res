@@ -4,11 +4,10 @@
 open Reventless.Projection
 
 // ─────────────────────────────────────────────────────────────
-// DcbEventLog spec with Add/Rename/Remove events
+// Event type definition for the DcbEventLog
 // ─────────────────────────────────────────────────────────────
 
 module ItemEventLog = {
-  let moduleUrl: string = %raw(`import.meta.url`)
   @schema
   type event =
     | ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
@@ -23,19 +22,21 @@ module ItemEventLog = {
 module ItemsViewSpec = {
   let name = "ItemsView"
   let moduleUrl: string = %raw(`import.meta.url`)
-  module DcbEventLogSpec = ItemEventLog
 
   @schema
-  type event = ItemEventLog.event
+  type consumedEvent =
+    | ItemAdded({id: string, name: string})
+    | ItemRenamed({id: string, name: string})
+    | ItemRemoved({id: string})
 
   @schema
   type state = {id: string, name: string}
 
   let project = event =>
     switch event {
-    | ItemEventLog.ItemAdded({id, name}) => [Set(id, {id, name})]
-    | ItemEventLog.ItemRenamed({id, name}) => [Update(id, s => {...s, name})]
-    | ItemEventLog.ItemRemoved({id}) => [Delete(id)]
+    | ItemAdded({id, name}) => [Set(id, {id, name})]
+    | ItemRenamed({id, name}) => [Update(id, s => {...s, name})]
+    | ItemRemoved({id}) => [Delete(id)]
     }
 }
 
@@ -55,8 +56,7 @@ let _ = TestRunner.setup()
 // Build DcbEventLog
 // ─────────────────────────────────────────────────────────────
 
-module DcbEventLogMaker = DcbEventLog_Builder.Make(Bus)
-module ItemEventLogMaker = DcbEventLogMaker.Make(ItemEventLog)
+module ItemEventLogMaker = DcbEventLog_Builder.Make(Bus)
 let eventLog = ItemEventLogMaker.make(~name="ItemEventLog")
 
 // ─────────────────────────────────────────────────────────────
@@ -76,10 +76,18 @@ let dcbEventTopicResource =
 // Test helpers
 // ─────────────────────────────────────────────────────────────
 
+// Encode a typed event into a raw event for appending to the DcbEventLog
+let encodeEvent = (event: ItemEventLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
+  let json = event->S.reverseConvertToJsonOrThrow(ItemEventLog.eventSchema)
+  let (eventType, data) = json->ReventlessCore.Message.splitMessage
+  let tags = Reventless.DcbTag.extractTags(ItemEventLog.eventSchema, event)
+  {eventType, data: JSON.Object(data), tags}
+}
+
 // Append an event to the DcbEventLog (publishes to event topic automatically)
 let appendEvent = async event => {
   let ops = await eventLog->ItemEventLogMaker.operations->TestRunner.resolve
-  let _ = await ops.append([event])
+  let _ = await ops.append([encodeEvent(event)])
 }
 
 // Load projected state from the in-memory QueryDb.

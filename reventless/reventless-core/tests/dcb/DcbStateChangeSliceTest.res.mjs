@@ -15,13 +15,12 @@ let storage = mock.operations;
 let publishJson = mock.mockPublishJson;
 
 let TestDcbOps = {
-  Spec: DcbFixtures$ReventlessCore.TestEventLogSpec,
   name: "TestDcbEventLog",
   storage: storage,
   publishJson: publishJson
 };
 
-let EventLogOps = DcbEventLog_Operations$ReventlessCore.Make(DcbFixtures$ReventlessCore.TestEventLogSpec)(TestDcbOps);
+let EventLogOps = DcbEventLog_Operations$ReventlessCore.Make(TestDcbOps);
 
 let testDcbEventLog_read = EventLogOps.read;
 
@@ -41,10 +40,11 @@ let testDcbEventLog = {
 let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({
   name: DcbFixtures$ReventlessCore.TestCommandSpec.name,
   moduleUrl: DcbFixtures$ReventlessCore.TestCommandSpec.moduleUrl,
-  DcbEventLogSpec: DcbFixtures$ReventlessCore.TestEventLogSpec,
-  errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
   initialState: DcbFixtures$ReventlessCore.TestCommandSpec.initialState,
+  consumedEventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.consumedEventSchema,
   evolve: DcbFixtures$ReventlessCore.TestCommandSpec.evolve,
+  errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
+  producedEventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.producedEventSchema,
   decide: DcbFixtures$ReventlessCore.TestCommandSpec.decide,
   commandSchema: DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema
 });

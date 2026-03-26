@@ -5,6 +5,25 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.literal("CustomerRegistered"),
+  S.literal("CustomerDeactivated")
+]);
+
+function evolve(state, event) {
+  if (event === "CustomerRegistered") {
+    return {
+      exists: true,
+      deactivated: false
+    };
+  } else {
+    return {
+      exists: state.exists,
+      deactivated: true
+    };
+  }
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "DeactivateCustomer",
   customerId: s.m(DcbTag$Reventless.string)
@@ -12,22 +31,10 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CustomerNotFound");
 
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "CustomerRegistered" :
-      return {
-        exists: true,
-        deactivated: false
-      };
-    case "CustomerDeactivated" :
-      return {
-        exists: state.exists,
-        deactivated: true
-      };
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "CustomerDeactivated",
+  customerId: s.m(DcbTag$Reventless.string)
+}));
 
 function decide(state, command) {
   if (state.exists) {
@@ -55,8 +62,6 @@ function decide(state, command) {
 
 let name = "DeactivateCustomer";
 
-let DcbEventLogSpec;
-
 let initialState = {
   exists: false,
   deactivated: false
@@ -65,11 +70,12 @@ let initialState = {
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

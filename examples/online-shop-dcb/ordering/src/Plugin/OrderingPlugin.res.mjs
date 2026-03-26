@@ -9,7 +9,6 @@ import * as ChangeEmail$OrderingPlugin from "../Customer/StateChangeSlice/Change
 import * as AutoShipOrder$OrderingPlugin from "../Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as ChangeAddress$OrderingPlugin from "../Customer/StateChangeSlice/ChangeAddress.res.mjs";
 import * as CustomersView$OrderingPlugin from "../Customer/StateViewSlice/CustomersView.res.mjs";
-import * as OrderingEventLog$OrderingPlugin from "./OrderingEventLog.res.mjs";
 import * as RegisterCustomer$OrderingPlugin from "../Customer/StateChangeSlice/RegisterCustomer.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as ProductsExtension$OrderingPlugin from "../Extension/ProductsExtension.res.mjs";
@@ -23,11 +22,11 @@ import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventles
 import * as OrdersExtensionPointMapping$OrderingPlugin from "../ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
 
 function Make(Platform) {
-  let OrderingEventLogMaker = Platform.DcbEventLog.Make(OrderingEventLog$OrderingPlugin);
   let RegisterCustomerSlice = Platform.StateChangeSlice.Make({
     name: RegisterCustomer$OrderingPlugin.name,
     moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: RegisterCustomer$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
     errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
     initialState: RegisterCustomer$OrderingPlugin.initialState,
     evolve: RegisterCustomer$OrderingPlugin.evolve,
@@ -37,7 +36,8 @@ function Make(Platform) {
   let ChangeEmailSlice = Platform.StateChangeSlice.Make({
     name: ChangeEmail$OrderingPlugin.name,
     moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: ChangeEmail$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
     errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
     initialState: ChangeEmail$OrderingPlugin.initialState,
     evolve: ChangeEmail$OrderingPlugin.evolve,
@@ -47,7 +47,8 @@ function Make(Platform) {
   let ChangeAddressSlice = Platform.StateChangeSlice.Make({
     name: ChangeAddress$OrderingPlugin.name,
     moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: ChangeAddress$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
     errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
     initialState: ChangeAddress$OrderingPlugin.initialState,
     evolve: ChangeAddress$OrderingPlugin.evolve,
@@ -57,7 +58,8 @@ function Make(Platform) {
   let DeactivateCustomerSlice = Platform.StateChangeSlice.Make({
     name: DeactivateCustomer$OrderingPlugin.name,
     moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: DeactivateCustomer$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
     errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
     initialState: DeactivateCustomer$OrderingPlugin.initialState,
     evolve: DeactivateCustomer$OrderingPlugin.evolve,
@@ -67,15 +69,15 @@ function Make(Platform) {
   let CustomersViewSlice = Platform.StateViewSlice.Make({
     name: CustomersView$OrderingPlugin.name,
     moduleUrl: CustomersView$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
-    eventSchema: CustomersView$OrderingPlugin.eventSchema,
+    consumedEventSchema: CustomersView$OrderingPlugin.consumedEventSchema,
     stateSchema: CustomersView$OrderingPlugin.stateSchema,
     project: CustomersView$OrderingPlugin.project
   });
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
     moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     initialState: PlaceOrder$OrderingPlugin.initialState,
     evolve: PlaceOrder$OrderingPlugin.evolve,
@@ -85,7 +87,8 @@ function Make(Platform) {
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
     moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     initialState: ShipOrder$OrderingPlugin.initialState,
     evolve: ShipOrder$OrderingPlugin.evolve,
@@ -95,48 +98,28 @@ function Make(Platform) {
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
     name: CancelOrder$OrderingPlugin.name,
     moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     initialState: CancelOrder$OrderingPlugin.initialState,
     evolve: CancelOrder$OrderingPlugin.evolve,
     decide: CancelOrder$OrderingPlugin.decide,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema
   });
-  let AutoShipOrderSlice = Platform.AutomationSlice.Make({
-    name: AutoShipOrder$OrderingPlugin.name,
-    moduleUrl: AutoShipOrder$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
-    todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
-    commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
-    collect: AutoShipOrder$OrderingPlugin.collect,
-    resolve: AutoShipOrder$OrderingPlugin.resolve,
-    process: AutoShipOrder$OrderingPlugin.process,
-    maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
-    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
-  });
-  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
-    name: SendOrderConfirmation$OrderingPlugin.name,
-    moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
-    outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
-    inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
-    collect: SendOrderConfirmation$OrderingPlugin.collect,
-    translate: SendOrderConfirmation$OrderingPlugin.translate,
-    maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
-    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
-  });
+  let AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder$OrderingPlugin);
+  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation$OrderingPlugin);
   let OrdersViewSlice = Platform.StateViewSlice.Make({
     name: OrdersView$OrderingPlugin.name,
     moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
-    eventSchema: OrdersView$OrderingPlugin.eventSchema,
+    consumedEventSchema: OrdersView$OrderingPlugin.consumedEventSchema,
     stateSchema: OrdersView$OrderingPlugin.stateSchema,
     project: OrdersView$OrderingPlugin.project
   });
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
     moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
+    producedEventSchema: SyncCatalogProduct$OrderingPlugin.producedEventSchema,
+    consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     initialState: SyncCatalogProduct$OrderingPlugin.initialState,
     evolve: SyncCatalogProduct$OrderingPlugin.evolve,
@@ -146,8 +129,7 @@ function Make(Platform) {
   let AvailableProductsViewSlice = Platform.StateViewSlice.Make({
     name: AvailableProductsView$OrderingPlugin.name,
     moduleUrl: AvailableProductsView$OrderingPlugin.moduleUrl,
-    DcbEventLogSpec: OrderingEventLog$OrderingPlugin,
-    eventSchema: AvailableProductsView$OrderingPlugin.eventSchema,
+    consumedEventSchema: AvailableProductsView$OrderingPlugin.consumedEventSchema,
     stateSchema: AvailableProductsView$OrderingPlugin.stateSchema,
     project: AvailableProductsView$OrderingPlugin.project
   });
@@ -223,7 +205,6 @@ function Make(Platform) {
   let outboundTranslationSlices = [SendOrderConfirmationSlice];
   let inboundTranslationSlices = [];
   let DcbSpec = {
-    eventSchema: OrderingEventLog$OrderingPlugin.eventSchema,
     stateChangeSlices: stateChangeSlices,
     stateViewSlices: stateViewSlices,
     automationSlices: automationSlices,
@@ -232,7 +213,6 @@ function Make(Platform) {
   };
   let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {
-    OrderingEventLogMaker: OrderingEventLogMaker,
     RegisterCustomerSlice: RegisterCustomerSlice,
     ChangeEmailSlice: ChangeEmailSlice,
     ChangeAddressSlice: ChangeAddressSlice,

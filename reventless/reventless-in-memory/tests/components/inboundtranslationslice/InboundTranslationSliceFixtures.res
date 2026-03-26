@@ -18,7 +18,6 @@ module OrderEventLog = {
 module PaymentWebhookSpec = {
   let name = "PaymentWebhook"
   let moduleUrl: string = %raw(`import.meta.url`)
-  module DcbEventLogSpec = OrderEventLog
 
   @schema
   type externalInput = {paymentId: string, orderId: string, status: string}

@@ -5,6 +5,14 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.literal("OrderPlaced");
+
+function evolve(_state, event) {
+  return {
+    exists: true
+  };
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
@@ -14,15 +22,12 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("OrderAlreadyPlaced");
 
-function evolve(state, event) {
-  if (event.TAG === "OrderPlaced") {
-    return {
-      exists: true
-    };
-  } else {
-    return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "OrderPlaced",
+  orderId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(S.string),
+  productIds: s.m(S.array(S.string))
+}));
 
 function decide(state, command) {
   if (state.exists) {
@@ -45,8 +50,6 @@ function decide(state, command) {
 
 let name = "PlaceOrder";
 
-let DcbEventLogSpec;
-
 let initialState = {
   exists: false
 };
@@ -54,11 +57,12 @@ let initialState = {
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

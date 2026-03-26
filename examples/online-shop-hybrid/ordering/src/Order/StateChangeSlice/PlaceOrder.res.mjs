@@ -5,6 +5,32 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let initialState_availableProductIds = new Set();
+
+let initialState = {
+  exists: false,
+  availableProductIds: initialState_availableProductIds
+};
+
+let consumedEventSchema = S.union([
+  S.literal("OrderPlaced"),
+  S.schema(s => ({
+    TAG: "CatalogProductSynced",
+    productId: s.m(S.string)
+  }))
+]);
+
+function evolve(state, event) {
+  if (typeof event !== "object") {
+    return {
+      exists: true,
+      availableProductIds: state.availableProductIds
+    };
+  }
+  state.availableProductIds.add(event.productId);
+  return state;
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
@@ -20,27 +46,12 @@ let errorSchema = S.union([
   }))
 ]);
 
-let initialState_availableProductIds = new Set();
-
-let initialState = {
-  exists: false,
-  availableProductIds: initialState_availableProductIds
-};
-
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "OrderPlaced" :
-      return {
-        exists: true,
-        availableProductIds: state.availableProductIds
-      };
-    case "CatalogProductSynced" :
-      state.availableProductIds.add(event.productId);
-      return state;
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "OrderPlaced",
+  orderId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(S.string),
+  productIds: s.m(S.array(S.string))
+}));
 
 function decide(state, command) {
   if (state.exists) {
@@ -74,16 +85,15 @@ function decide(state, command) {
 
 let name = "PlaceOrder";
 
-let DcbEventLogSpec;
-
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

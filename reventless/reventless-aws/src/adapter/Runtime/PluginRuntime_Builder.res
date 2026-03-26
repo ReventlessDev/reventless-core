@@ -31,14 +31,9 @@ let dcbConfigRef: ref<bundledDcbConfig> = ref({
 })
 
 let registeredSliceSpecPaths: array<string> = []
-let registeredDcbEventLogModulePath: ref<option<string>> = ref(None)
 
 let registerStateChangeSliceSpec = (specModulePath: string) => {
   let _ = registeredSliceSpecPaths->Array.push(specModulePath)
-}
-
-let registerDcbEventLogModulePath = (modulePath: string) => {
-  registeredDcbEventLogModulePath := Some(modulePath)
 }
 
 let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceSpecPaths=[], ()) => {
@@ -289,19 +284,12 @@ module Make = (
         ->Array.map(p => p->JSON.stringifyAny->Option.getOr(`""`))
         ->Array.join(",")
 
-      let dcbEventLogModuleJson = switch registeredDcbEventLogModulePath.contents {
-      | Some(p) =>
-        let escaped = p->JSON.stringifyAny->Option.getOr(`""`)
-        `,"dcbEventLogModule":${escaped}`
-      | None => ""
-      }
-
       let handlerConfigJson =
         Pulumi.Output.all2((dcbTableName, queue.id))
         ->Pulumi.Output.apply(((table, queueUrl)) => {
           let pluginName =
             dcbConfig.pluginName->JSON.stringifyAny->Option.getOr(`""`)
-          `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginName},"stateChangeSliceModules":[${sliceSpecsJson}]${dcbEventLogModuleJson}}`
+          `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginName},"stateChangeSliceModules":[${sliceSpecsJson}]}`
         })
       envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 

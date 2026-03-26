@@ -22,7 +22,6 @@ type handlerConfig = {
   queueUrl: string,
   pluginName: string,
   stateChangeSliceModules: array<string>,
-  dcbEventLogModule: option<string>,
 }
 
 type config = handlerConfig
@@ -37,7 +36,7 @@ external stateChangeSliceCallbackMake: 'a => 'b = "Make"
 @module(
   "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs"
 )
-external dcbEventLogOperationsMake: 'a => 'b => 'c = "Make"
+external dcbEventLogOperationsMake: 'a => 'b = "Make"
 
 @module(
   "@reventlessdev/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs"
@@ -128,7 +127,6 @@ external requestContextTag: 'a = "tag"
 
 @get external getHandleCommands: 'a => 'b = "handleCommands"
 @get external getHandleJsonCommands: 'a => 'b = "handleJsonCommands"
-@get external getDcbEventLogSpec: 'a => 'b = "DcbEventLogSpec"
 @get external getCommandSchema: 'a => 'b = "commandSchema"
 
 // === TopicItem field accessors ===
@@ -139,9 +137,8 @@ let mkTopicItem: ('a, string) => 'b = %raw(`(command, reference) => ({command, r
 
 let mkNameObj: string => 'a = %raw(`(name) => ({name})`)
 
-let mkDcbEventLogOpsArg: ('a, string, 'b, 'c) => 'd = %raw(`
-  (spec, name, storage, publishJson) => ({
-    Spec: spec,
+let mkDcbEventLogOpsArg: (string, 'b, 'c) => 'd = %raw(`
+  (name, storage, publishJson) => ({
     name,
     storage,
     publishJson,
@@ -219,37 +216,24 @@ let buildHandler = async (): (sqsHandler, cmdGenHandler) => {
     dcbReadStream(resolvedTable),
   )
 
-  // Import DCB event log module once (shared by all slices)
-  // module DcbEventLogSpec = X compiles to undefined in ESM; import separately and patch
-  let importAndPatchDcbEventLogSpec: ('a, option<string>) => promise<'a> = %raw(`
-    async function(spec, dcbEventLogModulePath) {
-      if (!importAndPatchDcbEventLogSpec._mod && dcbEventLogModulePath) {
-        importAndPatchDcbEventLogSpec._mod = await dynamicImport(dcbEventLogModulePath);
-      }
-      var mod = importAndPatchDcbEventLogSpec._mod;
-      return mod ? Object.assign({}, spec, { DcbEventLogSpec: mod }) : spec;
-    }
-  `)
-
   // Build handler routing table: commandTypeName → jsonCommandsHandler
   let handlersByType: dict<'a> = Dict.make()
+
+  // Build shared DcbEventLog operations (just storage + name, no Spec needed)
+  let sharedDcbEventLogOps = dcbEventLogOperationsMake(
+    mkDcbEventLogOpsArg(
+      config.pluginName,
+      rawStorageOps,
+      noopPublishJson(),
+    ),
+  )
 
   let _ = await config.stateChangeSliceModules
     ->Array.map(async modPath => {
       let specModule = await dynamicImport(modPath)
       let patchedSpec = patchSpecId(specModule)
-      let patchedSpec = await importAndPatchDcbEventLogSpec(patchedSpec, config.dcbEventLogModule)
 
-      let dcbEventLogSpec = patchedSpec->getDcbEventLogSpec
-
-      let dcbEventLogOps = dcbEventLogOperationsMake(dcbEventLogSpec)(
-        mkDcbEventLogOpsArg(
-          dcbEventLogSpec,
-          config.pluginName,
-          rawStorageOps,
-          noopPublishJson(),
-        ),
-      )
+      let dcbEventLogOps = sharedDcbEventLogOps
 
       let sliceCallback = stateChangeSliceCallbackMake(patchedSpec)
       let commandSchema = patchedSpec->getCommandSchema

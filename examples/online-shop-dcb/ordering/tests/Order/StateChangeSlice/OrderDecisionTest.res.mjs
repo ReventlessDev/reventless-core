@@ -6,22 +6,9 @@ import * as PlaceOrder$OrderingPlugin from "../../../src/Order/StateChangeSlice/
 import * as CancelOrder$OrderingPlugin from "../../../src/Order/StateChangeSlice/CancelOrder.res.mjs";
 
 Jest.describe("PlaceOrder:", () => {
-  Jest.describe("evolve", () => {
-    Jest.test("OrderPlaced sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.evolve(PlaceOrder$OrderingPlugin.initialState, {
-      TAG: "OrderPlaced",
-      orderId: "ord-1",
-      customerId: "cust-1",
-      productIds: ["prod-1"]
-    })), {
-      exists: true
-    }));
-    Jest.test("Customer events do not change state", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.evolve(PlaceOrder$OrderingPlugin.initialState, {
-      TAG: "CustomerRegistered",
-      customerId: "cust-1",
-      email: "alice@example.com",
-      address: "123 Main St"
-    })), PlaceOrder$OrderingPlugin.initialState));
-  });
+  Jest.describe("evolve", () => Jest.test("OrderPlaced sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.evolve(PlaceOrder$OrderingPlugin.initialState, "OrderPlaced")), {
+    exists: true
+  })));
   Jest.describe("decide", () => {
     Jest.test("on non-existent order produces OrderPlaced", () => Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder$OrderingPlugin.decide(PlaceOrder$OrderingPlugin.initialState, {
       TAG: "PlaceOrder",
@@ -64,29 +51,17 @@ Jest.describe("ShipOrder:", () => {
     cancelled: false
   };
   Jest.describe("evolve", () => {
-    Jest.test("OrderPlaced sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(ShipOrder$OrderingPlugin.evolve(ShipOrder$OrderingPlugin.initialState, {
-      TAG: "OrderPlaced",
-      orderId: "ord-1",
-      customerId: "cust-1",
-      productIds: ["prod-1"]
-    })), {
+    Jest.test("OrderPlaced sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(ShipOrder$OrderingPlugin.evolve(ShipOrder$OrderingPlugin.initialState, "OrderPlaced")), {
       exists: true,
       shipped: false,
       cancelled: false
     }));
-    Jest.test("OrderShipped sets shipped=true", () => Jest.Expect.toEqual(Jest.Expect.expect(ShipOrder$OrderingPlugin.evolve(placedState, {
-      TAG: "OrderShipped",
-      orderId: "ord-1"
-    })), {
+    Jest.test("OrderShipped sets shipped=true", () => Jest.Expect.toEqual(Jest.Expect.expect(ShipOrder$OrderingPlugin.evolve(placedState, "OrderShipped")), {
       exists: true,
       shipped: true,
       cancelled: false
     }));
-    Jest.test("OrderCancelled sets cancelled=true", () => Jest.Expect.toEqual(Jest.Expect.expect(ShipOrder$OrderingPlugin.evolve(placedState, {
-      TAG: "OrderCancelled",
-      orderId: "ord-1",
-      productIds: ["prod-1"]
-    })), {
+    Jest.test("OrderCancelled sets cancelled=true", () => Jest.Expect.toEqual(Jest.Expect.expect(ShipOrder$OrderingPlugin.evolve(placedState, "OrderCancelled")), {
       exists: true,
       shipped: false,
       cancelled: true

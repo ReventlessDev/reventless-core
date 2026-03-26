@@ -30,8 +30,6 @@ let slice = PaymentWebhookSlice.make(~publishJsons=publishJsonsOutput)
 type t
 
 module type T = {
-  /** The DCB event type this slice operates on (fixed by `Spec.DcbEventLogSpec.event`). */
-  type dcbEvent
   module Spec: Reventless.InboundTranslationSlice.Spec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string

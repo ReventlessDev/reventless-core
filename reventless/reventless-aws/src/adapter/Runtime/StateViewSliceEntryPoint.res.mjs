@@ -45,7 +45,7 @@ function groupBySource(records) {
 function buildJsonEventsHandler(specModule, queryDbTableName) {
   let table = HandlerFactoryHelpersResMjs.makeTableRef(queryDbTableName);
   let queryDbOps = mkQueryDbOps(QueryDbStorage_DynamoDb_RuntimeResMjs.load(table), QueryDbStorage_DynamoDb_RuntimeResMjs.loadStream(table), QueryDbStorage_DynamoDb_RuntimeResMjs.save(table), QueryDbStorage_DynamoDb_RuntimeResMjs.saveBatch(table), QueryDbStorage_DynamoDb_RuntimeResMjs.count(table), QueryDbStorage_DynamoDb_RuntimeResMjs.$$delete(table), QueryDbStorage_DynamoDb_RuntimeResMjs.deleteBatch(table));
-  let eventSchema = specModule.DcbEventLogSpec.eventSchema;
+  let eventSchema = specModule.consumedEventSchema;
   let project = specModule.project;
   return stream => Stream.runForEach(Stream.flatMap(Stream.mapEffect(stream, json => Effect.sync(() => {
     try {
@@ -65,9 +65,7 @@ async function buildAllHandlers() {
   let handlers = {};
   await Promise.all(config.handlers.map(async h => {
     let specModule = await dynamicImport(h.specModule);
-    let modPath = h.dcbEventLogModule;
-    let patchedSpec = modPath !== undefined ? (await dynamicImport(modPath), (Object.assign({}, specModule, { DcbEventLogSpec: _eventLogModule }))) : specModule;
-    let jsonEventsHandler = buildJsonEventsHandler(patchedSpec, h.queryDbTableName);
+    let jsonEventsHandler = buildJsonEventsHandler(specModule, h.queryDbTableName);
     let handler = (event, context) => EventCollectorChannel_DynamoDbStream_RuntimeResMjs.handleStreamEvent(jsonEventsHandler, event, context);
     handlers[h.sourceUrn] = handler;
   }));

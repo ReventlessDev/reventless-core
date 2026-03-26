@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
@@ -52,13 +53,41 @@ function Make(DcbEventLogStorage) {
       if (dcbSpec === undefined) {
         return emptyResult;
       }
-      let DcbEventLogSpec_eventSchema = dcbSpec.eventSchema;
-      let DcbEventLogSpec = {
-        moduleUrl: "",
-        eventSchema: DcbEventLogSpec_eventSchema
-      };
-      let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogSpec)(DcbEventLogStorage)(DcbEventTopicPublisher);
-      let dcbEventLog = DcbEventLog.make(name, opts);
+      let produced = dcbSpec.stateChangeSlices.map(Sc => [
+        Sc.Spec.name,
+        Sc.Spec.producedEventSchema
+      ]);
+      let consumed = dcbSpec.stateChangeSlices.map(Sc => [
+        Sc.Spec.name,
+        Sc.Spec.consumedEventSchema
+      ]).concat(dcbSpec.stateViewSlices.map(V => [
+        V.Spec.name,
+        V.Spec.consumedEventSchema
+      ])).concat(dcbSpec.automationSlices.map(A => [
+        A.Spec.name,
+        A.Spec.consumedEventSchema
+      ])).concat(dcbSpec.outboundTranslationSlices.map(O => [
+        O.Spec.name,
+        O.Spec.consumedEventSchema
+      ]));
+      let errors = DcbValidation$Reventless.validateProducedAndConsumed(produced, consumed);
+      if (errors.TAG !== "Ok") {
+        errors._0.forEach(err => {
+          console.error(`DCB validation error (` + err.sliceName + `): ` + err.message);
+        });
+      }
+      let arr = produced.flatMap(param => DcbTag$Reventless.extractTaggedFields(param[1]));
+      let seen = new Set();
+      let indexes = arr.filter(f => {
+        if (seen.has(f)) {
+          return false;
+        } else {
+          seen.add(f);
+          return true;
+        }
+      }).map(tagKey => `tag_` + tagKey);
+      let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
+      let dcbEventLog = DcbEventLog.make(name, indexes, opts);
       Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents, hook => hook(dcbEventLog));
       let DcbCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
@@ -276,6 +305,7 @@ function Make(DcbEventLogStorage) {
           authorization: undefined
         };
       });
+      let allProducedSchemas = dcbSpec.stateChangeSlices.map(Sc => Sc.Spec.producedEventSchema);
       return {
         dcbEventLogOutputs: Component$ReventlessCore.outputs(dcbEventLog),
         stateChangeSlicesOutputs: stateChangeSlicesOutputs,
@@ -286,11 +316,11 @@ function Make(DcbEventLogStorage) {
         dcbRuntimeSetup: dcbRuntimeSetup,
         mutationEntries: mutationEntriesFromSlices.concat(mutationEntriesFromInboundSlices),
         queryEntries: stateViewEntries.concat(automationEntries).concat(outboundEntries).concat(inboundEntries),
-        eventLogEntries: [{
-            busKey: name + "DcbEventLog",
-            displayName: name,
-            eventSchema: dcbSpec.eventSchema
-          }]
+        eventLogEntries: allProducedSchemas.length !== 0 ? [{
+              busKey: name + "DcbEventLog",
+              displayName: name,
+              eventSchema: allProducedSchemas[0]
+            }] : []
       };
     };
     return {

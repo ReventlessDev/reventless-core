@@ -2,23 +2,17 @@
 // Records and revokes per-product order demand driven by Ordering's extension point events.
 
 open Reventless
-open CatalogEventLog
 
 let name = "RecordProductDemand"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = CatalogEventLog
-
-@schema
-type command =
-  | RecordDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
-  | RevokeDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
-
-@schema
-type error = unit // always succeeds — demand recording is idempotent
-
 type state = {recordedOrderIds: array<string>}
 let initialState = {recordedOrderIds: []}
+
+@schema
+type consumedEvent =
+  | ProductDemandRecorded({orderId: string})
+  | ProductDemandRevoked({orderId: string})
 
 let evolve = (state, event) =>
   switch event {
@@ -28,8 +22,26 @@ let evolve = (state, event) =>
   | ProductDemandRevoked({orderId}) => {
       recordedOrderIds: state.recordedOrderIds->Array.filter(id => id !== orderId),
     }
-  | _ => state
   }
+
+@schema
+type command =
+  | RecordDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
+  | RevokeDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
+
+@schema
+type error = unit // always succeeds — demand recording is idempotent
+
+@schema
+type producedEvent =
+  | ProductDemandRecorded({
+      productId: @s.matches(DcbTag.string) string,
+      orderId: string,
+    })
+  | ProductDemandRevoked({
+      productId: @s.matches(DcbTag.string) string,
+      orderId: string,
+    })
 
 let decide = (state, command) =>
   switch command {

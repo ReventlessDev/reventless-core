@@ -18,29 +18,15 @@ Jest.describe("PlaceOrder:", () => {
   };
   Jest.describe("evolve", () => {
     Jest.test("OrderPlaced sets exists=true", () => {
-      let state = PlaceOrder$OrderingPlugin.evolve(withProducts(["prod-1"]), {
-        TAG: "OrderPlaced",
-        orderId: "ord-1",
-        customerId: "cust-1",
-        productIds: ["prod-1"]
-      });
+      let state = PlaceOrder$OrderingPlugin.evolve(withProducts(["prod-1"]), "OrderPlaced");
       return Jest.Expect.toBe(Jest.Expect.expect(state.exists), true);
     });
     Jest.test("CatalogProductSynced adds to availableProductIds", () => {
       let state = PlaceOrder$OrderingPlugin.evolve(PlaceOrder$OrderingPlugin.initialState, {
         TAG: "CatalogProductSynced",
-        productId: "prod-1",
-        name: "Widget",
-        price: 9.99
+        productId: "prod-1"
       });
       return Jest.Expect.toBe(Jest.Expect.expect(state.availableProductIds.has("prod-1")), true);
-    });
-    Jest.test("other events do not change state", () => {
-      let state = PlaceOrder$OrderingPlugin.evolve(PlaceOrder$OrderingPlugin.initialState, {
-        TAG: "OrderShipped",
-        orderId: "ord-1"
-      });
-      return Jest.Expect.toBe(Jest.Expect.expect(state.exists), false);
     });
   });
   Jest.describe("decide", () => {

@@ -3,15 +3,16 @@ let componentType = ComponentType.DcbEventLog
 type outputs = ReventlessInfra.DcbEventLog.outputs
 
 type t = ReventlessInfra.DcbEventLog.t
-type component<'operations> = Component.t<t, outputs, 'operations>
 
-type sequencedEvent<'event> = ReventlessInfra.DcbEventLog.sequencedEvent<'event>
-type readResult<'event> = ReventlessInfra.DcbEventLog.readResult<'event>
-type read<'event> = ReventlessInfra.DcbEventLog.read<'event>
-type append<'event> = ReventlessInfra.DcbEventLog.append<'event>
-type readStream<'event> = ReventlessInfra.DcbEventLog.readStream<'event>
-type appendStream<'event> = ReventlessInfra.DcbEventLog.appendStream<'event>
-type operations<'event> = ReventlessInfra.DcbEventLog.operations<'event>
+type rawEvent = ReventlessInfra.DcbEventLog.rawEvent
+type rawSequencedEvent = ReventlessInfra.DcbEventLog.rawSequencedEvent
+type readResult = ReventlessInfra.DcbEventLog.readResult
+type read = ReventlessInfra.DcbEventLog.read
+type append = ReventlessInfra.DcbEventLog.append
+type readStream = ReventlessInfra.DcbEventLog.readStream
+type appendStream = ReventlessInfra.DcbEventLog.appendStream
+type operations = ReventlessInfra.DcbEventLog.operations
+type component = ReventlessInfra.DcbEventLog.component
 
 let toResolvedOutputs = (
   outputs: outputs,
@@ -30,9 +31,7 @@ let toResolvedOutputs = (
   })
 
 module type T = {
-  module Spec: Reventless.DcbEventLog.Spec
+  type component = component
 
-  type component = component<operations<Spec.event>>
-
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (~name: string, ~indexes: array<string>=?, ~opts: Pulumi.ComponentResource.options=?) => component
 }

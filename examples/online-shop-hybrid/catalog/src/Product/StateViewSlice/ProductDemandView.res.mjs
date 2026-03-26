@@ -2,9 +2,24 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
-import * as CatalogEventLog$CatalogPlugin from "../../Plugin/CatalogEventLog.res.mjs";
 
 let moduleUrl = import.meta.url;
+
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductAdded",
+    productId: s.m(S.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRecorded",
+    productId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRevoked",
+    productId: s.m(S.string)
+  }))
+]);
 
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
@@ -51,22 +66,15 @@ function project(event) {
             orderCount: Primitive_int.max(0, s.orderCount - 1 | 0)
           })
         }];
-    default:
-      return [];
   }
 }
 
 let name = "ProductDemandView";
 
-let DcbEventLogSpec;
-
-let eventSchema = CatalogEventLog$CatalogPlugin.eventSchema;
-
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
-  eventSchema,
+  consumedEventSchema,
   stateSchema,
   project,
 }

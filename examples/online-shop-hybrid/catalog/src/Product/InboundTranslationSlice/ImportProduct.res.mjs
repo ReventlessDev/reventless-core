@@ -56,12 +56,9 @@ function translate(input) {
 
 let name = "ImportProduct";
 
-let DcbEventLogSpec;
-
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
   externalInputSchema,
   commandSchema,
   translate,

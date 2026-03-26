@@ -4,14 +4,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as InboundTranslationSliceFixtures$ReventlessInMemory from "./InboundTranslationSliceFixtures.res.mjs";
 
-let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make({
-  name: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.name,
-  moduleUrl: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.moduleUrl,
-  DcbEventLogSpec: InboundTranslationSliceFixtures$ReventlessInMemory.OrderEventLog,
-  externalInputSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.externalInputSchema,
-  commandSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.commandSchema,
-  translate: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.translate
-});
+let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec);
 
 describe("InboundTranslationSlice Callback", () => {
   beforeEach(() => {

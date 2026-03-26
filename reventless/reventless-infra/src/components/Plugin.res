@@ -28,23 +28,17 @@ type outputs = {
 }
 
 /**
-The DCB (Distributed Command Behavior) specification for a plugin.
+The DCB (Dynamic Consistency Boundary) specification for a plugin.
 
-Groups all state change and state view slices under a shared event log.
+Groups all slices under a shared event log. Each slice declares its own
+`producedEvent` and `consumedEvent` types — no shared event union needed.
 Pass this as `~dcbSpec` to `Plugin.T.make` when the plugin uses DCB components.
 
 @example
 ```rescript
 // CatalogPlugin.res (DCB variant)
 module DcbSpec = {
-  @schema type event = CatalogEventLog.event
-  let stateChangeSlices = [
-    module(AddCategorySlice),
-    module(RenameCategorySlice),
-    module(ArchiveCategorySlice),
-    module(AddProductSlice),
-    module(UpdateProductNameSlice),
-  ]
+  let stateChangeSlices = [module(AddCategorySlice), module(AddProductSlice)]
   let stateViewSlices = [module(CategoriesViewSlice), module(ProductsViewSlice)]
   let automationSlices = []
   let outboundTranslationSlices = []
@@ -53,14 +47,11 @@ module DcbSpec = {
 ```
 */
 module type DcbSpec = {
-  /** The shared event type for all slices in this plugin. Must carry `@schema`. */
-  @schema
-  type event
-  let stateChangeSlices: array<module(StateChangeSlice.T with type dcbEvent = event)>
-  let stateViewSlices: array<module(StateViewSlice.T with type dcbEvent = event)>
-  let automationSlices: array<module(AutomationSlice.T with type dcbEvent = event)>
-  let outboundTranslationSlices: array<module(OutboundTranslationSlice.T with type dcbEvent = event)>
-  let inboundTranslationSlices: array<module(InboundTranslationSlice.T with type dcbEvent = event)>
+  let stateChangeSlices: array<module(StateChangeSlice.T)>
+  let stateViewSlices: array<module(StateViewSlice.T)>
+  let automationSlices: array<module(AutomationSlice.T)>
+  let outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>
+  let inboundTranslationSlices: array<module(InboundTranslationSlice.T)>
 }
 
 /**

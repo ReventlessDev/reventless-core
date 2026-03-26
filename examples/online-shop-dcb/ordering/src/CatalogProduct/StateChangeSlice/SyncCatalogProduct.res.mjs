@@ -5,6 +5,32 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "CatalogProductSynced",
+    name: s.m(S.string),
+    price: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductPriceChanged",
+    price: s.m(S.float)
+  }))
+]);
+
+function evolve(state, event) {
+  if (event.TAG === "CatalogProductSynced") {
+    return {
+      name: event.name,
+      price: event.price
+    };
+  } else {
+    return {
+      name: state.name,
+      price: event.price
+    };
+  }
+}
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "SyncNewProduct",
@@ -19,22 +45,19 @@ let commandSchema = S.union([
   }))
 ]);
 
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "CatalogProductSynced" :
-      return {
-        name: event.name,
-        price: event.price
-      };
-    case "CatalogProductPriceChanged" :
-      return {
-        name: state.name,
-        price: event.price
-      };
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "CatalogProductSynced",
+    productId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string),
+    price: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductPriceChanged",
+    productId: s.m(DcbTag$Reventless.string),
+    price: s.m(S.float)
+  }))
+]);
 
 function decide(_state, command) {
   if (command.TAG === "SyncNewProduct") {
@@ -61,23 +84,22 @@ function decide(_state, command) {
 
 let name = "SyncCatalogProduct";
 
-let DcbEventLogSpec;
-
-let errorSchema = S.unit;
-
 let initialState = {
   name: "",
   price: 0.0
 };
 
+let errorSchema = S.unit;
+
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

@@ -5,6 +5,31 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductAdded",
+    price: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "ProductPriceChanged",
+    price: s.m(S.float)
+  }))
+]);
+
+function evolve(state, event) {
+  if (event.TAG === "ProductAdded") {
+    return {
+      exists: true,
+      currentPrice: event.price
+    };
+  } else {
+    return {
+      exists: state.exists,
+      currentPrice: event.price
+    };
+  }
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "ChangeProductPrice",
   productId: s.m(DcbTag$Reventless.string),
@@ -13,22 +38,11 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("ProductNotFound");
 
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "ProductAdded" :
-      return {
-        exists: true,
-        currentPrice: event.price
-      };
-    case "ProductPriceChanged" :
-      return {
-        exists: state.exists,
-        currentPrice: event.price
-      };
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "ProductPriceChanged",
+  productId: s.m(DcbTag$Reventless.string),
+  price: s.m(S.float)
+}));
 
 function decide(state, command) {
   if (!state.exists) {
@@ -57,8 +71,6 @@ function decide(state, command) {
 
 let name = "ChangeProductPrice";
 
-let DcbEventLogSpec;
-
 let initialState = {
   exists: false,
   currentPrice: 0.0
@@ -67,11 +79,12 @@ let initialState = {
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

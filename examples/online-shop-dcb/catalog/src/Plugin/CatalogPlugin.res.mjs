@@ -8,7 +8,6 @@ import * as ImportProduct$CatalogPlugin from "../Product/InboundTranslationSlice
 import * as CategoriesView$CatalogPlugin from "../Category/StateViewSlice/CategoriesView.res.mjs";
 import * as RenameCategory$CatalogPlugin from "../Category/StateChangeSlice/RenameCategory.res.mjs";
 import * as ArchiveCategory$CatalogPlugin from "../Category/StateChangeSlice/ArchiveCategory.res.mjs";
-import * as CatalogEventLog$CatalogPlugin from "./CatalogEventLog.res.mjs";
 import * as OrdersExtension$CatalogPlugin from "../Extension/OrdersExtension.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "../Product/StateChangeSlice/ChangeProductName.res.mjs";
 import * as ProductDemandView$CatalogPlugin from "../Product/StateViewSlice/ProductDemandView.res.mjs";
@@ -22,11 +21,11 @@ import * as ChangeProductDescription$CatalogPlugin from "../Product/StateChangeS
 import * as ProductsExtensionPointMapping$CatalogPlugin from "../ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
 
 function Make(Platform) {
-  let CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog$CatalogPlugin);
   let AddProductSlice = Platform.StateChangeSlice.Make({
     name: AddProduct$CatalogPlugin.name,
     moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: AddProduct$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
     initialState: AddProduct$CatalogPlugin.initialState,
     evolve: AddProduct$CatalogPlugin.evolve,
@@ -36,7 +35,8 @@ function Make(Platform) {
   let ChangeProductNameSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductName$CatalogPlugin.name,
     moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: ChangeProductName$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
     initialState: ChangeProductName$CatalogPlugin.initialState,
     evolve: ChangeProductName$CatalogPlugin.evolve,
@@ -46,7 +46,8 @@ function Make(Platform) {
   let ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductDescription$CatalogPlugin.name,
     moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: ChangeProductDescription$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
     initialState: ChangeProductDescription$CatalogPlugin.initialState,
     evolve: ChangeProductDescription$CatalogPlugin.evolve,
@@ -56,7 +57,8 @@ function Make(Platform) {
   let ChangeProductPriceSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductPrice$CatalogPlugin.name,
     moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: ChangeProductPrice$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
     initialState: ChangeProductPrice$CatalogPlugin.initialState,
     evolve: ChangeProductPrice$CatalogPlugin.evolve,
@@ -66,15 +68,15 @@ function Make(Platform) {
   let ProductsViewSlice = Platform.StateViewSlice.Make({
     name: ProductsView$CatalogPlugin.name,
     moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
-    eventSchema: ProductsView$CatalogPlugin.eventSchema,
+    consumedEventSchema: ProductsView$CatalogPlugin.consumedEventSchema,
     stateSchema: ProductsView$CatalogPlugin.stateSchema,
     project: ProductsView$CatalogPlugin.project
   });
   let AddCategorySlice = Platform.StateChangeSlice.Make({
     name: AddCategory$CatalogPlugin.name,
     moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: AddCategory$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
     errorSchema: AddCategory$CatalogPlugin.errorSchema,
     initialState: AddCategory$CatalogPlugin.initialState,
     evolve: AddCategory$CatalogPlugin.evolve,
@@ -84,7 +86,8 @@ function Make(Platform) {
   let RenameCategorySlice = Platform.StateChangeSlice.Make({
     name: RenameCategory$CatalogPlugin.name,
     moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: RenameCategory$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
     errorSchema: RenameCategory$CatalogPlugin.errorSchema,
     initialState: RenameCategory$CatalogPlugin.initialState,
     evolve: RenameCategory$CatalogPlugin.evolve,
@@ -94,7 +97,8 @@ function Make(Platform) {
   let ArchiveCategorySlice = Platform.StateChangeSlice.Make({
     name: ArchiveCategory$CatalogPlugin.name,
     moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: ArchiveCategory$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
     errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
     initialState: ArchiveCategory$CatalogPlugin.initialState,
     evolve: ArchiveCategory$CatalogPlugin.evolve,
@@ -104,23 +108,16 @@ function Make(Platform) {
   let CategoriesViewSlice = Platform.StateViewSlice.Make({
     name: CategoriesView$CatalogPlugin.name,
     moduleUrl: CategoriesView$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
-    eventSchema: CategoriesView$CatalogPlugin.eventSchema,
+    consumedEventSchema: CategoriesView$CatalogPlugin.consumedEventSchema,
     stateSchema: CategoriesView$CatalogPlugin.stateSchema,
     project: CategoriesView$CatalogPlugin.project
   });
-  let ImportProductSlice = Platform.InboundTranslationSlice.Make({
-    name: ImportProduct$CatalogPlugin.name,
-    moduleUrl: ImportProduct$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
-    externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
-    commandSchema: ImportProduct$CatalogPlugin.commandSchema,
-    translate: ImportProduct$CatalogPlugin.translate
-  });
+  let ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct$CatalogPlugin);
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
     moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
+    producedEventSchema: RecordProductDemand$CatalogPlugin.producedEventSchema,
+    consumedEventSchema: RecordProductDemand$CatalogPlugin.consumedEventSchema,
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
     initialState: RecordProductDemand$CatalogPlugin.initialState,
     evolve: RecordProductDemand$CatalogPlugin.evolve,
@@ -130,8 +127,7 @@ function Make(Platform) {
   let ProductDemandViewSlice = Platform.StateViewSlice.Make({
     name: ProductDemandView$CatalogPlugin.name,
     moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
-    DcbEventLogSpec: CatalogEventLog$CatalogPlugin,
-    eventSchema: ProductDemandView$CatalogPlugin.eventSchema,
+    consumedEventSchema: ProductDemandView$CatalogPlugin.consumedEventSchema,
     stateSchema: ProductDemandView$CatalogPlugin.stateSchema,
     project: ProductDemandView$CatalogPlugin.project
   });
@@ -207,7 +203,6 @@ function Make(Platform) {
   let outboundTranslationSlices = [];
   let inboundTranslationSlices = [ImportProductSlice];
   let DcbSpec = {
-    eventSchema: CatalogEventLog$CatalogPlugin.eventSchema,
     stateChangeSlices: stateChangeSlices,
     stateViewSlices: stateViewSlices,
     automationSlices: automationSlices,
@@ -216,7 +211,6 @@ function Make(Platform) {
   };
   let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
   return {
-    CatalogEventLogMaker: CatalogEventLogMaker,
     AddProductSlice: AddProductSlice,
     ChangeProductNameSlice: ChangeProductNameSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,

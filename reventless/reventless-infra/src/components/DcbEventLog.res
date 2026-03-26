@@ -7,13 +7,23 @@ Deploy-time outputs produced when a `DcbEventLog` is provisioned.
 type outputs = {resources: array<Adapter.resource>, eventTopic: EventTopic.outputs}
 
 /**
-A DCB event at a known position in the log, with its extracted content-based tags.
-
-Returned by `read` and `readStream` operations.
+A raw event ready to be stored in the DCB log.
+Produced by slice callbacks after encoding with their producedEventSchema.
 */
-type sequencedEvent<'event> = {
+type rawEvent = {
+  eventType: string,
+  data: JSON.t,
+  tags: array<Reventless.DcbTag.tag>,
+}
+
+/**
+A raw event read from the DCB log at a known position.
+Consumed by slice callbacks for decoding with their consumedEventSchema.
+*/
+type rawSequencedEvent = {
   position: Reventless.DcbTag.sequencePosition,
-  event: 'event,
+  eventType: string,
+  data: JSON.t,
   tags: array<Reventless.DcbTag.tag>,
 }
 
@@ -24,8 +34,8 @@ The result of a DCB `read` operation.
 - `headPosition` — the sequence position of the last event read (use as the
   `after` cursor in a subsequent `appendCondition` to detect conflicts)
 */
-type readResult<'event> = {
-  events: array<sequencedEvent<'event>>,
+type readResult = {
+  events: array<rawSequencedEvent>,
   headPosition?: Reventless.DcbTag.sequencePosition,
 }
 
@@ -35,19 +45,19 @@ Reads events from the DCB log matching the given query.
 - `~query` — content-based filter (event types + tags)
 - `~after` — optional cursor; only events after this position are returned
 */
-type read<'event> = (
+type read = (
   ~query: Reventless.DcbTag.query,
   ~after: Reventless.DcbTag.sequencePosition=?,
-) => promise<readResult<'event>>
+) => promise<readResult>
 
 /**
-Appends events to the DCB log with optional optimistic-concurrency checking.
+Appends raw events to the DCB log with optional optimistic-concurrency checking.
 
 Returns `Ok(position)` on success or `Error(reason)` if the append condition
 was violated (i.e. the log was modified since `condition.after`).
 */
-type append<'event> = (
-  array<'event>,
+type append = (
+  array<rawEvent>,
   ~condition: Reventless.DcbTag.appendCondition=?,
 ) => promise<result<Reventless.DcbTag.sequencePosition, string>>
 
@@ -55,47 +65,37 @@ type append<'event> = (
 Streams events from the DCB log matching the given query.
 Use for large result sets that should not be loaded into memory at once.
 */
-type readStream<'event> = (
+type readStream = (
   ~query: Reventless.DcbTag.query,
   ~after: Reventless.DcbTag.sequencePosition=?,
-) => Stream.t<sequencedEvent<'event>, string, unit>
+) => Stream.t<rawSequencedEvent, string, unit>
 
 /**
-Appends a stream of events to the DCB log as an `Effect.t`.
+Appends a stream of raw events to the DCB log as an `Effect.t`.
 Use for high-throughput batch imports.
 */
-type appendStream<'event> = (
-  Stream.t<'event, string, unit>,
+type appendStream = (
+  Stream.t<rawEvent, string, unit>,
   ~condition: Reventless.DcbTag.appendCondition=?,
 ) => Effect.t<result<Reventless.DcbTag.sequencePosition, string>, string, unit>
 
 /**
 Runtime operations exposed by a `DcbEventLog` component.
+Works with raw events — encode/decode is handled by each slice's callback.
 
 Obtained via `Component.operations(dcbEventLog)`. Available inside Lambda handlers.
 */
-type operations<'event> = {
-  read: read<'event>,
-  append: append<'event>,
-  readStream: readStream<'event>,
-  appendStream: appendStream<'event>,
+type operations = {
+  read: read,
+  append: append,
+  readStream: readStream,
+  appendStream: appendStream,
 }
 
 type t
-type component<'operations> = Component.t<t, outputs, 'operations>
+type component = Component.t<t, outputs, operations>
 
-/**
-Module type produced by `Platform.DcbEventLog.Make(Spec)`.
-
-@example
-```rescript
-// CatalogPlugin.res
-module CatalogLog = Platform.DcbEventLog.Make(CatalogEventLog)
-let log = CatalogLog.make(~name="CatalogEventLog")
-```
-*/
 module type T = {
-  module Spec: Reventless.DcbEventLog.Spec
-  type component = component<operations<Spec.event>>
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
+  type component = component
+  let make: (~name: string, ~indexes: array<string>=?, ~opts: Pulumi.ComponentResource.options=?) => component
 }

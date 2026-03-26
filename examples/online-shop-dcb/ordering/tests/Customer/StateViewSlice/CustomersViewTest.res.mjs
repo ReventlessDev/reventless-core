@@ -66,12 +66,6 @@ Jest.describe("CustomersView.project:", () => {
     address: "123 Main St",
     deactivated: true
   }));
-  Jest.test("Order events return empty (not handled by CustomersView)", () => Jest.Expect.toEqual(Jest.Expect.expect(CustomersView$OrderingPlugin.project({
-    TAG: "OrderPlaced",
-    orderId: "ord-1",
-    customerId: "cust-1",
-    productIds: ["prod-1"]
-  })), []));
 });
 
 export {

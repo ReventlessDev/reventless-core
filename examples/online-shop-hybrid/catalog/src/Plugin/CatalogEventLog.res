@@ -1,9 +1,8 @@
-// Catalog DCB event log specification (hybrid).
+// Catalog DCB event log type definition (hybrid).
 // Contains only Product + ProductDemand events. Category events live in the Category aggregate's
 // own event log, not here.
 
 open Reventless
-let moduleUrl: string = %raw(`import.meta.url`)
 @schema
 type event =
   | ProductAdded({

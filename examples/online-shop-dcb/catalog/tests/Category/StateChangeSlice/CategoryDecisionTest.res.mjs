@@ -7,31 +7,17 @@ import * as ArchiveCategory$CatalogPlugin from "../../../src/Category/StateChang
 
 Jest.describe("AddCategory:", () => {
   Jest.describe("evolve", () => {
-    Jest.test("CategoryAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.evolve(AddCategory$CatalogPlugin.initialState, {
-      TAG: "CategoryAdded",
-      categoryId: "c1",
-      name: "Electronics"
-    })), {
+    Jest.test("CategoryAdded sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.evolve(AddCategory$CatalogPlugin.initialState, "CategoryAdded")), {
       exists: true,
       archived: false
     }));
     Jest.test("CategoryArchived sets archived=true", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.evolve({
       exists: true,
       archived: false
-    }, {
-      TAG: "CategoryArchived",
-      categoryId: "c1"
-    })), {
+    }, "CategoryArchived")), {
       exists: true,
       archived: true
     }));
-    Jest.test("Product events do not change state", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.evolve(AddCategory$CatalogPlugin.initialState, {
-      TAG: "ProductAdded",
-      productId: "p1",
-      name: "Laptop",
-      description: "A laptop",
-      price: 999.99
-    })), AddCategory$CatalogPlugin.initialState));
   });
   Jest.describe("decide", () => {
     Jest.test("on non-existent category produces CategoryAdded", () => Jest.Expect.toEqual(Jest.Expect.expect(AddCategory$CatalogPlugin.decide(AddCategory$CatalogPlugin.initialState, {

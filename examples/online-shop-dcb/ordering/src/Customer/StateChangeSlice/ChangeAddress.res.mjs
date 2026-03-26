@@ -5,6 +5,40 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let moduleUrl = import.meta.url;
 
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "CustomerRegistered",
+    address: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "AddressChanged",
+    address: s.m(S.string)
+  })),
+  S.literal("CustomerDeactivated")
+]);
+
+function evolve(state, event) {
+  if (typeof event !== "object") {
+    return {
+      exists: state.exists,
+      deactivated: true,
+      currentAddress: state.currentAddress
+    };
+  } else if (event.TAG === "CustomerRegistered") {
+    return {
+      exists: true,
+      deactivated: false,
+      currentAddress: event.address
+    };
+  } else {
+    return {
+      exists: state.exists,
+      deactivated: state.deactivated,
+      currentAddress: event.address
+    };
+  }
+}
+
 let commandSchema = S.schema(s => ({
   TAG: "ChangeAddress",
   customerId: s.m(DcbTag$Reventless.string),
@@ -16,30 +50,11 @@ let errorSchema = S.union([
   S.literal("CustomerAlreadyDeactivated")
 ]);
 
-function evolve(state, event) {
-  switch (event.TAG) {
-    case "CustomerRegistered" :
-      return {
-        exists: true,
-        deactivated: false,
-        currentAddress: event.address
-      };
-    case "AddressChanged" :
-      return {
-        exists: state.exists,
-        deactivated: state.deactivated,
-        currentAddress: event.address
-      };
-    case "CustomerDeactivated" :
-      return {
-        exists: state.exists,
-        deactivated: true,
-        currentAddress: state.currentAddress
-      };
-    default:
-      return state;
-  }
-}
+let producedEventSchema = S.schema(s => ({
+  TAG: "AddressChanged",
+  customerId: s.m(DcbTag$Reventless.string),
+  address: s.m(S.string)
+}));
 
 function decide(state, command) {
   if (!state.exists) {
@@ -74,8 +89,6 @@ function decide(state, command) {
 
 let name = "ChangeAddress";
 
-let DcbEventLogSpec;
-
 let initialState = {
   exists: false,
   deactivated: false,
@@ -85,11 +98,12 @@ let initialState = {
 export {
   name,
   moduleUrl,
-  DcbEventLogSpec,
+  initialState,
+  consumedEventSchema,
+  evolve,
   commandSchema,
   errorSchema,
-  initialState,
-  evolve,
+  producedEventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

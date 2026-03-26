@@ -7,19 +7,14 @@ import * as EventTopicPublisher_InMemory$ReventlessInMemory from "../adapter/Eve
 
 function Make(Bus) {
   let EventTopicPublisher = EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus);
-  let Make$1 = Spec => {
-    let include = DcbEventLog_Builder$ReventlessCore.Make(Spec)({
-      make: DcbEventLogStorage_InMemory$ReventlessInMemory.make
-    })(EventTopicPublisher);
-    return {
-      Spec: include.Spec,
-      make: include.make,
-      operations: Component$ReventlessInfra.operations
-    };
-  };
+  let Inner = DcbEventLog_Builder$ReventlessCore.Make({
+    make: DcbEventLogStorage_InMemory$ReventlessInMemory.make
+  })(EventTopicPublisher);
   return {
     EventTopicPublisher: EventTopicPublisher,
-    Make: Make$1
+    Inner: Inner,
+    make: Inner.make,
+    operations: Component$ReventlessInfra.operations
   };
 }
 

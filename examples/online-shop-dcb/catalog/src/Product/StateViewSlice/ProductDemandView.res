@@ -2,18 +2,18 @@
 // Projects catalog events into a per-product demand counter (order count).
 
 open Reventless.Projection
-open CatalogEventLog
 
 let name = "ProductDemandView"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = CatalogEventLog
-
-@schema
-type event = CatalogEventLog.event
-
 @schema
 type state = {productId: string, name: string, orderCount: int}
+
+@schema
+type consumedEvent =
+  | ProductAdded({productId: string, name: string})
+  | ProductDemandRecorded({productId: string})
+  | ProductDemandRevoked({productId: string})
 
 let project = event =>
   switch event {
@@ -23,5 +23,4 @@ let project = event =>
     [Update(productId, s => {...s, orderCount: s.orderCount + 1})]
   | ProductDemandRevoked({productId}) =>
     [Update(productId, s => {...s, orderCount: max(0, s.orderCount - 1)})]
-  | _ => []
   }

@@ -1,10 +1,18 @@
 // Tests for DcbEventLog.appendStream (Phase H of effect-stream-integration plan).
-// Verifies that a Stream<Spec.event> can drive a single atomic append, and that
+// Verifies that a Stream<rawEvent> can drive a single atomic append, and that
 // the readStream → appendStream pipeline works end-to-end.
 
 open AsyncTest
 open AsyncTest.Expect
 open DcbFixtures
+
+// Helper to encode a typed event into a raw event for appending to the DcbEventLog
+let encodeEvent = (event: DcbFixtures.ItemEventLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
+  let json = event->S.reverseConvertToJsonOrThrow(DcbFixtures.ItemEventLog.eventSchema)
+  let (eventType, data) = json->ReventlessCore.Message.splitMessage
+  let tags = Reventless.DcbTag.extractTags(DcbFixtures.ItemEventLog.eventSchema, event)
+  {eventType, data: JSON.Object(data), tags}
+}
 
 describe("DcbEventLog.appendStream (in-memory adapter)", () => {
   let _ = beforeAllAsync(async () => {
@@ -18,8 +26,8 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
   testPromise("appendStream writes all events from stream", async () => {
     let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
     let stream = [
-      DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget1"}),
-      DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget2"}),
+      encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget1"})),
+      encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-w1", name: "Widget2"})),
     ]->Stream.fromIterable
     let result = await ops.appendStream(stream)->Effect.runPromise
     let isOk = switch result {
@@ -44,10 +52,17 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
 
   testPromise("readStream → appendStream pipeline copies events", async () => {
     let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
-    let _ = await ops.append([DcbFixtures.ItemEventLog.ItemAdded({id: "as-src", name: "Source"})])
-    // readStream returns sequencedEvent<event>; extract bare events for appendStream
+    let _ = await ops.append([encodeEvent(DcbFixtures.ItemEventLog.ItemAdded({id: "as-src", name: "Source"}))])
+    // readStream returns rawSequencedEvent; extract bare rawEvent for appendStream
     let srcStream =
-      ops.readStream(~query=tagQuery("as-src"))->Stream.map(se => se.event)
+      ops.readStream(~query=tagQuery("as-src"))->Stream.map(se => {
+        let rawEvent: ReventlessInfra.DcbEventLog.rawEvent = {
+          eventType: se.eventType,
+          data: se.data,
+          tags: se.tags,
+        }
+        rawEvent
+      })
     let _ = await ops.appendStream(srcStream)->Effect.runPromise
     let dst = await ops.read(~query=tagQuery("as-src"))
     // 1 original + 1 copy = 2 events for the same tag

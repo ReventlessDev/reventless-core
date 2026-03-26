@@ -7,22 +7,9 @@ import * as RegisterCustomer$OrderingPlugin from "../../../src/Customer/StateCha
 import * as DeactivateCustomer$OrderingPlugin from "../../../src/Customer/StateChangeSlice/DeactivateCustomer.res.mjs";
 
 Jest.describe("RegisterCustomer:", () => {
-  Jest.describe("evolve", () => {
-    Jest.test("CustomerRegistered sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.evolve(RegisterCustomer$OrderingPlugin.initialState, {
-      TAG: "CustomerRegistered",
-      customerId: "cust-1",
-      email: "alice@example.com",
-      address: "123 Main St"
-    })), {
-      exists: true
-    }));
-    Jest.test("Order events do not change state", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.evolve(RegisterCustomer$OrderingPlugin.initialState, {
-      TAG: "OrderPlaced",
-      orderId: "ord-1",
-      customerId: "cust-1",
-      productIds: ["prod-1"]
-    })), RegisterCustomer$OrderingPlugin.initialState));
-  });
+  Jest.describe("evolve", () => Jest.test("CustomerRegistered sets exists=true", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.evolve(RegisterCustomer$OrderingPlugin.initialState, "CustomerRegistered")), {
+    exists: true
+  })));
   Jest.describe("decide", () => {
     Jest.test("on non-existent customer produces CustomerRegistered", () => Jest.Expect.toEqual(Jest.Expect.expect(RegisterCustomer$OrderingPlugin.decide(RegisterCustomer$OrderingPlugin.initialState, {
       TAG: "RegisterCustomer",

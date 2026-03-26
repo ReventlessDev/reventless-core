@@ -15,9 +15,8 @@ module Make = (
   },
 ) => {
   module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (
-    InboundTranslationSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
+    InboundTranslationSlice.T with module Spec = Spec
   ) => {
-    type dcbEvent = Spec.DcbEventLogSpec.event
     module Spec = Spec
     type component = InboundTranslationSlice.component
 

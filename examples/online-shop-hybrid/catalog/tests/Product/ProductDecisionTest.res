@@ -11,23 +11,9 @@ describe("AddProduct:", () => {
       expect(
         AddProduct.evolve(
           AddProduct.initialState,
-          CatalogEventLog.ProductAdded({
-            productId: "p1",
-            name: "Laptop",
-            description: "A laptop",
-            price: 999.99,
-          }),
+          AddProduct.ProductAdded,
         ),
       )->toEqual({AddProduct.exists: true})
-    )
-
-    test("other events do not change state", () =>
-      expect(
-        AddProduct.evolve(
-          AddProduct.initialState,
-          CatalogEventLog.ProductDemandRecorded({productId: "p1", orderId: "ord-1"}),
-        ),
-      )->toEqual(AddProduct.initialState)
     )
   })
 
@@ -45,7 +31,7 @@ describe("AddProduct:", () => {
         ),
       )->toEqual(
         Ok([
-          CatalogEventLog.ProductAdded({
+          AddProduct.ProductAdded({
             productId: "p1",
             name: "Laptop",
             description: "A laptop",
@@ -79,12 +65,7 @@ describe("ChangeProductName:", () => {
       expect(
         ChangeProductName.evolve(
           ChangeProductName.initialState,
-          CatalogEventLog.ProductAdded({
-            productId: "p1",
-            name: "Laptop",
-            description: "A laptop",
-            price: 999.99,
-          }),
+          ChangeProductName.ProductAdded({name: "Laptop"}),
         ),
       )->toEqual({ChangeProductName.exists: true, currentName: "Laptop"})
     )
@@ -93,7 +74,7 @@ describe("ChangeProductName:", () => {
       expect(
         ChangeProductName.evolve(
           existingState,
-          CatalogEventLog.ProductNameChanged({productId: "p1", name: "Gaming Laptop"}),
+          ChangeProductName.ProductNameChanged({name: "Gaming Laptop"}),
         ),
       )->toEqual({ChangeProductName.exists: true, currentName: "Gaming Laptop"})
     )
@@ -124,7 +105,7 @@ describe("ChangeProductName:", () => {
           existingState,
           ChangeProductName.ChangeProductName({productId: "p1", name: "Gaming Laptop"}),
         ),
-      )->toEqual(Ok([CatalogEventLog.ProductNameChanged({productId: "p1", name: "Gaming Laptop"})]))
+      )->toEqual(Ok([ChangeProductName.ProductNameChanged({productId: "p1", name: "Gaming Laptop"})]))
     )
   })
 })
@@ -171,7 +152,7 @@ describe("ChangeProductDescription:", () => {
         ),
       )->toEqual(
         Ok([
-          CatalogEventLog.ProductDescriptionChanged({
+          ChangeProductDescription.ProductDescriptionChanged({
             productId: "p1",
             description: "A high-end laptop",
           }),
@@ -209,7 +190,7 @@ describe("ChangeProductPrice:", () => {
           existingState,
           ChangeProductPrice.ChangeProductPrice({productId: "p1", price: 899.99}),
         ),
-      )->toEqual(Ok([CatalogEventLog.ProductPriceChanged({productId: "p1", price: 899.99})]))
+      )->toEqual(Ok([ChangeProductPrice.ProductPriceChanged({productId: "p1", price: 899.99})]))
     )
   })
 })

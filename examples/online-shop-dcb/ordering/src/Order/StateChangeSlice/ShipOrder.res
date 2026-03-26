@@ -2,12 +2,26 @@
 // Requires order to exist and not be cancelled; idempotent if already shipped.
 
 open Reventless
-open OrderingEventLog
 
 let name = "ShipOrder"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = OrderingEventLog
+type state = {exists: bool, shipped: bool, cancelled: bool}
+
+let initialState = {exists: false, shipped: false, cancelled: false}
+
+@schema
+type consumedEvent =
+  | OrderPlaced
+  | OrderShipped
+  | OrderCancelled
+
+let evolve = (state, event) =>
+  switch event {
+  | OrderPlaced => {exists: true, shipped: false, cancelled: false}
+  | OrderShipped => {...state, shipped: true}
+  | OrderCancelled => {...state, cancelled: true}
+  }
 
 @schema
 type command = ShipOrder({orderId: @s.matches(DcbTag.string) string})
@@ -17,17 +31,8 @@ type error =
   | OrderNotFound
   | OrderAlreadyCancelled
 
-type state = {exists: bool, shipped: bool, cancelled: bool}
-
-let initialState = {exists: false, shipped: false, cancelled: false}
-
-let evolve = (state, event) =>
-  switch event {
-  | OrderPlaced(_) => {exists: true, shipped: false, cancelled: false}
-  | OrderShipped(_) => {...state, shipped: true}
-  | OrderCancelled(_) => {...state, cancelled: true}
-  | _ => state
-  }
+@schema
+type producedEvent = OrderShipped({orderId: @s.matches(DcbTag.string) string})
 
 let decide = (state, command) =>
   switch command {

@@ -1,13 +1,11 @@
 module Make = (Spec: Reventless.StateChangeSlice.Spec): (
-  StateChangeSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
+  StateChangeSlice.T with module Spec = Spec
 ) => {
-  type dcbEvent = Spec.DcbEventLogSpec.event
   module Spec = Spec
-  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
   type component = StateChangeSlice.component
   module Callback = StateChangeSlice_Callback.Make(Spec)
 
-  let makeJsonHandler = (dcbEventLogOps: DcbEventLog.operations<dcbEvent>) => {
+  let makeJsonHandler = (dcbEventLogOps: DcbEventLog.operations) => {
     let handler: CommandTopic.jsonCommandsHandler = stream => {
       let decodedStream =
         stream
@@ -34,7 +32,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (
   }
 
   let construct = (
-    ~dcbEventLog: DcbEventLog.component<DcbEventLog.operations<dcbEvent>>,
+    ~dcbEventLog: DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     self,
     _name,

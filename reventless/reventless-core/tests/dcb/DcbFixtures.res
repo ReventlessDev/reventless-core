@@ -38,7 +38,15 @@ module TestCommandSpec = {
   let name = "TestStateChangeSlice"
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  module DcbEventLogSpec = TestEventLogSpec
+  @schema
+  type producedEvent =
+    | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+    | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
+
+  @schema
+  type consumedEvent =
+    | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+    | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
 
   @schema
   type command =
@@ -56,24 +64,23 @@ module TestCommandSpec = {
 
   let evolve = (state, event) =>
     switch event {
-    | TestEventLogSpec.ItemCreated({name}) => {exists: true, currentName: Some(name)}
-    | TestEventLogSpec.ItemRenamed({newName}) => {...state, currentName: Some(newName)}
-    | _ => state
+    | ItemCreated({name}) => {exists: true, currentName: Some(name)}
+    | ItemRenamed({newName}) => {...state, currentName: Some(newName)}
     }
 
-  let decide = (state, command) =>
+  let decide = (state, command): result<array<producedEvent>, error> =>
     switch command {
     | CreateItem({itemId, name}) =>
       if state.exists {
         Error(ItemAlreadyExists)
       } else {
-        Ok([TestEventLogSpec.ItemCreated({itemId, name})])
+        Ok([ItemCreated({itemId, name})])
       }
     | RenameItem({itemId, newName}) =>
       if !state.exists {
         Error(ItemNotFound)
       } else {
-        Ok([TestEventLogSpec.ItemRenamed({itemId, newName})])
+        Ok([ItemRenamed({itemId, newName})])
       }
     | NoOp => Ok([])
     }

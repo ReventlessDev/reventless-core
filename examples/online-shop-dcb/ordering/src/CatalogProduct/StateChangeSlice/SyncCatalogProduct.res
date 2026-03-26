@@ -2,12 +2,23 @@
 // Maintains a local shadow of Catalog products inside the Ordering DCB event log.
 
 open Reventless
-open OrderingEventLog
 
 let name = "SyncCatalogProduct"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = OrderingEventLog
+type state = {name: string, price: float}
+let initialState = {name: "", price: 0.0}
+
+@schema
+type consumedEvent =
+  | CatalogProductSynced({name: string, price: float})
+  | CatalogProductPriceChanged({price: float})
+
+let evolve = (state, event) =>
+  switch event {
+  | CatalogProductSynced({name, price}) => {name, price}
+  | CatalogProductPriceChanged({price}) => {...state, price}
+  }
 
 @schema
 type command =
@@ -17,15 +28,17 @@ type command =
 @schema
 type error = unit // always succeeds — sync is idempotent
 
-type state = {name: string, price: float}
-let initialState = {name: "", price: 0.0}
-
-let evolve = (state, event) =>
-  switch event {
-  | CatalogProductSynced({name, price}) => {name, price}
-  | CatalogProductPriceChanged({price}) => {...state, price}
-  | _ => state
-  }
+@schema
+type producedEvent =
+  | CatalogProductSynced({
+      productId: @s.matches(DcbTag.string) string,
+      name: string,
+      price: float,
+    })
+  | CatalogProductPriceChanged({
+      productId: @s.matches(DcbTag.string) string,
+      price: float,
+    })
 
 let decide = (_state, command) =>
   switch command {

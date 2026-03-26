@@ -28,7 +28,7 @@ module type T = {
   let todoItems: ref<Dict.t<todoRow>>
 
   /** Phase 1: update TODO list from a batch of events. */
-  let phase1: array<Spec.DcbEventLogSpec.event> => unit
+  let phase1: array<Spec.consumedEvent> => unit
 
   /** Phase 2: process all pending items, publishing commands via publishJsons. */
   let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
@@ -50,7 +50,7 @@ module Make = (Spec: Reventless.AutomationSlice.Spec): (T with module Spec = Spe
     correlationId: "",
   }
 
-  let phase1 = (events: array<Spec.DcbEventLogSpec.event>) => {
+  let phase1 = (events: array<Spec.consumedEvent>) => {
     events->Array.forEach(event => {
       // Collect new TODO items
       Spec.collect(event)->Array.forEach(((id, item)) => {

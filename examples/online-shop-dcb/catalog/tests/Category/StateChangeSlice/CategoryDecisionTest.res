@@ -10,7 +10,7 @@ describe("AddCategory:", () => {
       expect(
         AddCategory.evolve(
           AddCategory.initialState,
-          CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Electronics"}),
+          AddCategory.CategoryAdded,
         ),
       )->toEqual({AddCategory.exists: true, archived: false})
     )
@@ -19,25 +19,12 @@ describe("AddCategory:", () => {
       expect(
         AddCategory.evolve(
           {AddCategory.exists: true, archived: false},
-          CatalogEventLog.CategoryArchived({categoryId: "c1"}),
+          AddCategory.CategoryArchived,
         ),
       )->toEqual({AddCategory.exists: true, archived: true})
     )
 
-    test("Product events do not change state", () =>
-      expect(
-        AddCategory.evolve(
-          AddCategory.initialState,
-          CatalogEventLog.ProductAdded({
-            productId: "p1",
-            name: "Laptop",
-            description: "A laptop",
-            price: 999.99,
-          }),
-        ),
-      )->toEqual(AddCategory.initialState)
-    )
-  })
+})
 
   describe("decide", () => {
     test("on non-existent category produces CategoryAdded", () =>
@@ -46,7 +33,7 @@ describe("AddCategory:", () => {
           AddCategory.initialState,
           AddCategory.AddCategory({categoryId: "c1", name: "Electronics"}),
         ),
-      )->toEqual(Ok([CatalogEventLog.CategoryAdded({categoryId: "c1", name: "Electronics"})]))
+      )->toEqual(Ok([AddCategory.CategoryAdded({categoryId: "c1", name: "Electronics"})]))
     )
 
     test("on existing category returns CategoryAlreadyExists", () =>
@@ -87,7 +74,7 @@ describe("RenameCategory:", () => {
           RenameCategory.RenameCategory({categoryId: "c1", name: "Consumer Electronics"}),
         ),
       )->toEqual(
-        Ok([CatalogEventLog.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"})]),
+        Ok([RenameCategory.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"})]),
       )
     )
   })
@@ -119,7 +106,7 @@ describe("ArchiveCategory:", () => {
           {ArchiveCategory.exists: true, archived: false},
           ArchiveCategory.ArchiveCategory({categoryId: "c1"}),
         ),
-      )->toEqual(Ok([CatalogEventLog.CategoryArchived({categoryId: "c1"})]))
+      )->toEqual(Ok([ArchiveCategory.CategoryArchived({categoryId: "c1"})]))
     )
   })
 })

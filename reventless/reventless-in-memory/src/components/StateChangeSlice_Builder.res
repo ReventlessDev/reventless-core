@@ -5,7 +5,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec) => {
   // Re-shadow `make` with spec-typed publishJsons (transparent alias, avoids
   // callers needing reventless in scope to see ReventlessCore.CommandTopic.publishJsons).
   let make: (
-    ~dcbEventLog: dcbEventLogComponent,
+    ~dcbEventLog: ReventlessInfra.DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<ReventlessInfra.CommandTopic.publishJsons>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component = make

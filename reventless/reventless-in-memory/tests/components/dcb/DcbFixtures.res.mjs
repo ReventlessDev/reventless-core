@@ -14,8 +14,6 @@ import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "../../../src/components/DcbEventLog_Builder.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "../../../src/components/StateChangeSlice_Builder.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let eventSchema = S.schema(s => ({
   TAG: "ItemAdded",
   id: s.m(DcbTag$Reventless.string),
@@ -23,13 +21,20 @@ let eventSchema = S.schema(s => ({
 }));
 
 let ItemEventLog = {
-  moduleUrl: moduleUrl,
   eventSchema: eventSchema
 };
 
 let name = "AddItem";
 
-let moduleUrl$1 = import.meta.url;
+let moduleUrl = import.meta.url;
+
+let producedEventSchema = S.schema(s => ({
+  TAG: "ItemAdded",
+  id: s.m(DcbTag$Reventless.string),
+  name: s.m(S.string)
+}));
+
+let consumedEventSchema = S.literal("ItemAdded");
 
 let commandSchema = S.schema(s => ({
   TAG: "AddItem",
@@ -63,8 +68,9 @@ function decide(state, command) {
 
 let AddItemSpec = {
   name: name,
-  moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: undefined,
+  moduleUrl: moduleUrl,
+  producedEventSchema: producedEventSchema,
+  consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
   initialState: false,
   evolve: evolve,
@@ -84,19 +90,18 @@ Bus.subscribeToEvents("ItemEventLogEventTopic", async (param, param$1, param$2) 
 
 TestRunner$ReventlessInMemory.setup();
 
-let DcbEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
+let ItemEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let ItemEventLogMaker = DcbEventLogMaker.Make(ItemEventLog);
-
-let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined);
+let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined, undefined);
 
 let AddItemMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: name,
-  moduleUrl: moduleUrl$1,
-  DcbEventLogSpec: ItemEventLog,
-  errorSchema: errorSchema,
+  moduleUrl: moduleUrl,
   initialState: false,
+  consumedEventSchema: consumedEventSchema,
   evolve: evolve,
+  errorSchema: errorSchema,
+  producedEventSchema: producedEventSchema,
   decide: decide,
   commandSchema: commandSchema
 });
@@ -176,7 +181,6 @@ export {
   AddItemSpec,
   Bus,
   capturedEventCount,
-  DcbEventLogMaker,
   ItemEventLogMaker,
   eventLog,
   AddItemMaker,
@@ -188,4 +192,4 @@ export {
   typeQuery,
   addItemJson,
 }
-/* moduleUrl Not a pure module */
+/* eventSchema Not a pure module */

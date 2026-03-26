@@ -28,13 +28,10 @@ let slice = CategoriesViewSlice.make(~dcbEventLog=log)
 ```
 */
 module type T = {
-  /** The DCB event type this slice subscribes to (fixed by `Spec.DcbEventLogSpec.event`). */
-  type dcbEvent
   module Spec: Reventless.StateViewSlice.Spec
-  type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
   type component = Component.t<t, outputs, operations>
   let make: (
-    ~dcbEventLog: dcbEventLogComponent,
+    ~dcbEventLog: DcbEventLog.component,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

@@ -2,12 +2,22 @@
 // Handles the RegisterCustomer command; rejects duplicate registration.
 
 open Reventless
-open OrderingEventLog
 
 let name = "RegisterCustomer"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = OrderingEventLog
+type state = {exists: bool}
+
+let initialState = {exists: false}
+
+@schema
+type consumedEvent =
+  | CustomerRegistered
+
+let evolve = (_state, event) =>
+  switch event {
+  | CustomerRegistered => {exists: true}
+  }
 
 @schema
 type command =
@@ -16,15 +26,13 @@ type command =
 @schema
 type error = CustomerAlreadyRegistered
 
-type state = {exists: bool}
-
-let initialState = {exists: false}
-
-let evolve = (state, event) =>
-  switch event {
-  | CustomerRegistered(_) => {exists: true}
-  | _ => state
-  }
+@schema
+type producedEvent =
+  | CustomerRegistered({
+      customerId: @s.matches(DcbTag.string) string,
+      email: string,
+      address: string,
+    })
 
 let decide = (state, command) =>
   switch command {

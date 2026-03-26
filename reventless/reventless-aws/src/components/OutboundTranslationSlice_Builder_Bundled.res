@@ -28,14 +28,11 @@ module Make = (Api: {
     Spec: Reventless.OutboundTranslationSlice.Spec,
   ): (
     ReventlessCore.OutboundTranslationSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec
+      with module Spec = Spec
   ) => {
     module InnerMake = Inner.Make(Spec)
 
-    type dcbEvent = InnerMake.dcbEvent
     module Spec = InnerMake.Spec
-    type dcbEventLogComponent = InnerMake.dcbEventLogComponent
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
 

@@ -33,8 +33,6 @@ module Make = (
   )
 
   // ── Order/CatalogProduct DCB (standard — via Platform) ───────
-  module OrderingEventLogMaker = Platform.DcbEventLog.Make(OrderingPlugin.OrderingEventLog)
-
   module PlaceOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.PlaceOrder)
   module ShipOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.ShipOrder)
   module CancelOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.CancelOrder)
@@ -96,28 +94,23 @@ module Make = (
 
   // ── DCB Spec ─────────────────────────────────────────────────
   module DcbSpec = {
-    @schema
-    type event = OrderingPlugin.OrderingEventLog.event
-    let stateChangeSlices: array<
-      module(ReventlessInfra.StateChangeSlice.T with type dcbEvent = event),
-    > = [
+    let stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)> = [
       module(PlaceOrderSlice),
       module(ShipOrderSlice),
       module(CancelOrderSlice),
       module(SyncCatalogProductSlice),
     ]
-    let stateViewSlices: array<
-      module(ReventlessInfra.StateViewSlice.T with type dcbEvent = event),
-    > = [module(OrdersViewSlice), module(AvailableProductsViewSlice)]
-    let automationSlices: array<
-      module(ReventlessInfra.AutomationSlice.T with type dcbEvent = event),
-    > = [module(AutoShipOrderSlice)]
-    let outboundTranslationSlices: array<
-      module(ReventlessInfra.OutboundTranslationSlice.T with type dcbEvent = event),
-    > = [module(SendOrderConfirmationSlice)]
-    let inboundTranslationSlices: array<
-      module(ReventlessInfra.InboundTranslationSlice.T with type dcbEvent = event),
-    > = []
+    let stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)> = [
+      module(OrdersViewSlice),
+      module(AvailableProductsViewSlice),
+    ]
+    let automationSlices: array<module(ReventlessInfra.AutomationSlice.T)> = [
+      module(AutoShipOrderSlice),
+    ]
+    let outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)> = [
+      module(SendOrderConfirmationSlice),
+    ]
+    let inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)> = []
   }
 
   // ── Hybrid Plugin Assembly ───────────────────────────────────

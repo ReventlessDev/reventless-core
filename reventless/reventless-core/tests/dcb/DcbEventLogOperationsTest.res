@@ -3,36 +3,54 @@ open Expect
 
 let mock = DcbFixtures.makeMockStorage()
 
-module TestOps: DcbEventLog_Operations.Ops with module Spec = DcbFixtures.TestEventLogSpec = {
-  module Spec = DcbFixtures.TestEventLogSpec
+module TestOps: DcbEventLog_Operations.Ops = {
   let name = "TestDcbEventLog"
   let storage = mock.operations
   let publishJson = mock.mockPublishJson
 }
 
-module Ops = DcbEventLog_Operations.Make(DcbFixtures.TestEventLogSpec, TestOps)
+module Ops = DcbEventLog_Operations.Make(TestOps)
 
 let _ = beforeEach(() => mock.reset())
+
+// Helper to encode a TestEventLogSpec event to a rawEvent for testing
+let encodeEvent = (event: DcbFixtures.TestEventLogSpec.event): ReventlessInfra.DcbEventLog.rawEvent => {
+  let json = event->S.reverseConvertToJsonOrThrow(DcbFixtures.TestEventLogSpec.eventSchema)
+  let (eventType, data) = json->Message.splitMessage
+  let tags = Reventless.DcbTag.extractTags(DcbFixtures.TestEventLogSpec.eventSchema, event)
+  {eventType, data: JSON.Object(data), tags}
+}
+
+// Helper to decode a rawSequencedEvent back to a TestEventLogSpec event
+let decodeEvent = (raw: ReventlessInfra.DcbEventLog.rawSequencedEvent): DcbFixtures.TestEventLogSpec.event => {
+  let json = Message.combineMessage(
+    raw.eventType,
+    raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
+  )
+  json->S.parseJsonOrThrow(DcbFixtures.TestEventLogSpec.eventSchema)
+}
 
 describe("DcbEventLog_Operations:", () => {
   describe("round-trip (append then read)", () => {
     testPromise("ItemCreated preserves through round-trip", async () => {
       let event = DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})
-      let _ = await Ops.append([event])
+      let rawEvent = encodeEvent(event)
+      let _ = await Ops.append([rawEvent])
       let result = await Ops.read(~query=[{}])
 
       expect((
         result.events->Array.length,
-        result.events->Array.get(0)->Option.map(se => se.event),
+        result.events->Array.get(0)->Option.map(se => decodeEvent(se)),
       ))->toEqual((1, Some(event)))
     })
 
     testPromise("CountUpdated with int tag preserves through round-trip", async () => {
       let event = DcbFixtures.TestEventLogSpec.CountUpdated({category: "electronics", amount: 42})
-      let _ = await Ops.append([event])
+      let rawEvent = encodeEvent(event)
+      let _ = await Ops.append([rawEvent])
       let result = await Ops.read(~query=[{}])
 
-      expect(result.events->Array.get(0)->Option.map(se => se.event))->toEqual(Some(event))
+      expect(result.events->Array.get(0)->Option.map(se => decodeEvent(se)))->toEqual(Some(event))
     })
 
     testPromise("multiple events in single append all read back", async () => {
@@ -40,12 +58,13 @@ describe("DcbEventLog_Operations:", () => {
         DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "First"}),
         DcbFixtures.TestEventLogSpec.ItemRenamed({itemId: "item-1", newName: "Second"}),
       ]
-      let _ = await Ops.append(events)
+      let rawEvents = events->Array.map(encodeEvent)
+      let _ = await Ops.append(rawEvents)
       let result = await Ops.read(~query=[{}])
 
       expect((
         result.events->Array.length,
-        result.events->Array.map(se => se.event),
+        result.events->Array.map(se => decodeEvent(se)),
       ))->toEqual((2, events))
     })
   })
@@ -53,7 +72,7 @@ describe("DcbEventLog_Operations:", () => {
   describe("append", () => {
     testPromise("stores events and publishes to event topic", async () => {
       let event = DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})
-      let result = await Ops.append([event])
+      let result = await Ops.append([encodeEvent(event)])
 
       expect((
         Result.isOk(result),
@@ -64,7 +83,7 @@ describe("DcbEventLog_Operations:", () => {
 
     testPromise("published events have correct service name", async () => {
       let _ = await Ops.append([
-        DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"}),
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})),
       ])
 
       expect(
@@ -75,7 +94,7 @@ describe("DcbEventLog_Operations:", () => {
     testPromise("error from storage does not publish to event topic", async () => {
       mock.failNextAppends := 1
       let result = await Ops.append([
-        DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"}),
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})),
       ])
 
       expect((Result.isError(result), mock.publishedEvents.contents->Array.length))->toEqual((
@@ -86,14 +105,14 @@ describe("DcbEventLog_Operations:", () => {
 
     testPromise("with condition (no conflict) succeeds", async () => {
       let _ = await Ops.append([
-        DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"}),
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})),
       ])
       let condition: Reventless.DcbTag.appendCondition = {
         query: [{eventTypes: ["ItemCreated"], tags: [{Reventless.DcbTag.key: "itemId", value: "item-1"}]}],
         after: "1",
       }
       let result = await Ops.append(
-        [DcbFixtures.TestEventLogSpec.ItemRenamed({itemId: "item-1", newName: "Updated"})],
+        [encodeEvent(DcbFixtures.TestEventLogSpec.ItemRenamed({itemId: "item-1", newName: "Updated"}))],
         ~condition,
       )
 
@@ -105,7 +124,7 @@ describe("DcbEventLog_Operations:", () => {
         DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "First"}),
         DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-2", name: "Second"}),
       ]
-      let _ = await Ops.append(events)
+      let _ = await Ops.append(events->Array.map(encodeEvent))
 
       expect((
         mock.getEvents()->Array.length,
@@ -117,7 +136,7 @@ describe("DcbEventLog_Operations:", () => {
   describe("read", () => {
     testPromise("returns headPosition from storage", async () => {
       let _ = await Ops.append([
-        DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"}),
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})),
       ])
       let result = await Ops.read(~query=[{}])
 
@@ -126,16 +145,16 @@ describe("DcbEventLog_Operations:", () => {
 
     testPromise("with ~after parameter filters out earlier events", async () => {
       let _ = await Ops.append([
-        DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "First"}),
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "First"})),
       ])
       let _ = await Ops.append([
-        DcbFixtures.TestEventLogSpec.ItemRenamed({itemId: "item-1", newName: "Second"}),
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemRenamed({itemId: "item-1", newName: "Second"})),
       ])
       let result = await Ops.read(~query=[{}], ~after="1")
 
       expect((
         result.events->Array.length,
-        result.events->Array.get(0)->Option.map(se => se.event),
+        result.events->Array.get(0)->Option.map(se => decodeEvent(se)),
       ))->toEqual((
         1,
         Some(DcbFixtures.TestEventLogSpec.ItemRenamed({itemId: "item-1", newName: "Second"})),
@@ -144,7 +163,7 @@ describe("DcbEventLog_Operations:", () => {
 
     testPromise("no matching events returns empty array", async () => {
       let _ = await Ops.append([
-        DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"}),
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})),
       ])
       let result = await Ops.read(~query=[{eventTypes: ["NonExistent"]}])
 

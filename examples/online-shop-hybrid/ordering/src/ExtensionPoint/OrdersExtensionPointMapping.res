@@ -1,4 +1,4 @@
-// Maps internal OrderingEventLog events to the stable OrdersExtensionPoint public API.
+// Maps internal Ordering events to the stable OrdersExtensionPoint public API.
 // Decomposes batch OrderPlaced / OrderCancelled events into per-product EP events.
 
 open Reventless
@@ -6,13 +6,23 @@ open ReventlessInfra.ExtensionPointMapping
 
 module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
 
-// DCB adapter: exposes OrderingEventLog as Aggregate.Spec so ExtensionPointMapping.Make
-// can decode outgoing events. Only needed because mapOutgoingEvent is Some.
+// DCB adapter: defines the event type used for outgoing event mapping.
+// Only the events relevant to the extension point are included.
 module Aggregate = {
   let name = "OrderingEventLog"
   module Id = Id.String
   @schema type command = unit
-  @schema type event = OrderingEventLog.event
+  @schema
+  type event =
+    | OrderPlaced({
+        orderId: @s.matches(DcbTag.string) string,
+        customerId: string,
+        productIds: array<string>,
+      })
+    | OrderCancelled({
+        orderId: @s.matches(DcbTag.string) string,
+        productIds: array<string>,
+      })
   @schema type error = unit
   let commandSchema = S.unit
   let moduleUrl: string = %raw(`import.meta.url`)
@@ -22,17 +32,16 @@ let mapIncomingCommand = (_id, _command, _meta) => []
 
 let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
-  | OrderingEventLog.OrderPlaced({orderId, customerId, productIds}) =>
+  | Aggregate.OrderPlaced({orderId, customerId, productIds}) =>
     productIds->Array.map(productId =>
       PublishEvent(
         productId,
         OrderingSpec.OrdersExtensionPoint.ItemOrdered({productId, orderId, customerId}),
       )
     )
-  | OrderingEventLog.OrderCancelled({orderId, productIds}) =>
+  | Aggregate.OrderCancelled({orderId, productIds}) =>
     productIds->Array.map(productId =>
       PublishEvent(productId, OrderingSpec.OrdersExtensionPoint.ItemOrderCancelled({productId, orderId}))
     )
-  | _ => []
   }
 )

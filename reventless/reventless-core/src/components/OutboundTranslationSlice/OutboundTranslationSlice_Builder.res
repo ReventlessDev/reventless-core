@@ -20,13 +20,9 @@ module Make = (
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
   module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
-    OutboundTranslationSlice.T
-      with type dcbEvent = Spec.DcbEventLogSpec.event
-      and module Spec = Spec
+    OutboundTranslationSlice.T with module Spec = Spec
   ) => {
-    type dcbEvent = Spec.DcbEventLogSpec.event
     module Spec = Spec
-    type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
     type component = OutboundTranslationSlice.component
 
     module Callback = OutboundTranslationSlice_Callback.Make(Spec)
@@ -50,6 +46,8 @@ module Make = (
       EventCollectorChannel,
     )
 
+    let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
+
     let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations) => {
       let items = Callback.todoItems.contents->Dict.toArray
       let _ = await items->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
@@ -63,7 +61,7 @@ module Make = (
       })
     }
 
-    let construct = (~dcbEventLog: dcbEventLogComponent, ~publishJsons, self, _name) => {
+    let construct = (~dcbEventLog: DcbEventLog.component, ~publishJsons, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
       let queryDb = SpecificQueryDb.make(~api=Api.api, ~apiRole=Api.apiRole, ~opts)
@@ -87,12 +85,13 @@ module Make = (
             stream
             ->Stream.mapEffect(json =>
               Effect.sync(
-                () =>
-                  try [json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema)] catch {
-                  | exn =>
-                    Console.log2("OutboundTranslationSlice: Failed to decode event:", exn)
-                    []
-                  },
+                () => {
+                  let (eventType, dataDict) = json->Message.splitMessage
+                  switch decoder.decode(~eventType, ~data=dataDict) {
+                  | Some(event) => [event]
+                  | None => []
+                  }
+                },
               )
             )
             ->Stream.flatMap(events => Stream.fromIterable(events))

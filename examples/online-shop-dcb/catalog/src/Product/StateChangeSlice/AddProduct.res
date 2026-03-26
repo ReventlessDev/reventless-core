@@ -2,12 +2,22 @@
 // Handles the AddProduct command; rejects duplicate creation via DCB optimistic concurrency.
 
 open Reventless
-open CatalogEventLog
 
 let name = "AddProduct"
 let moduleUrl: string = %raw(`import.meta.url`)
 
-module DcbEventLogSpec = CatalogEventLog
+type state = {exists: bool}
+
+let initialState = {exists: false}
+
+@schema
+type consumedEvent =
+  | ProductAdded
+
+let evolve = (_state, event) =>
+  switch event {
+  | ProductAdded => {exists: true}
+  }
 
 @schema
 type command =
@@ -21,15 +31,14 @@ type command =
 @schema
 type error = ProductAlreadyExists
 
-type state = {exists: bool}
-
-let initialState = {exists: false}
-
-let evolve = (state, event) =>
-  switch event {
-  | ProductAdded(_) => {exists: true}
-  | _ => state
-  }
+@schema
+type producedEvent =
+  | ProductAdded({
+      productId: @s.matches(DcbTag.string) string,
+      name: string,
+      description: string,
+      price: float,
+    })
 
 let decide = (state, command) =>
   switch command {

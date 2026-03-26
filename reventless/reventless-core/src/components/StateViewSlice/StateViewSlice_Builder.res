@@ -15,11 +15,9 @@ module Make = (
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
   module Make = (Spec: Reventless.StateViewSlice.Spec): (
-    StateViewSlice.T with type dcbEvent = Spec.DcbEventLogSpec.event and module Spec = Spec
+    StateViewSlice.T with module Spec = Spec
   ) => {
-    type dcbEvent = Spec.DcbEventLogSpec.event
     module Spec = Spec
-    type dcbEventLogComponent = DcbEventLog.component<DcbEventLog.operations<dcbEvent>>
     type component = StateViewSlice.component
 
     module SvQueryDbSpec = {
@@ -51,7 +49,9 @@ module Make = (
         ),
     }
 
-    let construct = (~dcbEventLog: dcbEventLogComponent, self, _name) => {
+    let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
+
+    let construct = (~dcbEventLog: DcbEventLog.component, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
       let queryDb = SpecificQueryDb.make(~api=Api.api, ~apiRole=Api.apiRole, ~opts)
@@ -70,14 +70,20 @@ module Make = (
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream
             ->Stream.mapEffect(json =>
-              Effect.sync(() =>
-                try Spec.project(json->S.parseJsonOrThrow(Spec.DcbEventLogSpec.eventSchema))
-                catch {
-                | exn =>
-                  Console.log2("StateViewSlice: Failed to decode event:", exn)
-                  []
+              Effect.sync(() => {
+                // Decode raw event JSON to get eventType + data, then decode via consumedEventSchema
+                let (eventType, dataDict) = json->Message.splitMessage
+                switch decoder.decode(~eventType, ~data=dataDict) {
+                | Some(event) =>
+                  try Spec.project(event)
+                  catch {
+                  | exn =>
+                    Console.log2("StateViewSlice: Failed to project event:", exn)
+                    []
+                  }
+                | None => [] // Event type not consumed by this view
                 }
-              )
+              })
             )
             ->Stream.flatMap(actions => Stream.fromIterable(actions))
             ->Stream.runForEach(action =>
