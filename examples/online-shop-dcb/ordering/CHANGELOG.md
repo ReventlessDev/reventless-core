@@ -1,8 +1,15 @@
-
 # Change Log
 
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+# [1.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.10...@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.11) (2026-03-26)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering
+
+
+
+
 
 # [1.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.9...@reventlessdev/online-shop-dcb-ordering@1.0.0-alpha.10) (2026-03-23)
 

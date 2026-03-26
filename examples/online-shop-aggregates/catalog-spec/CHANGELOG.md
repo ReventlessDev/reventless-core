@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.6...@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.7) (2026-03-26)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-spec
+
+
+
+
+
 # [3.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.5...@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.6) (2026-03-22)
 
 * feat(reventless-aws)!: replace esbuild pipeline with compiled ReScript entry points ([6cb3133](https://github.com/ReventlessDev/reventless-core/commit/6cb313323c73a078d0922fa6b977466f61de74ea))

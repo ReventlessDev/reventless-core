@@ -1,6 +1,6 @@
 {
     "name": "@reventlessdev/reventless-core",
-    "version": "3.0.0-alpha.20",
+    "version": "3.0.0-alpha.21",
     "description": "Core package for Reventless framework",
     "license": "MIT",
     "jest": {
@@ -34,15 +34,15 @@
     },
     "dependencies": {
         "@reventlessdev/rescript-effect": "*",
-        "@reventlessdev/rescript-fast-csv": "^1.2.0-alpha.0",
-        "@reventlessdev/rescript-hash-object": "^1.2.0-alpha.0",
-        "@reventlessdev/rescript-node-streams": "^1.1.0-alpha.0",
-        "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.2",
-        "@reventlessdev/rescript-ssh2": "^1.1.0-alpha.0",
-        "@reventlessdev/rescript-uuid": "^1.1.0-alpha.2",
-        "@reventlessdev/reventless-infra": "^3.0.0-alpha.12",
-        "@reventlessdev/reventless-interop": "^1.0.0-alpha.5",
-        "@reventlessdev/reventless-spec": "^3.0.0-alpha.11"
+        "@reventlessdev/rescript-fast-csv": "^1.2.0-alpha.1",
+        "@reventlessdev/rescript-hash-object": "^1.2.0-alpha.1",
+        "@reventlessdev/rescript-node-streams": "^1.1.0-alpha.1",
+        "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.3",
+        "@reventlessdev/rescript-ssh2": "^1.1.0-alpha.1",
+        "@reventlessdev/rescript-uuid": "^1.1.0-alpha.3",
+        "@reventlessdev/reventless-infra": "^3.0.0-alpha.13",
+        "@reventlessdev/reventless-interop": "^1.0.0-alpha.6",
+        "@reventlessdev/reventless-spec": "^3.0.0-alpha.12"
     },
     "devDependencies": {
         "@glennsl/rescript-jest": "^0.13.1",

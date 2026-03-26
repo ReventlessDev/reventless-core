@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb@1.0.0-alpha.5...@reventlessdev/online-shop-dcb@1.0.0-alpha.6) (2026-03-26)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb
+
+
+
+
+
 # [1.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb@1.0.0-alpha.4...@reventlessdev/online-shop-dcb@1.0.0-alpha.5) (2026-03-16)
 
 * feat!: replace Core component with Platform_Admin, rename schema prefix Core_ → Admin_ ([940263d](https://github.com/ReventlessDev/reventless-core/commit/940263d8b39e28f4c874af3b0335ae81444928c4))

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.21](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-core@3.0.0-alpha.20...@reventlessdev/reventless-core@3.0.0-alpha.21) (2026-03-26)
+
+* feat!: add structured Identity type and expand RequestContext with identity and claims ([a2396d4](https://github.com/ReventlessDev/reventless-core/commit/a2396d4dd350bb07924d45b64b99b3dc969ced89))
+
+### BREAKING CHANGES
+
+* RequestContext.t now requires identity and claims fields.
+Use RequestContext.test() for test contexts.
+
+
+
 # [3.0.0-alpha.20](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-core@3.0.0-alpha.19...@reventlessdev/reventless-core@3.0.0-alpha.20) (2026-03-23)
 
 * refactor!: streamline component function naming to unified two-function pattern ([06814fd](https://github.com/ReventlessDev/reventless-core/commit/06814fd8589cf05ce8a9f9654552e7d5cd9c6bf2))

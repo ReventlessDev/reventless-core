@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.10...@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.11) (2026-03-26)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog
+
+
+
+
+
 # [1.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.9...@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.10) (2026-03-23)
 
 * refactor!: streamline component function naming to unified two-function pattern ([06814fd](https://github.com/ReventlessDev/reventless-core/commit/06814fd8589cf05ce8a9f9654552e7d5cd9c6bf2))
