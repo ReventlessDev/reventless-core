@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@3.0.0-alpha.3...@reventlessdev/reventless-layer-builder@3.0.0-alpha.5) (2026-03-26)
+
+### Bug Fixes
+
+* **reventless-layer-builder:** remove unnecessary packages and deploy-time files from Lambda layer ([bbd77e1](https://github.com/ReventlessDev/reventless-core/commit/bbd77e121921631edd330da24d1c59d2866509fe))
+
+
 # [3.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@3.0.0-alpha.3...@reventlessdev/reventless-layer-builder@3.0.0-alpha.4) (2026-03-26)
 
 ### Bug Fixes

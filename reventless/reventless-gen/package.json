@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-gen",
-  "version": "3.0.0-alpha.1",
+  "version": "3.0.0-alpha.2",
   "description": "Code generator for Reventless",
   "license": "MIT",
   "scripts": {

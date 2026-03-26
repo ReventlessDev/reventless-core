@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.15...@reventlessdev/reventless-in-memory@3.0.0-alpha.2) (2026-03-26)
+
+### Bug Fixes
+
+* conditionally exclude ID parameter from StateViewSlice GraphQL queries ([43de4b6](https://github.com/ReventlessDev/reventless-core/commit/43de4b667d89235ea03b3e1584070515e10e71de))
+* feat!: add structured Identity type and expand RequestContext with identity and claims ([a2396d4](https://github.com/ReventlessDev/reventless-core/commit/a2396d4dd350bb07924d45b64b99b3dc969ced89))
+
+### BREAKING CHANGES
+
+* RequestContext.t now requires identity and claims fields.
+Use RequestContext.test() for test contexts.
+
+
+
 # [1.0.0-alpha.16](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.15...@reventlessdev/reventless-in-memory@1.0.0-alpha.16) (2026-03-26)
 
 ### Bug Fixes

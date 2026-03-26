@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-infra",
-  "version": "3.0.0-alpha.13",
+  "version": "3.0.0-alpha.14",
   "description": "Infrastructure types for Reventless framework",
   "license": "MIT",
   "scripts": {
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@reventlessdev/rescript-effect": "*",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.3",
-    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.3",
-    "@reventlessdev/reventless-spec": "^3.0.0-alpha.12",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.4",
+    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.4",
+    "@reventlessdev/reventless-spec": "^3.0.0-alpha.13",
     "sury": "^11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"
   },

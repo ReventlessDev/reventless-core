@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-mcp-sdk@1.0.0-alpha.3...@reventlessdev/rescript-mcp-sdk@1.0.0-alpha.5) (2026-03-26)
+
+**Note:** Version bump only for package @reventlessdev/rescript-mcp-sdk
+
+
+
+
+
 # [1.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-mcp-sdk@1.0.0-alpha.3...@reventlessdev/rescript-mcp-sdk@1.0.0-alpha.4) (2026-03-26)
 
 **Note:** Version bump only for package @reventlessdev/rescript-mcp-sdk

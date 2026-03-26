@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog-spec",
-  "version": "3.0.0-alpha.7",
+  "version": "3.0.0-alpha.8",
   "description": "Online Shop example — Catalog plugin specification (extension point specs)",
   "private": true,
   "license": "MIT",

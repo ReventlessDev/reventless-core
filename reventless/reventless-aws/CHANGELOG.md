@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.22](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.20...@reventlessdev/reventless-aws@3.0.0-alpha.22) (2026-03-26)
+
+### Bug Fixes
+
+* conditionally exclude ID parameter from StateViewSlice GraphQL queries ([43de4b6](https://github.com/ReventlessDev/reventless-core/commit/43de4b667d89235ea03b3e1584070515e10e71de))
+* **reventless-aws:** unwrap topicItem in DCB entry point SQS command routing ([0834056](https://github.com/ReventlessDev/reventless-core/commit/083405640d928503e8a56d5d8c7b326ad86d1313))
+
+
 # [3.0.0-alpha.21](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.20...@reventlessdev/reventless-aws@3.0.0-alpha.21) (2026-03-26)
 
 ### Bug Fixes
