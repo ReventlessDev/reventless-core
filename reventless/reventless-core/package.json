@@ -41,7 +41,7 @@
         "@reventlessdev/rescript-ssh2": "^1.1.0-alpha.1",
         "@reventlessdev/rescript-uuid": "^1.1.0-alpha.3",
         "@reventlessdev/reventless-infra": "^3.0.0-alpha.13",
-        "@reventlessdev/reventless-interop": "^1.0.0-alpha.6",
+        "@reventlessdev/reventless-interop": "^3.0.0-alpha.1",
         "@reventlessdev/reventless-spec": "^3.0.0-alpha.12"
     },
     "devDependencies": {
