@@ -70,7 +70,7 @@ Verified: neither `ramda` nor `lodash` (full package) is imported anywhere in th
 
 The bundle now contains only the generated entry point code, the handler factory helpers, and stub imports. All framework/library code resolves from the layer at runtime.
 
-**Layer measurement**: Pending rebuild (requires `NPM_GITHUB_TOKEN` for registry access). Expected reduction: 13 MB → ~8-10 MB based on exclusion analysis.
+**Layer measurement**: Pending rebuild (requires `GITHUB_TOKEN` for registry access). Expected reduction: 13 MB → ~8-10 MB based on exclusion analysis.
 
 ---
 

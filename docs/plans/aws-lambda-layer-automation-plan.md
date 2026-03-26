@@ -109,7 +109,7 @@ Migrate the main `build()` function using generic naming for future extensibilit
 
 Replace the JS entry point and delete all old JS files.
 
-- [x] Create `src/Main.res` — entry point with Reventless-specific config, reading `REVENTLESS_AWS_VERSION` and `NODE_AUTH_TOKEN` from env
+- [x] Create `src/Main.res` — entry point with Reventless-specific config, reading `REVENTLESS_AWS_VERSION` and `GITHUB_TOKEN` from env
 - [x] Update `package.json` build script: `rescript build && node ./src/Main.res.mjs`
 - [x] Add package to root `rescript.json` dependencies for monorepo compilation
 - [x] Delete `src/index.js`, `builder/index.js`, `builder/postprocess.js`

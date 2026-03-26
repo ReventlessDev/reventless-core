@@ -26,7 +26,7 @@ Two-part system:
 
 ```bash
 # Set your GitHub Package Registry token (needs read:packages scope)
-export NPM_GITHUB_TOKEN="ghp_..."
+export GITHUB_TOKEN="ghp_..."
 
 # Build the layer
 REVENTLESS_AWS_VERSION=3.0.0-alpha.9 npm run build
@@ -132,7 +132,7 @@ config:
 
 ## Troubleshooting
 
-**Authentication error**: Ensure `NPM_GITHUB_TOKEN` is a classic personal access token with `read:packages` scope.
+**Authentication error**: Ensure `GITHUB_TOKEN` is a classic personal access token with `read:packages` scope.
 
 **Layer exceeds 50 MB**: Check for new large dependencies. Add to `excludeScopes`, `excludeModules`, or add a postprocess handler.
 

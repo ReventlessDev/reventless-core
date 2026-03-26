@@ -129,7 +129,7 @@ let config: DependencyBundler_Config.t = {
     ("@reventlessdev:registry", "https://npm.pkg.github.com"),
     (
       "//npm.pkg.github.com/:_authToken",
-      env->Dict.get("NPM_GITHUB_TOKEN")->Option.orElse(env->Dict.get("NODE_AUTH_TOKEN"))->Option.getOr(""),
+      env->Dict.get("GITHUB_TOKEN")->Option.getOr(""),
     ),
   ]),
   rootPostProcess: DependencyBundler_PostProcess.reventlessAwsDeploytime,

@@ -113,7 +113,7 @@ let config_registryOpts = Object.fromEntries([
   ],
   [
     "//npm.pkg.github.com/:_authToken",
-    Stdlib_Option.getOr(Stdlib_Option.orElse(process.env["NPM_GITHUB_TOKEN"], process.env["NODE_AUTH_TOKEN"]), "")
+    Stdlib_Option.getOr(process.env["GITHUB_TOKEN"], "")
   ]
 ]);
 

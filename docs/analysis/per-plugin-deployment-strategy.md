@@ -443,7 +443,7 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
 The workflow triggers on **all branches** but deployment only happens if a `Pulumi.<branch>.yaml` file exists in the deploy directory. No hardcoded branch list needed.
@@ -543,7 +543,7 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      NPM_TOKEN:
+      GITHUB_TOKEN:
         required: true
 ```
 
@@ -638,7 +638,7 @@ jobs:
       - run: npm ci
         if: steps.paths.outputs.skip != 'true'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - run: npm run build
         if: steps.paths.outputs.skip != 'true'
@@ -693,7 +693,7 @@ jobs:
       - run: npm ci
         if: steps.paths.outputs.skip != 'true'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - run: npm run build
         if: steps.paths.outputs.skip != 'true'

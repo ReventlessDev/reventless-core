@@ -56,14 +56,14 @@ jobs:
       - name: Install dependencies
         run: npm install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build layer
         working-directory: reventless/reventless-layer-builder
         run: npm run build
         env:
           REVENTLESS_AWS_VERSION: ${{ steps.version.outputs.version }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify artifact
         working-directory: reventless/reventless-layer-builder/builder

@@ -181,13 +181,13 @@ Automated dependency updates for:
 
 ### Required Secrets:
 - `GITHUB_TOKEN` - Automatically provided, needs packages:write
-- `NPM_TOKEN` - Optional, for npm registry fallback
+- `NPM_TOKEN` - Optional, for future npm public registry publishing
 - `SNYK_TOKEN` - Optional, for Snyk security scanning
 - `CODECOV_TOKEN` - Optional, for code coverage reporting
 - `SLACK_WEBHOOK` - Optional, for release notifications
 
 ### Environment Variables:
-- `NODE_AUTH_TOKEN` - Set to `${{ secrets.GITHUB_TOKEN }}` in workflows
+- `GITHUB_TOKEN` - Set to `${{ secrets.GITHUB_TOKEN }}` in workflows
 - `CI` - Set to `true` for test environments
 
 ## Branch Protection Rules

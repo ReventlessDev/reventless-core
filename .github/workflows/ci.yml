@@ -40,7 +40,7 @@ jobs:
   #     - name: Install dependencies
   #       run: npm ci
   #       env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   #     - name: Lint code
   #       run: npm run lint || echo "No lint script configured"
@@ -73,7 +73,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Type check
         run: npm run type-check 2>/dev/null || echo "No type-check script configured"
@@ -186,7 +186,7 @@ jobs:
         if: steps.affected.outputs.select != 'none'
         run: npm ci
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build all packages
         if: steps.affected.outputs.select != 'none'
@@ -246,7 +246,7 @@ jobs:
   #     - name: Install dependencies
   #       run: npm ci
   #       env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   #     - name: Run npm audit
   #       run: npm audit --audit-level=moderate
@@ -306,7 +306,7 @@ jobs:
   #     - name: Install dependencies
   #       run: npm ci
   #       env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   #     - name: Build packages
   #       run: npm run build
