@@ -14,6 +14,25 @@ open ReventlessCore
 type api = unit
 type runtimeParts = RuntimeEnvironment_InMemory.parts
 
+// -- Identity extraction from GraphQL context ---------------------------------
+// graphql-yoga provides { request: Request, ... } as the resolver context.
+// We read the X-Identity header (JSON-encoded Identity.t) and fall back to anonymous.
+
+@send external getHeader: ('headers, string) => Nullable.t<string> = "get"
+
+let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
+  try {
+    let request = (ctx->Obj.magic)["request"]
+    let headers = request["headers"]
+    switch headers->getHeader("x-identity")->Nullable.toOption {
+    | Some(json) => json->JSON.parseOrThrow->S.parseOrThrow(Reventless.Identity.schema)
+    | None => Reventless.Identity.anonymous
+    }
+  } catch {
+  | _ => Reventless.Identity.anonymous
+  }
+}
+
 let capitalize = s =>
   s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
@@ -61,14 +80,15 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
   fields->Array.forEach(field => {
     let handlerRef = ref(None)
     handlerRefs->Dict.set(field, handlerRef)
-    let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
+    let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
       switch handlerRef.contents {
       | Some(generateCommand) =>
+        let identity = extractIdentity(ctx)
         let commandName = extractCommandName(field)
         let payload: CommandGenerator.payload = {
           command: commandName,
           arguments: args->Obj.magic,
-          meta: {ip: [], user: "local", info: `Mutation.${field}`},
+          meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
         }
         let result = await generateCommand(payload)->Effect.runPromise
         result->JSON.Encode.string
@@ -112,9 +132,10 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
   let handlerRef = ref(None)
   handlerRefs->Dict.set(fieldName, handlerRef)
 
-  let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
+  let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
     switch handlerRef.contents {
     | Some(generateCommand) =>
+      let identity = extractIdentity(ctx)
       let argsDict: dict<JSON.t> = args->Obj.magic
 
       // Extract entity ID from tagged field and add as "id" for generateCommand.
@@ -132,7 +153,7 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
       let payload: CommandGenerator.payload = {
         command: tag,
         arguments: argsDict->Obj.magic,
-        meta: {ip: [], user: "local", info: `Mutation.${fieldName}`},
+        meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
       }
       let result = await generateCommand(payload)->Effect.runPromise
       result->JSON.Encode.string

@@ -20,7 +20,7 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
   | None => [`  ${fieldName}: String!`]
   }
 
-  let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
+  let resolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
     let inputJson: JSON.t = args->Obj.magic
     switch receiveRegistry->Dict.get(fieldName) {
     | Some(receive) =>

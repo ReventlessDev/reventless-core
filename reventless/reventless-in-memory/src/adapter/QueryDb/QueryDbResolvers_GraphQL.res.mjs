@@ -19,7 +19,7 @@ function Make(Bus) {
     let byIdSdl = includeIdParam ? (
         subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName
       ) : `  ` + singleQueryName + `: ` + returnTypeName;
-    let byIdResolver = async (_root, args) => {
+    let byIdResolver = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(name);
       if (ops === undefined) {
@@ -38,7 +38,7 @@ function Make(Bus) {
       return obj;
     };
     let listSdl = [`  ` + listQueryName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`];
-    let listResolver = async (_root, _args) => {
+    let listResolver = async (_root, _args, _ctx) => {
       let makeStream = Bus.getQueryDbStream(name);
       let items;
       if (makeStream !== undefined) {
@@ -60,7 +60,7 @@ function Make(Bus) {
     let byIdListSdl = subIdField !== undefined ? [`  ` + singleQueryName + `ById(id: ID!): [String]`] : [];
     let byIdListResolvers;
     if (subIdField !== undefined) {
-      let resolver = async (_root, args) => {
+      let resolver = async (_root, args, _ctx) => {
         let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
         let ops = Bus.getQueryDb(name);
         if (ops !== undefined) {
@@ -81,7 +81,7 @@ function Make(Bus) {
       let index = ic.index;
       let resolverName = singleQueryName + "By" + cap(index);
       let filterField = Stdlib_Option.getOr(ic.idField, index);
-      let resolver = async (_root, args) => {
+      let resolver = async (_root, args, _ctx) => {
         let value = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[index]), Stdlib_JSON.Decode.string), "");
         let scanAll = Bus.getQueryDbScan(name);
         if (scanAll !== undefined) {

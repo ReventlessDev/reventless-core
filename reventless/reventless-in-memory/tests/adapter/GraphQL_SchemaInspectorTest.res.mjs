@@ -218,7 +218,7 @@ describe("GraphQL_SchemaInspector", () => {
     test("diagnostics detects resolver without SDL field", async () => {
       GraphQL_Server$ReventlessInMemory.reset();
       let resolvers = {};
-      resolvers["orphanResolver"] = async (_root, _args) => "ok";
+      resolvers["orphanResolver"] = async (_root, _args, _ctx) => "ok";
       GraphQL_Server$ReventlessInMemory.registerMutations([], resolvers);
       let d = GraphQL_Server$ReventlessInMemory.diagnostics();
       expect(d.resolverMutationCount).toBe(1);
@@ -240,7 +240,7 @@ describe("GraphQL_SchemaInspector", () => {
     test("diagnostics reports no mismatches when fields and resolvers match", async () => {
       GraphQL_Server$ReventlessInMemory.reset();
       let resolvers = {};
-      resolvers["myQuery"] = async (_root, _args) => "ok";
+      resolvers["myQuery"] = async (_root, _args, _ctx) => "ok";
       GraphQL_Server$ReventlessInMemory.registerQueries(["  myQuery(id: ID!): String"], resolvers);
       let d = GraphQL_Server$ReventlessInMemory.diagnostics();
       expect(d.mismatches.length).toBe(0);

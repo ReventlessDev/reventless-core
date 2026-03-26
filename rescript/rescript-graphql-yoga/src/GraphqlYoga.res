@@ -19,12 +19,13 @@ type httpServer
 
 /**
  * A GraphQL resolver function.
- * Signature: `(root, args) => promise<result>`
+ * Signature: `(root, args, context) => promise<result>`
  *
- * Both `root` and `args` are typed as `JSON.t` for generic usage.
+ * `root`, `args`, and `context` are typed as `JSON.t` for generic usage.
+ * graphql-yoga populates `context` with `{ request: Request, ... }` by default.
  * Use `Obj.magic` at the call site to cast to more specific types when needed.
  */
-type resolverFn = (JSON.t, JSON.t) => promise<JSON.t>
+type resolverFn = (JSON.t, JSON.t, JSON.t) => promise<JSON.t>
 
 // ─── Schema creation ───────────────────────────────────────────────────────
 

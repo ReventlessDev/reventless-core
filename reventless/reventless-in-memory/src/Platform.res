@@ -240,7 +240,7 @@ module MakeWithConfig = (
         // Look up the GraphQL mutation resolver for this tool name
         switch GraphQL_Server.getMutationResolver(toolName) {
         | Some(resolver) =>
-          let result = await resolver(JSON.Encode.null, args)
+          let result = await resolver(JSON.Encode.null, args, JSON.Encode.null)
           switch result->JSON.Decode.string {
           | Some(s) => s
           | None => result->JSON.stringify
@@ -672,7 +672,7 @@ module MakeWithConfig = (
 
     // Resolvers for the admin Plugin queries — backed by Bus Plugin QueryDb.
     let queryResolvers = Dict.make()
-    queryResolvers->Dict.set(singleQueryField, async (_root, args): JSON.t => {
+    queryResolvers->Dict.set(singleQueryField, async (_root, args, _ctx): JSON.t => {
       let id =
         args
         ->JSON.Decode.object
@@ -689,7 +689,7 @@ module MakeWithConfig = (
       | None => JSON.Encode.null
       }
     })
-    queryResolvers->Dict.set(listQueryField, async (_root, _args): JSON.t => {
+    queryResolvers->Dict.set(listQueryField, async (_root, _args, _ctx): JSON.t => {
       let items = switch Bus.getQueryDbScan(pluginQueryDbName) {
       | Some(scanAll) => scanAll()
       | None => []
@@ -767,17 +767,17 @@ module MakeWithConfig = (
     let mutationResolvers = Dict.make()
     mutationResolvers->Dict.set(
       activateField,
-      async (_root, args): JSON.t => await updatePluginStatus(~field=activateField, args, Disconnected),
+      async (_root, args, _ctx): JSON.t => await updatePluginStatus(~field=activateField, args, Disconnected),
     )
     mutationResolvers->Dict.set(
       deactivateField,
-      async (_root, args): JSON.t =>
+      async (_root, args, _ctx): JSON.t =>
         await updatePluginStatus(~field=deactivateField, args, Inactive),
     )
     // Remaining admin mutations (e.g., Clone) are no-ops in-memory.
     adminMutationFieldNames->Array.forEach(field =>
       if (mutationResolvers->Dict.get(field)->Option.isNone) {
-        mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+        mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
       }
     )
     registerAdminMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
@@ -816,7 +816,7 @@ module MakeWithConfig = (
       ~commandHandler=async (toolName, args) => {
         switch getAdminMutationResolver(toolName) {
         | Some(resolver) =>
-          let result = await resolver(JSON.Encode.null, args)
+          let result = await resolver(JSON.Encode.null, args, JSON.Encode.null)
           switch result->JSON.Decode.string {
           | Some(s) => s
           | None => result->JSON.stringify
@@ -876,10 +876,10 @@ module MakeWithConfig = (
     // Minimal admin query resolvers (no plugin QueryDb seeding needed for platform-only).
     let queryResolvers = Dict.make()
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
-    queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args): JSON.t =>
+    queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args, _ctx): JSON.t =>
       JSON.Encode.null
     )
-    queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args): JSON.t =>
+    queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
       Dict.fromArray([
         ("nextToken", JSON.Encode.null),
         ("scannedCount", JSON.Encode.int(0)),
@@ -892,7 +892,7 @@ module MakeWithConfig = (
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
     adminMutationFieldNames->Array.forEach(field =>
-      mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+      mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
     )
     GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 
@@ -929,10 +929,10 @@ module MakeWithConfig = (
 
     let queryResolvers = Dict.make()
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
-    queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args): JSON.t =>
+    queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args, _ctx): JSON.t =>
       JSON.Encode.null
     )
-    queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args): JSON.t =>
+    queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
       Dict.fromArray([
         ("nextToken", JSON.Encode.null),
         ("scannedCount", JSON.Encode.int(0)),
@@ -945,7 +945,7 @@ module MakeWithConfig = (
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
     adminMutationFieldNames->Array.forEach(field =>
-      mutationResolvers->Dict.set(field, async (_root, _args): JSON.t => JSON.Encode.string("ok"))
+      mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
     )
     GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 

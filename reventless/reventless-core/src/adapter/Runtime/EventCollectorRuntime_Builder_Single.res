@@ -38,7 +38,7 @@ module Make = (
     effect
     ->Effect.provideService(
       RequestContext.tag,
-      {correlationId: correlationId->Option.getOr("unknown")},
+      RequestContext.test(~correlationId=correlationId->Option.getOr("unknown")),
     )
     ->Effect.runPromise
 

@@ -60,7 +60,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     } else {
       `  ${singleQueryName}: ${returnTypeName}`
     }
-    let byIdResolver: GraphQL_Server.resolverFn = async (_root, args) => {
+    let byIdResolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
       let id =
         args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
       switch Bus.getQueryDb(name) {
@@ -88,7 +88,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     // -- List query -------------------------------------------------------------
     let listSdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
-    let listResolver: GraphQL_Server.resolverFn = async (_root, _args) => {
+    let listResolver: GraphQL_Server.resolverFn = async (_root, _args, _ctx) => {
       let items = switch Bus.getQueryDbStream(name) {
       | Some(makeStream) =>
         await makeStream()->Stream.runCollect->Effect.runPromise
@@ -109,7 +109,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
     let byIdListResolvers: array<(string, GraphQL_Server.resolverFn)> = switch subIdField {
     | Some(_) =>
-      let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
+      let resolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
         let id =
           args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
         switch Bus.getQueryDb(name) {
@@ -136,7 +136,7 @@ module Make = (Bus: InMemory_Bus.T) => {
         let index = ic.index
         let resolverName = singleQueryName ++ "By" ++ cap(index)
         let filterField = ic.idField->Option.getOr(index)
-        let resolver: GraphQL_Server.resolverFn = async (_root, args) => {
+        let resolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
           let value =
             args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(index))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
           switch Bus.getQueryDbScan(name) {

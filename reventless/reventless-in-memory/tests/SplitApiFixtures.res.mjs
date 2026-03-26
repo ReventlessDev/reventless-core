@@ -25,16 +25,16 @@ adminGraphQL.registerTypes(baseParts.types);
 
 let adminQueryResolvers = {};
 
-adminQueryResolvers[singleQueryField] = async (_root, _args) => null;
+adminQueryResolvers[singleQueryField] = async (_root, _args, _ctx) => null;
 
-adminQueryResolvers[listQueryField] = async (_root, _args) => null;
+adminQueryResolvers[listQueryField] = async (_root, _args, _ctx) => null;
 
 adminGraphQL.registerQueries(baseParts.queries, adminQueryResolvers);
 
 let adminMutationResolvers = {};
 
 adminMutationFieldNames.forEach(field => {
-  adminMutationResolvers[field] = async (_root, _args) => "ok";
+  adminMutationResolvers[field] = async (_root, _args, _ctx) => "ok";
 });
 
 adminGraphQL.registerMutations(baseParts.mutations, adminMutationResolvers);
@@ -47,9 +47,9 @@ GraphQL_Server$ReventlessInMemory.registerTypes(pluginTypes);
 
 let pluginQueryResolvers = {};
 
-pluginQueryResolvers["SplitTestPlugin_SplitTestItem"] = async (_root, _args) => null;
+pluginQueryResolvers["SplitTestPlugin_SplitTestItem"] = async (_root, _args, _ctx) => null;
 
-pluginQueryResolvers["SplitTestPlugin_SplitTestItems"] = async (_root, _args) => null;
+pluginQueryResolvers["SplitTestPlugin_SplitTestItems"] = async (_root, _args, _ctx) => null;
 
 GraphQL_Server$ReventlessInMemory.registerQueries([
   `SplitTestPlugin_SplitTestItem(id: ID!): SplitTestPlugin_SplitTestItem`,
@@ -58,7 +58,7 @@ GraphQL_Server$ReventlessInMemory.registerQueries([
 
 let pluginMutationResolvers = {};
 
-pluginMutationResolvers["SplitTestPlugin_SplitTestItem_CreateItem"] = async (_root, _args) => "ok";
+pluginMutationResolvers["SplitTestPlugin_SplitTestItem_CreateItem"] = async (_root, _args, _ctx) => "ok";
 
 GraphQL_Server$ReventlessInMemory.registerMutations([`SplitTestPlugin_SplitTestItem_CreateItem(id: ID!, name: String!): String`], pluginMutationResolvers);
 

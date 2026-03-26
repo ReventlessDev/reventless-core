@@ -68,6 +68,8 @@ const sidebars = {
       label: 'Common Modules',
       items: [
         'common-modules/Id',
+        'common-modules/identity',
+        'common-modules/request-context',
         'common-modules/config',
       ],
     },

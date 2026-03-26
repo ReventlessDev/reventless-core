@@ -38,9 +38,7 @@ function Make(RuntimeEnvironment) {
         Effect.runSync(Effect.logInfo(`----- ` + desc + ` found ` + count + ` handler(s) for EventCollector ` + urn));
         await Promise.all(handlers.map(handler => {
           let effect = handler(event, context);
-          return Effect.runPromise(Effect.provideService(effect, RequestContext$ReventlessCore.tag, {
-            correlationId: Stdlib_Option.getOr(correlationId, "unknown")
-          }));
+          return Effect.runPromise(Effect.provideService(effect, RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(Stdlib_Option.getOr(correlationId, "unknown"), undefined, undefined)));
         }));
       }));
     });

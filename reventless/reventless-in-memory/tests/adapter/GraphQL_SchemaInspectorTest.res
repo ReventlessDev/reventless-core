@@ -287,7 +287,7 @@ describe("GraphQL_SchemaInspector", () => {
     testPromise("diagnostics detects resolver without SDL field", async () => {
       GraphQL_Server.reset()
       let resolvers = Dict.make()
-      resolvers->Dict.set("orphanResolver", async (_root, _args) => JSON.Encode.string("ok"))
+      resolvers->Dict.set("orphanResolver", async (_root, _args, _ctx) => JSON.Encode.string("ok"))
       GraphQL_Server.registerMutations(~sdlFields=[], ~resolvers)
       let d = GraphQL_Server.diagnostics()
       expect(d.resolverMutationCount)->toBe(1)
@@ -318,7 +318,7 @@ describe("GraphQL_SchemaInspector", () => {
     testPromise("diagnostics reports no mismatches when fields and resolvers match", async () => {
       GraphQL_Server.reset()
       let resolvers = Dict.make()
-      resolvers->Dict.set("myQuery", async (_root, _args) => JSON.Encode.string("ok"))
+      resolvers->Dict.set("myQuery", async (_root, _args, _ctx) => JSON.Encode.string("ok"))
       GraphQL_Server.registerQueries(
         ~sdlFields=["  myQuery(id: ID!): String"],
         ~resolvers,

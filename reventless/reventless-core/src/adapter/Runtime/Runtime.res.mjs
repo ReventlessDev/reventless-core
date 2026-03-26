@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as RequestContext$ReventlessCore from "../../RequestContext.res.mjs";
 
 function runEffectHandler(handler) {
-  return (event, ctx) => Effect.runPromise(Effect.provideService(handler(event, ctx), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(undefined)));
+  return (event, ctx) => Effect.runPromise(Effect.provideService(handler(event, ctx), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(undefined, undefined, undefined)));
 }
 
 export {

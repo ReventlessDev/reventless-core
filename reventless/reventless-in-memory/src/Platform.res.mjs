@@ -192,7 +192,7 @@ function MakeWithConfig(Config) {
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
-      let result = await resolver(null, args);
+      let result = await resolver(null, args, null);
       let s = Stdlib_JSON.Decode.string(result);
       if (s !== undefined) {
         return s;
@@ -563,7 +563,7 @@ function MakeWithConfig(Config) {
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     registerAdminTypes(baseParts.types);
     let queryResolvers = {};
-    queryResolvers[singleQueryField] = async (_root, args) => {
+    queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops === undefined) {
@@ -572,7 +572,7 @@ function MakeWithConfig(Config) {
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
       return Stdlib_Option.getOr(items[0], null);
     };
-    queryResolvers[listQueryField] = async (_root, _args) => {
+    queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
       return Object.fromEntries([
@@ -660,11 +660,11 @@ function MakeWithConfig(Config) {
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
     let mutationResolvers = {};
-    mutationResolvers[activateField] = async (_root, args) => await updatePluginStatus(activateField, args, "Disconnected");
-    mutationResolvers[deactivateField] = async (_root, args) => await updatePluginStatus(deactivateField, args, "Inactive");
+    mutationResolvers[activateField] = async (_root, args, _ctx) => await updatePluginStatus(activateField, args, "Disconnected");
+    mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
-        mutationResolvers[field] = async (_root, _args) => "ok";
+        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
         return;
       }
     });
@@ -693,7 +693,7 @@ function MakeWithConfig(Config) {
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
-      let result = await resolver(null, args);
+      let result = await resolver(null, args, null);
       let s = Stdlib_JSON.Decode.string(result);
       if (s !== undefined) {
         return s;
@@ -727,8 +727,8 @@ function MakeWithConfig(Config) {
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
-    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
       [
         "nextToken",
         null
@@ -747,7 +747,7 @@ function MakeWithConfig(Config) {
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args) => "ok";
+      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
@@ -762,8 +762,8 @@ function MakeWithConfig(Config) {
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
-    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
       [
         "nextToken",
         null
@@ -782,7 +782,7 @@ function MakeWithConfig(Config) {
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args) => "ok";
+      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
@@ -942,7 +942,7 @@ function Make($star) {
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
-      let result = await resolver(null, args);
+      let result = await resolver(null, args, null);
       let s = Stdlib_JSON.Decode.string(result);
       if (s !== undefined) {
         return s;
@@ -1317,7 +1317,7 @@ function Make($star) {
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     registerAdminTypes(baseParts.types);
     let queryResolvers = {};
-    queryResolvers[singleQueryField] = async (_root, args) => {
+    queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops === undefined) {
@@ -1326,7 +1326,7 @@ function Make($star) {
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
       return Stdlib_Option.getOr(items[0], null);
     };
-    queryResolvers[listQueryField] = async (_root, _args) => {
+    queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
       return Object.fromEntries([
@@ -1414,11 +1414,11 @@ function Make($star) {
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
     let mutationResolvers = {};
-    mutationResolvers[activateField] = async (_root, args) => await updatePluginStatus(activateField, args, "Disconnected");
-    mutationResolvers[deactivateField] = async (_root, args) => await updatePluginStatus(deactivateField, args, "Inactive");
+    mutationResolvers[activateField] = async (_root, args, _ctx) => await updatePluginStatus(activateField, args, "Disconnected");
+    mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
-        mutationResolvers[field] = async (_root, _args) => "ok";
+        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
         return;
       }
     });
@@ -1447,7 +1447,7 @@ function Make($star) {
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
-      let result = await resolver(null, args);
+      let result = await resolver(null, args, null);
       let s = Stdlib_JSON.Decode.string(result);
       if (s !== undefined) {
         return s;
@@ -1481,8 +1481,8 @@ function Make($star) {
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
-    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
       [
         "nextToken",
         null
@@ -1501,7 +1501,7 @@ function Make($star) {
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args) => "ok";
+      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
@@ -1516,8 +1516,8 @@ function Make($star) {
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
-    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args) => Object.fromEntries([
+    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
       [
         "nextToken",
         null
@@ -1536,7 +1536,7 @@ function Make($star) {
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args) => "ok";
+      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
