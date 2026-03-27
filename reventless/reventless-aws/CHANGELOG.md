@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.24](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.23...@reventlessdev/reventless-aws@3.0.0-alpha.24) (2026-03-27)
+
+* refactor!: migrate Lambda entry points from ReScript to plain ESM ([2c1ea8f](https://github.com/ReventlessDev/reventless-core/commit/2c1ea8f1601e2142690b11f8bb0ffc2fd45c7f51))
+* feat!: flatten DcbSpec module type into direct Plugin.make parameters ([1c0bc57](https://github.com/ReventlessDev/reventless-core/commit/1c0bc576fcd88b92510900c16f5f117e864d9d7f))
+
+### BREAKING CHANGES
+
+* Lambda Layer entry point paths changed from
+*EntryPoint.res.mjs to *EntryPoint.mjs — requires layer rebuild.
+* Plugin.make no longer accepts ~dcbSpec=module(DcbSpec).
+Pass slice arrays directly instead. Empty arrays can be omitted.
+
+
+
 # [3.0.0-alpha.23](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.20...@reventlessdev/reventless-aws@3.0.0-alpha.23) (2026-03-27)
 
 ### Bug Fixes

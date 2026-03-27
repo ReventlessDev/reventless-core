@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@3.0.0-alpha.3...@reventlessdev/reventless-in-memory@3.0.0-alpha.4) (2026-03-27)
+
+* feat!: flatten DcbSpec module type into direct Plugin.make parameters ([1c0bc57](https://github.com/ReventlessDev/reventless-core/commit/1c0bc576fcd88b92510900c16f5f117e864d9d7f))
+
+### BREAKING CHANGES
+
+* Plugin.make no longer accepts ~dcbSpec=module(DcbSpec).
+Pass slice arrays directly instead. Empty arrays can be omitted.
+
+
+
 # [3.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.15...@reventlessdev/reventless-in-memory@3.0.0-alpha.3) (2026-03-27)
 
 ### Bug Fixes
