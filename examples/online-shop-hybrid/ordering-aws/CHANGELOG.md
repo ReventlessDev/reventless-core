@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-ordering-aws@1.0.0-alpha.3...@reventlessdev/online-shop-hybrid-ordering-aws@1.0.0-alpha.6) (2026-03-27)
+
+* feat!: decouple DCB slices from shared event log union type ([2a40e8d](https://github.com/ReventlessDev/reventless-core/commit/2a40e8dd9babfb88440fcaccde6fb667b60e0ba9))
+
+### BREAKING CHANGES
+
+* All DCB slice specs must use `producedEvent`/`consumedEvent`
+instead of `module DcbEventLogSpec`. Plugin `DcbSpec` no longer has `type event`
+or `with type dcbEvent` constraints.
+
+
+
 # [1.0.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-ordering-aws@1.0.0-alpha.3...@reventlessdev/online-shop-hybrid-ordering-aws@1.0.0-alpha.5) (2026-03-26)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-aws

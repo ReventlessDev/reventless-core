@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.11](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-catalog@3.0.0-alpha.8...@reventlessdev/online-shop-aggregates-catalog@3.0.0-alpha.11) (2026-03-27)
+
+* feat!: remove resolverConfig from Behavior module type ([6f54015](https://github.com/ReventlessDev/reventless-core/commit/6f54015e3abc1c5c05472c8f54645723a0f5ed28))
+
+### BREAKING CHANGES
+
+* Behavior.T no longer requires resolverConfig. Remove it
+from all Behavior implementations.
+
+
+
 # [3.0.0-alpha.10](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-catalog@3.0.0-alpha.8...@reventlessdev/online-shop-aggregates-catalog@3.0.0-alpha.10) (2026-03-26)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog

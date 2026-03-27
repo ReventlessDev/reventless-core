@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-aws-sdk@2.2.0-alpha.2...@reventlessdev/rescript-aws-sdk@2.2.0-alpha.5) (2026-03-27)
+
+**Note:** Version bump only for package @reventlessdev/rescript-aws-sdk
+
+
+
+
+
 # [2.2.0-alpha.4](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-aws-sdk@2.2.0-alpha.2...@reventlessdev/rescript-aws-sdk@2.2.0-alpha.4) (2026-03-26)
 
 **Note:** Version bump only for package @reventlessdev/rescript-aws-sdk

@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.13](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.10...@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.13) (2026-03-27)
+
+* feat!: remove resolverConfig from Behavior module type ([6f54015](https://github.com/ReventlessDev/reventless-core/commit/6f54015e3abc1c5c05472c8f54645723a0f5ed28))
+* feat!: decouple DCB slices from shared event log union type ([2a40e8d](https://github.com/ReventlessDev/reventless-core/commit/2a40e8dd9babfb88440fcaccde6fb667b60e0ba9))
+
+### BREAKING CHANGES
+
+* Behavior.T no longer requires resolverConfig. Remove it
+from all Behavior implementations.
+* All DCB slice specs must use `producedEvent`/`consumedEvent`
+instead of `module DcbEventLogSpec`. Plugin `DcbSpec` no longer has `type event`
+or `with type dcbEvent` constraints.
+
+
+
 # [1.0.0-alpha.12](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.10...@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.12) (2026-03-26)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog

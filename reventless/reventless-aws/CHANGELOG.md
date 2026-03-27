@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.23](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.20...@reventlessdev/reventless-aws@3.0.0-alpha.23) (2026-03-27)
+
+### Bug Fixes
+
+* conditionally exclude ID parameter from StateViewSlice GraphQL queries ([43de4b6](https://github.com/ReventlessDev/reventless-core/commit/43de4b667d89235ea03b3e1584070515e10e71de))
+* **reventless-aws:** unwrap topicItem in DCB entry point SQS command routing ([0834056](https://github.com/ReventlessDev/reventless-core/commit/083405640d928503e8a56d5d8c7b326ad86d1313))
+* feat!: remove resolverConfig from Behavior module type ([6f54015](https://github.com/ReventlessDev/reventless-core/commit/6f54015e3abc1c5c05472c8f54645723a0f5ed28))
+* feat!: decouple DCB slices from shared event log union type ([2a40e8d](https://github.com/ReventlessDev/reventless-core/commit/2a40e8dd9babfb88440fcaccde6fb667b60e0ba9))
+
+### BREAKING CHANGES
+
+* Behavior.T no longer requires resolverConfig. Remove it
+from all Behavior implementations.
+* All DCB slice specs must use `producedEvent`/`consumedEvent`
+instead of `module DcbEventLogSpec`. Plugin `DcbSpec` no longer has `type event`
+or `with type dcbEvent` constraints.
+
+
+
 # [3.0.0-alpha.22](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.20...@reventlessdev/reventless-aws@3.0.0-alpha.22) (2026-03-26)
 
 ### Bug Fixes

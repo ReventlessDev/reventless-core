@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-pulumi-aws",
-  "version": "2.4.0-alpha.4",
+  "version": "2.4.0-alpha.5",
   "description": "ReScript bindings for @pulumi/aws",
   "license": "MIT",
   "scripts": {
@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@pulumi/aws": "~7.19.0",
-    "@reventlessdev/rescript-aws-sdk": "^2.2.0-alpha.4",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.4"
+    "@reventlessdev/rescript-aws-sdk": "^2.2.0-alpha.5",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.5"
   },
   "devDependencies": {
     "rescript": "^12.2.0",

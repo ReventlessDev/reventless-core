@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.15...@reventlessdev/reventless-in-memory@3.0.0-alpha.3) (2026-03-27)
+
+### Bug Fixes
+
+* conditionally exclude ID parameter from StateViewSlice GraphQL queries ([43de4b6](https://github.com/ReventlessDev/reventless-core/commit/43de4b667d89235ea03b3e1584070515e10e71de))
+* feat!: remove resolverConfig from Behavior module type ([6f54015](https://github.com/ReventlessDev/reventless-core/commit/6f54015e3abc1c5c05472c8f54645723a0f5ed28))
+* feat!: decouple DCB slices from shared event log union type ([2a40e8d](https://github.com/ReventlessDev/reventless-core/commit/2a40e8dd9babfb88440fcaccde6fb667b60e0ba9))
+* feat!: add structured Identity type and expand RequestContext with identity and claims ([a2396d4](https://github.com/ReventlessDev/reventless-core/commit/a2396d4dd350bb07924d45b64b99b3dc969ced89))
+
+### BREAKING CHANGES
+
+* Behavior.T no longer requires resolverConfig. Remove it
+from all Behavior implementations.
+* All DCB slice specs must use `producedEvent`/`consumedEvent`
+instead of `module DcbEventLogSpec`. Plugin `DcbSpec` no longer has `type event`
+or `with type dcbEvent` constraints.
+* RequestContext.t now requires identity and claims fields.
+Use RequestContext.test() for test contexts.
+
+
+
 # [3.0.0-alpha.2](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-in-memory@1.0.0-alpha.15...@reventlessdev/reventless-in-memory@3.0.0-alpha.2) (2026-03-26)
 
 ### Bug Fixes

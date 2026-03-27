@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.4...@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.7) (2026-03-27)
+
+* feat!: decouple DCB slices from shared event log union type ([2a40e8d](https://github.com/ReventlessDev/reventless-core/commit/2a40e8dd9babfb88440fcaccde6fb667b60e0ba9))
+* feat!: add structured Identity type and expand RequestContext with identity and claims ([a2396d4](https://github.com/ReventlessDev/reventless-core/commit/a2396d4dd350bb07924d45b64b99b3dc969ced89))
+
+### BREAKING CHANGES
+
+* All DCB slice specs must use `producedEvent`/`consumedEvent`
+instead of `module DcbEventLogSpec`. Plugin `DcbSpec` no longer has `type event`
+or `with type dcbEvent` constraints.
+* RequestContext.t now requires identity and claims fields.
+Use RequestContext.test() for test contexts.
+
+
+
 # [1.0.0-alpha.6](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.4...@reventlessdev/rescript-graphql-yoga@1.0.0-alpha.6) (2026-03-26)
 
 * feat!: add structured Identity type and expand RequestContext with identity and claims ([a2396d4](https://github.com/ReventlessDev/reventless-core/commit/a2396d4dd350bb07924d45b64b99b3dc969ced89))
