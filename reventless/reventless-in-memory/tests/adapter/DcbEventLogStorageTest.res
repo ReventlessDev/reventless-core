@@ -9,7 +9,12 @@ let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}
 
 let makeStorage = () =>
-  DcbEventLogStorage_InMemory.make(~name="test-dcb", ~indexes=[], ~opts)
+  DcbEventLogStorage_InMemory.make(
+    ~name="test-dcb",
+    ~indexes=[],
+    ~partitionTag={Reventless.DcbTag.key: "itemId"},
+    ~opts,
+  )
 
 let makeEvent = (~eventType, ~data, ~tags=[]): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
   eventType,

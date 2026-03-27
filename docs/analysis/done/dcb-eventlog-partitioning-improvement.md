@@ -1,8 +1,8 @@
 # DCB EventLog Partitioning Improvement Analysis
 
-> **Status: Not implemented.** Multi-clause DCB queries were addressed by `docs/plans/done/multi-clause-dcb-queries-plan.md`, but the storage-layer partitioning described here (`partitionTag` annotation, primary-tag partition key, `DcbEventLogStorage_DynamoDb_V2`) has not been built. The DCB EventLog still uses a single `"dcb"` partition key.
+> **Status: Implemented (2026-03-28).** Multi-clause DCB queries were addressed by `docs/plans/done/multi-clause-dcb-queries-plan.md`. Primary-tag partitioning was implemented as an in-place change (no V2 module) — see `docs/plans/done/dcb-eventlog-primary-tag-partitioning.md`. The partition key is now `"<tagKey>:<tagValue>"` derived from each event's tags.
 
-**Date**: 2026-03-06
+**Date**: 2026-03-06 (reviewed 2026-03-27)
 **Scope**: Analysis of the current single-partition ("dcb") design, its limitations, and alternative partitioning strategies.
 
 ## 1. Current Design
@@ -28,12 +28,12 @@ All queries — whether for a single entity ("itemId=item-123") or a broader fil
 
 ### What the StateChangeSlice Actually Queries
 
-The critical consumer is `StateChangeSlice_Callback.res` (lines 16-83). On every command, it:
+The critical consumer is `StateChangeSlice_Callback.res` (lines 34-103). On every command, it:
 
-1. Extracts tags from the incoming command (e.g., `[{key: "itemId", value: "item-123"}]`)
-2. Builds a query: `[{eventTypes: [all event types in the log], tags: [command tags]}]`
-3. Reads all events matching the query to build a decision model
-4. Decides on new events, then conditionally appends with: `{query, after: headPosition}`
+1. Calls `DcbTag.buildQueryFromCommand` to automatically construct a query from the command's tagged fields — scalar tags are AND'd into one clause, tagged array fields produce multiple OR clauses (one per element)
+2. Streams all events matching the query via `readStream` and folds them into the decision model using `Spec.evolve`
+3. Calls `Spec.decide` to produce new events, then conditionally appends with: `{query, after: headPosition}`
+4. On conflict (another writer appended matching events), retries from step 1 (up to 3 retries)
 
 **Key observation**: The query is always scoped to the command's tag values. A command for item "item-123" only needs events tagged with `itemId=item-123`. It does not need to read events from other items. The "global" partition is never actually queried globally — it is always filtered through a GSI.
 
@@ -392,7 +392,7 @@ Stream merge (lazy):
   Memory usage: O(N) where N = number of partitions (one page buffer each).
 ```
 
-The runtime already implements this pattern in `mergeSortedEvents` (lines 343-372 of `DcbEventLogStorage_DynamoDb_Runtime.res`), using bounded queues and `Stream.paginateEffect`. It would need to be adapted from merging GSI query streams to merging partition query streams, but the core algorithm is identical.
+The runtime already implements this pattern in `mergeSortedEvents` (lines 344-373 of `DcbEventLogStorage_DynamoDb_Runtime.res`), using bounded queues and `Stream.paginateEffect`. It would need to be adapted from merging GSI query streams to merging partition query streams, but the core algorithm is identical.
 
 ##### Performance Characteristics of Scatter-Gather
 
@@ -517,11 +517,11 @@ Primary tag partitioning **solves the Cosmos DB 20GB limit** identified in `azur
 
 ## 10. Relationship to Multi-Clause DCB Queries
 
-The [Multi-Clause DCB Queries plan](../plans/multi-clause-dcb-queries-plan.md) addresses a complementary concern: how `StateChangeSlice_Callback` **constructs queries** for cross-entity decision models. This analysis addresses how the storage layer **executes** those queries. The two concerns interact directly and should be considered together.
+The [Multi-Clause DCB Queries plan](../plans/done/multi-clause-dcb-queries-plan.md) (now implemented) addressed a complementary concern: how `StateChangeSlice_Callback` **constructs queries** for cross-entity decision models. This analysis addresses how the storage layer **executes** those queries. The two concerns interact directly and should be considered together.
 
 ### How They Connect
 
-The multi-clause implementation uses automatic schema-driven query construction via `DcbTag.buildQueryFromCommand`. The query mode is determined by inspecting the command schema at runtime:
+The multi-clause implementation (now complete) uses automatic schema-driven query construction via `DcbTag.buildQueryFromCommand`. The query mode is determined by inspecting the command schema at runtime:
 
 - **Scalar tagged fields only** (e.g., `itemId: @s.matches(DcbTag.string) string`): All tags AND'd in one clause — targets one entity
 - **Tagged array fields present** (e.g., `productId: array<@s.matches(DcbTag.string) string>`): Each tag becomes a separate OR clause — targets multiple entities
@@ -559,17 +559,17 @@ Section 6 describes how per-entity partitions enable atomic DynamoDB transaction
 
 ### Implementation Ordering
 
-These two changes are **independent at the spec/core level** but interact at the **adapter level**:
+Multi-clause queries have already been implemented on the current single-partition storage. The remaining work is primary-tag partitioning at the adapter level:
 
-1. **Multi-clause queries can be implemented first** on the current single-partition storage. All clauses hit GSIs on the same partition — no adapter changes needed beyond the query construction in `StateChangeSlice_Callback`.
-2. **Primary-tag partitioning can be implemented second**. The adapter's `read` function already receives `array<queryItem>` — it just needs to route each item to the correct partition instead of the fixed `"dcb"` partition.
-3. When both are in place, cross-entity queries automatically benefit from distributed partition reads — no additional integration work needed.
+1. ~~**Multi-clause queries can be implemented first**~~ — **Done.** `DcbTag.buildQueryFromCommand` and `StateChangeSlice_Callback` now handle automatic schema-driven query construction. All clauses hit GSIs on the same `"dcb"` partition.
+2. **Primary-tag partitioning is the next step**. The adapter's `read` function already receives `array<queryItem>` — it just needs to route each item to the correct partition instead of the fixed `"dcb"` partition.
+3. When partitioning is in place, cross-entity queries automatically benefit from distributed partition reads — no additional integration work needed.
 
-This ordering means the hybrid example (`online-shop-hybrid`) can implement cross-entity PlaceOrder validation immediately using multi-clause queries on the current single-partition storage, and later benefit from improved scalability when primary-tag partitioning ships.
+The hybrid example (`online-shop-hybrid`) already uses multi-clause queries on the current single-partition storage, and will benefit from improved scalability when primary-tag partitioning ships.
 
 ### Summary
 
-| Concern | Multi-Clause Queries | Partitioning Improvement |
+| Concern | Multi-Clause Queries (implemented) | Partitioning Improvement (not yet implemented) |
 |---------|---------------------|-------------------------|
 | **Layer** | Spec + Callback (query construction) | Adapter (query execution) |
 | **What changes** | `DcbTag.buildQueryFromCommand` auto-detects tagged arrays; Callback splits tags into OR clauses | Adapter routes queries to entity-specific partitions |

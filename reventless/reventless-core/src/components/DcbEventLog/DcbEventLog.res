@@ -33,5 +33,10 @@ let toResolvedOutputs = (
 module type T = {
   type component = component
 
-  let make: (~name: string, ~indexes: array<string>=?, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (
+    ~name: string,
+    ~indexes: array<string>=?,
+    ~partitionTag: Reventless.DcbTag.partitionTag,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
 }

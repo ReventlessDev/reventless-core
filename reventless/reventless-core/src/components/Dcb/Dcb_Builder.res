@@ -81,9 +81,10 @@ module Make = (
         }
 
         // Extract tagged fields from all produced event schemas for DynamoDB GSI creation
+        let producedSchemas = produced->Array.map(((_, schema)) => schema)
         let indexes =
-          produced
-          ->Array.flatMap(((_, schema)) => Reventless.DcbTag.extractTaggedFields(schema))
+          producedSchemas
+          ->Array.flatMap(schema => Reventless.DcbTag.extractTaggedFields(schema))
           ->(arr => {
             let seen = Set.make()
             arr->Array.filter(f => {
@@ -97,11 +98,13 @@ module Make = (
           })
           ->Array.map(tagKey => `tag_${tagKey}`)
 
+        let partitionTag = Reventless.DcbTag.derivePartitionTag(producedSchemas)
+
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,
           DcbEventTopicPublisher,
         )
-        let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~opts)
+        let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~partitionTag, ~opts)
 
         // Notify platform hook that DCB EventLog was created (AWS extracts table name)
         Plugin_Helpers.onDcbEventLogCreated.contents->Option.forEach(hook =>

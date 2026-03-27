@@ -28,7 +28,9 @@ TestRunner$ReventlessInMemory.setup();
 
 let OrderingEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let eventLog = OrderingEventLogMaker.make("Ordering", undefined, undefined);
+let eventLog = OrderingEventLogMaker.make("Ordering", undefined, {
+  key: "orderId"
+}, undefined);
 
 let SyncCatalogProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: SyncCatalogProduct$OrderingPlugin.name,

@@ -271,7 +271,7 @@ let decide = (state, command) =>
 
 Note: `consumedEvent` is a payload-less `| ProductAdded` — it only needs the TAG to know the event happened. `producedEvent` carries the full payload. The framework validates at build time that every `consumedEvent` TAG has a matching producer.
 
-Fields marked `@s.matches(DcbTag.string)` become DCB tags — the event log is queried by these values to build the decision model.
+Fields marked `@s.matches(DcbTag.string)` become DCB tags — the event log is queried by these values to build the decision model. Each event's first tag is also used as the DynamoDB partition key (see [Event Log Partitioning](#event-log-partitioning) below).
 
 ### 2. Define state view slice specs
 
@@ -374,7 +374,8 @@ When DCB is configured, `Dcb_Builder.Make.construct` (invoked by `Plugin_Builder
 
 1. **Validates event compatibility** — `DcbValidation.validateProducedAndConsumed` checks that every consumed event TAG has a matching producer, payloads are equivalent across producers, and consumed fields are subsets of produced fields
 2. **Extracts tagged fields** from all slices' schemas to determine DynamoDB GSI names
-3. **Creates one `DcbEventLog`** using the plugin name and extracted indexes
+3. **Derives the partition tag** via `DcbTag.derivePartitionTag` — auto-selects when unambiguous, requires `DcbTag.partition` annotation when a variant has multiple tags
+4. **Creates one `DcbEventLog`** using the plugin name, extracted indexes, and partition tag
 4. **Creates one `DcbCommandTopic`** — typed as `command = JSON.t` (accepts all JSON)
 5. **Constructs each `StateChangeSlice`** — passes shared resources; each slice registers its JSON handler in the global registry
 6. **Constructs each `StateViewSlice`** — each slice gets its own QueryDb and subscribes to DcbEventLog events
@@ -406,8 +407,9 @@ switch Reventless.DcbValidation.validateProducedAndConsumed(~produced, ~consumed
 }
 
 // 2-4. Create shared resources
+let partitionTag = Reventless.DcbTag.derivePartitionTag(producedSchemas)
 module DcbEventLogMaker = DcbEventLog_Builder.Make(DcbEventLogStorage, DcbEventTopicPublisher)
-let dcbEventLog = DcbEventLogMaker.make(~name, ~indexes, ~opts)
+let dcbEventLog = DcbEventLogMaker.make(~name, ~indexes, ~partitionTag, ~opts)
 
 module DcbCommandTopicMaker = CommandTopic_Builder.Make(DcbCommandTopicSpec, DcbCommandTopicChannel)
 let dcbCommandTopic = DcbCommandTopicMaker.make(~name=`${childName}-dcb-command-topic`, ~opts)
@@ -605,6 +607,47 @@ let dcbRuntimeSetup = () =>
 // stored as: Some(dcbRuntimeSetup)
 // used later as: dcbRuntimeOpt->Option.forEach(setup => setup())
 ```
+
+## Event Log Partitioning
+
+The DCB EventLog uses **primary-tag partitioning** — each event's tag determines its DynamoDB partition key. Instead of a single `id="dcb"` partition for all events, the partition key is `"<tagKey>:<tagValue>"` (e.g., `"productId:prod-1"`, `"categoryId:cat-1"`).
+
+This distributes events across DynamoDB partitions by entity, eliminating the single-partition bottleneck and enabling per-entity queries via direct key lookups instead of GSI queries.
+
+### How partitioning works
+
+**Write path**: Each event's first tag determines its partition key. A `ProductAdded({productId: "p1", ...})` event goes to partition `productId:p1`. A `CategoryAdded({categoryId: "c1", ...})` event goes to partition `categoryId:c1`.
+
+**Read path**: Each query clause routes to the partition matching its tag. A query for `{tags: [{key: "productId", value: "p1"}]}` does a direct partition key lookup on `productId:p1` — no GSI needed.
+
+**Multi-clause queries**: Cross-entity queries (e.g., PlaceOrder referencing multiple products) dispatch each clause to its target partition in parallel, then merge results using the existing k-way merge.
+
+### Partition tag derivation
+
+At build time, `Dcb_Builder` calls `DcbTag.derivePartitionTag` on all produced event schemas. The rules are:
+
+| Scenario | Behavior |
+|----------|----------|
+| **All events have one tag field each** (even if different names) | Auto-selected — each event uses its own tag. Multi-entity DCB logs work naturally. |
+| **Any single event variant has multiple tag fields** | Requires explicit `@s.matches(DcbTag.partition)` annotation on one field. |
+| **Only one tag field across all schemas** | Auto-selected — no annotation needed. |
+
+### `DcbTag.partition` annotation
+
+When a single event variant has multiple tagged fields, annotate one with `DcbTag.partition` to designate it as the partition key:
+
+```rescript
+@schema
+type producedEvent =
+  | OrderPlaced({
+      orderId: @s.matches(DcbTag.partition) string,
+      customerId: @s.matches(DcbTag.string) string,
+    })
+```
+
+Both fields remain DCB tags (used for query filtering), but `orderId` determines the partition key. Events without the designated partition tag fall back to their first tag.
+
+For most DCB specs — where each event variant has exactly one tagged field — no annotation is needed.
 
 ## Open Issues
 

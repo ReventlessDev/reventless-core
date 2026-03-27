@@ -8,7 +8,9 @@ TestRunner$ReventlessInMemory.setup();
 let opts = {};
 
 function makeStorage() {
-  return DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+  return DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], {
+    key: "itemId"
+  }, opts);
 }
 
 function makeEvent(eventType, data, tagsOpt) {
@@ -23,7 +25,7 @@ function makeEvent(eventType, data, tagsOpt) {
 describe("DcbEventLogStorage_InMemory", () => {
   describe("append", () => {
     test("stores events and returns incrementing position", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       let result1 = await ops.append([{
@@ -47,7 +49,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       });
     });
     test("appending multiple events at once returns position of last event", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       let tags$1 = [];
@@ -71,7 +73,7 @@ describe("DcbEventLogStorage_InMemory", () => {
   });
   describe("read", () => {
     test("empty query returns all events", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       let tags$1 = [];
@@ -91,7 +93,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       expect(result.events.length).toBe(2);
     });
     test("filters by eventType", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       let tags$1 = [];
@@ -121,7 +123,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       expect(firstEvent.eventType).toBe("Created");
     });
     test("filters by tags", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       await ops.append([
         makeEvent("Evt", null, [{
@@ -141,7 +143,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       expect(firstEvent.tags.length).toBe(1);
     });
     test("after parameter skips events at or before that position", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       let tags$1 = [];
@@ -171,7 +173,7 @@ describe("DcbEventLogStorage_InMemory", () => {
   });
   describe("headPosition", () => {
     test("equals the position of the last appended event", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       let tags$1 = [];
@@ -191,7 +193,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       expect(result.headPosition).toEqual("2");
     });
     test("headPosition is absent when no events have been stored", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let result = await ops.read([], undefined);
       expect(result.headPosition).toEqual(undefined);
@@ -199,7 +201,7 @@ describe("DcbEventLogStorage_InMemory", () => {
   });
   describe("conditional append", () => {
     test("append with matching condition query returns Error (conflict)", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       await ops.append([{
@@ -224,7 +226,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       expect(tmp).toBe(true);
     });
     test("append with condition that matches no events succeeds", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       await ops.append([{
@@ -250,7 +252,7 @@ describe("DcbEventLogStorage_InMemory", () => {
       });
     });
     test("condition with after only checks events after that position", async () => {
-      let storage = DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], opts);
+      let storage = makeStorage();
       let ops = await TestRunner$ReventlessInMemory.resolve(storage.operations);
       let tags = [];
       await ops.append([{

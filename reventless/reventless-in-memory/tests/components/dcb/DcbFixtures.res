@@ -72,7 +72,7 @@ let _ = TestRunner.setup()
 // ─────────────────────────────────────────────────────────────
 
 module ItemEventLogMaker = DcbEventLog_Builder.Make(Bus)
-let eventLog = ItemEventLogMaker.make(~name="ItemEventLog")
+let eventLog = ItemEventLogMaker.make(~name="ItemEventLog", ~partitionTag={Reventless.DcbTag.key: "id"})
 
 // ─────────────────────────────────────────────────────────────
 // Build StateChangeSlice

@@ -19,6 +19,12 @@ annotated fields in an event's schema. The `key` is the field name and the
 type tag = {key: string, value: string}
 
 /**
+Identifies which tag field is used as the storage partition key.
+The partition key determines how events are distributed across DynamoDB partitions.
+*/
+type partitionTag = {key: string}
+
+/**
 A single clause in a DCB event query.
 
 Combines an optional list of event type names with optional tags.
@@ -82,6 +88,9 @@ type appendCondition = {
 /** Internal sury metadata ID used to mark DCB-tagged schema fields. */
 let dcbTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name="tag")
 
+/** Internal sury metadata ID used to mark the partition tag field. */
+let dcbPartitionTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name="partitionTag")
+
 /**
 A sury string schema annotated as a DCB tag field.
 
@@ -111,6 +120,25 @@ Use with `@s.matches(DcbTag.int)` on integer fields that should be extracted as 
 */
 let int: S.t<int> = S.int->S.Metadata.set(~id=dcbTagId, true)
 
+/**
+A sury string schema annotated as both a DCB tag field AND the partition key.
+
+Use with `@s.matches(DcbTag.partition)` on the field whose value should become
+the DynamoDB partition key. Required when a DCB spec has multiple tagged fields;
+optional (auto-selected) when only one tagged field exists.
+
+@example
+```rescript
+@schema type event =
+  | OrderPlaced({
+      orderId: @s.matches(DcbTag.partition) string,
+      customerId: @s.matches(DcbTag.string) string,
+    })
+```
+*/
+let partition: S.t<string> =
+  S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbPartitionTagId, true)
+
 // --- Tag extraction from sury schemas ---
 
 external toUnknownSchema: S.t<'a> => S.t<unknown> = "%identity"
@@ -128,6 +156,10 @@ let isTaggedArray = (fieldSchema: S.t<unknown>) =>
   | Array({additionalItems: Schema(itemSchema)}) => isTagged(itemSchema)
   | _ => false
   }
+
+/** Returns `true` if the schema was annotated with `DcbTag.partition`. */
+let isPartitionTag = (fieldSchema: S.t<unknown>) =>
+  S.Metadata.get(fieldSchema, ~id=dcbPartitionTagId)->Option.isSome
 
 /** Converts a JSON value to its string representation for use as a tag value. */
 let jsonValueToString = json =>
@@ -475,3 +507,165 @@ let extractTaggedFields = (schema: S.t<'event>): array<string> => {
   | _ => []
   }
 }
+
+// --- Partition tag derivation ---
+
+/**
+Extracts field names annotated with `@s.matches(DcbTag.partition)` from an event schema.
+*/
+let extractPartitionTagFields = (schema: S.t<'event>): array<string> => {
+  switch schema->toUnknownSchema {
+  | Union({anyOf}) =>
+    let allFields = anyOf->Array.flatMap(variantSchema =>
+      switch variantSchema {
+      | Object({properties}) =>
+        properties
+        ->Dict.toArray
+        ->Array.filterMap(((fieldName, fieldSchema)) =>
+          if isPartitionTag(fieldSchema) {
+            Some(fieldName)
+          } else {
+            None
+          }
+        )
+      | _ => []
+      }
+    )
+    let fieldSet = Set.make()
+    allFields->Array.forEach(field => fieldSet->Set.add(field))
+    Array.fromIterator(fieldSet->Set.values)
+
+  | Object({properties}) =>
+    properties
+    ->Dict.toArray
+    ->Array.filterMap(((fieldName, fieldSchema)) =>
+      if isPartitionTag(fieldSchema) {
+        Some(fieldName)
+      } else {
+        None
+      }
+    )
+
+  | _ => []
+  }
+}
+
+/**
+Checks whether any single variant in a schema has multiple tagged fields.
+If so, a partition tag annotation is needed to disambiguate.
+*/
+let hasMultiTagVariant = (schema: S.t<unknown>): bool =>
+  switch schema {
+  | Union({anyOf}) =>
+    anyOf->Array.some(variantSchema =>
+      switch variantSchema {
+      | Object({properties}) => {
+          let tagCount =
+            properties
+            ->Dict.toArray
+            ->Array.filter(((_, fieldSchema)) => isTagged(fieldSchema))
+            ->Array.length
+          tagCount > 1
+        }
+      | _ => false
+      }
+    )
+  | Object({properties}) => {
+      let tagCount =
+        properties
+        ->Dict.toArray
+        ->Array.filter(((_, fieldSchema)) => isTagged(fieldSchema))
+        ->Array.length
+      tagCount > 1
+    }
+  | _ => false
+  }
+
+/**
+Derives the partition tag from an array of event schemas.
+
+Rules:
+- If only one tagged field exists across all schemas, it is automatically selected.
+- If multiple tagged fields exist but each event variant has at most one tagged
+  field (multi-entity DCB), the first field alphabetically is selected. The
+  runtime will use each event's own tag for the partition key.
+- If any event variant has multiple tagged fields and exactly one is annotated
+  with `DcbTag.partition`, that one is selected.
+- If any event variant has multiple tagged fields and none (or multiple) are
+  annotated with `DcbTag.partition`, throws an error.
+*/
+let derivePartitionTag = (schemas: array<S.t<unknown>>): partitionTag => {
+  let allTaggedFields = {
+    let seen = Set.make()
+    schemas->Array.flatMap(schema => extractTaggedFields(schema))->Array.filter(f => {
+      if seen->Set.has(f) {
+        false
+      } else {
+        seen->Set.add(f)
+        true
+      }
+    })
+  }
+
+  switch allTaggedFields {
+  | [] => JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag")
+  | [singleField] => {key: singleField}
+  | multipleFields => {
+      // Check if any individual variant has multiple tagged fields
+      let needsExplicitPartition = schemas->Array.some(schema => hasMultiTagVariant(schema))
+
+      if needsExplicitPartition {
+        // Need explicit DcbTag.partition annotation
+        let allPartitionFields = {
+          let seen = Set.make()
+          schemas->Array.flatMap(schema => extractPartitionTagFields(schema))->Array.filter(f => {
+            if seen->Set.has(f) {
+              false
+            } else {
+              seen->Set.add(f)
+              true
+            }
+          })
+        }
+        switch allPartitionFields {
+        | [singlePartition] => {key: singlePartition}
+        | [] =>
+          JsError.throwWithMessage(
+            `DCB spec has variants with multiple tagged fields (${multipleFields->Array.join(", ")}) but none is annotated with DcbTag.partition — mark one field as the partition key`,
+          )
+        | multiplePartitions =>
+          JsError.throwWithMessage(
+            `DCB spec has multiple fields annotated with DcbTag.partition (${multiplePartitions->Array.join(", ")}) — only one is allowed`,
+          )
+        }
+      } else {
+        // Each variant has at most 1 tag — multi-entity DCB log.
+        // Pick the first field alphabetically as the nominal partition tag.
+        // The runtime will use each event's own tag for the actual partition key.
+        let sorted = multipleFields->Array.toSorted((a, b) => String.compare(a, b))
+        {key: sorted->Array.getUnsafe(0)}
+      }
+    }
+  }
+}
+
+/**
+Extracts the partition tag value from a query.
+Returns the value of the first tag matching the partition tag key, or None if not found.
+*/
+let getPartitionTagValue = (query: query, pt: partitionTag): option<string> =>
+  query
+  ->Array.filterMap(queryItem =>
+    switch queryItem.tags {
+    | Some(tags) =>
+      tags->Array.findMap(tag =>
+        if tag.key == pt.key {
+          Some(tag.value)
+        } else {
+          None
+        }
+      )
+    | None => None
+    }
+  )
+  ->Array.get(0)

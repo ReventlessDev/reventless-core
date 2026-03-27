@@ -4,14 +4,19 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
 let dcbTagId = S.Metadata.Id.make("dcb", "tag");
 
+let dcbPartitionTagId = S.Metadata.Id.make("dcb", "partitionTag");
+
 let string = S.Metadata.set(S.string, dcbTagId, true);
 
 let int = S.Metadata.set(S.int, dcbTagId, true);
+
+let partition = S.Metadata.set(S.Metadata.set(S.string, dcbTagId, true), dcbPartitionTagId, true);
 
 function isTagged(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbTagId));
@@ -27,6 +32,10 @@ function isTaggedArray(fieldSchema) {
   } else {
     return isTagged(itemSchema);
   }
+}
+
+function isPartitionTag(fieldSchema) {
+  return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbPartitionTagId));
 }
 
 function jsonValueToString(json) {
@@ -294,12 +303,126 @@ function extractTaggedFields(schema) {
   }
 }
 
+function extractPartitionTagFields(schema) {
+  switch (schema.type) {
+    case "object" :
+      return Stdlib_Array.filterMap(Object.entries(schema.properties), param => {
+        if (isPartitionTag(param[1])) {
+          return param[0];
+        }
+      });
+    case "union" :
+      let allFields = schema.anyOf.flatMap(variantSchema => {
+        if (variantSchema.type === "object") {
+          return Stdlib_Array.filterMap(Object.entries(variantSchema.properties), param => {
+            if (isPartitionTag(param[1])) {
+              return param[0];
+            }
+          });
+        } else {
+          return [];
+        }
+      });
+      let fieldSet = new Set();
+      allFields.forEach(field => {
+        fieldSet.add(field);
+      });
+      return Array.from(fieldSet.values());
+    default:
+      return [];
+  }
+}
+
+function hasMultiTagVariant(schema) {
+  switch (schema.type) {
+    case "object" :
+      let tagCount = Object.entries(schema.properties).filter(param => isTagged(param[1])).length;
+      return tagCount > 1;
+    case "union" :
+      return schema.anyOf.some(variantSchema => {
+        if (variantSchema.type !== "object") {
+          return false;
+        }
+        let tagCount = Object.entries(variantSchema.properties).filter(param => isTagged(param[1])).length;
+        return tagCount > 1;
+      });
+    default:
+      return false;
+  }
+}
+
+function derivePartitionTag(schemas) {
+  let seen = new Set();
+  let allTaggedFields = schemas.flatMap(extractTaggedFields).filter(f => {
+    if (seen.has(f)) {
+      return false;
+    } else {
+      seen.add(f);
+      return true;
+    }
+  });
+  let len = allTaggedFields.length;
+  if (len !== 1) {
+    if (len === 0) {
+      return Stdlib_JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag");
+    }
+    let needsExplicitPartition = schemas.some(hasMultiTagVariant);
+    if (needsExplicitPartition) {
+      let seen$1 = new Set();
+      let allPartitionFields = schemas.flatMap(extractPartitionTagFields).filter(f => {
+        if (seen$1.has(f)) {
+          return false;
+        } else {
+          seen$1.add(f);
+          return true;
+        }
+      });
+      let len$1 = allPartitionFields.length;
+      if (len$1 !== 1) {
+        if (len$1 !== 0) {
+          return Stdlib_JsError.throwWithMessage(`DCB spec has multiple fields annotated with DcbTag.partition (` + allPartitionFields.join(", ") + `) — only one is allowed`);
+        } else {
+          return Stdlib_JsError.throwWithMessage(`DCB spec has variants with multiple tagged fields (` + allTaggedFields.join(", ") + `) but none is annotated with DcbTag.partition — mark one field as the partition key`);
+        }
+      }
+      let singlePartition = allPartitionFields[0];
+      return {
+        key: singlePartition
+      };
+    }
+    let sorted = allTaggedFields.toSorted(Primitive_string.compare);
+    return {
+      key: sorted[0]
+    };
+  }
+  let singleField = allTaggedFields[0];
+  return {
+    key: singleField
+  };
+}
+
+function getPartitionTagValue(query, pt) {
+  return Stdlib_Array.filterMap(query, queryItem => {
+      let tags = queryItem.tags;
+      if (tags !== undefined) {
+        return Stdlib_Array.findMap(tags, tag => {
+          if (tag.key === pt.key) {
+            return tag.value;
+          }
+        });
+      }
+    })[0];
+}
+
 export {
   dcbTagId,
+  dcbPartitionTagId,
   string,
   int,
+  partition,
   isTagged,
   isTaggedArray,
+  isPartitionTag,
   jsonValueToString,
   extractTagsFromProperties,
   extractTagsFromJson,
@@ -311,5 +434,9 @@ export {
   hasTaggedArrayFields,
   buildQueryFromCommand,
   extractTaggedFields,
+  extractPartitionTagFields,
+  hasMultiTagVariant,
+  derivePartitionTag,
+  getPartitionTagValue,
 }
 /* dcbTagId Not a pure module */

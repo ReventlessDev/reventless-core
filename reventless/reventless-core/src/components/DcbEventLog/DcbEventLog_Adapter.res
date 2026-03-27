@@ -38,7 +38,8 @@ type storage = {
 
 type storageMaker = (
   ~name: string,
-  ~indexes: array<string>, // GSI names (e.g., ["tag_courseId", "tag_composite"])
+  ~indexes: array<string>,
+  ~partitionTag: Reventless.DcbTag.partitionTag,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => storage
 

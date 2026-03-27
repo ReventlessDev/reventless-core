@@ -77,7 +77,8 @@ function Make(DcbEventLogStorage) {
           console.error(`DCB validation error (` + err.sliceName + `): ` + err.message);
         });
       }
-      let arr = produced.flatMap(param => DcbTag$Reventless.extractTaggedFields(param[1]));
+      let producedSchemas = produced.map(param => param[1]);
+      let arr = producedSchemas.flatMap(DcbTag$Reventless.extractTaggedFields);
       let seen = new Set();
       let indexes = arr.filter(f => {
         if (seen.has(f)) {
@@ -87,8 +88,9 @@ function Make(DcbEventLogStorage) {
           return true;
         }
       }).map(tagKey => `tag_` + tagKey);
+      let partitionTag = DcbTag$Reventless.derivePartitionTag(producedSchemas);
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
-      let dcbEventLog = DcbEventLog.make(name, indexes, opts);
+      let dcbEventLog = DcbEventLog.make(name, indexes, partitionTag, opts);
       Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents, hook => hook(dcbEventLog));
       let DcbCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,

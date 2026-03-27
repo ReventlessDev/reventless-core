@@ -345,7 +345,7 @@ module MyDcbSpec = {
 
 - [StateViewSlice Component Reference](../components/stateviewslice.md)
 - [StateChangeSlice Usage](./statechangeslice-usage.md)
-- [DCB Plugin Architecture](../../docs/dcb-plugin-usage.md)
+- [DCB Plugin Architecture](../../docs/dcb-usage.md)
 - [DcbEventLog](../components/dcbeventlog.md)
 - [QueryDb](../components/querydb.md)
 - [ReadModel](../components/readmodel.md)

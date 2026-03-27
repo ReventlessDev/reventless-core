@@ -27,13 +27,31 @@ let compositeTagKey = (tags: array<Reventless.DcbTag.tag>) =>
   ->Array.map(t => `${t.key}:${t.value}`)
   ->Array.join("#")
 
+// --- Partition Key Derivation ---
+
+let derivePartitionKey = (
+  partitionTag: Reventless.DcbTag.partitionTag,
+  tags: array<Reventless.DcbTag.tag>,
+): string => {
+  // Try the designated partition tag first; fall back to the event's first tag
+  // (multi-entity DCB logs have different tag fields per entity type)
+  let tag = switch tags->Array.find(t => t.key == partitionTag.key) {
+  | Some(t) => t
+  | None => tags->Array.getUnsafe(0)
+  }
+  `${tag.key}:${tag.value}`
+}
+
 // --- Item Conversion ---
 
-let toItem = (position: string, event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent): JSON.t => {
+let toItem = (
+  position: string,
+  event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent,
+  partitionTag: Reventless.DcbTag.partitionTag,
+): JSON.t => {
   // Create base item
   let item = Dict.make()
-  // Use "id" with value "dcb" for single partition (required by Util_DynamoDb table structure)
-  item->Dict.set("id", "dcb"->JSON.Encode.string)
+  item->Dict.set("id", derivePartitionKey(partitionTag, event.tags)->JSON.Encode.string)
   item->Dict.set("position", position->JSON.Encode.string)
   item->Dict.set("event", event.eventType->JSON.Encode.string)
   item->Dict.set("data", event.data)
@@ -229,24 +247,55 @@ let scanWithFilter = async (
   await scanStream(scanParams)->Stream.runCollect->Effect.runPromise
 }
 
+// --- Partition Key Query (direct table query, no GSI) ---
+
+let queryByPartitionKey = async (
+  table: resolvedTable,
+  partitionKey: string,
+  ~after: option<string>=?,
+) => {
+  let keyConditionExpression = "id = :pk"
+  let expressionAttributeValues = Dict.fromArray([
+    (":pk", partitionKey->JSON.Encode.string),
+  ])
+
+  let (filterExpression, expressionAttributeNames) = switch after {
+  | None => (None, None)
+  | Some(afterPos) => {
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+    }
+  }
+
+  let queryParams: QueryCommand.input = {
+    tableName: table.name,
+    keyConditionExpression: keyConditionExpression,
+    expressionAttributeValues: expressionAttributeValues,
+    ?filterExpression,
+    ?expressionAttributeNames,
+  }
+
+  await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
+}
+
 // --- Query Item Execution ---
 
 let executeQueryItem = async (
   table: resolvedTable,
+  _partitionTag: Reventless.DcbTag.partitionTag,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
 ) => {
   switch queryItem.tags {
-  // Single tag: use single-tag GSI
+  // Single tag: direct partition key lookup
   | Some([tag]) =>
-    await queryBySingleTag(table, tag.key, tag.value, ~after?)
+    await queryByPartitionKey(table, `${tag.key}:${tag.value}`, ~after?)
 
-  // Multi-tag: use composite GSI
+  // Multiple tags: use composite GSI
   | Some(tags) =>
-    // Array has 2+ elements
     await queryByCompositeTags(table, tags, ~after?)
 
-  // Empty or no tags: check event types
+  // No tags: fall back to scan
   | None =>
     switch queryItem.eventTypes {
     | Some(eventTypes) => await scanWithFilter(table, ~eventTypes, ~after?)
@@ -374,14 +423,14 @@ let mergeSortedEvents = (
 
 // --- Main Operations ---
 
-let read = (table: resolvedTable) =>
+let read = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag) =>
   async (
     ~query: Reventless.DcbTag.query,
     ~after=?,
   ) => {
     // Execute queries for each queryItem
     let queryResults = await query
-    ->Array.map(queryItem => executeQueryItem(table, queryItem, ~after?))
+    ->Array.map(queryItem => executeQueryItem(table, partitionTag, queryItem, ~after?))
     ->Promise.all
 
     // Merge and deduplicate results
@@ -410,10 +459,11 @@ let writeEventsWithPosition = async (
   table: resolvedTable,
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   basePosition: string,
+  partitionTag: Reventless.DcbTag.partitionTag,
 ) => {
   let items = events->Array.mapWithIndex((event, idx) => {
     let position = generatePositionForBatch(basePosition, idx)
-    toItem(position, event)
+    toItem(position, event, partitionTag)
   })
 
   await items
@@ -423,7 +473,7 @@ let writeEventsWithPosition = async (
   ->Effect.runPromise
 }
 
-let append = (table: resolvedTable) =>
+let append = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag) =>
   async (
     events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
     ~condition=?,
@@ -432,7 +482,7 @@ let append = (table: resolvedTable) =>
     | None => {
         // Unconditional append
         let position = generatePosition()
-        switch await writeEventsWithPosition(table, events, position) {
+        switch await writeEventsWithPosition(table, events, position, partitionTag) {
         | Ok() => Ok(position)
         | Error(msg) => Error(msg)
         }
@@ -440,7 +490,7 @@ let append = (table: resolvedTable) =>
 
     | Some(cond: Reventless.DcbTag.appendCondition) => {
         // Conditional append: check for conflicts first
-        let readResult = await read(table)(~query=cond.query, ~after=?cond.after)
+        let readResult = await read(table, partitionTag)(~query=cond.query, ~after=?cond.after)
 
         if readResult.events->Array.length > 0 {
           // Conflict detected
@@ -448,7 +498,7 @@ let append = (table: resolvedTable) =>
         } else {
           // No conflicts, proceed with append
           let position = generatePosition()
-          switch await writeEventsWithPosition(table, events, position) {
+          switch await writeEventsWithPosition(table, events, position, partitionTag) {
           | Ok() => Ok(position)
           | Error(msg) => Error(msg)
           }
@@ -458,6 +508,48 @@ let append = (table: resolvedTable) =>
   }
 
 // --- Stream Query Operations (lazy pagination via Stream.paginateEffect) ---
+
+let queryByPartitionKeyStream = (
+  table: resolvedTable,
+  partitionKey: string,
+  ~after: option<string>=?,
+) => {
+  let expressionAttributeValues = Dict.fromArray([
+    (":pk", partitionKey->JSON.Encode.string),
+  ])
+  let (filterExpression, expressionAttributeNames) = switch after {
+  | None => (None, None)
+  | Some(afterPos) => {
+      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+    }
+  }
+  let baseParams: QueryCommand.input = {
+    tableName: table.name,
+    keyConditionExpression: "id = :pk",
+    expressionAttributeValues: expressionAttributeValues,
+    ?filterExpression,
+    ?expressionAttributeNames,
+  }
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=DynamoDb_Error.classify,
+      () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        QueryCommand.send(params->QueryCommand.make)
+      },
+    )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
+    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+}
 
 let queryBySingleTagStream = (
   table: resolvedTable,
@@ -615,24 +707,31 @@ let scanWithFilterStream = (
 
 let executeQueryItemStream = (
   table: resolvedTable,
+  _partitionTag: Reventless.DcbTag.partitionTag,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
-) =>
+) => {
   switch queryItem.tags {
+  // Single tag: direct partition key lookup
   | Some([tag]) =>
-    queryBySingleTagStream(table, tag.key, tag.value, ~after?)
+    queryByPartitionKeyStream(table, `${tag.key}:${tag.value}`, ~after?)
+
+  // Multiple tags: use composite GSI
   | Some(tags) =>
     queryByCompositeTagsStream(table, tags, ~after?)
+
+  // No tags: fall back to scan
   | None =>
     switch queryItem.eventTypes {
     | Some(eventTypes) => scanWithFilterStream(table, ~eventTypes, ~after?)
     | None => scanWithFilterStream(table, ~after?)
     }
   }
+}
 
-let readStream = (table: resolvedTable) =>
+let readStream = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag) =>
   (~query: Reventless.DcbTag.query, ~after=?) => {
-    let streams = query->Array.map(qi => executeQueryItemStream(table, qi, ~after?))
+    let streams = query->Array.map(qi => executeQueryItemStream(table, partitionTag, qi, ~after?))
     switch streams->Array.length {
     | 0 => Stream.empty
     | 1 => (streams->Array.getUnsafe(0))->Stream.map(fromItem)

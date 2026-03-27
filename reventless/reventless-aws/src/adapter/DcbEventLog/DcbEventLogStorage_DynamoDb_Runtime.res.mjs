@@ -38,9 +38,15 @@ function compositeTagKey(tags) {
   return tags.toSorted((a, b) => Primitive_string.compare(a.key, b.key)).map(t => t.key + `:` + t.value).join("#");
 }
 
-function toItem(position, event) {
+function derivePartitionKey(partitionTag, tags) {
+  let t = tags.find(t => t.key === partitionTag.key);
+  let tag = t !== undefined ? t : tags[0];
+  return tag.key + `:` + tag.value;
+}
+
+function toItem(position, event, partitionTag) {
   let item = {};
-  item["id"] = "dcb";
+  item["id"] = derivePartitionKey(partitionTag, event.tags);
   item["position"] = position;
   item["event"] = event.eventType;
   item["data"] = event.data;
@@ -196,14 +202,44 @@ async function scanWithFilter(table, eventTypes, after) {
   return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
 }
 
-async function executeQueryItem(table, queryItem, after) {
+async function queryByPartitionKey(table, partitionKey, after) {
+  let expressionAttributeValues = Object.fromEntries([[
+      ":pk",
+      partitionKey
+    ]]);
+  let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
+      "#pos > :after",
+      Object.fromEntries([[
+          "#pos",
+          "position"
+        ]])
+    ]) : [
+      undefined,
+      undefined
+    ];
+  let queryParams_TableName = table.name;
+  let queryParams_ExpressionAttributeNames = match[1];
+  let queryParams_ExpressionAttributeValues = expressionAttributeValues;
+  let queryParams_FilterExpression = match[0];
+  let queryParams_KeyConditionExpression = "id = :pk";
+  let queryParams = {
+    TableName: queryParams_TableName,
+    ExpressionAttributeNames: queryParams_ExpressionAttributeNames,
+    ExpressionAttributeValues: queryParams_ExpressionAttributeValues,
+    FilterExpression: queryParams_FilterExpression,
+    KeyConditionExpression: queryParams_KeyConditionExpression
+  };
+  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
+}
+
+async function executeQueryItem(table, _partitionTag, queryItem, after) {
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
       return await queryByCompositeTags(table, tags, after);
     }
     let tag = tags[0];
-    return await queryBySingleTag(table, tag.key, tag.value, after);
+    return await queryByPartitionKey(table, tag.key + `:` + tag.value, after);
   }
   let eventTypes = queryItem.eventTypes;
   if (eventTypes !== undefined) {
@@ -302,9 +338,9 @@ function mergeSortedEvents(streams) {
   }));
 }
 
-function read(table) {
+function read(table, partitionTag) {
   return async (query, after) => {
-    let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, queryItem, after)));
+    let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, partitionTag, queryItem, after)));
     let allItems = queryResults.flat();
     let allEvents = allItems.map(fromItem);
     let deduplicatedEvents = deduplicateByPosition(allEvents);
@@ -317,18 +353,18 @@ function read(table) {
   };
 }
 
-async function writeEventsWithPosition(table, events, basePosition) {
+async function writeEventsWithPosition(table, events, basePosition, partitionTag) {
   let items = events.map((event, idx) => {
     let position = generatePositionForBatch(basePosition, idx);
-    return toItem(position, event);
+    return toItem(position, event, partitionTag);
   });
   return await Effect$1.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
 }
 
-function append(table) {
+function append(table, partitionTag) {
   return async (events, condition) => {
     if (condition !== undefined) {
-      let readResult = await read(table)(condition.query, condition.after);
+      let readResult = await read(table, partitionTag)(condition.query, condition.after);
       if (readResult.events.length !== 0) {
         return {
           TAG: "Error",
@@ -336,7 +372,7 @@ function append(table) {
         };
       }
       let position = generatePosition();
-      let msg = await writeEventsWithPosition(table, events, position);
+      let msg = await writeEventsWithPosition(table, events, position, partitionTag);
       if (msg.TAG === "Ok") {
         return {
           TAG: "Ok",
@@ -350,7 +386,7 @@ function append(table) {
       }
     }
     let position$1 = generatePosition();
-    let msg$1 = await writeEventsWithPosition(table, events, position$1);
+    let msg$1 = await writeEventsWithPosition(table, events, position$1, partitionTag);
     if (msg$1.TAG === "Ok") {
       return {
         TAG: "Ok",
@@ -363,6 +399,49 @@ function append(table) {
       };
     }
   };
+}
+
+function queryByPartitionKeyStream(table, partitionKey, after) {
+  let expressionAttributeValues = Object.fromEntries([[
+      ":pk",
+      partitionKey
+    ]]);
+  let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
+      "#pos > :after",
+      Object.fromEntries([[
+          "#pos",
+          "position"
+        ]])
+    ]) : [
+      undefined,
+      undefined
+    ];
+  let baseParams_TableName = table.name;
+  let baseParams_ExpressionAttributeNames = match[1];
+  let baseParams_ExpressionAttributeValues = expressionAttributeValues;
+  let baseParams_FilterExpression = match[0];
+  let baseParams_KeyConditionExpression = "id = :pk";
+  let baseParams = {
+    TableName: baseParams_TableName,
+    ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
+    ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
+    FilterExpression: baseParams_FilterExpression,
+    KeyConditionExpression: baseParams_KeyConditionExpression
+  };
+  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+    let params;
+    if (cursor !== undefined) {
+      let newrecord = {...baseParams};
+      newrecord.ExclusiveStartKey = cursor;
+      params = newrecord;
+    } else {
+      params = baseParams;
+    }
+    return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
+    Stdlib_Option.getOr(result.Items, []),
+    Stdlib_Option.map(result.LastEvaluatedKey, key => key)
+  ]));
 }
 
 function queryBySingleTagStream(table, tagKey, tagValue, after) {
@@ -503,14 +582,14 @@ function scanWithFilterStream(table, eventTypes, after) {
   ]));
 }
 
-function executeQueryItemStream(table, queryItem, after) {
+function executeQueryItemStream(table, _partitionTag, queryItem, after) {
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
       return queryByCompositeTagsStream(table, tags, after);
     }
     let tag = tags[0];
-    return queryBySingleTagStream(table, tag.key, tag.value, after);
+    return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after);
   }
   let eventTypes = queryItem.eventTypes;
   if (eventTypes !== undefined) {
@@ -520,9 +599,9 @@ function executeQueryItemStream(table, queryItem, after) {
   }
 }
 
-function readStream(table) {
+function readStream(table, partitionTag) {
   return (query, after) => {
-    let streams = query.map(qi => executeQueryItemStream(table, qi, after));
+    let streams = query.map(qi => executeQueryItemStream(table, partitionTag, qi, after));
     let match = streams.length;
     if (match === 0) {
       return Stream$1.empty;
@@ -550,11 +629,13 @@ export {
   generatePositionForBatch,
   tagToAttributeName,
   compositeTagKey,
+  derivePartitionKey,
   toItem,
   fromItem,
   queryBySingleTag,
   queryByCompositeTags,
   scanWithFilter,
+  queryByPartitionKey,
   executeQueryItem,
   deduplicateByPosition,
   initSlot,
@@ -564,6 +645,7 @@ export {
   read,
   writeEventsWithPosition,
   append,
+  queryByPartitionKeyStream,
   queryBySingleTagStream,
   queryByCompositeTagsStream,
   scanWithFilterStream,

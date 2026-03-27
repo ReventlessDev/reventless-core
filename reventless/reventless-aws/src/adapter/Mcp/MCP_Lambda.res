@@ -243,7 +243,10 @@ let readDcbEventLogHistory = async (
     hashKey: "id",
   }
 
-  let result = await DcbEventLogStorage_DynamoDb_Runtime.read(table)(~query=[], ~after?)
+  let result = await DcbEventLogStorage_DynamoDb_Runtime.read(table, {Reventless.DcbTag.key: ""})(
+    ~query=[],
+    ~after?,
+  )
 
   // Filter by entity ID tag value (events matching this entity)
   let filtered = if entityId->String.length > 0 {

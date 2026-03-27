@@ -248,11 +248,11 @@ type command = CreateItem({
 | **Concurrency** | Optimistic (sequenceNr) | Optimistic (position) |
 | **Use Case** | Entity boundaries | Cross-entity consistency |
 
-See [DCB Plugin Usage Documentation](../../docs/dcb-plugin-usage.md) for more details on when to use StateChangeSlice vs Aggregate.
+See [DCB Plugin Usage Documentation](../../docs/dcb-usage.md) for more details on when to use StateChangeSlice vs Aggregate.
 
 ## Related Topics
 
 - [StateChangeSlice Component Reference](../components/statechangeslice.md)
-- [DCB Plugin Architecture](../../docs/dcb-plugin-usage.md)
+- [DCB Plugin Architecture](../../docs/dcb-usage.md)
 - [DcbEventLog](../components/dcbeventlog.md)
 - [CommandTopic](../components/commandtopic.md)

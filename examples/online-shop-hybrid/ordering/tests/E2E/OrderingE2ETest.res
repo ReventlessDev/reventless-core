@@ -28,7 +28,7 @@ let _ = ReventlessInMemory.TestRunner.setup()
 // ─────────────────────────────────────────────────────────────
 
 module OrderingEventLogMaker = ReventlessInMemory.DcbEventLog_Builder.Make(Bus)
-let eventLog = OrderingEventLogMaker.make(~name="Ordering")
+let eventLog = OrderingEventLogMaker.make(~name="Ordering", ~partitionTag={Reventless.DcbTag.key: "orderId"})
 
 // ─────────────────────────────────────────────────────────────
 // Build StateChangeSlices

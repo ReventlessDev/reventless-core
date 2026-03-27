@@ -27,7 +27,9 @@ TestRunner$ReventlessInMemory.setup();
 
 let CatalogEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let eventLog = CatalogEventLogMaker.make("Catalog", undefined, undefined);
+let eventLog = CatalogEventLogMaker.make("Catalog", undefined, {
+  key: "productId"
+}, undefined);
 
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,

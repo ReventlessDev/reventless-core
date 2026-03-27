@@ -34,7 +34,7 @@ function matchesQuery(event, query) {
   }
 }
 
-function makeStorage(_name, param, param$1) {
+function makeStorage(_name, param, param$1, param$2) {
   let events = {
     contents: []
   };
@@ -103,13 +103,13 @@ function makeStorage(_name, param, param$1) {
   ];
 }
 
-function make(name, indexes, opts) {
-  return makeStorage(name, indexes, opts)[2];
+function make(name, indexes, partitionTag, opts) {
+  return makeStorage(name, indexes, partitionTag, opts)[2];
 }
 
 function Make(Bus) {
-  let make = (name, indexes, opts) => {
-    let match = makeStorage(name, indexes, opts);
+  let make = (name, indexes, partitionTag, opts) => {
+    let match = makeStorage(name, indexes, partitionTag, opts);
     Bus.registerDcbEventLogRead(match[0], match[1]);
     return match[2];
   };

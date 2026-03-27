@@ -25,7 +25,7 @@ let matchesQuery = (event: DcbEventLog_Adapter.rawSequencedEvent, query: Reventl
     })
   }
 
-let makeStorage = (~name as _name, ~indexes as _, ~opts as _) => {
+let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _) => {
   let events: ref<array<DcbEventLog_Adapter.rawSequencedEvent>> = ref([])
   let position = ref(0)
 
@@ -94,14 +94,14 @@ let makeStorage = (~name as _name, ~indexes as _, ~opts as _) => {
   )
 }
 
-let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts) => {
-  let (_, _, storage) = makeStorage(~name, ~indexes, ~opts)
+let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~opts) => {
+  let (_, _, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
   storage
 }
 
 module Make = (Bus: InMemory_Bus.T) => {
-  let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~opts) => {
-    let (storageName, read, storage) = makeStorage(~name, ~indexes, ~opts)
+  let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~opts) => {
+    let (storageName, read, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
     Bus.registerDcbEventLogRead(storageName, read)
     storage
   }

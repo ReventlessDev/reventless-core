@@ -29,7 +29,7 @@ let _ = ReventlessInMemory.TestRunner.setup()
 // ─────────────────────────────────────────────────────────────
 
 module CatalogEventLogMaker = ReventlessInMemory.DcbEventLog_Builder.Make(Bus)
-let eventLog = CatalogEventLogMaker.make(~name="Catalog")
+let eventLog = CatalogEventLogMaker.make(~name="Catalog", ~partitionTag={Reventless.DcbTag.key: "productId"})
 
 // ─────────────────────────────────────────────────────────────
 // Build DCB StateChangeSlices (Product)
