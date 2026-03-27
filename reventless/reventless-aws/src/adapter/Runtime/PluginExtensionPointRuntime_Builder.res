@@ -105,7 +105,7 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
   // No user packages — all framework imports are in the Layer
-  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.res.mjs";`
+  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs";`
 
   let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
   archiveContents->Dict.set(

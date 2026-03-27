@@ -60,7 +60,7 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
     packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
     packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.res.mjs";`
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs";`
 
     let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
     archiveContents->Dict.set(

@@ -45,7 +45,7 @@ function make(name, referencesName, referencesDb, countsName, countsDb, param, o
     let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
     packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
     packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.res.mjs";`;
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs";`;
     let archiveContents = {};
     archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
     Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {

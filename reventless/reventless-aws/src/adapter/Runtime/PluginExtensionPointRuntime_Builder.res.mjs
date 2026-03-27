@@ -70,7 +70,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     return `{"queueUrl":"` + queueUrl + `","pluginReadModelTableName":"` + rmTable + `","schedulerRoleArn":"` + schedRoleArn + `","schedulerQueueArn":"` + schedQueueArn + `","schedulerQueueName":"` + schedQueueName + `","publishToAggregates":{` + publishToAggregatesJson + `}}`;
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
-  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.res.mjs";`;
+  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs";`;
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);

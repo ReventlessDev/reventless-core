@@ -46,7 +46,7 @@ let reventlessCoreDeploytime: postProcessFn = async (_node, cwd) => {
 
 let reventlessAwsDeploytime: postProcessFn = async (_node, cwd) => {
   // Delete deploy-time Runtime Builders and RuntimeEnvironment (Pulumi infrastructure code)
-  // Entry points (*EntryPoint.res.mjs) must be kept — they are the Lambda handlers.
+  // Entry points (*EntryPoint.mjs) and HandlerFactoryHelpers.mjs must be kept — they are the Lambda handlers.
   let runtimeDir = NodePath.resolve([cwd, "src", "adapter", "Runtime"])
   let rmBuilders = Rimraf.rimrafWithOptions(
     NodePath.resolve([runtimeDir, "*Runtime_Builder*"]),

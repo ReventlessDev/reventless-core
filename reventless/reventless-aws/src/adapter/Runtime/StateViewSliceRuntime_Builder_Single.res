@@ -138,7 +138,7 @@ let finish = () =>
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
 
-        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.res.mjs";`
+        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs";`
 
         let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
         archiveContents->Dict.set(

@@ -146,7 +146,7 @@ function finish() {
         let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
         packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
         packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
-        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.res.mjs";`;
+        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs";`;
         let archiveContents = {};
         archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
         Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {

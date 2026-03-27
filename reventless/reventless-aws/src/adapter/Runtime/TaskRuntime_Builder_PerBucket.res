@@ -61,7 +61,7 @@ let forBucketCallback = (
     let pkg = Util_Bundle.extractPackageName(info.callbackModulePath)
     packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
 
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.res.mjs";`
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.mjs";`
 
     let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
     archiveContents->Dict.set(

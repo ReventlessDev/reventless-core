@@ -119,7 +119,7 @@ function Make(EventCollectorChannel) {
       return `{"queueUrl":"` + queueUrl + `","eventTopicArn":"` + eventTopicArn + `","pluginReadModelTableName":"` + rmTable + `","schedulerRoleArn":"` + schedRoleArn + `","schedulerQueueArn":"` + schedQueueArn + `","schedulerQueueName":"` + schedQueueName + `","appSyncApiId":"` + appSyncApiId + `","clonerEnabled":` + clonerEnabled + `}`;
     });
     envVars["HANDLER_CONFIG"] = handlerConfigJson;
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.res.mjs";`;
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs";`;
     let archiveContents = {};
     archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
     let code = new (Pulumi.asset.AssetArchive)(archiveContents);
@@ -147,7 +147,7 @@ function Make(EventCollectorChannel) {
       envVars["EP_QUEUE_URL"] = epQueueUrl;
       envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
       envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs";`;
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs";`;
       let archiveContents = {};
       archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
       let code = new (Pulumi.asset.AssetArchive)(archiveContents);
@@ -193,7 +193,7 @@ function Make(EventCollectorChannel) {
       let pkg = Util_Bundle$ReventlessAws.extractPackageName(specPath);
       packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
     });
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.res.mjs";`;
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs";`;
     let archiveContents = {};
     archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
     Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {

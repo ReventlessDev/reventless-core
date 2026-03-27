@@ -114,7 +114,7 @@ function finish() {
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.res.mjs";`;
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs";`;
       let archiveContents = {};
       archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
       Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {

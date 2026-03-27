@@ -150,7 +150,7 @@ module Make = (
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
     // No user packages — all framework imports are in the Layer
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.res.mjs";`
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs";`
 
     let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
     archiveContents->Dict.set(
@@ -218,7 +218,7 @@ module Make = (
       )
 
       // Static re-export from Layer entry point — no esbuild, no user packages
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs";`
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs";`
       let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
       archiveContents->Dict.set(
         "index.mjs",
@@ -300,7 +300,7 @@ module Make = (
         packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
       })
 
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.res.mjs";`
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs";`
 
       let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
       archiveContents->Dict.set(

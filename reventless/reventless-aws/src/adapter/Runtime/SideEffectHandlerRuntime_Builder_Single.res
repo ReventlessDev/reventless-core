@@ -141,7 +141,7 @@ let finish = () =>
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
 
         // Build AssetArchive: static re-export + user packages
-        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/SideEffectEntryPoint.res.mjs";`
+        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/SideEffectEntryPoint.mjs";`
 
         let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
         archiveContents->Dict.set(

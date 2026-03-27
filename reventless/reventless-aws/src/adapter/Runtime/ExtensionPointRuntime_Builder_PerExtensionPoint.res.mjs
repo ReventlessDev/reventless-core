@@ -53,7 +53,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(matchedInfo.mappingsModulePath);
     packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
     packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.res.mjs";`;
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.mjs";`;
     let archiveContents = {};
     archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
     Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {

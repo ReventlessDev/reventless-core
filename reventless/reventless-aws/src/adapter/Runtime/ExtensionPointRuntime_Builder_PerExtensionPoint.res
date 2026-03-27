@@ -100,7 +100,7 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
     packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
     packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.res.mjs";`
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.mjs";`
 
     let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
     archiveContents->Dict.set(

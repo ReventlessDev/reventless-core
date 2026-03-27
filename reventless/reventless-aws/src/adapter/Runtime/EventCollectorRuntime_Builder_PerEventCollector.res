@@ -83,7 +83,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
       packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
       // Build AssetArchive: static re-export + user packages
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.res.mjs";`
+      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs";`
 
       let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
       archiveContents->Dict.set(

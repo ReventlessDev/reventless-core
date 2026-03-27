@@ -201,7 +201,7 @@ let finish = () =>
           let behaviorModule =
             info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
-          let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.res.mjs";`
+          let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs";`
 
           // --- CommandTopic Lambda ---
           let cmdTopicHandlerConfigOutput =
@@ -312,7 +312,7 @@ let finish = () =>
             evtMapperPackageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
             evtMapperPackageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
-            let evtMapperReExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.res.mjs";`
+            let evtMapperReExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs";`
 
             let evtMapperArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
             evtMapperArchiveContents->Dict.set(

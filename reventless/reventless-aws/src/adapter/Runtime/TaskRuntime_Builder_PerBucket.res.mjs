@@ -37,7 +37,7 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, task
     let packageDirs = {};
     let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.callbackModulePath);
     packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.res.mjs";`;
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.mjs";`;
     let archiveContents = {};
     archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
     Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {

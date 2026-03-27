@@ -56,7 +56,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
     packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
     packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.res.mjs";`;
+    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs";`;
     let archiveContents = {};
     archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
     Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {

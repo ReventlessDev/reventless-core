@@ -160,7 +160,7 @@ function finish() {
         packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
         let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
-        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.res.mjs";`;
+        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs";`;
         let cmdTopicHandlerConfigOutput = Pulumi.all([
           info.eventLogTableName,
           spec.queueUrl,
@@ -213,7 +213,7 @@ function finish() {
           let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(match$1);
           evtMapperPackageDirs[specPkg$1] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg$1);
           evtMapperPackageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-          let evtMapperReExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.res.mjs";`;
+          let evtMapperReExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs";`;
           let evtMapperArchiveContents = {};
           evtMapperArchiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(evtMapperReExportCode);
           Stdlib_Dict.forEachWithKey(evtMapperPackageDirs, (pkgRoot, pkgName) => {
