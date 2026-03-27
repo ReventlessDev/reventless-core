@@ -37,13 +37,6 @@ let initialState = {
   name: ""
 };
 
-let resolverConfig_fields = ["name"];
-
-let resolverConfig = {
-  commandSchema: commandSchema,
-  fields: resolverConfig_fields
-};
-
 let moduleUrl$1 = import.meta.url;
 
 function evolve(_state, event) {
@@ -65,7 +58,6 @@ function decide(_state, command) {
 let TestBehavior = {
   Spec: undefined,
   initialState: initialState,
-  resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
   evolve: evolve,
   decide: decide
@@ -182,7 +174,6 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   moduleUrl: moduleUrl
 })({
   initialState: initialState,
-  resolverConfig: resolverConfig,
   evolve: evolve,
   decide: decide,
   moduleUrl: moduleUrl$1

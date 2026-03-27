@@ -226,11 +226,6 @@ module Spec = Product
 @schema
 type state = {name: string, description: string, price: float}
 
-let resolverConfig = {
-  Behavior.commandSchema,
-  fields: [],
-}
-
 let init = event =>
   switch event {
   | ProductAdded({name, description, price}) => {name, description, price}

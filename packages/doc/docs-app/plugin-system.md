@@ -96,11 +96,6 @@ type state =
   | Active({name: string, description: string})
   | Archived
 
-let resolverConfig: Behavior.resolverConfig<Spec.command> = {
-  commandSchema: CatalogItemSpec.commandSchema,
-  fields: ["CatalogItem_CreateItem", "CatalogItem_UpdateItem", "CatalogItem_ArchiveItem"],
-}
-
 let init: Behavior.init<state, Spec.event> = event =>
   switch event {
   | CatalogItemSpec.ItemCreated({name, description}) => Active({name, description})

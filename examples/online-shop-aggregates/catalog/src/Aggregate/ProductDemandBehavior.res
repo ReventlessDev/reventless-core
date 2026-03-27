@@ -10,8 +10,6 @@ type state =
   | NotCreated
   | Created({recordedOrderIds: array<string>})
 
-let resolverConfig = {Reventless.Behavior.commandSchema, fields: []}
-
 let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated

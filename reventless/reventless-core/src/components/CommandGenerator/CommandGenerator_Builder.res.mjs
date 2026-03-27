@@ -9,9 +9,9 @@ import * as CommandGenerator$ReventlessCore from "./CommandGenerator.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "./CommandGenerator_Callback.res.mjs";
 
 function Make(Spec) {
-  return Behavior => (Resolvers => {
+  return Resolvers => {
     let construct = (self, _name) => {
-      let resources = Behavior.resolverConfig.fields.map(field => ({
+      let resources = Stdlib_Option.getOr(Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name], []).map(field => ({
         name: Pulumi.output(""),
         id: Pulumi.output(""),
         urn: Pulumi.output(""),
@@ -30,9 +30,8 @@ function Make(Spec) {
       let opts = {
         parent: opts_parent
       };
-      let registeredFields = Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name];
-      let fields = registeredFields !== undefined && registeredFields.length !== 0 ? registeredFields : Behavior.resolverConfig.fields;
-      let resolvers = Resolvers.make(name, api, fields, Behavior.resolverConfig.commandSchema, runtime, resources, opts);
+      let fields = Stdlib_Option.getOr(Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name], []);
+      let resolvers = Resolvers.make(name, api, fields, Spec.commandSchema, runtime, resources, opts);
       let cgOutputs = {
         resources: resolvers.resources
       };
@@ -41,7 +40,7 @@ function Make(Spec) {
     let makeHandler = publishJsons => {
       let Callback = CommandGenerator_Callback$ReventlessCore.Make({
         publishJsons: publishJsons
-      })(Spec)(Behavior);
+      })(Spec);
       return Resolvers.handleResolversEvent(Callback.generateCommand);
     };
     let make = (name, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(CommandGenerator$ReventlessCore.componentType), name, construct, opts);
@@ -50,7 +49,7 @@ function Make(Spec) {
       makeHandler: makeHandler,
       make: make
     };
-  });
+  };
 }
 
 export {

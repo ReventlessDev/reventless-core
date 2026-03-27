@@ -11,11 +11,6 @@ type state =
   | Active({email: string, address: string})
   | Deactivated
 
-let resolverConfig = {
-  Reventless.Behavior.commandSchema,
-  fields: [],
-}
-
 let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated

@@ -3,17 +3,6 @@
 // without importing the reventless implementation package.
 
 /**
-Configuration for resolving GraphQL field arguments from the command schema.
-
-`commandSchema` is the sury schema for the command type.
-`fields` lists the field names that the GraphQL resolver should accept as arguments.
-*/
-type resolverConfig<'command> = {
-  commandSchema: S.t<'command>,
-  fields: array<string>,
-}
-
-/**
 Module type that application code must implement to define aggregate business logic.
 
 A `Behavior.T` module contains the `Spec` (command / event / error types), the
@@ -32,8 +21,6 @@ module Spec = Category
 type state = NotCreated | Active({name: string}) | Archived
 
 let initialState = NotCreated
-
-let resolverConfig = {Behavior.commandSchema, fields: []}
 
 let evolve = (state, event) => switch (state, event) {
   | (NotCreated, CategoryAdded({name})) => Active({name})
@@ -72,9 +59,6 @@ module type T = {
 
   /** The starting state before any events have been applied. */
   let initialState: state
-
-  /** GraphQL resolver configuration used by the API layer. */
-  let resolverConfig: resolverConfig<Spec.command>
 
   /**
   Fold one event into the current state. Called for every event during replay.

@@ -63,10 +63,10 @@ function buildCommandTopicHandler(specModule, behaviorModule, eventLogTableName,
   return CommandTopicChannel_SQS_RuntimeResMjs.handleQueueEvent(HandlerFactoryHelpersResMjs.makeQueueRef(queueUrl), commandTopicCallback.handleJsonCommands);
 }
 
-function buildCommandGeneratorHandler(specModule, behaviorModule, queueUrl) {
+function buildCommandGeneratorHandler(specModule, _behaviorModule, queueUrl) {
   let resolvedQueue = HandlerFactoryHelpersResMjs.makeQueueRef(queueUrl);
   let publishJsons = CommandTopicChannel_SQS_RuntimeResMjs.publishJsons(resolvedQueue, "SQS_FIFO");
-  let generateCommand = CommandGenerator_CallbackResMjs.makeGenerateCommand(publishJsons, specModule.name, behaviorModule.resolverConfig.commandSchema, undefined);
+  let generateCommand = CommandGenerator_CallbackResMjs.makeGenerateCommand(publishJsons, specModule.name, specModule.commandSchema, undefined);
   return (event, _context) => generateCommand(event);
 }
 

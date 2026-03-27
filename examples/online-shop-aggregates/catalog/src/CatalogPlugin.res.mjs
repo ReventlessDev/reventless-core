@@ -33,7 +33,6 @@ function Make(Platform) {
     moduleUrl: Product$CatalogPlugin.moduleUrl
   })({
     initialState: ProductBehavior$CatalogPlugin.initialState,
-    resolverConfig: ProductBehavior$CatalogPlugin.resolverConfig,
     evolve: ProductBehavior$CatalogPlugin.evolve,
     decide: ProductBehavior$CatalogPlugin.decide,
     moduleUrl: ProductBehavior$CatalogPlugin.moduleUrl
@@ -51,7 +50,6 @@ function Make(Platform) {
     moduleUrl: Category$CatalogPlugin.moduleUrl
   })({
     initialState: CategoryBehavior$CatalogPlugin.initialState,
-    resolverConfig: CategoryBehavior$CatalogPlugin.resolverConfig,
     evolve: CategoryBehavior$CatalogPlugin.evolve,
     decide: CategoryBehavior$CatalogPlugin.decide,
     moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
@@ -109,7 +107,6 @@ function Make(Platform) {
     moduleUrl: ProductDemand$CatalogPlugin.moduleUrl
   })({
     initialState: ProductDemandBehavior$CatalogPlugin.initialState,
-    resolverConfig: ProductDemandBehavior$CatalogPlugin.resolverConfig,
     evolve: ProductDemandBehavior$CatalogPlugin.evolve,
     decide: ProductDemandBehavior$CatalogPlugin.decide,
     moduleUrl: ProductDemandBehavior$CatalogPlugin.moduleUrl

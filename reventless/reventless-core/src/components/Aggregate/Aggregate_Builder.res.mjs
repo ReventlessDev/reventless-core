@@ -21,7 +21,7 @@ function Make(Spec) {
       Id: Spec.Id,
       commandSchema: Spec.commandSchema
     })(CommandTopicChannel);
-    let SpecificCommandGenerator = CommandGenerator_Builder$ReventlessCore.Make(Spec)(Behavior)(CommandGeneratorResolvers);
+    let SpecificCommandGenerator = CommandGenerator_Builder$ReventlessCore.Make(Spec)(CommandGeneratorResolvers);
     let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
     let SpecificEventMapper = EventMapper_Builder$ReventlessCore.Make({
       name: Spec.name,
@@ -50,8 +50,10 @@ function Make(Spec) {
       let bindHandler = Plugin_Helpers$ReventlessCore.mutationBindHook.contents;
       if (bindHandler !== undefined) {
         let registeredFields = Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name];
-        let fields = registeredFields !== undefined && registeredFields.length !== 0 ? registeredFields : Behavior.resolverConfig.fields;
-        let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, Spec.name, Behavior.resolverConfig.commandSchema, undefined);
+        let fields = registeredFields !== undefined ? (
+            registeredFields.length !== 0 ? registeredFields : []
+          ) : [];
+        let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, Spec.name, Spec.commandSchema, undefined);
         fields.forEach(field => bindHandler(field, generateCommand));
       } else {
         let resources = Component$ReventlessCore.outputs(commandTopic).resources;

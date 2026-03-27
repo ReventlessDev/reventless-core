@@ -32,13 +32,6 @@ let ItemSpec = {
   moduleUrl: moduleUrl
 };
 
-let resolverConfig_fields = [];
-
-let resolverConfig = {
-  commandSchema: commandSchema,
-  fields: resolverConfig_fields
-};
-
 let moduleUrl$1 = import.meta.url;
 
 function evolve(_state, _event) {
@@ -64,7 +57,6 @@ function decide(state, command) {
 
 let ItemBehavior = {
   initialState: false,
-  resolverConfig: resolverConfig,
   evolve: evolve,
   decide: decide,
   moduleUrl: moduleUrl$1

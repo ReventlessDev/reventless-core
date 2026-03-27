@@ -352,7 +352,6 @@ function MakeWithConfig(Config) {
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl
   })({
     initialState: PluginBehavior$ReventlessCore.initialState,
-    resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
     evolve: PluginBehavior$ReventlessCore.evolve,
     decide: PluginBehavior$ReventlessCore.decide,
     moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
@@ -833,7 +832,6 @@ function Make($star) {
     moduleUrl: PluginSpec$ReventlessCore.moduleUrl
   })({
     initialState: PluginBehavior$ReventlessCore.initialState,
-    resolverConfig: PluginBehavior$ReventlessCore.resolverConfig,
     evolve: PluginBehavior$ReventlessCore.evolve,
     decide: PluginBehavior$ReventlessCore.decide,
     moduleUrl: PluginBehavior$ReventlessCore.moduleUrl

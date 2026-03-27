@@ -33,11 +33,11 @@ let eventLog = OrderingEventLogMaker.make("Ordering", undefined, undefined);
 let SyncCatalogProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: SyncCatalogProduct$OrderingPlugin.name,
   moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-  producedEventSchema: SyncCatalogProduct$OrderingPlugin.producedEventSchema,
-  consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
-  errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
   initialState: SyncCatalogProduct$OrderingPlugin.initialState,
+  consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
   evolve: SyncCatalogProduct$OrderingPlugin.evolve,
+  errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
+  producedEventSchema: SyncCatalogProduct$OrderingPlugin.producedEventSchema,
   decide: SyncCatalogProduct$OrderingPlugin.decide,
   commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
 });
@@ -45,11 +45,11 @@ let SyncCatalogProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: PlaceOrder$OrderingPlugin.name,
   moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-  producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
-  consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
-  errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
   initialState: PlaceOrder$OrderingPlugin.initialState,
+  consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
   evolve: PlaceOrder$OrderingPlugin.evolve,
+  errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
+  producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
   decide: PlaceOrder$OrderingPlugin.decide,
   commandSchema: PlaceOrder$OrderingPlugin.commandSchema
 });
@@ -57,11 +57,11 @@ let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ShipOrder$OrderingPlugin.name,
   moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-  producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
-  consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
-  errorSchema: ShipOrder$OrderingPlugin.errorSchema,
   initialState: ShipOrder$OrderingPlugin.initialState,
+  consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
   evolve: ShipOrder$OrderingPlugin.evolve,
+  errorSchema: ShipOrder$OrderingPlugin.errorSchema,
+  producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
   decide: ShipOrder$OrderingPlugin.decide,
   commandSchema: ShipOrder$OrderingPlugin.commandSchema
 });
@@ -69,11 +69,11 @@ let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let CancelOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: CancelOrder$OrderingPlugin.name,
   moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-  producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
-  consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
-  errorSchema: CancelOrder$OrderingPlugin.errorSchema,
   initialState: CancelOrder$OrderingPlugin.initialState,
+  consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
   evolve: CancelOrder$OrderingPlugin.evolve,
+  errorSchema: CancelOrder$OrderingPlugin.errorSchema,
+  producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
   decide: CancelOrder$OrderingPlugin.decide,
   commandSchema: CancelOrder$OrderingPlugin.commandSchema
 });

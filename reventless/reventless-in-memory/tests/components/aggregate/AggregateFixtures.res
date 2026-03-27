@@ -30,11 +30,6 @@ module ItemBehavior: ReventlessCore.Behavior.T with module Spec := ItemSpec = {
 
   let initialState = false
 
-  let resolverConfig: ReventlessCore.Behavior.resolverConfig<ItemSpec.command> = {
-    commandSchema: ItemSpec.commandSchema,
-    fields: [],
-  }
-
   let moduleUrl: string = %raw(`import.meta.url`)
 
   let evolve = (_state, _event: ItemSpec.event) => true

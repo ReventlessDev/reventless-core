@@ -35,11 +35,6 @@ module CmdGenBehavior = {
   module Spec = CmdGenAggSpec
   type state = unit
 
-  let resolverConfig: Reventless.Behavior.resolverConfig<CmdGenAggSpec.command> = {
-    commandSchema: CmdGenAggSpec.commandSchema,
-    fields: [],
-  }
-
   let moduleUrl: string = %raw(`import.meta.url`)
 
   let initialState = ()
@@ -70,7 +65,7 @@ module MockPublishSpec: CommandGenerator_Callback.Spec = {
 // CommandGenerator handler under test
 // ─────────────────────────────────────────────────────────────
 
-module TestGenerator = CommandGenerator_Callback.Make(MockPublishSpec, CmdGenAggSpec, CmdGenBehavior)
+module TestGenerator = CommandGenerator_Callback.Make(MockPublishSpec, CmdGenAggSpec)
 
 // ─────────────────────────────────────────────────────────────
 // Payload builders

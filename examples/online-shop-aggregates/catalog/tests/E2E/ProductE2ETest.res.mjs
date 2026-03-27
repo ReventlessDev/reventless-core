@@ -32,7 +32,6 @@ let ProductAgg = AggregateMaker.Make({
   moduleUrl: Product$CatalogPlugin.moduleUrl
 })({
   initialState: ProductBehavior$CatalogPlugin.initialState,
-  resolverConfig: ProductBehavior$CatalogPlugin.resolverConfig,
   evolve: ProductBehavior$CatalogPlugin.evolve,
   decide: ProductBehavior$CatalogPlugin.decide,
   moduleUrl: ProductBehavior$CatalogPlugin.moduleUrl

@@ -55,13 +55,6 @@ let stateSchema = S.union([
   }))
 ]);
 
-let resolverConfig_fields = ["name"];
-
-let resolverConfig = {
-  commandSchema: commandSchema,
-  fields: resolverConfig_fields
-};
-
 let moduleUrl$1 = import.meta.url;
 
 function evolve(_state, event) {
@@ -114,7 +107,6 @@ let TestBehavior = {
   Spec: undefined,
   stateSchema: stateSchema,
   initialState: "NotCreated",
-  resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
   evolve: evolve,
   decide: decide
@@ -214,7 +206,6 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   moduleUrl: moduleUrl
 })({
   initialState: "NotCreated",
-  resolverConfig: resolverConfig,
   evolve: evolve,
   decide: decide,
   moduleUrl: moduleUrl$1

@@ -28,11 +28,6 @@ module TestBehavior = {
 
   let initialState = {name: ""}
 
-  let resolverConfig: Reventless.Behavior.resolverConfig<AggSpec.command> = {
-    commandSchema: AggSpec.commandSchema,
-    fields: ["name"],
-  }
-
   let moduleUrl: string = %raw(`import.meta.url`)
 
   let evolve = (_state: state, event: AggSpec.event): state =>

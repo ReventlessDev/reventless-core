@@ -25,114 +25,96 @@ function Make(Platform) {
   let RegisterCustomerSlice = Platform.StateChangeSlice.Make({
     name: RegisterCustomer$OrderingPlugin.name,
     moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
-    producedEventSchema: RegisterCustomer$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
-    errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
     initialState: RegisterCustomer$OrderingPlugin.initialState,
+    consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
     evolve: RegisterCustomer$OrderingPlugin.evolve,
+    errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
+    producedEventSchema: RegisterCustomer$OrderingPlugin.producedEventSchema,
     decide: RegisterCustomer$OrderingPlugin.decide,
     commandSchema: RegisterCustomer$OrderingPlugin.commandSchema
   });
   let ChangeEmailSlice = Platform.StateChangeSlice.Make({
     name: ChangeEmail$OrderingPlugin.name,
     moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
-    producedEventSchema: ChangeEmail$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
-    errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
     initialState: ChangeEmail$OrderingPlugin.initialState,
+    consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
     evolve: ChangeEmail$OrderingPlugin.evolve,
+    errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
+    producedEventSchema: ChangeEmail$OrderingPlugin.producedEventSchema,
     decide: ChangeEmail$OrderingPlugin.decide,
     commandSchema: ChangeEmail$OrderingPlugin.commandSchema
   });
   let ChangeAddressSlice = Platform.StateChangeSlice.Make({
     name: ChangeAddress$OrderingPlugin.name,
     moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
-    producedEventSchema: ChangeAddress$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
-    errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
     initialState: ChangeAddress$OrderingPlugin.initialState,
+    consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
     evolve: ChangeAddress$OrderingPlugin.evolve,
+    errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
+    producedEventSchema: ChangeAddress$OrderingPlugin.producedEventSchema,
     decide: ChangeAddress$OrderingPlugin.decide,
     commandSchema: ChangeAddress$OrderingPlugin.commandSchema
   });
   let DeactivateCustomerSlice = Platform.StateChangeSlice.Make({
     name: DeactivateCustomer$OrderingPlugin.name,
     moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
-    producedEventSchema: DeactivateCustomer$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
-    errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
     initialState: DeactivateCustomer$OrderingPlugin.initialState,
+    consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
     evolve: DeactivateCustomer$OrderingPlugin.evolve,
+    errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
+    producedEventSchema: DeactivateCustomer$OrderingPlugin.producedEventSchema,
     decide: DeactivateCustomer$OrderingPlugin.decide,
     commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema
   });
-  let CustomersViewSlice = Platform.StateViewSlice.Make({
-    name: CustomersView$OrderingPlugin.name,
-    moduleUrl: CustomersView$OrderingPlugin.moduleUrl,
-    consumedEventSchema: CustomersView$OrderingPlugin.consumedEventSchema,
-    stateSchema: CustomersView$OrderingPlugin.stateSchema,
-    project: CustomersView$OrderingPlugin.project
-  });
+  let CustomersViewSlice = Platform.StateViewSlice.Make(CustomersView$OrderingPlugin);
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
     moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-    producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
-    errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     initialState: PlaceOrder$OrderingPlugin.initialState,
+    consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
     evolve: PlaceOrder$OrderingPlugin.evolve,
+    errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
+    producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
     decide: PlaceOrder$OrderingPlugin.decide,
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema
   });
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
     moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-    producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
-    errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     initialState: ShipOrder$OrderingPlugin.initialState,
+    consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
     evolve: ShipOrder$OrderingPlugin.evolve,
+    errorSchema: ShipOrder$OrderingPlugin.errorSchema,
+    producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
     decide: ShipOrder$OrderingPlugin.decide,
     commandSchema: ShipOrder$OrderingPlugin.commandSchema
   });
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
     name: CancelOrder$OrderingPlugin.name,
     moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-    producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
-    errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     initialState: CancelOrder$OrderingPlugin.initialState,
+    consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
     evolve: CancelOrder$OrderingPlugin.evolve,
+    errorSchema: CancelOrder$OrderingPlugin.errorSchema,
+    producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
     decide: CancelOrder$OrderingPlugin.decide,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema
   });
   let AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder$OrderingPlugin);
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation$OrderingPlugin);
-  let OrdersViewSlice = Platform.StateViewSlice.Make({
-    name: OrdersView$OrderingPlugin.name,
-    moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
-    consumedEventSchema: OrdersView$OrderingPlugin.consumedEventSchema,
-    stateSchema: OrdersView$OrderingPlugin.stateSchema,
-    project: OrdersView$OrderingPlugin.project
-  });
+  let OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView$OrderingPlugin);
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
     moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
-    producedEventSchema: SyncCatalogProduct$OrderingPlugin.producedEventSchema,
-    consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
-    errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     initialState: SyncCatalogProduct$OrderingPlugin.initialState,
+    consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
     evolve: SyncCatalogProduct$OrderingPlugin.evolve,
+    errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
+    producedEventSchema: SyncCatalogProduct$OrderingPlugin.producedEventSchema,
     decide: SyncCatalogProduct$OrderingPlugin.decide,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
   });
-  let AvailableProductsViewSlice = Platform.StateViewSlice.Make({
-    name: AvailableProductsView$OrderingPlugin.name,
-    moduleUrl: AvailableProductsView$OrderingPlugin.moduleUrl,
-    consumedEventSchema: AvailableProductsView$OrderingPlugin.consumedEventSchema,
-    stateSchema: AvailableProductsView$OrderingPlugin.stateSchema,
-    project: AvailableProductsView$OrderingPlugin.project
-  });
+  let AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView$OrderingPlugin);
   let $$let = ProductsExtension$OrderingPlugin.ProductMapping.Aggregate;
   let ProductsExtensionMapping = ExtensionMapping$ReventlessInfra.Make(ProductsExtensionPoint$CatalogSpec)({
     Aggregate: {

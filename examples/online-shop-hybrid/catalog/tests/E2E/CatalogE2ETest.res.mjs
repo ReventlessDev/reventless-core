@@ -32,11 +32,11 @@ let eventLog = CatalogEventLogMaker.make("Catalog", undefined, undefined);
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,
   moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
-  producedEventSchema: AddProduct$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
-  errorSchema: AddProduct$CatalogPlugin.errorSchema,
   initialState: AddProduct$CatalogPlugin.initialState,
+  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
   evolve: AddProduct$CatalogPlugin.evolve,
+  errorSchema: AddProduct$CatalogPlugin.errorSchema,
+  producedEventSchema: AddProduct$CatalogPlugin.producedEventSchema,
   decide: AddProduct$CatalogPlugin.decide,
   commandSchema: AddProduct$CatalogPlugin.commandSchema
 });
@@ -44,11 +44,11 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductName$CatalogPlugin.name,
   moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-  producedEventSchema: ChangeProductName$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
-  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   initialState: ChangeProductName$CatalogPlugin.initialState,
+  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
   evolve: ChangeProductName$CatalogPlugin.evolve,
+  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
+  producedEventSchema: ChangeProductName$CatalogPlugin.producedEventSchema,
   decide: ChangeProductName$CatalogPlugin.decide,
   commandSchema: ChangeProductName$CatalogPlugin.commandSchema
 });
@@ -56,11 +56,11 @@ let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductPrice$CatalogPlugin.name,
   moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
-  producedEventSchema: ChangeProductPrice$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
-  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   initialState: ChangeProductPrice$CatalogPlugin.initialState,
+  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
   evolve: ChangeProductPrice$CatalogPlugin.evolve,
+  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
+  producedEventSchema: ChangeProductPrice$CatalogPlugin.producedEventSchema,
   decide: ChangeProductPrice$CatalogPlugin.decide,
   commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
 });

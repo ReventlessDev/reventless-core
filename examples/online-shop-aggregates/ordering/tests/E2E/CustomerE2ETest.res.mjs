@@ -32,7 +32,6 @@ let CustomerAgg = AggregateMaker.Make({
   moduleUrl: Customer$OrderingPlugin.moduleUrl
 })({
   initialState: CustomerBehavior$OrderingPlugin.initialState,
-  resolverConfig: CustomerBehavior$OrderingPlugin.resolverConfig,
   evolve: CustomerBehavior$OrderingPlugin.evolve,
   decide: CustomerBehavior$OrderingPlugin.decide,
   moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl

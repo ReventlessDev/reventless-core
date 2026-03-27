@@ -38,13 +38,6 @@ let CmdGenAggSpec = {
   moduleUrl: moduleUrl
 };
 
-let resolverConfig_fields = [];
-
-let resolverConfig = {
-  commandSchema: commandSchema,
-  fields: resolverConfig_fields
-};
-
 let moduleUrl$1 = import.meta.url;
 
 function evolve(_state, _event) {
@@ -77,7 +70,6 @@ function decide(_state, command) {
 
 let CmdGenBehavior = {
   Spec: undefined,
-  resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
   initialState: undefined,
   evolve: evolve,
@@ -109,12 +101,6 @@ let TestGenerator = CommandGenerator_Callback$ReventlessCore.Make(MockPublishSpe
   errorSchema: errorSchema,
   commandSchema: commandSchema,
   moduleUrl: moduleUrl
-})({
-  initialState: undefined,
-  resolverConfig: resolverConfig,
-  evolve: evolve,
-  decide: decide,
-  moduleUrl: moduleUrl$1
 });
 
 function makeZeroParamPayload(id, command) {

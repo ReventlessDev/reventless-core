@@ -32,7 +32,6 @@ let OrderAgg = AggregateMaker.Make({
   moduleUrl: Order$OrderingPlugin.moduleUrl
 })({
   initialState: OrderBehavior$OrderingPlugin.initialState,
-  resolverConfig: OrderBehavior$OrderingPlugin.resolverConfig,
   evolve: OrderBehavior$OrderingPlugin.evolve,
   decide: OrderBehavior$OrderingPlugin.decide,
   moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl

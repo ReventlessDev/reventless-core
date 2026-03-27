@@ -35,18 +35,7 @@ let CGSpec = {
   moduleUrl: moduleUrl
 };
 
-let resolverConfig_fields = ["name"];
-
-let resolverConfig = {
-  commandSchema: commandSchema,
-  fields: resolverConfig_fields
-};
-
 let moduleUrl$1 = import.meta.url;
-
-let initialState = {
-  name: ""
-};
 
 function evolve(_state, event) {
   return {
@@ -64,11 +53,14 @@ function decide(_state, command) {
   };
 }
 
+let CGBehavior_initialState = {
+  name: ""
+};
+
 let CGBehavior = {
   Spec: undefined,
-  resolverConfig: resolverConfig,
   moduleUrl: moduleUrl$1,
-  initialState: initialState,
+  initialState: CGBehavior_initialState,
   evolve: evolve,
   decide: decide
 };
@@ -86,12 +78,6 @@ let CGMaker = CommandGenerator_Builder$ReventlessCore.Make({
   errorSchema: errorSchema,
   commandSchema: commandSchema,
   moduleUrl: moduleUrl
-})({
-  initialState: initialState,
-  resolverConfig: resolverConfig,
-  evolve: evolve,
-  decide: decide,
-  moduleUrl: moduleUrl$1
 })(CommandGeneratorResolvers_InMemory$ReventlessInMemory);
 
 let capturedCmds = {

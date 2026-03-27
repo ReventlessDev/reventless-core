@@ -26,7 +26,6 @@ module Make = (
   module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
   module SpecificCommandGenerator = CommandGenerator_Builder.Make(
     Spec,
-    Behavior,
     CommandGeneratorResolvers,
   )
   module SpecificEventCollector = EventCollector_Builder.Make(
@@ -111,12 +110,12 @@ module Make = (
           let fields =
             switch Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.get(Spec.name) {
             | Some(registeredFields) if registeredFields->Array.length > 0 => registeredFields
-            | _ => Behavior.resolverConfig.fields
+            | _ => []
             }
           let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
             ~publishJsons,
             ~serviceName=Spec.name,
-            ~commandSchema=Behavior.resolverConfig.commandSchema->S.castToUnknown,
+            ~commandSchema=Spec.commandSchema->S.castToUnknown,
           )
           fields->Array.forEach(field => bindHandler(~field, ~generateCommand))
         | None =>

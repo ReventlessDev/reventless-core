@@ -100,7 +100,7 @@ module Spec = Product
 @schema
 type state = {name: string, description: string, price: float}
 
-let resolverConfig = {Behavior.commandSchema, fields: []}
+
 
 let init = event =>
   switch event {
@@ -694,7 +694,7 @@ open Item
 module Spec = Item
 
 @schema type state = {name: string}
-let resolverConfig = {Behavior.commandSchema, fields: []}
+
 
 let init = event => switch event {
   | ItemCreated({name}) => {name}

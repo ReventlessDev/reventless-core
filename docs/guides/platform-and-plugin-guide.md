@@ -243,10 +243,7 @@ module Spec = Product // Required: links behavior to its aggregate spec
 @schema
 type state = {name: string, description: string, price: float}
 
-let resolverConfig = {
-  Behavior.commandSchema,
-  fields: [],
-}
+
 
 let initialState = {name: "", description: "", price: 0.0}
 

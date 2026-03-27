@@ -122,7 +122,6 @@ external requestContextTag: 'a = "tag"
 @get external getHandleCommands: 'a => 'b = "handleCommands"
 @get external getHandleJsonCommands: 'a => 'b = "handleJsonCommands"
 @get external getName: 'a => string = "name"
-@get external getResolverConfig: 'a => 'b = "resolverConfig"
 @get external getCommandSchema: 'a => 'b = "commandSchema"
 
 // === Object constructors for functor arguments ===
@@ -190,13 +189,13 @@ let buildCommandTopicHandler = (specModule, behaviorModule, eventLogTableName, q
   handleQueueEvent(makeQueueRef(queueUrl), commandTopicCallback->getHandleJsonCommands)
 }
 
-let buildCommandGeneratorHandler = (specModule, behaviorModule, queueUrl) => {
+let buildCommandGeneratorHandler = (specModule, _behaviorModule, queueUrl) => {
   let resolvedQueue = makeQueueRef(queueUrl)
   let publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO")
   let generateCommand = makeGenerateCommand(
     publishJsons,
     specModule->getName,
-    behaviorModule->getResolverConfig->getCommandSchema,
+    specModule->getCommandSchema,
     None,
   )
   (event, _context) => generateCommand(event)

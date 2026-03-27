@@ -94,12 +94,6 @@ type state =
   | Active({name: string, description: string})
   | Archived
 
-// Which AppSync mutations map to this aggregate's commands
-let resolverConfig: Behavior.resolverConfig<Spec.command> = {
-  commandSchema: CatalogItemSpec.commandSchema,
-  fields: ["CatalogItem_CreateItem", "CatalogItem_UpdateItem", "CatalogItem_ArchiveItem"],
-}
-
 // Called with the first event to establish the initial state
 let init: Behavior.init<state, Spec.event> = event =>
   switch event {

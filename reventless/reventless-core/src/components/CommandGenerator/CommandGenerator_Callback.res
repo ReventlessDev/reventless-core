@@ -74,11 +74,10 @@ let makeGenerateCommand = (
 module Make = (
   Spec: Spec,
   AggregateSpec: Reventless.Aggregate.Spec,
-  Behavior: Behavior.T with module Spec := AggregateSpec,
 ): T => {
   let generateCommand = makeGenerateCommand(
     ~publishJsons=Spec.publishJsons,
     ~serviceName=AggregateSpec.name,
-    ~commandSchema=Behavior.resolverConfig.commandSchema->S.castToUnknown,
+    ~commandSchema=AggregateSpec.commandSchema->S.castToUnknown,
   )
 }

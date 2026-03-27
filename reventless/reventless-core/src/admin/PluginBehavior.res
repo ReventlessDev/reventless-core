@@ -13,13 +13,6 @@ type state =
 
 let initialState = NotConnected
 
-let resolverConfig = {
-  {
-    Reventless.Behavior.commandSchema,
-    fields: ["Plugin_Activate", "Plugin_Deactivate"],
-  }
-}
-
 let atomicCounter = None
 
 let moduleUrl: string = %raw(`import.meta.url`)

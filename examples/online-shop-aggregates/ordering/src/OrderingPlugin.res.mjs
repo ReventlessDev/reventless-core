@@ -34,7 +34,6 @@ function Make(Platform) {
     moduleUrl: Customer$OrderingPlugin.moduleUrl
   })({
     initialState: CustomerBehavior$OrderingPlugin.initialState,
-    resolverConfig: CustomerBehavior$OrderingPlugin.resolverConfig,
     evolve: CustomerBehavior$OrderingPlugin.evolve,
     decide: CustomerBehavior$OrderingPlugin.decide,
     moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl
@@ -52,7 +51,6 @@ function Make(Platform) {
     moduleUrl: Order$OrderingPlugin.moduleUrl
   })({
     initialState: OrderBehavior$OrderingPlugin.initialState,
-    resolverConfig: OrderBehavior$OrderingPlugin.resolverConfig,
     evolve: OrderBehavior$OrderingPlugin.evolve,
     decide: OrderBehavior$OrderingPlugin.decide,
     moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl
@@ -110,7 +108,6 @@ function Make(Platform) {
     moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl
   })({
     initialState: CatalogProductBehavior$OrderingPlugin.initialState,
-    resolverConfig: CatalogProductBehavior$OrderingPlugin.resolverConfig,
     evolve: CatalogProductBehavior$OrderingPlugin.evolve,
     decide: CatalogProductBehavior$OrderingPlugin.decide,
     moduleUrl: CatalogProductBehavior$OrderingPlugin.moduleUrl

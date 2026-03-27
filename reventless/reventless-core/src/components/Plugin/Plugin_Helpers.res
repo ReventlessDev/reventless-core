@@ -468,8 +468,7 @@ let queryFieldNamesRegistry: ref<dict<Api_Naming.queryNames>> = ref(Dict.make())
 // ---------------------------------------------------------------------------
 // Aggregate mutation field names registry — populated by Plugin_Builder during
 // construct() to map aggregate Spec.name → plugin-prefixed mutation field names.
-// Read by CommandGenerator_Builder.connect() to override the empty
-// Behavior.resolverConfig.fields with the correct plugin-prefixed names.
+// Read by CommandGenerator_Builder.connect() to provide plugin-prefixed mutation field names.
 // ---------------------------------------------------------------------------
 let aggregateMutationFieldsRegistry: ref<dict<array<string>>> = ref(Dict.make())
 

@@ -22,16 +22,6 @@ let stateSchema = S.union([
   }))
 ]);
 
-let resolverConfig_fields = [
-  "Plugin_Activate",
-  "Plugin_Deactivate"
-];
-
-let resolverConfig = {
-  commandSchema: PluginSpec$ReventlessCore.commandSchema,
-  fields: resolverConfig_fields
-};
-
 let moduleUrl = import.meta.url;
 
 function decide(state, command) {
@@ -344,7 +334,6 @@ export {
   Spec,
   stateSchema,
   initialState,
-  resolverConfig,
   atomicCounter,
   moduleUrl,
   decide,

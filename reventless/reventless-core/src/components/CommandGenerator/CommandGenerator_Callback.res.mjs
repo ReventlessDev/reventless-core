@@ -59,12 +59,12 @@ function makeGenerateCommand(publishJsons, serviceName, commandSchema, $staropt$
 }
 
 function Make(Spec) {
-  return AggregateSpec => (Behavior => {
-    let generateCommand = makeGenerateCommand(Spec.publishJsons, AggregateSpec.name, Behavior.resolverConfig.commandSchema, undefined);
+  return AggregateSpec => {
+    let generateCommand = makeGenerateCommand(Spec.publishJsons, AggregateSpec.name, AggregateSpec.commandSchema, undefined);
     return {
       generateCommand: generateCommand
     };
-  });
+  };
 }
 
 export {

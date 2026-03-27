@@ -12,11 +12,6 @@ type state =
   | Shipped
   | Cancelled
 
-let resolverConfig = {
-  Reventless.Behavior.commandSchema,
-  fields: [],
-}
-
 let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated

@@ -69,8 +69,7 @@ module Make = (
         let fieldNames = constructorNames->Array.map(cname =>
           Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
         )
-        // Register plugin-prefixed field names so CommandGenerator_Builder can use them
-        // instead of the empty Behavior.resolverConfig.fields.
+        // Register plugin-prefixed field names for CommandGenerator_Builder.
         Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.set(M.Spec.name, fieldNames)
         // Register aggregate mutation SDL + resolver stubs synchronously via hook
         // (before Output.apply chains fire).

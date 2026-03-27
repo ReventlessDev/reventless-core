@@ -36,11 +36,11 @@ let eventLog = CatalogEventLogMaker.make("Catalog", undefined, undefined);
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,
   moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
-  producedEventSchema: AddProduct$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
-  errorSchema: AddProduct$CatalogPlugin.errorSchema,
   initialState: AddProduct$CatalogPlugin.initialState,
+  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
   evolve: AddProduct$CatalogPlugin.evolve,
+  errorSchema: AddProduct$CatalogPlugin.errorSchema,
+  producedEventSchema: AddProduct$CatalogPlugin.producedEventSchema,
   decide: AddProduct$CatalogPlugin.decide,
   commandSchema: AddProduct$CatalogPlugin.commandSchema
 });
@@ -48,11 +48,11 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductName$CatalogPlugin.name,
   moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-  producedEventSchema: ChangeProductName$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
-  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   initialState: ChangeProductName$CatalogPlugin.initialState,
+  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
   evolve: ChangeProductName$CatalogPlugin.evolve,
+  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
+  producedEventSchema: ChangeProductName$CatalogPlugin.producedEventSchema,
   decide: ChangeProductName$CatalogPlugin.decide,
   commandSchema: ChangeProductName$CatalogPlugin.commandSchema
 });
@@ -60,11 +60,11 @@ let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ChangeProductDescriptionMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductDescription$CatalogPlugin.name,
   moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
-  producedEventSchema: ChangeProductDescription$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
-  errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
   initialState: ChangeProductDescription$CatalogPlugin.initialState,
+  consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
   evolve: ChangeProductDescription$CatalogPlugin.evolve,
+  errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
+  producedEventSchema: ChangeProductDescription$CatalogPlugin.producedEventSchema,
   decide: ChangeProductDescription$CatalogPlugin.decide,
   commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema
 });
@@ -72,11 +72,11 @@ let ChangeProductDescriptionMaker = StateChangeSlice_Builder$ReventlessInMemory.
 let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductPrice$CatalogPlugin.name,
   moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
-  producedEventSchema: ChangeProductPrice$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
-  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   initialState: ChangeProductPrice$CatalogPlugin.initialState,
+  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
   evolve: ChangeProductPrice$CatalogPlugin.evolve,
+  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
+  producedEventSchema: ChangeProductPrice$CatalogPlugin.producedEventSchema,
   decide: ChangeProductPrice$CatalogPlugin.decide,
   commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
 });
@@ -84,11 +84,11 @@ let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let AddCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddCategory$CatalogPlugin.name,
   moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
-  producedEventSchema: AddCategory$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
-  errorSchema: AddCategory$CatalogPlugin.errorSchema,
   initialState: AddCategory$CatalogPlugin.initialState,
+  consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
   evolve: AddCategory$CatalogPlugin.evolve,
+  errorSchema: AddCategory$CatalogPlugin.errorSchema,
+  producedEventSchema: AddCategory$CatalogPlugin.producedEventSchema,
   decide: AddCategory$CatalogPlugin.decide,
   commandSchema: AddCategory$CatalogPlugin.commandSchema
 });
@@ -96,11 +96,11 @@ let AddCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let RenameCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: RenameCategory$CatalogPlugin.name,
   moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
-  producedEventSchema: RenameCategory$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
-  errorSchema: RenameCategory$CatalogPlugin.errorSchema,
   initialState: RenameCategory$CatalogPlugin.initialState,
+  consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
   evolve: RenameCategory$CatalogPlugin.evolve,
+  errorSchema: RenameCategory$CatalogPlugin.errorSchema,
+  producedEventSchema: RenameCategory$CatalogPlugin.producedEventSchema,
   decide: RenameCategory$CatalogPlugin.decide,
   commandSchema: RenameCategory$CatalogPlugin.commandSchema
 });
@@ -108,11 +108,11 @@ let RenameCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
 let ArchiveCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ArchiveCategory$CatalogPlugin.name,
   moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
-  producedEventSchema: ArchiveCategory$CatalogPlugin.producedEventSchema,
-  consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
-  errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
   initialState: ArchiveCategory$CatalogPlugin.initialState,
+  consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
   evolve: ArchiveCategory$CatalogPlugin.evolve,
+  errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
+  producedEventSchema: ArchiveCategory$CatalogPlugin.producedEventSchema,
   decide: ArchiveCategory$CatalogPlugin.decide,
   commandSchema: ArchiveCategory$CatalogPlugin.commandSchema
 });

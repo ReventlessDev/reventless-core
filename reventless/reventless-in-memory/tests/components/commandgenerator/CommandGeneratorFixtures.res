@@ -27,17 +27,12 @@ module CGSpec = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Behavior (provides resolverConfig used by CommandGenerator_Callback)
+// Behavior
 // ─────────────────────────────────────────────────────────────
 
 module CGBehavior = {
   module Spec = CGSpec
   type state = {name: string}
-
-  let resolverConfig: Reventless.Behavior.resolverConfig<CGSpec.command> = {
-    commandSchema: CGSpec.commandSchema,
-    fields: ["name"],
-  }
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
@@ -60,7 +55,6 @@ module CGBehavior = {
 
 module CGMaker = ReventlessCore.CommandGenerator_Builder.Make(
   CGSpec,
-  CGBehavior,
   CommandGeneratorResolvers_InMemory,
 )
 

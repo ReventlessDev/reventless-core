@@ -10,7 +10,6 @@ let include = BehaviorTest$ReventlessInMemory.Make({
   errorSchema: Category$CatalogPlugin.errorSchema
 })({
   initialState: CategoryBehavior$CatalogPlugin.initialState,
-  resolverConfig: CategoryBehavior$CatalogPlugin.resolverConfig,
   evolve: CategoryBehavior$CatalogPlugin.evolve,
   decide: CategoryBehavior$CatalogPlugin.decide,
   moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
