@@ -1,5 +1,7 @@
 # RequestContext — Fields and Usage Analysis
 
+> **Status: Partial.** `RequestContext.t` was implemented with `{ correlationId, identity, claims }`. The `causationId` and `retryCount` fields recommended by this analysis were not added. The shape diverged from the recommendation — `identity` and `claims` were added instead (not proposed here).
+
 **Created:** 2026-03-05
 
 **Related:** `docs/plans/effect-logger-and-request-context.md` (Work Item 2)

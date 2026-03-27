@@ -1,5 +1,7 @@
 # Logging Harmonization Analysis
 
+> **Status: Partial.** Basic Effect logging (`Effect.logInfo`/`logError`, `LogFormat.res`) was implemented via `docs/plans/done/effect-logger-and-request-context.md`. Structured JSON log format (`level`/`loc`/`component`/`data`), level filtering via `makeLogger(~minLevel)`, and `LOG_LEVEL` env var support are not yet implemented.
+
 **Created:** 2026-03-05
 
 **Context:** After `docs/plans/effect-logger-and-request-context.md` is implemented, all callback

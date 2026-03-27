@@ -1,5 +1,7 @@
 # DCB EventLog Partitioning Improvement Analysis
 
+> **Status: Not implemented.** Multi-clause DCB queries were addressed by `docs/plans/done/multi-clause-dcb-queries-plan.md`, but the storage-layer partitioning described here (`partitionTag` annotation, primary-tag partition key, `DcbEventLogStorage_DynamoDb_V2`) has not been built. The DCB EventLog still uses a single `"dcb"` partition key.
+
 **Date**: 2026-03-06
 **Scope**: Analysis of the current single-partition ("dcb") design, its limitations, and alternative partitioning strategies.
 

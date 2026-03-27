@@ -1,5 +1,7 @@
 # Effect Services Beyond Logging and RequestContext
 
+> **Status: Not implemented.** The linked plan (`docs/plans/done/effect-logger-and-request-context.md`) implemented logging and RequestContext only. None of the proposed Effect services (Clock, Random/ID, Metrics, HTTP Client, Feature Flags, Event Publisher, Secret Store) have been created.
+
 **Created:** 2026-03-05
 
 **Related:** `docs/plans/effect-logger-and-request-context.md`, `docs/analysis/request-context-usage.md`
