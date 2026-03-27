@@ -196,7 +196,7 @@ function Make(Platform) {
     ProductReadModel,
     CategoryReadModel,
     ProductDemandReadModelMaker
-  ], [ImportProductsTask], api, apiRole, scheduler, undefined, undefined);
+  ], [ImportProductsTask], api, apiRole, scheduler, undefined, undefined, undefined, undefined, undefined, undefined);
   return {
     ProductAggregate: ProductAggregate,
     CategoryAggregate: CategoryAggregate,

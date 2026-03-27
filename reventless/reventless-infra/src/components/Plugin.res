@@ -28,37 +28,13 @@ type outputs = {
 }
 
 /**
-The DCB (Dynamic Consistency Boundary) specification for a plugin.
-
-Groups all slices under a shared event log. Each slice declares its own
-`producedEvent` and `consumedEvent` types — no shared event union needed.
-Pass this as `~dcbSpec` to `Plugin.T.make` when the plugin uses DCB components.
-
-@example
-```rescript
-// CatalogPlugin.res (DCB variant)
-module DcbSpec = {
-  let stateChangeSlices = [module(AddCategorySlice), module(AddProductSlice)]
-  let stateViewSlices = [module(CategoriesViewSlice), module(ProductsViewSlice)]
-  let automationSlices = []
-  let outboundTranslationSlices = []
-  let inboundTranslationSlices = []
-}
-```
-*/
-module type DcbSpec = {
-  let stateChangeSlices: array<module(StateChangeSlice.T)>
-  let stateViewSlices: array<module(StateViewSlice.T)>
-  let automationSlices: array<module(AutomationSlice.T)>
-  let outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>
-  let inboundTranslationSlices: array<module(InboundTranslationSlice.T)>
-}
-
-/**
 Module type for the top-level plugin factory.
 
 Call `Plugin.T.make` to provision all plugin components (aggregates, read models,
 tasks, extension points, extensions, heartbeat, DCB log) in a single Pulumi stack update.
+
+DCB slices are passed directly as optional labeled arrays. When any slice array
+is non-empty, a shared DCB EventLog is provisioned automatically.
 */
 module type T = {
   type api
@@ -76,7 +52,11 @@ module type T = {
     ~api: api,
     ~apiRole: role,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
-    ~dcbSpec: module(DcbSpec)=?,
+    ~stateChangeSlices: array<module(StateChangeSlice.T)>=?,
+    ~stateViewSlices: array<module(StateViewSlice.T)>=?,
+    ~automationSlices: array<module(AutomationSlice.T)>=?,
+    ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>=?,
+    ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

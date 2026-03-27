@@ -564,7 +564,11 @@ module MakeWithConfig = (
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=appSyncApi,
       ~apiRole=appSyncApiRole,
-      ~dcbSpec=None,
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[],
+      ~automationSlices=[],
+      ~outboundTranslationSlices=[],
+      ~inboundTranslationSlices=[],
     )
 
     // Build each plugin using the shared scheduler.
@@ -733,7 +737,11 @@ module MakeWithConfig = (
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=appSyncApi,
       ~apiRole=appSyncApiRole,
-      ~dcbSpec=None,
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[],
+      ~automationSlices=[],
+      ~outboundTranslationSlices=[],
+      ~inboundTranslationSlices=[],
     )
 
     if Config.splitApi {

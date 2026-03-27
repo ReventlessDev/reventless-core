@@ -191,7 +191,7 @@ function Make(Platform) {
     CustomerReadModel,
     OrderReadModel,
     AvailableProductsReadModelMaker
-  ], [OrderNotificationsTask], api, apiRole, scheduler, undefined, undefined);
+  ], [OrderNotificationsTask], api, apiRole, scheduler, undefined, undefined, undefined, undefined, undefined, undefined);
   return {
     CustomerAggregate: CustomerAggregate,
     OrderAggregate: OrderAggregate,

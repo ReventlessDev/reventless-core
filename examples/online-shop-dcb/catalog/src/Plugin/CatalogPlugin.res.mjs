@@ -166,7 +166,7 @@ function Make(Platform) {
     moduleUrl: moduleUrl$1,
     mappings: mappings$1
   });
-  let stateChangeSlices = [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, [
     AddProductSlice,
     ChangeProductNameSlice,
     ChangeProductDescriptionSlice,
@@ -175,23 +175,11 @@ function Make(Platform) {
     RenameCategorySlice,
     ArchiveCategorySlice,
     RecordProductDemandSlice
-  ];
-  let stateViewSlices = [
+  ], [
     ProductsViewSlice,
     CategoriesViewSlice,
     ProductDemandViewSlice
-  ];
-  let automationSlices = [];
-  let outboundTranslationSlices = [];
-  let inboundTranslationSlices = [ImportProductSlice];
-  let DcbSpec = {
-    stateChangeSlices: stateChangeSlices,
-    stateViewSlices: stateViewSlices,
-    automationSlices: automationSlices,
-    outboundTranslationSlices: outboundTranslationSlices,
-    inboundTranslationSlices: inboundTranslationSlices
-  };
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductNameSlice: ChangeProductNameSlice,
@@ -211,7 +199,6 @@ function Make(Platform) {
     OrdersDemandMapping: OrdersDemandMapping,
     OrdersExtensionMappings: OrdersExtensionMappings,
     OrdersExtensionMaker: OrdersExtensionMaker,
-    DcbSpec: DcbSpec,
     make: make
   };
 }

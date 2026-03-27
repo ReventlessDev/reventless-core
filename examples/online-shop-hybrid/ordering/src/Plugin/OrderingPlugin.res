@@ -70,27 +70,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     OrdersEPMappings,
   )
 
-  // ── DCB Spec (excludes Customer — it's an aggregate) ───────
-  module DcbSpec = {
-    let stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)> = [
-      module(PlaceOrderSlice),
-      module(ShipOrderSlice),
-      module(CancelOrderSlice),
-      module(SyncCatalogProductSlice),
-    ]
-    let stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)> = [
-      module(OrdersViewSlice),
-      module(AvailableProductsViewSlice),
-    ]
-    let automationSlices: array<module(ReventlessInfra.AutomationSlice.T)> = [
-      module(AutoShipOrderSlice),
-    ]
-    let outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)> = [
-      module(SendOrderConfirmationSlice),
-    ]
-    let inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)> = []
-  }
-
   // ── Hybrid Plugin Assembly ──────────────────────────────────
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
@@ -103,6 +82,17 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~api,
       ~apiRole,
       ~scheduler,
-      ~dcbSpec=module(DcbSpec),
+      ~stateChangeSlices=[
+        module(PlaceOrderSlice),
+        module(ShipOrderSlice),
+        module(CancelOrderSlice),
+        module(SyncCatalogProductSlice),
+      ],
+      ~stateViewSlices=[
+        module(OrdersViewSlice),
+        module(AvailableProductsViewSlice),
+      ],
+      ~automationSlices=[module(AutoShipOrderSlice)],
+      ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
     )
 }

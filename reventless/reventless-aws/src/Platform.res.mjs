@@ -382,7 +382,7 @@ function MakeWithConfig(Config) {
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
     let pluginComponents = plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -472,7 +472,7 @@ function MakeWithConfig(Config) {
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
       updateApiSchema: updateApiSchema
     });
-    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
     if (Config.splitApi) {
       let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
       let coreRoleOutput = match[1];
@@ -862,7 +862,7 @@ function Make($star) {
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
     let pluginComponents = plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -948,7 +948,7 @@ function Make($star) {
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
       updateApiSchema: updateApiSchema
     });
-    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, undefined);
+    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];

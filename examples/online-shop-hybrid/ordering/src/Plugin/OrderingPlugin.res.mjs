@@ -173,27 +173,15 @@ function Make(Platform) {
     moduleUrl: moduleUrl$2,
     mappings: mappings$2
   });
-  let stateChangeSlices = [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, [
     PlaceOrderSlice,
     ShipOrderSlice,
     CancelOrderSlice,
     SyncCatalogProductSlice
-  ];
-  let stateViewSlices = [
+  ], [
     OrdersViewSlice,
     AvailableProductsViewSlice
-  ];
-  let automationSlices = [AutoShipOrderSlice];
-  let outboundTranslationSlices = [SendOrderConfirmationSlice];
-  let inboundTranslationSlices = [];
-  let DcbSpec = {
-    stateChangeSlices: stateChangeSlices,
-    stateViewSlices: stateViewSlices,
-    automationSlices: automationSlices,
-    outboundTranslationSlices: outboundTranslationSlices,
-    inboundTranslationSlices: inboundTranslationSlices
-  };
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, DcbSpec, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined);
   return {
     CustomerAggregate: CustomerAggregate,
     CustomerProjections: CustomerProjections,
@@ -212,7 +200,6 @@ function Make(Platform) {
     OrdersEPMappingT: OrdersEPMappingT,
     OrdersEPMappings: OrdersEPMappings,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
-    DcbSpec: DcbSpec,
     make: make
   };
 }

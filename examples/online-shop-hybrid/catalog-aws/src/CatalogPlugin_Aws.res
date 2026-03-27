@@ -89,26 +89,6 @@ module Make = (
     OrdersExtensionMappings,
   )
 
-  // ── DCB Spec ─────────────────────────────────────────────────
-  module DcbSpec = {
-    let stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)> = [
-      module(AddProductSlice),
-      module(ChangeProductNameSlice),
-      module(ChangeProductDescriptionSlice),
-      module(ChangeProductPriceSlice),
-      module(RecordProductDemandSlice),
-    ]
-    let stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)> = [
-      module(ProductsViewSlice),
-      module(ProductDemandViewSlice),
-    ]
-    let automationSlices: array<module(ReventlessInfra.AutomationSlice.T)> = []
-    let outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)> = []
-    let inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)> = [
-      module(ImportProductSlice),
-    ]
-  }
-
   // ── Hybrid Plugin Assembly ───────────────────────────────────
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
@@ -121,6 +101,17 @@ module Make = (
       ~api,
       ~apiRole,
       ~scheduler,
-      ~dcbSpec=module(DcbSpec),
+      ~stateChangeSlices=[
+        module(AddProductSlice),
+        module(ChangeProductNameSlice),
+        module(ChangeProductDescriptionSlice),
+        module(ChangeProductPriceSlice),
+        module(RecordProductDemandSlice),
+      ],
+      ~stateViewSlices=[
+        module(ProductsViewSlice),
+        module(ProductDemandViewSlice),
+      ],
+      ~inboundTranslationSlices=[module(ImportProductSlice)],
     )
 }

@@ -49,24 +49,25 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (RuntimeBuilder => {
-    let construct = (name, childName, dcbSpec, opts) => {
-      if (dcbSpec === undefined) {
+    let construct = (name, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts) => {
+      let hasDcb = stateChangeSlices.length !== 0 || stateViewSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0;
+      if (!hasDcb) {
         return emptyResult;
       }
-      let produced = dcbSpec.stateChangeSlices.map(Sc => [
+      let produced = stateChangeSlices.map(Sc => [
         Sc.Spec.name,
         Sc.Spec.producedEventSchema
       ]);
-      let consumed = dcbSpec.stateChangeSlices.map(Sc => [
+      let consumed = stateChangeSlices.map(Sc => [
         Sc.Spec.name,
         Sc.Spec.consumedEventSchema
-      ]).concat(dcbSpec.stateViewSlices.map(V => [
+      ]).concat(stateViewSlices.map(V => [
         V.Spec.name,
         V.Spec.consumedEventSchema
-      ])).concat(dcbSpec.automationSlices.map(A => [
+      ])).concat(automationSlices.map(A => [
         A.Spec.name,
         A.Spec.consumedEventSchema
-      ])).concat(dcbSpec.outboundTranslationSlices.map(O => [
+      ])).concat(outboundTranslationSlices.map(O => [
         O.Spec.name,
         O.Spec.consumedEventSchema
       ]));
@@ -96,7 +97,7 @@ function Make(DcbEventLogStorage) {
       let dcbCommandTopic = DcbCommandTopic.make(childName + `-dcb-command-topic`, opts);
       Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbCommandTopicCreated.contents, hook => hook(dcbCommandTopic));
       let publishJsons = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => ops.publishJsons);
-      let stateChangeSlicesOutputs = Object.fromEntries(dcbSpec.stateChangeSlices.map(StateChangeSlice => {
+      let stateChangeSlicesOutputs = Object.fromEntries(stateChangeSlices.map(StateChangeSlice => {
         let ch = StateChangeSlice.make(dcbEventLog, publishJsons, opts);
         return [
           StateChangeSlice.Spec.name,
@@ -105,56 +106,56 @@ function Make(DcbEventLogStorage) {
       }));
       let registerResolver = Plugin_Helpers$ReventlessCore.mutationResolverHook.contents;
       if (registerResolver !== undefined) {
-        dcbSpec.stateChangeSlices.forEach(S => registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], S.Spec.commandSchema));
+        stateChangeSlices.forEach(S => registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], S.Spec.commandSchema));
       }
       let bindHandler = Plugin_Helpers$ReventlessCore.mutationBindHook.contents;
       if (bindHandler !== undefined) {
         Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
-          dcbSpec.stateChangeSlices.forEach(S => {
+          stateChangeSlices.forEach(S => {
             let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
             let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, S.Spec.name, S.Spec.commandSchema, false);
             bindHandler(fieldName, generateCommand);
           });
         });
       }
-      dcbSpec.stateViewSlices.forEach(V => {
+      stateViewSlices.forEach(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name);
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[V.Spec.name] = qn;
       });
-      dcbSpec.automationSlices.forEach(A => {
+      automationSlices.forEach(A => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, A.queryDbName);
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[A.queryDbName] = qn;
       });
-      dcbSpec.outboundTranslationSlices.forEach(O => {
+      outboundTranslationSlices.forEach(O => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, O.queryDbName);
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[O.queryDbName] = qn;
       });
-      dcbSpec.inboundTranslationSlices.forEach(I => {
+      inboundTranslationSlices.forEach(I => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, I.queryDbName);
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[I.queryDbName] = qn;
       });
-      let stateViewSlicesOutputs = Object.fromEntries(dcbSpec.stateViewSlices.map(StateViewSlice => {
+      let stateViewSlicesOutputs = Object.fromEntries(stateViewSlices.map(StateViewSlice => {
         let sv = StateViewSlice.make(dcbEventLog, opts);
         return [
           StateViewSlice.Spec.name,
           Component$ReventlessCore.outputs(sv)
         ];
       }));
-      let automationSlicesOutputs = Object.fromEntries(dcbSpec.automationSlices.map(AutoSlice => {
+      let automationSlicesOutputs = Object.fromEntries(automationSlices.map(AutoSlice => {
         let as_ = AutoSlice.make(dcbEventLog, publishJsons, opts);
         return [
           AutoSlice.Spec.name,
           Component$ReventlessCore.outputs(as_)
         ];
       }));
-      let outboundTranslationSlicesOutputs = Object.fromEntries(dcbSpec.outboundTranslationSlices.map(OTS => {
+      let outboundTranslationSlicesOutputs = Object.fromEntries(outboundTranslationSlices.map(OTS => {
         let ots = OTS.make(dcbEventLog, publishJsons, opts);
         return [
           OTS.Spec.name,
           Component$ReventlessCore.outputs(ots)
         ];
       }));
-      let inboundTranslationSliceData = dcbSpec.inboundTranslationSlices.map(ITS => {
+      let inboundTranslationSliceData = inboundTranslationSlices.map(ITS => {
         let its = ITS.make(publishJsons, opts);
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
         let registerResolver = Plugin_Helpers$ReventlessCore.inboundMutationResolverHook.contents;
@@ -217,7 +218,7 @@ function Make(DcbEventLogStorage) {
       let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources));
       let inboundFieldNames = inboundTranslationSliceData.map(param => param[1]);
       let inboundSchemas = inboundTranslationSliceData.map(param => param[3]);
-      let dcbMutationData = dcbSpec.stateChangeSlices.map(S => {
+      let dcbMutationData = stateChangeSlices.map(S => {
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
         let constructorNames = DcbTag$Reventless.extractEventTypes(S.Spec.commandSchema);
         let tag = Stdlib_Option.getOr(constructorNames[0], S.Spec.name);
@@ -256,15 +257,15 @@ function Make(DcbEventLogStorage) {
       };
       Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbSlicesCreated.contents, hook => hook(dcbEventLog));
       let dcbRuntimeSetup = () => RuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, undefined, undefined, dcbCommandTopic);
-      let mutationEntriesFromSlices = dcbSpec.stateChangeSlices.map(S => ({
+      let mutationEntriesFromSlices = stateChangeSlices.map(S => ({
         fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)],
         commandSchema: S.Spec.commandSchema
       }));
-      let mutationEntriesFromInboundSlices = dcbSpec.inboundTranslationSlices.map(ITS => ({
+      let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => ({
         fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name)],
         commandSchema: ITS.Spec.externalInputSchema
       }));
-      let stateViewEntries = dcbSpec.stateViewSlices.map(V => {
+      let stateViewEntries = stateViewSlices.map(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name);
         return {
           singleFieldName: qn.singleFieldName,
@@ -275,7 +276,7 @@ function Make(DcbEventLogStorage) {
           includeIdParam: false
         };
       });
-      let automationEntries = dcbSpec.automationSlices.map(A => {
+      let automationEntries = automationSlices.map(A => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, A.queryDbName);
         return {
           singleFieldName: qn.singleFieldName,
@@ -285,7 +286,7 @@ function Make(DcbEventLogStorage) {
           authorization: undefined
         };
       });
-      let outboundEntries = dcbSpec.outboundTranslationSlices.map(O => {
+      let outboundEntries = outboundTranslationSlices.map(O => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, O.queryDbName);
         return {
           singleFieldName: qn.singleFieldName,
@@ -295,7 +296,7 @@ function Make(DcbEventLogStorage) {
           authorization: undefined
         };
       });
-      let inboundEntries = dcbSpec.inboundTranslationSlices.map(I => {
+      let inboundEntries = inboundTranslationSlices.map(I => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, I.queryDbName);
         return {
           singleFieldName: qn.singleFieldName,
@@ -305,7 +306,7 @@ function Make(DcbEventLogStorage) {
           authorization: undefined
         };
       });
-      let allProducedSchemas = dcbSpec.stateChangeSlices.map(Sc => Sc.Spec.producedEventSchema);
+      let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.producedEventSchema);
       return {
         dcbEventLogOutputs: Component$ReventlessCore.outputs(dcbEventLog),
         stateChangeSlicesOutputs: stateChangeSlicesOutputs,

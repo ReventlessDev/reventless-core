@@ -29,12 +29,17 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 
 function Make(Spec) {
   return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
-    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, api, apiRole, scheduler, dcbSpec, opts) => {
+    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, api, apiRole, scheduler, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
       let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
       let tasks = tasksOpt !== undefined ? tasksOpt : [];
+      let stateChangeSlices = stateChangeSlicesOpt !== undefined ? stateChangeSlicesOpt : [];
+      let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
+      let automationSlices = automationSlicesOpt !== undefined ? automationSlicesOpt : [];
+      let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
+      let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
       let version = PackageVersion$Reventless.fromCaller();
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let id = Plugin$ReventlessCore.makeId(extra$1, version);
@@ -44,7 +49,7 @@ function Make(Spec) {
         };
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
         let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(PluginRuntimeBuilder);
-        let dcbResult = DcbBuilder.construct(extra$1, childName, dcbSpec, opts);
+        let dcbResult = DcbBuilder.construct(extra$1, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);

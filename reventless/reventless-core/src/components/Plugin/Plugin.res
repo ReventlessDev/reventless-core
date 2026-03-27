@@ -5,11 +5,6 @@ type outputs = ReventlessInfra.Plugin.outputs
 type t
 type component = Component.t<t, outputs, unit>
 
-// DCB spec for plugin-wide event/command types and state change slices.
-// Aliased from ReventlessInfra so the DcbSpec module type is nominally identical
-// across packages — this eliminates Obj.magic at the Platform boundary.
-module type DcbSpec = ReventlessInfra.Plugin.DcbSpec
-
 module type T = {
   type api
   type role
@@ -24,7 +19,11 @@ module type T = {
     ~api: api,
     ~apiRole: role,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
-    ~dcbSpec: module(DcbSpec)=?,
+    ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>=?,
+    ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>=?,
+    ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>=?,
+    ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=?,
+    ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

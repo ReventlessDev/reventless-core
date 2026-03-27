@@ -100,7 +100,11 @@ module Make = (
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~api: ClonerRunner.api,
     ~apiRole: 'role,
-    ~dcbSpec: option<module(Plugin.DcbSpec)>,
+    ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>,
+    ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>,
+    ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>,
+    ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
+    ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
   ) => {
     let name = "Admin"
     let opts: Pulumi.ComponentResource.options = {}
@@ -112,7 +116,16 @@ module Make = (
       DcbCommandTopicChannel,
       AdminRuntimeBuilder,
     )
-    let dcbResult = DcbBuilder.construct(~name, ~childName=name, ~dcbSpec, ~opts)
+    let dcbResult = DcbBuilder.construct(
+      ~name,
+      ~childName=name,
+      ~stateChangeSlices,
+      ~stateViewSlices,
+      ~automationSlices,
+      ~outboundTranslationSlices,
+      ~inboundTranslationSlices,
+      ~opts,
+    )
 
     // Admin schema — composed from actual config
     let adminMutationEntries = AdminApi.mutationEntries(~cloner=Config.cloner)

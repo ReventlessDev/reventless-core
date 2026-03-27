@@ -168,7 +168,7 @@ function Make(Platform) {
     moduleUrl: moduleUrl$1,
     mappings: mappings$1
   });
-  let stateChangeSlices = [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, [
     RegisterCustomerSlice,
     ChangeEmailSlice,
     ChangeAddressSlice,
@@ -177,23 +177,11 @@ function Make(Platform) {
     ShipOrderSlice,
     CancelOrderSlice,
     SyncCatalogProductSlice
-  ];
-  let stateViewSlices = [
+  ], [
     CustomersViewSlice,
     OrdersViewSlice,
     AvailableProductsViewSlice
-  ];
-  let automationSlices = [AutoShipOrderSlice];
-  let outboundTranslationSlices = [SendOrderConfirmationSlice];
-  let inboundTranslationSlices = [];
-  let DcbSpec = {
-    stateChangeSlices: stateChangeSlices,
-    stateViewSlices: stateViewSlices,
-    automationSlices: automationSlices,
-    outboundTranslationSlices: outboundTranslationSlices,
-    inboundTranslationSlices: inboundTranslationSlices
-  };
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, DcbSpec, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined);
   return {
     RegisterCustomerSlice: RegisterCustomerSlice,
     ChangeEmailSlice: ChangeEmailSlice,
@@ -214,7 +202,6 @@ function Make(Platform) {
     OrdersEPMappingT: OrdersEPMappingT,
     OrdersEPMappings: OrdersEPMappings,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
-    DcbSpec: DcbSpec,
     make: make
   };
 }

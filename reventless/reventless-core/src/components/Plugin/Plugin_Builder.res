@@ -42,7 +42,11 @@ module Make = (
     >,
     ~tasks: array<module(ReventlessInfra.Task.T)>,
     ~scheduler: Pulumi.Output.t<Scheduler.operations>,
-    ~dcbSpec: option<module(Plugin.DcbSpec)>,
+    ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>,
+    ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>,
+    ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>,
+    ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
+    ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
     ~api: api,
     ~apiRole: role,
     self,
@@ -59,7 +63,16 @@ module Make = (
       DcbCommandTopicChannel,
       PluginRuntimeBuilder,
     )
-    let dcbResult = DcbBuilder.construct(~name, ~childName, ~dcbSpec, ~opts)
+    let dcbResult = DcbBuilder.construct(
+      ~name,
+      ~childName,
+      ~stateChangeSlices,
+      ~stateViewSlices,
+      ~automationSlices,
+      ~outboundTranslationSlices,
+      ~inboundTranslationSlices,
+      ~opts,
+    )
 
     // Derive GraphQL schema fragment for this plugin
     let mutationEntriesFromAggregates =
@@ -111,7 +124,7 @@ module Make = (
 
     // Populate query field names registry so resolvers align with fragment SDL.
     // Keyed by the Spec.name that each component uses for its QueryDb.
-    // (StateViewSlice registry is populated earlier, inside the dcbSpec match block,
+    // (StateViewSlice registry is populated earlier, inside the DCB builder,
     // before StateViewSlice.make calls — see above.)
     readModels->Array.forEach((
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
@@ -482,7 +495,11 @@ module Make = (
     ~api: api,
     ~apiRole: role,
     ~scheduler,
-    ~dcbSpec=?,
+    ~stateChangeSlices=[],
+    ~stateViewSlices=[],
+    ~automationSlices=[],
+    ~outboundTranslationSlices=[],
+    ~inboundTranslationSlices=[],
     ~opts=?,
   ) => {
     let version = Reventless.PackageVersion.fromCaller()
@@ -498,7 +515,11 @@ module Make = (
         ~readModels,
         ~tasks,
         ~scheduler,
-        ~dcbSpec,
+        ~stateChangeSlices,
+        ~stateViewSlices,
+        ~automationSlices,
+        ~outboundTranslationSlices,
+        ~inboundTranslationSlices,
         ~api,
         ~apiRole,
         ...

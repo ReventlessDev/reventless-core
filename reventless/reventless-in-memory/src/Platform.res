@@ -492,7 +492,11 @@ module MakeWithConfig = (
       ~resourceNaming=InMemory_PluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~dcbSpec=None,
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[],
+      ~automationSlices=[],
+      ~outboundTranslationSlices=[],
+      ~inboundTranslationSlices=[],
     )
 
     // Build each plugin using the shared scheduler.
@@ -849,7 +853,11 @@ module MakeWithConfig = (
       ~resourceNaming=InMemory_PluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~dcbSpec=None,
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[],
+      ~automationSlices=[],
+      ~outboundTranslationSlices=[],
+      ~inboundTranslationSlices=[],
     )
 
     // Register admin schema and start servers (admin-only, no plugins).
@@ -900,7 +908,11 @@ module MakeWithConfig = (
       ~resourceNaming=InMemory_PluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~dcbSpec=None,
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[],
+      ~automationSlices=[],
+      ~outboundTranslationSlices=[],
+      ~inboundTranslationSlices=[],
     )
 
     module P = unpack(plugin)

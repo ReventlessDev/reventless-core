@@ -1075,14 +1075,11 @@ The `project` function uses the same operations as aggregate projections (`Set`,
 
 ### DCB Plugin Composition
 
-The DCB plugin composition root is similar to the aggregate version, but uses different builder functors and includes a `DcbSpec` module that collects all slices.
+The DCB plugin composition root is similar to the aggregate version, but uses different builder functors and passes DCB slice arrays directly to `Plugin.make`.
 
 **`CatalogPlugin.res`**:
 ```rescript
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  // ── Event Log ──────────────────────────────────────────────
-  module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
-
   // ── StateChangeSlices (write-side) ─────────────────────────
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
   module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
@@ -1116,28 +1113,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     OrdersExtensionMappings,
   )
 
-  // ── DcbSpec: collect all slices for the plugin ─────────────
-  module DcbSpec = {
-    @schema
-    type event = CatalogEventLog.event
-    let stateChangeSlices: array<
-      module(ReventlessInfra.StateChangeSlice.T with type dcbEvent = event),
-    > = [
-      module(AddProductSlice),
-      module(ChangeProductNameSlice),
-      // ... all write slices ...
-    ]
-    let stateViewSlices: array<
-      module(ReventlessInfra.StateViewSlice.T with type dcbEvent = event),
-    > = [
-      module(ProductsViewSlice),
-      // ... all view slices ...
-    ]
-    let automationSlices = []
-    let outboundTranslationSlices = []
-    let inboundTranslationSlices = []
-  }
-
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Catalog",
@@ -1147,17 +1122,23 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~api,
       ~apiRole,
       ~scheduler,
-      ~dcbSpec=module(DcbSpec),   // ← DCB-specific: passes the slice collection
+      ~stateChangeSlices=[
+        module(AddProductSlice),
+        module(ChangeProductNameSlice),
+        // ... all write slices ...
+      ],
+      ~stateViewSlices=[
+        module(ProductsViewSlice),
+        // ... all view slices ...
+      ],
     )
 }
 ```
 
 **Key differences from aggregate plugin composition:**
-- **`Platform.DcbEventLog.Make`** instead of `Platform.Aggregate.Make`
 - **`Platform.StateChangeSlice.Make`** instead of aggregate + behavior
 - **`Platform.StateViewSlice.Make`** instead of read model + projection mappings
-- **`DcbSpec` module** collects all slices into typed arrays
-- **`~dcbSpec=module(DcbSpec)`** passed to `Plugin.make` (aggregates don't have this)
+- **DCB slice arrays** (`~stateChangeSlices`, `~stateViewSlices`, etc.) passed directly to `Plugin.make` — empty arrays can be omitted
 
 ---
 
@@ -1344,7 +1325,7 @@ The aggregate and DCB approaches can be mixed within a single plugin. `Plugin.ma
 
 ### Hybrid Plugin Composition
 
-A hybrid plugin passes both `~aggregates` and `~dcbSpec` to `Plugin.make`:
+A hybrid plugin passes both `~aggregates` and DCB slice arrays to `Plugin.make`:
 
 ```rescript
 // CatalogPlugin.res — hybrid: Category aggregate + Product/Demand DCB
@@ -1354,7 +1335,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CategoriesReadModelMaker = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjections)
 
   // --- DCB-based: Product + ProductDemand (cross-entity consistency) ---
-  module DcbEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
   module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
   // ... more slices
@@ -1362,22 +1342,20 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
   module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
 
-  module DcbSpec = {
-    @schema type event = CatalogEventLog.event
-    let stateChangeSlices = [module(AddProductSlice), module(ChangeProductNameSlice)]
-    let stateViewSlices = [module(ProductsViewSlice), module(ProductDemandViewSlice)]
-    let automationSlices = []
-    let outboundTranslationSlices = []
-    let inboundTranslationSlices = []
-  }
-
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~aggregates=[module(CategoryAggregate)],      // Aggregate components
-      ~readModels=[module(CategoriesReadModelMaker)], // Aggregate read models
-      ~dcbSpec=module(DcbSpec),                       // DCB slices
+      ~aggregates=[module(CategoryAggregate)],        // Aggregate components
+      ~readModels=[module(CategoriesReadModelMaker)],  // Aggregate read models
+      ~stateChangeSlices=[                             // DCB slices
+        module(AddProductSlice),
+        module(ChangeProductNameSlice),
+      ],
+      ~stateViewSlices=[
+        module(ProductsViewSlice),
+        module(ProductDemandViewSlice),
+      ],
       ~api, ~apiRole, ~scheduler,
     )
 }

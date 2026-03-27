@@ -59,37 +59,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
-  module DcbSpec = {
-    let stateChangeSlices: array<
-      module(ReventlessInfra.StateChangeSlice.T),
-    > = [
-      module(AddProductSlice),
-      module(ChangeProductNameSlice),
-      module(ChangeProductDescriptionSlice),
-      module(ChangeProductPriceSlice),
-      module(AddCategorySlice),
-      module(RenameCategorySlice),
-      module(ArchiveCategorySlice),
-      module(RecordProductDemandSlice),
-    ]
-    let stateViewSlices: array<
-      module(ReventlessInfra.StateViewSlice.T),
-    > = [
-      module(ProductsViewSlice),
-      module(CategoriesViewSlice),
-      module(ProductDemandViewSlice),
-    ]
-    let automationSlices: array<
-      module(ReventlessInfra.AutomationSlice.T),
-    > = []
-    let outboundTranslationSlices: array<
-      module(ReventlessInfra.OutboundTranslationSlice.T),
-    > = []
-    let inboundTranslationSlices: array<
-      module(ReventlessInfra.InboundTranslationSlice.T),
-    > = [module(ImportProductSlice)]
-  }
-
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Catalog",
@@ -99,6 +68,21 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~api,
       ~apiRole,
       ~scheduler,
-      ~dcbSpec=module(DcbSpec),
+      ~stateChangeSlices=[
+        module(AddProductSlice),
+        module(ChangeProductNameSlice),
+        module(ChangeProductDescriptionSlice),
+        module(ChangeProductPriceSlice),
+        module(AddCategorySlice),
+        module(RenameCategorySlice),
+        module(ArchiveCategorySlice),
+        module(RecordProductDemandSlice),
+      ],
+      ~stateViewSlices=[
+        module(ProductsViewSlice),
+        module(CategoriesViewSlice),
+        module(ProductDemandViewSlice),
+      ],
+      ~inboundTranslationSlices=[module(ImportProductSlice)],
     )
 }

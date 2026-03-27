@@ -60,37 +60,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
-  module DcbSpec = {
-    let stateChangeSlices: array<
-      module(ReventlessInfra.StateChangeSlice.T),
-    > = [
-      module(RegisterCustomerSlice),
-      module(ChangeEmailSlice),
-      module(ChangeAddressSlice),
-      module(DeactivateCustomerSlice),
-      module(PlaceOrderSlice),
-      module(ShipOrderSlice),
-      module(CancelOrderSlice),
-      module(SyncCatalogProductSlice),
-    ]
-    let stateViewSlices: array<
-      module(ReventlessInfra.StateViewSlice.T),
-    > = [
-      module(CustomersViewSlice),
-      module(OrdersViewSlice),
-      module(AvailableProductsViewSlice),
-    ]
-    let automationSlices: array<
-      module(ReventlessInfra.AutomationSlice.T),
-    > = [module(AutoShipOrderSlice)]
-    let outboundTranslationSlices: array<
-      module(ReventlessInfra.OutboundTranslationSlice.T),
-    > = [module(SendOrderConfirmationSlice)]
-    let inboundTranslationSlices: array<
-      module(ReventlessInfra.InboundTranslationSlice.T),
-    > = []
-  }
-
   let make = (~scheduler, ~api, ~apiRole) =>
     Platform.Plugin.make(
       ~name="Ordering",
@@ -100,6 +69,22 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~api,
       ~apiRole,
       ~scheduler,
-      ~dcbSpec=module(DcbSpec),
+      ~stateChangeSlices=[
+        module(RegisterCustomerSlice),
+        module(ChangeEmailSlice),
+        module(ChangeAddressSlice),
+        module(DeactivateCustomerSlice),
+        module(PlaceOrderSlice),
+        module(ShipOrderSlice),
+        module(CancelOrderSlice),
+        module(SyncCatalogProductSlice),
+      ],
+      ~stateViewSlices=[
+        module(CustomersViewSlice),
+        module(OrdersViewSlice),
+        module(AvailableProductsViewSlice),
+      ],
+      ~automationSlices=[module(AutoShipOrderSlice)],
+      ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
     )
 }

@@ -385,7 +385,7 @@ function MakeWithConfig(Config) {
     console.log(`[Platform] v` + version);
     console.log(`[Platform] silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
     let store = {
       contents: {}
@@ -716,7 +716,7 @@ function MakeWithConfig(Config) {
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
@@ -750,7 +750,7 @@ function MakeWithConfig(Config) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     plugin.make(scheduler, undefined, undefined);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
@@ -1133,7 +1133,7 @@ function Make($star) {
     console.log(`[Platform] v` + version);
     console.log(`[Platform] silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
     let store = {
       contents: {}
@@ -1464,7 +1464,7 @@ function Make($star) {
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
@@ -1498,7 +1498,7 @@ function Make($star) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, undefined);
+    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     plugin.make(scheduler, undefined, undefined);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);

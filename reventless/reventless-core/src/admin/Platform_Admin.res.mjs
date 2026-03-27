@@ -57,11 +57,11 @@ function Make(RuntimeEnvironment) {
         connect: connect
       };
     }));
-    let construct = (param, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, dcbSpec) => {
+    let construct = (param, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices) => {
       let name = "Admin";
       let opts = {};
       let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(AdminRuntimeBuilder);
-      let dcbResult = DcbBuilder.construct(name, name, dcbSpec, opts);
+      let dcbResult = DcbBuilder.construct(name, name, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
       let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
