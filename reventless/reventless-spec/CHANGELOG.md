@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.16](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-spec@3.0.0-alpha.14...@reventlessdev/reventless-spec@3.0.0-alpha.16) (2026-03-28)
+
+**Note:** Version bump only for package @reventlessdev/reventless-spec
+
+
+
+
+
 # [3.0.0-alpha.15](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-spec@3.0.0-alpha.14...@reventlessdev/reventless-spec@3.0.0-alpha.15) (2026-03-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec

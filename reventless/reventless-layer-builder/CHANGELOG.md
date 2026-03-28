@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@3.0.0-alpha.6...@reventlessdev/reventless-layer-builder@3.0.0-alpha.8) (2026-03-28)
+
+* refactor!: migrate Lambda entry points from ReScript to plain ESM ([2c1ea8f](https://github.com/ReventlessDev/reventless-core/commit/2c1ea8f1601e2142690b11f8bb0ffc2fd45c7f51))
+
+### BREAKING CHANGES
+
+* Lambda Layer entry point paths changed from
+*EntryPoint.res.mjs to *EntryPoint.mjs — requires layer rebuild.
+
+
+
 # [3.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-layer-builder@3.0.0-alpha.6...@reventlessdev/reventless-layer-builder@3.0.0-alpha.7) (2026-03-27)
 
 * refactor!: migrate Lambda entry points from ReScript to plain ESM ([2c1ea8f](https://github.com/ReventlessDev/reventless-core/commit/2c1ea8f1601e2142690b11f8bb0ffc2fd45c7f51))

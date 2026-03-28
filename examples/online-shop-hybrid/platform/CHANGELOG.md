@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.8](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-platform@1.0.0-alpha.6...@reventlessdev/online-shop-hybrid-platform@1.0.0-alpha.8) (2026-03-28)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform
+
+
+
+
+
 # [1.0.0-alpha.7](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-hybrid-platform@1.0.0-alpha.6...@reventlessdev/online-shop-hybrid-platform@1.0.0-alpha.7) (2026-03-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform

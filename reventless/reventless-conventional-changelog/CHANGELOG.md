@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.1.0-alpha.0 (2026-03-28)
+
+### Features
+
+* **release:** publish conventional-changelog preset as [@reventlessdev](https://github.com/reventlessdev) package ([996e70d](https://github.com/ReventlessDev/reventless-core/commit/996e70d42cbf38229dea991b99351649c5c7c301))
+
+
 ## [1.0.1-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-conventional-changelog@1.0.1-alpha.0...@reventlessdev/reventless-conventional-changelog@1.0.1-alpha.3) (2026-03-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-conventional-changelog
