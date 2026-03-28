@@ -173,7 +173,7 @@ function Make(Platform) {
     moduleUrl: moduleUrl$2,
     mappings: mappings$2
   });
-  let make = (scheduler, api, apiRole, adminExtensionPoints) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, [
     PlaceOrderSlice,
     ShipOrderSlice,
     CancelOrderSlice,
@@ -181,7 +181,7 @@ function Make(Platform) {
   ], [
     OrdersViewSlice,
     AvailableProductsViewSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, adminExtensionPoints, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined);
   return {
     CustomerAggregate: CustomerAggregate,
     CustomerProjections: CustomerProjections,

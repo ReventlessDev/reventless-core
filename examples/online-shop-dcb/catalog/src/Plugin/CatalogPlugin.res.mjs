@@ -166,7 +166,7 @@ function Make(Platform) {
     moduleUrl: moduleUrl$1,
     mappings: mappings$1
   });
-  let make = (scheduler, api, apiRole, adminExtensionPoints) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, api, apiRole, scheduler, [
     AddProductSlice,
     ChangeProductNameSlice,
     ChangeProductDescriptionSlice,
@@ -179,7 +179,7 @@ function Make(Platform) {
     ProductsViewSlice,
     CategoriesViewSlice,
     ProductDemandViewSlice
-  ], undefined, undefined, [ImportProductSlice], adminExtensionPoints, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductNameSlice: ChangeProductNameSlice,

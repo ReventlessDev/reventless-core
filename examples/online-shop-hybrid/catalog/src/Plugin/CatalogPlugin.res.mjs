@@ -183,7 +183,7 @@ function Make(Platform) {
     moduleUrl: moduleUrl$2,
     mappings: mappings$2
   });
-  let make = (scheduler, api, apiRole, adminExtensionPoints) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoryReadModel], undefined, api, apiRole, scheduler, [
+  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoryReadModel], undefined, api, apiRole, scheduler, [
     AddProductSlice,
     ChangeProductNameSlice,
     ChangeProductDescriptionSlice,
@@ -192,7 +192,7 @@ function Make(Platform) {
   ], [
     ProductsViewSlice,
     ProductDemandViewSlice
-  ], undefined, undefined, [ImportProductSlice], adminExtensionPoints, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined);
   return {
     CategoryAggregate: CategoryAggregate,
     CategoryProjections: CategoryProjections,
