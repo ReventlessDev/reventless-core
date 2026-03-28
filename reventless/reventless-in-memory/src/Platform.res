@@ -66,15 +66,22 @@ module MakeWithConfig = (
       MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
         toolName,
         args,
+        identity,
       ) => {
-        switch GraphQL_Server.getMutationResolver(toolName) {
-        | Some(resolver) =>
-          let result = await resolver(JSON.Encode.null, args, JSON.Encode.null)
-          switch result->JSON.Decode.string {
-          | Some(s) => s
-          | None => result->JSON.stringify
+        switch CommandGeneratorResolvers_GraphQL.handlerRefs->Dict.get(toolName) {
+        | Some(handlerRef) =>
+          switch handlerRef.contents {
+          | Some(generateCommand) =>
+            let payload: ReventlessCore.CommandGenerator.payload = {
+              command: toolName,
+              arguments: args->Obj.magic,
+              meta: {ip: [], user: identity.userId, info: `mcp/tools/${toolName}`},
+              identity,
+            }
+            await generateCommand(payload)->Effect.runPromise
+          | None => `error: no handler for ${toolName}`
           }
-        | None => `error: no handler found for tool ${toolName}`
+        | None => `error: no handler for ${toolName}`
         }
       })
 
@@ -767,7 +774,7 @@ module MakeWithConfig = (
     registerAdminMcpTools(
       ~pluginName="Admin",
       ~mutationEntries=adminMutationEntries,
-      ~commandHandler=async (toolName, args) => {
+      ~commandHandler=async (toolName, args, _identity) => {
         switch getAdminMutationResolver(toolName) {
         | Some(resolver) =>
           let result = await resolver(JSON.Encode.null, args, JSON.Encode.null)

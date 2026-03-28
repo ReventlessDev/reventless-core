@@ -85,6 +85,13 @@ function make(name, api, fields, param, runtime, resources, opts) {
           "ip": $util.toJson($context.identity.sourceIp),
           "user": $util.toJson($context.identity.username),
           "info": $util.toJson("$parentTypeName.$fieldName")
+        },
+        "identity": {
+          "userId": $util.toJson($context.identity.sub),
+          "username": $util.toJson($context.identity.username),
+          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
+          "claims": $util.toJson($context.identity.claims),
+          "provider": "Cognito"
         }
     }
   }
@@ -139,6 +146,13 @@ function makeDcb(api, runtime, fieldNames, tags, opts) {
           "ip": $util.toJson($context.identity.sourceIp),
           "user": $util.toJson($context.identity.username),
           "info": $util.toJson("$parentTypeName.$fieldName")
+        },
+        "identity": {
+          "userId": $util.toJson($context.identity.sub),
+          "username": $util.toJson($context.identity.username),
+          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
+          "claims": $util.toJson($context.identity.claims),
+          "provider": "Cognito"
         }
     }
   }

@@ -141,6 +141,13 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
           "ip": $util.toJson($context.identity.sourceIp),
           "user": $util.toJson($context.identity.username),
           "info": $util.toJson("$parentTypeName.$fieldName")
+        },
+        "identity": {
+          "userId": $util.toJson($context.identity.sub),
+          "username": $util.toJson($context.identity.username),
+          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
+          "claims": $util.toJson($context.identity.claims),
+          "provider": "Cognito"
         }
     }
   }
@@ -254,6 +261,13 @@ let makeDcb = (
           "ip": $util.toJson($context.identity.sourceIp),
           "user": $util.toJson($context.identity.username),
           "info": $util.toJson("$parentTypeName.$fieldName")
+        },
+        "identity": {
+          "userId": $util.toJson($context.identity.sub),
+          "username": $util.toJson($context.identity.username),
+          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
+          "claims": $util.toJson($context.identity.claims),
+          "provider": "Cognito"
         }
     }
   }

@@ -117,6 +117,7 @@ module Make = (
             ~publishJsons,
             ~serviceName=Spec.name,
             ~commandSchema=Spec.commandSchema->S.castToUnknown,
+            ~componentKind=CommandGenerator_Callback.Aggregate,
           )
           fields->Array.forEach(field => bindHandler(~field, ~generateCommand))
         | None =>

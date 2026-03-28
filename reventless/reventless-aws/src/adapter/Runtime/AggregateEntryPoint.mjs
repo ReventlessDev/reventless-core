@@ -45,8 +45,19 @@ function buildCommandTopicHandler(specModule, behaviorModule, eventLogTableName,
 function buildCommandGeneratorHandler(specModule, _behaviorModule, queueUrl) {
   const resolvedQueue = makeQueueRef(queueUrl);
   const publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO");
-  const generateCommand = makeGenerateCommand(publishJsons, specModule.name, specModule.commandSchema, undefined);
-  return (event, _context) => generateCommand(event);
+  const generateCommand = makeGenerateCommand(publishJsons, specModule.name, specModule.commandSchema, "Aggregate", undefined);
+  return (event, _context) => {
+    // Add identity fallback: use payload.identity if present, otherwise construct from meta.user.
+    const identity = (event.identity != null && typeof event.identity === 'object')
+      ? event.identity
+      : {
+          userId: event.meta?.user ?? "anonymous",
+          username: event.meta?.user ?? "anonymous",
+          groups: [],
+          provider: { TAG: "Custom", _0: "aws" },
+        };
+    return generateCommand({ ...event, identity });
+  };
 }
 
 function runEffect(correlationId, effect) {

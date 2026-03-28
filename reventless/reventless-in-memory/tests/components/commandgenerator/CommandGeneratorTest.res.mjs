@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Effect from "effect/Effect";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as CommandGeneratorFixtures$ReventlessInMemory from "./CommandGeneratorFixtures.res.mjs";
 
@@ -22,7 +23,8 @@ describe("CommandGenerator_Builder.Make:", () => {
       let payload = {
         command: "CreateCGItem",
         arguments: payload_arguments,
-        meta: payload_meta
+        meta: payload_meta,
+        identity: Identity$Reventless.anonymous
       };
       await Effect.runPromise(handler(payload, undefined));
       expect(CommandGeneratorFixtures$ReventlessInMemory.capturedCmds.contents.length).toBe(1);

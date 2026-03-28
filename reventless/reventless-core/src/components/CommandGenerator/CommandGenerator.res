@@ -6,6 +6,7 @@ type payload = {
   command: string,
   arguments: arguments,
   meta: meta,
+  identity: Reventless.Identity.t,
 }
 external asPayload: 'a => payload = "%identity"
 type event = {meta?: meta}

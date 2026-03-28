@@ -2,7 +2,7 @@
 // Creates independent server instances with isolated registries.
 // Used by Platform to create separate core and plugin servers in split mode.
 
-type toolHandler = JSON.t => promise<McpSdk.callToolResult>
+type toolHandler = (JSON.t, Reventless.Identity.t) => promise<McpSdk.callToolResult>
 type resourceHandler = string => promise<McpSdk.readResourceResult>
 
 type registeredTool = {
@@ -30,7 +30,7 @@ type t = {
   registerToolsFromEntries: (
     ~pluginName: string,
     ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
-    ~commandHandler: (string, JSON.t) => promise<string>,
+    ~commandHandler: (string, JSON.t, Reventless.Identity.t) => promise<string>,
   ) => unit,
   registerResourcesFromEntries: (
     ~pluginName: string,
@@ -73,13 +73,13 @@ let make = (~label: string="MCP"): t => {
   let registerToolsFromEntries = (
     ~pluginName: string,
     ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
-    ~commandHandler: (string, JSON.t) => promise<string>,
+    ~commandHandler: (string, JSON.t, Reventless.Identity.t) => promise<string>,
   ) => {
     let toolDefs = ReventlessCore.MCP_SchemaGenerator.generateTools(~pluginName, ~mutationEntries)
     toolDefs->Array.forEach(def => {
-      let handler: toolHandler = async args => {
+      let handler: toolHandler = async (args, identity) => {
         try {
-          let result = await commandHandler(def.name, args)
+          let result = await commandHandler(def.name, args, identity)
           McpSdk_Helpers.toolResult(result)
         } catch {
         | exn =>
@@ -149,7 +149,22 @@ let make = (~label: string="MCP"): t => {
     })
   }
 
-  let createServerInstance = () => {
+  let extractIdentity = (req: McpSdk.incomingMessage): Reventless.Identity.t => {
+    try {
+      let headers: dict<string> = (req->Obj.magic)["headers"]
+      switch headers->Dict.get("x-identity") {
+      | Some(json) =>
+        json
+        ->JSON.parseOrThrow
+        ->S.parseOrThrow(Reventless.Identity.schema)
+      | None => Reventless.Identity.anonymous
+      }
+    } catch {
+    | _ => Reventless.Identity.anonymous
+    }
+  }
+
+  let createServerInstance = (identity: Reventless.Identity.t) => {
     let server = McpSdk.newServer(
       {name: `reventless-${label->String.toLowerCase}`, version: "1.0.0"},
       {capabilities: {tools: {_placeholder: false}, resources: {_placeholder: false}}},
@@ -174,7 +189,7 @@ let make = (~label: string="MCP"): t => {
         Console.log(`[${label}] tools/call: ${toolName}`)
       }
       switch tools.contents->Dict.get(toolName) {
-      | Some({handler}) => await handler(args)
+      | Some({handler}) => await handler(args, identity)
       | None => McpSdk_Helpers.toolError(`Unknown tool: ${toolName}`)
       }
     })
@@ -260,7 +275,8 @@ let make = (~label: string="MCP"): t => {
             res->McpSdk.endResponseNoBody
           | "POST" =>
             let body = await McpSdk_Helpers.parseJsonBody(req)
-            let server = createServerInstance()
+            let identity = extractIdentity(req)
+            let server = createServerInstance(identity)
             let transport = McpSdk.newStreamableHTTPTransport({
               enableJsonResponse: true,
             })

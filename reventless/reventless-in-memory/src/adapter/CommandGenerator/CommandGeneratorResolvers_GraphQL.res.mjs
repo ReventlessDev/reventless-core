@@ -85,7 +85,8 @@ function register(fields, commandSchema) {
       let payload = {
         command: commandName,
         arguments: args,
-        meta: payload_meta
+        meta: payload_meta,
+        identity: identity
       };
       return await Effect.runPromise(generateCommand(payload));
     };
@@ -128,7 +129,8 @@ function registerDcb(fieldName, commandSchema) {
     let payload = {
       command: tag,
       arguments: args,
-      meta: payload_meta
+      meta: payload_meta,
+      identity: identity
     };
     return await Effect.runPromise(generateCommand(payload));
   };

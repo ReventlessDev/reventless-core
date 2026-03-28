@@ -89,6 +89,7 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
           command: commandName,
           arguments: args->Obj.magic,
           meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
+          identity,
         }
         let result = await generateCommand(payload)->Effect.runPromise
         result->JSON.Encode.string
@@ -154,6 +155,7 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
         command: tag,
         arguments: argsDict->Obj.magic,
         meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
+        identity,
       }
       let result = await generateCommand(payload)->Effect.runPromise
       result->JSON.Encode.string

@@ -28,6 +28,7 @@ describe("CommandGenerator_Builder.Make:", () => {
         command: "CreateCGItem",
         arguments: {"id": "item-1", "name": "widget"}->Obj.magic,
         meta: {ip: ["127.0.0.1"], user: "testuser", info: ""},
+        identity: Reventless.Identity.anonymous,
       }
 
       // Call handler — generateCommand is async (awaits publishJsons internally)

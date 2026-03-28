@@ -53,7 +53,7 @@ function Make(Spec) {
         let fields = registeredFields !== undefined ? (
             registeredFields.length !== 0 ? registeredFields : []
           ) : [];
-        let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, Spec.name, Spec.commandSchema, undefined);
+        let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, Spec.name, Spec.commandSchema, "Aggregate", undefined);
         fields.forEach(field => bindHandler(field, generateCommand));
       } else {
         let resources = Component$ReventlessCore.outputs(commandTopic).resources;

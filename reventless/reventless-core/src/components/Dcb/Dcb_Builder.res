@@ -172,6 +172,7 @@ module Make = (
                   ~publishJsons=ops.publishJsons,
                   ~serviceName=S.Spec.name,
                   ~commandSchema=S.Spec.commandSchema->Obj.magic,
+                  ~componentKind=CommandGenerator_Callback.StateChangeSlice,
                   ~stripIdFromParams=false,
                 )
                 bindHandler(~field=fieldName, ~generateCommand)
@@ -297,6 +298,7 @@ module Make = (
               ~publishJsons=ops.publishJsons,
               ~serviceName=name,
               ~commandSchema=S.json->S.castToUnknown,
+              ~componentKind=CommandGenerator_Callback.StateChangeSlice,
               ~stripIdFromParams=false,
             )
           )

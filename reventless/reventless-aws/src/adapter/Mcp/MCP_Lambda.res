@@ -20,6 +20,7 @@ type mcpToolEntry = {
   description: string,
   inputSchema: JSON.t,
   commandTopicArn: string,
+  componentKind: string, // "Aggregate" | "StateChangeSlice"
 }
 
 type mcpResourceEntry = {
@@ -59,11 +60,22 @@ let generateConfig = (
   ~eventLogTableNames: dict<string>=Dict.make(),
 ): mcpConfig => {
   let toolDefs = ReventlessCore.MCP_SchemaGenerator.generateTools(~pluginName, ~mutationEntries)
+  // Build a lookup from field name to component kind.
+  // Union({anyOf}) schemas are aggregate commands; others are DCB StateChangeSlice commands.
+  let kindByField = Dict.make()
+  mutationEntries->Array.forEach(entry => {
+    let kind = switch entry.commandSchema {
+    | Union(_) => "Aggregate"
+    | _ => "StateChangeSlice"
+    }
+    entry.fieldNames->Array.forEach(fieldName => kindByField->Dict.set(fieldName, kind))
+  })
   let tools = toolDefs->Array.map(def => {
     name: def.name,
     description: def.description,
     inputSchema: def.inputSchema,
     commandTopicArn: commandTopicArns->Dict.get(def.name)->Option.getOr(""),
+    componentKind: kindByField->Dict.get(def.name)->Option.getOr("Aggregate"),
   })
 
   let resourceDefs = ReventlessCore.MCP_SchemaGenerator.generateResources(
@@ -289,6 +301,122 @@ let readDcbEventLogHistory = async (
   }
 
   paginatedResponse(~events=eventsJson, ~hasMore, ~nextAfter)
+}
+
+// ─── Runtime dispatch ─────────────────────────────────────────────────────
+
+@module(
+  "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs"
+)
+external makeGenerateCommand: (
+  ReventlessCore.CommandGenerator.publishJsons,
+  string,
+  'schema,
+  string,
+  option<bool>,
+) => ReventlessCore.CommandGenerator.commandGenerator = "makeGenerateCommand"
+
+@module(
+  "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs"
+)
+external sqsPublishJsons: ('queue, string) => ReventlessCore.CommandGenerator.publishJsons =
+  "publishJsons"
+
+@module("@reventlessdev/reventless-core/src/RequestContext.res.mjs")
+external requestContextTag: 'a = "tag"
+
+@module("effect/Effect")
+external effectProvideService: ('a, 'b) => 'c = "provideService"
+
+@send external pipe: ('a, 'b) => 'c = "pipe"
+
+let makeQueueRef: string => 'a = %raw(`(url) => ({ id: url, name: url, arn: "" })`)
+
+// Decode the payload section of a JWT (base64url → JSON) without signature verification.
+// The Lambda authorizer / API Gateway Cognito authorizer is responsible for verification;
+// the Lambda only needs to read the already-validated claims.
+let decodeJwtClaims: string => option<'a> = %raw(`
+  function(token) {
+    try {
+      var parts = token.split(".");
+      if (parts.length < 2) return undefined;
+      var base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      var json = Buffer.from(base64, "base64").toString("utf8");
+      return JSON.parse(json);
+    } catch(_) { return undefined; }
+  }
+`)
+
+/** Extract a Cognito Identity from a Bearer token in the Authorization header.
+    Falls back to Identity.anonymous when the header is absent or the token is malformed. */
+let extractIdentity = (authHeader: option<string>): Reventless.Identity.t =>
+  switch authHeader {
+  | None => Reventless.Identity.anonymous
+  | Some(header) =>
+    let token = if header->String.startsWith("Bearer ") {
+      header->String.slice(~start=7)
+    } else {
+      header
+    }
+    switch decodeJwtClaims(token) {
+    | None => Reventless.Identity.anonymous
+    | Some(claims) =>
+      let claimsDict: dict<JSON.t> = claims->Obj.magic
+      let userId =
+        claimsDict->Dict.get("sub")->Option.flatMap(JSON.Decode.string)->Option.getOr("anonymous")
+      let username =
+        claimsDict
+        ->Dict.get("cognito:username")
+        ->Option.orElse(claimsDict->Dict.get("username"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr(userId)
+      let groups: array<string> =
+        claimsDict
+        ->Dict.get("cognito:groups")
+        ->Option.map(g => g->Obj.magic)
+        ->Option.getOr([])
+      {
+        Reventless.Identity.userId,
+        username,
+        groups,
+        provider: Cognito,
+      }
+    }
+  }
+
+let runEffect = (correlationId: option<string>, effect) =>
+  effect
+  ->pipe(
+    effectProvideService(
+      requestContextTag,
+      {"correlationId": correlationId->Option.getOr("unknown")},
+    ),
+  )
+  ->pipe(Effect.runPromise)
+
+/** Dispatch an MCP tool call through makeGenerateCommand so the interceptor hook fires.
+    The commandTopicArn from mcpConfig tells us which SQS FIFO queue to target. */
+let dispatchTool = async (
+  tool: mcpToolEntry,
+  args: JSON.t,
+  identity: Reventless.Identity.t,
+) => {
+  let queueRef = makeQueueRef(tool.commandTopicArn)
+  let publishJsons = sqsPublishJsons(queueRef, "SQS_FIFO")
+  let generateCommand = makeGenerateCommand(
+    publishJsons,
+    tool.name,
+    S.json->S.castToUnknown,
+    tool.componentKind,
+    Some(false), // stripIdFromParams=false — id is embedded in args
+  )
+  let payload: ReventlessCore.CommandGenerator.payload = {
+    command: tool.name,
+    arguments: args->Obj.magic,
+    meta: {ip: [], user: identity.userId, info: `mcp/tools/${tool.name}`},
+    identity,
+  }
+  await runEffect(None, generateCommand(payload))
 }
 
 // ─── Deploy-time infrastructure (placeholder) ─────────────────────────────

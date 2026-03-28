@@ -7,7 +7,7 @@
 
 // ─── Registry ──────────────────────────────────────────────────────────────
 
-type toolHandler = JSON.t => promise<McpSdk.callToolResult>
+type toolHandler = (JSON.t, Reventless.Identity.t) => promise<McpSdk.callToolResult>
 type resourceHandler = string => promise<McpSdk.readResourceResult>
 
 type registeredTool = {
@@ -42,13 +42,13 @@ let registerResourceTemplate = (~name: string, ~definition, ~handler: resourceHa
 let registerToolsFromEntries = (
   ~pluginName: string,
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
-  ~commandHandler: (string, JSON.t) => promise<string>,
+  ~commandHandler: (string, JSON.t, Reventless.Identity.t) => promise<string>,
 ) => {
   let toolDefs = ReventlessCore.MCP_SchemaGenerator.generateTools(~pluginName, ~mutationEntries)
   toolDefs->Array.forEach(def => {
-    let handler: toolHandler = async args => {
+    let handler: toolHandler = async (args, identity) => {
       try {
-        let result = await commandHandler(def.name, args)
+        let result = await commandHandler(def.name, args, identity)
         McpSdk_Helpers.toolResult(result)
       } catch {
       | exn =>
@@ -130,9 +130,26 @@ let activeServer: ref<option<McpSdk.httpServer>> = ref(None)
 @val external processEnv: dict<string> = "process.env"
 let debug = processEnv->Dict.get("MCP_DEBUG")->Option.isSome
 
+// Extract identity from an HTTP IncomingMessage via the X-Identity header.
+// Falls back to Identity.anonymous when the header is absent or malformed.
+let extractIdentity = (req: McpSdk.incomingMessage): Reventless.Identity.t => {
+  try {
+    let headers: dict<string> = (req->Obj.magic)["headers"]
+    switch headers->Dict.get("x-identity") {
+    | Some(json) =>
+      json
+      ->JSON.parseOrThrow
+      ->S.parseOrThrow(Reventless.Identity.schema)
+    | None => Reventless.Identity.anonymous
+    }
+  } catch {
+  | _ => Reventless.Identity.anonymous
+  }
+}
+
 // Create a fresh MCP server instance with all registered handlers.
 // Called per-request for stateless Streamable HTTP (each request gets its own server+transport).
-let createServerInstance = () => {
+let createServerInstance = (identity: Reventless.Identity.t) => {
   let server = McpSdk.newServer(
     {name: "reventless-mcp", version: "1.0.0"},
     {capabilities: {tools: {_placeholder: false}, resources: {_placeholder: false}}},
@@ -157,7 +174,7 @@ let createServerInstance = () => {
       Console.log(`[MCP] tools/call: ${toolName}`)
     }
     switch tools.contents->Dict.get(toolName) {
-    | Some({handler}) => await handler(args)
+    | Some({handler}) => await handler(args, identity)
     | None => McpSdk_Helpers.toolError(`Unknown tool: ${toolName}`)
     }
   })
@@ -245,8 +262,9 @@ let start = (~port: int=3001, ()) => {
           res->McpSdk.endResponseNoBody
         | "POST" =>
           let body = await McpSdk_Helpers.parseJsonBody(req)
+          let identity = extractIdentity(req)
           // Stateless mode: fresh server + transport per request
-          let server = createServerInstance()
+          let server = createServerInstance(identity)
           let transport = McpSdk.newStreamableHTTPTransport({
             enableJsonResponse: true,
           })

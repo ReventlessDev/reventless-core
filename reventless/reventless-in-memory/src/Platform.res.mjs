@@ -83,18 +83,27 @@ function MakeWithConfig(Config) {
   let hooks_mcpSchemaRegistrationHook = param => {
     let eventLogEntries = param.eventLogEntries;
     let pluginName = param.pluginName;
-    MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args) => {
-      let resolver = GraphQL_Server$ReventlessInMemory.getMutationResolver(toolName);
-      if (resolver === undefined) {
-        return `error: no handler found for tool ` + toolName;
+    MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
+      let handlerRef = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handlerRefs[toolName];
+      if (handlerRef === undefined) {
+        return `error: no handler for ` + toolName;
       }
-      let result = await resolver(null, args, null);
-      let s = Stdlib_JSON.Decode.string(result);
-      if (s !== undefined) {
-        return s;
-      } else {
-        return JSON.stringify(result);
+      let generateCommand = handlerRef.contents;
+      if (generateCommand === undefined) {
+        return `error: no handler for ` + toolName;
       }
+      let payload_meta = {
+        ip: [],
+        user: identity.userId,
+        info: `mcp/tools/` + toolName
+      };
+      let payload = {
+        command: toolName,
+        arguments: args,
+        meta: payload_meta,
+        identity: identity
+      };
+      return await Effect.runPromise(generateCommand(payload));
     });
     MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
@@ -707,7 +716,7 @@ function MakeWithConfig(Config) {
       }
     };
     registerAdminMcpResources("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args) => {
+    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args, _identity) => {
       let resolver = getAdminMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
@@ -857,18 +866,27 @@ function Make($star) {
   let hooks_mcpSchemaRegistrationHook = param => {
     let eventLogEntries = param.eventLogEntries;
     let pluginName = param.pluginName;
-    MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args) => {
-      let resolver = GraphQL_Server$ReventlessInMemory.getMutationResolver(toolName);
-      if (resolver === undefined) {
-        return `error: no handler found for tool ` + toolName;
+    MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
+      let handlerRef = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handlerRefs[toolName];
+      if (handlerRef === undefined) {
+        return `error: no handler for ` + toolName;
       }
-      let result = await resolver(null, args, null);
-      let s = Stdlib_JSON.Decode.string(result);
-      if (s !== undefined) {
-        return s;
-      } else {
-        return JSON.stringify(result);
+      let generateCommand = handlerRef.contents;
+      if (generateCommand === undefined) {
+        return `error: no handler for ` + toolName;
       }
+      let payload_meta = {
+        ip: [],
+        user: identity.userId,
+        info: `mcp/tools/` + toolName
+      };
+      let payload = {
+        command: toolName,
+        arguments: args,
+        meta: payload_meta,
+        identity: identity
+      };
+      return await Effect.runPromise(generateCommand(payload));
     });
     MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
@@ -1480,7 +1498,7 @@ function Make($star) {
       }
     };
     registerAdminMcpResources("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args) => {
+    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args, _identity) => {
       let resolver = getAdminMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;

@@ -115,7 +115,7 @@ function Make(DcbEventLogStorage) {
         Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
           stateChangeSlices.forEach(S => {
             let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
-            let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, S.Spec.name, S.Spec.commandSchema, false);
+            let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
             bindHandler(fieldName, generateCommand);
           });
         });
@@ -187,7 +187,7 @@ function Make(DcbEventLogStorage) {
         ]);
       })).apply(pairs => Object.fromEntries(pairs));
       let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic);
-      let dcbGenerateCommandOutput = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, name, S.json, false));
+      let dcbGenerateCommandOutput = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, name, S.json, "StateChangeSlice", false));
       let dcbHandler = Pulumi.all([
         dcbHandlerBase,
         inboundReceiversOutput,

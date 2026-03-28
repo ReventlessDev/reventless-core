@@ -8,7 +8,11 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 
-function makeGenerateCommand(publishJsons, serviceName, commandSchema, $staropt$star) {
+let commandInterceptorHook = {
+  contents: undefined
+};
+
+function makeGenerateCommand(publishJsons, serviceName, commandSchema, componentKind, $staropt$star) {
   return payload => {
     let stripIdFromParams = $staropt$star !== undefined ? $staropt$star : true;
     return Effect.flatMap(Effect.tap(Effect.sync(() => {
@@ -49,18 +53,26 @@ function makeGenerateCommand(publishJsons, serviceName, commandSchema, $staropt$
         let err = Primitive_exceptions.internalToException(raw_err);
         return Stdlib_JsError.throwWithMessage(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + Stdlib_Option.getOrThrow(JSON.stringify(err), undefined));
       }
-      return Effect.map(Effect.promise(() => publishJsons([{
-          id: id,
-          meta: meta,
-          commandJson: commandJson
-        }])), () => meta.msgId);
+      let interceptor = commandInterceptorHook.contents;
+      let interceptEffect = interceptor !== undefined ? Effect.promise(() => interceptor(payload.identity, serviceName, componentKind, payload.command, payload.arguments)) : Effect.succeed("Allow");
+      return Effect.flatMap(interceptEffect, interceptResult => {
+        if (typeof interceptResult !== "object") {
+          return Effect.map(Effect.promise(() => publishJsons([{
+              id: id,
+              meta: meta,
+              commandJson: commandJson
+            }])), () => meta.msgId);
+        } else {
+          return Stdlib_JsError.throwWithMessage(interceptResult._0);
+        }
+      });
     });
   };
 }
 
 function Make(Spec) {
   return AggregateSpec => {
-    let generateCommand = makeGenerateCommand(Spec.publishJsons, AggregateSpec.name, AggregateSpec.commandSchema, undefined);
+    let generateCommand = makeGenerateCommand(Spec.publishJsons, AggregateSpec.name, AggregateSpec.commandSchema, "Aggregate", undefined);
     return {
       generateCommand: generateCommand
     };
@@ -68,6 +80,7 @@ function Make(Spec) {
 }
 
 export {
+  commandInterceptorHook,
   makeGenerateCommand,
   Make,
 }
