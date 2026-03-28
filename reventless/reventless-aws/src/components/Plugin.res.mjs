@@ -15,43 +15,43 @@ import * as CommandTopicRemoteChannel_SQS$ReventlessAws from "../adapter/Command
 import * as HeartbeatRunner_CloudWatchEvents$ReventlessAws from "../adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 
-let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
-
-let include = Plugin_Builder$ReventlessCore.Make({
-  runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
-  resourceNaming: Util_ResourceNaming$ReventlessAws.operations,
-  environment: environment
-})({})({
-  makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
-  generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
-  updateSchema: AppSync_Adapter$ReventlessAws.updateSchema
-})({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: EventCollectorChannel_SQS$ReventlessAws.make,
-  connect: EventCollectorChannel_SQS$ReventlessAws.connect
-})({
-  make: QueryEngine_DynamoDb$ReventlessAws.make
-})(CommandTopicRemoteChannel_SQS$ReventlessAws)(HeartbeatRunner_CloudWatchEvents$ReventlessAws)(PluginRuntime_Builder$ReventlessAws.Make({
-  make: EventCollectorChannel_SQS$ReventlessAws.make,
-  connect: EventCollectorChannel_SQS$ReventlessAws.connect
-}))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
-  make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
-});
+function Make(HooksConfig) {
+  let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
+  return Plugin_Builder$ReventlessCore.Make({
+    runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
+    resourceNaming: Util_ResourceNaming$ReventlessAws.operations,
+    environment: environment,
+    hooks: HooksConfig.hooks
+  })({})({
+    makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
+    generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
+    updateSchema: AppSync_Adapter$ReventlessAws.updateSchema
+  })({
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    asEventHandler: prim => prim,
+    asEffectHandler: prim => prim
+  })({
+    make: EventCollectorChannel_SQS$ReventlessAws.make,
+    connect: EventCollectorChannel_SQS$ReventlessAws.connect
+  })({
+    make: QueryEngine_DynamoDb$ReventlessAws.make
+  })(CommandTopicRemoteChannel_SQS$ReventlessAws)(HeartbeatRunner_CloudWatchEvents$ReventlessAws)(PluginRuntime_Builder$ReventlessAws.Make({
+    make: EventCollectorChannel_SQS$ReventlessAws.make,
+    connect: EventCollectorChannel_SQS$ReventlessAws.connect
+  }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+  });
+}
 
 let EventCollectorChannel;
 
 let RuntimeEnvironment;
 
-let make = include.make;
-
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
-  make,
+  Make,
 }
-/* include Not a pure module */
+/* AppSync_Adapter-ReventlessAws Not a pure module */

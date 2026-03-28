@@ -183,7 +183,7 @@ function Make(Platform) {
     mappings: mappings$4
   });
   let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
+  let make = (scheduler, api, apiRole, adminExtensionPoints) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
     CustomerAggregate,
     OrderAggregate,
     CatalogProductAggregate
@@ -191,7 +191,7 @@ function Make(Platform) {
     CustomerReadModel,
     OrderReadModel,
     AvailableProductsReadModelMaker
-  ], [OrderNotificationsTask], api, apiRole, scheduler, undefined, undefined, undefined, undefined, undefined, undefined);
+  ], [OrderNotificationsTask], api, apiRole, scheduler, undefined, undefined, undefined, undefined, undefined, adminExtensionPoints, undefined);
   return {
     CustomerAggregate: CustomerAggregate,
     OrderAggregate: OrderAggregate,

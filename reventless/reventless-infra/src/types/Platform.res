@@ -16,6 +16,10 @@
 //   module Platform = ReventlessAws.Platform.Make(Config)
 //   module App = MyPlugin.Make(Platform)
 
+// Type alias for admin extension points dict — defined at file scope so it
+// remains accessible inside module type T even though T re-declares
+// `module ExtensionPoint` with a different local type, which would otherwise
+// shadow the package-level ExtensionPoint.outputs.
 /**
 Abstract factory interface for creating Reventless components without coupling
 application code to a specific infrastructure provider.

@@ -1,6 +1,6 @@
 # Plan: Schema Generation Cleanup
 
-**Status:** Steps 1–7, 9 complete. Step 8 deferred.
+**Status:** All steps complete (Steps 1–9).
 **Analysis:** `docs/analysis/done/schema-generation-review.md`
 **Related:** `docs/plans/Backlog/api-component-openapi.md` (OpenAPI integration depends on this cleanup)
 
@@ -98,11 +98,26 @@ Core mutations (Activate, Deactivate, Clone) now flow through the same entry-bas
 - `reventless-core/src/core/API/CoreApi.res` — Combine entries, generate fragment from entries
 - `reventless-in-memory/src/Platform.res` — Replace hand-built MCP registrations with `registerToolsFromEntries`
 
-### Step 8 — Replace mutable hooks with explicit parameters (deferred)
+### Step 8 — Replace mutable hooks with explicit parameters ✅
 
-Refactor the registration hooks in `Plugin_Helpers.res` from global mutable state to explicit parameters. This is a high-impact architectural change that touches the platform adapter interface (`Api_Adapter.Provider`), all platform implementations (`Platform.res`, AWS adapters), and the Plugin_Builder functor signature.
+Replaced all 14 global mutable `ref<option<fn>>` hooks in `Plugin_Helpers.res` with a `PlatformHooks` module type. Builder functors now receive hooks explicitly as a module parameter instead of reading global state.
 
-**Reason for deferral:** High risk of breaking the AWS platform adapter (untestable locally). The hooks work correctly now and the other cleanup steps already eliminate the main sources of duplication. This step should be done as a separate focused effort with AWS integration testing.
+**Design:** `PlatformHooks` module type holds all hooks as `ref<option<fn>>` values (lazy assignment allowed). `NoopHooks` implements `PlatformHooks` with all `ref(None)` values for AWS aggregate builders. Each platform defines its own `module Hooks: PlatformHooks` with local scope and sets the refs before build functions are called.
+
+**Files changed:**
+- `reventless-core/src/components/Plugin/Plugin_Helpers.res` — Add `PlatformHooks` module type + `NoopHooks`; remove 14 global hook refs
+- `reventless-core/src/components/Plugin/Plugin_Builder.res` — Add `Hooks: PlatformHooks` param; replace all global reads
+- `reventless-core/src/components/Dcb/Dcb_Builder.res` — Add `Hooks: PlatformHooks` param; replace all global reads
+- `reventless-core/src/components/Aggregate/Aggregate_Builder.res` — Add `Hooks: PlatformHooks` param; replace `mutationBindHook` read
+- `reventless-core/src/admin/Platform_Admin.res` — Add `Hooks: PlatformHooks` param; replace global reads + `localAdminExtensionPoints` write
+- `reventless-in-memory/src/components/Plugin_Builder.res` — Add `Hooks` param; pass to `ReventlessCore.Plugin_Builder.Make`
+- `reventless-in-memory/src/components/Aggregate_Builder.res` — Add `Hooks` param; add `NoopHooks` module for callers without ReventlessCore access
+- `reventless-in-memory/src/Platform.res` — Define `module Hooks: PlatformHooks`; replace 6 global `Plugin_Helpers.xxx.contents = Some(...)` assignments
+- `reventless-aws/src/components/Plugin.res` — Wrap in `Make(Hooks)` functor
+- `reventless-aws/src/components/Aggregate_Builder_Single/PerAggregate/Micro/NoResolver.res` — Pass `NoopHooks` to `Aggregate_Builder.Make`
+- `reventless-aws/src/Platform.res` — Define `module Hooks: PlatformHooks`; replace 8 global assignments; apply `Plugin.Make(Hooks)`
+- `reventless-in-memory/tests/components/aggregate/AggregateFixtures.res` — Pass `NoopHooks`
+- `examples/online-shop-aggregates/**/E2E/*Test.res` — Pass `NoopHooks`
 
 ### Step 9 — Update `eventLogSchemaEntry` TSDoc ✅
 
@@ -114,13 +129,13 @@ Updated TSDoc on entry types in `Api.res` to reflect all planned consumers: MCP,
 ## Deferred
 
 - **Structured names in entries** (Issue 7 from analysis) — Storing `{plugin, component, operation}` instead of flat strings in `mutationSchemaEntry.fieldNames`. High effort, consider when implementing OpenAPI.
-- **Step 8** — See individual step notes above.
+- **Registry dicts** (`queryFieldNamesRegistry`, `aggregateMutationFieldsRegistry`) — Still global in `Plugin_Helpers.res`. Removing them requires changing `QueryDb_Adapter.resolversMaker` function type and touching 7+ additional files (`QueryDbResolvers_GraphQL`, `QueryDbResolvers_AppSync`, `CommandGenerator_Builder`, and 5 slice builders). Deferred as a separate effort.
 - **Api_Naming unit tests** — The naming functions are exercised indirectly through 236 existing integration tests. Dedicated unit tests can be added when `toKebabCase` (OpenAPI) is implemented.
 
 ## Files changed summary
 
 | Package | Files | Steps |
 |---------|-------|-------|
-| `reventless-core` | `Api_Naming.res` (new), `SchemaType.res` (new), `GraphQL_FragmentGenerator.res`, `GraphQL_Stitcher.res`, `GraphQL_SchemaInspector.res`, `SuryToJsonSchema.res`, `MCP_SchemaGenerator.res`, `Plugin_Builder.res`, `Plugin_Helpers.res`, `PluginBaseFragment.res`, `CoreApi.res`, `AutomationSlice.res`, `AutomationSlice_Builder.res`, `OutboundTranslationSlice.res`, `OutboundTranslationSlice_Builder.res`, `InboundTranslationSlice.res`, `InboundTranslationSlice_Builder.res` | 1–7, 9 |
+| `reventless-core` | `Api_Naming.res` (new), `SchemaType.res` (new), `GraphQL_FragmentGenerator.res`, `GraphQL_Stitcher.res`, `GraphQL_SchemaInspector.res`, `SuryToJsonSchema.res`, `MCP_SchemaGenerator.res`, `Plugin_Builder.res`, `Plugin_Helpers.res`, `PluginBaseFragment.res`, `CoreApi.res`, `AutomationSlice.res`, `AutomationSlice_Builder.res`, `OutboundTranslationSlice.res`, `OutboundTranslationSlice_Builder.res`, `InboundTranslationSlice.res`, `InboundTranslationSlice_Builder.res`, `Dcb_Builder.res`, `Aggregate_Builder.res`, `Platform_Admin.res` | 1–9 |
 | `reventless-infra` | `Api.res` | 9 |
 | `reventless-in-memory` | `GraphQL_SchemaInspectorTest.res`, `Platform.res` | 3, 7 |

@@ -193,10 +193,8 @@ function MakeWithConfig(Config) {
   let Api = {
     Make: Make$6
   };
-  Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
-  Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
   let deploySchemaPrefix = "deploy-schema:";
-  Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents = (name, pluginFragment) => {
+  let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let pluginRmTableNameOutput;
     if (platformStackRef !== undefined) {
@@ -296,21 +294,23 @@ function MakeWithConfig(Config) {
       })));
     });
   };
-  Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents = dcbEventLogUnknown => {
+  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
     PluginRuntime_Builder$ReventlessAws.registerDcbConfig("", tableResource.name, undefined, undefined);
   };
-  Plugin_Helpers$ReventlessCore.onDcbCommandTopicCreated.contents = dcbCommandTopicUnknown => {
+  let hooks_onDcbCommandTopicCreated = dcbCommandTopicUnknown => {
     let channel = dcbCommandTopicUnknown.channel;
     let channelParts = channel.parts;
     AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
   };
-  Plugin_Helpers$ReventlessCore.onDcbSlicesCreated.contents = _dcbEventLogUnknown => {
+  let hooks_onDcbSlicesCreated = _dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finish();
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   };
-  Plugin_Helpers$ReventlessCore.onHeartbeatEpChannelAvailable.contents = remoteChannelUnknown => {
+  let hooks_onHeartbeatEpChannelAvailable = remoteChannelUnknown => {
     let resource = remoteChannelUnknown.resources[0];
     if (resource !== undefined) {
       return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig("", undefined, Pulumi.output(resource.id), undefined);
@@ -319,9 +319,23 @@ function MakeWithConfig(Config) {
       return;
     }
   };
-  let Plugin = {
-    make: Plugin$ReventlessAws.make
+  let hooks_adminExtensionPoints = {
+    contents: Pulumi.output({})
   };
+  let hooks = {
+    preResolversSchemaHook: hooks_preResolversSchemaHook,
+    inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
+    dcbAppSyncResolverHook: hooks_dcbAppSyncResolverHook,
+    onDcbEventLogCreated: hooks_onDcbEventLogCreated,
+    onDcbCommandTopicCreated: hooks_onDcbCommandTopicCreated,
+    onDcbSlicesCreated: hooks_onDcbSlicesCreated,
+    onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
+    adminExtensionPoints: hooks_adminExtensionPoints
+  };
+  let PluginBuilderImpl = Plugin$ReventlessAws.Make({
+    hooks: hooks
+  });
+  let Plugin = PluginBuilderImpl;
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
@@ -341,7 +355,8 @@ function MakeWithConfig(Config) {
   })({
     silent: false,
     splitApi: Config.splitApi,
-    cloner: Config.cloner
+    cloner: Config.cloner,
+    hooks: hooks
   });
   let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
@@ -416,35 +431,6 @@ function MakeWithConfig(Config) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
-    let pluginRmTableNameRef = {
-      contents: undefined
-    };
-    Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents = (aggregatesOutputs, readModelsOutputs) => {
-      let publishToAggregatesQueueUrls = {};
-      let pluginAgg = aggregatesOutputs["Plugin"];
-      if (pluginAgg !== undefined) {
-        let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
-          let r = ct.resources[0];
-          if (r !== undefined) {
-            return r.id;
-          } else {
-            return Pulumi.output("");
-          }
-        });
-        publishToAggregatesQueueUrls["Plugin"] = queueUrl;
-      }
-      let pluginRm = readModelsOutputs["Plugin"];
-      let pluginReadModelTableName;
-      if (pluginRm !== undefined) {
-        let r = pluginRm.queryDb.resources[0];
-        pluginReadModelTableName = r !== undefined ? r.name : undefined;
-      } else {
-        pluginReadModelTableName = undefined;
-      }
-      pluginRmTableNameRef.contents = pluginReadModelTableName;
-      PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
-      PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, Config.cloner, undefined);
-    };
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
       let plugins = await queryEngine.scan("Plugin", [[
@@ -473,6 +459,23 @@ function MakeWithConfig(Config) {
       updateApiSchema: updateApiSchema
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
+    let publishToAggregatesQueueUrls = {};
+    let pluginAgg = admin.aggregatesOutputs["Plugin"];
+    if (pluginAgg !== undefined) {
+      let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
+        let r = ct.resources[0];
+        if (r !== undefined) {
+          return r.id;
+        } else {
+          return Pulumi.output("");
+        }
+      });
+      publishToAggregatesQueueUrls["Plugin"] = queueUrl;
+    }
+    let pluginRm = admin.readModelsOutputs["Plugin"];
+    let pluginReadModelTableName = pluginRm !== undefined ? Stdlib_Option.map(pluginRm.queryDb.resources[0], r => r.name) : undefined;
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, Config.cloner, undefined);
     if (Config.splitApi) {
       let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
       let coreRoleOutput = match[1];
@@ -503,9 +506,8 @@ function MakeWithConfig(Config) {
     }
     Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
     Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    let tableName = pluginRmTableNameRef.contents;
-    if (tableName !== undefined) {
-      Pulumi$Pulumi.$$export("pluginRmTableName", tableName);
+    if (pluginReadModelTableName !== undefined) {
+      Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
   };
@@ -674,10 +676,8 @@ function Make($star) {
   let Api = {
     Make: Make$7
   };
-  Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
-  Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
   let deploySchemaPrefix = "deploy-schema:";
-  Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents = (name, pluginFragment) => {
+  let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let pluginRmTableNameOutput;
     if (platformStackRef !== undefined) {
@@ -776,21 +776,23 @@ function Make($star) {
       })));
     });
   };
-  Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents = dcbEventLogUnknown => {
+  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
     PluginRuntime_Builder$ReventlessAws.registerDcbConfig("", tableResource.name, undefined, undefined);
   };
-  Plugin_Helpers$ReventlessCore.onDcbCommandTopicCreated.contents = dcbCommandTopicUnknown => {
+  let hooks_onDcbCommandTopicCreated = dcbCommandTopicUnknown => {
     let channel = dcbCommandTopicUnknown.channel;
     let channelParts = channel.parts;
     AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
   };
-  Plugin_Helpers$ReventlessCore.onDcbSlicesCreated.contents = _dcbEventLogUnknown => {
+  let hooks_onDcbSlicesCreated = _dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finish();
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   };
-  Plugin_Helpers$ReventlessCore.onHeartbeatEpChannelAvailable.contents = remoteChannelUnknown => {
+  let hooks_onHeartbeatEpChannelAvailable = remoteChannelUnknown => {
     let resource = remoteChannelUnknown.resources[0];
     if (resource !== undefined) {
       return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig("", undefined, Pulumi.output(resource.id), undefined);
@@ -799,9 +801,23 @@ function Make($star) {
       return;
     }
   };
-  let Plugin = {
-    make: Plugin$ReventlessAws.make
+  let hooks_adminExtensionPoints = {
+    contents: Pulumi.output({})
   };
+  let hooks = {
+    preResolversSchemaHook: hooks_preResolversSchemaHook,
+    inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
+    dcbAppSyncResolverHook: hooks_dcbAppSyncResolverHook,
+    onDcbEventLogCreated: hooks_onDcbEventLogCreated,
+    onDcbCommandTopicCreated: hooks_onDcbCommandTopicCreated,
+    onDcbSlicesCreated: hooks_onDcbSlicesCreated,
+    onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
+    adminExtensionPoints: hooks_adminExtensionPoints
+  };
+  let PluginBuilderImpl = Plugin$ReventlessAws.Make({
+    hooks: hooks
+  });
+  let Plugin = PluginBuilderImpl;
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
@@ -821,7 +837,8 @@ function Make($star) {
   })({
     silent: false,
     splitApi: true,
-    cloner: false
+    cloner: false,
+    hooks: hooks
   });
   let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
@@ -893,35 +910,6 @@ function Make($star) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
-    let pluginRmTableNameRef = {
-      contents: undefined
-    };
-    Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents = (aggregatesOutputs, readModelsOutputs) => {
-      let publishToAggregatesQueueUrls = {};
-      let pluginAgg = aggregatesOutputs["Plugin"];
-      if (pluginAgg !== undefined) {
-        let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
-          let r = ct.resources[0];
-          if (r !== undefined) {
-            return r.id;
-          } else {
-            return Pulumi.output("");
-          }
-        });
-        publishToAggregatesQueueUrls["Plugin"] = queueUrl;
-      }
-      let pluginRm = readModelsOutputs["Plugin"];
-      let pluginReadModelTableName;
-      if (pluginRm !== undefined) {
-        let r = pluginRm.queryDb.resources[0];
-        pluginReadModelTableName = r !== undefined ? r.name : undefined;
-      } else {
-        pluginReadModelTableName = undefined;
-      }
-      pluginRmTableNameRef.contents = pluginReadModelTableName;
-      PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
-      PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, false, undefined);
-    };
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
       let plugins = await queryEngine.scan("Plugin", [[
@@ -949,6 +937,23 @@ function Make($star) {
       updateApiSchema: updateApiSchema
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
+    let publishToAggregatesQueueUrls = {};
+    let pluginAgg = admin.aggregatesOutputs["Plugin"];
+    if (pluginAgg !== undefined) {
+      let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
+        let r = ct.resources[0];
+        if (r !== undefined) {
+          return r.id;
+        } else {
+          return Pulumi.output("");
+        }
+      });
+      publishToAggregatesQueueUrls["Plugin"] = queueUrl;
+    }
+    let pluginRm = admin.readModelsOutputs["Plugin"];
+    let pluginReadModelTableName = pluginRm !== undefined ? Stdlib_Option.map(pluginRm.queryDb.resources[0], r => r.name) : undefined;
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, false, undefined);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -974,9 +979,8 @@ function Make($star) {
     Pulumi$Pulumi.$$export("coreApiRoleArn", Output$Pulumi.flatMap(coreRoleOutput, role => role.arn));
     Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
     Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    let tableName = pluginRmTableNameRef.contents;
-    if (tableName !== undefined) {
-      Pulumi$Pulumi.$$export("pluginRmTableName", tableName);
+    if (pluginReadModelTableName !== undefined) {
+      Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
   };

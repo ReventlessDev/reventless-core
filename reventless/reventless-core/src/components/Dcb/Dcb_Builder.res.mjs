@@ -48,7 +48,7 @@ let emptyResult = {
 };
 
 function Make(DcbEventLogStorage) {
-  return DcbEventTopicPublisher => (DcbCommandTopicChannel => (RuntimeBuilder => {
+  return DcbEventTopicPublisher => (DcbCommandTopicChannel => (RuntimeBuilder => (HooksConfig => {
     let construct = (name, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts) => {
       let hasDcb = stateChangeSlices.length !== 0 || stateViewSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0;
       if (!hasDcb) {
@@ -91,13 +91,13 @@ function Make(DcbEventLogStorage) {
       let partitionTag = DcbTag$Reventless.derivePartitionTag(producedSchemas);
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, indexes, partitionTag, opts);
-      Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbEventLogCreated.contents, hook => hook(dcbEventLog));
+      Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));
       let DcbCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
         commandSchema: S.json
       })(DcbCommandTopicChannel);
       let dcbCommandTopic = DcbCommandTopic.make(childName + `-dcb-command-topic`, opts);
-      Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbCommandTopicCreated.contents, hook => hook(dcbCommandTopic));
+      Stdlib_Option.forEach(HooksConfig.hooks.onDcbCommandTopicCreated, hook => hook(dcbCommandTopic));
       let publishJsons = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => ops.publishJsons);
       let stateChangeSlicesOutputs = Object.fromEntries(stateChangeSlices.map(StateChangeSlice => {
         let ch = StateChangeSlice.make(dcbEventLog, publishJsons, opts);
@@ -106,11 +106,11 @@ function Make(DcbEventLogStorage) {
           Component$ReventlessCore.outputs(ch)
         ];
       }));
-      let registerResolver = Plugin_Helpers$ReventlessCore.mutationResolverHook.contents;
+      let registerResolver = HooksConfig.hooks.mutationResolverHook;
       if (registerResolver !== undefined) {
         stateChangeSlices.forEach(S => registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], S.Spec.commandSchema));
       }
-      let bindHandler = Plugin_Helpers$ReventlessCore.mutationBindHook.contents;
+      let bindHandler = HooksConfig.hooks.mutationBindHook;
       if (bindHandler !== undefined) {
         Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
           stateChangeSlices.forEach(S => {
@@ -160,11 +160,11 @@ function Make(DcbEventLogStorage) {
       let inboundTranslationSliceData = inboundTranslationSlices.map(ITS => {
         let its = ITS.make(publishJsons, opts);
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
-        let registerResolver = Plugin_Helpers$ReventlessCore.inboundMutationResolverHook.contents;
+        let registerResolver = HooksConfig.hooks.inboundMutationResolverHook;
         if (registerResolver !== undefined) {
           registerResolver(fieldName, ITS.Spec.externalInputSchema);
         }
-        let bindReceive = Plugin_Helpers$ReventlessCore.inboundMutationBindReceiveHook.contents;
+        let bindReceive = HooksConfig.hooks.inboundMutationBindReceiveHook;
         if (bindReceive !== undefined) {
           Component$ReventlessCore.operations(its).apply(ops => bindReceive(fieldName, ops.receive));
         }
@@ -234,7 +234,7 @@ function Make(DcbEventLogStorage) {
       let dcbConnectFn = runtime => {
         DcbCommandTopic.connect(runtime, dcbResources, dcbCommandTopic);
         if (inboundFieldNames.length !== 0) {
-          let hook = Plugin_Helpers$ReventlessCore.inboundAppSyncResolverHook.contents;
+          let hook = HooksConfig.hooks.inboundAppSyncResolverHook;
           if (hook !== undefined) {
             hook({
               runtime: runtime,
@@ -247,7 +247,7 @@ function Make(DcbEventLogStorage) {
         if (dcbFieldNames.length === 0) {
           return;
         }
-        let hook$1 = Plugin_Helpers$ReventlessCore.dcbAppSyncResolverHook.contents;
+        let hook$1 = HooksConfig.hooks.dcbAppSyncResolverHook;
         if (hook$1 !== undefined) {
           return hook$1({
             runtime: runtime,
@@ -257,7 +257,7 @@ function Make(DcbEventLogStorage) {
           });
         }
       };
-      Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onDcbSlicesCreated.contents, hook => hook(dcbEventLog));
+      Stdlib_Option.forEach(HooksConfig.hooks.onDcbSlicesCreated, hook => hook(dcbEventLog));
       let dcbRuntimeSetup = () => RuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, undefined, undefined, dcbCommandTopic);
       let mutationEntriesFromSlices = stateChangeSlices.map(S => ({
         fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)],
@@ -329,7 +329,7 @@ function Make(DcbEventLogStorage) {
     return {
       construct: construct
     };
-  }));
+  })));
 }
 
 export {

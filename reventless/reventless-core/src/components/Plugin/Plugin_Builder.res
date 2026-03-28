@@ -2,10 +2,14 @@ open Plugin_Helpers
 
 module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 
+// (No type aliases needed — adminExtensionPoints is accessed as a ref field
+//  on Spec.hooks, so no optional-parameter parsing issues arise.)
+
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let resourceNaming: ReventlessInfra.ResourceNaming.operations
   let environment: string
+  let hooks: Plugin_Helpers.platformHooks
 }
 
 module Make = (
@@ -62,6 +66,7 @@ module Make = (
       DcbEventTopicPublisher,
       DcbCommandTopicChannel,
       PluginRuntimeBuilder,
+      Spec,
     )
     let dcbResult = DcbBuilder.construct(
       ~name,
@@ -79,23 +84,21 @@ module Make = (
       aggregates->Array.flatMap((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
         let commandSchema = M.Spec.commandSchema->S.castToUnknown
         let constructorNames = Reventless.DcbTag.extractEventTypes(M.Spec.commandSchema)
-        let fieldNames = constructorNames->Array.map(cname =>
-          Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
-        )
+        let fieldNames =
+          constructorNames->Array.map(cname =>
+            Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
+          )
         // Register plugin-prefixed field names for CommandGenerator_Builder.
         Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.set(M.Spec.name, fieldNames)
         // Register aggregate mutation SDL + resolver stubs synchronously via hook
         // (before Output.apply chains fire).
-        switch Plugin_Helpers.mutationResolverHook.contents {
-        | Some(registerResolver) =>
+        Spec.hooks.mutationResolverHook->Option.forEach(registerResolver =>
           registerResolver(~kind=Aggregate, ~fields=fieldNames, ~commandSchema)
-        | None => ()
-        }
+        )
         [{ReventlessInfra.Api.fieldNames, commandSchema}]
       })
 
-    let mutationEntries =
-      Array.concat(mutationEntriesFromAggregates, dcbResult.mutationEntries)
+    let mutationEntries = Array.concat(mutationEntriesFromAggregates, dcbResult.mutationEntries)
 
     let queryEntriesFromReadModels =
       readModels->Array.map((
@@ -136,24 +139,20 @@ module Make = (
     let apiSchemaFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
 
     // Register type definitions via platform hook (e.g. GraphQL in-memory)
-    switch schemaTypeRegistrationHook.contents {
-    | Some(registerTypes) =>
+    Spec.hooks.schemaTypeRegistrationHook->Option.forEach(registerTypes => {
       let parts = GraphQL_Stitcher.decode(apiSchemaFragment)
       registerTypes(parts.types)
-    | None => ()
-    }
+    })
 
     // Register MCP tools and resources via platform hook (e.g. MCP in-memory)
-    switch mcpSchemaRegistrationHook.contents {
-    | Some(registerMcp) =>
+    Spec.hooks.mcpSchemaRegistrationHook->Option.forEach(registerMcp =>
       registerMcp({
         pluginName: name,
         mutationEntries,
         queryEntries,
         eventLogEntries,
       })
-    | None => ()
-    }
+    )
 
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
@@ -169,35 +168,30 @@ module Make = (
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let builderOutputs = {
-      // Resolve admin extension point data — from Interstack (AWS cross-stack) or local admin outputs.
-      let adminExtensionPoints =
+      // Resolve admin extension point data — from Interstack (AWS cross-stack reference).
+      let interstackAdminExtensionPoints =
         Interstack.coreStackReference->Option.mapOr(Pulumi.Output.make(None), coreStack =>
           coreStack->Pulumi.StackReference.getOutput("extensionPoints")
         )
 
-      // Derive local admin extension point resolved data (set by Platform_Admin.construct()).
-      let localAdminResolvedEP =
-        switch Plugin_Helpers.localAdminExtensionPoints.contents {
-        | Some(adminEPs) =>
-          adminEPs->Pulumi.Output.flatMap(eps =>
-            switch eps->Dict.get(PluginExtensionPointSpec.name) {
-            | Some(ep) => ep->ExtensionPoint.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
-            | None => Pulumi.Output.make(None)
-            }
-          )
+      // Derive local admin extension point resolved data (passed from makePlatform).
+      let localAdminResolvedEP = Spec.hooks.adminExtensionPoints.contents->Pulumi.Output.flatMap(eps =>
+        switch eps->Dict.get(PluginExtensionPointSpec.name) {
+        | Some(ep) => ep->ExtensionPoint.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
         | None => Pulumi.Output.make(None)
         }
+      )
 
       // Push schema fragment to the API before resolvers are created (AWS only).
       // The returned Output chains into the dependency tuple so Pulumi waits
       // for the schema update to complete before creating resolver resources.
-      let schemaPushed = switch Plugin_Helpers.preResolversSchemaHook.contents {
+      let schemaPushed = switch Spec.hooks.preResolversSchemaHook {
       | Some(pushSchema) => pushSchema(~name, apiSchemaFragment)
       | None => Pulumi.Output.make()
       }
 
       (
-        (adminExtensionPoints, localAdminResolvedEP, schemaPushed)->Pulumi.Output.all3,
+        (interstackAdminExtensionPoints, localAdminResolvedEP, schemaPushed)->Pulumi.Output.all3,
         aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
         publishToReadModels->Pulumi.Output.allDict,
@@ -206,7 +200,7 @@ module Make = (
       )
       ->Pulumi.Output.all6
       ->Pulumi.Output.apply(((
-        (adminExtensionPoints, localAdminResolvedEP, _),
+        (interstackAdminExtensionPoints, localAdminResolvedEP, _),
         aggregateResources,
         publishToAggregates,
         publishToReadModels,
@@ -226,23 +220,19 @@ module Make = (
           )
 
         // Resolve admin connection — from Interstack (AWS), local admin (in-memory), or None
-        let coreSetup = switch adminExtensionPoints {
-        | Some(adminExtensionPoints) => {
-            let pluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs =
-              (
-                adminExtensionPoints
-                ->Pulumi.StackReference.get(PluginExtensionPointSpec.name)
-                ->Obj.magic: JSON.t
-              )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
+        let coreSetup = switch interstackAdminExtensionPoints {
+        | Some(interstackAdminExtensionPoints) => {
+            let pluginExtensionPointUnwrapped: ReventlessInterop.ExtensionPoint.resolvedOutputs = (
+              interstackAdminExtensionPoints
+              ->Pulumi.StackReference.get(PluginExtensionPointSpec.name)
+              ->Obj.magic: JSON.t
+            )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
             let pluginExtensionPointCommandTopicRemoteChannel = PluginExtensionPointRemoteChannel.make(
               pluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
                 Adapter.fromInteropResolved,
               ),
             )
-            Some((
-              pluginExtensionPointUnwrapped,
-              pluginExtensionPointCommandTopicRemoteChannel,
-            ))
+            Some((pluginExtensionPointUnwrapped, pluginExtensionPointCommandTopicRemoteChannel))
           }
         | None =>
           // Fallback: use local admin extension point data (e.g. in-memory platform)
@@ -400,7 +390,7 @@ module Make = (
         switch coreSetup {
         | Some((_, pluginExtensionPointCommandTopicRemoteChannel)) =>
           // Notify platform hook that the EP channel is available (AWS extracts SQS URL for bundled heartbeat)
-          Plugin_Helpers.onHeartbeatEpChannelAvailable.contents->Option.forEach(hook =>
+          Spec.hooks.onHeartbeatEpChannelAvailable->Option.forEach(hook =>
             hook(pluginExtensionPointCommandTopicRemoteChannel->Obj.magic)
           )
           heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(

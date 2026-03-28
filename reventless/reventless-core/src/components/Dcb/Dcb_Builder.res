@@ -29,6 +29,7 @@ module Make = (
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
   DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
   RuntimeBuilder: PluginRuntime_Builder.T,
+  HooksConfig: Plugin_Helpers.HooksConfig,
 ) => {
   let construct = (
     ~name: string,
@@ -107,7 +108,7 @@ module Make = (
         let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~partitionTag, ~opts)
 
         // Notify platform hook that DCB EventLog was created (AWS extracts table name)
-        Plugin_Helpers.onDcbEventLogCreated.contents->Option.forEach(hook =>
+        HooksConfig.hooks.onDcbEventLogCreated->Option.forEach(hook =>
           hook(dcbEventLog->Obj.magic)
         )
 
@@ -124,7 +125,7 @@ module Make = (
         let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
 
         // Notify platform hook that DCB CommandTopic was created (AWS extracts SQS queue URL)
-        Plugin_Helpers.onDcbCommandTopicCreated.contents->Option.forEach(hook =>
+        HooksConfig.hooks.onDcbCommandTopicCreated->Option.forEach(hook =>
           hook(dcbCommandTopic->Obj.magic)
         )
 
@@ -142,7 +143,7 @@ module Make = (
           ->Dict.fromArray
 
         // Phase 1: Register DCB mutation SDL + resolver stubs via platform hook
-        switch Plugin_Helpers.mutationResolverHook.contents {
+        switch HooksConfig.hooks.mutationResolverHook {
         | Some(registerResolver) =>
           stateChangeSlices->Array.forEach((
             module(S: StateChangeSlice.T),
@@ -157,7 +158,7 @@ module Make = (
         }
 
         // Phase 2: Bind generateCommand to resolver stubs when publishJsons resolves
-        switch Plugin_Helpers.mutationBindHook.contents {
+        switch HooksConfig.hooks.mutationBindHook {
         | Some(bindHandler) =>
           let _ =
             dcbCommandTopic
@@ -243,7 +244,7 @@ module Make = (
             let its = ITS.make(~publishJsons, ~opts)
             let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
 
-            switch Plugin_Helpers.inboundMutationResolverHook.contents {
+            switch HooksConfig.hooks.inboundMutationResolverHook {
             | Some(registerResolver) =>
               registerResolver(
                 ~fieldName,
@@ -252,7 +253,7 @@ module Make = (
             | None => ()
             }
 
-            switch Plugin_Helpers.inboundMutationBindReceiveHook.contents {
+            switch HooksConfig.hooks.inboundMutationBindReceiveHook {
             | Some(bindReceive) =>
               let _ =
                 its
@@ -369,7 +370,7 @@ module Make = (
           DcbCommandTopic.connect(~runtime, ~resources=dcbResources, dcbCommandTopic)
 
           if inboundFieldNames->Array.length > 0 {
-            switch Plugin_Helpers.inboundAppSyncResolverHook.contents {
+            switch HooksConfig.hooks.inboundAppSyncResolverHook {
             | Some(hook) =>
               hook({
                 runtime: runtime->Obj.magic,
@@ -382,7 +383,7 @@ module Make = (
           }
 
           if dcbFieldNames->Array.length > 0 {
-            switch Plugin_Helpers.dcbAppSyncResolverHook.contents {
+            switch HooksConfig.hooks.dcbAppSyncResolverHook {
             | Some(hook) =>
               hook({
                 runtime: runtime->Obj.magic,
@@ -397,7 +398,7 @@ module Make = (
 
         // Notify platform hook that all DCB slices are created (AWS calls finish on bundled builders).
         // Pass dcbEventLog so the platform can wait for its operations to resolve before calling finish().
-        Plugin_Helpers.onDcbSlicesCreated.contents->Option.forEach(hook =>
+        HooksConfig.hooks.onDcbSlicesCreated->Option.forEach(hook =>
           hook(dcbEventLog->Obj.magic)
         )
 

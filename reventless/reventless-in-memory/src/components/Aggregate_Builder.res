@@ -1,7 +1,15 @@
 // In-memory aggregate builder.
 // Wires in-memory adapters and delegates to ReventlessCore.Aggregate_Builder.Make.
 
-module Make = (Bus: InMemory_Bus.T) => {
+let noHooks: ReventlessCore.Plugin_Helpers.platformHooks = {
+  adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+}
+
+// MakeWithHooks — full version used by the Platform (passes hook callbacks to core builder).
+module MakeWithHooks = (
+  Bus: InMemory_Bus.T,
+  HooksConfig: ReventlessCore.Plugin_Helpers.HooksConfig,
+) => {
   module RuntimeEnvironment = RuntimeEnvironment_InMemory
   module CommandTopicChannel = CommandTopicChannel_InMemory.Make(Bus)
   module EventTopicPublisher = EventTopicPublisher_InMemory.Make(Bus)
@@ -28,9 +36,15 @@ module Make = (Bus: InMemory_Bus.T) => {
       EventTopicPublisher,
       EventCollectorChannel,
       AggregateRuntimeBuilder,
+      HooksConfig,
     )
     // Re-shadow `operations` with explicit spec return type so callers without
     // reventless in scope can still access ops.publishJsons (transparent alias).
     let operations: component => Pulumi.Output.t<ReventlessInfra.Aggregate.operations> = operations
   }
+}
+
+// Make — simple version for standalone tests and examples (no hook callbacks).
+module Make = (Bus: InMemory_Bus.T) => {
+  include MakeWithHooks(Bus, {let hooks = noHooks})
 }

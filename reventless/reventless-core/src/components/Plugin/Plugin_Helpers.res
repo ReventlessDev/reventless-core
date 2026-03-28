@@ -379,84 +379,23 @@ module MakeEventCollectorHelper = (
 
 
 // ---------------------------------------------------------------------------
-// Local admin extension points — set by Platform_Admin.construct() during
-// admin construction.  When set, Plugin_Builder uses these to wire the admin
-// connection path locally instead of via Interstack.coreStackReference.
-// This eliminates the need for connectWithoutCore in platforms like in-memory
-// where admin and plugins run in the same process.
-// ---------------------------------------------------------------------------
-let localAdminExtensionPoints: ref<option<Pulumi.Output.t<dict<ExtensionPoint.outputs>>>> = ref(None)
-
-// ---------------------------------------------------------------------------
-// Unified mutation resolver hooks — set by in-memory platform before plugins
-// are built.  Used by both Plugin_Builder (aggregates) and Dcb_Builder
-// (StateChangeSlices) to register GraphQL mutation SDL + resolver stubs.
-// Phase 1 (mutationResolverHook): called synchronously to register SDL + stub.
-// Phase 2 (mutationBindHook): called inside Output.apply to bind generateCommand.
-// No-op when unset (AWS/other platforms).
+// Shared parameter types for hooks that carry structured data.
 // ---------------------------------------------------------------------------
 type mutationKind = Aggregate | Dcb
 
-let mutationResolverHook: ref<
-  option<(~kind: mutationKind, ~fields: array<string>, ~commandSchema: S.t<unknown>) => unit>,
-> = ref(None)
-
-let mutationBindHook: ref<
-  option<(~field: string, ~generateCommand: CommandGenerator.commandGenerator) => unit>,
-> = ref(None)
-
-// ---------------------------------------------------------------------------
-// InboundTranslationSlice mutation resolver hooks — set by in-memory platform
-// before plugins are built.
-// Phase 1 (registerHook): called synchronously to register SDL + resolver stub.
-// Phase 2 (bindReceiveHook): called inside Output.apply to bind `receive`.
-// ---------------------------------------------------------------------------
-let inboundMutationResolverHook: ref<
-  option<(~fieldName: string, ~externalInputSchema: S.t<unknown>) => unit>,
-> = ref(None)
-
-let inboundMutationBindReceiveHook: ref<
-  option<(~fieldName: string, ~receive: JSON.t => promise<result<string, string>>) => unit>,
-> = ref(None)
-
-// ---------------------------------------------------------------------------
-// InboundTranslationSlice AppSync resolver hook — set by AWS platform before
-// plugins are built.  Plugin_Builder.construct() calls this from the DCB
-// connect function to create AppSync DataSource + Resolvers for each
-// InboundTranslationSlice, pointing to the shared DCB CommandTopic Lambda.
-// No-op when unset (in-memory/other platforms).
-// ---------------------------------------------------------------------------
 type inboundAppSyncResolverParams = {
   runtime: Runtime.environment<unknown>,
   fieldNames: array<string>,
   externalInputSchemas: array<S.t<unknown>>,
   opts: Pulumi.ComponentResource.options,
 }
-let inboundAppSyncResolverHook: ref<option<inboundAppSyncResolverParams => unit>> = ref(None)
 
-// ---------------------------------------------------------------------------
-// DCB StateChangeSlice AppSync resolver hook — set by AWS platform before
-// plugins are built.  Dcb_Builder.construct() calls this from the DCB connect
-// function to create AppSync DataSource + Resolvers for each StateChangeSlice,
-// pointing to the shared DCB CommandTopic Lambda.
-// No-op when unset (in-memory/other platforms).
-// ---------------------------------------------------------------------------
 type dcbAppSyncResolverParams = {
   runtime: Runtime.environment<unknown>,
   fieldNames: array<string>,
   tags: array<string>,
   opts: Pulumi.ComponentResource.options,
 }
-let dcbAppSyncResolverHook: ref<option<dcbAppSyncResolverParams => unit>> = ref(None)
-
-// (aggregateMutationResolverHook removed — replaced by unified mutationResolverHook above)
-
-// ---------------------------------------------------------------------------
-// Schema type registration hook — set by in-memory platform before plugins are
-// built.  Plugin_Builder.construct() calls this after generating the fragment
-// to register GraphQL type definitions.  No-op when unset (AWS/other platforms).
-// ---------------------------------------------------------------------------
-let schemaTypeRegistrationHook: ref<option<array<string> => unit>> = ref(None)
 
 // ---------------------------------------------------------------------------
 // Query field names registry — populated by Plugin_Builder during construct()
@@ -473,9 +412,7 @@ let queryFieldNamesRegistry: ref<dict<Api_Naming.queryNames>> = ref(Dict.make())
 let aggregateMutationFieldsRegistry: ref<dict<array<string>>> = ref(Dict.make())
 
 // ---------------------------------------------------------------------------
-// MCP schema registration hook — set by in-memory platform before plugins are
-// built.  Plugin_Builder.construct() calls this after generating entries to
-// register MCP tools and resources.  No-op when unset (AWS/other platforms).
+// MCP schema registration params type — shared by platformHooks and callers.
 // ---------------------------------------------------------------------------
 type mcpRegistrationParams = {
   pluginName: string,
@@ -483,61 +420,65 @@ type mcpRegistrationParams = {
   queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
   eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
 }
-let mcpSchemaRegistrationHook: ref<option<mcpRegistrationParams => unit>> = ref(None)
 
 // ---------------------------------------------------------------------------
-// Pre-resolvers schema push hook — set by AWS platform so that plugin stacks
-// push their schema fragment to AppSync BEFORE creating QueryDb resolvers.
-// The hook returns Output.t<unit> so callers can chain resolver creation after it.
-// No-op when unset (in-memory/other platforms).
+// platformHooks — platform callbacks and coordination state passed to builder
+// functors as a record.
+//
+// Optional fields (field?): callbacks set at record creation; absent = None.
+// Required ref field: adminExtensionPoints — a mutable cell set by makePlatform
+// after Admin.construct() returns, read by Plugin_Builder to wire the local
+// admin connection path (in-memory). Initialized to an empty dict output;
+// AWS platforms leave it empty and fall back to Interstack instead.
+//
+// `noHooks` is the "no callbacks" default, with adminExtensionPoints starting
+// as an empty dict output.
 // ---------------------------------------------------------------------------
-let preResolversSchemaHook: ref<
-  option<(~name: string, Reventless.Plugin.apiSchemaFragment) => Pulumi.Output.t<unit>>,
-> = ref(None)
+type platformHooks = {
+  // ── In-memory GraphQL mutation registration ────────────────────────────
+  // Phase 1: register SDL + resolver stub synchronously.
+  mutationResolverHook?: (~kind: mutationKind, ~fields: array<string>, ~commandSchema: S.t<unknown>) => unit,
+  // Phase 2: bind generateCommand inside Output.apply.
+  mutationBindHook?: (~field: string, ~generateCommand: CommandGenerator.commandGenerator) => unit,
+  // InboundTranslationSlice — phase 1: register SDL + stub.
+  inboundMutationResolverHook?: (~fieldName: string, ~externalInputSchema: S.t<unknown>) => unit,
+  // InboundTranslationSlice — phase 2: bind receive.
+  inboundMutationBindReceiveHook?: (~fieldName: string, ~receive: JSON.t => promise<result<string, string>>) => unit,
+  // GraphQL type definitions.
+  schemaTypeRegistrationHook?: array<string> => unit,
+  // MCP tools and resources.
+  mcpSchemaRegistrationHook?: mcpRegistrationParams => unit,
+  // ── AppSync resolver creation (AWS) ───────────────────────────────────
+  preResolversSchemaHook?: (~name: string, Reventless.Plugin.apiSchemaFragment) => Pulumi.Output.t<unit>,
+  inboundAppSyncResolverHook?: inboundAppSyncResolverParams => unit,
+  dcbAppSyncResolverHook?: dcbAppSyncResolverParams => unit,
+  // ── Deployment lifecycle (AWS) ─────────────────────────────────────────
+  onDcbEventLogCreated?: unknown => unit,
+  onDcbCommandTopicCreated?: unknown => unit,
+  onDcbSlicesCreated?: unknown => unit,
+  onHeartbeatEpChannelAvailable?: unknown => unit,
+  // ── Admin → Plugin coordination ────────────────────────────────────────
+  // Set by makePlatform after Admin.construct(); read by Plugin_Builder to
+  // wire the local admin connection path (in-memory).  Starts as an empty
+  // dict; AWS platforms leave it empty and use Interstack instead.
+  adminExtensionPoints: ref<Pulumi.Output.t<dict<ExtensionPoint.outputs>>>,
+}
 
-// ---------------------------------------------------------------------------
-// DCB CommandTopic created hook — set by AWS platform before plugins are built.
-// Dcb_Builder calls this after creating the shared DCB CommandTopic, passing
-// the CommandTopic component (as unknown) so that the AWS platform can extract
-// the SQS queue URL for bundled slice runtime builders.
-// No-op when unset (in-memory/other platforms).
-// ---------------------------------------------------------------------------
-let onDcbEventLogCreated: ref<option<unknown => unit>> = ref(None)
-let onDcbCommandTopicCreated: ref<option<unknown => unit>> = ref(None)
+// Default hooks — no callbacks, empty admin extension points.
+let noHooks: platformHooks = {
+  adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+}
 
-// ---------------------------------------------------------------------------
-// DCB slices created hook — set by AWS platform before plugins are built.
-// Dcb_Builder calls this after all DCB slices have been created and registered
-// with their runtime builders, so that the platform can call finish() on each
-// bundled slice runtime builder to create the bundled Lambda functions.
-// No-op when unset (in-memory/other platforms).
-// ---------------------------------------------------------------------------
-// The hook receives the DcbEventLog component (as unknown) so the platform can
-// wait for its operations to resolve before calling finish() — forEventCollector
-// runs inside Output.apply chains that depend on DcbEventLog operations.
-let onDcbSlicesCreated: ref<option<unknown => unit>> = ref(None)
+// Functor parameter wrapper for platformHooks.
+module type HooksConfig = {
+  let hooks: platformHooks
+}
 
-// ---------------------------------------------------------------------------
-// Heartbeat EP queue URL hook — set by AWS platform before plugins are built.
-// Plugin_Builder calls this with the PluginExtensionPoint CommandTopic remote
-// channel so that the AWS platform can extract the SQS queue URL for the
-// bundled heartbeat handler.
-// No-op when unset (in-memory/other platforms).
-// ---------------------------------------------------------------------------
-let onHeartbeatEpChannelAvailable: ref<option<unknown => unit>> = ref(None)
-
-// ---------------------------------------------------------------------------
-// Admin components created hook — set by AWS platform before admin is built.
-// Platform_Admin.construct calls this after building aggregates and read models
-// but BEFORE building extension points. This lets the platform register
-// aggregate queue URLs and read model table names with the runtime builders
-// (e.g. PluginExtensionPointRuntime_Builder) so that the EP Lambda handler
-// has the correct env vars to publish commands and query the Plugin read model.
-// No-op when unset (in-memory/other platforms).
-// ---------------------------------------------------------------------------
-let onAdminComponentsCreated: ref<
-  option<(~aggregatesOutputs: dict<Aggregate.outputs>, ~readModelsOutputs: dict<ReadModel.outputs>) => unit>,
-> = ref(None)
+// Pre-built HooksConfig with no hooks — use for builders that need no callbacks
+// (e.g. AWS aggregate builders that route via AggregateRuntimeBuilder instead).
+module NoopHooksConfig: HooksConfig = {
+  let hooks = noHooks
+}
 
 // ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so

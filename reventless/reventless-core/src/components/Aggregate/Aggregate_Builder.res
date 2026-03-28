@@ -15,6 +15,7 @@ module Make = (
     with module CommandTopicChannel = CommandTopicChannel
     and module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
+  HooksConfig: Plugin_Helpers.HooksConfig,
 ): (Aggregate.T with type api = CommandGeneratorResolvers.api and type component = Aggregate.component) => {
   module Spec = Spec
   module AggregateRuntimeBuilder = AggregateRuntimeBuilder
@@ -103,7 +104,7 @@ module Make = (
       ->Component.operations
       ->Pulumi.Output.apply(({publishJsons}) => {
         let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
-        switch Plugin_Helpers.mutationBindHook.contents {
+        switch HooksConfig.hooks.mutationBindHook {
         | Some(bindHandler) =>
           // In-memory: bind generateCommand to resolver stubs directly,
           // skipping the adapter-driven forCommandGenerator path.

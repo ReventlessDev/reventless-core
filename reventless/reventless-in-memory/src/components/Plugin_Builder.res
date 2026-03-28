@@ -4,14 +4,19 @@
 // not here, because ReScript doesn't expose abstract types from `include`
 // through functor return type annotations.
 
-module Make = (Bus: InMemory_Bus.T) => {
+module Make = (Bus: InMemory_Bus.T, HooksConfig: ReventlessCore.Plugin_Helpers.HooksConfig) => {
   module EventCollectorChannel = EventCollectorChannel_InMemory.Make(Bus)
   module PluginRuntimeBuilder = PluginRuntime_Builder_InMemory.Make(Bus)
   module RemoteChannel = CommandTopicRemoteChannel_InMemory.Make(Bus)
   module QE = QueryEngine_InMemory.Make(Bus)
 
   include ReventlessCore.Plugin_Builder.Make(
-    InMemory_PluginSpec,
+    {
+      let runtimeOps = InMemory_PluginSpec.runtimeOps
+      let resourceNaming = InMemory_PluginSpec.resourceNaming
+      let environment = InMemory_PluginSpec.environment
+      let hooks = HooksConfig.hooks
+    },
     {
       type api = unit
       type role = unit

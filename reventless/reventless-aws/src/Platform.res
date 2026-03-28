@@ -235,10 +235,14 @@ module MakeWithConfig = (
     }
   }
 
-  // Set the InboundTranslationSlice AppSync resolver hook so Plugin_Builder
-  // creates AppSync DataSource + Resolvers pointing to the shared DCB Lambda.
-  let () = ReventlessCore.Plugin_Helpers.inboundAppSyncResolverHook.contents = Some(
-    ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
+  // AWS platform hooks — all AWS-specific callbacks defined as a record.
+  // In-memory hooks (mutationResolverHook etc.) are absent (optional = None).
+  let deploySchemaPrefix = "deploy-schema:"
+
+  let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
+    // AWS uses Interstack for admin extension points — leave ref at empty dict.
+    adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+    inboundAppSyncResolverHook: ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->Obj.magic
       InboundTranslationResolvers_AppSync.make(
@@ -248,13 +252,7 @@ module MakeWithConfig = (
         ~opts,
       )
     },
-  )
-
-  // Set the DCB StateChangeSlice AppSync resolver hook so Dcb_Builder creates
-  // AppSync DataSource + Resolvers for each StateChangeSlice mutation, pointing
-  // to the shared DCB CommandTopic Lambda.
-  let () = ReventlessCore.Plugin_Helpers.dcbAppSyncResolverHook.contents = Some(
-    ({runtime, fieldNames, tags, opts}) => {
+    dcbAppSyncResolverHook: ({runtime, fieldNames, tags, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->Obj.magic
       CommandGeneratorResolvers_AppSync.makeDcb(
@@ -265,21 +263,13 @@ module MakeWithConfig = (
         ~opts,
       )
     },
-  )
 
-  // Set the pre-resolvers schema push hook so plugin stacks push their
-  // schema fragment to AppSync before QueryDb resolvers are created.
-  // Without this, resolvers reference types that don't exist in the schema yet.
-  //
-  // To accumulate fragments across independent plugin deployments, each plugin
-  // writes its fragment to the Plugin RM table (keyed "deploy-schema:<name>")
-  // at deploy time. The hook then scans for ALL deploy-schema entries and
-  // stitches them together — ensuring the schema is cumulative rather than
-  // overwritten by each plugin deployment.
-  let deploySchemaPrefix = "deploy-schema:"
-
-  let () = ReventlessCore.Plugin_Helpers.preResolversSchemaHook.contents = Some(
-    (~name, pluginFragment) => {
+    // Accumulate fragments across independent plugin deployments: each plugin
+    // writes its fragment to the Plugin RM table (keyed "deploy-schema:<name>")
+    // at deploy time. The hook then scans for ALL deploy-schema entries and
+    // stitches them together — ensuring the schema is cumulative rather than
+    // overwritten by each plugin deployment.
+    preResolversSchemaHook: (~name, pluginFragment) => {
       Console.log(`[preResolversSchemaHook] Pushing schema for plugin ${name} to AppSync`)
 
       // Read Plugin RM table name from platform StackReference.
@@ -413,12 +403,8 @@ module MakeWithConfig = (
         )
       })
     },
-  )
-
-  // Set DCB EventLog created hook — extracts DynamoDB table name for bundled
-  // DCB CommandTopic handler.
-  let () = ReventlessCore.Plugin_Helpers.onDcbEventLogCreated.contents = Some(
-    dcbEventLogUnknown => {
+    // DCB EventLog created hook — extracts DynamoDB table name for bundled DCB CommandTopic handler.
+    onDcbEventLogCreated: dcbEventLogUnknown => {
       let dcbEventLog: ReventlessCore.Component.t<unit, ReventlessCore.DcbEventLog.outputs, unit> =
         Obj.magic(dcbEventLogUnknown)
       let outputs = dcbEventLog->ReventlessCore.Component.outputs
@@ -429,12 +415,8 @@ module MakeWithConfig = (
         (),
       )
     },
-  )
-
-  // Set DCB CommandTopic created hook — extracts SQS queue URL for bundled
-  // AutomationSlice/OutboundTranslationSlice runtime builders.
-  let () = ReventlessCore.Plugin_Helpers.onDcbCommandTopicCreated.contents = Some(
-    dcbCommandTopicUnknown => {
+    // DCB CommandTopic created hook — extracts SQS queue URL for bundled slice builders.
+    onDcbCommandTopicCreated: dcbCommandTopicUnknown => {
       let commandTopic: ReventlessCore.CommandTopic.component<unit> = Obj.magic(
         dcbCommandTopicUnknown,
       )
@@ -442,23 +424,13 @@ module MakeWithConfig = (
       let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
       AutomationSliceRuntime_Builder_Single.setDcbQueueUrl(channelParts.queue.id)
     },
-  )
-
-  // DCB slices created hook — finalize bundled slice Lambdas.
-  // After all DCB slices have registered their specs, create the consolidated
-  // AllStateViewSlices and AllAutomationSlices Lambda functions.
-  let () = ReventlessCore.Plugin_Helpers.onDcbSlicesCreated.contents = Some(
-    _dcbEventLogUnknown => {
+    // DCB slices created hook — finalize bundled slice Lambdas.
+    onDcbSlicesCreated: _dcbEventLogUnknown => {
       StateViewSliceRuntime_Builder_Single.finish()
       AutomationSliceRuntime_Builder_Single.finish()
     },
-  )
-
-  // Set heartbeat EP channel hook — extracts SQS queue URL for bundled heartbeat handler.
-  // The remoteChannel contains resolved resources from the admin PluginExtensionPoint
-  // CommandTopic. The first resource's id is the SQS queue URL.
-  let () = ReventlessCore.Plugin_Helpers.onHeartbeatEpChannelAvailable.contents = Some(
-    remoteChannelUnknown => {
+    // Heartbeat EP channel hook — extracts SQS queue URL for bundled heartbeat handler.
+    onHeartbeatEpChannelAvailable: remoteChannelUnknown => {
       let remoteChannel: ReventlessCore.CommandTopic_Adapter.remoteChannel = Obj.magic(
         remoteChannelUnknown,
       )
@@ -473,17 +445,17 @@ module MakeWithConfig = (
         Console.warn("Platform: heartbeat EP channel has no resources")
       }
     },
-  )
+  }
 
-  // Alias before defining module Plugin to avoid self-reference.
-  module PluginBuilder = Plugin
+  // Apply Plugin functor with the platform hooks, then constrain the result to Plugin.T.
+  module PluginBuilderImpl = Plugin.Make({let hooks = hooks})
   module Plugin: ReventlessInfra.Plugin.T
     with type api = Types.AppSync.api
     and type role = Types.AppSync.role = {
     type api = Types.AppSync.api
     type role = Types.AppSync.role
     type component = ReventlessCore.Plugin.component
-    let make = PluginBuilder.make
+    let make = PluginBuilderImpl.make
   }
 
   module RuntimeEnvironment = RuntimeEnvironment.Lambda
@@ -501,6 +473,7 @@ module MakeWithConfig = (
       let silent = false
       let splitApi = Config.splitApi
       let cloner = Config.cloner
+      let hooks = hooks
     },
   )
 
@@ -571,7 +544,8 @@ module MakeWithConfig = (
       ~inboundTranslationSlices=[],
     )
 
-    // Build each plugin using the shared scheduler.
+    // Build each plugin. AWS plugins use Interstack for admin extension points,
+    // so pass an empty dict — Plugin_Builder falls back to Interstack automatically.
     let pluginComponents = plugins->Array.map(plugin => {
       module P = unpack(plugin)
       P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
@@ -637,59 +611,6 @@ module MakeWithConfig = (
     // returns the resolved string synchronously.
     let appSyncApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
 
-    // Ref to capture Plugin RM table name for export (set inside onAdminComponentsCreated).
-    let pluginRmTableNameRef: ref<option<Pulumi.Output.t<string>>> = ref(None)
-
-    // Register bundled Admin EventCollector config. Done via onAdminComponentsCreated
-    // hook so pluginReadModelTableName is available (set after aggregates/readModels
-    // are built but before the EventCollector Lambda is created).
-    ReventlessCore.Plugin_Helpers.onAdminComponentsCreated.contents = Some(
-      (~aggregatesOutputs, ~readModelsOutputs) => {
-        // Extract Plugin aggregate CommandTopic queue URL for EP runtime
-        let publishToAggregatesQueueUrls = Dict.make()
-        switch aggregatesOutputs->Dict.get("Plugin") {
-        | Some(pluginAgg) =>
-          let queueUrl =
-            pluginAgg.commandTopic->Pulumi.Output.flatMap(ct =>
-              switch ct.resources->Array.get(0) {
-              | Some(r) => r.id
-              | None => Pulumi.Output.make("")
-              }
-            )
-          publishToAggregatesQueueUrls->Dict.set("Plugin", queueUrl)
-        | None => ()
-        }
-
-        // Extract Plugin read model QueryDb table name
-        let pluginReadModelTableName = switch readModelsOutputs->Dict.get("Plugin") {
-        | Some(pluginRm) =>
-          switch pluginRm.queryDb.resources->Array.get(0) {
-          | Some(r) => Some(r.name)
-          | None => None
-          }
-        | None => None
-        }
-
-        // Capture for export so plugin stacks can scan existing plugins.
-        pluginRmTableNameRef := pluginReadModelTableName
-
-        // Register EP runtime with aggregate queue URLs and RM table
-        PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
-          ~publishToAggregatesQueueUrls,
-          ~pluginReadModelTableName?,
-          (),
-        )
-
-        // Register Admin EventCollector config with all values
-        PluginRuntime_Builder.registerConfig(
-          ~appSyncApiId=appSyncApiId,
-          ~pluginReadModelTableName?,
-          ~clonerEnabled=Config.cloner,
-          (),
-        )
-      },
-    )
-
     module PluginExtensionPoint = Plugin_ExtensionPoint_Builder.MakeWithConfig({
       let updateApiSchema = Some(async (queryEngine: Reventless.QueryEngine.operations) => {
         open Reventless.QueryEngine.Filter
@@ -742,6 +663,38 @@ module MakeWithConfig = (
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
+    )
+
+    // Extract admin aggregate/read-model data directly from admin outputs.
+    // (Previously done via onAdminComponentsCreated hook — eliminated now that
+    // Admin.construct() returns all needed data synchronously.)
+    let publishToAggregatesQueueUrls = Dict.make()
+    switch admin.aggregatesOutputs->Dict.get("Plugin") {
+    | Some(pluginAgg) =>
+      let queueUrl =
+        pluginAgg.commandTopic->Pulumi.Output.flatMap(ct =>
+          switch ct.resources->Array.get(0) {
+          | Some(r) => r.id
+          | None => Pulumi.Output.make("")
+          }
+        )
+      publishToAggregatesQueueUrls->Dict.set("Plugin", queueUrl)
+    | None => ()
+    }
+    let pluginReadModelTableName = switch admin.readModelsOutputs->Dict.get("Plugin") {
+    | Some(pluginRm) => pluginRm.queryDb.resources->Array.get(0)->Option.map(r => r.name)
+    | None => None
+    }
+    PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
+      ~publishToAggregatesQueueUrls,
+      ~pluginReadModelTableName?,
+      (),
+    )
+    PluginRuntime_Builder.registerConfig(
+      ~appSyncApiId,
+      ~pluginReadModelTableName?,
+      ~clonerEnabled=Config.cloner,
+      (),
     )
 
     if Config.splitApi {
@@ -805,7 +758,7 @@ module MakeWithConfig = (
 
     // Export Plugin RM table name so plugin stacks can query existing plugins
     // for cumulative schema stitching (preResolversSchemaHook).
-    switch pluginRmTableNameRef.contents {
+    switch pluginReadModelTableName {
     | Some(tableName) => Pulumi.Pulumi.export("pluginRmTableName", tableName)
     | None => ()
     }

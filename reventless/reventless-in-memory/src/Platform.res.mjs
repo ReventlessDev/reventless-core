@@ -70,115 +70,17 @@ function MakeWithConfig(Config) {
     capacity: undefined,
     silent: Config.silent
   });
-  let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
-  let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
-  let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
-  let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
-  let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
-  let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
-  let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
-  let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
-  let Make = Spec => (Behavior => (EventMappings => {
-    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make,
-      outputs: $$let.outputs,
-      operations: $$let.operations,
-      finish: $$let.finish
-    };
-  }));
-  let Aggregate = {
-    Make: Make
-  };
-  let Make$1 = Spec => (Mappings => {
-    let $$let = ReadModelMaker.Make(Spec)(Mappings);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make,
-      outputs: $$let.outputs,
-      operations: $$let.operations,
-      finish: $$let.finish
-    };
-  });
-  let ReadModel = {
-    Make: Make$1
-  };
-  let Make$2 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
-  let ExtensionPoint = {
-    Make: Make$2
-  };
-  let Make$3 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
-  let Extension = {
-    Make: Make$3
-  };
-  let Make$4 = Spec => TaskMaker.Make(Spec);
-  let Task = {
-    Make: Make$4
-  };
-  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$5 = StateChangeSlice_Builder$ReventlessInMemory.Make;
-  let StateChangeSlice = {
-    Make: Make$5
-  };
-  let Make$6 = Spec => StateViewSliceMaker.Make(Spec);
-  let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
-  let Bundled = {
-    Make: Make$7
-  };
-  let StateViewSlice = {
-    Make: Make$6,
-    Bundled: Bundled
-  };
-  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
-  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
-  let Bundled$1 = {
-    Make: Make$9
-  };
-  let AutomationSlice = {
-    Make: Make$8,
-    Bundled: Bundled$1
-  };
-  let Make$10 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Bundled$2 = {
-    Make: Make$11
-  };
-  let OutboundTranslationSlice = {
-    Make: Make$10,
-    Bundled: Bundled$2
-  };
-  let Make$12 = Spec => InboundTranslationSliceMaker.Make(Spec);
-  let InboundTranslationSlice = {
-    Make: Make$12
-  };
-  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: [],
-    mutations: [],
-    queries: []
-  });
-  let Make$13 = FragmentConfig => {
-    let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
-    let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
-    let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
-    return {
-      make: make
-    };
-  };
-  let Api = {
-    Make: Make$13
-  };
-  Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
+  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
     if (kind === "Aggregate") {
       return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema);
     }
     fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema));
   };
-  Plugin_Helpers$ReventlessCore.mutationBindHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
-  Plugin_Helpers$ReventlessCore.inboundMutationResolverHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
-  Plugin_Helpers$ReventlessCore.inboundMutationBindReceiveHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
-  Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents = GraphQL_Server$ReventlessInMemory.registerTypes;
-  Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents = param => {
+  let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
+  let hooks_inboundMutationResolverHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
+  let hooks_inboundMutationBindReceiveHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
+  let hooks_schemaTypeRegistrationHook = GraphQL_Server$ReventlessInMemory.registerTypes;
+  let hooks_mcpSchemaRegistrationHook = param => {
     let eventLogEntries = param.eventLogEntries;
     let pluginName = param.pluginName;
     MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args) => {
@@ -349,7 +251,121 @@ function MakeWithConfig(Config) {
       });
     });
   };
-  let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);
+  let hooks_adminExtensionPoints = {
+    contents: Pulumi.output({})
+  };
+  let hooks = {
+    mutationResolverHook: hooks_mutationResolverHook,
+    mutationBindHook: hooks_mutationBindHook,
+    inboundMutationResolverHook: hooks_inboundMutationResolverHook,
+    inboundMutationBindReceiveHook: hooks_inboundMutationBindReceiveHook,
+    schemaTypeRegistrationHook: hooks_schemaTypeRegistrationHook,
+    mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
+    adminExtensionPoints: hooks_adminExtensionPoints
+  };
+  let AggregateMaker = Aggregate_Builder$ReventlessInMemory.MakeWithHooks(Bus)({
+    hooks: hooks
+  });
+  let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
+  let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
+  let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
+  let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
+  let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
+  let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
+  let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
+  let Make = Spec => (Behavior => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  }));
+  let Aggregate = {
+    Make: Make
+  };
+  let Make$1 = Spec => (Mappings => {
+    let $$let = ReadModelMaker.Make(Spec)(Mappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  });
+  let ReadModel = {
+    Make: Make$1
+  };
+  let Make$2 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
+  let ExtensionPoint = {
+    Make: Make$2
+  };
+  let Make$3 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
+  let Extension = {
+    Make: Make$3
+  };
+  let Make$4 = Spec => TaskMaker.Make(Spec);
+  let Task = {
+    Make: Make$4
+  };
+  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
+  let Make$5 = StateChangeSlice_Builder$ReventlessInMemory.Make;
+  let StateChangeSlice = {
+    Make: Make$5
+  };
+  let Make$6 = Spec => StateViewSliceMaker.Make(Spec);
+  let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
+  let Bundled = {
+    Make: Make$7
+  };
+  let StateViewSlice = {
+    Make: Make$6,
+    Bundled: Bundled
+  };
+  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
+  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
+  let Bundled$1 = {
+    Make: Make$9
+  };
+  let AutomationSlice = {
+    Make: Make$8,
+    Bundled: Bundled$1
+  };
+  let Make$10 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Bundled$2 = {
+    Make: Make$11
+  };
+  let OutboundTranslationSlice = {
+    Make: Make$10,
+    Bundled: Bundled$2
+  };
+  let Make$12 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let InboundTranslationSlice = {
+    Make: Make$12
+  };
+  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+    types: [],
+    mutations: [],
+    queries: []
+  });
+  let Make$13 = FragmentConfig => {
+    let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
+    let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
+    let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
+    return {
+      make: make
+    };
+  };
+  let Api = {
+    Make: Make$13
+  };
+  let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
+    hooks: hooks
+  });
   let Plugin = {
     make: PluginMaker.make
   };
@@ -372,7 +388,12 @@ function MakeWithConfig(Config) {
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
     make: $$let.make
-  })(Config);
+  })({
+    silent: Config.silent,
+    splitApi: Config.splitApi,
+    cloner: Config.cloner,
+    hooks: hooks
+  });
   let makeScheduler = () => {
     let SP = ScheduledPublisher_InMemory$ReventlessInMemory.Make(Bus);
     let S = Scheduler_Builder$ReventlessCore.Make({
@@ -385,7 +406,11 @@ function MakeWithConfig(Config) {
     console.log(`[Platform] v` + version);
     console.log(`[Platform] silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
+      ep.name,
+      ep
+    ])));
     let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
     let store = {
       contents: {}
@@ -750,7 +775,11 @@ function MakeWithConfig(Config) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
+      ep.name,
+      ep
+    ])));
     plugin.make(scheduler, undefined, undefined);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
@@ -815,114 +844,17 @@ function Make($star) {
     capacity: undefined,
     silent: false
   });
-  let AggregateMaker = Aggregate_Builder$ReventlessInMemory.Make(Bus);
-  let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
-  let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
-  let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
-  let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
-  let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
-  let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
-  let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
-  let Make$1 = Spec => (Behavior => (EventMappings => {
-    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make,
-      outputs: $$let.outputs,
-      operations: $$let.operations,
-      finish: $$let.finish
-    };
-  }));
-  let Aggregate = {
-    Make: Make$1
-  };
-  let Make$2 = Spec => (Mappings => {
-    let $$let = ReadModelMaker.Make(Spec)(Mappings);
-    return {
-      Spec: $$let.Spec,
-      make: $$let.make,
-      outputs: $$let.outputs,
-      operations: $$let.operations,
-      finish: $$let.finish
-    };
-  });
-  let ReadModel = {
-    Make: Make$2
-  };
-  let Make$3 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
-  let ExtensionPoint = {
-    Make: Make$3
-  };
-  let Make$4 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
-  let Extension = {
-    Make: Make$4
-  };
-  let Make$5 = Spec => TaskMaker.Make(Spec);
-  let Task = {
-    Make: Make$5
-  };
-  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$6 = StateChangeSlice_Builder$ReventlessInMemory.Make;
-  let StateChangeSlice = {
-    Make: Make$6
-  };
-  let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
-  let Make$8 = Spec => StateViewSliceMaker.Make(Spec);
-  let Bundled = {
-    Make: Make$8
-  };
-  let StateViewSlice = {
-    Make: Make$7,
-    Bundled: Bundled
-  };
-  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
-  let Make$10 = Spec => AutomationSliceMaker.Make(Spec);
-  let Bundled$1 = {
-    Make: Make$10
-  };
-  let AutomationSlice = {
-    Make: Make$9,
-    Bundled: Bundled$1
-  };
-  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Make$12 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Bundled$2 = {
-    Make: Make$12
-  };
-  let OutboundTranslationSlice = {
-    Make: Make$11,
-    Bundled: Bundled$2
-  };
-  let Make$13 = Spec => InboundTranslationSliceMaker.Make(Spec);
-  let InboundTranslationSlice = {
-    Make: Make$13
-  };
-  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: [],
-    mutations: [],
-    queries: []
-  });
-  let Make$14 = FragmentConfig => {
-    let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
-    let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
-    return {
-      make: make
-    };
-  };
-  let Api = {
-    Make: Make$14
-  };
-  Plugin_Helpers$ReventlessCore.mutationResolverHook.contents = (kind, fields, commandSchema) => {
+  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
     if (kind === "Aggregate") {
       return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema);
     }
     fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema));
   };
-  Plugin_Helpers$ReventlessCore.mutationBindHook.contents = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
-  Plugin_Helpers$ReventlessCore.inboundMutationResolverHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
-  Plugin_Helpers$ReventlessCore.inboundMutationBindReceiveHook.contents = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
-  Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents = GraphQL_Server$ReventlessInMemory.registerTypes;
-  Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents = param => {
+  let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
+  let hooks_inboundMutationResolverHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
+  let hooks_inboundMutationBindReceiveHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
+  let hooks_schemaTypeRegistrationHook = GraphQL_Server$ReventlessInMemory.registerTypes;
+  let hooks_mcpSchemaRegistrationHook = param => {
     let eventLogEntries = param.eventLogEntries;
     let pluginName = param.pluginName;
     MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args) => {
@@ -1093,7 +1025,120 @@ function Make($star) {
       });
     });
   };
-  let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus);
+  let hooks_adminExtensionPoints = {
+    contents: Pulumi.output({})
+  };
+  let hooks = {
+    mutationResolverHook: hooks_mutationResolverHook,
+    mutationBindHook: hooks_mutationBindHook,
+    inboundMutationResolverHook: hooks_inboundMutationResolverHook,
+    inboundMutationBindReceiveHook: hooks_inboundMutationBindReceiveHook,
+    schemaTypeRegistrationHook: hooks_schemaTypeRegistrationHook,
+    mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
+    adminExtensionPoints: hooks_adminExtensionPoints
+  };
+  let AggregateMaker = Aggregate_Builder$ReventlessInMemory.MakeWithHooks(Bus)({
+    hooks: hooks
+  });
+  let ReadModelMaker = ReadModel_Builder$ReventlessInMemory.Make(Bus);
+  let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
+  let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
+  let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
+  let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
+  let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
+  let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
+  let Make$1 = Spec => (Behavior => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  }));
+  let Aggregate = {
+    Make: Make$1
+  };
+  let Make$2 = Spec => (Mappings => {
+    let $$let = ReadModelMaker.Make(Spec)(Mappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  });
+  let ReadModel = {
+    Make: Make$2
+  };
+  let Make$3 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
+  let ExtensionPoint = {
+    Make: Make$3
+  };
+  let Make$4 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
+  let Extension = {
+    Make: Make$4
+  };
+  let Make$5 = Spec => TaskMaker.Make(Spec);
+  let Task = {
+    Make: Make$5
+  };
+  let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
+  let Make$6 = StateChangeSlice_Builder$ReventlessInMemory.Make;
+  let StateChangeSlice = {
+    Make: Make$6
+  };
+  let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
+  let Make$8 = Spec => StateViewSliceMaker.Make(Spec);
+  let Bundled = {
+    Make: Make$8
+  };
+  let StateViewSlice = {
+    Make: Make$7,
+    Bundled: Bundled
+  };
+  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
+  let Make$10 = Spec => AutomationSliceMaker.Make(Spec);
+  let Bundled$1 = {
+    Make: Make$10
+  };
+  let AutomationSlice = {
+    Make: Make$9,
+    Bundled: Bundled$1
+  };
+  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Make$12 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let Bundled$2 = {
+    Make: Make$12
+  };
+  let OutboundTranslationSlice = {
+    Make: Make$11,
+    Bundled: Bundled$2
+  };
+  let Make$13 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let InboundTranslationSlice = {
+    Make: Make$13
+  };
+  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+    types: [],
+    mutations: [],
+    queries: []
+  });
+  let Make$14 = FragmentConfig => {
+    let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
+    let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
+    return {
+      make: make
+    };
+  };
+  let Api = {
+    Make: Make$14
+  };
+  let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
+    hooks: hooks
+  });
   let Plugin = {
     make: PluginMaker.make
   };
@@ -1119,7 +1164,8 @@ function Make($star) {
   })({
     silent: false,
     splitApi: true,
-    cloner: false
+    cloner: false,
+    hooks: hooks
   });
   let makeScheduler = () => {
     let SP = ScheduledPublisher_InMemory$ReventlessInMemory.Make(Bus);
@@ -1133,7 +1179,11 @@ function Make($star) {
     console.log(`[Platform] v` + version);
     console.log(`[Platform] silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
+      ep.name,
+      ep
+    ])));
     let plugins$1 = plugins.map(plugin => plugin.make(scheduler, undefined, undefined));
     let store = {
       contents: {}
@@ -1498,7 +1548,11 @@ function Make($star) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = makeScheduler();
-    Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
+      ep.name,
+      ep
+    ])));
     plugin.make(scheduler, undefined, undefined);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);

@@ -14,36 +14,43 @@ import * as PluginRuntime_Builder_InMemory$ReventlessInMemory from "../adapter/R
 import * as CommandTopicRemoteChannel_InMemory$ReventlessInMemory from "../adapter/CommandTopic/CommandTopicRemoteChannel_InMemory.res.mjs";
 
 function Make(Bus) {
-  let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
-  let PluginRuntimeBuilder = PluginRuntime_Builder_InMemory$ReventlessInMemory.Make(Bus);
-  let RemoteChannel = CommandTopicRemoteChannel_InMemory$ReventlessInMemory.Make(Bus);
-  let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
-  let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
-  let include = Plugin_Builder$ReventlessCore.Make(InMemory_PluginSpec$ReventlessInMemory)({})(GraphQL_InMemory_Adapter$ReventlessInMemory)({
-    make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
-    groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
-    extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
-    asEventHandler: prim => prim,
-    asEffectHandler: prim => prim
-  })(EventCollectorChannel)({
-    make: QE.make
-  })(RemoteChannel)({
-    make: HeartbeatRunner_InMemory$ReventlessInMemory.make
-  })({
-    EventCollectorChannel: PluginRuntimeBuilder.EventCollectorChannel,
-    forPluginEventCollector: PluginRuntimeBuilder.forPluginEventCollector,
-    forPluginHeartbeat: PluginRuntimeBuilder.forPluginHeartbeat,
-    forDcbCommandTopic: PluginRuntimeBuilder.forDcbCommandTopic,
-    finish: PluginRuntimeBuilder.finish
-  })(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
-    make: $$let.make
-  });
-  return {
-    EventCollectorChannel: EventCollectorChannel,
-    PluginRuntimeBuilder: PluginRuntimeBuilder,
-    RemoteChannel: RemoteChannel,
-    QE: QE,
-    make: include.make
+  return HooksConfig => {
+    let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
+    let PluginRuntimeBuilder = PluginRuntime_Builder_InMemory$ReventlessInMemory.Make(Bus);
+    let RemoteChannel = CommandTopicRemoteChannel_InMemory$ReventlessInMemory.Make(Bus);
+    let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
+    let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+    let include = Plugin_Builder$ReventlessCore.Make({
+      runtimeOps: InMemory_PluginSpec$ReventlessInMemory.runtimeOps,
+      resourceNaming: InMemory_PluginSpec$ReventlessInMemory.resourceNaming,
+      environment: InMemory_PluginSpec$ReventlessInMemory.environment,
+      hooks: HooksConfig.hooks
+    })({})(GraphQL_InMemory_Adapter$ReventlessInMemory)({
+      make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
+      groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
+      extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
+      asEventHandler: prim => prim,
+      asEffectHandler: prim => prim
+    })(EventCollectorChannel)({
+      make: QE.make
+    })(RemoteChannel)({
+      make: HeartbeatRunner_InMemory$ReventlessInMemory.make
+    })({
+      EventCollectorChannel: PluginRuntimeBuilder.EventCollectorChannel,
+      forPluginEventCollector: PluginRuntimeBuilder.forPluginEventCollector,
+      forPluginHeartbeat: PluginRuntimeBuilder.forPluginHeartbeat,
+      forDcbCommandTopic: PluginRuntimeBuilder.forDcbCommandTopic,
+      finish: PluginRuntimeBuilder.finish
+    })(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
+      make: $$let.make
+    });
+    return {
+      EventCollectorChannel: EventCollectorChannel,
+      PluginRuntimeBuilder: PluginRuntimeBuilder,
+      RemoteChannel: RemoteChannel,
+      QE: QE,
+      make: include.make
+    };
   };
 }
 

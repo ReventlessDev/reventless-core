@@ -188,7 +188,7 @@ function Make(Platform) {
     name: ImportProducts$CatalogPlugin.name,
     setup: ImportProducts$CatalogPlugin.setup
   });
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
+  let make = (scheduler, api, apiRole, adminExtensionPoints) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
     ProductAggregate,
     CategoryAggregate,
     ProductDemandAggregate
@@ -196,7 +196,7 @@ function Make(Platform) {
     ProductReadModel,
     CategoryReadModel,
     ProductDemandReadModelMaker
-  ], [ImportProductsTask], api, apiRole, scheduler, undefined, undefined, undefined, undefined, undefined, undefined);
+  ], [ImportProductsTask], api, apiRole, scheduler, undefined, undefined, undefined, undefined, undefined, adminExtensionPoints, undefined);
   return {
     ProductAggregate: ProductAggregate,
     CategoryAggregate: CategoryAggregate,

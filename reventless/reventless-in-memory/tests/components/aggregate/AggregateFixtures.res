@@ -10,13 +10,13 @@ module ItemSpec = {
   let name = "TestItem"
 
   @schema
-  type command = | CreateItem({name: string})
+  type command = CreateItem({name: string})
 
   @schema
-  type event = | ItemCreated({name: string})
+  type event = ItemCreated({name: string})
 
   @schema
-  type error = | AlreadyExists
+  type error = AlreadyExists
 
   let moduleUrl: string = %raw(`import.meta.url`)
 }
@@ -76,4 +76,3 @@ module ItemAgg = ItemAggregateMaker.Make(
 )
 
 let agg = ItemAgg.make(~api=())
-

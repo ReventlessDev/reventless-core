@@ -38,7 +38,224 @@ module MakeWithConfig = (
     let silent = Config.silent
   })
 
-  module AggregateMaker = Aggregate_Builder.Make(Bus)
+  // Platform hook record — callbacks known at MakeWithConfig time plus a
+  // mutable ref for admin extension points (set by makePlatform/deployPlugin
+  // after Admin.construct returns, before plugins are built).
+  let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
+    adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+    // Phase 1: register SDL + resolver stub synchronously.
+    mutationResolverHook: (~kind, ~fields, ~commandSchema) =>
+      switch kind {
+      | ReventlessCore.Plugin_Helpers.Aggregate =>
+        CommandGeneratorResolvers_GraphQL.register(~fields, ~commandSchema)
+      | Dcb =>
+        fields->Array.forEach(field =>
+          CommandGeneratorResolvers_GraphQL.registerDcb(~fieldName=field, ~commandSchema)
+        )
+      },
+    // Phase 2: bind generateCommand when Output.apply resolves.
+    mutationBindHook: CommandGeneratorResolvers_GraphQL.bindHandler,
+    // InboundTranslationSlice hooks
+    inboundMutationResolverHook: InboundTranslationResolvers_GraphQL.register,
+    inboundMutationBindReceiveHook: InboundTranslationResolvers_GraphQL.bindReceive,
+    // Register GraphQL type definitions from the generated schema fragment.
+    schemaTypeRegistrationHook: sdlTypes => GraphQL_Server.registerTypes(~sdlTypes),
+    // MCP tools and resources — registered during plugin construction.
+    // See the large lambda below; it references Bus for QueryDb lookups.
+    mcpSchemaRegistrationHook: ({pluginName, mutationEntries, queryEntries, eventLogEntries}) => {
+      MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
+        toolName,
+        args,
+      ) => {
+        switch GraphQL_Server.getMutationResolver(toolName) {
+        | Some(resolver) =>
+          let result = await resolver(JSON.Encode.null, args, JSON.Encode.null)
+          switch result->JSON.Decode.string {
+          | Some(s) => s
+          | None => result->JSON.stringify
+          }
+        | None => `error: no handler found for tool ${toolName}`
+        }
+      })
+
+      MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler=async (
+        resourceName,
+        uri,
+      ) => {
+        let segments = uri->String.split("/")
+        let id = segments->Array.at(-1)->Option.getOr("")
+        let queryDbName =
+          ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+          ->Dict.toArray
+          ->Array.find(((_, entry)) =>
+            entry.singleFieldName == resourceName || entry.listFieldName == resourceName
+          )
+          ->Option.map(((name, _)) => name)
+          ->Option.getOr(resourceName)
+        switch Bus.getQueryDb(queryDbName) {
+        | Some(ops) =>
+          if id->String.length > 0 && id != resourceName {
+            let items = await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
+            switch items->Array.get(0) {
+            | Some(item) => item
+            | None => JSON.Encode.null
+            }
+          } else {
+            switch Bus.getQueryDbScan(queryDbName) {
+            | Some(scanAll) => scanAll()->JSON.Encode.array
+            | None => []->JSON.Encode.array
+            }
+          }
+        | None => JSON.Encode.null
+        }
+      })
+
+      MCP_Server.registerEventHistoryResourcesFromEntries(
+        ~pluginName,
+        ~eventLogEntries,
+        ~eventLogHandler=async (resourceName, uri) => {
+          let pathPart = uri->String.split("?")->Array.getUnsafe(0)
+          let segments = pathPart->String.split("/")
+          let entityId = segments->Array.at(-1)->Option.getOr("")
+          let (limit, after) = {
+            let parts = uri->String.split("?")
+            switch parts->Array.get(1) {
+            | None => (None, None)
+            | Some(qs) =>
+              let params = Dict.make()
+              qs
+              ->String.split("&")
+              ->Array.forEach(param => {
+                let kv = param->String.split("=")
+                switch (kv->Array.get(0), kv->Array.get(1)) {
+                | (Some(k), Some(v)) => params->Dict.set(k, v)
+                | _ => ()
+                }
+              })
+              (
+                params->Dict.get("limit")->Option.flatMap(v => Int.fromString(v)),
+                params->Dict.get("after"),
+              )
+            }
+          }
+
+          let makePaginatedResponse = (
+            ~events: array<JSON.t>,
+            ~hasMore: bool,
+            ~nextAfter: option<string>,
+          ) =>
+            Dict.fromArray([
+              ("events", events->JSON.Encode.array),
+              (
+                "pagination",
+                Dict.fromArray([
+                  ("hasMore", hasMore->JSON.Encode.bool),
+                  ("nextAfter", nextAfter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+                ])->JSON.Encode.object,
+              ),
+            ])->JSON.Encode.object
+
+          let paginate = (events: array<JSON.t>, getPosition: JSON.t => option<string>) => {
+            let filtered = switch after {
+            | Some(afterPos) =>
+              let idx =
+                events->Array.findIndex(e => getPosition(e)->Option.mapOr(false, p => p > afterPos))
+              if idx >= 0 {
+                events->Array.slice(~start=idx, ~end=events->Array.length)
+              } else {
+                []
+              }
+            | None => events
+            }
+            let (limited, hasMore) = switch limit {
+            | Some(n) if filtered->Array.length > n => (
+                filtered->Array.slice(~start=0, ~end=n),
+                true,
+              )
+            | _ => (filtered, false)
+            }
+            let nextAfterVal = if hasMore {
+              limited->Array.at(-1)->Option.flatMap(getPosition)
+            } else {
+              None
+            }
+            makePaginatedResponse(~events=limited, ~hasMore, ~nextAfter=nextAfterVal)
+          }
+
+          let matchingEntry =
+            eventLogEntries->Array.find(entry =>
+              resourceName->String.includes(entry.displayName->String.toLowerCase)
+            )
+          switch matchingEntry {
+          | Some(entry) =>
+            switch Bus.getEventLogReplay(entry.busKey) {
+            | Some(replay) =>
+              let events = await replay(entityId)
+              paginate(events, e => {
+                switch e->JSON.Decode.object {
+                | Some(obj) =>
+                  obj
+                  ->Dict.get("seq")
+                  ->Option.flatMap(JSON.Decode.string)
+                | None => None
+                }
+              })
+            | None =>
+              switch Bus.getDcbEventLogRead(entry.busKey) {
+              | Some(read) =>
+                let result = await read(~query=[])
+                let filtered = if entityId->String.length > 0 && entityId != resourceName {
+                  result.events->Array.filter(e => e.tags->Array.some(tag => tag.value == entityId))
+                } else {
+                  result.events
+                }
+                let serialized = filtered->Array.map(e =>
+                  Dict.fromArray([
+                    ("position", JSON.Encode.string(e.position)),
+                    ("event", JSON.Encode.string(e.eventType)),
+                    ("data", e.data),
+                    (
+                      "tags",
+                      e.tags
+                      ->Array.map(
+                        t =>
+                          Dict.fromArray([
+                            ("key", JSON.Encode.string(t.key)),
+                            ("value", JSON.Encode.string(t.value)),
+                          ])->JSON.Encode.object,
+                      )
+                      ->JSON.Encode.array,
+                    ),
+                  ])->JSON.Encode.object
+                )
+                paginate(serialized, e => {
+                  switch e->JSON.Decode.object {
+                  | Some(obj) =>
+                    obj
+                    ->Dict.get("position")
+                    ->Option.flatMap(JSON.Decode.string)
+                  | None => None
+                  }
+                })
+              | None => makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
+              }
+            }
+          | None => makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
+          }
+        },
+      )
+    },
+  }
+
+  module AggregateMaker = Aggregate_Builder.MakeWithHooks(
+    Bus,
+    {
+      let hooks = hooks
+    },
+  )
   module ReadModelMaker = ReadModel_Builder.Make(Bus)
   module ExtensionPointMaker = ExtensionPoint_Builder.Make(Bus)
   module TaskMaker = Task_Builder.Make(Bus)
@@ -92,60 +309,46 @@ module MakeWithConfig = (
 
   module StateChangeSlice = {
     module Make = (Spec: Reventless.StateChangeSlice.Spec): (
-      ReventlessInfra.StateChangeSlice.T
-        with module Spec = Spec
+      ReventlessInfra.StateChangeSlice.T with module Spec = Spec
     ) => StateChangeSlice_Builder.Make(Spec)
   }
 
   module StateViewSlice = {
     module Make = (Spec: Reventless.StateViewSlice.Spec): (
-      ReventlessInfra.StateViewSlice.T
-        with module Spec = Spec
+      ReventlessInfra.StateViewSlice.T with module Spec = Spec
     ) => StateViewSliceMaker.Make(Spec)
     module Bundled = {
-      module Make = (
-        Spec: Reventless.StateViewSlice.Spec,
-      ): (
-        ReventlessInfra.StateViewSlice.T
-          with module Spec = Spec
+      module Make = (Spec: Reventless.StateViewSlice.Spec): (
+        ReventlessInfra.StateViewSlice.T with module Spec = Spec
       ) => StateViewSliceMaker.Make(Spec)
     }
   }
 
   module AutomationSlice = {
     module Make = (Spec: Reventless.AutomationSlice.Spec): (
-      ReventlessInfra.AutomationSlice.T
-        with module Spec = Spec
+      ReventlessInfra.AutomationSlice.T with module Spec = Spec
     ) => AutomationSliceMaker.Make(Spec)
     module Bundled = {
-      module Make = (
-        Spec: Reventless.AutomationSlice.Spec,
-      ): (
-        ReventlessInfra.AutomationSlice.T
-          with module Spec = Spec
+      module Make = (Spec: Reventless.AutomationSlice.Spec): (
+        ReventlessInfra.AutomationSlice.T with module Spec = Spec
       ) => AutomationSliceMaker.Make(Spec)
     }
   }
 
   module OutboundTranslationSlice = {
     module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
-      ReventlessInfra.OutboundTranslationSlice.T
-        with module Spec = Spec
+      ReventlessInfra.OutboundTranslationSlice.T with module Spec = Spec
     ) => OutboundTranslationSliceMaker.Make(Spec)
     module Bundled = {
-      module Make = (
-        Spec: Reventless.OutboundTranslationSlice.Spec,
-      ): (
-        ReventlessInfra.OutboundTranslationSlice.T
-          with module Spec = Spec
+      module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
+        ReventlessInfra.OutboundTranslationSlice.T with module Spec = Spec
       ) => OutboundTranslationSliceMaker.Make(Spec)
     }
   }
 
   module InboundTranslationSlice = {
     module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (
-      ReventlessInfra.InboundTranslationSlice.T
-        with module Spec = Spec
+      ReventlessInfra.InboundTranslationSlice.T with module Spec = Spec
     ) => InboundTranslationSliceMaker.Make(Spec)
   }
 
@@ -176,254 +379,12 @@ module MakeWithConfig = (
     }
   }
 
-  // Set the unified mutation resolver hooks for both Aggregates and DCB
-  // StateChangeSlices. Phase 1 (register) dispatches by kind to the appropriate
-  // SDL derivation. Phase 2 (bind) is shared.
-  let () = ReventlessCore.Plugin_Helpers.mutationResolverHook.contents = Some(
-    (~kind, ~fields, ~commandSchema) =>
-      switch kind {
-      | ReventlessCore.Plugin_Helpers.Aggregate =>
-        CommandGeneratorResolvers_GraphQL.register(~fields, ~commandSchema)
-      | Dcb =>
-        fields->Array.forEach(field =>
-          CommandGeneratorResolvers_GraphQL.registerDcb(~fieldName=field, ~commandSchema)
-        )
-      },
-  )
-  let () = ReventlessCore.Plugin_Helpers.mutationBindHook.contents = Some(
-    CommandGeneratorResolvers_GraphQL.bindHandler,
-  )
-
-  // Set the InboundTranslationSlice mutation resolver hooks so Plugin_Builder.construct()
-  // registers GraphQL resolvers for each InboundTranslationSlice during plugin construction.
-  // Phase 1 (register): SDL + resolver stub synchronously.
-  // Phase 2 (bindReceive): bind `receive` when Output.apply resolves.
-  let () = ReventlessCore.Plugin_Helpers.inboundMutationResolverHook.contents = Some(
-    InboundTranslationResolvers_GraphQL.register,
-  )
-  let () = ReventlessCore.Plugin_Helpers.inboundMutationBindReceiveHook.contents = Some(
-    InboundTranslationResolvers_GraphQL.bindReceive,
-  )
-
-  // Set the schema type registration hook so Plugin_Builder.construct() registers
-  // GraphQL type definitions (from the generated fragment) into the GraphQL server.
-  let () = ReventlessCore.Plugin_Helpers.schemaTypeRegistrationHook.contents = Some(
-    sdlTypes => GraphQL_Server.registerTypes(~sdlTypes),
-  )
-
-  // Set the MCP schema registration hook so Plugin_Builder.construct() registers
-  // MCP tools and resources during plugin construction.
-  let () = ReventlessCore.Plugin_Helpers.mcpSchemaRegistrationHook.contents = Some(
-    ({pluginName, mutationEntries, queryEntries, eventLogEntries}) => {
-      // Register MCP tools — reuse the same GraphQL resolver functions.
-      // The GraphQL mutation resolvers are already registered in GraphQL_Server
-      // at this point. We look them up by field name and wrap them for MCP.
-      MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
-        toolName,
-        args,
-      ) => {
-        // Look up the GraphQL mutation resolver for this tool name
-        switch GraphQL_Server.getMutationResolver(toolName) {
-        | Some(resolver) =>
-          let result = await resolver(JSON.Encode.null, args, JSON.Encode.null)
-          switch result->JSON.Decode.string {
-          | Some(s) => s
-          | None => result->JSON.stringify
-          }
-        | None => `error: no handler found for tool ${toolName}`
-        }
-      })
-
-      // Register MCP resources from query entries (read models).
-      // Use the Bus QueryDb registry directly for reads.
-      MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler=async (
-        resourceName,
-        uri,
-      ) => {
-        // Extract the ID from the URI (last segment after /)
-        let segments = uri->String.split("/")
-        let id = segments->Array.at(-1)->Option.getOr("")
-        // Find the QueryDb by matching the resource name to registered query field names
-        // (match both singleFieldName and listFieldName since list resources use the plural name)
-        let queryDbName =
-          ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
-          ->Dict.toArray
-          ->Array.find(((_, entry)) =>
-            entry.singleFieldName == resourceName || entry.listFieldName == resourceName
-          )
-          ->Option.map(((name, _)) => name)
-          ->Option.getOr(resourceName)
-        switch Bus.getQueryDb(queryDbName) {
-        | Some(ops) =>
-          if id->String.length > 0 && id != resourceName {
-            // Single-item lookup
-            let items = await ops.loadStream(id)
-            ->Stream.runCollect
-            ->Effect.catchAll(_ => Effect.succeed([]))
-            ->Effect.runPromise
-            switch items->Array.get(0) {
-            | Some(item) => item
-            | None => JSON.Encode.null
-            }
-          } else {
-            // List query
-            switch Bus.getQueryDbScan(queryDbName) {
-            | Some(scanAll) => scanAll()->JSON.Encode.array
-            | None => []->JSON.Encode.array
-            }
-          }
-        | None => JSON.Encode.null
-        }
-      })
-
-      // Register MCP resources for event history (aggregate EventLog + DCB EventLog).
-      // Use the Bus event log registries for reads.
-      // Supports pagination via ?limit=N&after=position query params.
-      MCP_Server.registerEventHistoryResourcesFromEntries(
-        ~pluginName,
-        ~eventLogEntries,
-        ~eventLogHandler=async (resourceName, uri) => {
-          // Parse URI: extract entity ID from path, pagination from query string
-          let pathPart = uri->String.split("?")->Array.getUnsafe(0)
-          let segments = pathPart->String.split("/")
-          let entityId = segments->Array.at(-1)->Option.getOr("")
-          let (limit, after) = {
-            let parts = uri->String.split("?")
-            switch parts->Array.get(1) {
-            | None => (None, None)
-            | Some(qs) =>
-              let params = Dict.make()
-              qs
-              ->String.split("&")
-              ->Array.forEach(param => {
-                let kv = param->String.split("=")
-                switch (kv->Array.get(0), kv->Array.get(1)) {
-                | (Some(k), Some(v)) => params->Dict.set(k, v)
-                | _ => ()
-                }
-              })
-              (
-                params->Dict.get("limit")->Option.flatMap(v => Int.fromString(v)),
-                params->Dict.get("after"),
-              )
-            }
-          }
-
-          // Build paginated response helper
-          let makePaginatedResponse = (
-            ~events: array<JSON.t>,
-            ~hasMore: bool,
-            ~nextAfter: option<string>,
-          ) =>
-            Dict.fromArray([
-              ("events", events->JSON.Encode.array),
-              (
-                "pagination",
-                Dict.fromArray([
-                  ("hasMore", hasMore->JSON.Encode.bool),
-                  ("nextAfter", nextAfter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-                ])->JSON.Encode.object,
-              ),
-            ])->JSON.Encode.object
-
-          // Apply pagination: skip events before "after" position, limit count
-          let paginate = (events: array<JSON.t>, getPosition: JSON.t => option<string>) => {
-            let filtered = switch after {
-            | Some(afterPos) =>
-              let idx =
-                events->Array.findIndex(e => getPosition(e)->Option.mapOr(false, p => p > afterPos))
-              if idx >= 0 {
-                events->Array.slice(~start=idx, ~end=events->Array.length)
-              } else {
-                []
-              }
-            | None => events
-            }
-            let (limited, hasMore) = switch limit {
-            | Some(n) if filtered->Array.length > n => (
-                filtered->Array.slice(~start=0, ~end=n),
-                true,
-              )
-            | _ => (filtered, false)
-            }
-            let nextAfterVal = if hasMore {
-              limited->Array.at(-1)->Option.flatMap(getPosition)
-            } else {
-              None
-            }
-            makePaginatedResponse(~events=limited, ~hasMore, ~nextAfter=nextAfterVal)
-          }
-
-          // Find the matching event log entry by resource name
-          let matchingEntry =
-            eventLogEntries->Array.find(entry =>
-              resourceName->String.includes(entry.displayName->String.toLowerCase)
-            )
-          switch matchingEntry {
-          | Some(entry) =>
-            // Try aggregate EventLog first
-            switch Bus.getEventLogReplay(entry.busKey) {
-            | Some(replay) =>
-              let events = await replay(entityId)
-              // Aggregate events use array index as position
-              paginate(events, e => {
-                switch e->JSON.Decode.object {
-                | Some(obj) =>
-                  obj
-                  ->Dict.get("seq")
-                  ->Option.flatMap(JSON.Decode.string)
-                | None => None
-                }
-              })
-            | None =>
-              // Try DCB EventLog — read all events, filter by tag value
-              switch Bus.getDcbEventLogRead(entry.busKey) {
-              | Some(read) =>
-                let result = await read(~query=[])
-                let filtered = if entityId->String.length > 0 && entityId != resourceName {
-                  result.events->Array.filter(e => e.tags->Array.some(tag => tag.value == entityId))
-                } else {
-                  result.events
-                }
-                let serialized = filtered->Array.map(e =>
-                  Dict.fromArray([
-                    ("position", JSON.Encode.string(e.position)),
-                    ("event", JSON.Encode.string(e.eventType)),
-                    ("data", e.data),
-                    (
-                      "tags",
-                      e.tags
-                      ->Array.map(
-                        t =>
-                          Dict.fromArray([
-                            ("key", JSON.Encode.string(t.key)),
-                            ("value", JSON.Encode.string(t.value)),
-                          ])->JSON.Encode.object,
-                      )
-                      ->JSON.Encode.array,
-                    ),
-                  ])->JSON.Encode.object
-                )
-                paginate(serialized, e => {
-                  switch e->JSON.Decode.object {
-                  | Some(obj) =>
-                    obj
-                    ->Dict.get("position")
-                    ->Option.flatMap(JSON.Decode.string)
-                  | None => None
-                  }
-                })
-              | None => makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
-              }
-            }
-          | None => makePaginatedResponse(~events=[], ~hasMore=false, ~nextAfter=None)
-          }
-        },
-      )
+  module PluginMaker = Plugin_Builder.Make(
+    Bus,
+    {
+      let hooks = hooks
     },
   )
-
-  module PluginMaker = Plugin_Builder.Make(Bus)
   module Plugin: ReventlessInfra.Plugin.T
     with type api = unit
     and type role = unit
@@ -452,6 +413,7 @@ module MakeWithConfig = (
       let silent = Config.silent
       let splitApi = Config.splitApi
       let cloner = Config.cloner
+      let hooks = hooks
     },
   )
 
@@ -483,7 +445,7 @@ module MakeWithConfig = (
     )
     // Create scheduler and admin components internally.
     let scheduler = makeScheduler()
-    let _admin = Admin.construct(
+    let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
       ~aggregates=[],
@@ -498,6 +460,12 @@ module MakeWithConfig = (
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
     )
+
+    // Share admin extension points with Plugin_Builder via the hooks ref.
+    hooks.adminExtensionPoints :=
+      admin.extensionPointsOutputs->Pulumi.Output.apply(eps =>
+        eps->Array.map(ep => (ep.name, ep))->Dict.fromArray
+      )
 
     // Build each plugin using the shared scheduler.
     let plugins = plugins->Array.map(plugin => {
@@ -741,11 +709,9 @@ module MakeWithConfig = (
                 ->Option.getOr("unknown error")}`,
             )
           }
-        | None =>
-          Console.log(`[Admin] ${field}(${id}): plugin not found`)
+        | None => Console.log(`[Admin] ${field}(${id}): plugin not found`)
         }
-      | None =>
-        Console.log(`[Admin] ${field}(${id}): Plugin QueryDb not registered`)
+      | None => Console.log(`[Admin] ${field}(${id}): Plugin QueryDb not registered`)
       }
       msgId->JSON.Encode.string
     }
@@ -754,19 +720,18 @@ module MakeWithConfig = (
     let activateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Activate")
     let deactivateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Deactivate")
     let mutationResolvers = Dict.make()
-    mutationResolvers->Dict.set(
-      activateField,
-      async (_root, args, _ctx): JSON.t => await updatePluginStatus(~field=activateField, args, Disconnected),
+    mutationResolvers->Dict.set(activateField, async (_root, args, _ctx): JSON.t =>
+      await updatePluginStatus(~field=activateField, args, Disconnected)
     )
-    mutationResolvers->Dict.set(
-      deactivateField,
-      async (_root, args, _ctx): JSON.t =>
-        await updatePluginStatus(~field=deactivateField, args, Inactive),
+    mutationResolvers->Dict.set(deactivateField, async (_root, args, _ctx): JSON.t =>
+      await updatePluginStatus(~field=deactivateField, args, Inactive)
     )
     // Remaining admin mutations (e.g., Clone) are no-ops in-memory.
     adminMutationFieldNames->Array.forEach(field =>
-      if (mutationResolvers->Dict.get(field)->Option.isNone) {
-        mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
+      if mutationResolvers->Dict.get(field)->Option.isNone {
+        mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
+          JSON.Encode.string("ok")
+        )
       }
     )
     registerAdminMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
@@ -885,7 +850,9 @@ module MakeWithConfig = (
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
     adminMutationFieldNames->Array.forEach(field =>
-      mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
+      mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
+        JSON.Encode.string("ok")
+      )
     )
     GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 
@@ -899,7 +866,7 @@ module MakeWithConfig = (
     let scheduler = makeScheduler()
 
     // Admin components are needed in-memory even for single-plugin deploy.
-    let _admin = Admin.construct(
+    let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
       ~aggregates=[],
@@ -914,6 +881,10 @@ module MakeWithConfig = (
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
     )
+    hooks.adminExtensionPoints :=
+      admin.extensionPointsOutputs->Pulumi.Output.apply(eps =>
+        eps->Array.map(ep => (ep.name, ep))->Dict.fromArray
+      )
 
     module P = unpack(plugin)
     let _plugin = P.make(~scheduler, ~api=(), ~apiRole=())
@@ -942,7 +913,9 @@ module MakeWithConfig = (
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
     adminMutationFieldNames->Array.forEach(field =>
-      mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.string("ok"))
+      mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
+        JSON.Encode.string("ok")
+      )
     )
     GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 

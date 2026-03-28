@@ -15,7 +15,7 @@ import * as CommandGenerator_Builder$ReventlessCore from "../CommandGenerator/Co
 import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 
 function Make(Spec) {
-  return Behavior => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => {
+  return Behavior => (EventMappings => (RuntimeEnvironment => (CommandGeneratorResolvers => (CommandTopicChannel => (EventLogStorage => (EventTopicPublisher => (EventCollectorChannel => (AggregateRuntimeBuilder => (HooksConfig => {
     let SpecificEventLog = EventLog_Builder$ReventlessCore.Make(Spec)(EventLogStorage)(EventTopicPublisher);
     let SpecificCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
       Id: Spec.Id,
@@ -47,7 +47,7 @@ function Make(Spec) {
     let createCommandGenerator = (commandTopic, api, name, opts) => Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => {
       let publishJsons = param.publishJsons;
       let commandGenerator = SpecificCommandGenerator.make(name, opts);
-      let bindHandler = Plugin_Helpers$ReventlessCore.mutationBindHook.contents;
+      let bindHandler = HooksConfig.hooks.mutationBindHook;
       if (bindHandler !== undefined) {
         let registeredFields = Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name];
         let fields = registeredFields !== undefined ? (
@@ -108,7 +108,7 @@ function Make(Spec) {
       operations: Component$ReventlessCore.operations,
       finish: finish
     };
-  }))))))));
+  })))))))));
 }
 
 export {

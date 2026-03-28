@@ -267,38 +267,6 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
   });
 }
 
-let localAdminExtensionPoints = {
-  contents: undefined
-};
-
-let mutationResolverHook = {
-  contents: undefined
-};
-
-let mutationBindHook = {
-  contents: undefined
-};
-
-let inboundMutationResolverHook = {
-  contents: undefined
-};
-
-let inboundMutationBindReceiveHook = {
-  contents: undefined
-};
-
-let inboundAppSyncResolverHook = {
-  contents: undefined
-};
-
-let dcbAppSyncResolverHook = {
-  contents: undefined
-};
-
-let schemaTypeRegistrationHook = {
-  contents: undefined
-};
-
 let queryFieldNamesRegistry = {
   contents: {}
 };
@@ -307,32 +275,16 @@ let aggregateMutationFieldsRegistry = {
   contents: {}
 };
 
-let mcpSchemaRegistrationHook = {
-  contents: undefined
+let noHooks_adminExtensionPoints = {
+  contents: Pulumi.output({})
 };
 
-let preResolversSchemaHook = {
-  contents: undefined
+let noHooks = {
+  adminExtensionPoints: noHooks_adminExtensionPoints
 };
 
-let onDcbEventLogCreated = {
-  contents: undefined
-};
-
-let onDcbCommandTopicCreated = {
-  contents: undefined
-};
-
-let onDcbSlicesCreated = {
-  contents: undefined
-};
-
-let onHeartbeatEpChannelAvailable = {
-  contents: undefined
-};
-
-let onAdminComponentsCreated = {
-  contents: undefined
+let NoopHooksConfig = {
+  hooks: noHooks
 };
 
 let interopMetaOutput = {
@@ -533,23 +485,10 @@ export {
   tasksOutputs,
   createTasks,
   MakeEventCollectorHelper,
-  localAdminExtensionPoints,
-  mutationResolverHook,
-  mutationBindHook,
-  inboundMutationResolverHook,
-  inboundMutationBindReceiveHook,
-  inboundAppSyncResolverHook,
-  dcbAppSyncResolverHook,
-  schemaTypeRegistrationHook,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,
-  mcpSchemaRegistrationHook,
-  preResolversSchemaHook,
-  onDcbEventLogCreated,
-  onDcbCommandTopicCreated,
-  onDcbSlicesCreated,
-  onHeartbeatEpChannelAvailable,
-  onAdminComponentsCreated,
+  noHooks,
+  NoopHooksConfig,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,
@@ -561,4 +500,4 @@ export {
   exportPlatformOutputs,
   exportPluginOutputs,
 }
-/* S Not a pure module */
+/* noHooks Not a pure module */

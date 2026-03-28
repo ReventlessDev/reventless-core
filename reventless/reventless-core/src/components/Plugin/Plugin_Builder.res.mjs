@@ -48,17 +48,16 @@ function Make(Spec) {
           parent: opts_parent
         };
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
-        let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(PluginRuntimeBuilder);
+        let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(PluginRuntimeBuilder)({
+          hooks: Spec.hooks
+        });
         let dcbResult = DcbBuilder.construct(extra$1, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
           let fieldNames = constructorNames.map(cname => Api_Naming$ReventlessCore.aggregateMutationField(extra$1, M.Spec.name, cname));
           Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[M.Spec.name] = fieldNames;
-          let registerResolver = Plugin_Helpers$ReventlessCore.mutationResolverHook.contents;
-          if (registerResolver !== undefined) {
-            registerResolver("Aggregate", fieldNames, commandSchema);
-          }
+          Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema));
           return [{
               fieldNames: fieldNames,
               commandSchema: commandSchema
@@ -87,20 +86,16 @@ function Make(Spec) {
           Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = qn;
         });
         let apiSchemaFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
-        let registerTypes = Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents;
-        if (registerTypes !== undefined) {
+        Stdlib_Option.forEach(Spec.hooks.schemaTypeRegistrationHook, registerTypes => {
           let parts = GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment);
           registerTypes(parts.types);
-        }
-        let registerMcp = Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents;
-        if (registerMcp !== undefined) {
-          registerMcp({
-            pluginName: extra$1,
-            mutationEntries: mutationEntries,
-            queryEntries: queryEntries,
-            eventLogEntries: eventLogEntries
-          });
-        }
+        });
+        Stdlib_Option.forEach(Spec.hooks.mcpSchemaRegistrationHook, registerMcp => registerMcp({
+          pluginName: extra$1,
+          mutationEntries: mutationEntries,
+          queryEntries: queryEntries,
+          eventLogEntries: eventLogEntries
+        }));
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let dcbOutputs = dcbResult.dcbEventLogOutputs;
@@ -110,21 +105,20 @@ function Make(Spec) {
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-        let adminExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
-        let adminEPs = Plugin_Helpers$ReventlessCore.localAdminExtensionPoints.contents;
-        let localAdminResolvedEP = adminEPs !== undefined ? Output$Pulumi.flatMap(adminEPs, eps => {
-            let ep = eps[PluginExtensionPointSpec$ReventlessInfra.name];
-            if (ep !== undefined) {
-              return ExtensionPoint$ReventlessCore.toResolvedOutputs(ep).apply(r => r);
-            } else {
-              return Pulumi.output(undefined);
-            }
-          }) : Pulumi.output(undefined);
-        let pushSchema = Plugin_Helpers$ReventlessCore.preResolversSchemaHook.contents;
+        let interstackAdminExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
+        let localAdminResolvedEP = Output$Pulumi.flatMap(Spec.hooks.adminExtensionPoints.contents, eps => {
+          let ep = eps[PluginExtensionPointSpec$ReventlessInfra.name];
+          if (ep !== undefined) {
+            return ExtensionPoint$ReventlessCore.toResolvedOutputs(ep).apply(r => r);
+          } else {
+            return Pulumi.output(undefined);
+          }
+        });
+        let pushSchema = Spec.hooks.preResolversSchemaHook;
         let schemaPushed = pushSchema !== undefined ? pushSchema(extra$1, apiSchemaFragment) : Pulumi.output();
         let builderOutputs = Pulumi.all([
           Pulumi.all([
-            adminExtensionPoints,
+            interstackAdminExtensionPoints,
             localAdminResolvedEP,
             schemaPushed
           ]),
@@ -140,14 +134,14 @@ function Make(Spec) {
           let publishToAggregates = param[2];
           let match = param[0];
           let localAdminResolvedEP = match[1];
-          let adminExtensionPoints = match[0];
+          let interstackAdminExtensionPoints = match[0];
           let aggregatesOutputs = Plugin_Helpers$ReventlessCore.addEventMappers(allEventTopics, queryEngine);
           let match$1 = Plugin_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
           let extensionPointsHandlers = match$1[1];
           let extensionPointsOutputs = match$1[0];
           let coreSetup;
-          if (adminExtensionPoints !== undefined) {
-            let pluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(adminExtensionPoints, PluginExtensionPointSpec$ReventlessInfra.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
+          if (interstackAdminExtensionPoints !== undefined) {
+            let pluginExtensionPointUnwrapped = S.parseOrThrow(StackReference$Pulumi.get(interstackAdminExtensionPoints, PluginExtensionPointSpec$ReventlessInfra.name), ExtensionPoint$ReventlessInterop.resolvedOutputsSchema);
             let pluginExtensionPointCommandTopicRemoteChannel = PluginExtensionPointRemoteChannel.make(pluginExtensionPointUnwrapped.commandTopic.resources.map(Adapter$ReventlessCore.fromInteropResolved));
             coreSetup = [
               pluginExtensionPointUnwrapped,
@@ -207,7 +201,7 @@ function Make(Spec) {
           let handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToPluginExtensionPoint);
           if (coreSetup !== undefined) {
             let pluginExtensionPointCommandTopicRemoteChannel$1 = coreSetup[1];
-            Stdlib_Option.forEach(Plugin_Helpers$ReventlessCore.onHeartbeatEpChannelAvailable.contents, hook => hook(pluginExtensionPointCommandTopicRemoteChannel$1));
+            Stdlib_Option.forEach(Spec.hooks.onHeartbeatEpChannelAvailable, hook => hook(pluginExtensionPointCommandTopicRemoteChannel$1));
             PluginRuntimeBuilder.forPluginHeartbeat(handler, none => SpecificHeartbeat.connect(none, pluginExtensionPointCommandTopicRemoteChannel$1, heartbeatInterval, heartbeat), undefined, undefined, heartbeat);
           } else {
             PluginRuntimeBuilder.forPluginHeartbeat(handler, param => {}, undefined, undefined, heartbeat);

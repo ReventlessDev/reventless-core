@@ -29,6 +29,7 @@ module Make = (
     EventTopicPublisher.DynamoDbStream,
     EventCollectorChannel,
     AggregateRuntimeBuilder,
+    ReventlessCore.Plugin_Helpers.NoopHooksConfig,
   )
 
   module Spec = Spec

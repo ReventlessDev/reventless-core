@@ -14,7 +14,9 @@ module type T = {
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPoint.T)>=?,
     ~extensions: array<module(ReventlessInfra.Extension.T)>=?,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=?,
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=?,
+    ~readModels: array<
+      module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    >=?,
     ~tasks: array<module(ReventlessInfra.Task.T)>=?,
     ~api: api,
     ~apiRole: role,

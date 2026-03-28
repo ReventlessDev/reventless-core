@@ -12,7 +12,6 @@ import * as Component$ReventlessCore from "../components/Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../components/ReadModel/ReadModel.res.mjs";
 import * as Dcb_Builder$ReventlessCore from "../components/Dcb/Dcb_Builder.res.mjs";
 import * as Admin_Callback$ReventlessCore from "./Admin_Callback.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "../components/Plugin/Plugin_Helpers.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../components/Builder_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../components/EventCollector/EventCollector_Builder.res.mjs";
@@ -60,19 +59,21 @@ function Make(RuntimeEnvironment) {
     let construct = (param, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices) => {
       let name = "Admin";
       let opts = {};
-      let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(AdminRuntimeBuilder);
+      let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(AdminRuntimeBuilder)({
+        hooks: Config.hooks
+      });
       let dcbResult = DcbBuilder.construct(name, name, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
       let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
       let adminFragment = GraphQL_FragmentGenerator$ReventlessCore.generate(allMutationEntries, allQueryEntries);
       if (dcbResult.mutationEntries.length !== 0 || dcbResult.queryEntries.length !== 0) {
-        let registerTypes = Plugin_Helpers$ReventlessCore.schemaTypeRegistrationHook.contents;
+        let registerTypes = Config.hooks.schemaTypeRegistrationHook;
         if (registerTypes !== undefined) {
           let parts = GraphQL_Stitcher$ReventlessCore.decode(adminFragment);
           registerTypes(parts.types);
         }
-        let registerMcp = Plugin_Helpers$ReventlessCore.mcpSchemaRegistrationHook.contents;
+        let registerMcp = Config.hooks.mcpSchemaRegistrationHook;
         if (registerMcp !== undefined) {
           registerMcp({
             pluginName: "Admin",
@@ -91,10 +92,6 @@ function Make(RuntimeEnvironment) {
       let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-      let hook = Plugin_Helpers$ReventlessCore.onAdminComponentsCreated.contents;
-      if (hook !== undefined) {
-        hook(aggregatesWithoutEventMappers, readModelsOutputs);
-      }
       let extensionPointsOutputs = Pulumi.all([
         Pulumi.all(Builder_Helpers$ReventlessCore.aggregateResources),
         Pulumi.all(Builder_Helpers$ReventlessCore.publishToAggregates),
@@ -148,10 +145,6 @@ function Make(RuntimeEnvironment) {
         let Cloner = Cloner$ReventlessCore.Make(ClonerRunner);
         Cloner.make(api, opts);
       }
-      Plugin_Helpers$ReventlessCore.localAdminExtensionPoints.contents = extensionPointsOutputs.apply(extensionPointsOutputs => Object.fromEntries(extensionPointsOutputs.map(ep => [
-        ep.name,
-        ep
-      ])));
       return {
         adminFragment: adminFragment,
         dcbMutationEntries: dcbResult.mutationEntries,

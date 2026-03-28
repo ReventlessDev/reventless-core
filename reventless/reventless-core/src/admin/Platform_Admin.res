@@ -2,6 +2,7 @@ module type Config = {
   let silent: bool
   let splitApi: bool
   let cloner: bool
+  let hooks: Plugin_Helpers.platformHooks
 }
 
 type outputs = {
@@ -115,6 +116,7 @@ module Make = (
       DcbEventTopicPublisher,
       DcbCommandTopicChannel,
       AdminRuntimeBuilder,
+      Config,
     )
     let dcbResult = DcbBuilder.construct(
       ~name,
@@ -138,14 +140,14 @@ module Make = (
 
     // Register DCB schema entries via hooks (same path as plugins)
     if dcbResult.mutationEntries->Array.length > 0 || dcbResult.queryEntries->Array.length > 0 {
-      switch Plugin_Helpers.schemaTypeRegistrationHook.contents {
+      switch Config.hooks.schemaTypeRegistrationHook {
       | Some(registerTypes) =>
         let parts = GraphQL_Stitcher.decode(adminFragment)
         registerTypes(parts.types)
       | None => ()
       }
 
-      switch Plugin_Helpers.mcpSchemaRegistrationHook.contents {
+      switch Config.hooks.mcpSchemaRegistrationHook {
       | Some(registerMcp) =>
         registerMcp({
           pluginName: "Admin",
@@ -170,13 +172,6 @@ module Make = (
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
-
-    // Notify platform of admin aggregates and read models before extension points
-    // are built, so runtime builders can register queue URLs and table names.
-    switch Plugin_Helpers.onAdminComponentsCreated.contents {
-    | Some(hook) => hook(~aggregatesOutputs=aggregatesWithoutEventMappers, ~readModelsOutputs)
-    | None => ()
-    }
 
     let extensionPointsOutputs =
       (
@@ -243,14 +238,6 @@ module Make = (
       module Cloner = Cloner.Make(ClonerRunner)
       let _cloner = Cloner.make(~api, ~opts)
     }
-
-    // Store admin extension points so Plugin_Builder can wire the admin connection
-    // path locally (in-memory) instead of via Interstack.coreStackReference.
-    Plugin_Helpers.localAdminExtensionPoints := Some(
-      extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
-        extensionPointsOutputs->Array.map(ep => (ep.name, ep))->Dict.fromArray
-      ),
-    )
 
     {
       adminFragment,
