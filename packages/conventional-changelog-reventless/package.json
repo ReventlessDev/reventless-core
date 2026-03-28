@@ -1,7 +1,0 @@
-{
-  "name": "conventional-changelog-reventless",
-  "version": "1.0.1-alpha.3",
-  "description": "Reventless custom conventional-changelog preset with reduced blank lines",
-  "main": "index.js",
-  "private": true
-}
