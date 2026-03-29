@@ -84,9 +84,13 @@ PlaceOrder uses `productId: array<@s.matches(DcbTag.string) string>` to generate
 
 Requires full Plugin.make setup with in-memory platform, which is complex. Lower priority — the mechanism is the same as pure-DCB extension points, verified by existing DCB example tests.
 
+This is a **defensive regression test for already-working behavior**, not a missing feature. It would set up a full `Plugin.make` with an in-memory platform and fire events from both the aggregate EventTopic and DCB EventTopic, confirming the extension point handler receives both. Worth adding before a 1.0 release as part of full example coverage, but there is no reason to believe it is broken today.
+
 #### 3.4 Unified GraphQL schema includes both mutations ⏳ (deferred)
 
 Requires GraphQL schema introspection or API component setup. Lower priority.
+
+This is also a **defensive regression test**, not a missing feature. It would introspect the combined schema to confirm aggregate mutations and DCB StateChangeSlice mutations are both present and don't collide. Schema stitching is verified separately by the pure-aggregate and pure-DCB example tests. Only catches a case where the two mutation sets interfere with each other (e.g., name collision). Worth adding if a hybrid example is added to the documentation site and schema correctness is needed as a regression guard.
 
 ---
 

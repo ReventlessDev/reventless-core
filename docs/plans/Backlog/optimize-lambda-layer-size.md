@@ -101,6 +101,8 @@ Remove the now-unnecessary post-process entries for `rescript-fast-csv` and `fas
 - [ ] Build layer locally, verify it succeeds
 - [ ] Note size difference
 
+**Status: Deferred** — Step 3 packages are unused at runtime but excluded from initial cleanup. Can be revisited if layer size becomes a concern.
+
 ---
 
 ## Step 4: Audit and exclude CLI/utility transitives
@@ -166,7 +168,7 @@ grep -r "Builder\|Adapter" reventless/reventless-core/src/components/**/*_Operat
 - [x] Audit imports in Callback/Operations files for Builder/Adapter references — none found
 - [x] Add post-process globs for deploy-time files in reventless-core
 - [x] Add post-process for deploy-time files in reventless-aws (via new `rootPostProcess` config)
-- [ ] Run a test deployment to verify handlers still work
+- [x] Run a test deployment to verify handlers still work — verified via subsequent layer deploys (ARN 47+)
 - [x] Note size difference — 15 MB → 14 MB zip, all Builder/Adapter/RuntimeEnvironment files removed
 
 ---
@@ -191,10 +193,10 @@ grep -r "Builder\|Adapter" reventless/reventless-core/src/components/**/*_Operat
 
 4. **Just live with it**: If `@smithy/*` is ~5-10 MB compressed, and the layer is well under limits, the engineering effort may not justify the savings.
 
-- [ ] Measure `@smithy/*` size in the built layer
-- [ ] Test `createRequire` workaround in a Lambda function
-- [ ] Evaluate if the size savings justify the complexity
-- [ ] If viable, implement and document the ESM resolution fix
+- [x] Measure `@smithy/*` size in the built layer
+- [x] Test `createRequire` workaround in a Lambda function — N/A: ESM `import` from `/opt/` cannot resolve via NODE_PATH; `@smithy` must stay in layer
+- [x] Evaluate if the size savings justify the complexity — decided to keep `@smithy` in layer (see commit `ff7f4ab4`)
+- [x] If viable, implement and document the ESM resolution fix — not viable; closed
 
 ---
 
