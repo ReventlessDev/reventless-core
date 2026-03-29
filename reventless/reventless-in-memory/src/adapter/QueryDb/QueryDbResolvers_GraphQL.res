@@ -12,6 +12,25 @@ module Make = (Bus: InMemory_Bus.T) => {
   type api = unit
   type role = unit
 
+  // -- Identity extraction from GraphQL context ---------------------------------
+  // graphql-yoga provides { request: Request, ... } as the resolver context.
+  // We read the X-Identity header (JSON-encoded Identity.t) and fall back to anonymous.
+
+  @send external getHeader: ('headers, string) => Nullable.t<string> = "get"
+
+  let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
+    try {
+      let request = (ctx->Obj.magic)["request"]
+      let headers = request["headers"]
+      switch headers->getHeader("x-identity")->Nullable.toOption {
+      | Some(json) => json->JSON.parseOrThrow->S.parseOrThrow(Reventless.Identity.schema)
+      | None => Reventless.Identity.anonymous
+      }
+    } catch {
+    | _ => Reventless.Identity.anonymous
+    }
+  }
+
   let make: QueryDb_Adapter.resolversMaker<unit, unit> = (
     ~name,
     ~api as _,
@@ -23,6 +42,18 @@ module Make = (Bus: InMemory_Bus.T) => {
     ~idsResolverConfigs as _,
     ~opts as _,
   ) => {
+    let runInterceptor = async (~ctx, ~args): QueryDb_Callback.interceptResult => {
+      switch QueryDb_Callback.queryInterceptorHook.contents {
+      | None => Allow
+      | Some(interceptor) =>
+        await interceptor(
+          ~identity=extractIdentity(ctx),
+          ~readModelName=name,
+          ~args,
+        )
+      }
+    }
+
     let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
     // Resolve query field names: check registry first, fall back to safe defaults.
@@ -60,45 +91,53 @@ module Make = (Bus: InMemory_Bus.T) => {
     } else {
       `  ${singleQueryName}: ${returnTypeName}`
     }
-    let byIdResolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
-      let id =
-        args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-      switch Bus.getQueryDb(name) {
-      | Some(ops) =>
-        let items =
-          await ops.loadStream(id)
-          ->Stream.runCollect
-          ->Effect.catchAll(_ => Effect.succeed([]))
-          ->Effect.runPromise
-        switch items->Array.get(0) {
-        | Some(item) =>
-          if includeIdParam {
-            // Inject "id" into the response for ReadModel queries
-            let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-            obj->Dict.set("id", JSON.Encode.string(id))
-            JSON.Encode.object(obj)
-          } else {
-            item
+    let byIdResolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+      switch await runInterceptor(~ctx, ~args) {
+      | Deny(_) => JSON.Encode.null
+      | Allow =>
+        let id =
+          args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+        switch Bus.getQueryDb(name) {
+        | Some(ops) =>
+          let items =
+            await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
+          switch items->Array.get(0) {
+          | Some(item) =>
+            if includeIdParam {
+              // Inject "id" into the response for ReadModel queries
+              let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+              obj->Dict.set("id", JSON.Encode.string(id))
+              JSON.Encode.object(obj)
+            } else {
+              item
+            }
+          | None => JSON.Encode.null
           }
         | None => JSON.Encode.null
         }
-      | None => JSON.Encode.null
       }
     }
 
     // -- List query -------------------------------------------------------------
     let listSdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
-    let listResolver: GraphQL_Server.resolverFn = async (_root, _args, _ctx) => {
-      let items = switch Bus.getQueryDbStream(name) {
-      | Some(makeStream) =>
-        await makeStream()->Stream.runCollect->Effect.runPromise
-      | None =>
-        switch Bus.getQueryDbScan(name) {
-        | Some(scanAll) => scanAll()
-        | None => []
+    let listResolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+      switch await runInterceptor(~ctx, ~args) {
+      | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
+      | Allow =>
+        let items = switch Bus.getQueryDbStream(name) {
+        | Some(makeStream) =>
+          await makeStream()->Stream.runCollect->Effect.runPromise
+        | None =>
+          switch Bus.getQueryDbScan(name) {
+          | Some(scanAll) => scanAll()
+          | None => []
+          }
         }
+        Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
       }
-      Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
     }
     let listResolvers = [(listQueryName, listResolver)]
 
@@ -109,18 +148,22 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
     let byIdListResolvers: array<(string, GraphQL_Server.resolverFn)> = switch subIdField {
     | Some(_) =>
-      let resolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
-        let id =
-          args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-        switch Bus.getQueryDb(name) {
-        | Some(ops) =>
-          let items =
-            await ops.loadStream(id)
-            ->Stream.runCollect
-            ->Effect.catchAll(_ => Effect.succeed([]))
-            ->Effect.runPromise
-          items->JSON.Encode.array
-        | None => []->JSON.Encode.array
+      let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+        switch await runInterceptor(~ctx, ~args) {
+        | Deny(_) => []->JSON.Encode.array
+        | Allow =>
+          let id =
+            args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+          switch Bus.getQueryDb(name) {
+          | Some(ops) =>
+            let items =
+              await ops.loadStream(id)
+              ->Stream.runCollect
+              ->Effect.catchAll(_ => Effect.succeed([]))
+              ->Effect.runPromise
+            items->JSON.Encode.array
+          | None => []->JSON.Encode.array
+          }
         }
       }
       [(singleQueryName ++ "ById", resolver)]
@@ -136,22 +179,26 @@ module Make = (Bus: InMemory_Bus.T) => {
         let index = ic.index
         let resolverName = singleQueryName ++ "By" ++ cap(index)
         let filterField = ic.idField->Option.getOr(index)
-        let resolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
-          let value =
-            args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(index))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-          switch Bus.getQueryDbScan(name) {
-          | Some(scanAll) =>
-            scanAll()
-            ->Array.filter(item =>
-              item
-              ->JSON.Decode.object
-              ->Option.flatMap(d => d->Dict.get(filterField))
-              ->Option.flatMap(JSON.Decode.string)
-              ->Option.map(v => v == value)
-              ->Option.getOr(false)
-            )
-            ->JSON.Encode.array
-          | None => []->JSON.Encode.array
+        let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+          switch await runInterceptor(~ctx, ~args) {
+          | Deny(_) => []->JSON.Encode.array
+          | Allow =>
+            let value =
+              args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(index))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+            switch Bus.getQueryDbScan(name) {
+            | Some(scanAll) =>
+              scanAll()
+              ->Array.filter(item =>
+                item
+                ->JSON.Decode.object
+                ->Option.flatMap(d => d->Dict.get(filterField))
+                ->Option.flatMap(JSON.Decode.string)
+                ->Option.map(v => v == value)
+                ->Option.getOr(false)
+              )
+              ->JSON.Encode.array
+            | None => []->JSON.Encode.array
+            }
           }
         }
         (resolverName, resolver)

@@ -23,7 +23,9 @@ function Make(Bus) {
     extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
-  })(QueryDbStorage)(QueryDbResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
+  })(QueryDbStorage)({
+    make: QueryDbResolvers.make
+  })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => {
     let include = CoreMaker.Make(Spec);
     return {
