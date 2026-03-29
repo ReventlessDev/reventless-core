@@ -23,6 +23,7 @@ jobs:
     permissions:
       contents: write
       packages: read
+      actions: write
     strategy:
       matrix:
         region: [eu-west-1]
@@ -116,6 +117,14 @@ jobs:
           done
           echo "All push attempts failed"
           exit 1
+
+      - name: Dispatch deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "Dispatching Deploy Online Shop Hybrid on branch $BRANCH"
+          gh workflow run deploy-online-shop-hybrid.yml --ref "$BRANCH"
 
       - name: Upload zip as release asset and append layer ARN
         env:
