@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.26](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-core@3.0.0-alpha.25...@reventlessdev/reventless-core@3.0.0-alpha.26) (2026-03-29)
+
+### Features
+
+* add query interceptor hook to QueryDb pipeline ([40c7f7e](https://github.com/ReventlessDev/reventless-core/commit/40c7f7ea9bc004bfb58be8ab52136ddea9481083))
+
+
 # [3.0.0-alpha.25](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-core@3.0.0-alpha.23...@reventlessdev/reventless-core@3.0.0-alpha.25) (2026-03-28)
 
 * feat!: flatten DcbSpec module type into direct Plugin.make parameters ([1c0bc57](https://github.com/ReventlessDev/reventless-core/commit/1c0bc576fcd88b92510900c16f5f117e864d9d7f))
