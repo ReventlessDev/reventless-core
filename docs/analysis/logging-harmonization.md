@@ -1,451 +1,406 @@
 # Logging Harmonization Analysis
 
-> **Status: Partial.** Basic Effect logging (`Effect.logInfo`/`logError`, `LogFormat.res`) was implemented via `docs/plans/done/effect-logger-and-request-context.md`. Structured JSON log format (`level`/`loc`/`component`/`data`), level filtering via `makeLogger(~minLevel)`, and `LOG_LEVEL` env var support are not yet implemented.
+> **Status: Partial.** Basic Effect logging (`Effect.logInfo`/`logError`) and `LogFormat.res`
+> formatters are in place. The full unified design below is not yet implemented.
 
-**Created:** 2026-03-05
-
-**Context:** After `docs/plans/effect-logger-and-request-context.md` is implemented, all callback
-logging will go through the Effect Logger service. This analysis examines the full logging landscape
-and proposes a unified approach for structured, location-aware, level-controllable logging across
-the entire framework.
+**Created:** 2026-03-05 | **Updated:** 2026-03-29
 
 ---
 
-## 1. Current State — Four Logging Mechanisms
+## 1. Goals
 
-The codebase currently uses four independent logging mechanisms with no shared structure:
-
-### 1.1 `Logger.res` (reventless-core/src/util/)
-
-Synchronous logging utility with level-based dispatch to Console methods.
-
-**Features:**
-- `__LOC__`-based source location via `createTag(~level, ~loc)` — regex-parses ReScript's
-  `File "path.res", line N, characters X-Y` into `filename.res#N:`
-- Four levels: `Debug | Info | Warning | Error | Custom(string)`
-- Structured formatting helpers: `commandJsonToLogMessage`, `event'JsonToLogMessage`,
-  `commandJsonsToLogMessages`
-- `Debug` level is a **noop** (line 73) — disabled for CloudWatch cost control
-
-**Problems:**
-- `__LOC__` is passed as `~loc=?` (optional) — many call sites omit it, producing empty tags
-- Log output format is `(tag, description, item)` via `Console.info3` — three separate arguments,
-  not a single structured string. CloudWatch and other log aggregators treat each arg as separate
-  metadata
-- The `createTag` regex has a bug: it captures `captures[0]` (the full match) and `captures[1]`
-  (the first group), but should use `captures[1]` (filename) and `captures[2]` (line). The current
-  output includes the full match string instead of just the filename
-- `Debug` being a noop means debug logging is an all-or-nothing compile-time decision — no runtime
-  level switching
-- `~map` parameter is rarely used and adds complexity
-- `~stringify` parameter inconsistently applied
-
-**Usage:** ~50 call sites across callbacks, operations, utilities, and AWS adapters.
-
-### 1.2 Direct `Console.log`/`Console.log2`/`Console.log3`
-
-Raw console output with ad-hoc formatting.
-
-**Locations (by category):**
-
-| Category | Files | Count |
-|----------|-------|-------|
-| Component callbacks | SideEffectHandler, EventMapper, Counter, ReadModel, CommandGenerator, Plugin | ~25 |
-| Infra mapping types | ExtensionPointMapping, ExtensionMapping | ~15 |
-| MCP server | MCP_Server.res | ~15 |
-| Projection | Projection.res | ~5 |
-| Test files | BehaviorTest, ProjectionTest | ~3 |
-| Examples | DebugSchema.res | ~4 |
-
-**Problems:**
-- No level indication — everything goes to `console.log` (INFO in CloudWatch)
-- No source location
-- No structured format — impossible to filter or parse
-- Mixed concerns: diagnostic logging (should be debug) alongside error reporting
-
-### 1.3 `EffectLogger` (rescript-effect/src/)
-
-Effect service wrapping Console methods. Currently provided at three dispatch points
-(`Runtime.runEffectHandler`, `AggregateRuntime_Builder_Common.runEffect`,
-`EventCollectorRuntime_Builder_Single.runEffect`) — always hardcoded to `consoleLogger`.
-
-**Type:**
-```rescript
-type t = {
-  debug: string => Effect.t<unit, unit, unit>,
-  info: string => Effect.t<unit, unit, unit>,
-  warn: string => Effect.t<unit, unit, unit>,
-  error: string => Effect.t<unit, unit, unit>,
-}
-```
-
-**Problems:**
-- Takes a single `string` — no structured data, no source location
-- `consoleLogger` maps both `debug` and `info` to `Console.log` — no level distinction
-- No level filtering — the `silent` implementation suppresses everything, but there's no way to
-  show only errors or only info+errors
-- After the effect-logger plan is implemented, all callbacks will use this — but without structural
-  improvements, log output will be *worse* than Logger.res (losing `__LOC__` and formatting)
-
-### 1.4 `runtimeLogger` (Runtime.res)
-
-Synchronous `{info, warn}` record for builder-phase diagnostics. Used in `Output.apply` callbacks
-at deploy time and in `aggregateHandler`/`eventCollectorHandler` at runtime.
-
-**Usage:** ~12 call sites across `AggregateRuntime_Builder_Common.res` and
-`EventCollectorRuntime_Builder_Single.res`.
-
-**Problems:**
-- No `error` or `debug` level
-- No source location
-- Not injectable at the platform level (hardcoded to `defaultLogger` or `silentLogger`)
+1. **One mental model** — same logger type, same format, same level semantics for both deploy-time
+   and runtime code.
+2. **Concise output** — no redundant fields. CloudWatch Lambda integration already provides
+   `timestamp`, `level`, and `requestId` — do not repeat them in the message body.
+3. **Automatic location** — log origin should be identifiable without manually writing filenames or
+   line numbers in every call.
+4. **Formatting functions** — `fmtCmd`, `fmtEvent`, `fmtState` used everywhere; no ad-hoc
+   string interpolation of command/event payloads.
+5. **Easy level filtering** — `LOG_LEVEL` env var works across both contexts; `debug` is truly
+   silent by default.
+6. **Framework logs are sufficient** — application code should rarely need to add logs; the
+   framework's own logging at key lifecycle points covers the common debugging scenarios.
 
 ---
 
-## 2. Assessment of the `__LOC__` Approach
+## 2. Current State
 
-### What Works
+### 2.1 Runtime Logging (`Effect.logInfo/logError`)
 
-- ReScript's `__LOC__` macro is zero-cost — it expands at compile time to a string literal
-- When used consistently, it gives exact file+line for every log message
-- The `filename.res#line:` format is compact and grep-friendly
+**What's in place:** Callbacks use `Effect.logInfo`/`Effect.logWarning`/`Effect.logError` injected
+at dispatch points. `LogFormat.res` provides `commandJsonToLogMessage`,
+`commandJsonsToLogMessages`, `event'JsonToLogMessage`.
 
-### What Doesn't Work
+**Problems:**
+- `Effect.log*` takes a plain `string` — no structured data, no component name, no location.
+- The same message appears identically in CloudWatch's `message` field and in the surrounding
+  Lambda JSON envelope's `level`/`timestamp`. CloudWatch Insights queries can filter by level via
+  the envelope, but structured queries on `component` or `correlationId` are impossible.
+- `LogFormat` helpers are only used in `Aggregate_Callback.res`. Other callbacks interpolate
+  commands and events ad-hoc.
+- No `correlationId` in any log message.
 
-1. **It's optional** — ~40% of `Logger.*` call sites omit `~loc=__LOC__`, producing empty tags
-2. **Regex parsing is fragile** — the `createTag` function regex-parses the `__LOC__` string at
-   runtime on every log call. This is unnecessary overhead and the current regex has an off-by-one
-   in capture group indexing
-3. **`__LOC__` expands to verbose strings** — `File "src/components/Aggregate/Aggregate_Callback.res", line 95, characters 14-73"` is long
-   and wasteful if only filename+line are needed
-4. **Not available in Effect Logger** — after migration, callbacks lose location info entirely
-5. **`__MODULE__` is sometimes used instead** (e.g., `Counter_Callback.res:48`) — inconsistent
+### 2.2 Deploy-Time Logging (`Console.*` in `Output.apply`)
 
-### Recommendation: Keep `__LOC__`, Make It Mandatory, Move Parsing to Compile Time
+**What's in place:** Handler registration lines with `*****` prefix in
+`AggregateRuntime_Builder_Common.res` and `EventCollectorRuntime_Builder_Single.res`.
+Infrastructure setup messages in `Util_DynamoDb.res`, `EventCollectorChannel_Helpers.res`, etc.
 
-Rather than dropping `__LOC__`, make it a required parameter in the Effect Logger helper and
-extract location info once at the call site rather than parsing it per-log-call.
+**Problems:**
+- Five incompatible prefix conventions: `*****`, `-----`, `[Module]`, `${__MODULE__}:`, none.
+- All calls use `Console.log` regardless of severity — errors mixed with debug output.
+- `Console.log2/3/4` passes multiple args; CloudWatch concatenates them into a single unstructured
+  string or drops later args.
+- No level filtering — verbose handler registration fires unconditionally.
+- No component context on most messages.
+
+### 2.3 Chatty / Redundant Logs — Reduce or Move to `debug`
+
+| Location | Issue |
+|----------|-------|
+| `AggregateRuntime_Builder_Common.res` `*****` lines | Fire for every registered handler. A 10-plugin deploy generates 100+ lines. Should be `debug`. |
+| `EventCollectorRuntime_Builder_Single.res:149` `*****` line | Duplicate of the same registration pattern. Also `debug`. |
+| `EventCollectorRuntime_Builder_Single.res:75` `validateParent` | Diagnostic only; `debug`. |
+| `Projection.res` `logAction` × 14 | Logs before AND inside `applyChanges`. Single `info` summary per batch is enough. |
+| `CommandPublisher.res` × 9 | Logs buffer state at entry, each chunk, and exit. Move chunk-level detail to `debug`; keep one `info` on completion. |
+| `GraphQL_SchemaInspector.res` × 13 | Full SDL dump on every startup. Move to `debug`. |
+| `PluginConnectExtension_Builder.res` × 6 | Cross-plugin wiring detail; `debug`. |
+| `Adapter.res:63` `resource: {resolved}` | Single `debug` line; already labelled debug — confirm it is truly suppressed. |
+
+### 2.4 Missing Logs at Neuralgic Points — Add at `info`/`warn`/`error`
+
+| Location | What's missing |
+|----------|----------------|
+| `StateViewSlice_Callback.res` | **Zero logs.** Silent projection failures. Add: events received count, projection result, decode errors. |
+| `Heartbeat_Callback.res` | **Zero logs.** No operational visibility. Add: heartbeat published, extension point name, timeout. |
+| `Aggregate_Callback.res` | EventLog replay count — currently only logs "finished", not how many events were replayed. |
+| `ReadModel_Callback.res` | Only 1 log. Add: event count, projection action count, update success/failure. |
+| `Plugin_Helpers.res` errors | Logs "Couldn't find Plugin" but not what was available. Add the set of known plugin names. |
+| `AggregateRuntime` handler-not-found | Logs `no handler found: ${urn}` but not the available handlers — makes misconfiguration hard to diagnose. |
 
 ---
 
-## 3. Proposal: Unified Structured Logging
+## 3. Unified Logger Design
 
-### 3.1 Structured Log Message Type
+### 3.1 One Logger Type for Both Contexts
 
-Define a single log entry structure used everywhere:
-
-```rescript
-// In rescript-effect/src/LogEntry.res (new file)
-type t = {
-  level: [#debug | #info | #warn | #error],
-  loc: string,           // "Aggregate_Callback.res#95" — pre-formatted at call site
-  component: string,     // "Aggregate", "ReadModel", "StateChangeSlice", etc.
-  message: string,       // Human-readable description
-  data: option<JSON.t>,  // Optional structured payload (command, event, error, etc.)
-  correlationId: option<string>,  // From RequestContext when available
-}
-```
-
-**Output format** (single JSON string per log call):
-```json
-{"level":"info","loc":"Aggregate_Callback.res#95","component":"Aggregate","msg":"Handling command","data":{"command":"CreateItem","id":"item-1"},"correlationId":"abc-123"}
-```
-
-This gives:
-- **Filterability** — CloudWatch Insights can query by `level`, `component`, `correlationId`
-- **Source tracing** — every log line says where it came from
-- **Single string** — no multi-argument Console calls that scatter across CloudWatch fields
-
-### 3.2 Enhanced Effect Logger Service
-
-Replace the current `string => Effect.t<unit>` methods with a richer interface:
+Both runtime and deploy-time code will use the same record type:
 
 ```rescript
-// In rescript-effect/src/Logger.res (enhanced)
-type logFn = (~loc: string=?, ~component: string=?, ~data: JSON.t=?, string) => Effect.t<unit, unit, unit>
+// reventless-core/src/util/Logger.res
+type logFn = (~comp: string=?, ~data: JSON.t=?, string) => unit
 
 type t = {
   debug: logFn,
-  info: logFn,
-  warn: logFn,
+  info:  logFn,
+  warn:  logFn,
   error: logFn,
 }
 ```
 
-**Why `~loc` as an optional string parameter?**
-- Call sites pass `~loc=__LOC__` — zero cost, exact location
-- The Logger implementation parses it once and includes in output
-- Call sites that can't provide `__LOC__` (e.g., dynamically generated) omit it — they still log, just without location
+- **`~comp`** — component identifier, e.g. `"Aggregate(OrderItem)"` or `"AggregateRuntime"`.
+  Optional so non-component code (utilities, builders) can omit it.
+- **`~data`** — structured payload (command, event, error). Optional.
+- **No `~loc` parameter.** See §3.2 for how location is handled.
+- **`unit` return** — synchronous everywhere. Runtime callers in Effect context use a thin wrapper
+  (see §3.3); deploy-time callers call directly.
 
-**Why `~component` as a parameter?**
-- Callbacks are generated from functors with `Spec.name` — the component name is statically known
-- Passing it explicitly is clearer than trying to extract it from `__LOC__` file paths
-- Enables filtering by component type AND instance (e.g., `component: "StateChangeSlice(OrderSlice)"`)
+### 3.2 Automatic Location via `__MODULE__`
 
-### 3.3 Level Filtering via Configurable Implementation
+ReScript's `__MODULE__` macro expands at compile time to the module name, e.g.
+`"Aggregate_Callback"`. This maps 1:1 to the source file. No regex parsing, no optional parameter,
+no per-call overhead.
 
-Instead of the current binary consoleLogger/silent choice, provide a level-filtered logger:
+**Convention:** pass `__MODULE__` as the `~comp` prefix when no named component is available,
+or embed it in the component string:
 
 ```rescript
+// At module top — zero cost, evaluated once:
+let tag = __MODULE__  // "AggregateRuntime_Builder_Common"
+
+// In a log call:
+log.debug(~comp=tag, `forCommandTopic ${name}: set handler for ${urn}`)
+```
+
+For callbacks where the component name is dynamic:
+
+```rescript
+// In Aggregate_Callback.res (inside the Make functor):
+let comp = `Aggregate(${Spec.name})`
+log.info(~comp, ~data=fmtCmd(msg), "handling command")
+```
+
+`__LINE__` is not required in every call — the module name + message content is sufficient to
+locate the source. Reserve `__LOC__` for temporary debugging only.
+
+### 3.3 Format: Concise, No Redundant Fields
+
+**CloudWatch Lambda structured logging** (Node 18+) already emits:
+```json
+{
+  "timestamp": "...",
+  "level": "INFO",
+  "requestId": "...",
+  "message": "<our content here>"
+}
+```
+
+Our content should contain **only what CloudWatch doesn't already provide**:
+
+```
+Aggregate(OrderItem) cmd=CreateItem id=order-1 events=1 cid=abc-123
+Aggregate(OrderItem) conflict retry=1/3
+StateChangeSlice(OrderSlice) events=3 actions=2
+AggregateRuntime no handler urn=arn:aws:sqs:…:OrderCmdTopic available=[OrderCmdTopic,ItemCmdTopic]
+```
+
+Format rules:
+- Component name first (no field label needed — always the first token).
+- Free-form message after component.
+- Key facts as `key=value` pairs inline; no nested JSON objects.
+- `cid=` for correlationId when available.
+- Use `console.error`/`console.warn`/`console.log` to set the CloudWatch log level — **do not
+  put `"level":"info"` in the message body**.
+
+**Local / in-memory format** can be identical — it's readable as-is in a terminal. A colored
+variant is optional (use `[DEBUG]`, `[INFO]`, `[WARN]`, `[ERROR]` prefixes for grep-ability).
+
+### 3.4 Level Filtering
+
+```rescript
+// Logger.res
 type level = Debug | Info | Warn | Error
 
-// Numeric ordering for comparison
-let levelToInt = level => switch level {
-  | Debug => 0
-  | Info => 1
-  | Warn => 2
-  | Error => 3
-}
+let levelToInt = l => switch l { | Debug => 0 | Info => 1 | Warn => 2 | Error => 3 }
 
-let makeLogger = (~minLevel: level=Info): t => {
-  let shouldLog = level => levelToInt(level) >= levelToInt(minLevel)
-
-  let emit = (level, ~loc=?, ~component=?, ~data=?, msg) => {
-    Effect.sync(() => {
-      if shouldLog(level) {
-        let entry = {
-          "level": switch level { | Debug => "debug" | Info => "info" | Warn => "warn" | Error => "error" },
-          "loc": loc->Option.map(parseLoc)->Option.getOr(""),
-          "component": component->Option.getOr(""),
-          "msg": msg,
-          "data": data->Option.getOr(Null.null->Obj.magic),
-        }
-        switch level {
-        | Error => Console.error(entry->JSON.stringifyAny->Option.getOr(""))
-        | Warn => Console.warn(entry->JSON.stringifyAny->Option.getOr(""))
-        | _ => Console.log(entry->JSON.stringifyAny->Option.getOr(""))
-        }
-      }
-    })
-  }
-
-  {
-    debug: emit(Debug, ...),
-    info: emit(Info, ...),
-    warn: emit(Warn, ...),
-    error: emit(Error, ...),
-  }
-}
-
-let consoleLogger = makeLogger(~minLevel=Debug)
-let productionLogger = makeLogger(~minLevel=Info)  // Skips debug
-let silent = { debug: _ => Effect.succeed(()), info: _ => Effect.succeed(()), ... }
-```
-
-**Level switching at the platform level:**
-```rescript
-// In RuntimeEnvironment_Lambda.res or RuntimeEnvironment_InMemory.res:
-let logLevel = switch Env.get("LOG_LEVEL") {
-  | Some("debug") => Debug
-  | Some("warn") => Warn
-  | Some("error") => Error
-  | _ => Info
-}
-let logger = Logger.makeLogger(~minLevel=logLevel)
-```
-
-This replaces the current `Debug => ()` noop in `Logger.res` with a runtime-configurable level
-check. The `LOG_LEVEL` environment variable is standard practice for Lambda functions and can
-be set per-environment in Pulumi configuration.
-
-### 3.4 RequestContext Integration
-
-After the effect-logger plan provides `RequestContext` at dispatch, the Logger can automatically
-enrich log entries:
-
-```rescript
-// Logger-with-context: a helper that combines Logger + RequestContext
-let logWithContext = (~loc=?, ~component=?, ~data=?, level, msg) =>
-  Effect.serviceWithEffect(RequestContext.tag, ({correlationId}) =>
-    Effect.serviceWithEffect(Logger.tag, logger => {
-      let enrichedData = switch data {
-        | Some(d) => Some(/* merge correlationId into data */)
-        | None => Some({"correlationId": correlationId}->Obj.magic)
-      }
+let makeLogger = (~minLevel=Info): t => {
+  let shouldLog = l => levelToInt(l) >= levelToInt(minLevel)
+  let emit = (level, ~comp=?, ~data=?, msg) =>
+    if shouldLog(level) {
+      let body = [
+        comp->Option.getOr(""),
+        msg,
+        data->Option.map(d => d->JSON.stringifyAny->Option.getOr(""))->Option.getOr(""),
+      ]->Array.filter(s => s != "")->Array.join(" ")
       switch level {
-        | #info => logger.info(~loc?, ~component?, ~data=?enrichedData, msg)
-        | #error => logger.error(~loc?, ~component?, ~data=?enrichedData, msg)
-        | ...
+      | Error => Console.error(body)
+      | Warn  => Console.warn(body)
+      | _     => Console.log(body)
       }
-    })
-  )
+    }
+  { debug: emit(Debug, ...), info: emit(Info, ...), warn: emit(Warn, ...), error: emit(Error, ...) }
+}
+
+let silent: t = { debug: (_, ~comp=?, ~data=?, _) => (), ... }
+
+// Read from env at startup — works for both Lambda and pulumi up:
+let fromEnv = (): t =>
+  makeLogger(~minLevel=switch Env.get("LOG_LEVEL") {
+    | Some("debug") => Debug
+    | Some("warn")  => Warn
+    | Some("error") => Error
+    | _             => Info
+  })
 ```
 
-Alternatively, the `makeLogger` factory can accept an optional `correlationId` parameter at
-construction time (set once at dispatch), avoiding the need to access `RequestContext` on
-every log call:
+**One env var — `LOG_LEVEL`** — controls both deploy-time and runtime verbosity. Set via:
+- Lambda environment configuration in Pulumi (runtime)
+- Shell environment during `pulumi up` (deploy-time)
+- `process.env.LOG_LEVEL = "debug"` in tests that need verbose output
+
+### 3.5 Runtime Integration (Effect)
+
+The runtime Effect pipeline receives the logger via a thin adapter so callbacks don't import
+`Logger.res` directly and Effect's own `logInfo` is replaced:
 
 ```rescript
-let makeLogger = (~minLevel=Info, ~correlationId=?): t => {
-  // correlationId is baked into every emit call
+// EffectLogger.res — thin wrapper that runs the logFn inside Effect
+let logInfo  = (~comp=?, ~data=?, msg) => Effect.sync(() => _logger.contents.info(~comp?, ~data?, msg))
+let logWarn  = (~comp=?, ~data=?, msg) => Effect.sync(() => _logger.contents.warn(~comp?, ~data?, msg))
+let logError = (~comp=?, ~data=?, msg) => Effect.sync(() => _logger.contents.error(~comp?, ~data?, msg))
+let logDebug = (~comp=?, ~data=?, msg) => Effect.sync(() => _logger.contents.debug(~comp?, ~data?, msg))
+```
+
+The logger instance is set once at platform startup:
+```rescript
+// RuntimeEnvironment_Lambda.res / RuntimeEnvironment_InMemory.res
+EffectLogger.setLogger(Logger.fromEnv())
+```
+
+`correlationId` is embedded at dispatch time by creating a child logger:
+```rescript
+let makeChildLogger = (~cid: string, base: Logger.t): Logger.t => {
+  let wrap = fn => (~comp=?, ~data=?, msg) => fn(~comp?, ~data?, msg ++ ` cid=${cid}`)
+  { debug: wrap(base.debug), info: wrap(base.info), warn: wrap(base.warn), error: wrap(base.error) }
+}
+// At dispatch: EffectLogger.setLogger(makeChildLogger(~cid=correlationId, Logger.fromEnv()))
+```
+
+### 3.6 Deploy-Time Integration
+
+Deploy-time code (`Output.apply` callbacks, builders) calls `Logger.t` directly — no Effect:
+
+```rescript
+// AggregateRuntime_Builder_Common.res
+let log = Logger.fromEnv()  // called once at module load
+
+// Inside Output.apply:
+log.debug(~comp="AggregateRuntime", `forCommandTopic ${name}: set handler for ${urn}`)
+log.info(~comp="AggregateRuntime", `registered CommandTopic handler name=${name}`)
+```
+
+No separate `DeployLogger` module needed — `Logger.res` serves both contexts.
+
+---
+
+## 4. Formatting Functions
+
+Replace ad-hoc string interpolation with these helpers in `LogFormat.res`:
+
+```rescript
+// LogFormat.res — concise formatters, return inline key=value strings
+
+// Command: "cmd=CreateItem id=order-1"
+let fmtCmd = (msg: Message.commandJson): string =>
+  `cmd=${msg.commandJson->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("TAG"))
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.getOr("?")} id=${msg.id}`
+
+// Event: "event=OrderPlaced id=order-1"
+let fmtEvent = (msg: Message.event'<string, JSON.t>): string =>
+  `event=${msg.event} id=${msg.id}`
+
+// Event JSON (when only raw JSON available): "event=OrderPlaced id=order-1"
+let fmtEventJson = (j: JSON.t): string =>
+  // parse TAG + id from raw event JSON
   ...
-}
+
+// State summary: "state=Order(order-1) seq=42"
+let fmtState = (~name: string, ~id: string, ~seq: int): string =>
+  `state=${name}(${id}) seq=${seq}`
+
+// Batch: "cmds=3 [CreateItem,UpdateItem,DeleteItem]"
+let fmtCmds = (msgs: array<Message.commandJson>): string =>
+  `cmds=${msgs->Array.length->Int.toString} [${
+    msgs->Array.map(fmtCmd)->Array.join(",")}]`
+
+// Error: "err=<message>"
+let fmtExn = (e: exn): string =>
+  `err=${e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")}`
 ```
 
-This is simpler — the dispatch point already has the correlationId and can create a logger
-with it embedded. Then `provideService(Logger.tag, makeLogger(~minLevel, ~correlationId))`.
-
-**Recommendation:** Embed `correlationId` at logger construction time. It's cleaner and avoids
-double service lookups on every log call.
-
-### 3.5 Convenience Helpers for Domain Formatting
-
-Keep the formatting functions from `Logger.res` but decouple them from Console output:
+**Usage pattern across callbacks:**
 
 ```rescript
-// In reventless-core/src/util/LogFormat.res (renamed from Logger.res)
-let commandJsonToLogMessage: Message.commandJson => string = ...  // unchanged
-let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = ...
-let event'JsonToLogMessage: JSON.t => string = ...
+// Aggregate_Callback.res
+log.info(~comp, ~data=None, `handling ${fmtCmds(msgs)}`)
+log.info(~comp, `${fmtState(~name=Spec.name, ~id, ~seq)} replay done events=${n->Int.toString}`)
+log.info(~comp, `${fmtCmd(msg)} → ${eventCount->Int.toString} event(s)`)
+log.warn(~comp, `${fmtState(...)} conflict retry=${retry->Int.toString}/${max->Int.toString}`)
 
-// New: convert to JSON.t for structured data field
-let commandJsonToData: Message.commandJson => JSON.t = ({id, commandJson}) =>
-  [("command", commandJson), ("id", id->JSON.Encode.string)]
-  ->Dict.fromArray->JSON.Encode.object
+// StateViewSlice_Callback.res
+log.info(~comp, `events=${rawEvents->Array.length->Int.toString} decoded=${events->Array.length->Int.toString} actions=${actions->Array.length->Int.toString}`)
 
-let eventJsonToData: JSON.t => JSON.t = eventJson' =>
-  eventJson'  // already JSON — pass through, or extract relevant fields
+// Heartbeat_Callback.res
+log.info(~comp, `heartbeat ep=${Spec.extensionPointName} timeout=${Spec.timeout->Int.toString}s`)
 ```
-
-**Usage in callbacks (after migration):**
-```rescript
-// Before (current):
-Logger.logJsonEvent(~loc=__LOC__, eventJson', "handling event")
-
-// After (proposed):
-->Effect.tap(_ =>
-  Effect.serviceWithEffect(Logger.tag, logger =>
-    logger.info(
-      ~loc=__LOC__,
-      ~component=`Plugin(${id})`,
-      ~data=LogFormat.eventJsonToData(eventJson'),
-      "handling event",
-    )
-  )
-)
-```
-
-### 3.6 Deploy-Time Logging (runtimeLogger Replacement)
-
-The `runtimeLogger` handles two contexts:
-1. **`Output.apply` callbacks** — deploy-time registration messages ("set handler for ...")
-2. **`aggregateHandler`/`eventCollectorHandler`** — runtime dispatch messages ("found handler for ...")
-
-For (1), `Console.log` is appropriate — these fire during `pulumi up` only. Use a simple
-`[deploy]` prefix for identification:
-
-```rescript
-Console.log(`[deploy] forCommandTopic ${name}: set handler for ${urn}`)
-```
-
-For (2), these run inside async handlers that already call `runEffect`. Convert to Effect Logger:
-
-```rescript
-// In aggregateHandler:
-let handler = async (event, context) => {
-  await Effect.serviceWithEffect(Logger.tag, logger =>
-    logger.info(~component="AggregateRuntime", `found handler for CommandTopic ${urn}`)
-  )
-  ->Effect.flatMap(_ => actualHandler(event, context))
-  ->runEffect
-}
-```
-
-Or simpler — log before calling `runEffect`:
-
-```rescript
-log.info(...)  // stays as Console.log for the dispatch routing message
-await handler(event, context)->runEffect  // handler's own logging uses Effect Logger
-```
-
-**Recommendation:** Keep synchronous `Console.log` for the handful of dispatch routing messages
-in `aggregateHandler`/`eventCollectorHandler`. These are 6 messages total and don't benefit
-from Effect wrapping. Remove `runtimeLogger` type entirely — replace with direct `Console.log`
-calls with a `[dispatch]` prefix.
-
-### 3.7 Non-Callback Logging (Infra, MCP, Projection)
-
-Several modules outside the Effect pipeline use `Console.log` directly:
-
-| Module | Context | Recommendation |
-|--------|---------|----------------|
-| `ExtensionPointMapping.res` | Mapping incoming/outgoing events | These run inside async handlers invoked by callbacks. After callback migration, wrap in Effect or keep as `Console.log` with structured prefix |
-| `ExtensionMapping.res` | Same as above | Same recommendation |
-| `MCP_Server.res` | Local dev server diagnostics | Keep as `Console.log` with `[MCP]` prefix (already done). MCP server is in-memory only, never runs in Lambda |
-| `Projection.res` | Query DB operations | Wrap in Effect Logger — Projection runs inside ReadModel callback Effect pipeline |
-| `GraphQL_Stitcher.res` | Schema stitching warnings | Deploy-time only — use `Console.warn` with `[schema]` prefix |
 
 ---
 
-## 4. Migration Path
+## 5. What Framework Logs Should Cover
 
-### Phase 0: Enhance Effect Logger (before callback migration)
+Application code should not need to add logs for common debugging. The framework must log at these
+points so issues are diagnosable without application-level logging:
 
-1. Extend `Logger.t` type to accept `~loc`, `~component`, `~data` parameters
-2. Add `makeLogger(~minLevel, ~correlationId=?)` factory
-3. Add `parseLoc` helper that extracts `filename.res#line` from `__LOC__` string (move from
-   `Logger.res` to `rescript-effect/src/Logger.res`)
-4. Add JSON-structured output format
-
-This must happen **before** Work Item 1 of the effect-logger plan, so that the callback migration
-uses the enhanced logger from the start — avoiding a second pass to add structure.
-
-### Phase 1: Callback Migration (aligns with effect-logger plan Work Item 1)
-
-Migrate each callback using the enhanced logger with `~loc=__LOC__` and `~component=Spec.name`.
-Follow the ordering in the effect-logger plan.
-
-### Phase 2: RequestContext + correlationId (aligns with effect-logger plan Work Item 2)
-
-At dispatch, create logger with embedded correlationId:
-```rescript
-let runEffect = (~correlationId=?, effect) =>
-  effect
-  ->Effect.provideService(Logger.tag, Logger.makeLogger(~minLevel, ~correlationId?))
-  ->Effect.provideService(RequestContext.tag, {correlationId: correlationId->Option.getOr("unknown")})
-  ->Effect.runPromise
-```
-
-### Phase 3: Remove Legacy Infrastructure (aligns with effect-logger plan Work Items 3-4)
-
-1. Replace `runtimeLogger` with direct Console.log (deploy-time) and keep Effect Logger (runtime)
-2. Rename `Logger.res` to `LogFormat.res`, keeping only formatting functions
-3. Remove `Logger.Level`, `Logger.log`, `Logger.info`, `Logger.warn`, `Logger.error`, `Logger.debug`
-4. Remove `Logger.logCmdJson`, `Logger.logCmdJsons`, `Logger.logJsonEvent`
-
-### Phase 4: Remaining Console.log Cleanup
-
-Convert remaining `Console.log` calls in infra mappings and Projection to Effect Logger where
-they run inside Effect pipelines, or to prefixed `Console.log` where they don't.
+| Lifecycle point | Level | Key fields |
+|-----------------|-------|-----------|
+| Command received by aggregate | `info` | component, cmd, id |
+| Events generated by behavior | `info` | component, id, event names, count |
+| No events generated (duplicate / already done) | `info` | component, id, cmd |
+| EventLog replay completed | `info` | component, id, events replayed |
+| Conflict detected → retry | `warn` | component, id, retry count |
+| Conflict retries exhausted | `error` | component, id |
+| Behavior error | `error` | component, id, error |
+| Event collected by read model / slice | `info` | component, event, id |
+| Projection actions applied | `info` | component, action count |
+| Projection decode failure | `warn` | component, event type, error |
+| Heartbeat published | `info` | component, extension point, timeout |
+| Handler registration (during deploy) | `debug` | component, urn |
+| No handler found at dispatch | `warn` | urn, available urns |
+| Resource resolution error (deploy) | `error` | component, resource name |
+| CommandPublisher batch sent | `info` | cmd count, size |
+| CommandPublisher error | `error` | error, cmd count |
 
 ---
 
-## 5. Summary of Decisions
+## 6. Migration Plan
+
+### Phase 1 — Logger module + format (prerequisite)
+
+1. Create/replace `reventless-core/src/util/Logger.res` with the unified `makeLogger` / `fromEnv` /
+   `makeChildLogger` / `silent` implementation.
+2. Update `LogFormat.res` with `fmtCmd`, `fmtEvent`, `fmtEventJson`, `fmtState`, `fmtCmds`,
+   `fmtExn` helpers.
+3. Wire `EffectLogger` to use `Logger.t` — `EffectLogger.setLogger(Logger.fromEnv())` at
+   both Lambda and InMemory platform startup.
+
+### Phase 2 — Reduce chatty logs
+
+Move the following to `debug` level (or remove if redundant):
+
+- `AggregateRuntime_Builder_Common.res` `*****` handler registration lines (3 calls).
+- `EventCollectorRuntime_Builder_Single.res:149` `*****` line + `:75` validateParent line.
+- `Projection.res` `logAction` — replace 14 individual action logs with one `info` summary
+  per `handleActions` call: `comp=${…} actions=${n}`.
+- `CommandPublisher.res` — keep one `info` on completion; move per-chunk logs to `debug`.
+- `GraphQL_SchemaInspector.res` schema dump — `debug`.
+- `PluginConnectExtension_Builder.res` × 6 — `debug`.
+
+### Phase 3 — Add missing logs
+
+- `StateViewSlice_Callback.res`: add `info` for events received / decoded / actions; `warn` for
+  decode failures.
+- `Heartbeat_Callback.res`: add `info` on publication.
+- `Aggregate_Callback.res`: add replay event count to the "finished" log.
+- `ReadModel_Callback.res`: add event + action counts.
+- `AggregateRuntime` no-handler warn: include list of available handler URNs.
+
+### Phase 4 — Standardize remaining Console calls
+
+Apply `Logger.t` (replacing raw `Console.*`) to:
+
+- `Util_DynamoDb.res`, `Util_DynamoDbStream.res`, `Util_SNS.res`, `Util_SNS_FIFO.res` — infra
+  setup; use `log.info`/`log.error`.
+- `EventCollectorChannel_Helpers.res` — subscription wiring; `info`.
+- `Plugin_Helpers.res` error paths — `error` with available plugins list.
+- `EventTopic.res`, `Adapter.res` — `info`/`debug`.
+
+In-memory platform (`GraphQL_Server.res`, `MCP_Server.res`) keeps its existing `[GraphQL]`/`[MCP]`
+prefixed `Console.log` calls — they are local-dev only and the current approach is fine.
+
+### Phase 5 — Remove legacy code
+
+- Remove the old `Logger.res` if a prior version existed with `Level`, `createTag`, `logCmdJson`,
+  etc. — `LogFormat.res` replaces the formatting part; `Logger.res` is now the unified logger.
+- Remove `OutputLogger.res` (deploy debug tool; leftover from development) or demote to test-only.
+- Clean up commented-out `Console.log2` in `Mapper1toN.res`.
+
+---
+
+## 7. Summary of Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Log format | Single JSON string per entry | CloudWatch Insights queryable, parseable by any log tool |
-| Source location | `__LOC__` (mandatory in callbacks) | Zero-cost compile-time expansion, exact file+line |
-| Component identification | Explicit `~component` parameter | Clearer than inferring from file path, supports instance names |
-| Level control | `LOG_LEVEL` env var + `makeLogger(~minLevel)` | Standard Lambda practice, runtime-switchable without redeploy (via Lambda env config) |
-| correlationId | Embedded at logger construction time | Avoids double service lookup per log call |
-| Deploy-time logging | Direct `Console.log` with `[deploy]` prefix | No Effect pipeline available, simple diagnostic messages |
-| Runtime dispatch logging | Direct `Console.log` with `[dispatch]` prefix | Only ~6 messages, not worth Effect wrapping |
-| Domain formatting | `LogFormat` module (renamed from Logger) | Keep formatting helpers, decouple from Console output |
-| MCP server logging | Keep `[MCP]` prefixed Console.log | Local dev only, never in production Lambda |
-
----
-
-## 6. Expected Outcome
-
-After full implementation:
-
-1. **Every log message** from callbacks includes: level, source location, component name,
-   correlationId, and structured data — as a single JSON string
-2. **One knob** (`LOG_LEVEL` environment variable) controls what gets logged across the
-   entire system
-3. **CloudWatch Insights queries** like `filter component = "Aggregate" and level = "error"`
-   or `filter correlationId = "abc-123"` work across all log entries
-4. **No more silent debug** — debug logging works when `LOG_LEVEL=debug`, hidden otherwise
-5. **Test logging** uses `Logger.silent` — no console noise in test output
-6. **Zero `Console.log` in production callback code** — all logging through Effect Logger service
+| Logger type | Single `Logger.t` record for both contexts | No context switching mental overhead |
+| Format | `comp msg key=val cid=…` (plain text, one line) | CloudWatch already wraps with timestamp/level/requestId; no duplication |
+| Log level in message | **No** — use `console.error`/`console.warn`/`console.log` | CloudWatch envelope already has level; duplication wastes ingested bytes |
+| Source location | `__MODULE__` as component prefix (automatic) | Compile-time, zero cost, no manual maintenance, maps directly to .res file |
+| Line numbers | Only for temporary debugging (`__LOC__`) | Module name + message is sufficient for production diagnosis |
+| Level control | `LOG_LEVEL` env var, single knob for both contexts | Standard Lambda / Node practice; no redeploy needed to change verbosity |
+| correlationId | Append `cid=` suffix via child logger at dispatch time | Simpler than service lookup per log call; baked in for entire request |
+| Formatting | `fmtCmd`, `fmtEvent`, `fmtState`, `fmtCmds`, `fmtExn` in `LogFormat.res` | Consistent format across all callbacks; no ad-hoc interpolation |
+| Deploy-time | Same `Logger.t`, not Effect-based | Deploy code has no Effect pipeline; same type keeps the mental model uniform |
+| MCP / GraphQL server | Keep existing prefixed `Console.log` | Local dev only, never in production Lambda |
+| Application logs | Framework logs cover all neuralgic points | Application code should not need to add logs for common scenarios |
