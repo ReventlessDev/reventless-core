@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.28 (2026-03-30)
+
+### Features
+
+* add event publish hooks and AWS query interceptor support ([5c4ec59](https://github.com/ReventlessDev/reventless-core/commit/5c4ec598f6cc7115255b4b18c9decf8007630f15))
+
+
 # [3.0.0-alpha.27](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.26...@reventlessdev/reventless-aws@3.0.0-alpha.27) (2026-03-30)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
