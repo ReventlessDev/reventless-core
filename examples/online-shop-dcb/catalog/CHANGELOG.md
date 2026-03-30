@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.16 (2026-03-30)
+
+### Features
+
+* **examples:** publish example packages to GitHub Package Registry ([2495ba5](https://github.com/ReventlessDev/reventless-core/commit/2495ba5c4436613d58964f9948c1bacbde61965f))
+
+
 # [1.0.0-alpha.15](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.13...@reventlessdev/online-shop-dcb-catalog@1.0.0-alpha.15) (2026-03-28)
 
 ### Bug Fixes

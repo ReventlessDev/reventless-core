@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.2.0-alpha.1 (2026-03-30)
+
+### Features
+
+* **changelog:** show updated dependency names and versions instead of generic bump-only note ([712fa99](https://github.com/ReventlessDev/reventless-core/commit/712fa99ecb0926689792e7cba42b724adf31d925))
+
+
 # 1.1.0-alpha.0 (2026-03-28)
 
 ### Features

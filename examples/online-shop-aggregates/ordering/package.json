@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-ordering",
-  "version": "3.0.0-alpha.13",
+  "version": "3.0.0-alpha.14",
   "description": "Online Shop example — Ordering plugin (Customer & Order aggregates)",
   "license": "MIT",
   "scripts": {

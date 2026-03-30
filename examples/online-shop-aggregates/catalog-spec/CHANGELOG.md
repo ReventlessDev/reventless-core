@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.10 (2026-03-30)
+
+### Features
+
+* **examples:** publish example packages to GitHub Package Registry ([2495ba5](https://github.com/ReventlessDev/reventless-core/commit/2495ba5c4436613d58964f9948c1bacbde61965f))
+
+
 # [3.0.0-alpha.9](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.6...@reventlessdev/online-shop-aggregates-catalog-spec@3.0.0-alpha.9) (2026-03-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-spec

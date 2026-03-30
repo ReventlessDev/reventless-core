@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform",
-  "version": "1.0.0-alpha.8",
+  "version": "1.0.0-alpha.9",
   "description": "Online Shop Hybrid example — full platform with Catalog + Ordering plugins (in-memory)",
   "scripts": {
     "build": "rescript build",
@@ -11,10 +11,10 @@
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs"
   },
   "dependencies": {
-    "@reventlessdev/online-shop-hybrid-catalog": "^1.0.0-alpha.8",
-    "@reventlessdev/online-shop-hybrid-catalog-spec": "^1.0.0-alpha.5",
-    "@reventlessdev/online-shop-hybrid-ordering": "^1.0.0-alpha.8",
-    "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.5",
+    "@reventlessdev/online-shop-hybrid-catalog": "^1.0.0-alpha.9",
+    "@reventlessdev/online-shop-hybrid-catalog-spec": "^1.0.0-alpha.6",
+    "@reventlessdev/online-shop-hybrid-ordering": "^1.0.0-alpha.9",
+    "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.6",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*"
   },
