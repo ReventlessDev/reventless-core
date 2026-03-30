@@ -54,15 +54,60 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
   let encodeEvents' = (events', id, startingSeqNr) =>
     events'->Array.mapWithIndex((event, i) => encodeEvent'(id, startingSeqNr + i, event))
 
+  let makePublishedEvent = (idStr, eventsJson, meta): EventPublish_Callback.publishedEvent => {
+    componentName: Spec.name,
+    entityId: idStr,
+    eventCount: eventsJson->Array.length,
+    eventsJson,
+    meta,
+  }
+
+  let runBeforePublishHook = async (idStr, eventsJson, meta) =>
+    switch EventPublish_Callback.beforePublishHook.contents {
+    | None => ()
+    | Some(hook) =>
+      try {
+        let _ = await hook(makePublishedEvent(idStr, eventsJson, meta))
+      } catch {
+      | err =>
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `EventLog(${Spec.name}): beforePublishHook error: ${errMsg}`,
+        )->Effect.runSync
+      }
+    }
+
+  let runAfterPublishHook = async (idStr, eventsJson, meta) =>
+    switch EventPublish_Callback.afterPublishHook.contents {
+    | None => ()
+    | Some(hook) =>
+      try {
+        let _ = await hook(makePublishedEvent(idStr, eventsJson, meta))
+      } catch {
+      | err =>
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `EventLog(${Spec.name}): afterPublishHook error: ${errMsg}`,
+        )->Effect.runSync
+      }
+    }
+
   // Returns result<unit, string> — never throws. Publish failures are surfaced as Error.
-  let publishToEventTopic = async (id, events') => {
+  let publishToEventTopic = async (id, events': array<Message.event'<_, _>>, eventsJson) => {
+    let idStr = id->Spec.Id.toString
+    let firstEvent = events'->Array.getUnsafe(0)
+    let meta = firstEvent.meta
+    await runBeforePublishHook(idStr, eventsJson, meta)
     try {
       let _ = await Ops.eventTopic.publish(events')
+      await runAfterPublishHook(idStr, eventsJson, meta)
       Ok()
     } catch {
     | JsExn(err) =>
       let msg =
-        `EventLog.append(${id->Spec.Id.toString}): EventTopic.publish Error: ` ++
+        `EventLog.append(${idStr}): EventTopic.publish Error: ` ++
         err->JsExn.message->Option.getOr("no error message given")
       Error(msg)
     }
@@ -91,7 +136,7 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
       ->Effect.retry(storageRetrySchedule)
     let exit = await storageEffect->Effect.runPromiseExit
     if exit->Exit.isSuccess {
-      await publishToEventTopic(id, events')
+      await publishToEventTopic(id, events', eventsJson)
     } else {
       // Retry exhausted — extract the final error message from the Cause
       let failMsg = exit->Exit.match(

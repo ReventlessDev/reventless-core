@@ -15,13 +15,41 @@ module Make = (Ops: Ops): T => {
   let name = Ops.name
 
   let publishToEventTopic = async (rawEvents: array<DcbEventLog.rawEvent>) => {
-    let _ = await rawEvents
-    ->Array.map(async rawEvent => {
-      let json = Message.combineMessage(
+    let eventsJson = rawEvents->Array.map(rawEvent =>
+      Message.combineMessage(
         rawEvent.eventType,
         rawEvent.data->JSON.Decode.object->Option.getOr(Dict.make()),
       )
-      let meta = Message.generateMeta(~service=name)
+    )
+    let meta = Message.generateMeta(~service=name)
+
+    // Run beforePublish hook — if it throws, log the error and publish original events.
+    let finalEventsJson = switch EventPublish_Callback.beforePublishHook.contents {
+    | None => eventsJson
+    | Some(hook) =>
+      let published: EventPublish_Callback.publishedEvent = {
+        componentName: name,
+        entityId: name,
+        eventCount: eventsJson->Array.length,
+        eventsJson,
+        meta,
+      }
+      try {
+        let result = await hook(published)
+        result.eventsJson
+      } catch {
+      | err =>
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `DcbEventLog(${name}): beforePublishHook error: ${errMsg}`,
+        )->Effect.runSync
+        eventsJson
+      }
+    }
+
+    let _ = await finalEventsJson
+    ->Array.map(async json => {
       try await Ops.publishJson(name, meta, json) catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
@@ -29,6 +57,29 @@ module Make = (Ops: Ops): T => {
       }
     })
     ->Promise.all
+
+    // Run afterPublish hook — fire-and-forget, errors are caught and logged.
+    switch EventPublish_Callback.afterPublishHook.contents {
+    | None => ()
+    | Some(hook) =>
+      try {
+        let published: EventPublish_Callback.publishedEvent = {
+          componentName: name,
+          entityId: name,
+          eventCount: finalEventsJson->Array.length,
+          eventsJson: finalEventsJson,
+          meta,
+        }
+        let _ = await hook(published)
+      } catch {
+      | err =>
+        let errMsg =
+          err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        Effect.logError(
+          `DcbEventLog(${name}): afterPublishHook error: ${errMsg}`,
+        )->Effect.runSync
+      }
+    }
   }
 
   let append: DcbEventLog.append = async (

@@ -7,7 +7,9 @@ import * as InboundTranslationSlice_Builder$ReventlessCore from "@reventlessdev/
 function Make(Api) {
   return InboundTranslationSlice_Builder$ReventlessCore.Make({
     make: QueryDbStorage_DynamoDb$ReventlessAws.make
-  })(QueryDbResolvers_AppSync$ReventlessAws)(Api);
+  })({
+    make: QueryDbResolvers_AppSync$ReventlessAws.make
+  })(Api);
 }
 
 export {

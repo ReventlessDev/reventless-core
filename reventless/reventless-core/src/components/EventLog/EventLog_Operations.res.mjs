@@ -15,6 +15,7 @@ import * as Schedule from "effect/Schedule";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
+import * as EventPublish_Callback$ReventlessCore from "./EventPublish_Callback.res.mjs";
 
 function isTransient(msg) {
   if (msg.includes("ThrottlingException") || msg.includes("ProvisionedThroughputExceededException") || msg.includes("ServiceUnavailable") || msg.includes("RequestLimitExceeded")) {
@@ -51,9 +52,49 @@ function Make(Spec) {
         ]
       ].concat(Message$ReventlessCore.decomposeMeta(event.meta)));
     });
-    let publishToEventTopic = async (id, events$p) => {
+    let makePublishedEvent = (idStr, eventsJson, meta) => ({
+      componentName: Spec.name,
+      entityId: idStr,
+      eventCount: eventsJson.length,
+      eventsJson: eventsJson,
+      meta: meta
+    });
+    let runBeforePublishHook = async (idStr, eventsJson, meta) => {
+      let hook = EventPublish_Callback$ReventlessCore.beforePublishHook.contents;
+      if (hook === undefined) {
+        return;
+      }
+      try {
+        await hook(makePublishedEvent(idStr, eventsJson, meta));
+        return;
+      } catch (raw_err) {
+        let err = Primitive_exceptions.internalToException(raw_err);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+        return Effect$1.runSync(Effect$1.logError(`EventLog(` + Spec.name + `): beforePublishHook error: ` + errMsg));
+      }
+    };
+    let runAfterPublishHook = async (idStr, eventsJson, meta) => {
+      let hook = EventPublish_Callback$ReventlessCore.afterPublishHook.contents;
+      if (hook === undefined) {
+        return;
+      }
+      try {
+        await hook(makePublishedEvent(idStr, eventsJson, meta));
+        return;
+      } catch (raw_err) {
+        let err = Primitive_exceptions.internalToException(raw_err);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+        return Effect$1.runSync(Effect$1.logError(`EventLog(` + Spec.name + `): afterPublishHook error: ` + errMsg));
+      }
+    };
+    let publishToEventTopic = async (id, events$p, eventsJson) => {
+      let idStr = Spec.Id.toString(id);
+      let firstEvent = events$p[0];
+      let meta = firstEvent.meta;
+      await runBeforePublishHook(idStr, eventsJson, meta);
       try {
         await Ops.eventTopic.publish(events$p);
+        await runAfterPublishHook(idStr, eventsJson, meta);
         return {
           TAG: "Ok",
           _0: undefined
@@ -61,7 +102,7 @@ function Make(Spec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {
-          let msg = `EventLog.append(` + Spec.Id.toString(id) + `): EventTopic.publish Error: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "no error message given");
+          let msg = `EventLog.append(` + idStr + `): EventTopic.publish Error: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "no error message given");
           return {
             TAG: "Error",
             _0: msg
@@ -82,7 +123,7 @@ function Make(Spec) {
       }), storageRetrySchedule);
       let exit = await Effect$1.runPromiseExit(storageEffect);
       if (Exit$1.isSuccess(exit)) {
-        return await publishToEventTopic(id, events$p);
+        return await publishToEventTopic(id, events$p, eventsJson);
       }
       let failMsg = Exit.match(exit, cause => Stdlib_Option.getOr(Cause.failures(cause)[0], "storage error"), () => "storage error");
       if (failMsg.includes("conflict")) {

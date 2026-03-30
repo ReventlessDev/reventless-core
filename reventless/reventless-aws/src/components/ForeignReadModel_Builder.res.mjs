@@ -27,7 +27,9 @@ function Make(Spec) {
     asEffectHandler: prim => prim
   })({
     make: QueryDbStorage_DynamoDb$ReventlessAws.make
-  })(QueryDbResolvers_AppSync$ReventlessAws)({
+  })({
+    make: QueryDbResolvers_AppSync$ReventlessAws.make
+  })({
     make: EventCollectorChannel_SQS$ReventlessAws.make,
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
   })(EventCollectorRuntimeBuilder);

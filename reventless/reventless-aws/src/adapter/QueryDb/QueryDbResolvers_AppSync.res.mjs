@@ -12,15 +12,58 @@ import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aw
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
 
+let queryInterceptorConfig = {
+  contents: undefined
+};
+
+function interceptorRequestTemplate(readModelName) {
+  return `
+{
+  "version": "2017-02-28",
+  "operation": "Invoke",
+  "payload": {
+    "readModelName": "` + readModelName + `",
+    "arguments": $utils.toJson($context.arguments),
+    "identity": {
+      "userId": $util.toJson($context.identity.sub),
+      "username": $util.toJson($context.identity.username),
+      "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
+      "claims": $util.toJson($context.identity.claims),
+      "provider": "Cognito"
+    }
+  }
+}
+`;
+}
+
+let interceptorResponseTemplate = `
+#if($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+$util.toJson($ctx.result)
+`;
+
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
   let name$1 = Stdlib_String.capitalize(name);
   let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[name$1];
   let fieldNameForSingle = registryEntry !== undefined ? registryEntry.singleFieldName : AppSync_Resolver_Templates$PulumiAws.uncapitalize(name$1);
   let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
-  let resolverByIdSingle = includeIdParam ? AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldNameForSingle), api, dataSourceName, "Query", fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, opts) : AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldNameForSingle), api, dataSourceName, "Query", fieldNameForSingle, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.firstResult, opts);
-  let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, _sortField => AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldNameForSingle) + "ById", api, dataSourceName, "Query", fieldNameForSingle + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result, opts)) : undefined;
+  let makeQueryResolver = (resolverName, field, requestTemplate, responseTemplate) => {
+    let match = queryInterceptorConfig.contents;
+    if (match === undefined) {
+      return AppSync_Resolver$PulumiAws.makeUnitResolver(resolverName, api, dataSourceName, "Query", field, requestTemplate, responseTemplate, opts);
+    }
+    let interceptorFn = AppSync_Function$PulumiAws.make(resolverName + "Interceptor", api, match.dataSourceName, interceptorRequestTemplate(name$1), interceptorResponseTemplate, opts);
+    let queryFn = AppSync_Function$PulumiAws.make(resolverName + "Query", api, dataSourceName, requestTemplate, responseTemplate, opts);
+    return AppSync_Resolver$PulumiAws.makePipelineResolver(resolverName, api, "Query", field, "{}", AppSync_Resolver_Templates$PulumiAws.result, [
+      interceptorFn,
+      queryFn
+    ], opts);
+  };
+  let resolverByIdSingle = includeIdParam ? makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result) : makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.firstResult);
+  let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, _sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "ById", fieldNameForSingle + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result)) : undefined;
   let fieldNameForAll = registryEntry !== undefined ? registryEntry.listFieldName : name$1 + "s";
-  let resolverAll = AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldNameForAll), api, dataSourceName, "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, opts);
+  let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result);
   let resourcesMaker = allQueryDbs => {
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
@@ -128,6 +171,9 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
 }
 
 export {
+  queryInterceptorConfig,
+  interceptorRequestTemplate,
+  interceptorResponseTemplate,
   make,
 }
 /* Adapter-ReventlessCore Not a pure module */

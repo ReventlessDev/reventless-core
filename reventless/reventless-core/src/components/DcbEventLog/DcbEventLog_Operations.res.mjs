@@ -8,13 +8,36 @@ import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as EventPublish_Callback$ReventlessCore from "../EventLog/EventPublish_Callback.res.mjs";
 
 function Make(Ops) {
   let name = Ops.name;
   let publishToEventTopic = async rawEvents => {
-    await Promise.all(rawEvents.map(async rawEvent => {
-      let json = Message$ReventlessCore.combineMessage(rawEvent.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(rawEvent.data), {}));
-      let meta = Message$ReventlessCore.generateMeta(name, undefined, undefined);
+    let eventsJson = rawEvents.map(rawEvent => Message$ReventlessCore.combineMessage(rawEvent.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(rawEvent.data), {})));
+    let meta = Message$ReventlessCore.generateMeta(name, undefined, undefined);
+    let hook = EventPublish_Callback$ReventlessCore.beforePublishHook.contents;
+    let finalEventsJson;
+    if (hook !== undefined) {
+      let published_eventCount = eventsJson.length;
+      let published = {
+        componentName: name,
+        entityId: name,
+        eventCount: published_eventCount,
+        eventsJson: eventsJson,
+        meta: meta
+      };
+      try {
+        finalEventsJson = (await hook(published)).eventsJson;
+      } catch (raw_err) {
+        let err = Primitive_exceptions.internalToException(raw_err);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+        Effect.runSync(Effect.logError(`DcbEventLog(` + name + `): beforePublishHook error: ` + errMsg));
+        finalEventsJson = eventsJson;
+      }
+    } else {
+      finalEventsJson = eventsJson;
+    }
+    await Promise.all(finalEventsJson.map(async json => {
       try {
         return await Ops.publishJson(name, meta, json);
       } catch (raw_err) {
@@ -26,6 +49,26 @@ function Make(Ops) {
         throw err;
       }
     }));
+    let hook$1 = EventPublish_Callback$ReventlessCore.afterPublishHook.contents;
+    if (hook$1 === undefined) {
+      return;
+    }
+    try {
+      let published_eventCount$1 = finalEventsJson.length;
+      let published$1 = {
+        componentName: name,
+        entityId: name,
+        eventCount: published_eventCount$1,
+        eventsJson: finalEventsJson,
+        meta: meta
+      };
+      await hook$1(published$1);
+      return;
+    } catch (raw_err$1) {
+      let err$1 = Primitive_exceptions.internalToException(raw_err$1);
+      let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
+      return Effect.runSync(Effect.logError(`DcbEventLog(` + name + `): afterPublishHook error: ` + errMsg$1));
+    }
   };
   let append = async (rawEvents, condition) => {
     let result = await Ops.storage.append(rawEvents, condition);

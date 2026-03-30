@@ -4,6 +4,42 @@ open Reventless.ReadModel
 type api = Types.AppSync.api
 type role = Types.AppSync.role
 
+type interceptorConfig = {
+  dataSourceName: Pulumi.Input.t<string>,
+}
+
+/** Deploy-time config for the query interceptor. When set, all top-level Query
+    resolvers become pipeline resolvers with an interceptor Lambda function
+    preceding the DynamoDB query. Set this before calling `make`. */
+let queryInterceptorConfig: ref<option<interceptorConfig>> = ref(None)
+
+let interceptorRequestTemplate = readModelName =>
+  `
+{
+  "version": "2017-02-28",
+  "operation": "Invoke",
+  "payload": {
+    "readModelName": "${readModelName}",
+    "arguments": $utils.toJson($context.arguments),
+    "identity": {
+      "userId": $util.toJson($context.identity.sub),
+      "username": $util.toJson($context.identity.username),
+      "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
+      "claims": $util.toJson($context.identity.claims),
+      "provider": "Cognito"
+    }
+  }
+}
+`->Pulumi.Input.make
+
+let interceptorResponseTemplate =
+  `
+#if($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+$util.toJson($ctx.result)
+`->Pulumi.Input.make
+
 let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   ~name: string,
   ~api: api,
@@ -31,12 +67,58 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | None => true
   }
 
+  // Creates either a unit resolver (no interceptor) or a pipeline resolver
+  // (interceptor Lambda → DynamoDB query) depending on queryInterceptorConfig.
+  let makeQueryResolver = (
+    ~resolverName,
+    ~field,
+    ~requestTemplate,
+    ~responseTemplate,
+  ) =>
+    switch queryInterceptorConfig.contents {
+    | None =>
+      Resolver.makeUnitResolver(
+        ~name=resolverName,
+        ~api,
+        ~dataSourceName,
+        ~type_="Query"->Pulumi.Input.make,
+        ~field,
+        ~requestTemplate,
+        ~responseTemplate,
+        ~opts,
+      )
+    | Some({dataSourceName: interceptorDsName}) =>
+      let interceptorFn = Function.make(
+        ~name=resolverName ++ "Interceptor",
+        ~api,
+        ~dataSource=interceptorDsName,
+        ~requestMappingTemplate=interceptorRequestTemplate(name),
+        ~responseMappingTemplate=interceptorResponseTemplate,
+        ~opts,
+      )
+      let queryFn = Function.make(
+        ~name=resolverName ++ "Query",
+        ~api,
+        ~dataSource=dataSourceName,
+        ~requestMappingTemplate=requestTemplate,
+        ~responseMappingTemplate=responseTemplate,
+        ~opts,
+      )
+      Resolver.makePipelineResolver(
+        ~name=resolverName,
+        ~api,
+        ~type_="Query"->Pulumi.Input.make,
+        ~field,
+        ~requestTemplate="{}"->Pulumi.Input.make,
+        ~responseTemplate=Resolver.Templates.result,
+        ~functions=[interceptorFn, queryFn],
+        ~opts,
+      )
+    }
+
   let resolverByIdSingle = if includeIdParam {
-    Resolver.makeUnitResolver(
-      ~name=fieldNameForSingle->String.capitalize,
-      ~api,
-      ~dataSourceName,
-      ~type_="Query"->Pulumi.Input.make,
+    makeQueryResolver(
+      ~resolverName=fieldNameForSingle->String.capitalize,
       ~field=fieldNameForSingle->Pulumi.Input.make,
       ~requestTemplate=switch subIdField {
       | Some(sortField) => Resolver.Templates.queryByIdSort(sortField)
@@ -46,32 +128,23 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       | Some(_) => Resolver.Templates.firstResult
       | None => Resolver.Templates.result
       },
-      ~opts,
     )
   } else {
-    Resolver.makeUnitResolver(
-      ~name=fieldNameForSingle->String.capitalize,
-      ~api,
-      ~dataSourceName,
-      ~type_="Query"->Pulumi.Input.make,
+    makeQueryResolver(
+      ~resolverName=fieldNameForSingle->String.capitalize,
       ~field=fieldNameForSingle->Pulumi.Input.make,
       ~requestTemplate=Resolver.Templates.listAllItems,
       ~responseTemplate=Resolver.Templates.firstResult,
-      ~opts,
     )
   }
 
   let resolverByIdMultiple = if includeIdParam {
     subIdField->Option.map(_sortField =>
-      Resolver.makeUnitResolver(
-        ~name=fieldNameForSingle->String.capitalize ++ "ById",
-        ~api,
-        ~dataSourceName,
-        ~type_="Query"->Pulumi.Input.make,
+      makeQueryResolver(
+        ~resolverName=fieldNameForSingle->String.capitalize ++ "ById",
         ~field=(fieldNameForSingle ++ "ById")->Pulumi.Input.make,
         ~requestTemplate=Resolver.Templates.queryById,
         ~responseTemplate=Resolver.Templates.result,
-        ~opts,
       )
     )
   } else {
@@ -82,15 +155,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | Some({listFieldName}) => listFieldName
   | None => name ++ "s"
   }
-  let resolverAll = Resolver.makeUnitResolver(
-    ~name=fieldNameForAll->String.capitalize,
-    ~api,
-    ~dataSourceName,
-    ~type_="Query"->Pulumi.Input.make,
+  let resolverAll = makeQueryResolver(
+    ~resolverName=fieldNameForAll->String.capitalize,
     ~field=fieldNameForAll->Pulumi.Input.make,
     ~requestTemplate=Resolver.Templates.listAllItems,
     ~responseTemplate=Resolver.Templates.result,
-    ~opts,
   )
 
   let resourcesMaker: ReventlessCore.QueryDb.resolversResourcesMaker = allQueryDbs => {

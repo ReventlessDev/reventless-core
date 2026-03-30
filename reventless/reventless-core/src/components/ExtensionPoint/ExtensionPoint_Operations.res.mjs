@@ -8,6 +8,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../../util/ScheduleOps.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
+import * as EventPublish_Callback$ReventlessCore from "../EventLog/EventPublish_Callback.res.mjs";
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {
@@ -25,37 +26,76 @@ function Make(MappingSpec) {
         return [];
       }
     };
+    let publishWithHooks = async (id, meta, eventJson) => {
+      let hook = EventPublish_Callback$ReventlessCore.beforePublishHook.contents;
+      let finalEventJson;
+      if (hook !== undefined) {
+        let published_componentName = MappingSpec.name;
+        let published_eventsJson = [eventJson];
+        let published = {
+          componentName: published_componentName,
+          entityId: id,
+          eventCount: 1,
+          eventsJson: published_eventsJson,
+          meta: meta
+        };
+        try {
+          let result = await hook(published);
+          finalEventJson = result.eventsJson[0];
+        } catch (raw_err) {
+          let err = Primitive_exceptions.internalToException(raw_err);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+          Effect.runSync(Effect.logError(`ExtensionPoint(` + MappingSpec.name + `): beforePublishHook error: ` + errMsg));
+          finalEventJson = eventJson;
+        }
+      } else {
+        finalEventJson = eventJson;
+      }
+      try {
+        await Ops.publishToEventTopic(id, meta, finalEventJson);
+      } catch (raw_err$1) {
+        let err$1 = Primitive_exceptions.internalToException(raw_err$1);
+        let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
+        Effect.runSync(Effect.logError(`ExtensionPoint: Error on publishToEventTopic command: ` + errMsg$1));
+      }
+      let hook$1 = EventPublish_Callback$ReventlessCore.afterPublishHook.contents;
+      if (hook$1 === undefined) {
+        return;
+      }
+      try {
+        let published_componentName$1 = MappingSpec.name;
+        let published_eventsJson$1 = [finalEventJson];
+        let published$1 = {
+          componentName: published_componentName$1,
+          entityId: id,
+          eventCount: 1,
+          eventsJson: published_eventsJson$1,
+          meta: meta
+        };
+        await hook$1(published$1);
+        return;
+      } catch (raw_err$2) {
+        let err$2 = Primitive_exceptions.internalToException(raw_err$2);
+        let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$2), Stdlib_JsExn.message), "unknown");
+        return Effect.runSync(Effect.logError(`ExtensionPoint(` + MappingSpec.name + `): afterPublishHook error: ` + errMsg$2));
+      }
+    };
     let applyEventAction = async action => {
       switch (action.TAG) {
         case "AbstractPublishEvent" :
           let eventJson = action._2;
           Effect.runSync(Effect.logInfo(`ExtensionPoint_Operations.applyEventAction: ` + JSON.stringify(eventJson)));
-          try {
-            return await Ops.publishToEventTopic(action._0, action._1, eventJson);
-          } catch (raw_err) {
-            let err = Primitive_exceptions.internalToException(raw_err);
-            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-            return Effect.runSync(Effect.logError(`ExtensionPoint: Error on publishToEventTopic command: ` + errMsg));
-          }
+          return await publishWithHooks(action._0, action._1, eventJson);
         case "AbstractPublishEventAsync" :
-          let publishToEventTopic = async promise => {
-            let match = await promise;
-            try {
-              return await Ops.publishToEventTopic(match[0], match[1], match[2]);
-            } catch (raw_err) {
-              let err = Primitive_exceptions.internalToException(raw_err);
-              let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-              return Effect.runSync(Effect.logError(`ExtensionPoint: Error on publishToEventTopic command: ` + errMsg));
-            }
-          };
-          return await publishToEventTopic(action._0);
+          let match = await action._0;
+          return await publishWithHooks(match[0], match[1], match[2]);
         case "AbstractCall" :
           try {
             return await action._0();
-          } catch (raw_err$1) {
-            let err$1 = Primitive_exceptions.internalToException(raw_err$1);
-            let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
-            return Effect.runSync(Effect.logError(`ExtensionPoint: Error on calling handler: ` + errMsg$1));
+          } catch (raw_err) {
+            let err = Primitive_exceptions.internalToException(raw_err);
+            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
+            return Effect.runSync(Effect.logError(`ExtensionPoint: Error on calling handler: ` + errMsg));
           }
       }
     };
@@ -67,6 +107,7 @@ function Make(MappingSpec) {
     return {
       findOutgoingMapping: findOutgoingMapping,
       mapOutgoingEvent: mapOutgoingEvent,
+      publishWithHooks: publishWithHooks,
       applyEventAction: applyEventAction,
       outgoingJsonEventsHandler: outgoingJsonEventsHandler
     };
