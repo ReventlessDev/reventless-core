@@ -2,7 +2,6 @@
   "name": "@reventlessdev/online-shop-dcb-ordering",
   "version": "1.0.0-alpha.15",
   "description": "Online Shop example — Ordering bounded context (Customer & Order) using the DCB pattern",
-  "private": true,
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
@@ -40,5 +39,8 @@
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

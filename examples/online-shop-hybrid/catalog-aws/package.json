@@ -2,7 +2,6 @@
   "name": "@reventlessdev/online-shop-hybrid-catalog-aws",
   "version": "1.0.0-alpha.8",
   "description": "Online Shop Hybrid — Catalog plugin AWS deployment",
-  "private": true,
   "license": "MIT",
   "scripts": {
     "build": "rescript build"
@@ -16,5 +15,8 @@
   "devDependencies": {
     "rescript": "^12.2.0",
     "sury-ppx": "^11.0.0-alpha.2"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

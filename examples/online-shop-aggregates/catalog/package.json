@@ -2,7 +2,6 @@
   "name": "@reventlessdev/online-shop-aggregates-catalog",
   "version": "3.0.0-alpha.13",
   "description": "Online Shop example — Catalog plugin (Product & Category aggregates)",
-  "private": true,
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
@@ -40,5 +39,8 @@
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

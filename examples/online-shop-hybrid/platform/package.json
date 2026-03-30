@@ -2,7 +2,6 @@
   "name": "@reventlessdev/online-shop-hybrid-platform",
   "version": "1.0.0-alpha.8",
   "description": "Online Shop Hybrid example — full platform with Catalog + Ordering plugins (in-memory)",
-  "private": true,
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",
@@ -18,5 +17,8 @@
     "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.5",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

@@ -2,7 +2,6 @@
   "name": "@reventlessdev/online-shop-dcb",
   "version": "1.0.0-alpha.8",
   "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
-  "private": true,
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
@@ -27,5 +26,8 @@
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

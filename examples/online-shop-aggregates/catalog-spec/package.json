@@ -2,7 +2,6 @@
   "name": "@reventlessdev/online-shop-aggregates-catalog-spec",
   "version": "3.0.0-alpha.9",
   "description": "Online Shop example — Catalog plugin specification (extension point specs)",
-  "private": true,
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
@@ -18,5 +17,8 @@
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

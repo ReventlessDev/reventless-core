@@ -2,7 +2,6 @@
   "name": "@reventlessdev/online-shop-aggregates",
   "version": "1.0.0-alpha.7",
   "description": "Online Shop example — full aggregate platform with Catalog + Ordering plugins (in-memory)",
-  "private": true,
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",
@@ -16,5 +15,8 @@
     "@reventlessdev/online-shop-aggregates-ordering": "*",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }
