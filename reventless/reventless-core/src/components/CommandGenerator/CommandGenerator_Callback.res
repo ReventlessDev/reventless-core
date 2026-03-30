@@ -66,11 +66,14 @@ let makeGenerateCommand = (
       }
       (meta, commandJson, id)
     })
-    ->Effect.tap(((_, commandJson, _)) =>
-      Effect.logInfo(
-        "CommandGenerator: generated command: " ++ commandJson->JSON.stringify,
+    ->Effect.tap(((_, commandJson, id)) => {
+      let name = commandJson->Message.variantNameOfJson
+      EffectLogger.logInfo(
+        ~comp=`CommandGenerator(${serviceName})`,
+        ~detail=commandJson,
+        `generated command: ${name}(${id}${LogFormat.variantFields(commandJson)})`,
       )
-    )
+    })
     ->Effect.flatMap(((meta, commandJson, id)) => {
       switch commandJson->Message.decode(commandSchema) {
       | _ =>

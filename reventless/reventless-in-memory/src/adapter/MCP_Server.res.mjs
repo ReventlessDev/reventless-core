@@ -8,9 +8,12 @@ import * as McpSdk_Helpers from "@reventlessdev/rescript-mcp-sdk/src/McpSdk_Help
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as MCP_SchemaGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/MCP_SchemaGenerator.res.mjs";
 import * as IndexJs from "@modelcontextprotocol/sdk/server/index.js";
 import * as StreamableHttpJs from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let tools = {
   contents: {}
@@ -147,7 +150,7 @@ function createServerInstance(identity) {
     let toolName = req.params.name;
     let args = Stdlib_Option.getOr(req.params.arguments, null);
     if (debug) {
-      console.log(`[MCP] tools/call: ` + toolName);
+      log.info("MCP", undefined, `tools/call: ` + toolName);
     }
     let match = tools.contents[toolName];
     if (match !== undefined) {
@@ -187,19 +190,19 @@ function createServerInstance(identity) {
   McpSdk_Helpers.onReadResource(server, async req => {
     let uri = req.params.uri;
     if (debug) {
-      console.log(`[MCP] resources/read: ` + uri);
+      log.info("MCP", undefined, `resources/read: ` + uri);
     }
     let matchedResource = Object.values(resources.contents).find(param => uri.includes(param.definition.name));
     if (matchedResource !== undefined) {
       if (debug) {
-        console.log(`[MCP]   matched resource: ` + matchedResource.definition.name);
+        log.debug("MCP", undefined, `matched resource: ` + matchedResource.definition.name);
       }
       return await matchedResource.handler(uri);
     }
     let matchedTemplate = Object.values(resourceTemplates.contents).find(param => uri.includes(param.definition.name));
     if (matchedTemplate !== undefined) {
       if (debug) {
-        console.log(`[MCP]   matched template: ` + matchedTemplate.definition.name);
+        log.debug("MCP", undefined, `matched template: ` + matchedTemplate.definition.name);
       }
       return await matchedTemplate.handler(uri);
     } else {
@@ -260,25 +263,19 @@ function start(portOpt, param) {
     })();
   });
   httpServer.listen(port, () => {
-    console.log(`[MCP] Listening on http://localhost:` + port.toString() + `/mcp`);
+    log.info("MCP", undefined, `listening on http://localhost:` + port.toString() + `/mcp`);
     if (!debug) {
       return;
     }
     let toolNames = Object.keys(tools.contents);
     let resourceNames = Object.keys(resources.contents);
     let templateNames = Object.keys(resourceTemplates.contents);
-    console.log(`[MCP]   Tools (` + toolNames.length.toString() + `):`);
-    toolNames.forEach(t => {
-      console.log(`[MCP]     - ` + t);
-    });
-    console.log(`[MCP]   Resources (` + resourceNames.length.toString() + `):`);
-    resourceNames.forEach(r => {
-      console.log(`[MCP]     - ` + r);
-    });
-    console.log(`[MCP]   Resource Templates (` + templateNames.length.toString() + `):`);
-    templateNames.forEach(r => {
-      console.log(`[MCP]     - ` + r);
-    });
+    log.info("MCP", undefined, `tools (` + toolNames.length.toString() + `):`);
+    toolNames.forEach(t => log.info("MCP", undefined, `  - ` + t));
+    log.info("MCP", undefined, `resources (` + resourceNames.length.toString() + `):`);
+    resourceNames.forEach(r => log.info("MCP", undefined, `  - ` + r));
+    log.info("MCP", undefined, `resource templates (` + templateNames.length.toString() + `):`);
+    templateNames.forEach(r => log.info("MCP", undefined, `  - ` + r));
   });
   activeServer.contents = Primitive_option.some(httpServer);
 }
@@ -312,21 +309,18 @@ function diagnostics() {
 
 function printDiagnostics() {
   let d = diagnostics();
-  console.log("[MCP Diagnostics]");
-  console.log(`  Tools (` + d.toolCount.toString() + `):`);
-  d.registeredTools.forEach(t => {
-    console.log(`    - ` + t);
-  });
-  console.log(`  Resources (` + d.resourceCount.toString() + `):`);
-  d.registeredResources.forEach(r => {
-    console.log(`    - ` + r);
-  });
-  console.log(`  Server running: ` + (
+  log.info("MCP", undefined, "diagnostics");
+  log.info("MCP", undefined, `  tools (` + d.toolCount.toString() + `):`);
+  d.registeredTools.forEach(t => log.info("MCP", undefined, `    - ` + t));
+  log.info("MCP", undefined, `  resources (` + d.resourceCount.toString() + `):`);
+  d.registeredResources.forEach(r => log.info("MCP", undefined, `    - ` + r));
+  log.info("MCP", undefined, `  server running: ` + (
     d.serverRunning ? "yes" : "no"
   ));
 }
 
 export {
+  log,
   tools,
   resources,
   resourceTemplates,
@@ -346,4 +340,4 @@ export {
   diagnostics,
   printDiagnostics,
 }
-/* debug Not a pure module */
+/* log Not a pure module */

@@ -6,10 +6,12 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
   return Ops => {
-    let handleJsonCommands = stream => Effect.tap(Ops.commandsHandler(Stream.flatMap(Stream.mapEffect(stream, param => {
+    let comp = `CommandTopic(` + Spec.name + `)`;
+    let handleJsonCommands = stream => Ops.commandsHandler(Stream.flatMap(Stream.mapEffect(stream, param => {
       let reference = param.reference;
       let json = param.command;
       return Effect.sync(() => {
@@ -20,7 +22,7 @@ function Make(Spec) {
           let err = Primitive_exceptions.internalToException(raw_err);
           let commandStr = JSON.stringify(json);
           let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(Effect.logError(`Couldn't decode command ` + commandStr + `: ` + errMsg));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decode failed: ` + commandStr + ` err=` + errMsg));
           return;
         }
         return {
@@ -34,7 +36,7 @@ function Make(Spec) {
       } else {
         return Stream.empty;
       }
-    })), param => Effect.logInfo("finished CommandTopic.handleCommands"));
+    }));
     return {
       handleJsonCommands: handleJsonCommands
     };

@@ -3,27 +3,31 @@
 import * as Effect from "effect/Effect";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 
 function Make(Spec) {
   return Ops => {
+    let comp = `EventTopic(` + Spec.name + `)`;
     let publish = async events$p => {
       let eventCount = events$p.length;
       return await Util_Promise$ReventlessCore.toUnit(Promise.all(events$p.map(async (event$p, idx) => {
         let eventJson$p = Message$ReventlessCore.encodeEvent$p(event$p, Spec.Id.schema, Spec.eventSchema);
         let id = event$p.id;
         let idx$1 = idx + 1 | 0;
+        let idxStr = idx$1.toString() + `/` + eventCount.toString();
         let val;
         try {
           val = await Ops.publishJson(Spec.Id.toString(id), event$p.meta, eventJson$p);
         } catch (e) {
-          Effect.runSync(Effect.logError(`Couldn't publish event ` + idx$1.toString() + `/` + eventCount.toString() + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, eventJson$p, `publish failed ` + idxStr + `: ` + LogFormat$ReventlessCore.eventDetail(eventJson$p)));
           throw e;
         }
-        return Effect.runSync(Effect.logInfo(`Published event ` + idx$1.toString() + `/` + eventCount.toString() + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
+        return Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, eventJson$p, `published event ` + idxStr + `: ` + LogFormat$ReventlessCore.eventDetail(eventJson$p)));
       })));
     };
     return {
+      comp: comp,
       publish: publish
     };
   };

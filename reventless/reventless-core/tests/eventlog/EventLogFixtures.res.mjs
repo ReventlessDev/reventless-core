@@ -97,6 +97,7 @@ function make(param, param$1, param$2) {
 
 let MockEventTopic_Spec = {
   Id: Id$Reventless.StringPure,
+  name: "TestItem",
   eventSchema: eventSchema
 };
 

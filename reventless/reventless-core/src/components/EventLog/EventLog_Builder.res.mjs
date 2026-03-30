@@ -16,10 +16,7 @@ function Make(Spec) {
         parent: opts_parent
       };
       let storage = Storage.make(ComponentType$ReventlessCore.name(name, EventLog$ReventlessCore.componentType), opts);
-      let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
-        Id: Spec.Id,
-        eventSchema: Spec.eventSchema
-      })(EventTopicPublisher);
+      let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make(Spec)(EventTopicPublisher);
       let eventTopic = SpecificEventTopic.make(name, storage.resources, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));
       Component$ReventlessCore.setOperations(self, Pulumi.all([
         storage.operations,

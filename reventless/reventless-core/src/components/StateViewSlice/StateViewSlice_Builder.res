@@ -67,31 +67,62 @@ module Make = (
 
           let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics=allEventTopics, ~opts)
 
+          let comp = `StateViewSlice(${Spec.name})`
+
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream
-            ->Stream.mapEffect(json =>
-              Effect.sync(() => {
-                // Decode raw event JSON to get eventType + data, then decode via consumedEventSchema
+            ->Stream.runCollect
+            ->Effect.flatMap(events => {
+              let total = events->Array.length->Int.toString
+              events
+              ->Array.mapWithIndex((json, i) => {
                 let (eventType, dataDict) = json->Message.splitMessage
                 switch decoder.decode(~eventType, ~data=dataDict) {
                 | Some(event) =>
-                  try Spec.project(event)
-                  catch {
-                  | exn =>
-                    Console.log2("StateViewSlice: Failed to project event:", exn)
-                    []
+                  let actions =
+                    try Spec.project(event)
+                    catch {
+                    | exn =>
+                      let errMsg =
+                        exn
+                        ->JsExn.fromException
+                        ->Option.flatMap(JsExn.message)
+                        ->Option.getOr("unknown")
+                      EffectLogger.logError(
+                        ~comp,
+                        `project failed for ${eventType}: ${errMsg}`,
+                      )->Effect.runSync
+                      []
+                    }
+                  let idxStr = (i + 1)->Int.toString
+                  let actionsStr = LogFormat.actionNames(actions)
+                  let eventData = dataDict->JSON.Encode.object
+                  let fieldsStr = {
+                    let f =
+                      dataDict
+                      ->Dict.toArray
+                      ->Array.map(((k, v)) => `${k}:${v->JSON.stringify}`)
+                      ->Array.join(",")
+                    f == "" ? "" : `({${f}})`
                   }
-                | None => [] // Event type not consumed by this view
+                  EffectLogger.logInfo(
+                    ~comp,
+                    ~detail=eventData,
+                    `handling event ${idxStr}/${total}: ${eventType}${fieldsStr} ${actionsStr}`,
+                  )->Effect.runSync
+                  actions
+                | None => []
                 }
               })
-            )
-            ->Stream.flatMap(actions => Stream.fromIterable(actions))
-            ->Stream.runForEach(action =>
-              Effect.promise(() =>
-                Projection.handleAction(action, projectionOps, None)
+              ->Array.flat
+              ->Array.reduce(Effect.succeed(), (acc, action) =>
+                acc->Effect.flatMap(_ =>
+                  Effect.promise(() =>
+                    Projection.handleAction(action, projectionOps, None)
+                  )->Effect.map(_ => ())
+                )
               )
-              ->Effect.map(_ => ())
-            )
+            })
 
           let handler = SpecificEventCollector.makeHandler(
             ~eventCollector=ec,

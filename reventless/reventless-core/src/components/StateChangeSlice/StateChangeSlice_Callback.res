@@ -13,6 +13,8 @@ module type T = {
 module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Spec) => {
   module Spec = Spec
 
+  let comp = `StateChangeSlice(${Spec.name})`
+
   let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
   let queryEventTypes = decoder.eventTypes
 
@@ -35,6 +37,17 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
     dcbEventLog: DcbEventLog.operations,
     command': Message.command'<Reventless.Id.String.t, Spec.command>,
   ) => {
+    let cmdJson =
+      command'->Message.commandJsonOfCommand'(
+        ~idToString=Reventless.Id.String.toString,
+        ~commandSchema=Spec.commandSchema,
+      )
+    EffectLogger.logInfo(
+      ~comp,
+      ~detail=cmdJson.commandJson,
+      `handling command: ${LogFormat.cmdDetail(cmdJson)}`,
+    )->Effect.runSync
+
     let query = Reventless.DcbTag.buildQueryFromCommand(
       ~eventTypes=queryEventTypes,
       ~schema=Spec.commandSchema,
@@ -44,7 +57,10 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
     let rec attempt = (~retries) =>
       dcbEventLog.readStream(~query)
       ->Stream.map(raw => {
-        let decoded = decoder.decode(~eventType=raw.eventType, ~data=raw.data->JSON.Decode.object->Option.getOr(Dict.make()))
+        let decoded = decoder.decode(
+          ~eventType=raw.eventType,
+          ~data=raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
+        )
         decoded->Option.map(event => (event, raw.position))
       })
       ->Stream.flatMap(opt =>
@@ -53,49 +69,67 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
         | None => Stream.empty
         }
       )
-      ->Stream.runFold((Spec.initialState, None), ((dm, _pos), (event, position)) => (
+      ->Stream.runFold((Spec.initialState, None, 0), ((dm, _pos, n), (event, position)) => (
         Spec.evolve(dm, event),
         Some(position),
+        n + 1,
       ))
-      ->Effect.flatMap(((state, headPosition)) =>
+      ->Effect.tap(((_, _, n)) => EffectLogger.logInfo(~comp, `read: ${n->Int.toString} event(s)`))
+      ->Effect.flatMap(((state, headPosition, _)) =>
         switch Spec.decide(state, command'.command) {
         | Ok(newEvents) if newEvents->Array.length == 0 =>
-          Effect.logInfo(`StateChangeSlice(${Spec.name}): no events generated`)->Effect.map(_ => Ok(
-            "ok",
-          ))
+          EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
         | Ok(newEvents) =>
           let rawEvents = newEvents->Array.map(encodeProducedEvent)
+          let eventCount = rawEvents->Array.length->Int.toString
+          let eventDetails =
+            rawEvents
+            ->Array.map(e => {
+              let fields = switch e.data {
+              | Object(dict) =>
+                let f =
+                  dict
+                  ->Dict.toArray
+                  ->Array.map(((k, v)) => `${k}:${v->JSON.stringify}`)
+                  ->Array.join(",")
+                f == "" ? "" : `({${f}})`
+              | _ => ""
+              }
+              `${e.eventType}${fields}`
+            })
+            ->Array.join(", ")
+          let eventJsons = rawEvents->Array.map(e => e.data)->JSON.Encode.array
           let condition: Reventless.DcbTag.appendCondition = {
             query,
             after: ?headPosition,
           }
-          Effect.promise(() =>
-            dcbEventLog.append(rawEvents, ~condition)
-          )->Effect.flatMap(appendResult =>
+          EffectLogger.logInfo(~comp, ~detail=eventJsons, `produced ${eventCount} event(s): [${eventDetails}]`)
+          ->Effect.flatMap(_ => Effect.promise(() => dcbEventLog.append(rawEvents, ~condition)))
+          ->Effect.flatMap(appendResult =>
             switch appendResult {
             | Ok(_position) =>
-              Effect.logInfo(
-                `StateChangeSlice(${Spec.name}): ${newEvents
-                  ->Array.length
-                  ->Int.toString} event(s) appended`,
-              )->Effect.map(_ => Ok("ok"))
+              EffectLogger.logInfo(~comp, `append: ${eventCount} event(s)`)->Effect.map(
+                _ => Ok("ok"),
+              )
             | Error(_err) =>
               if retries > 0 {
-                Effect.logInfo(
-                  `StateChangeSlice(${Spec.name}): conflict, retrying`,
+                EffectLogger.logWarn(
+                  ~comp,
+                  `conflict, retrying ${(maxRetries - retries + 1)
+                      ->Int.toString}/${maxRetries->Int.toString}`,
                 )->Effect.flatMap(_ => attempt(~retries=retries - 1))
               } else {
-                Effect.logError(
-                  `StateChangeSlice(${Spec.name}): conflict, retries exhausted`,
-                )->Effect.map(_ => Error("conflict: retries exhausted"))
+                EffectLogger.logError(~comp, "conflict, retries exhausted")->Effect.map(
+                  _ => Error("conflict: retries exhausted"),
+                )
               }
             }
           )
         | Error(error) =>
           let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)->JSON.stringify
-          Effect.logError(
-            `StateChangeSlice(${Spec.name}): decide error: ${errorJson}`,
-          )->Effect.map(_ => Error(errorJson))
+          EffectLogger.logError(~comp, `decide error=${errorJson}`)->Effect.map(_ => Error(
+            errorJson,
+          ))
         }
       )
 
@@ -105,16 +139,14 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
   // CommandTopic handler — processes each command sequentially through handleSingleCommand,
   // returning Ok(reference) or Error(reference) per command.
   let handleCommands = (dcbEventLog, stream) =>
-    Effect.logInfo("starting StateChangeSlice.handleCommands")->Effect.zipRight(
-      stream
-      ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
-        handleSingleCommand(dcbEventLog, command)->Effect.map(result =>
-          switch result {
-          | Ok(_) => Ok(reference)
-          | Error(_) => Error(reference)
-          }
-        )
+    stream
+    ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
+      handleSingleCommand(dcbEventLog, command)->Effect.map(result =>
+        switch result {
+        | Ok(_) => Ok(reference)
+        | Error(_) => Error(reference)
+        }
       )
-      ->Stream.runCollect,
     )
+    ->Stream.runCollect
 }

@@ -3,15 +3,41 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Projection$ReventlessCore from "../../Projection.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
+  let comp = `StateViewSlice(` + Spec.name + `)`;
   let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
   let eventsHandler = async (queryDbOps, rawEvents) => {
-    let events = Stdlib_Array.filterMap(rawEvents, raw => decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {})));
-    let actions = events.flatMap(event => Spec.project(event));
-    return await Projection$ReventlessCore.handleActions(actions, queryDbOps, undefined);
+    let count = rawEvents.length.toString();
+    let idx = {
+      contents: 0
+    };
+    let allActions = [];
+    let events = Stdlib_Array.filterMap(rawEvents, raw => {
+      let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
+      if (decoded === undefined) {
+        return;
+      }
+      let event = Primitive_option.valFromOption(decoded);
+      idx.contents = idx.contents + 1 | 0;
+      let id = Stdlib_Option.getOr(Stdlib_Option.map(raw.tags[0], tag => tag.value), "?");
+      let actions = Spec.project(event);
+      let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + raw.eventType + `(` + id + `) ` + actionsStr));
+      allActions.push(...actions);
+      return Primitive_option.some(event);
+    });
+    let skipped = rawEvents.length - events.length | 0;
+    if (skipped > 0) {
+      Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `skipped=` + skipped.toString() + ` events (decode mismatch)`));
+    }
+    return await Projection$ReventlessCore.handleActions(allActions, queryDbOps, undefined);
   };
   return {
     Spec: Spec,
@@ -22,4 +48,4 @@ function Make(Spec) {
 export {
   Make,
 }
-/* DcbDecode-Reventless Not a pure module */
+/* effect/Effect Not a pure module */

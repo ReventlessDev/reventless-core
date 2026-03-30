@@ -8,6 +8,9 @@ aggregate's command schema.
 module type T = {
   module Id: Reventless.Id.T
 
+  /** Logical name of the aggregate or component owning this command topic. */
+  let name: string
+
   /** The command type published to this topic. Must carry `@schema` for serialization. */
   @schema
   type command

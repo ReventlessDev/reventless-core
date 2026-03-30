@@ -12,6 +12,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Task$ReventlessCore from "../Task/Task.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 import * as Task$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Task.res.mjs";
 import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
@@ -44,6 +45,8 @@ import * as InboundTranslationSlice$ReventlessInterop from "@reventlessdev/reven
 import * as OutboundTranslationSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/OutboundTranslationSlice.res.mjs";
 import * as PluginConnectExtension_Builder$ReventlessCore from "../../admin/PluginConnectExtension_Builder.res.mjs";
 
+let log = Logger$ReventlessCore.fromEnv();
+
 function getRemoteStorageResources(pluginName, queryDbName) {
   let resources = Stdlib_Option.map(Util_StackRefs$ReventlessCore.get(pluginName), stackRef => {
     let readModelsOutput = stackRef.getOutput("readModels");
@@ -65,17 +68,17 @@ function getRemoteStorageResources(pluginName, queryDbName) {
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
         let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "parse error");
-        console.log(`getRemoteStorageResources: failed to parse readModel ` + queryDbName + ` from ` + pluginName + `:`, msg);
+        log.error("Plugin_Helpers", undefined, `getRemoteStorageResources: failed to parse readModel ` + queryDbName + ` from ` + pluginName + `: ` + msg);
         return [];
       }
     });
   });
   if (resources !== undefined) {
     return resources;
-  } else {
-    console.log(`Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin ` + pluginName);
-    return Pulumi.output([]);
   }
+  let known = Object.keys(Util_StackRefs$ReventlessCore.stackRefs).join(",");
+  log.error("Plugin_Helpers", undefined, `getRemoteStorageResources: plugin ` + pluginName + ` not found (check platform.stack config) known=[` + known + `]`);
+  return Pulumi.output([]);
 }
 
 function getStorageResources(allQueryDbs, pluginName, queryDbName) {
@@ -459,6 +462,7 @@ let createExtensionPoints = Builder_Helpers$ReventlessCore.createExtensionPoints
 let createResolvers = Builder_Helpers$ReventlessCore.createResolvers;
 
 export {
+  log,
   getRemoteStorageResources,
   getStorageResources,
   getIncomingJsonEventsHandler,
@@ -500,4 +504,4 @@ export {
   exportPlatformOutputs,
   exportPluginOutputs,
 }
-/* noHooks Not a pure module */
+/* log Not a pure module */

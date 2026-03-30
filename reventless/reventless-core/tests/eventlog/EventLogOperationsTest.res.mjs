@@ -25,6 +25,7 @@ let TestOps_EventTopic = {
       toString: prim => prim,
       cmp: $$let$1.cmp
     },
+    name: $$let.name,
     eventSchema: $$let.eventSchema
   },
   make: EventLogFixtures$ReventlessCore.MockEventTopic.make

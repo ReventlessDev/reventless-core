@@ -3,6 +3,8 @@ module type Ops = {
 }
 
 module Make = (Spec: ReventlessInfra.EventTopic.T, Ops: Ops) => {
+  let comp = `EventTopic(${Spec.name})`
+
   let publish = async events' => {
     let eventCount = events'->Array.length
     await events'
@@ -12,19 +14,20 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Ops: Ops) => {
       let id = event'.id
       let idx = idx + 1
 
+      let idxStr = `${idx->Int.toString}/${eventCount->Int.toString}`
       switch await Ops.publishJson(id->Spec.Id.toString, event'.meta, eventJson') {
       | exception e =>
-        Effect.logError(
-          `Couldn't publish event ${idx->Int.toString}/${eventCount->Int.toString}: ${LogFormat.event'JsonToLogMessage(
-              eventJson',
-            )}`,
+        EffectLogger.logError(
+          ~comp,
+          ~detail=eventJson',
+          `publish failed ${idxStr}: ${LogFormat.eventDetail(eventJson')}`,
         )->Effect.runSync
         throw(e)
       | _ =>
-        Effect.logInfo(
-          `Published event ${idx->Int.toString}/${eventCount->Int.toString}: ${LogFormat.event'JsonToLogMessage(
-              eventJson',
-            )}`,
+        EffectLogger.logInfo(
+          ~comp,
+          ~detail=eventJson',
+          `published event ${idxStr}: ${LogFormat.eventDetail(eventJson')}`,
         )->Effect.runSync
       }
     })

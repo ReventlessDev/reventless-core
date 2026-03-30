@@ -7,6 +7,7 @@ import * as PubSub from "effect/PubSub";
 import * as Stream from "effect/Stream";
 import * as Deferred from "effect/Deferred";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 
 function Impl(C) {
   let capacity = C.capacity;
@@ -113,8 +114,7 @@ function Impl(C) {
     if (handler !== undefined) {
       return await handler(json, undefined);
     } else if (!C.silent) {
-      console.warn("InMemory_Bus: no command handler for channel: " + channelName);
-      return;
+      return Logger$ReventlessCore.emit("Warn", "Bus", undefined, `no command handler for channel: ` + channelName);
     } else {
       return;
     }
@@ -274,8 +274,7 @@ function Make($star) {
     if (handler !== undefined) {
       return await handler(json, undefined);
     } else {
-      console.warn("InMemory_Bus: no command handler for channel: " + channelName);
-      return;
+      return Logger$ReventlessCore.emit("Warn", "Bus", undefined, `no command handler for channel: ` + channelName);
     }
   };
   let registerCommandHandler = (channelName, handler) => {
@@ -587,8 +586,7 @@ function MakeBounded(C) {
     if (handler !== undefined) {
       return await handler(json, undefined);
     } else {
-      console.warn("InMemory_Bus: no command handler for channel: " + channelName);
-      return;
+      return Logger$ReventlessCore.emit("Warn", "Bus", undefined, `no command handler for channel: ` + channelName);
     }
   };
   let registerCommandHandler = (channelName, handler) => {

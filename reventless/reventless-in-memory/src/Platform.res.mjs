@@ -12,11 +12,13 @@ import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as MCP_Server$ReventlessInMemory from "./adapter/MCP_Server.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
@@ -55,6 +57,8 @@ import * as InboundTranslationSlice_Builder$ReventlessInMemory from "./component
 import * as OutboundTranslationSlice_Builder$ReventlessInMemory from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res.mjs";
 import * as InboundTranslationResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let adminGraphQLRef = {
   contents: undefined
@@ -412,8 +416,8 @@ function MakeWithConfig(Config) {
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
   let makePlatform = (version, plugins) => {
-    console.log(`[Platform] v` + version);
-    console.log(`[Platform] silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
+    log.info("Platform", undefined, `v` + version);
+    log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let scheduler = makeScheduler();
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
@@ -632,7 +636,7 @@ function MakeWithConfig(Config) {
     let updatePluginStatus = async (field, args, newStatus) => {
       let msgId = Message$ReventlessCore.uuid();
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      console.log(`[Admin] ` + field + `(` + id + `): received command (msgId: ` + msgId + `)`);
+      log.info("Admin", undefined, field + `(` + id + `): received command (msgId: ` + msgId + `)`);
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops !== undefined) {
         let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
@@ -645,7 +649,7 @@ function MakeWithConfig(Config) {
             exit = 1;
           } catch (raw_e) {
             let e = Primitive_exceptions.internalToException(raw_e);
-            console.log(`[Admin] ` + field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
+            log.error("Admin", undefined, field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
           }
           if (exit === 1) {
             let previousStatus = statusToString(state.status);
@@ -675,13 +679,13 @@ function MakeWithConfig(Config) {
             };
             let entry = S.reverseConvertToJsonOrThrow(updated, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
-            console.log(`[Admin] ` + field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
+            log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
           }
         } else {
-          console.log(`[Admin] ` + field + `(` + id + `): plugin not found`);
+          log.warn("Admin", undefined, field + `(` + id + `): plugin not found`);
         }
       } else {
-        console.log(`[Admin] ` + field + `(` + id + `): Plugin QueryDb not registered`);
+        log.warn("Admin", undefined, field + `(` + id + `): Plugin QueryDb not registered`);
       }
       return msgId;
     };
@@ -748,7 +752,7 @@ function MakeWithConfig(Config) {
     }
   };
   let deployPlatform = version => {
-    console.log(`[Platform:deployPlatform] v` + version);
+    log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
@@ -782,7 +786,7 @@ function MakeWithConfig(Config) {
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
   };
   let deployPlugin = (version, plugin) => {
-    console.log(`[Platform:deployPlugin] v` + version);
+    log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
@@ -1194,8 +1198,8 @@ function Make($star) {
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
   let makePlatform = (version, plugins) => {
-    console.log(`[Platform] v` + version);
-    console.log(`[Platform] silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
+    log.info("Platform", undefined, `v` + version);
+    log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let scheduler = makeScheduler();
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
@@ -1414,7 +1418,7 @@ function Make($star) {
     let updatePluginStatus = async (field, args, newStatus) => {
       let msgId = Message$ReventlessCore.uuid();
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      console.log(`[Admin] ` + field + `(` + id + `): received command (msgId: ` + msgId + `)`);
+      log.info("Admin", undefined, field + `(` + id + `): received command (msgId: ` + msgId + `)`);
       let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
       if (ops !== undefined) {
         let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
@@ -1427,7 +1431,7 @@ function Make($star) {
             exit = 1;
           } catch (raw_e) {
             let e = Primitive_exceptions.internalToException(raw_e);
-            console.log(`[Admin] ` + field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
+            log.error("Admin", undefined, field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
           }
           if (exit === 1) {
             let previousStatus = statusToString(state.status);
@@ -1457,13 +1461,13 @@ function Make($star) {
             };
             let entry = S.reverseConvertToJsonOrThrow(updated, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
-            console.log(`[Admin] ` + field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
+            log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
           }
         } else {
-          console.log(`[Admin] ` + field + `(` + id + `): plugin not found`);
+          log.warn("Admin", undefined, field + `(` + id + `): plugin not found`);
         }
       } else {
-        console.log(`[Admin] ` + field + `(` + id + `): Plugin QueryDb not registered`);
+        log.warn("Admin", undefined, field + `(` + id + `): Plugin QueryDb not registered`);
       }
       return msgId;
     };
@@ -1530,7 +1534,7 @@ function Make($star) {
     }
   };
   let deployPlatform = version => {
-    console.log(`[Platform:deployPlatform] v` + version);
+    log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
@@ -1564,7 +1568,7 @@ function Make($star) {
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
   };
   let deployPlugin = (version, plugin) => {
-    console.log(`[Platform:deployPlugin] v` + version);
+    log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
@@ -1634,9 +1638,10 @@ function Make($star) {
 }
 
 export {
+  log,
   adminGraphQLRef,
   getAdminGraphQL,
   MakeWithConfig,
   Make,
 }
-/* S Not a pure module */
+/* log Not a pure module */

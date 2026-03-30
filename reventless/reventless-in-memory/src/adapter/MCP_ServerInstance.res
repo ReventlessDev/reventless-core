@@ -2,6 +2,8 @@
 // Creates independent server instances with isolated registries.
 // Used by Platform to create separate core and plugin servers in split mode.
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type toolHandler = (JSON.t, Reventless.Identity.t) => promise<McpSdk.callToolResult>
 type resourceHandler = string => promise<McpSdk.readResourceResult>
 
@@ -186,7 +188,7 @@ let make = (~label: string="MCP"): t => {
       let toolName = req.params.name
       let args = req.params.arguments->Option.getOr(JSON.Encode.null)
       if debug {
-        Console.log(`[${label}] tools/call: ${toolName}`)
+        log.info(~comp=label, `tools/call: ${toolName}`)
       }
       switch tools.contents->Dict.get(toolName) {
       | Some({handler}) => await handler(args, identity)
@@ -223,7 +225,7 @@ let make = (~label: string="MCP"): t => {
     server->McpSdk_Helpers.onReadResource(async req => {
       let uri = req.params.uri
       if debug {
-        Console.log(`[${label}] resources/read: ${uri}`)
+        log.info(~comp=label, `resources/read: ${uri}`)
       }
       let matchedResource =
         resources.contents
@@ -232,7 +234,7 @@ let make = (~label: string="MCP"): t => {
       switch matchedResource {
       | Some({definition, handler}) =>
         if debug {
-          Console.log(`[${label}]   matched resource: ${definition.name}`)
+          log.debug(~comp=label, `matched resource: ${definition.name}`)
         }
         await handler(uri)
       | None =>
@@ -243,7 +245,7 @@ let make = (~label: string="MCP"): t => {
         switch matchedTemplate {
         | Some({definition, handler}) =>
           if debug {
-            Console.log(`[${label}]   matched template: ${definition.name}`)
+            log.debug(~comp=label, `matched template: ${definition.name}`)
           }
           await handler(uri)
         | None => {
@@ -300,17 +302,17 @@ let make = (~label: string="MCP"): t => {
     })
 
     httpServer->McpSdk.listen(port, () => {
-      Console.log(`[${label}] Listening on http://localhost:${port->Int.toString}/mcp`)
+      log.info(~comp=label, `listening on http://localhost:${port->Int.toString}/mcp`)
       if debug {
         let toolNames = tools.contents->Dict.keysToArray
         let resourceNames = resources.contents->Dict.keysToArray
         let templateNames = resourceTemplates.contents->Dict.keysToArray
-        Console.log(`[${label}]   Tools (${toolNames->Array.length->Int.toString}):`)
-        toolNames->Array.forEach(t => Console.log(`[${label}]     - ${t}`))
-        Console.log(`[${label}]   Resources (${resourceNames->Array.length->Int.toString}):`)
-        resourceNames->Array.forEach(r => Console.log(`[${label}]     - ${r}`))
-        Console.log(`[${label}]   Resource Templates (${templateNames->Array.length->Int.toString}):`)
-        templateNames->Array.forEach(r => Console.log(`[${label}]     - ${r}`))
+        log.info(~comp=label, `tools (${toolNames->Array.length->Int.toString}):`)
+        toolNames->Array.forEach(t => log.info(~comp=label, `  - ${t}`))
+        log.info(~comp=label, `resources (${resourceNames->Array.length->Int.toString}):`)
+        resourceNames->Array.forEach(r => log.info(~comp=label, `  - ${r}`))
+        log.info(~comp=label, `resource templates (${templateNames->Array.length->Int.toString}):`)
+        templateNames->Array.forEach(r => log.info(~comp=label, `  - ${r}`))
       }
     })
     activeServer.contents = Some(httpServer)
@@ -347,12 +349,12 @@ let make = (~label: string="MCP"): t => {
 
   let printDiagnostics = () => {
     let d = diagnostics()
-    Console.log(`[${label} Diagnostics]`)
-    Console.log(`  Tools (${d.toolCount->Int.toString}):`)
-    d.registeredTools->Array.forEach(t => Console.log(`    - ${t}`))
-    Console.log(`  Resources (${d.resourceCount->Int.toString}):`)
-    d.registeredResources->Array.forEach(r => Console.log(`    - ${r}`))
-    Console.log(`  Server running: ${d.serverRunning ? "yes" : "no"}`)
+    log.info(~comp=label, "diagnostics")
+    log.info(~comp=label, `  tools (${d.toolCount->Int.toString}):`)
+    d.registeredTools->Array.forEach(t => log.info(~comp=label, `    - ${t}`))
+    log.info(~comp=label, `  resources (${d.resourceCount->Int.toString}):`)
+    d.registeredResources->Array.forEach(r => log.info(~comp=label, `    - ${r}`))
+    log.info(~comp=label, `  server running: ${d.serverRunning ? "yes" : "no"}`)
   }
 
   {

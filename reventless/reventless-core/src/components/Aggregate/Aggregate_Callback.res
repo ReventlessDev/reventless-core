@@ -16,11 +16,17 @@ module Make = (
 ): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  @inline
-  let eventName: Message.event'<Spec.Id.t, Spec.event> => string = event' =>
-    event'.event
-    ->Message.encode(Spec.eventSchema)
-    ->Message.variantNameOfJson
+  let comp = `Aggregate(${Spec.name})`
+
+  let eventJson = (event': Message.event'<Spec.Id.t, Spec.event>): JSON.t =>
+    event'.event->Message.encode(Spec.eventSchema)
+
+  let eventDetail = (event': Message.event'<Spec.Id.t, Spec.event>): string => {
+    let json = event'->eventJson
+    let name = json->Message.variantNameOfJson
+    let id = event'.id->Spec.Id.toString
+    `${name}(${id}${LogFormat.variantFields(json)})`
+  }
 
   // Collects the incoming command stream into groups keyed by aggregate ID.
   // Returns Effect.t<array<(Id.t, array<topicItem>)>>.
@@ -51,23 +57,18 @@ module Make = (
   let processCommand = (acc, command': Message.command'<Spec.Id.t, Spec.command>) =>
     switch acc {
     | Ok((state, events)) =>
-      let runBehavior = () =>
+      let decide = () =>
         switch Behavior.decide(state, command'.command) {
         | Ok(generatedEvents) =>
           let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
-          Ok((
-            newState,
-            Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-          ))
+          Ok((newState, Array.concat(events, [(generatedEvents, command'->updateMeta)])))
         | Error(error) =>
           let errorJson = error->Message.encode(Spec.errorSchema)->JSON.stringify
           let id = command'.id->Spec.Id.toString
-          Effect.logError(
-            `Behavior error ${errorJson} in ${Spec.name}(${id})`,
-          )->Effect.runSync
+          EffectLogger.logError(~comp, `decide error: ${errorJson} id=${id}`)->Effect.runSync
           Ok((state, events))
         }
-      Effect.succeed(runBehavior())
+      Effect.succeed(decide())
     | Error(_) as error => Effect.succeed(error)
     }
 
@@ -85,10 +86,12 @@ module Make = (
       ->Array.map(({reference, command}) => (reference, command))
       ->Array.unzip
 
+    let idStr = id->Spec.Id.toString
+
     Ops.eventLog.replayStream(id)
     ->Stream.runFold((Behavior.initialState, 0), ((st, n), ev) => (Behavior.evolve(st, ev), n + 1))
-    ->Effect.tap(_ =>
-      Effect.logInfo(`finished eventLogReplayStream for id ${id->Spec.Id.toString}`)
+    ->Effect.tap(((_, n)) =>
+      EffectLogger.logInfo(~comp, `replay: id=${idStr}, ${n->Int.toString} event(s)`)
     )
     ->Effect.flatMap(((initialState, sequenceNr)) => {
       commands'
@@ -99,42 +102,45 @@ module Make = (
         let events = switch result {
         | Ok((_, generatedEventsWithMeta)) =>
           generatedEventsWithMeta
-          ->Array.map(((events, meta)) =>
-            events->Array.map(event => {Message.id, meta, event})
-          )
+          ->Array.map(((events, meta)) => events->Array.map(event => {Message.id, meta, event}))
           ->Array.flat
         | Error(error) => JsError.throwWithMessage(error)
         }
         switch events {
         | [] =>
-          Effect.logInfo(
-            `handleCommands(${id->Spec.Id.toString}): no Event generated`,
-          )->Effect.map(_ => Ok(references->Array.map(reference => Ok(reference))))
+          EffectLogger.logInfo(~comp, `no events produced: id=${idStr}`)->Effect.map(
+            _ => Ok(references->Array.map(reference => Ok(reference))),
+          )
         | generatedEvents' =>
           let eventCount = generatedEvents'->Array.length->Int.toString
-          let eventNames =
-            generatedEvents'->Array.map(event' => event'->eventName)->Array.join(", ")
-          Effect.logInfo(
-            `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated: ${eventNames}`,
+          let eventDetails =
+            generatedEvents'->Array.map(event' => event'->eventDetail)->Array.join(", ")
+          let eventJsons =
+            generatedEvents'->Array.map(event' => event'->eventJson)->JSON.Encode.array
+          EffectLogger.logInfo(
+            ~comp,
+            ~detail=eventJsons,
+            `produced ${eventCount} event(s): [${eventDetails}]`,
           )
-          ->Effect.flatMap(_ =>
-            Effect.promise(() => Ops.eventLog.append(sequenceNr, id, generatedEvents'))
+          ->Effect.flatMap(
+            _ => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, generatedEvents')),
           )
-          ->Effect.flatMap(appendResult =>
-            switch appendResult {
-            | Ok(_) =>
-              Effect.logInfo(
-                `finished eventLogAppend for id ${id->Spec.Id.toString}`,
-              )->Effect.map(_ => Ok(references->Array.map(reference => Ok(reference))))
-            | Error(msg) if msg->String.includes("conflict") =>
-              Effect.logWarning(
-                `conflict detected for id ${id->Spec.Id.toString}, will retry`,
-              )->Effect.map(_ => Error("conflict"))
-            | Error(_) =>
-              Effect.logError(
-                `failed eventLogAppend for id ${id->Spec.Id.toString}`,
-              )->Effect.map(_ => Ok(references->Array.map(reference => Error(reference))))
-            }
+          ->Effect.flatMap(
+            appendResult =>
+              switch appendResult {
+              | Ok(_) =>
+                EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(
+                  _ => Ok(references->Array.map(reference => Ok(reference))),
+                )
+              | Error(msg) if msg->String.includes("conflict") =>
+                EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
+                  _ => Error("conflict"),
+                )
+              | Error(_) =>
+                EffectLogger.logError(~comp, `append failed: id=${idStr}`)->Effect.map(
+                  _ => Ok(references->Array.map(reference => Error(reference))),
+                )
+              },
           )
         }
       })
@@ -154,47 +160,52 @@ module Make = (
   > = stream =>
     stream
     ->groupTopicItemsByIdStream
-    ->Effect.tap(_ => Effect.logInfo("starting Aggregate.execCommands"))
-    ->Effect.tap(_ => {
-      // Log handled commands per group — not inside retry loop since commands don't change
-      Effect.succeed()
-    })
     ->Effect.flatMap(groups =>
       Effect.all(
         groups->Array.map(((id, topicItemsForId)) => {
+          let idStr = id->Spec.Id.toString
           // Log commands once (outside retry loop)
-          topicItemsForId
-          ->Array.map(
-            ({command}) =>
-              command->Message.commandJsonOfCommand'(
-                ~idToString=Spec.Id.toString,
-                ~commandSchema=Spec.commandSchema,
-              ),
+          let cmdJsons =
+            topicItemsForId->Array.map(
+              ({command}) =>
+                command->Message.commandJsonOfCommand'(
+                  ~idToString=Spec.Id.toString,
+                  ~commandSchema=Spec.commandSchema,
+                ),
+            )
+          let count = cmdJsons->Array.length->Int.toString
+          cmdJsons->Array.forEachWithIndex(
+            (cmdJson, idx) => {
+              let idxStr = (idx + 1)->Int.toString
+              EffectLogger.logInfo(
+                ~comp,
+                ~detail=cmdJson.commandJson,
+                `handling command ${idxStr}/${count}: ${LogFormat.cmdDetail(cmdJson)}`,
+              )->Effect.runSync
+            },
           )
-          ->LogFormat.commandJsonsToLogMessages
-          ->Array.forEach(msg => Effect.logInfo("Handling command: " ++ msg)->Effect.runSync)
 
           // Extract references once for the exhaustion branch
-          let references =
-            topicItemsForId->Array.map(item => item.reference)
+          let references = topicItemsForId->Array.map(item => item.reference)
 
           // Retry loop for conflict resolution
           let rec attempt = retryCount =>
-            replayProcessAppend(id, topicItemsForId)
-            ->Effect.flatMap(result =>
-              switch result {
-              | Ok(refs) => Effect.succeed(refs)
-              | Error(_) if retryCount < maxConflictRetries =>
-                Effect.logWarning(
-                  `Aggregate(${id->Spec.Id.toString}): conflict retry ${(retryCount + 1)->Int.toString}/${maxConflictRetries->Int.toString}`,
-                )
-                ->Effect.flatMap(_ => attempt(retryCount + 1))
-              | Error(_) =>
-                Effect.logError(
-                  `Aggregate(${id->Spec.Id.toString}): max conflict retries exhausted`,
-                )
-                ->Effect.map(_ => references->Array.map(reference => Error(reference)))
-              }
+            replayProcessAppend(id, topicItemsForId)->Effect.flatMap(
+              result =>
+                switch result {
+                | Ok(refs) => Effect.succeed(refs)
+                | Error(_) if retryCount < maxConflictRetries =>
+                  EffectLogger.logWarn(
+                    ~comp,
+                    `conflict retry id=${idStr} ${(retryCount + 1)
+                        ->Int.toString}/${maxConflictRetries->Int.toString}`,
+                  )->Effect.flatMap(_ => attempt(retryCount + 1))
+                | Error(_) =>
+                  EffectLogger.logError(
+                    ~comp,
+                    `max conflict retries exhausted id=${idStr}`,
+                  )->Effect.map(_ => references->Array.map(reference => Error(reference)))
+                },
             )
           attempt(0)
         }),

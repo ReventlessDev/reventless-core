@@ -3,18 +3,26 @@
 import * as Effect from "effect/Effect";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
   return Ops => {
+    let comp = `CommandTopic(` + Spec.name + `)`;
     let publishJsons = async cmdJsons => {
-      let val;
+      let count = cmdJsons.length.toString();
+      cmdJsons.forEach((cmdJson, idx) => {
+        let idxStr = (idx + 1 | 0).toString();
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `publishing command ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
+      });
       try {
-        val = await Ops.publishJsons(cmdJsons);
-      } catch (e) {
-        LogFormat$ReventlessCore.commandJsonsToLogMessages(cmdJsons).forEach(msg => Effect.runSync(Effect.logError("Couldn't publish commands: " + msg)));
-        throw e;
+        return await Ops.publishJsons(cmdJsons);
+      } catch (exn) {
+        cmdJsons.forEach((cmdJson, idx) => {
+          let idxStr = (idx + 1 | 0).toString();
+          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, cmdJson.commandJson, `publish failed ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
+        });
+        throw exn;
       }
-      LogFormat$ReventlessCore.commandJsonsToLogMessages(cmdJsons).forEach(msg => Effect.runSync(Effect.logInfo("Published commands: " + msg)));
     };
     let publish = command$p => {
       let commandJson_id = Spec.Id.toString(command$p.id);
@@ -28,6 +36,7 @@ function Make(Spec) {
       return Ops.publishJsons([commandJson]);
     };
     return {
+      comp: comp,
       publishJsons: publishJsons,
       publish: publish
     };

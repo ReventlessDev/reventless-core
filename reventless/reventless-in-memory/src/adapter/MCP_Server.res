@@ -5,6 +5,8 @@
 // Uses the low-level MCP Server class to register tools and resources with
 // JSON Schema input schemas derived from sury schemas (no Zod dependency).
 
+let log = ReventlessCore.Logger.fromEnv()
+
 // ─── Registry ──────────────────────────────────────────────────────────────
 
 type toolHandler = (JSON.t, Reventless.Identity.t) => promise<McpSdk.callToolResult>
@@ -171,7 +173,7 @@ let createServerInstance = (identity: Reventless.Identity.t) => {
     let toolName = req.params.name
     let args = req.params.arguments->Option.getOr(JSON.Encode.null)
     if debug {
-      Console.log(`[MCP] tools/call: ${toolName}`)
+      log.info(~comp="MCP", `tools/call: ${toolName}`)
     }
     switch tools.contents->Dict.get(toolName) {
     | Some({handler}) => await handler(args, identity)
@@ -208,7 +210,7 @@ let createServerInstance = (identity: Reventless.Identity.t) => {
   server->McpSdk_Helpers.onReadResource(async req => {
     let uri = req.params.uri
     if debug {
-      Console.log(`[MCP] resources/read: ${uri}`)
+      log.info(~comp="MCP", `resources/read: ${uri}`)
     }
     // Search both regular resources and resource templates
     let matchedResource =
@@ -218,7 +220,7 @@ let createServerInstance = (identity: Reventless.Identity.t) => {
     switch matchedResource {
     | Some({definition, handler}) =>
       if debug {
-        Console.log(`[MCP]   matched resource: ${definition.name}`)
+        log.debug(~comp="MCP", `matched resource: ${definition.name}`)
       }
       await handler(uri)
     | None =>
@@ -229,7 +231,7 @@ let createServerInstance = (identity: Reventless.Identity.t) => {
       switch matchedTemplate {
       | Some({definition, handler}) =>
         if debug {
-          Console.log(`[MCP]   matched template: ${definition.name}`)
+          log.debug(~comp="MCP", `matched template: ${definition.name}`)
         }
         await handler(uri)
       | None => {
@@ -288,17 +290,17 @@ let start = (~port: int=3001, ()) => {
   })
 
   httpServer->McpSdk.listen(port, () => {
-    Console.log(`[MCP] Listening on http://localhost:${port->Int.toString}/mcp`)
+    log.info(~comp="MCP", `listening on http://localhost:${port->Int.toString}/mcp`)
     if debug {
       let toolNames = tools.contents->Dict.keysToArray
       let resourceNames = resources.contents->Dict.keysToArray
       let templateNames = resourceTemplates.contents->Dict.keysToArray
-      Console.log(`[MCP]   Tools (${toolNames->Array.length->Int.toString}):`)
-      toolNames->Array.forEach(t => Console.log(`[MCP]     - ${t}`))
-      Console.log(`[MCP]   Resources (${resourceNames->Array.length->Int.toString}):`)
-      resourceNames->Array.forEach(r => Console.log(`[MCP]     - ${r}`))
-      Console.log(`[MCP]   Resource Templates (${templateNames->Array.length->Int.toString}):`)
-      templateNames->Array.forEach(r => Console.log(`[MCP]     - ${r}`))
+      log.info(~comp="MCP", `tools (${toolNames->Array.length->Int.toString}):`)
+      toolNames->Array.forEach(t => log.info(~comp="MCP", `  - ${t}`))
+      log.info(~comp="MCP", `resources (${resourceNames->Array.length->Int.toString}):`)
+      resourceNames->Array.forEach(r => log.info(~comp="MCP", `  - ${r}`))
+      log.info(~comp="MCP", `resource templates (${templateNames->Array.length->Int.toString}):`)
+      templateNames->Array.forEach(r => log.info(~comp="MCP", `  - ${r}`))
     }
   })
   activeServer.contents = Some(httpServer)
@@ -345,10 +347,10 @@ let diagnostics = (): diagnostics => {
 
 let printDiagnostics = () => {
   let d = diagnostics()
-  Console.log("[MCP Diagnostics]")
-  Console.log(`  Tools (${d.toolCount->Int.toString}):`)
-  d.registeredTools->Array.forEach(t => Console.log(`    - ${t}`))
-  Console.log(`  Resources (${d.resourceCount->Int.toString}):`)
-  d.registeredResources->Array.forEach(r => Console.log(`    - ${r}`))
-  Console.log(`  Server running: ${d.serverRunning ? "yes" : "no"}`)
+  log.info(~comp="MCP", "diagnostics")
+  log.info(~comp="MCP", `  tools (${d.toolCount->Int.toString}):`)
+  d.registeredTools->Array.forEach(t => log.info(~comp="MCP", `    - ${t}`))
+  log.info(~comp="MCP", `  resources (${d.resourceCount->Int.toString}):`)
+  d.registeredResources->Array.forEach(r => log.info(~comp="MCP", `    - ${r}`))
+  log.info(~comp="MCP", `  server running: ${d.serverRunning ? "yes" : "no"}`)
 }

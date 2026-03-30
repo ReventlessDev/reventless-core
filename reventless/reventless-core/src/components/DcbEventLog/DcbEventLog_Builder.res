@@ -6,6 +6,7 @@ module Make = (
   // DcbEventLog uses a generic JSON event topic (no typed event schema needed)
   module EventTopicSpec = {
     module Id = Reventless.Id.String
+    let name = "DcbEventLog"
     @schema
     type event = JSON.t
   }

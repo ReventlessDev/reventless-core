@@ -24,6 +24,7 @@ module Make = (
     maxTimeout: int,
   }
 
+  let log = Logger.fromEnv()
   let grandParent = ref(None)
   let parentType = ref(None)
 
@@ -45,7 +46,7 @@ module Make = (
   let eventCollectorHandler = parentName =>
     async (event: RuntimeEnvironment.event, context) => {
       let correlationId = event->RuntimeEnvironment.extractCorrelationId
-      let desc = `eventCollectorHandler for ${parentName}:`
+      let comp = `EventCollectorRuntime(${parentName})`
       let _ = await event
       ->RuntimeEnvironment.groupBySource
       ->Dict.toArray
@@ -53,13 +54,14 @@ module Make = (
         switch eventCollectorHandlers->Dict.get(urn) {
         | Some(handlers) =>
           let count = handlers->Array.length->Int.toString
-          Effect.logInfo(
-            `----- ${desc} found ${count} handler(s) for EventCollector ${urn}`,
+          EffectLogger.logDebug(
+            ~comp,
+            `found ${count} handler(s) for ${urn}`,
           )->Effect.runSync
           let _ = await handlers
           ->Array.map(handler => runEffect(~correlationId?, handler(event, context)))
           ->Promise.all
-        | None => Effect.logWarning(`${desc} no handler found: ${urn}`)->Effect.runSync
+        | None => EffectLogger.logWarn(~comp, `no handler found: ${urn}`)->Effect.runSync
         }
       })
       ->Promise.all
@@ -75,7 +77,7 @@ module Make = (
           parts->Array.getUnsafe(parts->Array.length - 1)
         })
         ->Option.getOr("Unknown")
-      Console.log(`validateParent: parent ${parentName} type: ${pulumiType}`)
+      log.debug(~comp="EventCollectorRuntime", `validateParent: parent ${parentName} type: ${pulumiType}`)
       switch (grandParent.contents, parentType.contents) {
       | (None, None) =>
         parentType := Some(pulumiType)
@@ -145,10 +147,9 @@ module Make = (
         (registered, urns, handler)
         ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((_, urns, handler)) => {
-          Console.log(
-            `***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(
-                ", ",
-              )}`,
+          log.debug(
+            ~comp="EventCollectorRuntime",
+            `forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`,
           )
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])

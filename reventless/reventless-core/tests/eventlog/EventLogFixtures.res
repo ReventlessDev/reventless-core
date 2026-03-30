@@ -63,6 +63,7 @@ module MockEventTopic: EventTopic.T
   and type Spec.event = ItemEventLogSpec.event = {
   module Spec = {
     module Id = ItemEventLogSpec.Id
+    let name = "TestItem"
     @schema
     type event = ItemEventLogSpec.event
   }

@@ -7,6 +7,8 @@ import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_
 import * as CommandTopic_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Builder.res.mjs";
 import * as CommandTopicChannel_InMemory$ReventlessInMemory from "../../../src/adapter/CommandTopic/CommandTopicChannel_InMemory.res.mjs";
 
+let name = "TestCommandTopicItem";
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "CreateItem",
@@ -29,7 +31,7 @@ let moduleUrl = import.meta.url;
 
 let ItemSpec = {
   Id: undefined,
-  name: "TestCommandTopicItem",
+  name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
@@ -44,6 +46,7 @@ let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
 
 let CommandTopicMaker = CommandTopic_Builder$ReventlessCore.Make({
   Id: Id$Reventless.$$String,
+  name: name,
   commandSchema: commandSchema
 })({
   make: $$let.make

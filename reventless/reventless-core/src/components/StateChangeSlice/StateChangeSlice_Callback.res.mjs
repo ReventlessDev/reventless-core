@@ -3,14 +3,18 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
+  let comp = `StateChangeSlice(` + Spec.name + `)`;
   let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
   let queryEventTypes = decoder.eventTypes;
   let encodeProducedEvent = event => {
@@ -24,8 +28,10 @@ function Make(Spec) {
     };
   };
   let handleSingleCommand = (dcbEventLog, command$p) => {
+    let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
+    Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
     let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
-    let attempt = retries => Effect.flatMap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, undefined), raw => {
+    let attempt = retries => Effect.flatMap(Effect.tap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, undefined), raw => {
       let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
       return Stdlib_Option.map(decoded, event => [
         event,
@@ -39,36 +45,51 @@ function Make(Spec) {
       }
     }), [
       Spec.initialState,
-      undefined
+      undefined,
+      0
     ], (param, param$1) => [
       Spec.evolve(param[0], param$1[0]),
-      param$1[1]
-    ]), param => {
+      param$1[1],
+      param[2] + 1 | 0
+    ]), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, `read: ` + param[2].toString() + ` event(s)`)), param => {
       let newEvents = Spec.decide(param[0], command$p.command);
       if (newEvents.TAG === "Ok") {
         let newEvents$1 = newEvents._0;
         if (newEvents$1.length === 0) {
-          return Effect.map(Effect.logInfo(`StateChangeSlice(` + Spec.name + `): no events generated`), () => ({
+          return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, "no events produced"), () => ({
             TAG: "Ok",
             _0: "ok"
           }));
         }
         let rawEvents = newEvents$1.map(encodeProducedEvent);
+        let eventCount = rawEvents.length.toString();
+        let eventDetails = rawEvents.map(e => {
+          let dict = e.data;
+          let fields;
+          if (typeof dict === "object" && dict !== null && !Array.isArray(dict)) {
+            let f = Object.entries(dict).map(param => param[0] + `:` + JSON.stringify(param[1])).join(",");
+            fields = f === "" ? "" : `({` + f + `})`;
+          } else {
+            fields = "";
+          }
+          return e.eventType + fields;
+        }).join(", ");
+        let eventJsons = rawEvents.map(e => e.data);
         let condition_after = param[1];
         let condition = {
           query: query,
           after: condition_after
         };
-        return Effect.flatMap(Effect.promise(() => dcbEventLog.append(rawEvents, condition)), appendResult => {
+        return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => dcbEventLog.append(rawEvents, condition))), appendResult => {
           if (appendResult.TAG === "Ok") {
-            return Effect.map(Effect.logInfo(`StateChangeSlice(` + Spec.name + `): ` + newEvents$1.length.toString() + ` event(s) appended`), () => ({
+            return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: ` + eventCount + ` event(s)`), () => ({
               TAG: "Ok",
               _0: "ok"
             }));
           } else if (retries > 0) {
-            return Effect.flatMap(Effect.logInfo(`StateChangeSlice(` + Spec.name + `): conflict, retrying`), () => attempt(retries - 1 | 0));
+            return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict, retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retries - 1 | 0));
           } else {
-            return Effect.map(Effect.logError(`StateChangeSlice(` + Spec.name + `): conflict, retries exhausted`), () => ({
+            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, "conflict, retries exhausted"), () => ({
               TAG: "Error",
               _0: "conflict: retries exhausted"
             }));
@@ -76,14 +97,14 @@ function Make(Spec) {
         });
       }
       let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
-      return Effect.map(Effect.logError(`StateChangeSlice(` + Spec.name + `): decide error: ` + errorJson), () => ({
+      return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `decide error=` + errorJson), () => ({
         TAG: "Error",
         _0: errorJson
       }));
     });
     return attempt(3);
   };
-  let handleCommands = (dcbEventLog, stream) => Effect.zipRight(Effect.logInfo("starting StateChangeSlice.handleCommands"), Stream.runCollect(Stream$1.mapEffect(stream, param => {
+  let handleCommands = (dcbEventLog, stream) => Stream.runCollect(Stream$1.mapEffect(stream, param => {
     let reference = param.reference;
     return Effect.map(handleSingleCommand(dcbEventLog, param.command), result => {
       if (result.TAG === "Ok") {
@@ -98,7 +119,7 @@ function Make(Spec) {
         };
       }
     });
-  })));
+  }));
   return {
     Spec: Spec,
     handleCommands: handleCommands

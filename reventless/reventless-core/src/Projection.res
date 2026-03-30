@@ -4,6 +4,8 @@ open Reventless.ReadModel // FIXME: open locally
 
 module Set = Belt.Set.String
 
+let log = Logger.fromEnv()
+
 module Mapping = {
   module MakeGenericSource = (Mapping: Reventless.Projection.Mapping): (
     Mapper.GenericSource with type t = Mapping.sourceEvent
@@ -14,7 +16,7 @@ module Mapping = {
   }
 }
 
-let logAction = str => Console.log2("Projection.handleAction:", str)
+let logAction = str => log.debug(~comp="Projection", str)
 
 let applyChanges = async (
   action,
@@ -138,7 +140,7 @@ let handleAction = async (
     | Error(err) => Error(err)
     }
   | UpdateWithDefault(id, default, update) =>
-    Console.log(`UpdateWithDefault(${id}, loading ...`)
+    log.debug(~comp="Projection", `UpdateWithDefault(${id}, loading ...`)
     switch await loadAtMost(2, id) {
     | Ok(states) =>
       switch states {
@@ -266,37 +268,39 @@ let optimizeActions = actions => {
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
       | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
-        Console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create")
+        log.warn(~comp="Projection", `optimizing Create after UpdateWithDefault for id=${id1}, ignoring the Create`)
         previousActions->Array.concat([UpdateWithDefault(id1, defaultState1, f)])
       | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
-        Console.warn2(
-          "optimizing 2 sequential Create actions, therefore ignoring the second one:",
-          state2->JSON.stringifyAny,
+        log.warn(
+          ~comp="Projection",
+          `optimizing 2 sequential Create for id=${id1}, ignoring second: ${state2->JSON.stringifyAny->Option.getOr("?")}`,
         )
         previousActions->Array.concat([Create(id1, state1)])
       | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
-        Console.warn2("optimizing Delete after Create, therefore ignoring the Create:", state1)
+        log.warn(
+          ~comp="Projection",
+          `optimizing Delete after Create for id=${id1}, ignoring Create: ${state1->JSON.stringifyAny->Option.getOr("?")}`,
+        )
         previousActions->Array.concat([Delete(id1)])
       | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
-        Console.warn("optimizing Delete after Update, therefore ignoring the Update")
+        log.warn(~comp="Projection", `optimizing Delete after Update for id=${id1}, ignoring the Update`)
         previousActions->Array.concat([Delete(id1)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
-        Console.warn(
-          "optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
-        )
+        log.warn(~comp="Projection", `optimizing Delete after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`)
         previousActions->Array.concat([Delete(id1)])
       | (Delete(id1), Create(id2, state2)) if id1 == id2 =>
         previousActions->Array.concat([Set(id1, state2)])
       | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
-        Console.warn2("optimizing Set after Create, therefore ignoring the Create:", state1)
+        log.warn(
+          ~comp="Projection",
+          `optimizing Set after Create for id=${id1}, ignoring Create: ${state1->JSON.stringifyAny->Option.getOr("?")}`,
+        )
         previousActions->Array.concat([Set(id1, state2)])
       | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
-        Console.warn("optimizing Set after Update, therefore ignoring the Update")
+        log.warn(~comp="Projection", `optimizing Set after Update for id=${id1}, ignoring the Update`)
         previousActions->Array.concat([Set(id1, state2)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
-        Console.warn(
-          "optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
-        )
+        log.warn(~comp="Projection", `optimizing Set after UpdateWithDefault for id=${id1}, ignoring the UpdateWithDefault`)
         previousActions->Array.concat([Set(id1, state2)])
       // MULTI STATES
       /*
@@ -332,10 +336,9 @@ let optimizeActions = actions => {
  */
       | (lastAction, action) =>
         // any other action will be just appended
-        Console.warn3(
-          "actions not optimized: ",
-          lastAction->JSON.stringifyAny,
-          action->JSON.stringifyAny,
+        log.warn(
+          ~comp="Projection",
+          `actions not optimized: ${lastAction->JSON.stringifyAny->Option.getOr("?")} + ${action->JSON.stringifyAny->Option.getOr("?")}`,
         )
         optimizedActions->Array.concat([action])
       }
@@ -347,25 +350,24 @@ let handleActions = async (actions, operations, subIdConfig) => {
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions->Array.length
     if actionCount > 1 {
-      Console.log(
-        `Projection.handleActions: optimizing ${actionCount->Int.toString} actions for id=${id}`,
+      log.debug(
+        ~comp="Projection",
+        `handleActions: optimizing ${actionCount->Int.toString} actions for id=${id}`,
       )
     }
 
     let optimizedActions = optimizeActions(actions)
     let optimizedActionCount = optimizedActions->Array.length
-    Console.log(
-      `Projection.handleActions: handling ${optimizedActionCount->Int.toString} optimized actions for id=${id}`,
-    )
+    log.info(~comp="Projection", `handleActions: id=${id} actions=${optimizedActionCount->Int.toString}`)
 
     // FIXME: handle errors!
     await optimizedActions->Array.reduce(Ok()->Promise.resolve, async (p, action) => {
       switch await p {
       | Ok() => ()
       | Error(err) =>
-        Console.error(
-          "storage error: " ++
-          err->Message.encode(ReventlessInfra.QueryDb.storageErrorSchema)->JSON.stringify,
+        log.error(
+          ~comp="Projection",
+          `storage error: ${err->Message.encode(ReventlessInfra.QueryDb.storageErrorSchema)->JSON.stringify}`,
         )
       }
       await action->handleAction(operations, subIdConfig)

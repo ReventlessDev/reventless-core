@@ -22,6 +22,7 @@ function Make(Storage) {
         let storage = Storage.make(ComponentType$ReventlessCore.name(extra$1, DcbEventLog$ReventlessCore.componentType), indexes, partitionTag, opts);
         let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
           Id: Id$Reventless.$$String,
+          name: "DcbEventLog",
           eventSchema: S.json
         })(EventTopicPublisher);
         let eventTopic = SpecificEventTopic.make(extra$1, storage.resources, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));

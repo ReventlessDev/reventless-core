@@ -8,9 +8,12 @@ import * as McpSdk_Helpers from "@reventlessdev/rescript-mcp-sdk/src/McpSdk_Help
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as MCP_SchemaGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/MCP_SchemaGenerator.res.mjs";
 import * as IndexJs from "@modelcontextprotocol/sdk/server/index.js";
 import * as StreamableHttpJs from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let debug = Stdlib_Option.isSome(process.env["MCP_DEBUG"]);
 
@@ -138,7 +141,7 @@ function make(labelOpt) {
       let toolName = req.params.name;
       let args = Stdlib_Option.getOr(req.params.arguments, null);
       if (debug) {
-        console.log(`[` + label + `] tools/call: ` + toolName);
+        log.info(label, undefined, `tools/call: ` + toolName);
       }
       let match = tools.contents[toolName];
       if (match !== undefined) {
@@ -178,19 +181,19 @@ function make(labelOpt) {
     McpSdk_Helpers.onReadResource(server, async req => {
       let uri = req.params.uri;
       if (debug) {
-        console.log(`[` + label + `] resources/read: ` + uri);
+        log.info(label, undefined, `resources/read: ` + uri);
       }
       let matchedResource = Object.values(resources.contents).find(param => uri.includes(param.definition.name));
       if (matchedResource !== undefined) {
         if (debug) {
-          console.log(`[` + label + `]   matched resource: ` + matchedResource.definition.name);
+          log.debug(label, undefined, `matched resource: ` + matchedResource.definition.name);
         }
         return await matchedResource.handler(uri);
       }
       let matchedTemplate = Object.values(resourceTemplates.contents).find(param => uri.includes(param.definition.name));
       if (matchedTemplate !== undefined) {
         if (debug) {
-          console.log(`[` + label + `]   matched template: ` + matchedTemplate.definition.name);
+          log.debug(label, undefined, `matched template: ` + matchedTemplate.definition.name);
         }
         return await matchedTemplate.handler(uri);
       } else {
@@ -250,25 +253,19 @@ function make(labelOpt) {
       })();
     });
     httpServer.listen(port, () => {
-      console.log(`[` + label + `] Listening on http://localhost:` + port.toString() + `/mcp`);
+      log.info(label, undefined, `listening on http://localhost:` + port.toString() + `/mcp`);
       if (!debug) {
         return;
       }
       let toolNames = Object.keys(tools.contents);
       let resourceNames = Object.keys(resources.contents);
       let templateNames = Object.keys(resourceTemplates.contents);
-      console.log(`[` + label + `]   Tools (` + toolNames.length.toString() + `):`);
-      toolNames.forEach(t => {
-        console.log(`[` + label + `]     - ` + t);
-      });
-      console.log(`[` + label + `]   Resources (` + resourceNames.length.toString() + `):`);
-      resourceNames.forEach(r => {
-        console.log(`[` + label + `]     - ` + r);
-      });
-      console.log(`[` + label + `]   Resource Templates (` + templateNames.length.toString() + `):`);
-      templateNames.forEach(r => {
-        console.log(`[` + label + `]     - ` + r);
-      });
+      log.info(label, undefined, `tools (` + toolNames.length.toString() + `):`);
+      toolNames.forEach(t => log.info(label, undefined, `  - ` + t));
+      log.info(label, undefined, `resources (` + resourceNames.length.toString() + `):`);
+      resourceNames.forEach(r => log.info(label, undefined, `  - ` + r));
+      log.info(label, undefined, `resource templates (` + templateNames.length.toString() + `):`);
+      templateNames.forEach(r => log.info(label, undefined, `  - ` + r));
     });
     activeServer.contents = Primitive_option.some(httpServer);
   };
@@ -298,16 +295,12 @@ function make(labelOpt) {
   };
   let printDiagnostics = () => {
     let d = diagnostics();
-    console.log(`[` + label + ` Diagnostics]`);
-    console.log(`  Tools (` + d.toolCount.toString() + `):`);
-    d.registeredTools.forEach(t => {
-      console.log(`    - ` + t);
-    });
-    console.log(`  Resources (` + d.resourceCount.toString() + `):`);
-    d.registeredResources.forEach(r => {
-      console.log(`    - ` + r);
-    });
-    console.log(`  Server running: ` + (
+    log.info(label, undefined, "diagnostics");
+    log.info(label, undefined, `  tools (` + d.toolCount.toString() + `):`);
+    d.registeredTools.forEach(t => log.info(label, undefined, `    - ` + t));
+    log.info(label, undefined, `  resources (` + d.resourceCount.toString() + `):`);
+    d.registeredResources.forEach(r => log.info(label, undefined, `    - ` + r));
+    log.info(label, undefined, `  server running: ` + (
       d.serverRunning ? "yes" : "no"
     ));
   };
@@ -327,7 +320,8 @@ function make(labelOpt) {
 }
 
 export {
+  log,
   debug,
   make,
 }
-/* debug Not a pure module */
+/* log Not a pure module */

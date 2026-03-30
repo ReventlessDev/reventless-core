@@ -8,6 +8,8 @@ import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as EventTopic_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventTopic/EventTopic_Builder.res.mjs";
 import * as EventTopicPublisher_InMemory$ReventlessInMemory from "../../../src/adapter/EventTopic/EventTopicPublisher_InMemory.res.mjs";
 
+let name = "TestItemEventTopic";
+
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemPublished",
@@ -21,7 +23,7 @@ let eventSchema = S.union([
 
 let ItemEventTopicSpec = {
   Id: undefined,
-  name: "TestItemEventTopic",
+  name: name,
   eventSchema: eventSchema
 };
 
@@ -45,6 +47,7 @@ let EventTopicMaker = EventTopic_Builder$ReventlessCore.Make({
     toString: prim => prim,
     cmp: Id$Reventless.StringPure.cmp
   },
+  name: name,
   eventSchema: eventSchema
 })(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus));
 

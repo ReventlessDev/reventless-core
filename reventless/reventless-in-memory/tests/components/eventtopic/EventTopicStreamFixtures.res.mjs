@@ -7,6 +7,8 @@ import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_
 import * as EventTopic_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventTopic/EventTopic_Builder.res.mjs";
 import * as EventTopicPublisher_InMemory$ReventlessInMemory from "../../../src/adapter/EventTopic/EventTopicPublisher_InMemory.res.mjs";
 
+let name = "StreamEvtItem";
+
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemPublished",
@@ -20,7 +22,7 @@ let eventSchema = S.union([
 
 let ItemStreamSpec = {
   Id: undefined,
-  name: "StreamEvtItem",
+  name: name,
   eventSchema: eventSchema
 };
 
@@ -44,6 +46,7 @@ let StreamEvtTopicMaker = EventTopic_Builder$ReventlessCore.Make({
     toString: prim => prim,
     cmp: Id$Reventless.StringPure.cmp
   },
+  name: name,
   eventSchema: eventSchema
 })(EventTopicPublisher_InMemory$ReventlessInMemory.Make(StreamEvtBus));
 

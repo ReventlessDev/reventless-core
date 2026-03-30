@@ -115,6 +115,7 @@ module Make = (
         // Create shared CommandTopic for all StateChangeSlices
         module DcbCommandTopicSpec = {
           module Id = Reventless.Id.String
+          let name = childName
           @schema
           type command = JSON.t
         }

@@ -94,6 +94,7 @@ function Make(DcbEventLogStorage) {
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));
       let DcbCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
+        name: childName,
         commandSchema: S.json
       })(DcbCommandTopicChannel);
       let dcbCommandTopic = DcbCommandTopic.make(childName + `-dcb-command-topic`, opts);

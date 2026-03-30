@@ -5,11 +5,14 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Component$ReventlessCore from "../../components/Component.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as RequestContext$ReventlessCore from "../../RequestContext.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => {
+    let log = Logger$ReventlessCore.fromEnv();
     let grandParent = {
       contents: undefined
     };
@@ -26,16 +29,16 @@ function Make(RuntimeEnvironment) {
     let eventCollectorHandlers = {};
     let eventCollectorHandler = parentName => (async (event, context) => {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
-      let desc = `eventCollectorHandler for ` + parentName + `:`;
+      let comp = `EventCollectorRuntime(` + parentName + `)`;
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource(event)).map(async param => {
         let event = param[1];
         let urn = param[0];
         let handlers = eventCollectorHandlers[urn];
         if (handlers === undefined) {
-          return Effect.runSync(Effect.logWarning(desc + ` no handler found: ` + urn));
+          return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `no handler found: ` + urn));
         }
         let count = handlers.length.toString();
-        Effect.runSync(Effect.logInfo(`----- ` + desc + ` found ` + count + ` handler(s) for EventCollector ` + urn));
+        Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` handler(s) for ` + urn));
         await Promise.all(handlers.map(handler => {
           let effect = handler(event, context);
           return Effect.runPromise(Effect.provideService(effect, RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(Stdlib_Option.getOr(correlationId, "unknown"), undefined, undefined)));
@@ -49,7 +52,7 @@ function Make(RuntimeEnvironment) {
           let parts = fullType.split(":");
           return parts[parts.length - 1 | 0];
         }), "Unknown");
-        console.log(`validateParent: parent ` + parentName + ` type: ` + pulumiType);
+        log.debug("EventCollectorRuntime", undefined, `validateParent: parent ` + parentName + ` type: ` + pulumiType);
         let match = grandParent.contents;
         let match$1 = parentType.contents;
         if (match !== undefined) {
@@ -98,7 +101,7 @@ function Make(RuntimeEnvironment) {
       ]).apply(param => {
         let handler = param[2];
         let urns = param[1];
-        console.log(`***** forEventCollector ` + eventCollectorName + `: set handler for ` + urns.join(", "));
+        log.debug("EventCollectorRuntime", undefined, `forEventCollector ` + eventCollectorName + `: set handler for ` + urns.join(", "));
         return urns.map(urn => {
           let handlers = Stdlib_Option.getOr(eventCollectorHandlers[urn], []);
           eventCollectorHandlers[urn] = handlers.concat([RuntimeEnvironment.asEffectHandler(handler)]);

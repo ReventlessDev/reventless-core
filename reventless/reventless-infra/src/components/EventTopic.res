@@ -8,6 +8,9 @@ aggregate's event schema.
 module type T = {
   module Id: Reventless.Id.T
 
+  /** Logical name of the aggregate or component owning this event topic. */
+  let name: string
+
   /** The event type published to this topic. Must carry `@schema` for serialization. */
   @schema
   type event

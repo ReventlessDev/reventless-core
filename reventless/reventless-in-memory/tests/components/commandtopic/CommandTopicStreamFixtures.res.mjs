@@ -9,6 +9,8 @@ import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Builder.res.mjs";
 import * as CommandTopicChannel_InMemory$ReventlessInMemory from "../../../src/adapter/CommandTopic/CommandTopicChannel_InMemory.res.mjs";
 
+let name = "StreamCmdItem";
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "CreateItem",
@@ -31,7 +33,7 @@ let moduleUrl = import.meta.url;
 
 let ItemSpec = {
   Id: undefined,
-  name: "StreamCmdItem",
+  name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
@@ -46,6 +48,7 @@ let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(StreamBus);
 
 let StreamCmdTopicMaker = CommandTopic_Builder$ReventlessCore.Make({
   Id: Id$Reventless.$$String,
+  name: name,
   commandSchema: commandSchema
 })({
   make: $$let.make

@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 // Local-only intermediate type used by Plugin_Builder during construction.
 // All fields use Pulumi.Output.t-wrapped component output types because they
 // originate from freshly-built local components (not deserialized stack exports).
@@ -46,9 +48,9 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
                 ->JsExn.fromException
                 ->Option.flatMap(JsExn.message)
                 ->Option.getOr("parse error")
-              Console.log2(
-                `getRemoteStorageResources: failed to parse readModel ${queryDbName} from ${pluginName}:`,
-                msg,
+              log.error(
+                ~comp="Plugin_Helpers",
+                `getRemoteStorageResources: failed to parse readModel ${queryDbName} from ${pluginName}: ${msg}`,
               )
               []
             }
@@ -62,7 +64,11 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
   }) {
   | Some(resources) => resources
   | None =>
-    Console.log(`Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin ${pluginName}`)
+    let known = Util_StackRefs.stackRefs->Dict.keysToArray->Array.join(",")
+    log.error(
+      ~comp="Plugin_Helpers",
+      `getRemoteStorageResources: plugin ${pluginName} not found (check platform.stack config) known=[${known}]`,
+    )
     []->Pulumi.Output.make
   }
 

@@ -5,7 +5,10 @@ import * as Graphql from "graphql";
 import * as GraphqlYoga from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let mutationResolvers = {
   contents: {}
@@ -103,9 +106,7 @@ function start(portOpt, param) {
     maskedErrors: !debug
   });
   let server = Http.createServer(yoga);
-  server.listen(port, () => {
-    console.log(`[GraphQL] Listening on http://localhost:` + port.toString() + `/graphql`);
-  });
+  server.listen(port, () => log.info("GraphQL", undefined, `listening on http://localhost:` + port.toString() + `/graphql`));
   activeServer.contents = Primitive_option.some(server);
 }
 
@@ -149,9 +150,7 @@ function rebuildSchema(baseFragment, pluginFragments) {
     maskedErrors: !debug
   });
   let server = Http.createServer(yoga);
-  server.listen(4000, () => {
-    console.log("[GraphQL] Rebuilt schema - http://localhost:4000/graphql");
-  });
+  server.listen(4000, () => log.info("GraphQL", undefined, "rebuilt schema - http://localhost:4000/graphql"));
   activeServer.contents = Primitive_option.some(server);
 }
 
@@ -191,10 +190,11 @@ function getLiveSdl() {
 function printLiveSdl() {
   let sdl = getLiveSdl();
   if (sdl !== undefined) {
-    console.log("[GraphQL] Live SDL:");
+    log.info("GraphQL", undefined, "Live SDL:");
     console.log(sdl);
+    return;
   } else {
-    console.log("[GraphQL] No active schema");
+    return log.info("GraphQL", undefined, "no active schema");
   }
 }
 
@@ -256,9 +256,7 @@ function diagnostics() {
 }
 
 function printDiagnostics() {
-  let p = s => {
-    console.log(`[GraphQL] ` + s);
-  };
+  let p = s => log.info("GraphQL", undefined, s);
   let d = diagnostics();
   p("Diagnostics");
   p(`  Types (` + d.typeCount.toString() + `):`);
@@ -293,6 +291,7 @@ let YG;
 
 export {
   YG,
+  log,
   mutationResolvers,
   queryResolvers,
   mutationFields,
@@ -322,4 +321,4 @@ export {
   diagnostics,
   printDiagnostics,
 }
-/* debug Not a pure module */
+/* log Not a pure module */

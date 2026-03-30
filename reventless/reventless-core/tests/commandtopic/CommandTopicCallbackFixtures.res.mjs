@@ -80,6 +80,7 @@ let TestHandler = CommandTopic_Callback$ReventlessCore.Make({
     toString: prim => prim,
     cmp: Id$Reventless.StringPure.cmp
   },
+  name: name,
   commandSchema: commandSchema
 })({
   Spec: {
@@ -90,6 +91,7 @@ let TestHandler = CommandTopic_Callback$ReventlessCore.Make({
       toString: prim => prim,
       cmp: $$let$1.cmp
     },
+    name: $$let.name,
     commandSchema: $$let.commandSchema
   },
   commandsHandler: commandsHandler

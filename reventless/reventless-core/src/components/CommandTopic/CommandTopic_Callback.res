@@ -8,6 +8,8 @@ module type T = {
 }
 
 module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops with module Spec = Spec): T => {
+  let comp = `CommandTopic(${Spec.name})`
+
   let handleJsonCommands: CommandTopic.jsonCommandsHandler = stream =>
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command: json}) =>
@@ -18,7 +20,10 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops with module Spec =
           let commandStr = json->JSON.stringify
           let errMsg =
             err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-          Effect.logError(`Couldn't decode command ${commandStr}: ${errMsg}`)->Effect.runSync
+          EffectLogger.logError(
+            ~comp,
+            `decode failed: ${commandStr} err=${errMsg}`,
+          )->Effect.runSync
           None
         }
       )
@@ -30,5 +35,4 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops with module Spec =
       }
     )
     ->Ops.commandsHandler
-    ->Effect.tap(_ => Effect.logInfo("finished CommandTopic.handleCommands"))
 }

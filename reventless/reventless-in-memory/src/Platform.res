@@ -8,6 +8,12 @@
 // The platform starts a GraphQL server on port 4000 after all components are built.
 // Stop it with TestRunner.stopGraphQLServer() in afterAll.
 
+// Install compact Effect logger (strips timestamp=/level=/fiber= metadata from log output).
+// Self-installing at module import time — must be imported before any Effect.runPromise call.
+let _ = ReventlessCore.EffectLogger.install
+
+let log = ReventlessCore.Logger.fromEnv()
+
 // Module-level ref to hold the admin GraphQL server instance in split mode.
 // Populated by makePlatform when splitApi=true.
 let adminGraphQLRef: ref<option<GraphQL_ServerInstance.t>> = ref(None)
@@ -446,9 +452,10 @@ module MakeWithConfig = (
   let mcpSupported = McpSupported
 
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
-    Console.log(`[Platform] v${version}`)
-    Console.log(
-      `[Platform] silent: ${Config.silent->Bool.toString}, splitApi: ${Config.splitApi->Bool.toString}, cloner: ${Config.cloner->Bool.toString}`,
+    log.info(~comp="Platform", `v${version}`)
+    log.info(
+      ~comp="Platform",
+      `silent: ${Config.silent->Bool.toString}, splitApi: ${Config.splitApi->Bool.toString}, cloner: ${Config.cloner->Bool.toString}`,
     )
     // Create scheduler and admin components internally.
     let scheduler = makeScheduler()
@@ -685,7 +692,7 @@ module MakeWithConfig = (
         ->Option.flatMap(d => d->Dict.get("id"))
         ->Option.flatMap(JSON.Decode.string)
         ->Option.getOr("")
-      Console.log(`[Admin] ${field}(${id}): received command (msgId: ${msgId})`)
+      log.info(~comp="Admin", `${field}(${id}): received command (msgId: ${msgId})`)
       switch Bus.getQueryDb(pluginQueryDbName) {
       | Some(ops) =>
         let items = await ops.loadStream(id)
@@ -705,20 +712,19 @@ module MakeWithConfig = (
             let entry =
               updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
             let _ = await ops.save(id, entry, Any, None)
-            Console.log(
-              `[Admin] ${field}(${id}): ${previousStatus} → ${newStatus->statusToString}`,
-            )
+            log.info(~comp="Admin", `${field}(${id}): ${previousStatus} → ${newStatus->statusToString}`)
           | exception e =>
-            Console.log(
-              `[Admin] ${field}(${id}): failed to decode plugin state: ${e
+            log.error(
+              ~comp="Admin",
+              `${field}(${id}): failed to decode plugin state: ${e
                 ->JsExn.fromException
                 ->Option.flatMap(JsExn.message)
                 ->Option.getOr("unknown error")}`,
             )
           }
-        | None => Console.log(`[Admin] ${field}(${id}): plugin not found`)
+        | None => log.warn(~comp="Admin", `${field}(${id}): plugin not found`)
         }
-      | None => Console.log(`[Admin] ${field}(${id}): Plugin QueryDb not registered`)
+      | None => log.warn(~comp="Admin", `${field}(${id}): Plugin QueryDb not registered`)
       }
       msgId->JSON.Encode.string
     }
@@ -814,7 +820,7 @@ module MakeWithConfig = (
   }
 
   let deployPlatform = (~version) => {
-    Console.log(`[Platform:deployPlatform] v${version}`)
+    log.info(~comp="Platform", `deployPlatform v${version}`)
     let scheduler = makeScheduler()
     let _admin = Admin.construct(
       ~version,
@@ -868,7 +874,7 @@ module MakeWithConfig = (
   }
 
   let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {
-    Console.log(`[Platform:deployPlugin] v${version}`)
+    log.info(~comp="Platform", `deployPlugin v${version}`)
     // Each plugin creates its own scheduler (mirrors AWS behaviour).
     let scheduler = makeScheduler()
 

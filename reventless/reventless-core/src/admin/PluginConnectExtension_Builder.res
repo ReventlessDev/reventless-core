@@ -10,27 +10,23 @@ module type Spec = {
 }
 
 module Make = (Spec: Spec) => {
+  let log = Logger.fromEnv()
+
   let subscribe = async (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
     let eventTopicName = eventTopic->Spec.resourceNaming.urnName
     let eventCollectorName = eventCollector->Spec.resourceNaming.urnName
     let _sid = (extensionPointName ++ ("-" ++ pluginId))->Spec.resourceNaming.validateName
 
-    Console.log(
-      `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-    )
+    log.debug(~comp="Admin", `trying ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`)
     switch await Spec.runtimeOps.topicSubscription.subscribeChannelToTopic(
       ~channelId=eventCollector,
       ~topicId=eventTopic,
     ) {
     | _ =>
-      Console.log(
-        `Successful ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-      )
+      log.info(~comp="Admin", `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`)
     | exception JsExn(e) =>
-      Console.log2(
-        `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
-        e,
-      )
+      let msg = e->JsExn.message->Option.getOr("unknown")
+      log.error(~comp="Admin", `${action} failed: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}): ${msg}`)
     }
   }
 
@@ -39,22 +35,16 @@ module Make = (Spec: Spec) => {
     let eventCollectorName = eventCollector->Spec.resourceNaming.urnName
     let _sid = (extensionPointName ++ ("-" ++ pluginId))->Spec.resourceNaming.validateName
 
-    Console.log(
-      `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-    )
+    log.debug(~comp="Admin", `trying ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`)
     switch await Spec.runtimeOps.topicSubscription.unsubscribeChannelFromTopic(
       ~channelId=eventCollector,
       ~topicId=eventTopic,
     ) {
     | _ =>
-      Console.log(
-        `Success: ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-      )
+      log.info(~comp="Admin", `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`)
     | exception JsExn(e) =>
-      Console.log2(
-        `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
-        e,
-      )
+      let msg = e->JsExn.message->Option.getOr("unknown")
+      log.error(~comp="Admin", `${action} failed: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}): ${msg}`)
     }
   }
 

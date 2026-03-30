@@ -10,24 +10,39 @@ module Make = (
 ) => {
   module EventProjector = ProjectionMapper.Make(ReadModelSpec, Mappings)
 
+  let comp = `ReadModel(${ReadModelSpec.name})`
+
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream
-    ->Stream.mapEffect(json =>
-      Effect.sync(() => {
-        let sourceName = (json->Message.decode(Reventless.Message.contextSchema)).meta.service
-        (sourceName, json->EventProjector.map(~sourceName=Some(sourceName)))
+    ->Stream.runCollect
+    ->Effect.flatMap(events => {
+      let total = events->Array.length->Int.toString
+      events
+      ->Array.mapWithIndex((json, idx) => {
+        let context = json->Message.decode(Reventless.Message.contextSchema)
+        let sourceName = context.meta.service
+        let eventName = json->Message.eventNameOfEvent'Json
+        let (id, _, _) = json->Message.idMetaEventOfEvent'Json
+        let actions = json->EventProjector.map(~sourceName=Some(sourceName))
+        let actionsStr = LogFormat.actionNames(actions)
+        let idxStr = (idx + 1)->Int.toString
+        EffectLogger.logInfo(
+          ~comp,
+          ~detail=json,
+          `handling event ${idxStr}/${total} from ${sourceName}: ${LogFormat.eventDetail(
+              json,
+            )} actions:${actionsStr}`,
+        )->Effect.runSync
+        actions
       })
-      ->Effect.tap(((sourceName, _)) =>
-        Effect.logInfo(
-          `ReadModel ${ReadModelSpec.name}: handling event from ${sourceName}: ${json->JSON.stringify}`,
+      ->Array.flat
+      ->Array.reduce(Effect.succeed(), (acc, action) =>
+        acc->Effect.flatMap(
+          _ =>
+            Effect.promise(
+              () => Projection.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig),
+            )->Effect.map(_ => ()),
         )
       )
-      ->Effect.map(((_, actions)) => actions)
-    )
-    ->Stream.flatMap(actions => Stream.fromIterable(actions))
-    ->Stream.runForEach(action =>
-      Effect.promise(() =>
-        Projection.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig)
-      )->Effect.map(_ => ())
-    )
+    })
 }

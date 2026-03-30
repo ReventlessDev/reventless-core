@@ -4,6 +4,8 @@
 
 module YG = GraphqlYoga
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type resolverFn = YG.resolverFn
 
 @val external processEnv: dict<string> = "process.env"
@@ -133,7 +135,7 @@ ${mutations}
     })
     let server = YG.createServer(yoga)
     server->YG.listen(port, () =>
-      Console.log(`[${label}] Listening on http://localhost:${port->Int.toString}/graphql`)
+      log.info(~comp=label, `listening on http://localhost:${port->Int.toString}/graphql`)
     )
     activeServer.contents = Some(server)
   }
@@ -206,7 +208,7 @@ ${mutations}
   }
 
   let printDiagnostics = () => {
-    let p = s => Console.log(`[${label}] ${s}`)
+    let p = s => log.info(~comp=label, s)
     let d = diagnostics()
     p("Diagnostics")
     p(`  Types (${d.typeCount->Int.toString}):`)

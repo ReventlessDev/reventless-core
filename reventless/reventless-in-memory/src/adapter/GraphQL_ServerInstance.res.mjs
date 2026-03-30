@@ -4,7 +4,10 @@ import * as Http from "http";
 import * as GraphqlYoga from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let debug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
 
@@ -100,9 +103,7 @@ type Mutation {
       maskedErrors: !debug
     });
     let server = Http.createServer(yoga);
-    server.listen(port, () => {
-      console.log(`[` + label + `] Listening on http://localhost:` + port.toString() + `/graphql`);
-    });
+    server.listen(port, () => log.info(label, undefined, `listening on http://localhost:` + port.toString() + `/graphql`));
     activeServer.contents = Primitive_option.some(server);
   };
   let reset = () => {
@@ -168,9 +169,7 @@ type Mutation {
     };
   };
   let printDiagnostics = () => {
-    let p = s => {
-      console.log(`[` + label + `] ` + s);
-    };
+    let p = s => log.info(label, undefined, s);
     let d = diagnostics();
     p("Diagnostics");
     p(`  Types (` + d.typeCount.toString() + `):`);
@@ -217,8 +216,9 @@ let YG;
 
 export {
   YG,
+  log,
   debug,
   extractFieldName,
   make,
 }
-/* debug Not a pure module */
+/* log Not a pure module */

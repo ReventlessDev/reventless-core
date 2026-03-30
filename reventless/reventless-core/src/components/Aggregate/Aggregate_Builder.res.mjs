@@ -19,6 +19,7 @@ function Make(Spec) {
     let SpecificEventLog = EventLog_Builder$ReventlessCore.Make(Spec)(EventLogStorage)(EventTopicPublisher);
     let SpecificCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
       Id: Spec.Id,
+      name: Spec.name,
       commandSchema: Spec.commandSchema
     })(CommandTopicChannel);
     let SpecificCommandGenerator = CommandGenerator_Builder$ReventlessCore.Make(Spec)(CommandGeneratorResolvers);

@@ -5,6 +5,7 @@ module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel
     with type runtimeParts = RuntimeEnvironment.parts,
 ) => {
+  let log = Logger.fromEnv()
   type context = RuntimeEnvironment.context
   type runtimeParts = RuntimeEnvironment.parts
   module CommandTopicChannel = CommandTopicChannel
@@ -41,15 +42,19 @@ module Make = (
   let aggregateHandler = aggregateName =>
     async (event: RuntimeEnvironment.event, context) => {
       let correlationId = event->RuntimeEnvironment.extractCorrelationId
-      let desc = `aggregateHandler for ${aggregateName}:`
+      let comp = `AggregateRuntime(${aggregateName})`
       switch event->CommandGenerator.metaInfo {
       | Some(info) =>
         switch commandGeneratorHandlers->Dict.get(info) {
         | Some(handler) =>
-          Effect.logInfo(`----- ${desc} found handler for CommandGenerator ${info}`)->Effect.runSync
+          EffectLogger.logDebug(~comp, `found CommandGenerator handler for ${info}`)->Effect.runSync
           await runEffect(~correlationId?, handler(event->CommandGenerator.asPayload, context))
         | None =>
-          Effect.logWarning(`${desc} no handler found: ${info}`)->Effect.runSync
+          let available = commandGeneratorHandlers->Dict.keysToArray->Array.join(",")
+          EffectLogger.logWarn(
+            ~comp,
+            `no handler found: ${info} available=[${available}]`,
+          )->Effect.runSync
           ""
         }
       | _ =>
@@ -59,19 +64,29 @@ module Make = (
         ->Array.map(async ((urn, event)) => {
           switch commandTopicHandlers->Dict.get(urn) {
           | Some(handler) =>
-            Effect.logInfo(`----- ${desc} found handler for CommandTopic ${urn}`)->Effect.runSync
+            EffectLogger.logDebug(~comp, `found CommandTopic handler for ${urn}`)->Effect.runSync
             await runEffect(~correlationId?, handler(event, context))
           | None =>
             switch eventCollectorHandlers->Dict.get(urn) {
             | Some(handlers) =>
               let count = handlers->Array.length->Int.toString
-              Effect.logInfo(
-                `----- ${desc} found ${count} handler(s) for EventCollector ${urn}`,
+              EffectLogger.logDebug(
+                ~comp,
+                `found ${count} EventCollector handler(s) for ${urn}`,
               )->Effect.runSync
               let _ = await handlers
               ->Array.map(handler => runEffect(~correlationId?, handler(event, context)))
               ->Promise.all
-            | None => Effect.logWarning(`${desc} no handler found: ${urn}`)->Effect.runSync
+            | None =>
+              let available =
+                Array.concat(
+                  commandTopicHandlers->Dict.keysToArray,
+                  eventCollectorHandlers->Dict.keysToArray,
+                )->Array.join(",")
+              EffectLogger.logWarn(
+                ~comp,
+                `no handler found: ${urn} available=[${available}]`,
+              )->Effect.runSync
             }
           }
         })
@@ -144,10 +159,9 @@ module Make = (
         (infos, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
-          Console.log(
-            `***** forCommandGenerator ${commandGeneratorName}: set handler for ${infos->Array.join(
-                ", ",
-              )}`,
+          log.debug(
+            ~comp="AggregateRuntime",
+            `forCommandGenerator ${commandGeneratorName}: set handler for ${infos->Array.join(", ")}`,
           )
           infos->Array.map(info => commandGeneratorHandlers->Dict.set(info, handler))
         })
@@ -178,7 +192,10 @@ module Make = (
         (urn, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
-          Console.log(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
+          log.debug(
+            ~comp="AggregateRuntime",
+            `forCommandTopic ${commandTopicName}: set handler for ${urn}`,
+          )
           commandTopicHandlers->Dict.set(urn, handler->RuntimeEnvironment.asEffectHandler)
         })
     | None =>
@@ -217,10 +234,9 @@ module Make = (
         (urns, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urns, handler)) => {
-          Console.log(
-            `***** forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(
-                ", ",
-              )}`,
+          log.debug(
+            ~comp="AggregateRuntime",
+            `forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`,
           )
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])

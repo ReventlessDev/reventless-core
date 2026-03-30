@@ -7,6 +7,8 @@ import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 let commandInterceptorHook = {
   contents: undefined
@@ -42,7 +44,11 @@ function makeGenerateCommand(publishJsons, serviceName, commandSchema, component
         commandJson,
         id
       ];
-    }), param => Effect.logInfo("CommandGenerator: generated command: " + JSON.stringify(param[1]))), param => {
+    }), param => {
+      let commandJson = param[1];
+      let name = Message$ReventlessCore.variantNameOfJson(commandJson);
+      return EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, `generated command: ` + name + `(` + param[2] + LogFormat$ReventlessCore.variantFields(commandJson) + `)`);
+    }), param => {
       let id = param[2];
       let commandJson = param[1];
       let meta = param[0];

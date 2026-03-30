@@ -5,6 +5,8 @@
 
 module YG = GraphqlYoga
 
+let log = ReventlessCore.Logger.fromEnv()
+
 // -- Resolver type alias ---------------------------------------------------
 
 type resolverFn = YG.resolverFn
@@ -83,7 +85,7 @@ let start = (~port: int=4000, ()) => {
   let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": debug, "maskedErrors": !debug})
   let server = YG.createServer(yoga)
   server->YG.listen(port, () =>
-    Console.log(`[GraphQL] Listening on http://localhost:${port->Int.toString}/graphql`)
+    log.info(~comp="GraphQL", `listening on http://localhost:${port->Int.toString}/graphql`)
   )
   activeServer.contents = Some(server)
 }
@@ -127,7 +129,7 @@ let rebuildSchema = (
   let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": debug, "maskedErrors": !debug})
   let server = YG.createServer(yoga)
   server->YG.listen(4000, () =>
-    Console.log("[GraphQL] Rebuilt schema - http://localhost:4000/graphql")
+    log.info(~comp="GraphQL", "rebuilt schema - http://localhost:4000/graphql")
   )
   activeServer.contents = Some(server)
 }
@@ -163,9 +165,9 @@ let getLiveSdl = () => activeSchema.contents->Option.map(YG.printSchema)
 let printLiveSdl = () =>
   switch getLiveSdl() {
   | Some(sdl) =>
-    Console.log("[GraphQL] Live SDL:")
+    log.info(~comp="GraphQL", "Live SDL:")
     Console.log(sdl)
-  | None => Console.log("[GraphQL] No active schema")
+  | None => log.info(~comp="GraphQL", "no active schema")
   }
 
 type diagnostics = {
@@ -255,7 +257,7 @@ let diagnostics = (): diagnostics => {
 }
 
 let printDiagnostics = () => {
-  let p = s => Console.log(`[GraphQL] ${s}`)
+  let p = s => log.info(~comp="GraphQL", s)
   let d = diagnostics()
   p("Diagnostics")
   p(`  Types (${d.typeCount->Int.toString}):`)

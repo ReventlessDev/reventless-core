@@ -252,7 +252,7 @@ module Impl = (C: BusConfig): T => {
     | Some(handler) => await handler(json, ())
     | None =>
       if !C.silent {
-        Console.warn("InMemory_Bus: no command handler for channel: " ++ channelName)
+        ReventlessCore.Logger.emit(~level=Warn, ~comp="Bus", `no command handler for channel: ${channelName}`)
       }
     }
   }

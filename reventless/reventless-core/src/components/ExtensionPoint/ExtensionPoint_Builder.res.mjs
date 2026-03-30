@@ -15,6 +15,7 @@ import * as ExtensionPoint_Operations$ReventlessCore from "./ExtensionPoint_Oper
 
 function Make(Spec) {
   return Mappings => (RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => {
+    let name = Spec.name;
     let commandSchema = Spec.commandSchema;
     let eventSchema = Spec.eventSchema;
     let filterAggregateResources = (aggregateResources, aggregateNames) => Object.entries(aggregateResources).filter(param => {
@@ -29,6 +30,7 @@ function Make(Spec) {
       let childName = ComponentType$ReventlessCore.name(extra$1.replace(".", ""), ExtensionPoint$ReventlessCore.componentType);
       let SpecificCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
+        name: name,
         commandSchema: commandSchema
       })(CommandTopicChannel);
       let commandTopic = SpecificCommandTopic.make(childName, opts);
@@ -47,6 +49,7 @@ function Make(Spec) {
         ExtensionPointRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), undefined, undefined, commandTopic);
         let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
           Id: Id$Reventless.$$String,
+          name: name,
           eventSchema: eventSchema
         })(EventTopicAdapter);
         let eventTopic = SpecificEventTopic.make(childName, [], opts);

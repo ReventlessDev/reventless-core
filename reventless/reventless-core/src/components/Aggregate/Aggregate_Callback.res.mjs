@@ -7,9 +7,11 @@ import * as Stream from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
   return Behavior => (Ops => {
+    let comp = `Aggregate(` + Spec.name + `)`;
     let groupTopicItemsByIdStream = stream => Effect.map(Stream.runFold(stream, {}, (dict, item) => {
       let id = Spec.Id.toString(item.command.id);
       let existing = Stdlib_Option.getOr(dict[id], []);
@@ -37,13 +39,14 @@ function Make(Spec) {
       ]));
       let commands$p = match[1];
       let references = match[0];
+      let idStr = Spec.Id.toString(id);
       return Effect.flatMap(Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id), [
         Behavior.initialState,
         0
       ], (param, ev) => [
         Behavior.evolve(param[0], ev),
         param[1] + 1 | 0
-      ]), param => Effect.logInfo(`finished eventLogReplayStream for id ` + Spec.Id.toString(id))), param => {
+      ]), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay: id=` + idStr + `, ` + param[1].toString() + ` event(s)`)), param => {
         let sequenceNr = param[1];
         return Effect.flatMap(Stdlib_Array.reduce(commands$p, Effect.succeed({
           TAG: "Ok",
@@ -58,7 +61,7 @@ function Make(Spec) {
           let match = acc._0;
           let events = match[1];
           let state = match[0];
-          let runBehavior = () => {
+          let decide = () => {
             let generatedEvents = Behavior.decide(state, command$p.command);
             if (generatedEvents.TAG === "Ok") {
               let generatedEvents$1 = generatedEvents._0;
@@ -76,7 +79,7 @@ function Make(Spec) {
             }
             let errorJson = JSON.stringify(Message$ReventlessCore.encode(generatedEvents._0, Spec.errorSchema));
             let id = Spec.Id.toString(command$p.id);
-            Effect.runSync(Effect.logError(`Behavior error ` + errorJson + ` in ` + Spec.name + `(` + id + `)`));
+            Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decide error: ` + errorJson + ` id=` + id));
             return {
               TAG: "Ok",
               _0: [
@@ -85,7 +88,7 @@ function Make(Spec) {
               ]
             };
           };
-          return Effect.succeed(runBehavior());
+          return Effect.succeed(decide());
         })), result => {
           let events;
           events = result.TAG === "Ok" ? result._0[1].map(param => {
@@ -97,7 +100,7 @@ function Make(Spec) {
               }));
             }).flat() : Stdlib_JsError.throwWithMessage(result._0);
           if (events.length === 0) {
-            return Effect.map(Effect.logInfo(`handleCommands(` + Spec.Id.toString(id) + `): no Event generated`), () => ({
+            return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
               TAG: "Ok",
               _0: references.map(reference => ({
                 TAG: "Ok",
@@ -106,10 +109,16 @@ function Make(Spec) {
             }));
           }
           let eventCount = events.length.toString();
-          let eventNames = events.map(event$p => Message$ReventlessCore.variantNameOfJson(Message$ReventlessCore.encode(event$p.event, Spec.eventSchema))).join(", ");
-          return Effect.flatMap(Effect.flatMap(Effect.logInfo(`Aggregate.handleCommands(` + Spec.Id.toString(id) + `): ` + eventCount + ` Event(s) generated: ` + eventNames), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, events))), appendResult => {
+          let eventDetails = events.map(event$p => {
+            let json = Message$ReventlessCore.encode(event$p.event, Spec.eventSchema);
+            let name = Message$ReventlessCore.variantNameOfJson(json);
+            let id = Spec.Id.toString(event$p.id);
+            return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
+          }).join(", ");
+          let eventJsons = events.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
+          return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, events))), appendResult => {
             if (appendResult.TAG === "Ok") {
-              return Effect.map(Effect.logInfo(`finished eventLogAppend for id ` + Spec.Id.toString(id)), () => ({
+              return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: id=` + idStr), () => ({
                 TAG: "Ok",
                 _0: references.map(reference => ({
                   TAG: "Ok",
@@ -117,12 +126,12 @@ function Make(Spec) {
                 }))
               }));
             } else if (appendResult._0.includes("conflict")) {
-              return Effect.map(Effect.logWarning(`conflict detected for id ` + Spec.Id.toString(id) + `, will retry`), () => ({
+              return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
                 TAG: "Error",
                 _0: "conflict"
               }));
             } else {
-              return Effect.map(Effect.logError(`failed eventLogAppend for id ` + Spec.Id.toString(id)), () => ({
+              return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr), () => ({
                 TAG: "Ok",
                 _0: references.map(reference => ({
                   TAG: "Error",
@@ -134,18 +143,24 @@ function Make(Spec) {
         });
       });
     };
-    let handleCommands = stream => Effect.flatMap(Effect.tap(Effect.tap(groupTopicItemsByIdStream(stream), param => Effect.logInfo("starting Aggregate.execCommands")), param => Effect.succeed()), groups => Effect.map(Effect.all(groups.map(param => {
+    let handleCommands = stream => Effect.flatMap(groupTopicItemsByIdStream(stream), groups => Effect.map(Effect.all(groups.map(param => {
       let topicItemsForId = param[1];
       let id = param[0];
-      LogFormat$ReventlessCore.commandJsonsToLogMessages(topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command))).forEach(msg => Effect.runSync(Effect.logInfo("Handling command: " + msg)));
+      let idStr = Spec.Id.toString(id);
+      let cmdJsons = topicItemsForId.map(param => Message$ReventlessCore.commandJsonOfCommand$p(Spec.Id.toString, Spec.commandSchema, param.command));
+      let count = cmdJsons.length.toString();
+      cmdJsons.forEach((cmdJson, idx) => {
+        let idxStr = (idx + 1 | 0).toString();
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
+      });
       let references = topicItemsForId.map(item => item.reference);
       let attempt = retryCount => Effect.flatMap(replayProcessAppend(id, topicItemsForId), result => {
         if (result.TAG === "Ok") {
           return Effect.succeed(result._0);
         } else if (retryCount < 3) {
-          return Effect.flatMap(Effect.logWarning(`Aggregate(` + Spec.Id.toString(id) + `): conflict retry ` + (retryCount + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retryCount + 1 | 0));
+          return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict retry id=` + idStr + ` ` + (retryCount + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retryCount + 1 | 0));
         } else {
-          return Effect.map(Effect.logError(`Aggregate(` + Spec.Id.toString(id) + `): max conflict retries exhausted`), () => references.map(reference => ({
+          return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `max conflict retries exhausted id=` + idStr), () => references.map(reference => ({
             TAG: "Error",
             _0: reference
           })));

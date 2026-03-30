@@ -9,9 +9,12 @@ import * as Stream$1 from "effect/Stream";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
 import * as Message$ReventlessCore from "./Message.res.mjs";
 import * as QueryDb$ReventlessCore from "./components/QueryDb/QueryDb.res.mjs";
 import * as QueryDb$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/QueryDb.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function MakeGenericSource(Mapping) {
   let decode$p = json => Message$ReventlessCore.decodeEvent$p(json, S.string, Mapping.sourceEventSchema);
@@ -26,7 +29,7 @@ let Mapping = {
 };
 
 function logAction(str) {
-  console.log("Projection.handleAction:", str);
+  log.debug("Projection", undefined, str);
 }
 
 async function applyChanges(action, id, beforeStates, afterStates, param, param$1) {
@@ -64,8 +67,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
     ]
   ]);
   let deletedCount = batchToDelete.length;
-  let str = action + `(` + id + `): beforeStates:` + beforeCount.toString() + ` afterStates:` + afterCount.toString() + ` added:` + addedCount.toString() + ` changed:` + changedCount.toString() + ` deleted:` + deletedCount.toString();
-  console.log("Projection.handleAction:", str);
+  logAction(action + `(` + id + `): beforeStates:` + beforeCount.toString() + ` afterStates:` + afterCount.toString() + ` added:` + addedCount.toString() + ` changed:` + changedCount.toString() + ` deleted:` + deletedCount.toString());
   await Promise.all([
     param.deleteBatch(batchToDelete),
     param.saveBatch(batchToSave)
@@ -103,7 +105,7 @@ async function handleAction(action, operations, subIdConfig) {
     _0: e
   })));
   if (typeof action !== "object") {
-    console.log("Projection.handleAction:", "Ignore");
+    logAction("Ignore");
     return {
       TAG: "Ok",
       _0: undefined
@@ -113,8 +115,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Create" :
       let state = action._1;
       let id = action._0;
-      let str = `Create(` + id + `, ` + stateToString(state) + `)`;
-      console.log("Projection.handleAction:", str);
+      logAction(`Create(` + id + `, ` + stateToString(state) + `)`);
       return await save(id, state, "Init", undefined);
     case "CreateMany" :
       let batch = action._0.map(param => [
@@ -123,7 +124,7 @@ async function handleAction(action, operations, subIdConfig) {
         undefined
       ]);
       let statesStr = batch.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ");
-      console.log("Projection.handleAction:", `CreateMany(` + statesStr + `)`);
+      logAction(`CreateMany(` + statesStr + `)`);
       return await saveBatch(batch);
     case "Update" :
       let id$1 = action._0;
@@ -138,13 +139,13 @@ async function handleAction(action, operations, subIdConfig) {
       let len = states$1.length;
       if (len !== 1) {
         if (len !== 0) {
-          console.log("Projection.handleAction:", `Update Error: Multiple oldStates for ` + id$1 + `)`);
+          logAction(`Update Error: Multiple oldStates for ` + id$1 + `)`);
           return {
             TAG: "Error",
             _0: "StaleState"
           };
         } else {
-          console.log("Projection.handleAction:", `Update Error: No oldState for ` + id$1 + `)`);
+          logAction(`Update Error: No oldState for ` + id$1 + `)`);
           return {
             TAG: "Error",
             _0: "StaleState"
@@ -153,38 +154,35 @@ async function handleAction(action, operations, subIdConfig) {
       }
       let oldState = states$1[0];
       let newState = action._1(oldState);
-      let str$1 = `Update(` + id$1 + `, ` + stateToString(oldState) + ` => ` + stateToString(newState) + `)`;
-      console.log("Projection.handleAction:", str$1);
+      logAction(`Update(` + id$1 + `, ` + stateToString(oldState) + ` => ` + stateToString(newState) + `)`);
       return await save(id$1, newState, "Overwrite", undefined);
     case "UpdateWithDefault" :
       let $$default = action._1;
       let id$2 = action._0;
-      console.log(`UpdateWithDefault(` + id$2 + `, loading ...`);
+      log.debug("Projection", undefined, `UpdateWithDefault(` + id$2 + `, loading ...`);
       let states$2 = await loadAtMost(2, id$2);
       if (states$2.TAG === "Ok") {
         let states$3 = states$2._0;
         let len$1 = states$3.length;
         if (len$1 !== 1) {
           if (len$1 !== 0) {
-            console.log("Projection.handleAction:", `UpdateWithDefault Error: Multiple oldStates for ` + id$2 + `)`);
+            logAction(`UpdateWithDefault Error: Multiple oldStates for ` + id$2 + `)`);
             return {
               TAG: "Error",
               _0: "StaleState"
             };
+          } else {
+            logAction(`UpdateWithDefault(` + id$2 + `, default: ` + stateToString($$default) + `)`);
+            return await save(id$2, $$default, "Init", undefined);
           }
-          let str$2 = `UpdateWithDefault(` + id$2 + `, default: ` + stateToString($$default) + `)`;
-          console.log("Projection.handleAction:", str$2);
-          return await save(id$2, $$default, "Init", undefined);
         }
         let oldState$1 = states$3[0];
         let newState$1 = action._2(oldState$1);
-        let str$3 = `UpdateWithDefault(` + id$2 + `, ` + stateToString(oldState$1) + ` => ` + stateToString(newState$1) + `)`;
-        console.log("Projection.handleAction:", str$3);
+        logAction(`UpdateWithDefault(` + id$2 + `, ` + stateToString(oldState$1) + ` => ` + stateToString(newState$1) + `)`);
         return await save(id$2, newState$1, "Overwrite", undefined);
       }
       let err = states$2._0;
-      let str$4 = `UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`;
-      console.log("Projection.handleAction:", str$4);
+      logAction(`UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`);
       return {
         TAG: "Error",
         _0: err
@@ -192,8 +190,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Set" :
       let state$1 = action._1;
       let id$3 = action._0;
-      let str$5 = `Set(` + id$3 + `, ` + stateToString(state$1) + `)`;
-      console.log("Projection.handleAction:", str$5);
+      logAction(`Set(` + id$3 + `, ` + stateToString(state$1) + `)`);
       return await save(id$3, state$1, "Any", undefined);
     case "SetMany" :
       let set = action._1;
@@ -203,16 +200,15 @@ async function handleAction(action, operations, subIdConfig) {
         undefined
       ]);
       let statesStr$1 = batch$1.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ");
-      console.log("Projection.handleAction:", `SetMany(` + statesStr$1 + `)`);
+      logAction(`SetMany(` + statesStr$1 + `)`);
       return await saveBatch(batch$1);
     case "Delete" :
       let id$4 = action._0;
-      console.log("Projection.handleAction:", `Delete(` + id$4 + `)`);
+      logAction(`Delete(` + id$4 + `)`);
       return await operations.delete(id$4, undefined);
     case "DeleteMany" :
       let ids = action._0;
-      let str$6 = `DeleteMany(` + ids.join(", ") + `)`;
-      console.log("Projection.handleAction:", str$6);
+      logAction(`DeleteMany(` + ids.join(", ") + `)`);
       return await operations.deleteBatch(ids.map(id => [
         id,
         undefined
@@ -220,8 +216,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "CreateMultiState" :
       let states$4 = action._1;
       let id$5 = action._0;
-      let str$7 = `CreateMultiState(` + id$5 + `, ` + states$4.map(stateToString).join(", ") + `)`;
-      console.log("Projection.handleAction:", str$7);
+      logAction(`CreateMultiState(` + id$5 + `, ` + states$4.map(stateToString).join(", ") + `)`);
       let len$2 = states$4.length;
       if (len$2 !== 1) {
         if (len$2 === 0) {
@@ -248,7 +243,7 @@ async function handleAction(action, operations, subIdConfig) {
           let afterStates = action._1(states$5);
           return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, operations, subIdConfig);
         }
-        console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
+        logAction("UpdateMultiState Error: Missing SubIdConfig !");
         return {
           TAG: "Error",
           _0: "MissingSubIdConfig"
@@ -256,20 +251,19 @@ async function handleAction(action, operations, subIdConfig) {
       }
       if (subIdConfig !== undefined) {
         let err$1 = match._0;
-        let str$8 = `UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err$1) + `)`;
-        console.log("Projection.handleAction:", str$8);
+        logAction(`UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err$1) + `)`);
         return {
           TAG: "Error",
           _0: err$1
         };
       }
-      console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
+      logAction("UpdateMultiState Error: Missing SubIdConfig !");
       return {
         TAG: "Error",
         _0: "MissingSubIdConfig"
       };
     default:
-      console.log("Projection.handleAction:", "Error: Action not yet supported !");
+      logAction("Error: Action not yet supported !");
       return {
         TAG: "Ok",
         _0: undefined
@@ -316,7 +310,7 @@ function actionsWithId(action) {
     case "UpdateManyWithDefault" :
     case "DeleteIf" :
     case "DeleteManyIf" :
-      console.log("Projection.handleAction:", "Error: Action not yet supported !");
+      logAction("Error: Action not yet supported !");
       return [];
     case "UpdateManyMultiStates" :
       let update = action._1;
@@ -365,8 +359,8 @@ function optimizeActions(actions) {
           if (typeof action === "object") {
             switch (action.TAG) {
               case "Create" :
-                if (Primitive_object.equal(id1, action._0)) {
-                  console.warn("optimizing 2 sequential Create actions, therefore ignoring the second one:", JSON.stringify(action._1));
+                if (id1 === action._0) {
+                  log.warn("Projection", undefined, `optimizing 2 sequential Create for id=` + id1 + `, ignoring second: ` + Stdlib_Option.getOr(JSON.stringify(action._1), "?"));
                   return previousActions.concat([{
                       TAG: "Create",
                       _0: id1,
@@ -375,7 +369,7 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Update" :
-                if (Primitive_object.equal(id1, action._0)) {
+                if (id1 === action._0) {
                   return previousActions.concat([{
                       TAG: "Create",
                       _0: id1,
@@ -384,7 +378,7 @@ function optimizeActions(actions) {
                 }
                 break;
               case "UpdateWithDefault" :
-                if (Primitive_object.equal(id1, action._0)) {
+                if (id1 === action._0) {
                   return previousActions.concat([{
                       TAG: "Create",
                       _0: id1,
@@ -393,8 +387,8 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Set" :
-                if (Primitive_object.equal(id1, action._0)) {
-                  console.warn("optimizing Set after Create, therefore ignoring the Create:", state1);
+                if (id1 === action._0) {
+                  log.warn("Projection", undefined, `optimizing Set after Create for id=` + id1 + `, ignoring Create: ` + Stdlib_Option.getOr(JSON.stringify(state1), "?"));
                   return previousActions.concat([{
                       TAG: "Set",
                       _0: id1,
@@ -403,8 +397,8 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Delete" :
-                if (Primitive_object.equal(id1, action._0)) {
-                  console.warn("optimizing Delete after Create, therefore ignoring the Create:", state1);
+                if (id1 === action._0) {
+                  log.warn("Projection", undefined, `optimizing Delete after Create for id=` + id1 + `, ignoring Create: ` + Stdlib_Option.getOr(JSON.stringify(state1), "?"));
                   return previousActions.concat([{
                       TAG: "Delete",
                       _0: id1
@@ -420,7 +414,7 @@ function optimizeActions(actions) {
           if (typeof action === "object") {
             switch (action.TAG) {
               case "Update" :
-                if (Primitive_object.equal(id1$1, action._0)) {
+                if (id1$1 === action._0) {
                   let g = action._1;
                   return previousActions.concat([{
                       TAG: "Update",
@@ -430,7 +424,7 @@ function optimizeActions(actions) {
                 }
                 break;
               case "UpdateWithDefault" :
-                if (Primitive_object.equal(id1$1, action._0)) {
+                if (id1$1 === action._0) {
                   let g$1 = action._2;
                   return previousActions.concat([{
                       TAG: "UpdateWithDefault",
@@ -441,8 +435,8 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Set" :
-                if (Primitive_object.equal(id1$1, action._0)) {
-                  console.warn("optimizing Set after Update, therefore ignoring the Update");
+                if (id1$1 === action._0) {
+                  log.warn("Projection", undefined, `optimizing Set after Update for id=` + id1$1 + `, ignoring the Update`);
                   return previousActions.concat([{
                       TAG: "Set",
                       _0: id1$1,
@@ -451,8 +445,8 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Delete" :
-                if (Primitive_object.equal(id1$1, action._0)) {
-                  console.warn("optimizing Delete after Update, therefore ignoring the Update");
+                if (id1$1 === action._0) {
+                  log.warn("Projection", undefined, `optimizing Delete after Update for id=` + id1$1 + `, ignoring the Update`);
                   return previousActions.concat([{
                       TAG: "Delete",
                       _0: id1$1
@@ -469,8 +463,8 @@ function optimizeActions(actions) {
           if (typeof action === "object") {
             switch (action.TAG) {
               case "Create" :
-                if (Primitive_object.equal(id1$2, action._0)) {
-                  console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create");
+                if (id1$2 === action._0) {
+                  log.warn("Projection", undefined, `optimizing Create after UpdateWithDefault for id=` + id1$2 + `, ignoring the Create`);
                   return previousActions.concat([{
                       TAG: "UpdateWithDefault",
                       _0: id1$2,
@@ -480,7 +474,7 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Update" :
-                if (Primitive_object.equal(id1$2, action._0)) {
+                if (id1$2 === action._0) {
                   let g$2 = action._1;
                   return previousActions.concat([{
                       TAG: "UpdateWithDefault",
@@ -491,7 +485,7 @@ function optimizeActions(actions) {
                 }
                 break;
               case "UpdateWithDefault" :
-                if (Primitive_object.equal(id1$2, action._0)) {
+                if (id1$2 === action._0) {
                   let g$3 = action._2;
                   return previousActions.concat([{
                       TAG: "UpdateWithDefault",
@@ -502,8 +496,8 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Set" :
-                if (Primitive_object.equal(id1$2, action._0)) {
-                  console.warn("optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
+                if (id1$2 === action._0) {
+                  log.warn("Projection", undefined, `optimizing Set after UpdateWithDefault for id=` + id1$2 + `, ignoring the UpdateWithDefault`);
                   return previousActions.concat([{
                       TAG: "Set",
                       _0: id1$2,
@@ -512,8 +506,8 @@ function optimizeActions(actions) {
                 }
                 break;
               case "Delete" :
-                if (Primitive_object.equal(id1$2, action._0)) {
-                  console.warn("optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
+                if (id1$2 === action._0) {
+                  log.warn("Projection", undefined, `optimizing Delete after UpdateWithDefault for id=` + id1$2 + `, ignoring the UpdateWithDefault`);
                   return previousActions.concat([{
                       TAG: "Delete",
                       _0: id1$2
@@ -526,7 +520,7 @@ function optimizeActions(actions) {
         case "Delete" :
           if (typeof action === "object" && action.TAG === "Create") {
             let id1$3 = lastAction._0;
-            if (Primitive_object.equal(id1$3, action._0)) {
+            if (id1$3 === action._0) {
               return previousActions.concat([{
                   TAG: "Set",
                   _0: id1$3,
@@ -538,7 +532,7 @@ function optimizeActions(actions) {
         case "UpdateMultiState" :
           if (typeof action === "object" && action.TAG === "UpdateMultiState") {
             let id1$4 = lastAction._0;
-            if (Primitive_object.equal(id1$4, action._0)) {
+            if (id1$4 === action._0) {
               let g$4 = action._1;
               let f$2 = lastAction._1;
               return previousActions.concat([{
@@ -551,7 +545,7 @@ function optimizeActions(actions) {
           break;
       }
     }
-    console.warn("actions not optimized: ", JSON.stringify(lastAction), JSON.stringify(action));
+    log.warn("Projection", undefined, `actions not optimized: ` + Stdlib_Option.getOr(JSON.stringify(lastAction), "?") + ` + ` + Stdlib_Option.getOr(JSON.stringify(action), "?"));
     return optimizedActions.concat([action]);
   });
 }
@@ -560,18 +554,18 @@ async function handleActions(actions, operations, subIdConfig) {
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions.length;
     if (actionCount > 1) {
-      console.log(`Projection.handleActions: optimizing ` + actionCount.toString() + ` actions for id=` + id);
+      log.debug("Projection", undefined, `handleActions: optimizing ` + actionCount.toString() + ` actions for id=` + id);
     }
     let optimizedActions = optimizeActions(actions);
     let optimizedActionCount = optimizedActions.length;
-    console.log(`Projection.handleActions: handling ` + optimizedActionCount.toString() + ` optimized actions for id=` + id);
+    log.info("Projection", undefined, `handleActions: id=` + id + ` actions=` + optimizedActionCount.toString());
     return await Stdlib_Array.reduce(optimizedActions, Promise.resolve({
       TAG: "Ok",
       _0: undefined
     }), async (p, action) => {
       let err = await p;
       if (err.TAG !== "Ok") {
-        console.error("storage error: " + JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$ReventlessInfra.storageErrorSchema)));
+        log.error("Projection", undefined, `storage error: ` + JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$ReventlessInfra.storageErrorSchema)));
       }
       return await handleAction(action, operations, subIdConfig);
     });
@@ -595,6 +589,7 @@ let $$Set;
 
 export {
   $$Set,
+  log,
   Mapping,
   logAction,
   applyChanges,
@@ -606,4 +601,4 @@ export {
   optimizeActions,
   handleActions,
 }
-/* S Not a pure module */
+/* log Not a pure module */

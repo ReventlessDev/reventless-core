@@ -15,6 +15,7 @@ let Ops = EventTopic_Operations$ReventlessCore.Make({
     toString: prim => prim,
     cmp: Id$Reventless.StringPure.cmp
   },
+  name: EventTopicFixtures$ReventlessCore.ItemEventTopicSpec.name,
   eventSchema: EventTopicFixtures$ReventlessCore.ItemEventTopicSpec.eventSchema
 })({
   publishJson: EventTopicFixtures$ReventlessCore.mockPublishJson
