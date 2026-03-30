@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [3.0.0-alpha.27](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.26...@reventlessdev/reventless-aws@3.0.0-alpha.27) (2026-03-30)
+
+**Note:** Version bump only for package @reventlessdev/reventless-aws
+
+
+
+
+
 # [3.0.0-alpha.26](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/reventless-aws@3.0.0-alpha.25...@reventlessdev/reventless-aws@3.0.0-alpha.26) (2026-03-29)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
