@@ -1,0 +1,10 @@
+{
+  "reventless": {
+    "type": "http",
+    "url": "http://localhost:3001/mcp"
+  },
+  "reventless-admin": {
+    "type": "http",
+    "url": "http://localhost:3002/mcp"
+  }
+}

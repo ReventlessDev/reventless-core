@@ -1,0 +1,9 @@
+{
+  "name": "reventless-skills",
+  "description": "AI skills for building event-sourced applications with Reventless. Covers app generation, ReScript, ES/CQRS, Event Modeling, testing, and AWS deployment.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Reventless"
+  },
+  "license": "MIT"
+}

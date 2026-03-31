@@ -34,6 +34,18 @@ const sidebars = {
         'inner-workings/mcp',
       ],
     },
+    {
+      type: 'category',
+      label: 'AI Skills Development',
+      items: [
+        'ai-skills/index',
+        'ai-skills/writing-skills',
+        'ai-skills/writing-commands',
+        'ai-skills/writing-agents',
+        'ai-skills/testing-skills',
+        'ai-skills/updating-skills',
+      ],
+    },
   ],
 };
 

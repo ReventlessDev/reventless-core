@@ -1,0 +1,16 @@
+{
+  "description": "Reventless Skills plugin hooks",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/SessionStart",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Check Node.js version
+if [ -f ".node-version" ]; then
+  EXPECTED=$(cat .node-version | sed 's/^v//')
+  ACTUAL=$(node --version 2>/dev/null | sed 's/^v//')
+  if [ -z "$ACTUAL" ]; then
+    echo "[reventless-skills] Node.js is not installed."
+    echo "                    Expected version: $EXPECTED"
+  elif [ "$ACTUAL" != "$EXPECTED" ]; then
+    echo "[reventless-skills] Node.js version mismatch: $ACTUAL (expected $EXPECTED)"
+  fi
+fi
+
+# Check ReScript LSP availability
+if ! command -v rescript-language-server &> /dev/null; then
+  echo "[reventless-skills] ReScript language server not found."
+  echo "                    Install: npm install -g @rescript/language-server"
+fi
+
+# Check node_modules
+if [ -f "package.json" ] && [ ! -d "node_modules" ]; then
+  echo "[reventless-skills] node_modules not found. Run: npm install"
+fi
+
+exit 0

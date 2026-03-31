@@ -1,0 +1,21 @@
+{
+  "name": "reventless",
+  "owner": {
+    "name": "Reventless"
+  },
+  "metadata": {
+    "description": "Reventless framework plugins for building event-sourced applications"
+  },
+  "plugins": [
+    {
+      "name": "reventless-skills",
+      "description": "AI skills for building event-sourced applications with Reventless. Includes app generation, ReScript patterns, ES/CQRS fundamentals, Event Modeling, testing, AWS deployment, and pre-implementation discovery. Works with Claude Code, Codex CLI, Cursor, and GitHub Copilot.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Reventless"
+      },
+      "source": "./.claude",
+      "category": "frameworks"
+    }
+  ]
+}

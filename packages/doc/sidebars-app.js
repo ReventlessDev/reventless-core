@@ -81,6 +81,18 @@ const sidebars = {
       ],
     },
     'rescript-syntax',
+    {
+      type: 'category',
+      label: 'AI-Assisted Development',
+      items: [
+        'ai-assisted/index',
+        'ai-assisted/getting-started',
+        'ai-assisted/describe-your-domain',
+        'ai-assisted/architecture-decisions',
+        'ai-assisted/generated-code-walkthrough',
+        'ai-assisted/iterating',
+      ],
+    },
   ],
 };
 
