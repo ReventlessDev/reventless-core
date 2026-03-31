@@ -793,7 +793,7 @@ function MakeWithConfig(Config) {
       ep.name,
       ep
     ])));
-    plugin.make(scheduler, undefined, undefined);
+    let pluginComponent = plugin.make(scheduler, undefined, undefined);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
@@ -823,6 +823,7 @@ function MakeWithConfig(Config) {
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    return Component$ReventlessCore.outputs(pluginComponent);
   };
   return {
     api: undefined,
@@ -1575,7 +1576,7 @@ function Make($star) {
       ep.name,
       ep
     ])));
-    plugin.make(scheduler, undefined, undefined);
+    let pluginComponent = plugin.make(scheduler, undefined, undefined);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
     let queryResolvers = {};
@@ -1605,6 +1606,7 @@ function Make($star) {
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    return Component$ReventlessCore.outputs(pluginComponent);
   };
   let Counter_make = Counter.make;
   let Counter_outputs = Counter.outputs;

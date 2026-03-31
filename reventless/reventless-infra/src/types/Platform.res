@@ -48,6 +48,10 @@ module App = CatalogPlugin.Make(Platform)
 // Type alias to avoid shadowing by the nested `module Api` inside Platform.T.
 type apiComponent = Api.component
 
+// Type alias so `deployPlugin` can reference `Plugin.outputs` inside module type T,
+// where `module Plugin: Plugin.T` shadows the package-level Plugin module.
+type pluginOutputs = Plugin.outputs
+
 module type T = {
   /** Platform-specific API type (e.g. `Types.AppSync.api` for AWS, `unit` for in-memory). */
   type api
@@ -190,5 +194,5 @@ module type T = {
 
   /** Deploy a single plugin as an independent stack.
       Creates its own scheduler and exports stack outputs for cross-stack consumption. */
-  let deployPlugin: (~version: string, ~plugin: module(PluginMaker)) => unit
+  let deployPlugin: (~version: string, ~plugin: module(PluginMaker)) => pluginOutputs
 }

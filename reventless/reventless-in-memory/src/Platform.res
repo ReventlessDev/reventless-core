@@ -900,7 +900,7 @@ module MakeWithConfig = (
       )
 
     module P = unpack(plugin)
-    let _plugin = P.make(~scheduler, ~api=(), ~apiRole=())
+    let pluginComponent = P.make(~scheduler, ~api=(), ~apiRole=())
 
     // Register admin schema into the shared server alongside plugin schema.
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
@@ -934,6 +934,10 @@ module MakeWithConfig = (
 
     GraphQL_Server.start()
     MCP_Server.start()
+
+    let pluginOutputs: ReventlessCore.Plugin.outputs =
+      (pluginComponent->Obj.magic: ReventlessCore.Plugin.component)->ReventlessCore.Component.outputs
+    pluginOutputs
   }
 }
 

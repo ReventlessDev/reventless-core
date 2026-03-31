@@ -516,7 +516,9 @@ function MakeWithConfig(Config) {
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let pluginComponent = plugin.make(scheduler, appSyncApi, appSyncApiRole);
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
-    Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(pluginComponent));
+    let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
+    Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    return pluginOutputs;
   };
   return {
     api: appSyncApi,
@@ -989,7 +991,9 @@ function Make($star) {
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     let pluginComponent = plugin.make(scheduler, appSyncApi, appSyncApiRole);
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
-    Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(pluginComponent));
+    let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
+    Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    return pluginOutputs;
   };
   let Counter_make = Counter.make;
   let Counter_outputs = Counter.outputs;

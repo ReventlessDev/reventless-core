@@ -794,6 +794,8 @@ module MakeWithConfig = (
     let pluginOutputs: ReventlessCore.Plugin.outputs =
       (pluginComponent->Obj.magic: ReventlessCore.Plugin.component)->ReventlessCore.Component.outputs
     ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
+
+    pluginOutputs
   }
 }
 
