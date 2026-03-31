@@ -18,11 +18,13 @@ let toResource: PulumiAws.SNS.Topic.t => ReventlessInfra.Adapter.resource = ({id
 let findResolvedResource = resources =>
   resources->ReventlessCore.Util.Adapter.findResolvedResource(AWS.SNS.service)
 
+let log = ReventlessCore.Logger.fromEnv()
+
 let findTopicInResolvedResources = resources =>
   switch resources->ReventlessCore.Util_Adapter.filterSupportedResolvedResources([AWS.SNS.service]) {
   | [] =>
-    let err = "Util.SQS.findTopicNameInUnwrappedResources: Couldn't find SNS Topic in resources"
-    Console.log(err)
+    let err = "Couldn't find SNS Topic in resources"
+    log.error(~comp="SNS", err)
     JsError.throwWithMessage(err)
 
   | resources => resources->Array.getUnsafe(0)

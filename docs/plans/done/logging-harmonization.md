@@ -1,7 +1,7 @@
 # Plan: Logging Harmonization
 
 > **Analysis:** `docs/analysis/logging-harmonization.md`
-> **Status:** Phases 1–3 complete. EffectLogger with `[comp]` prefix done. Phases 4 (AWS Util files) and 5 deferred.
+> **Status:** All phases complete. OutputLogger intentionally kept (layer-builder dependency). Mapper1toN is fully commented-out dead code — no action needed.
 
 ---
 
@@ -20,9 +20,9 @@
 - [x] `AggregateRuntime_Builder_Common.res` — 3 `*****` Console.log calls → `log.debug`; dispatch logs → `EffectLogger.logDebug(~comp="AggregateRuntime(...)")`
 - [x] `EventCollectorRuntime_Builder_Single.res` — `*****` registration → `log.debug`; `validateParent` → `log.debug`; dispatch logs → `EffectLogger.logDebug(~comp="EventCollectorRuntime(...)")`
 - [x] `Projection.res` — `logAction` (Console.log2) → `log.debug`; `handleActions` Console.log → `log.info` summary; Console.warn* → `log.warn`
-- [ ] `CommandPublisher.res` — already uses `Effect.logInfo`; migrate to `EffectLogger.logInfo(~comp)` (deferred)
-- [ ] `GraphQL_SchemaInspector.res` — move SDL dump calls to `log.debug` (deferred, in-memory dev tooling)
-- [ ] `PluginConnectExtension_Builder.res` — move 6 cross-plugin wiring calls to `log.debug` (deferred)
+- [x] `CommandPublisher.res` — migrated from `Effect.logInfo/logError` to `EffectLogger.logDebug/logError(~comp="CommandPublisher")`
+- [x] `GraphQL_SchemaInspector.res` — 12 `Console.log` calls in `printFragment` migrated to `log.debug(~comp="GraphQL")`
+- [x] `PluginConnectExtension_Builder.res` — migrated to `Logger.fromEnv()` with `log.debug/info/error(~comp="Admin")`
 
 ## Phase 3 — Add missing logs + `[comp]` prefix migration
 
@@ -39,14 +39,14 @@
 
 ## Phase 4 — Standardize remaining Console calls (AWS adapters)
 
-- [ ] `Util_DynamoDb.res` — replace `Console.*` with `log.info`/`log.error` (deferred)
-- [ ] `Util_DynamoDbStream.res` — replace `Console.*` (deferred)
-- [ ] `Util_SNS.res` — replace `Console.*` (deferred)
-- [ ] `Util_SNS_FIFO.res` — replace `Console.*` (deferred)
-- [ ] `EventCollectorChannel_Helpers.res` — replace `Console.*` (deferred)
-- [ ] `Adapter.res` — confirm debug line suppression (deferred)
+- [x] `Util_DynamoDb.res` — migrated to `log.info(~comp="DynamoDb")` via `ReventlessCore.Logger.fromEnv()`
+- [x] `Util_DynamoDbStream.res` — migrated to `log.info(~comp="DynamoDbStream")` via `ReventlessCore.Logger.fromEnv()`
+- [x] `Util_SNS.res` — migrated to `log.error(~comp="SNS")` via `ReventlessCore.Logger.fromEnv()`
+- [x] `Util_SNS_FIFO.res` — no Console calls found; clean
+- [x] `EventCollectorChannel_Helpers.res` — migrated 5 `Console.log2/log3` to `log.debug(~comp="EventCollector")`, removed commented-out code
+- [x] `Adapter_Helpers.res` — confirmed no Console calls; clean
 
 ## Phase 5 — Remove legacy code
 
-- [ ] `OutputLogger.res` — referenced by `reventless-layer-builder` post-process; leave in place
-- [ ] `Mapper1toN.res` — remove commented-out `Console.log2` (deferred)
+- [x] `OutputLogger.res` — intentionally kept with `Console.log2`/`Console.error`; referenced by `reventless-layer-builder` post-process
+- [x] `Mapper1toN.res` — entire file is commented-out dead code; no action needed

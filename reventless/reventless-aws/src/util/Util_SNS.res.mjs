@@ -3,6 +3,7 @@
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
 function toResolvedTopicOutput(param) {
@@ -32,13 +33,15 @@ function findResolvedResource(resources) {
   return Util_Adapter$ReventlessCore.findResolvedResource(resources, AWS$ReventlessAws.SNS.service);
 }
 
+let log = Logger$ReventlessCore.fromEnv();
+
 function findTopicInResolvedResources(resources) {
   let resources$1 = Util_Adapter$ReventlessCore.filterSupportedResolvedResources(resources, [AWS$ReventlessAws.SNS.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
-  let err = "Util.SQS.findTopicNameInUnwrappedResources: Couldn't find SNS Topic in resources";
-  console.log(err);
+  let err = "Couldn't find SNS Topic in resources";
+  log.error("SNS", undefined, err);
   return Stdlib_JsError.throwWithMessage(err);
 }
 
@@ -46,6 +49,7 @@ export {
   toResolvedTopicOutput,
   toResource,
   findResolvedResource,
+  log,
   findTopicInResolvedResources,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

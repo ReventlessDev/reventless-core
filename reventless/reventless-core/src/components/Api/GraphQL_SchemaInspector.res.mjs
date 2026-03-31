@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "./GraphQL_Stitcher.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "./GraphQL_FragmentGenerator.res.mjs";
 
@@ -71,32 +72,33 @@ function inspectFragment(fragment) {
 }
 
 function printFragment(fragment) {
+  let log = Logger$ReventlessCore.fromEnv();
   let match = inspectFragment(fragment);
   let queries = match.queries;
   let mutations = match.mutations;
   let types = match.types;
-  console.log("[GraphQL Fragment]");
-  console.log(`  Types (` + types.length.toString() + `):`);
+  log.debug("GraphQL", undefined, "[GraphQL Fragment]");
+  log.debug("GraphQL", undefined, `  Types (` + types.length.toString() + `):`);
   types.forEach(t => {
     let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(t);
-    console.log(`    - ` + name);
-    console.log(`      ` + t);
+    log.debug("GraphQL", undefined, `    - ` + name);
+    log.debug("GraphQL", undefined, `      ` + t);
   });
-  console.log(`  Mutations (` + mutations.length.toString() + `):`);
+  log.debug("GraphQL", undefined, `  Mutations (` + mutations.length.toString() + `):`);
   mutations.forEach(m => {
     let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(m);
-    console.log(`    - ` + name);
-    console.log(`      ` + m);
+    log.debug("GraphQL", undefined, `    - ` + name);
+    log.debug("GraphQL", undefined, `      ` + m);
   });
-  console.log(`  Queries (` + queries.length.toString() + `):`);
+  log.debug("GraphQL", undefined, `  Queries (` + queries.length.toString() + `):`);
   queries.forEach(q => {
     let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(q);
-    console.log(`    - ` + name);
-    console.log(`      ` + q);
+    log.debug("GraphQL", undefined, `    - ` + name);
+    log.debug("GraphQL", undefined, `      ` + q);
   });
-  console.log("\n--- SDL Preview ---");
-  console.log(match.sdlPreview);
-  console.log("--- End ---");
+  log.debug("GraphQL", undefined, "\n--- SDL Preview ---");
+  log.debug("GraphQL", undefined, match.sdlPreview);
+  log.debug("GraphQL", undefined, "--- End ---");
 }
 
 function inspectPluginEntries(mutationEntries, queryEntries) {

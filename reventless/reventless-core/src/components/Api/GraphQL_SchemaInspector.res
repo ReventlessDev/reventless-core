@@ -104,29 +104,30 @@ let inspectFragment = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentI
 }
 
 let printFragment = (fragment: Reventless.Plugin.apiSchemaFragment): unit => {
+  let log = Logger.fromEnv()
   let {types, mutations, queries, sdlPreview} = inspectFragment(fragment)
-  Console.log("[GraphQL Fragment]")
-  Console.log(`  Types (${types->Array.length->Int.toString}):`)
+  log.debug(~comp="GraphQL", "[GraphQL Fragment]")
+  log.debug(~comp="GraphQL", `  Types (${types->Array.length->Int.toString}):`)
   types->Array.forEach(t => {
     let name = GraphQL_Stitcher.extractLeadingName(t)
-    Console.log(`    - ${name}`)
-    Console.log(`      ${t}`)
+    log.debug(~comp="GraphQL", `    - ${name}`)
+    log.debug(~comp="GraphQL", `      ${t}`)
   })
-  Console.log(`  Mutations (${mutations->Array.length->Int.toString}):`)
+  log.debug(~comp="GraphQL", `  Mutations (${mutations->Array.length->Int.toString}):`)
   mutations->Array.forEach(m => {
     let name = GraphQL_Stitcher.extractLeadingName(m)
-    Console.log(`    - ${name}`)
-    Console.log(`      ${m}`)
+    log.debug(~comp="GraphQL", `    - ${name}`)
+    log.debug(~comp="GraphQL", `      ${m}`)
   })
-  Console.log(`  Queries (${queries->Array.length->Int.toString}):`)
+  log.debug(~comp="GraphQL", `  Queries (${queries->Array.length->Int.toString}):`)
   queries->Array.forEach(q => {
     let name = GraphQL_Stitcher.extractLeadingName(q)
-    Console.log(`    - ${name}`)
-    Console.log(`      ${q}`)
+    log.debug(~comp="GraphQL", `    - ${name}`)
+    log.debug(~comp="GraphQL", `      ${q}`)
   })
-  Console.log("\n--- SDL Preview ---")
-  Console.log(sdlPreview)
-  Console.log("--- End ---")
+  log.debug(~comp="GraphQL", "\n--- SDL Preview ---")
+  log.debug(~comp="GraphQL", sdlPreview)
+  log.debug(~comp="GraphQL", "--- End ---")
 }
 
 let inspectPluginEntries = (

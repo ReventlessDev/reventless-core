@@ -6,11 +6,14 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "./Util_DynamoDb_Runtime.res.mjs";
 import * as Util_DynamoDb_TableManager$ReventlessAws from "./Util_DynamoDb_TableManager.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function toInfo(param) {
   return Pulumi.all([
@@ -56,7 +59,7 @@ function arn2tableName(arn) {
 }
 
 async function enableTtl(tableName) {
-  console.log("Util_DynamoDb-ReventlessAws" + `: enableTimeToLive for ` + tableName);
+  log.info("DynamoDb", undefined, `enableTimeToLive for ` + tableName);
   let res = await DynamoDb_DynamoDb$AwsSdk.UpdateTimeToLiveCommand.send(new ClientDynamodb.UpdateTimeToLiveCommand({
     TableName: tableName,
     TimeToLiveSpecification: {
@@ -93,7 +96,7 @@ function verifyTtl(expectedTtl, param) {
 }
 
 async function enablePointInTimeRecovery(tableName) {
-  console.log("Util_DynamoDb-ReventlessAws" + `: enablePointInTimeRecovery for ` + tableName);
+  log.info("DynamoDb", undefined, `enablePointInTimeRecovery for ` + tableName);
   let updateContinuousBackups = new ClientDynamodb.UpdateContinuousBackupsCommand({
     TableName: tableName,
     PointInTimeRecoverySpecification: {
@@ -196,6 +199,7 @@ function findResourceInOutput(resourcesOutput) {
 }
 
 export {
+  log,
   toInfo,
   toResolvedTableOutput,
   toResource,
@@ -212,4 +216,4 @@ export {
   findResolvedResource,
   findResourceInOutput,
 }
-/* @pulumi/aws Not a pure module */
+/* log Not a pure module */

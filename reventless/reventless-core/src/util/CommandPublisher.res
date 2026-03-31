@@ -26,12 +26,13 @@ module Make = (Spec: Spec, Config: Config) => {
       try await promise catch {
       | JsExn(e) =>
         let errMsg = e->JsExn.message->Option.getOr("unknown")
-        Effect.logError(`Couldn't publish commands: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(~comp="CommandPublisher", `Couldn't publish commands: ${errMsg}`)->Effect.runSync
       }
     }
 
   let toJsons = commandsToSend => {
-    Effect.logInfo(
+    EffectLogger.logDebug(
+      ~comp="CommandPublisher",
       `toJsons: commandsToSend: ${commandsToSend->Array.length->Int.toString} rest: ${buffer
         ->Array.length
         ->Int.toString}`,
@@ -58,18 +59,20 @@ module Make = (Spec: Spec, Config: Config) => {
         let sizeStr = size->Int.toString
         let bufferSizeStr = buffer->Array.length->Int.toString
         let chunkCountStr = chunkCount.contents->Int.toString
-        Effect.logInfo(
+        EffectLogger.logDebug(
+          ~comp="CommandPublisher",
           `send: bufferSize: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`,
         )->Effect.runSync
         let commandsToSend = buffer->Array.toSpliced(~start=0, ~remove=size, ~insert=[])
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => Effect.logInfo(`send: finished chunk ${chunkCountStr}: ${sizeStr}`)->Effect.runSync
+        | () => EffectLogger.logDebug(~comp="CommandPublisher", `send: finished chunk ${chunkCountStr}: ${sizeStr}`)->Effect.runSync
         | exception JsExn(e) =>
           let errorMessage = e->JsExn.message->Option.getOr("unknown Error")
-          Effect.logError(
-            `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr} (${sizeStr} commands): ${errorMessage}`,
+          EffectLogger.logError(
+            ~comp="CommandPublisher",
+            `send error: couldn't publish chunk ${chunkCountStr} (${sizeStr} commands): ${errorMessage}`,
           )->Effect.runSync
         }
         await send()
@@ -84,13 +87,15 @@ module Make = (Spec: Spec, Config: Config) => {
         running := Some(promise)
         switch await promise {
         | () =>
-          Effect.logInfo(
-            `CommandPublisher.send: finished SendAllInOneChunk: ${size->Int.toString}`,
+          EffectLogger.logDebug(
+            ~comp="CommandPublisher",
+            `send: finished SendAllInOneChunk: ${size->Int.toString}`,
           )->Effect.runSync
         | exception JsExn(e) =>
           let errMsg = e->JsExn.message->Option.getOr("unknown")
-          Effect.logError(
-            `CommandPublisher.send: Error: Couldn't publish ${size->Int.toString} commands: ${errMsg}`,
+          EffectLogger.logError(
+            ~comp="CommandPublisher",
+            `send error: couldn't publish ${size->Int.toString} commands: ${errMsg}`,
           )->Effect.runSync
         }
         running := None
@@ -109,13 +114,13 @@ module Make = (Spec: Spec, Config: Config) => {
   }
 
   let clear = () => {
-    Effect.logInfo("CommandPublisher.clear")->Effect.runSync
+    EffectLogger.logDebug(~comp="CommandPublisher", "clear")->Effect.runSync
     let _ = buffer->Array.removeInPlace(0)
     flush := false
   }
 
   let flush = async () => {
-    Effect.logInfo("CommandPublisher.flush")->Effect.runSync
+    EffectLogger.logDebug(~comp="CommandPublisher", "flush")->Effect.runSync
     flush := true
     switch running.contents {
     | None => await send()

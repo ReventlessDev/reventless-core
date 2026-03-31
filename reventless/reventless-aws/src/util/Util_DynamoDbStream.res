@@ -41,8 +41,10 @@ let toStreamResource = (table: ReventlessInfra.Adapter.resource): ReventlessInfr
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
 open AwsSdk.DynamoDb_DynamoDb
 
+let log = ReventlessCore.Logger.fromEnv()
+
 let enableStream = async tableName => {
-  Console.log(`${__MODULE__}: enableStream for ${tableName}`)
+  log.info(~comp="DynamoDbStream", `enableStream for ${tableName}`)
 
   switch await UpdateTableCommand.make({
     tableName,

@@ -2,6 +2,8 @@ open PulumiAws.PolicyDocument
 open ReventlessCore.Adapter
 open Adapter_Helpers
 
+let log = ReventlessCore.Logger.fromEnv()
+
 let toResources = (eventTopics: ReventlessCore.EventTopic.allOutputs) =>
   eventTopics
   ->Dict.valuesToArray
@@ -48,7 +50,7 @@ let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) =>
 
 let subscribeQueue2SnsTopic = (queue, name, resources: array<ReventlessInfra.Adapter.resolvedResource>, opts) => {
   let _snsTopicSubscriptions = resources->Array.map(resource => {
-    Console.log3("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource)
+    log.debug(~comp="EventCollector", `subscribeToSnsTopic: ${name} -> ${resource.name}`)
     let subscription = Util_SQS.subscribeToSnsTopic(
       ~queue,
       ~targetName=name,
@@ -56,7 +58,7 @@ let subscribeQueue2SnsTopic = (queue, name, resources: array<ReventlessInfra.Ada
       ~topic=resource->ReventlessCore.AdapterDeploytime.resolvedToResource,
       ~opts,
     )
-    subscription.id->Pulumi.Output.apply(id => Console.log3("created SNS subscription:", id, name))
+    subscription.id->Pulumi.Output.apply(id => log.debug(~comp="EventCollector", `created SNS subscription: ${id} ${name}`))
   })
 }
 
@@ -65,17 +67,13 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics
     (eventTopics->toResources, queue.id)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((eventTopicResources, queueId)) => {
-      Console.log2(
-        `EventCollectorChannel_Helpers.connectSqsQueue2SnsTopics ${queueId}: eventTopicResources:`,
-        eventTopicResources,
+      log.debug(
+        ~comp="EventCollector",
+        `connectSqsQueue2SnsTopics ${queueId}: ${eventTopicResources->Array.length->Int.toString} topic resource(s)`,
       )
       let snsResources = eventTopicResources->snsResources
       queue->createQueuePolicy(name, snsResources, opts)
       queue->subscribeQueue2SnsTopic(name, snsResources, opts)
-
-      // if snsResources->Array.length == 0 {
-      //   Console.log2(`No SNS topics are present for ${name}`)
-      // }
     })
 }
 
@@ -96,11 +94,10 @@ let connectLambda = (
     )
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((eventTopicResources, queueArns, resources)) => {
-      Console.log2(
-        `EventCollectorChannel_Helpers.connectLambda ${name}: eventTopicResources:`,
-        eventTopicResources,
+      log.debug(
+        ~comp="EventCollector",
+        `connectLambda ${name}: ${eventTopicResources->Array.length->Int.toString} topic resource(s), ${resources->Array.length->Int.toString} resource(s)`,
       )
-      Console.log2(`EventCollectorChannel_Helpers.connectLambda ${name}: resources:`, resources)
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources
       let targetSnsResources = resources->snsResources

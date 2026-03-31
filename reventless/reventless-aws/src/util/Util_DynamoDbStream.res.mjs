@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
@@ -55,8 +56,10 @@ function toStreamResource(table) {
   };
 }
 
+let log = Logger$ReventlessCore.fromEnv();
+
 async function enableStream(tableName) {
-  console.log("Util_DynamoDbStream-ReventlessAws" + `: enableStream for ` + tableName);
+  log.info("DynamoDbStream", undefined, `enableStream for ` + tableName);
   let res = await DynamoDb_DynamoDb$AwsSdk.UpdateTableCommand.send(new ClientDynamodb.UpdateTableCommand({
     TableName: tableName,
     StreamSpecification: {
@@ -136,6 +139,7 @@ export {
   streamArnFromDynamoDbTableResource,
   toResource,
   toStreamResource,
+  log,
   enableStream,
   verifyStream,
   updateTable,
@@ -143,4 +147,4 @@ export {
   findResource,
   findResolvedResource,
 }
-/* @pulumi/aws Not a pure module */
+/* log Not a pure module */

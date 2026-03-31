@@ -1,6 +1,8 @@
 open PulumiAws.DynamoDb.Table
 open ReventlessInfra.Adapter
 
+let log = ReventlessCore.Logger.fromEnv()
+
 let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
   ->Pulumi.Output.all2
@@ -33,7 +35,7 @@ let arn2tableName = arn =>
 
 // Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
 let enableTtl: string => promise<ttl> = async tableName => {
-  Console.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
+  log.info(~comp="DynamoDb", `enableTimeToLive for ${tableName}`)
 
   //open AwsSdk.DynamoDb_DynamoDb.UpdateTimeToLiveCommand
   switch await {
@@ -68,7 +70,7 @@ let verifyTtl: (~expectedTtl: int=?, table) => Pulumi.Output.t<ttl> = (
   )
 
 let enablePointInTimeRecovery = async tableName => {
-  Console.log(`${__MODULE__}: enablePointInTimeRecovery for ${tableName}`)
+  log.info(~comp="DynamoDb", `enablePointInTimeRecovery for ${tableName}`)
 
   open AwsSdk.DynamoDb_DynamoDb
 

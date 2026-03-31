@@ -5,12 +5,15 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as AdapterDeploytime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/AdapterDeploytime.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function toResources(eventTopics) {
   return Adapter$ReventlessCore.resourcesToResolvedOutput(Object.values(eventTopics).flatMap(outputs => outputs.resources));
@@ -45,11 +48,9 @@ function createQueuePolicy(queue, name, resources, opts) {
 
 function subscribeQueue2SnsTopic(queue, name, resources, opts) {
   resources.map(resource => {
-    console.log("EventCollectorChannel_Helpers.subscribeToSnsTopic:", name, resource);
+    log.debug("EventCollector", undefined, `subscribeToSnsTopic: ` + name + ` -> ` + resource.name);
     let subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, resource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(resource), opts);
-    return subscription.id.apply(id => {
-      console.log("created SNS subscription:", id, name);
-    });
+    return subscription.id.apply(id => log.debug("EventCollector", undefined, `created SNS subscription: ` + id + ` ` + name));
   });
 }
 
@@ -59,7 +60,7 @@ function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
     queue.id
   ]).apply(param => {
     let eventTopicResources = param[0];
-    console.log(`EventCollectorChannel_Helpers.connectSqsQueue2SnsTopics ` + param[1] + `: eventTopicResources:`, eventTopicResources);
+    log.debug("EventCollector", undefined, `connectSqsQueue2SnsTopics ` + param[1] + `: ` + eventTopicResources.length.toString() + ` topic resource(s)`);
     let snsResources = Adapter_Helpers$ReventlessAws.snsResources(eventTopicResources);
     createQueuePolicy(queue, name, snsResources, opts);
     subscribeQueue2SnsTopic(queue, name, snsResources, opts);
@@ -75,8 +76,7 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
     let resources = param[2];
     let queueArns = param[1];
     let eventTopicResources = param[0];
-    console.log(`EventCollectorChannel_Helpers.connectLambda ` + name + `: eventTopicResources:`, eventTopicResources);
-    console.log(`EventCollectorChannel_Helpers.connectLambda ` + name + `: resources:`, resources);
+    log.debug("EventCollector", undefined, `connectLambda ` + name + `: ` + eventTopicResources.length.toString() + ` topic resource(s), ` + resources.length.toString() + ` resource(s)`);
     let dynamoDbStreamResources = Adapter_Helpers$ReventlessAws.dynamoDbStreamResources(eventTopicResources);
     let targetSnsResources = Adapter_Helpers$ReventlessAws.snsResources(resources);
     let targetSqsResources = Adapter_Helpers$ReventlessAws.sqsResources(resources);
@@ -149,10 +149,11 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
 }
 
 export {
+  log,
   toResources,
   createQueuePolicy,
   subscribeQueue2SnsTopic,
   connectSqsQueue2SnsTopics,
   connectLambda,
 }
-/* @pulumi/aws Not a pure module */
+/* log Not a pure module */
