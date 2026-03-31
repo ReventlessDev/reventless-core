@@ -6,13 +6,13 @@ Martin Dilger (Nebulit / eventmodelers.de) created a JSON schema for Event Model
 
 ### 1.1 Adoption and Standardization Status
 
-**Dilger's schema is not a standard.** It has very low adoption (13 GitHub stars, 2 forks) and is used almost exclusively within Nebulit's own Miro toolkit and code generator. No other project was found that imports, validates against, or generates this schema. Adam Dymitruk's eventmodeling.org does not reference or endorse any JSON schema — the site is purely conceptual.
+**Dilger's schema is not a standard.** It has very low adoption (19 GitHub stars, 2 forks, single commit from 2025-10-17) and is used almost exclusively within Nebulit's own Miro toolkit and code generator. No other project was found that imports, validates against, or generates this schema. Adam Dymitruk's eventmodeling.org does not reference or endorse any JSON schema — the site is purely conceptual.
 
 The event modeling community has **no agreed-upon interchange format**. The landscape is fragmented:
 
 | Project | Format | Notes |
 |---------|--------|-------|
-| **dilgerma/event-modeling-spec** | JSON Schema (Draft 07) | Nebulit's Miro toolkit. 13 stars. |
+| **dilgerma/event-modeling-spec** | JSON Schema (Draft 07) | Nebulit's Miro toolkit. 19 stars. Single commit (2025-10-17). |
 | **SamHatoum/event-modeling-spec** | Zod/TypeScript → JSON Schema | Independent, unrelated schema with same repo name. 6 stars. |
 | **err0r500/fairway-spec** | CUE language | DSL for vertical slices with validation rules. |
 | **waiteperspectives/eml** | Custom DSL (Rust) | Text DSL compiled to SVG diagrams. 19 stars. |
@@ -56,8 +56,9 @@ Everything is organized around **vertical slices**, not aggregates or bounded co
 | `processors` | Element[] | Automation/translation elements |
 | `tables` | Table[] | Structured data views |
 | `specifications` | Specification[] | Given/When/Then test scenarios |
-| `actors` | Actor[] | Users/external systems |
+| `actors` | Actor[] | Users/external systems (each has `name`, `authRequired`) |
 | `aggregates` | string[] | Aggregate names referenced by this slice |
+| `screenImages` | ScreenImage[] | UI mockup references (each has `id`, `title`, optional `url`) |
 
 **Element** (shared type for commands, events, read models, screens, automations):
 
@@ -76,6 +77,14 @@ Everything is organized around **vertical slices**, not aggregates or bounded co
 | `apiEndpoint` | string | API path |
 | `service` | string | Service/microservice name |
 | `tags` | string[] | Arbitrary tags |
+| `groupId` | string | Visual grouping on the modeling board |
+| `domain` | string | Domain assignment |
+| `slice` | string | Back-reference to parent slice |
+| `aggregateDependencies` | string[] | Other aggregates this element depends on |
+| `triggers` | string[] | What triggers this element |
+| `sketched` | boolean | Draft/work-in-progress marker |
+| `prototype` | object | Feature flagging config (e.g., `activeByDefault`) |
+| `listElement` | boolean | Whether a read model renders as a list |
 
 **Field:**
 
@@ -84,11 +93,14 @@ Everything is organized around **vertical slices**, not aggregates or bounded co
 | `name` | string | Field name |
 | `type` | enum | `String`, `Boolean`, `Double`, `Decimal`, `Long`, `Custom`, `Date`, `DateTime`, `UUID`, `Int` |
 | `subfields` | Field[] | Nested/complex types (recursive) |
-| `example` | string/object | Example value |
+| `example` | string/object | Example value (oneOf string or object) |
 | `optional` | boolean | Whether the field is optional |
 | `idAttribute` | boolean | Whether this is the identity field |
 | `cardinality` | enum | `List` or `Single` |
 | `generated` | boolean | Auto-generated field |
+| `mapping` | string | Field mapping reference |
+| `technicalAttribute` | boolean | Whether this is a technical (non-domain) field |
+| `schema` | string | Schema reference |
 
 **Dependency** (connections between elements):
 
@@ -109,8 +121,23 @@ Everything is organized around **vertical slices**, not aggregates or bounded co
 | `given` | SpecificationStep[] | Precondition events |
 | `when` | SpecificationStep[] | Command being tested |
 | `then` | SpecificationStep[] | Expected outcome events/errors |
+| `vertical` | boolean | Layout hint for visual rendering |
+| `sliceName` | string | Name of the parent slice |
+| `comments` | Comment[] | Free-text comments (each has `description`) |
 
-Each `SpecificationStep` has a `type` enum: `SPEC_EVENT`, `SPEC_COMMAND`, `SPEC_READMODEL`, `SPEC_ERROR`.
+**SpecificationStep:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | enum | `SPEC_EVENT`, `SPEC_COMMAND`, `SPEC_READMODEL`, `SPEC_ERROR` |
+| `title` | string | Step name |
+| `fields` | Field[] | Data fields for this step |
+| `tags` | string[] | Arbitrary tags |
+| `examples` | object[] | Additional example data |
+| `index` | integer | Ordering |
+| `specRow` | integer | Row position in visual layout |
+| `linkedId` | string | Linked element |
+| `expectEmptyList` | boolean | Whether an empty result is expected |
 
 ### 2.1 Key Design Characteristics
 
@@ -119,6 +146,8 @@ Each `SpecificationStep` has a `type` enum: `SPEC_EVENT`, `SPEC_COMMAND`, `SPEC_
 3. **Graph-based connections**: Elements carry `dependencies[]` with `INBOUND`/`OUTBOUND` direction, forming an explicit connection graph.
 4. **Specifications are first-class**: Given/When/Then scenarios are built into the schema at the slice level.
 5. **Visual-tool oriented**: Includes `screens`, `screenImages`, `actors`, `index` (timeline ordering), `sketched` flags — designed for visual Event Modeling tools, not code generation.
+
+**Note on Reventless approaches**: Reventless supports three architectural approaches — **Aggregate** (traditional event-sourced aggregates with Behavior), **DCB** (Dynamic Consistency Boundary with StateChangeSlice/StateViewSlice/AutomationSlice/TranslationSlices), and **Hybrid** (mixing both in the same plugin). All three share the same `initialState/evolve/decide` naming convention. The JSON schema's slice-centric structure maps most naturally to the DCB approach.
 
 ### 2.2 Example: AddProduct Slice in JSON
 
@@ -224,25 +253,26 @@ The JSON schema was designed for visual Event Modeling (the methodology), not fo
 
 | Reventless Concept | Description | Impact |
 |-------------------|-------------|--------|
-| **Decision model** (`decisionModel`, `initialDecisionModel`) | Ephemeral state rebuilt per command to guard acceptance | Cannot generate the state type or its initial value |
-| **Reduce function** (`reduce`) | Folds events into the decision model | No way to express which events affect which decision model fields |
-| **Decide function** (`decide`) | Pattern-matches on decision model + command → events or errors | No way to express the acceptance/rejection logic |
-| **Behavioral state** (`state`, `init`, `apply`) | Aggregate state machine for the aggregate approach | No concept of state reconstruction from events |
-| **Create vs. Execute** distinction | Different handlers for new vs. existing aggregates | `createsAggregate` exists but only as a boolean flag, not separate logic paths |
-| **Projection logic** (`project`, `map`) | How events map to read model state changes (Set, Update, Delete, etc.) | Read models exist as elements but their projection rules are opaque |
-| **DCB tags** (`@s.matches(DcbTag.string)`) | Content-based event filtering for Dynamic Consistency Boundaries | No equivalent — `idAttribute` partially overlaps but serves a different purpose |
+| **Ephemeral state** (`state`, `initialState`) | Per-command state rebuilt from events to guard acceptance (both DCB slices and aggregate behaviors use the same naming) | Cannot generate the state type or its initial value |
+| **Evolve function** (`evolve`) | Folds events into the ephemeral state | No way to express which events affect which state fields |
+| **Decide function** (`decide`) | Pattern-matches on state + command → `Ok(events)` or `Error(error)` | No way to express the acceptance/rejection logic |
+| **Produced / consumed event decoupling** (`producedEvent`, `consumedEvent`) | Each DCB slice declares its own produced and consumed event types — consumed events can be payload-less or partial projections | Events belong to individual slices, not a per-slice type pair |
+| **Projection logic** (`project`) | How events map to read model state changes (Set, Update, Delete, etc.) | Read models exist as elements but their projection rules are opaque |
+| **DCB tags** (`@s.matches(DcbTag.string)`) and auto-query (`DcbTag.buildQueryFromCommand`) | Content-based event filtering for Dynamic Consistency Boundaries; queries are auto-derived from command schema tags | No equivalent — `idAttribute` partially overlaps but serves a different purpose |
+| **DCB validation** (`DcbValidation.validateProducedAndConsumed`) | Compile-time check that consumed event types are structurally compatible with produced event types across slices | No cross-element validation concept |
+| **DCB decoding** (`DcbDecode`) | Runtime decoding of consumed events including payload-less variants and partial field projections | No partial decoding concept |
 | **Shared event log** (DcbEventLog) | Single event log shared across all slices in a plugin | Events belong to individual slices, not a shared log |
 | **Error types** as structured variants | Typed error variants with payloads (e.g., `ProductNotFound`) | Only `SPEC_ERROR` in specifications — not type definitions |
 | **Extension point protocol** | Formal EP with `command`, `event`, `directive` types | Dependencies link elements but have no EP/extension contract semantics |
 | **Extension mapping** (`mapIncomingEvent`, `mapOutgoingEvent`) | How EP events translate to internal commands and vice versa | No mapping function concept |
-| **Inbound translation** (`externalInput`, `translate`) | Anti-corruption layer for external input validation | No equivalent — `AUTOMATION` has no `translate` structure |
-| **Outbound translation** (`outboundItem`, `translate`) | Async external service calls with retry | No equivalent — `AUTOMATION` has no collect/translate/resolve |
-| **Automation slice internals** (`collect`, `resolve`, `process`, `todoItem`) | TODO-list pattern with pending work tracking | `AUTOMATION` slice type exists but is structurally empty |
+| **Inbound translation** (`externalInput`, `translate`) | Anti-corruption layer: external input → `result<(id, command), string>` | No equivalent — `AUTOMATION` has no `translate` structure |
+| **Outbound translation** (`outboundItem`, `inboundCommand`, `collect`, `translate`) | Tracked, retryable external service calls via TODO-list pattern; `translate` returns `promise<result<option<(id, inboundCommand)>, string>>` | No equivalent — `AUTOMATION` has no collect/translate structure |
+| **Automation slice internals** (`collect`, `resolve`, `process`, `todoItem`) | TODO-list pattern with pending work tracking and heartbeat-driven sweep | `AUTOMATION` slice type exists but is structurally empty |
 | **Plugin as deployment unit** | Plugin bundles aggregates/slices, EPs, extensions | No plugin concept — `context` is a flat string |
 | **Platform composition** | Assembles plugins with version | No top-level composition |
 | **Heartbeat interval** | Per-plugin polling configuration | No infrastructure config |
 | **sury/schema annotations** | `@schema`, `@s.matches` for serialization | No serialization concept |
-| **GraphQL resolver config** | `resolverConfig.fields` for API generation | `apiEndpoint` exists but is a flat string, not a structured config |
+| **Api component** (GraphQL schema generation, stitching, MCP schema) | Auto-generated GraphQL API from read model schemas with fragment stitching | `apiEndpoint` exists but is a flat string, not a structured config |
 
 ### 3.2 Event Modeling JSON Concepts Missing from Reventless
 
@@ -252,7 +282,7 @@ The JSON schema captures visual modeling and specification concepts that Reventl
 |--------------------|-------------|--------|
 | **Given/When/Then specifications** | Structured test scenarios with example data per slice | Reventless tests exist as separate `.res` files — no structured spec format in the framework |
 | **UI screens** (`screens[]`, `screenImages[]`) | Wireframe references linked to slices | Reventless is backend-only — no UI modeling |
-| **Actors** (`actors[]` with `name`, `authRequired`) | Who triggers which commands | Reventless has no actor/persona concept |
+| **Actors** (`actors[]` with `name`, `authRequired`) | Who triggers which commands | Reventless has Identity/RequestContext for auth but no actor/persona modeling concept |
 | **Slice status** (`Created`, `InProgress`, `Done`) | Project management metadata | Reventless specs are either code or not — no workflow status |
 | **Timeline ordering** (`index`) | Chronological narrative position | Reventless components are unordered — wiring determines flow |
 | **Element grouping** (`groupId`) | Visual grouping on the modeling board | No equivalent |
@@ -272,11 +302,11 @@ Some concepts exist in both but map imperfectly:
 | **Aggregate identity** | `module Id = Id.String` (abstract type) | `idAttribute: true` on a field | JSON marks which field is the ID; Reventless has a separate module-level identity type |
 | **Aggregate grouping** | Plugin → aggregates array / dcbSpec | `slice.aggregates[]` strings + `element.aggregate` string | JSON uses flat string refs; Reventless uses typed module composition |
 | **Bounded context** | Plugin name | `slice.context` / `element.modelContext` | 1:1 mapping possible but plugin carries more semantics (deployment unit, heartbeat, etc.) |
-| **Command → Event flow** | Decide/Create/Execute functions | `dependencies[]` with INBOUND/OUTBOUND | JSON captures the connection but not the logic |
-| **Event → ReadModel flow** | Projection Mapping / StateViewSlice project | `dependencies[]` from event to readmodel | JSON captures the connection but not the projection rules |
+| **Command → Event flow** | `decide` function (both aggregate Behavior and StateChangeSlice) | `dependencies[]` with INBOUND/OUTBOUND | JSON captures the connection but not the logic |
+| **Event → ReadModel flow** | Projection Mapping / StateViewSlice `project` | `dependencies[]` from event to readmodel | JSON captures the connection but not the projection rules |
 | **Cross-boundary communication** | ExtensionPoint + Extension with typed mapping | Elements with `context: "EXTERNAL"` + dependencies | JSON has no formal protocol — just "external" markers |
 | **Field types** | Rich ReScript type system (`string`, `float`, `option<T>`, `array<T>`, records) | Limited enum (`String`, `Int`, `Double`, `UUID`, `Custom`) + `subfields` | `option`, variant types, and abstract types have no direct mapping |
-| **Automation** | AutomationSlice with collect/resolve/process/todoItem | `sliceType: "AUTOMATION"` with `processors[]` | JSON has the category but none of the internal structure |
+| **Automation** | AutomationSlice with `collect`/`resolve`/`process`/`todoItem`, `maxRetries`, `heartbeatInterval` | `sliceType: "AUTOMATION"` with `processors[]` | JSON has the category but none of the internal structure |
 
 ---
 
@@ -317,11 +347,11 @@ Some concepts exist in both but map imperfectly:
    - Command variant → `Element` with `type: "COMMAND"`, fields from the variant's payload
    - Event variant → `Element` with `type: "EVENT"`
    - Read model / StateViewSlice state → `Element` with `type: "READMODEL"`
-   - Mark commands that create new aggregates with `createsAggregate: true` (inferred from `create` handler or `initialDecisionModel`)
+   - Mark commands that create new aggregates with `createsAggregate: true` (inferred from `initialState` and `decide` logic)
 
 3. **Map field types**: `string` → `String`, `int` → `Int`, `float` → `Double`, `bool` → `Boolean`, `option<T>` → field with `optional: true`. Mark DCB-tagged fields with `idAttribute: true`.
 
-4. **Build dependency graph**: For each command → event relationship (from Decide/Create/Execute), add `OUTBOUND` dependency on the command and `INBOUND` on the event. For projection mappings, add dependencies from events to read models.
+4. **Build dependency graph**: For each command → event relationship (from `decide`), add `OUTBOUND` dependency on the command and `INBOUND` on the event. For projection mappings, add dependencies from events to read models.
 
 5. **Map cross-plugin connections**: Extension point mappings → dependencies between elements with `context: "EXTERNAL"`.
 
@@ -333,9 +363,10 @@ Some concepts exist in both but map imperfectly:
 
 | Lost Concept | Workaround |
 |-------------|------------|
-| Decision model + reduce/decide logic | None — not representable. Could add as `description` prose. |
+| Ephemeral state + evolve/decide logic | None — not representable. Could add as `description` prose. |
 | Projection mapping rules | None — read models appear but without mapping logic. |
-| Behavioral state (init/apply) | None — aggregate state machine is opaque. |
+| Aggregate behavioral state (initialState/evolve) | None — aggregate state machine is opaque. |
+| Produced/consumed event decoupling (partial projections, payload-less variants) | None — JSON events are full-shape only. |
 | Error types as structured variants | Partially recoverable from `SPEC_ERROR` in specifications. |
 | DCB tags (beyond `idAttribute`) | Could use `tags[]` on fields for non-ID tagged fields, but this is non-standard. |
 | Translation rules (inbound/outbound) | None — automation slices appear but without internal structure. |
@@ -350,29 +381,32 @@ Some concepts exist in both but map imperfectly:
 
 1. **Group slices by context**: The `context` field on each slice maps to a Reventless plugin. Create one plugin package per unique context value.
 
-2. **Determine approach**: Default to DCB (since the JSON schema's `sliceType` maps naturally to DCB components). User can override to Aggregate approach.
+2. **Determine approach**: Default to DCB (since the JSON schema's `sliceType` maps naturally to DCB components). User can override to Aggregate approach, or use a Hybrid approach (independent entities as aggregates, interdependent entities as DCB slices sharing a `DcbEventLog`).
 
-3. **Build shared event log** (DCB): Collect all unique events across all slices in the same context. Deduplicate by `title`. Infer DCB tags from `idAttribute: true` fields → generate `@s.matches(DcbTag.string)` annotations.
+3. **Build shared event log** (DCB): Create a `DcbEventLog` for the plugin. Each slice declares its own `producedEvent` and `consumedEvent` types. Infer DCB tags from `idAttribute: true` fields → generate `@s.matches(DcbTag.string)` annotations on command and produced event fields.
 
 4. **Generate StateChangeSlices**: For each `STATE_CHANGE` slice:
    - Command from `commands[]` → `@schema type command` variant
-   - Events from `events[]` → already in the shared event log
-   - Generate **skeleton** `decisionModel`, `initialDecisionModel`, `reduce`, `decide` with TODO placeholders
+   - Produced events from `events[]` → `@schema type producedEvent` variant (with DCB tag annotations)
+   - Consumed events inferred from dependencies → `@schema type consumedEvent` variant (payload-less or partial as appropriate)
+   - Generate **skeleton** `state`, `initialState`, `evolve`, `decide` with TODO placeholders
 
 5. **Generate StateViewSlices**: For each `STATE_VIEW` slice:
    - State from `readmodels[].fields` → `@schema type state` record
+   - Consumed events from dependencies → `@schema type consumedEvent` variant
    - Generate **skeleton** `project` function with TODO placeholders
 
 6. **Generate AutomationSlices**: For each `AUTOMATION` slice:
    - Extract trigger event and target command from `dependencies`
-   - Generate **skeleton** `collect`, `resolve`, `process` with TODO placeholders
+   - Consumed events from dependencies → `@schema type consumedEvent` variant
+   - Generate **skeleton** `todoItem` type, `collect`, `resolve`, `process`, `maxRetries`, `heartbeatInterval` with TODO placeholders
 
 7. **Infer cross-context connections**: Elements with `context: "EXTERNAL"` or dependencies to other contexts:
    - Generate `-spec` package with ExtensionPoint definition
    - Generate Extension mapping skeleton
 
 8. **Generate test skeletons** from `specifications[]`:
-   - Each specification → Jest `testPromise` with Given (events to replay), When (command to send), Then (expected events or errors)
+   - Each specification → Jest `test` (async) with Given (events to replay), When (command to send), Then (expected events or errors)
 
 9. **Generate Plugin.res wiring** and **Main.res platform assembly**.
 
@@ -380,12 +414,13 @@ Some concepts exist in both but map imperfectly:
 
 | Gap | What the Developer Must Write |
 |-----|------------------------------|
-| `decisionModel` type | Define the record fields that guard command acceptance |
-| `initialDecisionModel` | Set initial values for each decision model field |
-| `reduce` function | Pattern match on events to update the decision model |
-| `decide` function | Pattern match on decision model + command → `Ok(events)` or `Error(error)` |
-| `project` function | Pattern match on events → `Set`, `Update`, `Delete`, `Ignore` actions |
+| `state` type | Define the record fields that guard command acceptance |
+| `initialState` | Set initial values for each state field |
+| `evolve` function | Pattern match on consumed events to update the state |
+| `decide` function | Pattern match on state + command → `Ok(producedEvents)` or `Error(error)` |
+| `project` function | Pattern match on consumed events → `Set`, `Update`, `Delete`, `Ignore` actions |
 | `@schema type error` | Define error variant types (partially inferrable from `SPEC_ERROR` in specifications) |
+| `consumedEvent` partitioning | Which events each slice consumes and which fields it needs (payload-less vs. partial vs. full) |
 | `collect`/`resolve`/`process` | Automation slice internals — which events trigger, which resolve, how to process |
 | `translate` function | Translation rules for inbound/outbound slices |
 | Extension mapping functions | `mapIncomingEvent` / `mapOutgoingEvent` implementations |
@@ -402,9 +437,10 @@ Lossless elements:
 - `idAttribute` → DCB tag on identity fields
 
 Lost in round-trip:
-- Decision model logic (reduce/decide) — must be re-implemented
+- Ephemeral state logic (evolve/decide) — must be re-implemented
 - Projection mapping logic (project) — must be re-implemented
-- Behavioral state (init/apply) — must be re-implemented
+- Aggregate behavioral state (initialState/evolve) — must be re-implemented
+- Produced/consumed event decoupling (which fields each slice actually needs) — must be re-partitioned
 - Translation rules — must be re-implemented
 - Error types (partially recoverable from specifications)
 - Extension point mapping functions
@@ -459,10 +495,12 @@ The JSON serves as the **initial bootstrap** from visual design. The Reventless 
 
 ## 7. Open Questions
 
-1. **Custom schema extensions?** Could Reventless-specific concepts be added to the JSON schema via custom fields (e.g., `x-reventless-decisionModel`, `x-reventless-dcbTags`)? This would make the JSON lossless for Reventless but break compatibility with other Event Modeling tools.
+1. **Custom schema extensions?** Could Reventless-specific concepts be added to the JSON schema via custom fields (e.g., `x-reventless-state`, `x-reventless-dcbTags`, `x-reventless-consumedEvents`)? This would make the JSON lossless for Reventless but break compatibility with other Event Modeling tools.
 
 2. **Specification-to-test pipeline**: The JSON's Given/When/Then specs map naturally to Jest test cases. Should Reventless provide a generator that reads specifications from JSON and produces `.res` test files?
 
-3. **Event Modeling JSON as canonical source?** If teams design in the Miro toolkit first, the JSON export could be the starting point for generating ReScript. However, the JSON lacks critical Reventless concepts (decision models, projections, DCB tags), so it can only serve as a structural skeleton — not a complete spec.
+3. **Event Modeling JSON as canonical source?** If teams design in the Miro toolkit first, the JSON export could be the starting point for generating ReScript. However, the JSON lacks critical Reventless concepts (ephemeral state, projections, DCB tags, produced/consumed event partitioning), so it can only serve as a structural skeleton — not a complete spec.
 
 4. **Syncing specifications**: When the code evolves beyond the initial JSON import, should specifications be synced back to the JSON? Or should test scenarios live exclusively in `.res` test files after the initial bootstrap?
+
+5. **Hybrid approach detection**: Could the import step automatically suggest which entities should be aggregates vs. DCB slices based on cross-entity dependency analysis in the JSON? Entities with no shared events across slices are candidates for the aggregate approach; entities with overlapping events suggest DCB.
