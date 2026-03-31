@@ -187,10 +187,11 @@ let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmd
   let count = cmdJsons->Array.length->Int.toString
   cmdJsons->Array.mapWithIndex((cmdJson, idx) => {
     let idx = (idx + 1)->Int.toString
-    `${idx}/${count}: ${cmdJson->cmdFull}`
+    `${idx}/${count}: ${cmdJson->cmdSummary}: ${cmdJson->cmdFull}`
   })
 }
-let event'JsonToLogMessage = eventFull
+let event'JsonToLogMessage = (j: JSON.t): string =>
+  `${j->eventSummary}: ${j->eventFull}`
 
 // Legacy concise aliases
 let fmtCmd = cmdSummary

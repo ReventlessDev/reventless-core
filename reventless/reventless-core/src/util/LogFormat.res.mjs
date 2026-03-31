@@ -182,8 +182,12 @@ function commandJsonsToLogMessages(cmdJsons) {
   let count = cmdJsons.length.toString();
   return cmdJsons.map((cmdJson, idx) => {
     let idx$1 = (idx + 1 | 0).toString();
-    return idx$1 + `/` + count + `: ` + cmdFull(cmdJson);
+    return idx$1 + `/` + count + `: ` + cmdSummary(cmdJson) + `: ` + cmdFull(cmdJson);
   });
+}
+
+function event$pJsonToLogMessage(j) {
+  return eventSummary(j) + `: ` + eventFull(j);
 }
 
 function fmtCmds(msgs) {
@@ -191,8 +195,6 @@ function fmtCmds(msgs) {
 }
 
 let commandJsonToLogMessage = cmdFull;
-
-let event$pJsonToLogMessage = eventFull;
 
 let fmtCmd = cmdSummary;
 
