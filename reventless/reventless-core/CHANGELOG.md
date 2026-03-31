@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.29 (2026-03-31)
+
+### Bug Fixes
+
+* include summary prefix in legacy log format functions ([9bb4d4d](https://github.com/ReventlessDev/reventless-core/commit/9bb4d4de82fd2fedd470f5324a884c7d509a8807))
+* migrate remaining Console.log calls to unified Logger/EffectLogger ([0216b0d](https://github.com/ReventlessDev/reventless-core/commit/0216b0dde5597b2bc539a960ac86a18071777815))
+
+
 # 3.0.0-alpha.28 (2026-03-30)
 
 ### Features

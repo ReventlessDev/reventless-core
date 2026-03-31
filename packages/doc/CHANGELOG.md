@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.18 (2026-03-31)
+
+### Features
+
+* add reventless-skills AI plugin with 7 skills, 3 commands, 2 agents ([46f6534](https://github.com/ReventlessDev/reventless-core/commit/46f6534fa031bcc24696c365e450e8d11fa1a366))
+
+
 # [1.0.0-alpha.17](https://github.com/ReventlessDev/reventless-core/compare/doc@1.0.0-alpha.15...doc@1.0.0-alpha.17) (2026-03-28)
 
 **Note:** Version bump only for package doc
