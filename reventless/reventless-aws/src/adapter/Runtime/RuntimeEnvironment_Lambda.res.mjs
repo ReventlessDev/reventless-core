@@ -11,10 +11,15 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
+
+let additionalEnvVars = {};
+
+let additionalIamPolicies = [];
 
 function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
@@ -40,12 +45,30 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
+  additionalIamPolicies.forEach(param => {
+    let actions = param.actions;
+    let suffix = param.suffix;
+    param.resourceArn.apply(arn => {
+      new (Aws.iam.RolePolicy)(name + suffix, {
+        policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + suffix + `Policy`, [{
+            Sid: `Allow` + suffix,
+            Effect: "Allow",
+            Action: actions,
+            Resource: arn
+          }])),
+        role: lambdaRole.id
+      });
+    });
+  });
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
   let variables = Object.fromEntries([[
       "Environment",
       Pulumi.getStack()
     ]]);
   Stdlib_Dict.forEachWithKey(envVars, (value, key) => {
+    variables[key] = value;
+  });
+  Stdlib_Dict.forEachWithKey(additionalEnvVars, (value, key) => {
     variables[key] = value;
   });
   let lambda = new (Aws.lambda.Function)(name, {
@@ -99,6 +122,8 @@ function extractCorrelationId(event) {
 }
 
 export {
+  additionalEnvVars,
+  additionalIamPolicies,
   make,
   makeFromCodeAsset,
   groupBySource,

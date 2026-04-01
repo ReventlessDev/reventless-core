@@ -2,6 +2,17 @@ type event = PulumiAws.Lambda.CallbackFunction.event
 type context = PulumiAws.Lambda.context
 type parts = Util.Lambda.runtimeParts
 
+// Generic env vars and IAM policies for all Lambdas created by makeFromCodeAsset.
+// Consumers register additional config before deployPlugin triggers builder finish().
+let additionalEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
+
+type iamPolicy = {
+  suffix: string,
+  actions: string,
+  resourceArn: Pulumi.Output.t<string>,
+}
+let additionalIamPolicies: array<iamPolicy> = []
+
 // Legacy CallbackFunction path — retained for module type compatibility.
 // Not called at runtime in bundled deployments. Will be removed in Step 6
 // (Unify Lambda Function Type).
@@ -79,6 +90,31 @@ let makeFromCodeAsset: (
     ~opts?,
   )
 
+  // Create additional IAM policies registered by consumers.
+  additionalIamPolicies->Array.forEach(({suffix, actions, resourceArn}) => {
+    let _ = resourceArn->Pulumi.Output.apply(arn => {
+      let _ = PulumiAws.IAM.RolePolicy.make(
+        ~name=`${name}${suffix}`,
+        ~args={
+          policy: PolicyDocument.make(
+            ~id=`${name}${suffix}Policy`,
+            ~statements=[
+              {
+                sid: `Allow${suffix}`,
+                effect: Allow,
+                actions: Action(actions),
+                resources: Resource(arn),
+              },
+            ],
+          )
+          ->PolicyDocument.toJsonString
+          ->Pulumi.Input.make,
+          role: lambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
+    })
+  })
+
   let layers =
     Lambda.reventlessLayerArn
     ->Option.map(arn => [arn->Pulumi.Input.make])
@@ -89,6 +125,9 @@ let makeFromCodeAsset: (
     ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
   ])
   envVars->Dict.forEachWithKey((value, key) => {
+    variables->Dict.set(key, value)
+  })
+  additionalEnvVars->Dict.forEachWithKey((value, key) => {
     variables->Dict.set(key, value)
   })
 
