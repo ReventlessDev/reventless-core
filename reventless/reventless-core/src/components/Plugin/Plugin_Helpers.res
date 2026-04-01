@@ -385,6 +385,31 @@ module MakeEventCollectorHelper = (
 
 
 // ---------------------------------------------------------------------------
+// Plugin-built hook — fires synchronously after plugin construction with a
+// plain-data summary of the plugin's components.
+// ---------------------------------------------------------------------------
+type pluginBuiltComponent = {
+  name: string,
+  kind: string,
+}
+
+type pluginBuiltInfo = {
+  name: string,
+  version: string,
+  components: array<pluginBuiltComponent>,
+}
+
+let onPluginBuiltHook: ref<option<pluginBuiltInfo => unit>> = ref(None)
+
+let registerOnPluginBuilt = (hook: pluginBuiltInfo => unit) => {
+  onPluginBuiltHook.contents = Some(hook)
+}
+
+let clearOnPluginBuilt = () => {
+  onPluginBuiltHook.contents = None
+}
+
+// ---------------------------------------------------------------------------
 // Shared parameter types for hooks that carry structured data.
 // ---------------------------------------------------------------------------
 type mutationKind = Aggregate | Dcb

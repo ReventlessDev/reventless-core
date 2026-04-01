@@ -167,6 +167,35 @@ module Make = (
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
+    // Fire onPluginBuiltHook synchronously with a plain-data summary.
+    // ExtensionPoint/Extension names are not accessible from their T module type,
+    // so only aggregates, read models, and DCB slice names are included.
+    switch Plugin_Helpers.onPluginBuiltHook.contents {
+    | Some(hook) =>
+      let mapNames = (d: dict<_>, kind: string) =>
+        d
+        ->Dict.keysToArray
+        ->Array.map(name => ({Plugin_Helpers.name, kind}: Plugin_Helpers.pluginBuiltComponent))
+      hook({
+        name,
+        version,
+        components: Array.flat([
+          aggregates->Array.map((
+            module(M: ReventlessInfra.Aggregate.T with type api = api),
+          ) => ({name: M.Spec.name, kind: "Aggregate"}: Plugin_Helpers.pluginBuiltComponent)),
+          readModels->Array.map((
+            module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+          ) => ({name: R.Spec.name, kind: "ReadModel"}: Plugin_Helpers.pluginBuiltComponent)),
+          mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
+          mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
+          mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
+          mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
+          mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice"),
+        ]),
+      })
+    | None => ()
+    }
+
     let builderOutputs = {
       // Resolve admin extension point data — from Interstack (AWS cross-stack reference).
       let interstackAdminExtensionPoints =

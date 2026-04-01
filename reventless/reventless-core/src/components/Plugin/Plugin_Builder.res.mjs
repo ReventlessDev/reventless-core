@@ -105,6 +105,32 @@ function Make(Spec) {
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+        let hook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
+        if (hook !== undefined) {
+          let mapNames = (d, kind) => Object.keys(d).map(name => ({
+            name: name,
+            kind: kind
+          }));
+          hook({
+            name: extra$1,
+            version: version,
+            components: [
+              aggregates.map(M => ({
+                name: M.Spec.name,
+                kind: "Aggregate"
+              })),
+              readModels.map(R => ({
+                name: R.Spec.name,
+                kind: "ReadModel"
+              })),
+              mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
+              mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
+              mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
+              mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
+              mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice")
+            ].flat()
+          });
+        }
         let interstackAdminExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
         let localAdminResolvedEP = Output$Pulumi.flatMap(Spec.hooks.adminExtensionPoints.contents, eps => {
           let ep = eps[PluginExtensionPointSpec$ReventlessInfra.name];

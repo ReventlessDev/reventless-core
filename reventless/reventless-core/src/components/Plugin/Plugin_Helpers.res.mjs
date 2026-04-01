@@ -270,6 +270,18 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
   });
 }
 
+let onPluginBuiltHook = {
+  contents: undefined
+};
+
+function registerOnPluginBuilt(hook) {
+  onPluginBuiltHook.contents = hook;
+}
+
+function clearOnPluginBuilt() {
+  onPluginBuiltHook.contents = undefined;
+}
+
 let queryFieldNamesRegistry = {
   contents: {}
 };
@@ -489,6 +501,9 @@ export {
   tasksOutputs,
   createTasks,
   MakeEventCollectorHelper,
+  onPluginBuiltHook,
+  registerOnPluginBuilt,
+  clearOnPluginBuilt,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,
   noHooks,

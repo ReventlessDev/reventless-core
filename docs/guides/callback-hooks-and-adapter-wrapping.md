@@ -6,7 +6,7 @@ The framework provides optional callback hooks at key processing boundaries and 
 
 ## Callback Hooks
 
-Four module-level hooks are available, each a `ref<option<callback>>`. When `None` (the default), the framework passes through unchanged. When set to `Some(fn)`, the function runs as part of the normal processing flow.
+Five module-level hooks are available, each a `ref<option<callback>>`. When `None` (the default), the framework passes through unchanged. When set to `Some(fn)`, the function runs as part of the normal processing flow.
 
 ### Command Interceptor
 
@@ -86,6 +86,24 @@ let clearPublishHooks: unit => unit
 **Use cases:**
 - `beforePublishHook`: event enrichment (add tenant ID, correlation ID), crypto-shredding (encrypt PII fields before storage), event filtering
 - `afterPublishHook`: event counting, latency metrics, audit trail recording, notification triggers
+
+### Plugin Built
+
+**Module:** `Plugin_Helpers`
+
+```rescript
+type pluginBuiltComponent = { name: string, kind: string }
+type pluginBuiltInfo = { name: string, version: string, components: array<pluginBuiltComponent> }
+
+let registerOnPluginBuilt: (pluginBuiltInfo => unit) => unit
+let clearOnPluginBuilt: unit => unit
+```
+
+Called after a plugin's components are fully constructed. Receives the plugin name, version, and a list of all component names and kinds. Fires synchronously during `Plugin_Builder.construct`, before `makePlatform` or `deployPlugin` returns.
+
+**Where it fires:** `Plugin_Builder.construct` — after all component builders have run and the component dicts are populated, before the `Output.apply` block.
+
+**Use cases:** plugin metadata registration, deploy-time metadata persistence, admin dashboard population.
 
 ---
 
@@ -189,6 +207,13 @@ This means the wrapping is configured at deploy time (in the Pulumi stack) but e
 ## Processing Flow
 
 ```
+Plugin_Builder.construct
+  |
+  v
+Plugin_Helpers
+  |-- onPluginBuiltHook -> observe plugin metadata
+  |
+  v
 Command arrives (GraphQL mutation)
   |
   v
