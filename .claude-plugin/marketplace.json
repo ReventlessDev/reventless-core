@@ -14,7 +14,7 @@
       "author": {
         "name": "Reventless"
       },
-      "source": "./.claude",
+      "source": "./reventless-skills",
       "category": "frameworks"
     }
   ]
