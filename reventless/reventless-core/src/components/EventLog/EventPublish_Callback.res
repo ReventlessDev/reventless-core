@@ -14,3 +14,16 @@ let beforePublishHook: ref<option<beforePublishHook>> = ref(None)
 
 /** Module-level hook called after events are published to EventTopic. None = no-op (default). */
 let afterPublishHook: ref<option<afterPublishHook>> = ref(None)
+
+let registerBeforePublish = (hook: beforePublishHook) => {
+  beforePublishHook.contents = Some(hook)
+}
+
+let registerAfterPublish = (hook: afterPublishHook) => {
+  afterPublishHook.contents = Some(hook)
+}
+
+let clearPublishHooks = () => {
+  beforePublishHook.contents = None
+  afterPublishHook.contents = None
+}

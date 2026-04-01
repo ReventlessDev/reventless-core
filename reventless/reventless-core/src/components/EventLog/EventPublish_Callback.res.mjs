@@ -9,8 +9,24 @@ let afterPublishHook = {
   contents: undefined
 };
 
+function registerBeforePublish(hook) {
+  beforePublishHook.contents = hook;
+}
+
+function registerAfterPublish(hook) {
+  afterPublishHook.contents = hook;
+}
+
+function clearPublishHooks() {
+  beforePublishHook.contents = undefined;
+  afterPublishHook.contents = undefined;
+}
+
 export {
   beforePublishHook,
   afterPublishHook,
+  registerBeforePublish,
+  registerAfterPublish,
+  clearPublishHooks,
 }
 /* No side effect */

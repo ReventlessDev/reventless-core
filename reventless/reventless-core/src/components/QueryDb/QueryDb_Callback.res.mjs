@@ -5,7 +5,17 @@ let queryInterceptorHook = {
   contents: undefined
 };
 
+function registerQueryInterceptor(interceptor) {
+  queryInterceptorHook.contents = interceptor;
+}
+
+function clearQueryInterceptor() {
+  queryInterceptorHook.contents = undefined;
+}
+
 export {
   queryInterceptorHook,
+  registerQueryInterceptor,
+  clearQueryInterceptor,
 }
 /* No side effect */

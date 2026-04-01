@@ -13,6 +13,14 @@ type commandInterceptor = (
 /** Module-level interceptor hook. None = passthrough (default). */
 let commandInterceptorHook: ref<option<commandInterceptor>> = ref(None)
 
+let registerCommandInterceptor = (interceptor: commandInterceptor) => {
+  commandInterceptorHook.contents = Some(interceptor)
+}
+
+let clearCommandInterceptor = () => {
+  commandInterceptorHook.contents = None
+}
+
 module type Spec = {
   let publishJsons: CommandGenerator.publishJsons
 }

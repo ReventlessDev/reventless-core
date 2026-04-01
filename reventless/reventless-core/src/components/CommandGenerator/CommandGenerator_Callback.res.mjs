@@ -14,6 +14,14 @@ let commandInterceptorHook = {
   contents: undefined
 };
 
+function registerCommandInterceptor(interceptor) {
+  commandInterceptorHook.contents = interceptor;
+}
+
+function clearCommandInterceptor() {
+  commandInterceptorHook.contents = undefined;
+}
+
 function makeGenerateCommand(publishJsons, serviceName, commandSchema, componentKind, $staropt$star) {
   return payload => {
     let stripIdFromParams = $staropt$star !== undefined ? $staropt$star : true;
@@ -87,6 +95,8 @@ function Make(Spec) {
 
 export {
   commandInterceptorHook,
+  registerCommandInterceptor,
+  clearCommandInterceptor,
   makeGenerateCommand,
   Make,
 }
