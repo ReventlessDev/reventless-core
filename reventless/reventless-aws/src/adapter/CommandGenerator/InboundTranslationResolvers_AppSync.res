@@ -68,30 +68,14 @@ let make = (
     ~opts=Some(opts),
   )
 
-  // Request template: invoke the DCB Lambda with an InboundTranslation marker
-  // so the composite handler routes to receive instead of SQS processing.
-  let invokeInboundTranslation = fieldName =>
-    `
-  {
-    "version": "2017-02-28",
-    "operation": "Invoke",
-    "payload": {
-        "__inboundTranslation": true,
-        "fieldName": "${fieldName}",
-        "arguments": $utils.toJson($context.arguments)
-    }
-  }
-  `->Pulumi.Input.make
-
   let _resolvers = fieldNames->Array.forEach(fieldName => {
-    let _ = PulumiAws.AppSync.Resolver.makeUnitResolver(
+    let _ = PulumiAws.AppSync.Resolver.makeUnitJsResolver(
       ~name=fieldName->String.capitalize,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,
       ~field=fieldName->Pulumi.Input.make,
-      ~requestTemplate=invokeInboundTranslation(fieldName),
-      ~responseTemplate=PulumiAws.AppSync.Resolver.Templates.result,
+      ~code=PulumiAws.AppSync.Resolver.Functions.invokeInboundTranslation(fieldName),
       ~opts,
     )
   })

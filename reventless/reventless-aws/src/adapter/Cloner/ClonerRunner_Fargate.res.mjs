@@ -17,7 +17,6 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as GetSecretVersion$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
-import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
 
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {
   let cluster = new (Aws.ecs.Cluster)(name, undefined, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
@@ -216,18 +215,24 @@ export const handler = async (event) => {
       serviceRoleArn: dataSourceRole.arn
     }, opts);
     let field = AdminApi$ReventlessCore.cloneMutationEntry.fieldNames[0];
-    let resolver = AppSync_Resolver$PulumiAws.makeUnitResolver(field, api, dataSource.name, "Mutation", field, `{
-            "version": "2017-02-28",
-            "operation": "Invoke",
-            "payload": {
-                "restoreDateTime": $utils.toJson($context.arguments.restoreDateTime),
-                "meta": {
-                  "ip": $util.toJson($context.identity.sourceIp),
-                  "user": $util.toJson($context.identity.username)
-                }
-            }
-          }
-          `, AppSync_Resolver_Templates$PulumiAws.result, opts);
+    let resolver = AppSync_Resolver$PulumiAws.makeUnitJsResolver(field, api, dataSource.name, "Mutation", field, `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  return {
+    operation: 'Invoke',
+    payload: {
+      restoreDateTime: ctx.args.restoreDateTime,
+      meta: {
+        ip: ctx.identity.sourceIp,
+        user: ctx.identity.username
+      }
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`, opts);
     return [Util_AppSync$ReventlessAws.toResource(resolver)];
   });
   return {

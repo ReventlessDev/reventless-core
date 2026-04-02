@@ -3,6 +3,11 @@
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 
+let appsyncJs = {
+  name: "APPSYNC_JS",
+  runtimeVersion: "1.0.0"
+};
+
 function makeUnitResolver(name, api, dataSourceName, type_, field, requestTemplate, responseTemplate, opts) {
   let tmp;
   if (opts !== undefined) {
@@ -49,11 +54,60 @@ function makePipelineResolver(name, api, type_, field, requestTemplate, response
   }, tmp);
 }
 
-let Templates;
+function makeUnitJsResolver(name, api, dataSourceName, type_, field, code, opts) {
+  let tmp;
+  if (opts !== undefined) {
+    let newrecord = {...opts};
+    newrecord.deleteBeforeReplace = true;
+    tmp = newrecord;
+  } else {
+    tmp = {
+      deleteBeforeReplace: true
+    };
+  }
+  return new (Aws.appsync.Resolver)(name, {
+    apiId: Output$Pulumi.flatMap(api, api => api.id),
+    dataSource: dataSourceName,
+    field: field,
+    type: type_,
+    kind: "UNIT",
+    code: code,
+    runtime: appsyncJs
+  }, tmp);
+}
+
+function makePipelineJsResolver(name, api, type_, field, code, functions, opts) {
+  let tmp;
+  if (opts !== undefined) {
+    let newrecord = {...opts};
+    newrecord.deleteBeforeReplace = true;
+    tmp = newrecord;
+  } else {
+    tmp = {
+      deleteBeforeReplace: true
+    };
+  }
+  return new (Aws.appsync.Resolver)(name, {
+    apiId: Output$Pulumi.flatMap(api, api => api.id),
+    field: field,
+    type: type_,
+    kind: "PIPELINE",
+    pipelineConfig: {
+      functions: functions.map(f => f.functionId)
+    },
+    code: code,
+    runtime: appsyncJs
+  }, tmp);
+}
+
+let Functions;
 
 export {
-  Templates,
+  Functions,
+  appsyncJs,
   makeUnitResolver,
   makePipelineResolver,
+  makeUnitJsResolver,
+  makePipelineJsResolver,
 }
 /* @pulumi/aws Not a pure module */

@@ -324,28 +324,34 @@ export const handler = async (event) => {
         ~opts,
       )
 
-      let invokeClone = `{
-            "version": "2017-02-28",
-            "operation": "Invoke",
-            "payload": {
-                "restoreDateTime": $utils.toJson($context.arguments.restoreDateTime),
-                "meta": {
-                  "ip": $util.toJson($context.identity.sourceIp),
-                  "user": $util.toJson($context.identity.username)
-                }
-            }
-          }
-          `
+      let invokeCloneCode =
+        `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  return {
+    operation: 'Invoke',
+    payload: {
+      restoreDateTime: ctx.args.restoreDateTime,
+      meta: {
+        ip: ctx.identity.sourceIp,
+        user: ctx.identity.username
+      }
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`->Pulumi.Input.make
 
       let field = ReventlessCore.AdminApi.cloneMutationEntry.fieldNames->Array.getUnsafe(0)
-      let resolver = AppSync.Resolver.makeUnitResolver(
+      let resolver = AppSync.Resolver.makeUnitJsResolver(
         ~name=field,
         ~api,
         ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
         ~type_="Mutation"->Pulumi.Input.make,
         ~field=field->Pulumi.Input.make,
-        ~requestTemplate=invokeClone->Pulumi.Input.make,
-        ~responseTemplate=AppSync.Resolver.Templates.result,
+        ~code=invokeCloneCode,
         ~opts?,
       )
 

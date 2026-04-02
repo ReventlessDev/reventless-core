@@ -15,7 +15,7 @@ import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
-import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
+import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 
 function handleResolversEvent(generateCommand) {
   return Pulumi.output((event, _context) => generateCommand(event));
@@ -72,34 +72,10 @@ function make(name, api, fields, param, runtime, resources, opts) {
     },
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
-  let invokeCommandGenerator = command => `
-  #set($parentTypeName = $context.info.parentTypeName)
-  #set($fieldName = $context.info.fieldName)
-  {
-    "version": "2017-02-28",
-    "operation": "Invoke",
-    "payload": {
-        "command": "` + command + `",
-        "arguments": $utils.toJson($context.arguments),
-        "meta": {
-          "ip": $util.toJson($context.identity.sourceIp),
-          "user": $util.toJson($context.identity.username),
-          "info": $util.toJson("$parentTypeName.$fieldName")
-        },
-        "identity": {
-          "userId": $util.toJson($context.identity.sub),
-          "username": $util.toJson($context.identity.username),
-          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
-          "claims": $util.toJson($context.identity.claims),
-          "provider": "Cognito"
-        }
-    }
-  }
-  `;
   let resolvers = fields.map(field => {
     let parts = field.split("_");
     let commandName = Stdlib_String.capitalize(Stdlib_Option.getOr(parts[parts.length - 1 | 0], field));
-    return AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, opts$1);
+    return AppSync_Resolver$PulumiAws.makeUnitJsResolver(Stdlib_String.capitalize(field), api, dataSource.name, "Mutation", field, AppSync_Resolver_Functions$PulumiAws.invokeCommandGenerator(commandName), opts$1);
   });
   let resources$1 = resolvers.map(Util_AppSync$ReventlessAws.toResource);
   return {
@@ -133,33 +109,9 @@ function makeDcb(api, runtime, fieldNames, tags, opts) {
     },
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
-  let invokeDcbMutation = tag => `
-  #set($parentTypeName = $context.info.parentTypeName)
-  #set($fieldName = $context.info.fieldName)
-  {
-    "version": "2017-02-28",
-    "operation": "Invoke",
-    "payload": {
-        "command": "` + tag + `",
-        "arguments": $utils.toJson($context.arguments),
-        "meta": {
-          "ip": $util.toJson($context.identity.sourceIp),
-          "user": $util.toJson($context.identity.username),
-          "info": $util.toJson("$parentTypeName.$fieldName")
-        },
-        "identity": {
-          "userId": $util.toJson($context.identity.sub),
-          "username": $util.toJson($context.identity.username),
-          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
-          "claims": $util.toJson($context.identity.claims),
-          "provider": "Cognito"
-        }
-    }
-  }
-  `;
   Stdlib_Array.zip(fieldNames, tags).forEach(param => {
     let fieldName = param[0];
-    AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, invokeDcbMutation(param[1]), AppSync_Resolver_Templates$PulumiAws.result, opts$1);
+    AppSync_Resolver$PulumiAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeDcbMutation(param[1]), opts$1);
   });
 }
 

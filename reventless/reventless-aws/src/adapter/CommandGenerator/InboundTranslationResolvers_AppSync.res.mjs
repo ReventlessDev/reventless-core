@@ -9,7 +9,7 @@ import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
-import * as AppSync_Resolver_Templates$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.mjs";
+import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 
 function make(api, runtime, fieldNames, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
@@ -37,19 +37,8 @@ function make(api, runtime, fieldNames, opts) {
     },
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
-  let invokeInboundTranslation = fieldName => `
-  {
-    "version": "2017-02-28",
-    "operation": "Invoke",
-    "payload": {
-        "__inboundTranslation": true,
-        "fieldName": "` + fieldName + `",
-        "arguments": $utils.toJson($context.arguments)
-    }
-  }
-  `;
   fieldNames.forEach(fieldName => {
-    AppSync_Resolver$PulumiAws.makeUnitResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, invokeInboundTranslation(fieldName), AppSync_Resolver_Templates$PulumiAws.result, opts$1);
+    AppSync_Resolver$PulumiAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeInboundTranslation(fieldName), opts$1);
   });
 }
 

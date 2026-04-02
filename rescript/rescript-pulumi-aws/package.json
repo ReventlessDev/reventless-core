@@ -4,10 +4,11 @@
   "description": "ReScript bindings for @pulumi/aws",
   "license": "MIT",
   "scripts": {
-    "build": "rescript build",
+    "build": "rescript build && npm run bundle",
+    "bundle": "node scripts/bundle-resolvers.mjs",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "test": "echo \"There are no tests for rescript-pulumi-aws.\""
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --testPathPattern=rescript-pulumi-aws"
   },
   "dependencies": {
     "@pulumi/aws": "~7.19.0",
@@ -15,6 +16,7 @@
     "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.5"
   },
   "devDependencies": {
+    "esbuild": "^0.25.0",
     "rescript": "^12.2.0",
     "sury": "^11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"

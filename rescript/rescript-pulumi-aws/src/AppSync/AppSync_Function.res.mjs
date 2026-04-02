@@ -3,6 +3,11 @@
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 
+let appsyncJs = {
+  name: "APPSYNC_JS",
+  runtimeVersion: "1.0.0"
+};
+
 function make(name, api, dataSource, requestMappingTemplate, responseMappingTemplate, opts) {
   return new (Aws.appsync.Function)(name, {
     apiId: Output$Pulumi.flatMap(api, api => api.id),
@@ -13,7 +18,19 @@ function make(name, api, dataSource, requestMappingTemplate, responseMappingTemp
   }, opts);
 }
 
+function makeJs(name, api, dataSource, code, opts) {
+  return new (Aws.appsync.Function)(name, {
+    apiId: Output$Pulumi.flatMap(api, api => api.id),
+    name: name,
+    dataSource: dataSource,
+    code: code,
+    runtime: appsyncJs
+  }, opts);
+}
+
 export {
+  appsyncJs,
   make,
+  makeJs,
 }
 /* @pulumi/aws Not a pure module */

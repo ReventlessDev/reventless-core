@@ -13,31 +13,28 @@ type interceptorConfig = {
     preceding the DynamoDB query. Set this before calling `make`. */
 let queryInterceptorConfig: ref<option<interceptorConfig>> = ref(None)
 
-let interceptorRequestTemplate = readModelName =>
-  `
-{
-  "version": "2017-02-28",
-  "operation": "Invoke",
-  "payload": {
-    "readModelName": "${readModelName}",
-    "arguments": $utils.toJson($context.arguments),
-    "identity": {
-      "userId": $util.toJson($context.identity.sub),
-      "username": $util.toJson($context.identity.username),
-      "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
-      "claims": $util.toJson($context.identity.claims),
-      "provider": "Cognito"
+let interceptorCode = readModelName =>
+  `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  return {
+    operation: 'Invoke',
+    payload: {
+      readModelName: '${readModelName}',
+      arguments: ctx.args,
+      identity: {
+        userId: ctx.identity.sub,
+        username: ctx.identity.username,
+        groups: ctx.identity.claims['cognito:groups'] ?? [],
+        claims: ctx.identity.claims,
+        provider: 'Cognito'
+      }
     }
-  }
+  };
 }
-`->Pulumi.Input.make
-
-let interceptorResponseTemplate =
-  `
-#if($ctx.error)
-  $util.error($ctx.error.message, $ctx.error.type)
-#end
-$util.toJson($ctx.result)
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
 `->Pulumi.Input.make
 
 let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
@@ -58,7 +55,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   // In plugin mode, use plugin-prefixed field names from the registry.
   let fieldNameForSingle = switch registryEntry {
   | Some({singleFieldName}) => singleFieldName
-  | None => name->Resolver.Templates.uncapitalize
+  | None => name->Resolver.Functions.uncapitalize
   }
 
   // Resolve includeIdParam flag from registry (defaults to true for ReadModels)
@@ -69,48 +66,39 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
 
   // Creates either a unit resolver (no interceptor) or a pipeline resolver
   // (interceptor Lambda → DynamoDB query) depending on queryInterceptorConfig.
-  let makeQueryResolver = (
-    ~resolverName,
-    ~field,
-    ~requestTemplate,
-    ~responseTemplate,
-  ) =>
+  let makeQueryResolver = (~resolverName, ~field, ~code) =>
     switch queryInterceptorConfig.contents {
     | None =>
-      Resolver.makeUnitResolver(
+      Resolver.makeUnitJsResolver(
         ~name=resolverName,
         ~api,
         ~dataSourceName,
         ~type_="Query"->Pulumi.Input.make,
         ~field,
-        ~requestTemplate,
-        ~responseTemplate,
+        ~code,
         ~opts,
       )
     | Some({dataSourceName: interceptorDsName}) =>
-      let interceptorFn = Function.make(
+      let interceptorFn = Function.makeJs(
         ~name=resolverName ++ "Interceptor",
         ~api,
         ~dataSource=interceptorDsName,
-        ~requestMappingTemplate=interceptorRequestTemplate(name),
-        ~responseMappingTemplate=interceptorResponseTemplate,
+        ~code=interceptorCode(name),
         ~opts,
       )
-      let queryFn = Function.make(
+      let queryFn = Function.makeJs(
         ~name=resolverName ++ "Query",
         ~api,
         ~dataSource=dataSourceName,
-        ~requestMappingTemplate=requestTemplate,
-        ~responseMappingTemplate=responseTemplate,
+        ~code,
         ~opts,
       )
-      Resolver.makePipelineResolver(
+      Resolver.makePipelineJsResolver(
         ~name=resolverName,
         ~api,
         ~type_="Query"->Pulumi.Input.make,
         ~field,
-        ~requestTemplate="{}"->Pulumi.Input.make,
-        ~responseTemplate=Resolver.Templates.result,
+        ~code=Resolver.Functions.pipelinePassThrough,
         ~functions=[interceptorFn, queryFn],
         ~opts,
       )
@@ -120,21 +108,16 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     makeQueryResolver(
       ~resolverName=fieldNameForSingle->String.capitalize,
       ~field=fieldNameForSingle->Pulumi.Input.make,
-      ~requestTemplate=switch subIdField {
-      | Some(sortField) => Resolver.Templates.queryByIdSort(sortField)
-      | None => Resolver.Templates.getItemById
-      },
-      ~responseTemplate=switch subIdField {
-      | Some(_) => Resolver.Templates.firstResult
-      | None => Resolver.Templates.result
+      ~code=switch subIdField {
+      | Some(sortField) => Resolver.Functions.queryByIdSort(sortField)
+      | None => Resolver.Functions.getItemById
       },
     )
   } else {
     makeQueryResolver(
       ~resolverName=fieldNameForSingle->String.capitalize,
       ~field=fieldNameForSingle->Pulumi.Input.make,
-      ~requestTemplate=Resolver.Templates.listAllItems,
-      ~responseTemplate=Resolver.Templates.firstResult,
+      ~code=Resolver.Functions.listAllItems,
     )
   }
 
@@ -143,8 +126,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       makeQueryResolver(
         ~resolverName=fieldNameForSingle->String.capitalize ++ "ById",
         ~field=(fieldNameForSingle ++ "ById")->Pulumi.Input.make,
-        ~requestTemplate=Resolver.Templates.queryById,
-        ~responseTemplate=Resolver.Templates.result,
+        ~code=Resolver.Functions.queryById,
       )
     )
   } else {
@@ -158,8 +140,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   let resolverAll = makeQueryResolver(
     ~resolverName=fieldNameForAll->String.capitalize,
     ~field=fieldNameForAll->Pulumi.Input.make,
-    ~requestTemplate=Resolver.Templates.listAllItems,
-    ~responseTemplate=Resolver.Templates.result,
+    ~code=Resolver.Functions.listAllItems,
   )
 
   let resourcesMaker: ReventlessCore.QueryDb.resolversResourcesMaker = allQueryDbs => {
@@ -168,18 +149,17 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       let idField = indexConfig.idField->Option.getOr(index)
       switch indexConfig.authorization {
       | None =>
-        Resolver.makeUnitResolver(
+        Resolver.makeUnitJsResolver(
           ~name,
           ~api,
           ~dataSourceName,
           ~type_="Query"->Pulumi.Input.make,
-          ~field=name->Resolver.Templates.uncapitalize->Pulumi.Input.make,
-          ~requestTemplate=switch indexConfig.subIdField {
+          ~field=name->Resolver.Functions.uncapitalize->Pulumi.Input.make,
+          ~code=switch indexConfig.subIdField {
           | Some(sortField) =>
-            Resolver.Templates.queryByIndexSortFiltered(~index, ~idField, ~sortField)
-          | None => Resolver.Templates.queryByIndexFiltered(~index, ~idField)
+            Resolver.Functions.queryByIndexSortFiltered(~index, ~idField, ~sortField)
+          | None => Resolver.Functions.queryByIndexFiltered(~index, ~idField)
           },
-          ~responseTemplate=Resolver.Templates.result,
           ~opts,
         )
       | Some({tableName, group}) =>
@@ -194,29 +174,26 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~serviceRole=apiRole,
           ~opts,
         )
-        let authFunction = Function.make(
+        let authFunction = Function.makeJs(
           ~name=name ++ "Auth",
           ~api,
           ~dataSource=authDataSource.name->Pulumi.Output.asInput,
-          ~requestMappingTemplate=Resolver.Templates.authorizeIndexedAccessRequest(~index, ~group),
-          ~responseMappingTemplate=Resolver.Templates.authorizeIndexedAccessResponse(~group),
+          ~code=Resolver.Functions.authorizeIndexedAccess(~index, ~group),
           ~opts,
         )
-        let queryFunction = Function.make(
+        let queryFunction = Function.makeJs(
           ~name,
           ~api,
           ~dataSource=dataSourceName,
-          ~requestMappingTemplate=Resolver.Templates.queryByIndexFiltered(~index, ~idField),
-          ~responseMappingTemplate=Resolver.Templates.result,
+          ~code=Resolver.Functions.queryByIndexFiltered(~index, ~idField),
           ~opts,
         )
-        Resolver.makePipelineResolver(
+        Resolver.makePipelineJsResolver(
           ~name,
           ~api,
           ~type_="Query"->Pulumi.Input.make,
-          ~field=name->Resolver.Templates.uncapitalize->Pulumi.Input.make,
-          ~requestTemplate="{}"->Pulumi.Input.make,
-          ~responseTemplate=Resolver.Templates.result,
+          ~field=name->Resolver.Functions.uncapitalize->Pulumi.Input.make,
+          ~code=Resolver.Functions.pipelinePassThrough,
           ~functions=[authFunction, queryFunction],
           ~opts,
         )
@@ -229,7 +206,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ->Util.DynamoDb.findResourceInOutput
       ->ReventlessCore.Adapter.outputToResource
 
-    let generateTemplate = (~storageResource: ReventlessInfra.Adapter.resource, ~template) =>
+    let generateCode = (~storageResource: ReventlessInfra.Adapter.resource, ~template) =>
       storageResource.name
       ->Pulumi.Output.apply(realTableName => template(realTableName))
       ->Pulumi.Output.asInput
@@ -257,25 +234,25 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
             ~opts,
           ).name->Pulumi.Output.asInput
 
-        Resolver.makeUnitResolver(
+        Resolver.makeUnitJsResolver(
           ~name=name ++ field->String.capitalize,
           ~api,
           ~dataSourceName,
           ~type_=name->Pulumi.Input.make,
           ~field=field->Pulumi.Input.make,
-          ~requestTemplate=switch (targetId, sourceSubId, target.subIdField) {
+          ~code=switch (targetId, sourceSubId, target.subIdField) {
           | (Id, Field(sourceSortField), Some(targetSortField)) =>
-            Resolver.Templates.resolveIdSort(~sourceIdField, ~sourceSortField, ~targetSortField)
+            Resolver.Functions.resolveIdSort(~sourceIdField, ~sourceSortField, ~targetSortField)
           | (Id, Argument(sourceSortArgument), Some(targetSortField)) =>
-            Resolver.Templates.resolveIdSortArgument(
+            Resolver.Functions.resolveIdSortArgument(
               ~sourceIdField,
               ~sourceSortArgument,
               ~targetSortField,
             )
-          | (Id, _, _) => Resolver.Templates.resolveId(~sourceIdField)
+          | (Id, _, _) => Resolver.Functions.resolveId(~sourceIdField)
 
           | (_, Field(sourceSortField), Some(targetSortField)) =>
-            Resolver.Templates.resolveIdByIndexSort(
+            Resolver.Functions.resolveIdByIndexSort(
               ~index,
               ~sourceIdField,
               ~targetIdField,
@@ -283,18 +260,14 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
               ~targetSortField,
             )
           | (_, Argument(sourceSortArgument), Some(targetSortField)) =>
-            Resolver.Templates.resolveIdByIndexSortArgument(
+            Resolver.Functions.resolveIdByIndexSortArgument(
               ~index,
               ~sourceIdField,
               ~targetIdField,
               ~sourceSortArgument,
               ~targetSortField,
             )
-          | _ => Resolver.Templates.resolveIdByIndex(~index, ~sourceIdField, ~targetIdField)
-          },
-          ~responseTemplate=switch resolvedField {
-          | Single(_) => Resolver.Templates.firstResult
-          | Multi(_) => Resolver.Templates.result
+          | _ => Resolver.Functions.resolveIdByIndex(~index, ~sourceIdField, ~targetIdField)
           },
           ~opts,
         )
@@ -305,19 +278,15 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       let {source: {idsField, resolvedField}, target: {tableName} as target} = config
       let storageResource = storageResource(~pluginName=target.pluginName, ~tableName)
 
-      Resolver.makeUnitResolver(
+      Resolver.makeUnitJsResolver(
         ~name=name ++ idsField->String.capitalize,
         ~api,
         ~dataSourceName,
         ~type_=name->Pulumi.Input.make,
         ~field=resolvedField->Pulumi.Input.make,
-        ~requestTemplate=generateTemplate(
+        ~code=generateCode(
           ~storageResource,
-          ~template=Resolver.Templates.resolveIds(~idsField, ~sortField=target.subIdField, ...),
-        ),
-        ~responseTemplate=generateTemplate(
-          ~storageResource,
-          ~template=Resolver.Templates.resolveIdsResult(~idsField, ...),
+          ~template=Resolver.Functions.resolveIds(~idsField, ~sortField=target.subIdField, ...),
         ),
         ~opts,
       )

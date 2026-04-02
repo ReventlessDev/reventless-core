@@ -127,32 +127,6 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
     ~opts=Some(opts),
   )
 
-  let invokeCommandGenerator = command =>
-    `
-  #set($parentTypeName = $context.info.parentTypeName)
-  #set($fieldName = $context.info.fieldName)
-  {
-    "version": "2017-02-28",
-    "operation": "Invoke",
-    "payload": {
-        "command": "${command}",
-        "arguments": $utils.toJson($context.arguments),
-        "meta": {
-          "ip": $util.toJson($context.identity.sourceIp),
-          "user": $util.toJson($context.identity.username),
-          "info": $util.toJson("$parentTypeName.$fieldName")
-        },
-        "identity": {
-          "userId": $util.toJson($context.identity.sub),
-          "username": $util.toJson($context.identity.username),
-          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
-          "claims": $util.toJson($context.identity.claims),
-          "provider": "Cognito"
-        }
-    }
-  }
-  `->Pulumi.Input.make
-
   let resolvers = fields->Array.map(field => {
     // Extract command name: last segment after splitting on "_".
     // Handles both old ("Aggregate_Command") and prefixed ("Plugin_Aggregate_Command") formats.
@@ -160,14 +134,13 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
       let parts = field->String.split("_")
       parts->Array.get(parts->Array.length - 1)->Option.getOr(field)->String.capitalize
     }
-    PulumiAws.AppSync.Resolver.makeUnitResolver(
+    PulumiAws.AppSync.Resolver.makeUnitJsResolver(
       ~name=field->String.capitalize,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,
       ~field=field->Pulumi.Input.make,
-      ~requestTemplate=invokeCommandGenerator(commandName),
-      ~responseTemplate=PulumiAws.AppSync.Resolver.Templates.result,
+      ~code=PulumiAws.AppSync.Resolver.Functions.invokeCommandGenerator(commandName),
       ~opts,
     )
   })
@@ -245,43 +218,14 @@ let makeDcb = (
     ~opts=Some(opts),
   )
 
-  // VTL request template for DCB mutations — uses a fixed TAG (from schema)
-  // and passes all arguments as CommandGenerator.payload format.
-  let invokeDcbMutation = tag =>
-    `
-  #set($parentTypeName = $context.info.parentTypeName)
-  #set($fieldName = $context.info.fieldName)
-  {
-    "version": "2017-02-28",
-    "operation": "Invoke",
-    "payload": {
-        "command": "${tag}",
-        "arguments": $utils.toJson($context.arguments),
-        "meta": {
-          "ip": $util.toJson($context.identity.sourceIp),
-          "user": $util.toJson($context.identity.username),
-          "info": $util.toJson("$parentTypeName.$fieldName")
-        },
-        "identity": {
-          "userId": $util.toJson($context.identity.sub),
-          "username": $util.toJson($context.identity.username),
-          "groups": $util.defaultIfNull($context.identity.claims.get("cognito:groups"), []),
-          "claims": $util.toJson($context.identity.claims),
-          "provider": "Cognito"
-        }
-    }
-  }
-  `->Pulumi.Input.make
-
   let _resolvers = Array.zip(fieldNames, tags)->Array.forEach(((fieldName, tag)) => {
-    let _ = PulumiAws.AppSync.Resolver.makeUnitResolver(
+    let _ = PulumiAws.AppSync.Resolver.makeUnitJsResolver(
       ~name=fieldName->String.capitalize,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,
       ~field=fieldName->Pulumi.Input.make,
-      ~requestTemplate=invokeDcbMutation(tag),
-      ~responseTemplate=PulumiAws.AppSync.Resolver.Templates.result,
+      ~code=PulumiAws.AppSync.Resolver.Functions.invokeDcbMutation(tag),
       ~opts,
     )
   })

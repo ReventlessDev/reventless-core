@@ -4,6 +4,15 @@ module.exports = {
   watchPathIgnorePatterns: ["<rootDir>/.+/lib/bs/"],
   projects: [
     {
+      displayName: "rescript-pulumi-aws",
+      rootDir: "./rescript/rescript-pulumi-aws",
+      testMatch: ["<rootDir>/tests/**/*Test.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      moduleNameMapper: {
+        "^@aws-appsync/utils$": "<rootDir>/tests/__mocks__/appsync-utils.mjs",
+      },
+    },
+    {
       displayName: "reventless-core",
       rootDir: "./reventless/reventless-core",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
