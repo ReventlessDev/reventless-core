@@ -78,6 +78,16 @@ Generate files in dependency-safe order:
 4. **DCB entity IDs need `@s.matches(DcbTag.string)`** on the type expression
 5. **Every spec file needs `let moduleUrl`** — `let moduleUrl: string = %raw(\`import.meta.url\`)`
 6. **Naming conventions:** Aggregates = singular (Product), ReadModels = plural (Products), Commands = imperative (Add), Events = past tense (Added)
+7. **Source file organisation:** Each component type in its own subdirectory. No `Spec`, `View`, or `Slice` suffixes — the directory conveys the type:
+   - `src/StateChange/` — StateChangeSlices (e.g. `SyncPlugin.res`, not `SyncPluginSpec.res`)
+   - `src/StateView/` — StateViewSlices (e.g. `ResourceInventory.res`, not `ResourceInventoryView.res`)
+   - `src/ReadModel/` — ReadModels and Projections (CQRS-style, distinct from StateView)
+   - `src/Aggregate/` — Aggregates and their Behaviors (co-located, not separate folders)
+   - `src/InboundTranslation/` — InboundTranslationSlices
+   - `src/OutboundTranslation/` — OutboundTranslationSlices
+   - `src/Automation/` — AutomationSlices
+   - `src/ExtensionPoint/` — ExtensionPoint specs
+   - `src/Types/` — shared type modules
 7. **Idempotency:** Return `Ok([])` for no-change commands, not an error
 8. **Spec packages** for extension points — never import directly from another plugin
 

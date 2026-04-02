@@ -190,6 +190,29 @@
 }
 ```
 
+## Source File Organisation
+
+Place each component type in its own subdirectory under `src/`. Use `"subdirs": true` in `rescript.json` — no extra config needed per folder.
+
+| Component type | Directory | Naming |
+|---|---|---|
+| StateChangeSlice | `src/StateChange/` | `SyncFoo.res` — no `Spec` suffix |
+| StateViewSlice | `src/StateView/` | `FooView.res` — no `View` suffix |
+| ReadModel + Projections | `src/ReadModel/` | `FooList.res` |
+| InboundTranslationSlice | `src/InboundTranslation/` | `ImportFoo.res` |
+| OutboundTranslationSlice | `src/OutboundTranslation/` | `ExportFoo.res` |
+| AutomationSlice | `src/Automation/` | `FooAutomation.res` |
+| Aggregate + Behavior | `src/Aggregate/` | `Foo.res` / `FooBehavior.res` |
+| ExtensionPoint | `src/ExtensionPoint/` | `FooExtension.res` |
+| Shared types | `src/Types/` | `FooTypes.res` |
+
+**Rules:**
+- No `Spec`, `View`, or `Slice` suffixes on filenames — the directory conveys the type
+- `ReadModel` and `StateView` are distinct: ReadModels are CQRS projections, StateView slices are DCB projections
+- Behavior files live in `src/Aggregate/` alongside their aggregate (not a separate folder)
+- Module names (= filenames) must be unique within the namespace regardless of folder
+- `{Plugin}.res` assembly root stays at `src/` top level
+
 ## Dependency Ordering
 
 In both `package.json` and `rescript.json`, order dependencies:

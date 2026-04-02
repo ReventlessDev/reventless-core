@@ -62,16 +62,68 @@ let opt = switch result {
 
 ### Optional Record Fields
 
-Optional fields use `?` syntax. In literals, provide the value directly (not wrapped in `Some`):
+**Always use `field?: T` instead of `field: option<T>` in records.** This is the idiomatic ReScript v12 convention.
 
 ```rescript
-type config = {name: string, debug?: bool}
+// CORRECT — optional field syntax
+type state = {
+  name?: string,
+  region?: string,
+  removed: bool,
+}
 
+// WRONG — option<T> field
+type state = {
+  name: option<string>,
+  region: option<string>,
+  removed: bool,
+}
+```
+
+**Reading** optional fields still returns `option<T>` — pattern matching and `Option.*` work unchanged:
+
+```rescript
+switch state.name {
+| None => ...
+| Some(n) => ...
+}
+```
+
+**Writing** in a literal: provide the value directly, never wrap in `Some`:
+
+```rescript
 // CORRECT
-let c = {name: "test", debug: true}
+let s = {name: "Alice", removed: false}
 
 // WRONG
-let c = {name: "test", debug: Some(true)}
+let s = {name: Some("Alice"), removed: false}
+```
+
+**Spread update**: same — value directly, not `Some`:
+
+```rescript
+// CORRECT
+{...state, name: newName}
+
+// WRONG
+{...state, name: Some(newName)}
+```
+
+**Passing an `option<T>` to an optional field** (threading through from another optional field): use `field: ?optionValue`:
+
+```rescript
+// stateType is option<string> from another optional field
+SyncComponent({..., stateType: ?stateType, ...})
+```
+
+**`initialState` with optional fields**: omit all optional fields — they default to `None`:
+
+```rescript
+// CORRECT — only required fields needed
+let initialState = {removed: false}
+
+// WRONG — redundant
+let initialState = {name: None, region: None, removed: false}
 ```
 
 ### Record Pun with Single Field
@@ -131,6 +183,43 @@ let makeId = (s: string): Id.String.t => {
 | `Js.Dict` | `Dict` |
 | `Js.Array2` | `Array` |
 | `Js.String2` | `String` |
+
+## Obj.magic
+
+**Never use `Obj.magic`.** It bypasses the type system entirely and produces unsound code.
+
+**Common temptation — passing a typed value as `JSON.t`:**
+
+```rescript
+// WRONG
+receive({
+  "TAG": "ImportPlatform",
+  "platformName": name,
+}->Obj.magic)
+```
+
+**Correct — encode using the sury schema:**
+
+```rescript
+// CORRECT
+receive(
+  ImportPlatform({platformName: name, ...})
+    ->S.reverseConvertToJsonOrThrow(externalInputSchema)
+)
+```
+
+**Common temptation — coercing between incompatible dict types:**
+
+```rescript
+// WRONG
+let resolvers = dict->Obj.magic
+
+// CORRECT — use a typed external identity cast
+external asResolverDict: dict<resolverFn> => dict<OtherModule.resolverFn> = "%identity"
+let resolvers = dict->asResolverDict
+```
+
+`%identity` externals are structurally sound (same JS representation, different ReScript types) and self-documenting. `Obj.magic` is not.
 
 ## sury-ppx Gotchas
 
