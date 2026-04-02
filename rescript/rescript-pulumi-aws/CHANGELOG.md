@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.6 (2026-04-02)
+
+### Bug Fixes
+
+* always set deleteBeforeReplace on AppSync Resolvers ([cb372ec](https://github.com/ReventlessDev/reventless-core/commit/cb372ec3a1eb793522264c001288a936dd2d0635))
+
+
 # [2.4.0-alpha.5](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-pulumi-aws@2.4.0-alpha.2...@reventlessdev/rescript-pulumi-aws@2.4.0-alpha.5) (2026-03-27)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws

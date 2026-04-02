@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-interop",
-  "version": "3.0.0-alpha.4",
+  "version": "3.0.0-alpha.5",
   "description": "Versioned cross-plugin contract types and compatibility validation for Reventless",
   "license": "MIT",
   "jest": {
