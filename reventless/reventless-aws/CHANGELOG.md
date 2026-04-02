@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.30 (2026-04-02)
+
+### Features
+
+* **aws:** add generic env var and IAM extension point for all Lambdas ([0335fe5](https://github.com/ReventlessDev/reventless-core/commit/0335fe56a0a992ddb7fed0cb768e053bfa9945df))
+
+
 # 3.0.0-alpha.29 (2026-03-31)
 
 ### Bug Fixes

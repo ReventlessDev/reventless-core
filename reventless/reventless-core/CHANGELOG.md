@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.30 (2026-04-02)
+
+### Features
+
+* add onPluginBuilt callback hook for deploy-time plugin metadata observation ([fbbb336](https://github.com/ReventlessDev/reventless-core/commit/fbbb336143e4a35d20abf8a8fedb05e8b78fac0b))
+* add register/clear API for callback hooks ([b5442a0](https://github.com/ReventlessDev/reventless-core/commit/b5442a0e3faec0f60ffcd3c33870862e5beded88))
+
+
 # 3.0.0-alpha.29 (2026-03-31)
 
 ### Bug Fixes
