@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.31 (2026-04-02)
+
+* feat!: add deploy lifecycle hooks, enrich resource metadata, and add Adapter.make factory ([0a171f4](https://github.com/ReventlessDev/reventless-core/commit/0a171f4b8aec0ee47fd7ee5069adf5d5b194548e))
+
+### BREAKING CHANGES
+
+* Adapter.resource.info replaced with resourceInfo variant type.
+Service field values now prefixed with provider namespace (e.g. "aws:DynamoDb").
+New required fields on resource/resolvedResource: role, region, resourceType, configuration.
+
+
+
 # 3.0.0-alpha.30 (2026-04-02)
 
 ### Features
