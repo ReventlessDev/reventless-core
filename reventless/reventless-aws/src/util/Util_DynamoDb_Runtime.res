@@ -119,7 +119,7 @@ let queryById = (table, id): Stream.t<JSON.t, DynamoDb_Error.t, unit> =>
 
 let keysFromResource: ReventlessInfra.Adapter.resource => (string, option<string>) = resource =>
   switch resource.resourceInfo->Pulumi.Output.get {
-  | StorageKeys({hashKey, rangeKey}) => (hashKey, rangeKey)
+  | StorageKeys({partitionKey, sortKey}) => (partitionKey, sortKey)
   | _ =>
     JsError.throwWithMessage("No StorageKeys given for table " ++ resource.name->Pulumi.Output.get)
   }

@@ -7,7 +7,7 @@ let log = ReventlessCore.Logger.fromEnv()
 let toResourceInfo: table => Pulumi.Output.t<ReventlessInfra.Adapter.resourceInfo> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
   ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((hashKey, rangeKey)) => ReventlessInfra.Adapter.StorageKeys({hashKey, rangeKey}))
+  ->Pulumi.Output.apply(((hashKey, rangeKey)) => ReventlessInfra.Adapter.StorageKeys({partitionKey: hashKey, sortKey: rangeKey}))
 
 let toResolvedTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   (name, id, arn, hashKey, rangeKey)

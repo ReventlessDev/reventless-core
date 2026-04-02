@@ -133,8 +133,8 @@ function keysFromResource(resource) {
     return Stdlib_JsError.throwWithMessage("No StorageKeys given for table " + resource.name.get());
   } else if (match.TAG === "StorageKeys") {
     return [
-      match.hashKey,
-      match.rangeKey
+      match.partitionKey,
+      match.sortKey
     ];
   } else {
     return Stdlib_JsError.throwWithMessage("No StorageKeys given for table " + resource.name.get());

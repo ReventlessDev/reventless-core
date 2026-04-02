@@ -5,7 +5,7 @@ let resource: Resource.t = {
   name: "my-table",
   id: "abc123",
   urn: "urn:pulumi:stack::project::resource",
-  resourceInfo: StorageKeys({hashKey: "id", rangeKey: None}),
+  resourceInfo: StorageKeys({partitionKey: "id", sortKey: None}),
   service: "dynamodb",
   role: "",
   region: "",

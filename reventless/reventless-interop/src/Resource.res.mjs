@@ -5,8 +5,8 @@ import * as S from "sury/src/S.res.mjs";
 let resourceInfoSchema = S.union([
   S.schema(s => ({
     TAG: "StorageKeys",
-    hashKey: s.m(S.string),
-    rangeKey: s.m(S.option(S.string))
+    partitionKey: s.m(S.string),
+    sortKey: s.m(S.option(S.string))
   })),
   S.schema(s => ({
     TAG: "StreamSource",

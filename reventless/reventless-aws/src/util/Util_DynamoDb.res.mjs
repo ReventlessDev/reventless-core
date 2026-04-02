@@ -22,8 +22,8 @@ function toResourceInfo(param) {
     param.rangeKey
   ]).apply(param => ({
     TAG: "StorageKeys",
-    hashKey: param[0],
-    rangeKey: param[1]
+    partitionKey: param[0],
+    sortKey: param[1]
   }));
 }
 

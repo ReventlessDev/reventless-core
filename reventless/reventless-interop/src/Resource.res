@@ -4,7 +4,7 @@
 
 @schema
 type resourceInfo =
-  | StorageKeys({hashKey: string, rangeKey: option<string>})
+  | StorageKeys({partitionKey: string, sortKey: option<string>})
   | StreamSource({sourceUrn: string})
   | ApiResolver({typeName: string, fieldName: string})
   | NoInfo

@@ -16,8 +16,8 @@ import * as OutboundTranslationSlice$ReventlessInterop from "../src/components/O
 
 let resource_resourceInfo = {
   TAG: "StorageKeys",
-  hashKey: "id",
-  rangeKey: undefined
+  partitionKey: "id",
+  sortKey: undefined
 };
 
 let resource_configuration = {};
