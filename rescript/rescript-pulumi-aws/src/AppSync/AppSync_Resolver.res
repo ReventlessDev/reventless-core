@@ -115,10 +115,12 @@ let makeUnitResolver = (
       kind: UNIT,
       type_,
     },
-    ~opts=opts->Option.map(opts => {
-      ...opts,
-      deleteBeforeReplace: true,
-    }),
+    ~opts=Some(
+      switch opts {
+      | Some(opts) => {...opts, deleteBeforeReplace: true}
+      | None => {deleteBeforeReplace: true}
+      },
+    ),
   )
 
 let makePipelineResolver = (
@@ -144,8 +146,10 @@ let makePipelineResolver = (
       }->Pulumi.Input.make,
       type_,
     },
-    ~opts=opts->Option.map(opts => {
-      ...opts,
-      deleteBeforeReplace: true,
-    }),
+    ~opts=Some(
+      switch opts {
+      | Some(opts) => {...opts, deleteBeforeReplace: true}
+      | None => {deleteBeforeReplace: true}
+      },
+    ),
   )
