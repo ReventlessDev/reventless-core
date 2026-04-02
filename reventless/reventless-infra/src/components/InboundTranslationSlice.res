@@ -15,7 +15,7 @@ Runtime operations exposed by an `InboundTranslationSlice` component.
 - `receive` -- accept external input, translate it, and publish a command
 */
 type operations = {
-  receive: JSON.t => promise<result<string, string>>,
+  receive: JSON.t => promise<result<array<string>, string>>,
 }
 
 /**

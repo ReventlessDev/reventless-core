@@ -12,7 +12,8 @@ type auditStatus =
 type auditRow = {
   input: JSON.t,
   status: auditStatus,
-  targetId?: string,
+  targetIds?: array<string>,
+  commandCount?: int,
   error?: string,
   receivedAt: string,
 }
@@ -23,11 +24,11 @@ module type T = {
   /** The audit log -- maps request ID to audit row. */
   let auditLog: ref<Dict.t<auditRow>>
 
-  /** Receive external input, translate it, and publish a command. */
+  /** Receive external input, translate it, and publish commands. */
   let receive: (
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
-  ) => promise<result<string, string>>
+  ) => promise<result<array<string>, string>>
 }
 
 module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Spec = Spec) => {
@@ -78,43 +79,48 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
 
     | Ok(input) =>
       switch Spec.translate(input) {
-      | Ok((targetId, cmd)) =>
-        let commandJson = try cmd->S.reverseConvertToJsonOrThrow(Spec.commandSchema)->Some catch {
-        | exn =>
-          let errMsg =
-            exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-          Effect.logError(
-            `InboundTranslationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
-          )->Effect.runSync
-          None
-        }
-
-        switch commandJson {
-        | Some(commandJson) =>
-          try {
-            let msg: Reventless.Message.commandJson = {
-              id: targetId,
-              meta: makeMeta(),
-              commandJson,
+      | Ok(pairs) =>
+        if pairs->Array.length === 0 {
+          auditLog.contents->Dict.set(
+            requestId,
+            {
+              input: inputJson,
+              status: Success,
+              targetIds: [],
+              commandCount: 0,
+              receivedAt: now(),
+            },
+          )
+          Ok([])
+        } else {
+          // Encode all commands; abort on first encoding failure
+          let msgs = ref([])
+          let encodeError = ref(None)
+          pairs->Array.forEach(pair => {
+            let (targetId, cmd) = pair
+            if encodeError.contents->Option.isNone {
+              try {
+                let commandJson = cmd->S.reverseConvertToJsonOrThrow(Spec.commandSchema)
+                let msg: Reventless.Message.commandJson = {
+                  id: targetId,
+                  meta: makeMeta(),
+                  commandJson,
+                }
+                msgs.contents = msgs.contents->Array.concat([msg])
+              } catch {
+              | exn =>
+                let errMsg =
+                  exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+                Effect.logError(
+                  `InboundTranslationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
+                )->Effect.runSync
+                encodeError := Some("failed to encode command")
+              }
             }
-            await publishJsons([msg])
-            auditLog.contents->Dict.set(
-              requestId,
-              {
-                input: inputJson,
-                status: Success,
-                targetId,
-                receivedAt: now(),
-              },
-            )
-            Ok(targetId)
-          } catch {
-          | exn =>
-            let msg =
-              exn
-              ->JsExn.fromException
-              ->Option.flatMap(JsExn.message)
-              ->Option.getOr("publish failed")
+          })
+
+          switch encodeError.contents {
+          | Some(msg) =>
             auditLog.contents->Dict.set(
               requestId,
               {
@@ -125,20 +131,43 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
               },
             )
             Error(msg)
+          | None =>
+            try {
+              await publishJsons(msgs.contents)
+              let targetIds = pairs->Array.map(pair => {
+                let (targetId, _) = pair
+                targetId
+              })
+              auditLog.contents->Dict.set(
+                requestId,
+                {
+                  input: inputJson,
+                  status: Success,
+                  targetIds,
+                  commandCount: pairs->Array.length,
+                  receivedAt: now(),
+                },
+              )
+              Ok(targetIds)
+            } catch {
+            | exn =>
+              let msg =
+                exn
+                ->JsExn.fromException
+                ->Option.flatMap(JsExn.message)
+                ->Option.getOr("publish failed")
+              auditLog.contents->Dict.set(
+                requestId,
+                {
+                  input: inputJson,
+                  status: Failure,
+                  error: msg,
+                  receivedAt: now(),
+                },
+              )
+              Error(msg)
+            }
           }
-
-        | None =>
-          let msg = "failed to encode command"
-          auditLog.contents->Dict.set(
-            requestId,
-            {
-              input: inputJson,
-              status: Failure,
-              error: msg,
-              receivedAt: now(),
-            },
-          )
-          Error(msg)
         }
 
       | Error(msg) =>

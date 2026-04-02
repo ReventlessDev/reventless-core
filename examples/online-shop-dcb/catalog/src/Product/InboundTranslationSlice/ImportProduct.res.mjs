@@ -40,16 +40,16 @@ function translate(input) {
   } else {
     return {
       TAG: "Ok",
-      _0: [
-        input.sku,
-        {
-          TAG: "AddProduct",
-          productId: input.sku,
-          name: input.title,
-          description: input.desc,
-          price: input.unitPrice / 100.0
-        }
-      ]
+      _0: [[
+          input.sku,
+          {
+            TAG: "AddProduct",
+            productId: input.sku,
+            name: input.title,
+            description: input.desc,
+            price: input.unitPrice / 100.0
+          }
+        ]]
     };
   }
 }

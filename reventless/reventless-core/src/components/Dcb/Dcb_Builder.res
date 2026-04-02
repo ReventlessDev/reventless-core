@@ -323,8 +323,9 @@ module Make = (
                   Effect.promise(async () => {
                     let result = await receiveFn(args)
                     let response = switch result {
-                    | Ok(id) => id
-                    | Error(msg) => msg
+                    | Ok(targetIds) =>
+                      targetIds->Array.map(JSON.Encode.string)->JSON.Encode.array
+                    | Error(msg) => msg->JSON.Encode.string
                     }
                     response->Obj.magic
                   })

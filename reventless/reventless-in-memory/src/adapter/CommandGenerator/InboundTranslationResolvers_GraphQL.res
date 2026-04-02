@@ -8,7 +8,7 @@ open ReventlessCore
 
 // Mutable registry: fieldName → receive function.
 // Populated when Output.apply resolves (after GraphQL server starts).
-let receiveRegistry: dict<JSON.t => promise<result<string, string>>> = Dict.make()
+let receiveRegistry: dict<JSON.t => promise<result<array<string>, string>>> = Dict.make()
 
 // Phase 1: Register SDL + resolver stub synchronously (before server starts).
 let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
@@ -26,7 +26,7 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
     | Some(receive) =>
       let result = await receive(inputJson)
       switch result {
-      | Ok(targetId) => targetId->JSON.Encode.string
+      | Ok(targetIds) => targetIds->Array.map(JSON.Encode.string)->JSON.Encode.array
       | Error(msg) => msg->JSON.Encode.string
       }
     | None => `error: no receive handler registered for ${fieldName}`->JSON.Encode.string
@@ -39,6 +39,6 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
 }
 
 // Phase 2: Bind the receive function once Output.apply resolves.
-let bindReceive = (~fieldName: string, ~receive: JSON.t => promise<result<string, string>>) => {
+let bindReceive = (~fieldName: string, ~receive: JSON.t => promise<result<array<string>, string>>) => {
   receiveRegistry->Dict.set(fieldName, receive)
 }

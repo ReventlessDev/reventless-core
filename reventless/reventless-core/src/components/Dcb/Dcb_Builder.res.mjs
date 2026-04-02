@@ -204,7 +204,14 @@ function Make(DcbEventLogStorage) {
             let args = Stdlib_Option.getOr(event["arguments"], null);
             let receiveFn = receivers[fieldName];
             if (receiveFn !== undefined) {
-              return Effect.promise(async () => (await receiveFn(args))._0);
+              return Effect.promise(async () => {
+                let result = await receiveFn(args);
+                if (result.TAG === "Ok") {
+                  return result._0.map(prim => prim);
+                } else {
+                  return result._0;
+                }
+              });
             } else {
               return baseHandler(event, ctx);
             }

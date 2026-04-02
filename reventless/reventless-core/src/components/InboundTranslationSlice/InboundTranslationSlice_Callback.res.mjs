@@ -17,7 +17,8 @@ let auditStatusSchema = S.union([
 let auditRowSchema = S.schema(s => ({
   input: s.m(S.json),
   status: s.m(auditStatusSchema),
-  targetId: s.m(S.option(S.string)),
+  targetIds: s.m(S.option(S.array(S.string))),
+  commandCount: s.m(S.option(S.int)),
   error: s.m(S.option(S.string)),
   receivedAt: s.m(S.string)
 }));
@@ -51,89 +52,116 @@ function Make(Spec) {
       };
     }
     if (input.TAG === "Ok") {
-      let msg$1 = Spec.translate(input._0);
-      if (msg$1.TAG === "Ok") {
-        let match = msg$1._0;
-        let targetId = match[0];
-        let commandJson;
-        try {
-          commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
-        } catch (raw_exn$1) {
-          let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(Effect.logError(`InboundTranslationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
-          commandJson = undefined;
+      let pairs = Spec.translate(input._0);
+      if (pairs.TAG === "Ok") {
+        let pairs$1 = pairs._0;
+        if (pairs$1.length === 0) {
+          auditLog.contents[requestId] = {
+            input: inputJson,
+            status: "Success",
+            targetIds: [],
+            commandCount: 0,
+            receivedAt: new Date().toISOString()
+          };
+          return {
+            TAG: "Ok",
+            _0: []
+          };
         }
-        if (commandJson !== undefined) {
+        let msgs = {
+          contents: []
+        };
+        let encodeError = {
+          contents: undefined
+        };
+        pairs$1.forEach(pair => {
+          if (!Stdlib_Option.isNone(encodeError.contents)) {
+            return;
+          }
           try {
+            let commandJson = S.reverseConvertToJsonOrThrow(pair[1], Spec.commandSchema);
+            let msg_id = pair[0];
             let msg_meta = makeMeta();
-            let msg$2 = {
-              id: targetId,
+            let msg = {
+              id: msg_id,
               meta: msg_meta,
               commandJson: commandJson
             };
-            await publishJsons([msg$2]);
-            auditLog.contents[requestId] = {
-              input: inputJson,
-              status: "Success",
-              targetId: targetId,
-              receivedAt: new Date().toISOString()
-            };
-            return {
-              TAG: "Ok",
-              _0: targetId
-            };
-          } catch (raw_exn$2) {
-            let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
-            let msg$3 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "publish failed");
-            auditLog.contents[requestId] = {
-              input: inputJson,
-              status: "Failure",
-              error: msg$3,
-              receivedAt: new Date().toISOString()
-            };
-            return {
-              TAG: "Error",
-              _0: msg$3
-            };
+            msgs.contents = msgs.contents.concat([msg]);
+            return;
+          } catch (raw_exn) {
+            let exn = Primitive_exceptions.internalToException(raw_exn);
+            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+            Effect.runSync(Effect.logError(`InboundTranslationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
+            encodeError.contents = "failed to encode command";
+            return;
           }
-        } else {
-          let msg$4 = "failed to encode command";
+        });
+        let msg$1 = encodeError.contents;
+        if (msg$1 !== undefined) {
           auditLog.contents[requestId] = {
             input: inputJson,
             status: "Failure",
-            error: msg$4,
+            error: msg$1,
             receivedAt: new Date().toISOString()
           };
           return {
             TAG: "Error",
-            _0: msg$4
+            _0: msg$1
+          };
+        }
+        try {
+          await publishJsons(msgs.contents);
+          let targetIds = pairs$1.map(pair => pair[0]);
+          auditLog.contents[requestId] = {
+            input: inputJson,
+            status: "Success",
+            targetIds: targetIds,
+            commandCount: pairs$1.length,
+            receivedAt: new Date().toISOString()
+          };
+          return {
+            TAG: "Ok",
+            _0: targetIds
+          };
+        } catch (raw_exn$1) {
+          let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
+          let msg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "publish failed");
+          auditLog.contents[requestId] = {
+            input: inputJson,
+            status: "Failure",
+            error: msg$2,
+            receivedAt: new Date().toISOString()
+          };
+          return {
+            TAG: "Error",
+            _0: msg$2
           };
         }
       } else {
-        let msg$5 = msg$1._0;
+        let msg$3 = pairs._0;
         auditLog.contents[requestId] = {
           input: inputJson,
           status: "Failure",
-          error: msg$5,
+          error: msg$3,
           receivedAt: new Date().toISOString()
         };
         return {
           TAG: "Error",
-          _0: msg$5
+          _0: msg$3
         };
       }
     } else {
-      let msg$6 = input._0;
+      let msg$4 = input._0;
       auditLog.contents[requestId] = {
         input: inputJson,
         status: "Failure",
-        error: msg$6,
+        error: msg$4,
         receivedAt: new Date().toISOString()
       };
       return {
         TAG: "Error",
-        _0: msg$6
+        _0: msg$4
       };
     }
   };

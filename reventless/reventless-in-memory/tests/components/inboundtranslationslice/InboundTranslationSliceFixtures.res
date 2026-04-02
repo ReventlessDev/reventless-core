@@ -28,7 +28,7 @@ module PaymentWebhookSpec = {
   let translate = (input: externalInput) =>
     switch input.status {
     | "completed" =>
-      Ok((input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: input.paymentId})))
+      Ok([(input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: input.paymentId}))])
     | status => Error("Unknown payment status: " ++ status)
     }
 }

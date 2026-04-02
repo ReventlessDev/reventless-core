@@ -35,14 +35,14 @@ function translate(input) {
   if (status === "completed") {
     return {
       TAG: "Ok",
-      _0: [
-        input.orderId,
-        {
-          TAG: "ConfirmPayment",
-          orderId: input.orderId,
-          paymentId: input.paymentId
-        }
-      ]
+      _0: [[
+          input.orderId,
+          {
+            TAG: "ConfirmPayment",
+            orderId: input.orderId,
+            paymentId: input.paymentId
+          }
+        ]]
     };
   } else {
     return {

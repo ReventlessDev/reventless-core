@@ -20,7 +20,7 @@ let name = "PaymentWebhook"
 @schema type command = ConfirmPayment({orderId: @s.matches(DcbTag.string) string, paymentId: string})
 
 let translate = input => switch input.status {
-  | "completed" => Ok((input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: input.paymentId})))
+  | "completed" => Ok([(input.orderId, ConfirmPayment({orderId: input.orderId, paymentId: input.paymentId}))])
   | _ => Error("Unknown payment status: " ++ input.status)
 }
 ```
@@ -39,10 +39,11 @@ module type Spec = {
   type command
 
   /**
-  Translate: convert external input into a domain command.
+  Translate: convert external input into domain commands.
   Returns:
-  - `Ok((targetId, cmd))` to publish the command
+  - `Ok([(targetId, cmd), ...])` to publish one or more commands
+  - `Ok([])` for idempotent no-ops (nothing to publish)
   - `Error(msg)` to reject the input
   */
-  let translate: externalInput => result<(string, command), string>
+  let translate: externalInput => result<array<(string, command)>, string>
 }

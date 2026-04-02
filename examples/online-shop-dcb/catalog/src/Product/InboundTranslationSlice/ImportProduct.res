@@ -31,7 +31,7 @@ let translate = input =>
   } else if input.sku === "" {
     Error("SKU is required")
   } else {
-    Ok((
+    Ok([(
       input.sku,
       AddProduct({
         productId: input.sku,
@@ -39,5 +39,5 @@ let translate = input =>
         description: input.desc,
         price: Int.toFloat(input.unitPrice) /. 100.0,
       }),
-    ))
+    )])
   }

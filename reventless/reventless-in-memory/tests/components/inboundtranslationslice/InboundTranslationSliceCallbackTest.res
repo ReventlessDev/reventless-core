@@ -28,7 +28,9 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await Callback.receive(mockPublish, inputJson)
 
       switch result {
-      | Ok(targetId) => expect(targetId)->toBe("ord-1")
+      | Ok(targetIds) =>
+        expect(targetIds->Array.length)->toBe(1)
+        expect(targetIds->Array.getUnsafe(0))->toBe("ord-1")
       | Error(_) => expect(true)->toBe(false)
       }
       expect(publishedCommands.contents->Array.length)->toBe(1)
@@ -40,6 +42,7 @@ describe("InboundTranslationSlice Callback", () => {
       expect(auditEntries->Array.length)->toBe(1)
       let (_, auditRow) = auditEntries->Array.getUnsafe(0)
       expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
+      expect(auditRow.commandCount)->toBe(Some(1))
     })
 
     testPromise("translate returns Error — no command published, audit logged", async () => {
@@ -111,6 +114,98 @@ describe("InboundTranslationSlice Callback", () => {
       expect(auditEntries->Array.length)->toBe(1)
       let (_, auditRow) = auditEntries->Array.getUnsafe(0)
       expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+    })
+  })
+
+  describe("multi-command", () => {
+    testPromise("translate returning multiple pairs publishes all commands", async () => {
+      // Use a spec that returns multiple commands
+      module MultiSpec = {
+        let name = "BatchWebhook"
+        let moduleUrl: string = %raw(`import.meta.url`)
+
+        @schema
+        type externalInput = {orderId: string, items: array<string>}
+
+        @schema
+        type command = ConfirmPayment({
+          orderId: @s.matches(Reventless.DcbTag.string) string,
+          paymentId: string,
+        })
+
+        let translate = (input: externalInput) =>
+          Ok(
+            input.items->Array.map(item => (
+              input.orderId,
+              ConfirmPayment({orderId: input.orderId, paymentId: item}),
+            )),
+          )
+      }
+
+      module MultiCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(MultiSpec)
+
+      let publishedCommands = ref([])
+      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+        publishedCommands := cmds
+      }
+
+      let inputJson =
+        {
+          "orderId": "ord-1",
+          "items": ["pay-1", "pay-2", "pay-3"],
+        }->Obj.magic
+
+      let result = await MultiCallback.receive(mockPublish, inputJson)
+
+      switch result {
+      | Ok(targetIds) =>
+        expect(targetIds->Array.length)->toBe(3)
+        expect(targetIds->Array.getUnsafe(0))->toBe("ord-1")
+      | Error(_) => expect(true)->toBe(false)
+      }
+      // All 3 commands published in one batch
+      expect(publishedCommands.contents->Array.length)->toBe(3)
+
+      let auditEntries = MultiCallback.auditLog.contents->Dict.toArray
+      expect(auditEntries->Array.length)->toBe(1)
+      let (_, auditRow) = auditEntries->Array.getUnsafe(0)
+      expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
+      expect(auditRow.commandCount)->toBe(Some(3))
+    })
+
+    testPromise("translate returning empty array publishes nothing", async () => {
+      module EmptySpec = {
+        let name = "EmptyWebhook"
+        let moduleUrl: string = %raw(`import.meta.url`)
+
+        @schema
+        type externalInput = {orderId: string}
+
+        @schema
+        type command = ConfirmPayment({
+          orderId: @s.matches(Reventless.DcbTag.string) string,
+          paymentId: string,
+        })
+
+        let translate = (_input: externalInput) => Ok([])
+      }
+
+      module EmptyCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(EmptySpec)
+
+      let publishedCommands = ref([])
+      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+        publishedCommands := cmds
+      }
+
+      let inputJson = {"orderId": "ord-1"}->Obj.magic
+
+      let result = await EmptyCallback.receive(mockPublish, inputJson)
+
+      switch result {
+      | Ok(targetIds) => expect(targetIds->Array.length)->toBe(0)
+      | Error(_) => expect(true)->toBe(false)
+      }
+      expect(publishedCommands.contents->Array.length)->toBe(0)
     })
   })
 })

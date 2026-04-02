@@ -10,10 +10,14 @@ function register(fieldName, externalInputSchema) {
   let sdlFields = field !== undefined ? [field] : [`  ` + fieldName + `: String!`];
   let resolver = async (_root, args, _ctx) => {
     let receive = receiveRegistry[fieldName];
-    if (receive !== undefined) {
-      return (await receive(args))._0;
-    } else {
+    if (receive === undefined) {
       return `error: no receive handler registered for ` + fieldName;
+    }
+    let result = await receive(args);
+    if (result.TAG === "Ok") {
+      return result._0.map(prim => prim);
+    } else {
+      return result._0;
     }
   };
   let resolvers = {};
