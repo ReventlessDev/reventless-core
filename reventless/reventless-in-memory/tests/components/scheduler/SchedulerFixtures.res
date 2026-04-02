@@ -29,8 +29,12 @@ let makeTopicResource = (name: string): ReventlessInfra.Adapter.resolvedResource
   name,
   id: name,
   urn: name,
-  info: "",
-  service: "InMemory",
+  resourceInfo: NoInfo,
+  service: "memory:InMemory",
+  role: "",
+  region: "",
+  resourceType: "",
+  configuration: Dict.make(),
 }
 
 let _ = beforeAll(() => {

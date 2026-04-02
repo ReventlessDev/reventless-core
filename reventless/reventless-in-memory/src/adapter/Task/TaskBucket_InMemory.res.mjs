@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 
 function connect(param, param$1, param$2, param$3, param$4, param$5) {
   
@@ -27,13 +28,7 @@ function makeHandler(callback) {
 
 function make(name, param) {
   return {
-    resources: [{
-        name: Pulumi.output(name),
-        id: Pulumi.output(name),
-        urn: Pulumi.output("urn:" + name),
-        info: Pulumi.output("in-memory"),
-        service: Pulumi.output("InMemory")
-      }],
+    resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), Pulumi.output(name), Pulumi.output("urn:" + name), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined)],
     parts: undefined
   };
 }

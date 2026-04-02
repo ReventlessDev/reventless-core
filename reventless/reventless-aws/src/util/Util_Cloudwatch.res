@@ -3,11 +3,12 @@ module EventRule = {
     id,
     name,
     arn,
-  }) => {
-    ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.CloudwatchEventRule.service),
-    name,
-    id,
-    urn: arn,
-    info: name->Pulumi.Output.apply(_ => ""),
-  }
+  }) =>
+    ReventlessInfra.Adapter.make(
+      ~name,
+      ~id,
+      ~urn=arn,
+      ~service=name->Pulumi.Output.apply(_ => AWS.CloudwatchEventRule.service),
+      ~resourceType="aws:cloudwatch:EventRule"->Pulumi.Output.make,
+    )
 }

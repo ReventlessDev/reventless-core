@@ -37,13 +37,11 @@ let subscribeSqs = (
     },
     ~opts=Some(opts),
   )
-  (
-    {
-      ReventlessInfra.Adapter.service: esm.id->Pulumi.Output.apply(_ => AWS.SQS.service),
-      name: esm.id,
-      id: esm.id,
-      urn: esm.arn,
-      info: esm.id->Pulumi.Output.apply(_ => ""),
-    }: ReventlessInfra.Adapter.resource
+  ReventlessInfra.Adapter.make(
+    ~name=esm.id,
+    ~id=esm.id,
+    ~urn=esm.arn,
+    ~service=esm.id->Pulumi.Output.apply(_ => AWS.SQS.service),
+    ~resourceType="aws:lambda:EventSourceMapping"->Pulumi.Output.make,
   )
 }

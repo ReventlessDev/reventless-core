@@ -6,8 +6,12 @@ let outputToResource: Pulumi.Output.t<
   id: resourceOutput->Pulumi.Output.flatMap(r => r.id),
   name: resourceOutput->Pulumi.Output.flatMap(r => r.name),
   urn: resourceOutput->Pulumi.Output.flatMap(r => r.urn),
-  info: resourceOutput->Pulumi.Output.flatMap(r => r.info),
+  resourceInfo: resourceOutput->Pulumi.Output.flatMap(r => r.resourceInfo),
   service: resourceOutput->Pulumi.Output.flatMap(r => r.service),
+  role: resourceOutput->Pulumi.Output.flatMap(r => r.role),
+  region: resourceOutput->Pulumi.Output.flatMap(r => r.region),
+  resourceType: resourceOutput->Pulumi.Output.flatMap(r => r.resourceType),
+  configuration: resourceOutput->Pulumi.Output.flatMap(r => r.configuration),
 }
 
 let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessInfra.Adapter.resource>> => option<
@@ -17,20 +21,30 @@ let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessInfra.Adapter.res
     id: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).id),
     name: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).name),
     urn: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).urn),
-    info: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).info),
+    resourceInfo: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).resourceInfo),
     service: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).service),
+    role: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).role),
+    region: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).region),
+    resourceType: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).resourceType),
+    configuration: resourcesOutput->Pulumi.Output.flatMap(r =>
+      (r->Array.getUnsafe(0)).configuration
+    ),
   }->Some catch {
   | _ => None
   }
 
 let resolvedToResource = (
-  {id, name, urn, info, service}: resolvedResource,
+  {id, name, urn, resourceInfo, service, role, region, resourceType, configuration}: resolvedResource,
 ): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
   urn: urn->Pulumi.Output.make,
-  info: info->Pulumi.Output.make,
+  resourceInfo: resourceInfo->Pulumi.Output.make,
   service: service->Pulumi.Output.make,
+  role: role->Pulumi.Output.make,
+  region: region->Pulumi.Output.make,
+  resourceType: resourceType->Pulumi.Output.make,
+  configuration: configuration->Pulumi.Output.make,
 }
 
 let resolvedToResources = (resolved: array<resolvedResource>) =>
@@ -43,16 +57,34 @@ let resolvedOutputToResource: Pulumi.Output.t<
   name: resolvedResource->Pulumi.Output.apply(r => r.name),
   id: resolvedResource->Pulumi.Output.apply(r => r.id),
   urn: resolvedResource->Pulumi.Output.apply(r => r.urn),
-  info: resolvedResource->Pulumi.Output.apply(r => r.info),
+  resourceInfo: resolvedResource->Pulumi.Output.apply(r => r.resourceInfo),
+  role: resolvedResource->Pulumi.Output.apply(r => r.role),
+  region: resolvedResource->Pulumi.Output.apply(r => r.region),
+  resourceType: resolvedResource->Pulumi.Output.apply(r => r.resourceType),
+  configuration: resolvedResource->Pulumi.Output.apply(r => r.configuration),
 }
 
 let resourceToResolvedOutput = (r: ReventlessInfra.Adapter.resource) =>
-  (r.name, r.id, r.urn, r.info, r.service)
-  ->Pulumi.Output.all5
-  ->Pulumi.Output.apply(((name, id, urn, info, service)) => {
-    let result: resolvedResource = {name, id, urn, info, service}
-    result
-  })
+  (r.name, r.id, r.urn, r.resourceInfo, r.service, r.role)
+  ->Pulumi.Output.all6
+  ->Pulumi.Output.flatMap(((name, id, urn, resourceInfo, service, role)) =>
+    (r.region, r.resourceType, r.configuration)
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply(((region, resourceType, configuration)) => {
+      let result: resolvedResource = {
+        name,
+        id,
+        urn,
+        resourceInfo,
+        service,
+        role,
+        region,
+        resourceType,
+        configuration,
+      }
+      result
+    })
+  )
 
 let resourcesToResolvedOutput = (resources: array<ReventlessInfra.Adapter.resource>) =>
   resources
@@ -71,14 +103,23 @@ let urns = resources => resources->Array.map((resource: resolvedResource) => res
 
 // ---------------------------------------------------------------------------
 // Interop resource conversions
-// ReventlessInterop.Resource.t and resolvedResource are structurally identical
-// (name, id, urn, info, service — all plain strings); these helpers bridge the
-// two type-system identities without runtime cost.
+// ReventlessInterop.Resource.t and resolvedResource are structurally identical;
+// these helpers bridge the two type-system identities without runtime cost.
 // ---------------------------------------------------------------------------
 
 let toInteropResource = (
-  {name, id, urn, info, service}: resolvedResource,
-): ReventlessInterop.Resource.t => {name, id, urn, info, service}
+  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration}: resolvedResource,
+): ReventlessInterop.Resource.t => {
+  name,
+  id,
+  urn,
+  resourceInfo: (resourceInfo :> ReventlessInterop.Resource.resourceInfo),
+  service,
+  role,
+  region,
+  resourceType,
+  configuration,
+}
 
 let resourcesToInterop = (resources: array<ReventlessInfra.Adapter.resource>) =>
   resources
@@ -86,17 +127,31 @@ let resourcesToInterop = (resources: array<ReventlessInfra.Adapter.resource>) =>
   ->Pulumi.Output.apply(rs => rs->Array.map(toInteropResource))
 
 let fromInteropResolved = (
-  {name, id, urn, info, service}: ReventlessInterop.Resource.t,
-): resolvedResource => {name, id, urn, info, service}
+  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration}: ReventlessInterop.Resource.t,
+): resolvedResource => {
+  name,
+  id,
+  urn,
+  resourceInfo: (resourceInfo :> ReventlessInfra.Adapter.resourceInfo),
+  service,
+  role,
+  region,
+  resourceType,
+  configuration,
+}
 
 let fromInteropResource = (
-  {name, id, urn, info, service}: ReventlessInterop.Resource.t,
+  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration}: ReventlessInterop.Resource.t,
 ): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
   urn: urn->Pulumi.Output.make,
-  info: info->Pulumi.Output.make,
+  resourceInfo: (resourceInfo :> ReventlessInfra.Adapter.resourceInfo)->Pulumi.Output.make,
   service: service->Pulumi.Output.make,
+  role: role->Pulumi.Output.make,
+  region: region->Pulumi.Output.make,
+  resourceType: resourceType->Pulumi.Output.make,
+  configuration: configuration->Pulumi.Output.make,
 }
 
 let fromInteropResources = (rs: array<ReventlessInterop.Resource.t>): array<

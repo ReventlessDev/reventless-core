@@ -4,6 +4,8 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 
 function make(name, componentType) {
+  let plugin = Pulumi.getProject();
+  let kind = ComponentType$ReventlessCore.toString(componentType);
   return Object.fromEntries([
     [
       "Name",
@@ -11,7 +13,7 @@ function make(name, componentType) {
     ],
     [
       "Type",
-      ComponentType$ReventlessCore.toString(componentType)
+      kind
     ],
     [
       "Environment",
@@ -19,7 +21,23 @@ function make(name, componentType) {
     ],
     [
       "Plugin",
-      Pulumi.getProject()
+      plugin
+    ],
+    [
+      "reventless:plugin",
+      plugin
+    ],
+    [
+      "reventless:component",
+      name
+    ],
+    [
+      "reventless:role",
+      kind
+    ],
+    [
+      "reventless:kind",
+      kind
     ]
   ]);
 }

@@ -170,30 +170,54 @@ module Make = (
     // Fire onPluginBuiltHook synchronously with a plain-data summary.
     // ExtensionPoint/Extension names are not accessible from their T module type,
     // so only aggregates, read models, and DCB slice names are included.
-    switch Plugin_Helpers.onPluginBuiltHook.contents {
-    | Some(hook) =>
+    {
+      let extractTypes = schema => Reventless.DcbTag.extractEventTypes(schema)
+      // Build per-component schema data and register it for the deployed hook.
+      let aggregateComponents = aggregates->Array.map((
+        module(M: ReventlessInfra.Aggregate.T with type api = api),
+      ) => {
+        let schema: Plugin_Helpers.pluginDeployedSchema = {
+          commandTypes: extractTypes(M.Spec.commandSchema),
+          eventTypes: extractTypes(M.Spec.eventSchema),
+          errorTypes: extractTypes(M.Spec.errorSchema),
+        }
+        Plugin_Helpers.componentSchemaRegistry.contents->Dict.set(M.Spec.name, schema)
+        ({name: M.Spec.name, kind: "Aggregate", schema}: Plugin_Helpers.pluginBuiltComponent)
+      })
+
+      let readModelComponents = readModels->Array.map((
+        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+      ) => {
+        let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+        let schema: Plugin_Helpers.pluginDeployedSchema = {
+          queryFields: [qn.singleFieldName, qn.listFieldName],
+        }
+        Plugin_Helpers.componentSchemaRegistry.contents->Dict.set(R.Spec.name, schema)
+        ({name: R.Spec.name, kind: "ReadModel", schema}: Plugin_Helpers.pluginBuiltComponent)
+      })
+
       let mapNames = (d: dict<_>, kind: string) =>
         d
         ->Dict.keysToArray
-        ->Array.map(name => ({Plugin_Helpers.name, kind}: Plugin_Helpers.pluginBuiltComponent))
-      hook({
-        name,
-        version,
-        components: Array.flat([
-          aggregates->Array.map((
-            module(M: ReventlessInfra.Aggregate.T with type api = api),
-          ) => ({name: M.Spec.name, kind: "Aggregate"}: Plugin_Helpers.pluginBuiltComponent)),
-          readModels->Array.map((
-            module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-          ) => ({name: R.Spec.name, kind: "ReadModel"}: Plugin_Helpers.pluginBuiltComponent)),
-          mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
-          mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
-          mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
-          mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
-          mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice"),
-        ]),
-      })
-    | None => ()
+        ->Array.map(name => {
+          let schema: Plugin_Helpers.pluginDeployedSchema = {}
+          ({Plugin_Helpers.name, kind, schema}: Plugin_Helpers.pluginBuiltComponent)
+        })
+
+      let components = Array.flat([
+        aggregateComponents,
+        readModelComponents,
+        mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
+        mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
+        mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
+        mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
+        mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice"),
+      ])
+
+      switch Plugin_Helpers.onPluginBuiltHook.contents {
+      | Some(hook) => hook({name, version, components})
+      | None => ()
+      }
     }
 
     let builderOutputs = {

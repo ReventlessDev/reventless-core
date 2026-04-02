@@ -7,8 +7,12 @@ function resolvedToResource(param) {
     name: Pulumi.output(param.name),
     id: Pulumi.output(param.id),
     urn: Pulumi.output(param.urn),
-    info: Pulumi.output(param.info),
-    service: Pulumi.output(param.service)
+    resourceInfo: Pulumi.output(param.resourceInfo),
+    service: Pulumi.output(param.service),
+    role: Pulumi.output(param.role),
+    region: Pulumi.output(param.region),
+    resourceType: Pulumi.output(param.resourceType),
+    configuration: Pulumi.output(param.configuration)
   };
 }
 
@@ -19,8 +23,12 @@ function fromInteropResource(param) {
     name: Pulumi.output(param.name),
     id: Pulumi.output(param.id),
     urn: Pulumi.output(param.urn),
-    info: Pulumi.output(param.info),
-    service: Pulumi.output(param.service)
+    resourceInfo: Pulumi.output(param.resourceInfo),
+    service: Pulumi.output(param.service),
+    role: Pulumi.output(param.role),
+    region: Pulumi.output(param.region),
+    resourceType: Pulumi.output(param.resourceType),
+    configuration: Pulumi.output(param.configuration)
   };
 }
 

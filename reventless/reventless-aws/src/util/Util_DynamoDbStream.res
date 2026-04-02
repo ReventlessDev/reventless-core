@@ -1,41 +1,36 @@
-let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
-  (table.hashKey, table.rangeKey, table.streamArn)
-  ->Pulumi.Output.all3
-  ->Pulumi.Output.apply(((hashKey, rangeKey, streamArn)) =>
-    hashKey ++ ("," ++ (rangeKey->Option.getOr("") ++ ("," ++ streamArn)))
-  )
+let toResourceInfo = (table: PulumiAws.DynamoDb.Table.t) =>
+  table.streamArn->Pulumi.Output.apply(streamArn => ReventlessInfra.Adapter.StreamSource({sourceUrn: streamArn}))
 
 let streamArnFromDynamoDbTableResource = (resource: ReventlessInfra.Adapter.resource) =>
-  (resource.info, resource.name)
-  ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((tableInfo, tableName)) =>
-    switch tableInfo->String.split(",") {
-    | parts if parts->Array.length < 3 || parts->Array.getUnsafe(2)->String.trim == "" =>
+  resource.resourceInfo->Pulumi.Output.apply(resourceInfo =>
+    switch resourceInfo {
+    | StreamSource({sourceUrn}) => sourceUrn
+    | _ =>
+      let tableName = resource.name->Pulumi.Output.get
       JsError.throwWithMessage("No streamArn field given for table " ++ tableName)
-    | parts => parts->Array.getUnsafe(2)
     }
   )
 
-let toResource = (table: PulumiAws.DynamoDb.Table.t): ReventlessInfra.Adapter.resource => {
-  ReventlessInfra.Adapter.service: table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
-  name: table.name,
-  id: table.id,
-  urn: table.arn,
-  info: table->toInfo,
-}
+let toResource = (table: PulumiAws.DynamoDb.Table.t): ReventlessInfra.Adapter.resource =>
+  ReventlessInfra.Adapter.make(
+    ~name=table.name,
+    ~id=table.id,
+    ~urn=table.arn,
+    ~service=table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
+    ~resourceInfo=table->toResourceInfo,
+    ~resourceType="aws:dynamodb:Table"->Pulumi.Output.make,
+  )
 
 let toStreamResource = (table: ReventlessInfra.Adapter.resource): ReventlessInfra.Adapter.resource => {
   let streamArn = table->streamArnFromDynamoDbTableResource
 
-  {
-    ReventlessInfra.Adapter.service: table.name->Pulumi.Output.apply(_ =>
-      AWS.DynamoDbStream.service
-    ),
-    name: table.name,
-    id: streamArn,
-    urn: streamArn,
-    info: table.name->Pulumi.Output.apply(_ => ""),
-  }
+  ReventlessInfra.Adapter.make(
+    ~name=table.name,
+    ~id=streamArn,
+    ~urn=streamArn,
+    ~service=table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
+    ~resourceType="aws:dynamodb:Stream"->Pulumi.Output.make,
+  )
 }
 
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again

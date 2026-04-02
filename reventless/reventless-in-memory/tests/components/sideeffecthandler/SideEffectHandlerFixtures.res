@@ -75,13 +75,12 @@ module SEHBuilder = ReventlessCore.SideEffectHandler_Builder.Make(
 // ─────────────────────────────────────────────────────────────
 
 let topicName = "TestSEHSource"
-let topicResource: ReventlessInfra.Adapter.resource = {
-  name: topicName->Pulumi.Output.make,
-  id: topicName->Pulumi.Output.make,
-  urn: topicName->Pulumi.Output.make,
-  info: ""->Pulumi.Output.make,
-  service: "InMemory"->Pulumi.Output.make,
-}
+let topicResource: ReventlessInfra.Adapter.resource = ReventlessInfra.Adapter.make(
+  ~name=topicName->Pulumi.Output.make,
+  ~id=topicName->Pulumi.Output.make,
+  ~urn=topicName->Pulumi.Output.make,
+  ~service="memory:InMemory"->Pulumi.Output.make,
+)
 
 let allEventTopics: ReventlessInfra.EventTopic.allOutputs = Dict.fromArray([
   ("TestSEHSource", {ReventlessInfra.EventTopic.resources: [topicResource]}),

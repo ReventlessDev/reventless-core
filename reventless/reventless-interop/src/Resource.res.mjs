@@ -2,15 +2,38 @@
 
 import * as S from "sury/src/S.res.mjs";
 
+let resourceInfoSchema = S.union([
+  S.schema(s => ({
+    TAG: "StorageKeys",
+    hashKey: s.m(S.string),
+    rangeKey: s.m(S.option(S.string))
+  })),
+  S.schema(s => ({
+    TAG: "StreamSource",
+    sourceUrn: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ApiResolver",
+    typeName: s.m(S.string),
+    fieldName: s.m(S.string)
+  })),
+  S.literal("NoInfo")
+]);
+
 let schema = S.schema(s => ({
   name: s.m(S.string),
   id: s.m(S.string),
   urn: s.m(S.string),
-  info: s.m(S.string),
-  service: s.m(S.string)
+  resourceInfo: s.m(resourceInfoSchema),
+  service: s.m(S.string),
+  role: s.m(S.string),
+  region: s.m(S.string),
+  resourceType: s.m(S.string),
+  configuration: s.m(S.dict(S.string))
 }));
 
 export {
+  resourceInfoSchema,
   schema,
 }
-/* schema Not a pure module */
+/* resourceInfoSchema Not a pure module */

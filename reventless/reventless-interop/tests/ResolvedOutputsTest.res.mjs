@@ -14,12 +14,24 @@ import * as StateChangeSlice$ReventlessInterop from "../src/components/StateChan
 import * as InboundTranslationSlice$ReventlessInterop from "../src/components/InboundTranslationSlice.res.mjs";
 import * as OutboundTranslationSlice$ReventlessInterop from "../src/components/OutboundTranslationSlice.res.mjs";
 
+let resource_resourceInfo = {
+  TAG: "StorageKeys",
+  hashKey: "id",
+  rangeKey: undefined
+};
+
+let resource_configuration = {};
+
 let resource = {
   name: "my-table",
   id: "abc123",
   urn: "urn:pulumi:stack::project::resource",
-  info: "arn:aws:dynamodb:us-east-1:123:table/my-table",
-  service: "dynamodb"
+  resourceInfo: resource_resourceInfo,
+  service: "dynamodb",
+  role: "",
+  region: "",
+  resourceType: "",
+  configuration: resource_configuration
 };
 
 let queryDb = {

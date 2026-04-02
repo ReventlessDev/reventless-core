@@ -402,7 +402,7 @@ let dispatchTool = async (
   identity: Reventless.Identity.t,
 ) => {
   let queueRef = makeQueueRef(tool.commandTopicArn)
-  let publishJsons = sqsPublishJsons(queueRef, "SQS_FIFO")
+  let publishJsons = sqsPublishJsons(queueRef, AWS.SQS_FIFO.service)
   let generateCommand = makeGenerateCommand(
     publishJsons,
     tool.name,

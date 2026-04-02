@@ -16,7 +16,9 @@ import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
+import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
@@ -510,6 +512,34 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook === undefined) {
+      return;
+    }
+    let resolvedApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let resolvedApiRoleArn = Output$Pulumi.flatMap(appSyncApiRole, role => role.arn);
+    let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
+      r.eventLog.resources,
+      r.eventLog.eventTopic.resources,
+      r.commandTopic.resources,
+      r.commandGenerator.resources
+    ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
+    Pulumi.all([
+      resolvedApiId,
+      resolvedApiRoleArn,
+      adminResourcesOutput
+    ]).apply(param => {
+      let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+      hook({
+        name: Pulumi.getProject(),
+        environment: Pulumi.getStack(),
+        region: region,
+        apiId: param[0],
+        apiRoleArn: param[1],
+        splitApiMode: Config.splitApi,
+        adminResources: param[2]
+      });
+    });
   };
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
@@ -985,6 +1015,34 @@ function Make($star) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook === undefined) {
+      return;
+    }
+    let resolvedApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let resolvedApiRoleArn = Output$Pulumi.flatMap(appSyncApiRole, role => role.arn);
+    let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
+      r.eventLog.resources,
+      r.eventLog.eventTopic.resources,
+      r.commandTopic.resources,
+      r.commandGenerator.resources
+    ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
+    Pulumi.all([
+      resolvedApiId,
+      resolvedApiRoleArn,
+      adminResourcesOutput
+    ]).apply(param => {
+      let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+      hook({
+        name: Pulumi.getProject(),
+        environment: Pulumi.getStack(),
+        region: region,
+        apiId: param[0],
+        apiRoleArn: param[1],
+        splitApiMode: true,
+        adminResources: param[2]
+      });
+    });
   };
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);

@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
 import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
@@ -73,23 +74,7 @@ let SEHBuilder = SideEffectHandler_Builder$ReventlessCore.Make({
 
 let topicName = "TestSEHSource";
 
-let topicResource_name = Pulumi.output(topicName);
-
-let topicResource_id = Pulumi.output(topicName);
-
-let topicResource_urn = Pulumi.output(topicName);
-
-let topicResource_info = Pulumi.output("");
-
-let topicResource_service = Pulumi.output("InMemory");
-
-let topicResource = {
-  name: topicResource_name,
-  id: topicResource_id,
-  urn: topicResource_urn,
-  info: topicResource_info,
-  service: topicResource_service
-};
+let topicResource = Adapter$ReventlessInfra.make(Pulumi.output(topicName), Pulumi.output(topicName), Pulumi.output(topicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined);
 
 let allEventTopics = Object.fromEntries([[
     "TestSEHSource",

@@ -16,7 +16,7 @@ describe("InMemory_Bus", () => {
     TestBus.subscribeToEvents("t1", async (_, _, _) => {
       count := count.contents + 1
     })
-    await TestBus.publishEvent("t1", "InMemory", testMeta, JSON.Null)
+    await TestBus.publishEvent("t1", "memory:InMemory", testMeta, JSON.Null)
     expect(count.contents)->toBe(2)
   })
 

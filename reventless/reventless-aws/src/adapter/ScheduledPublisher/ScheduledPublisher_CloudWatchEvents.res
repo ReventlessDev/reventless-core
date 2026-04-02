@@ -35,13 +35,13 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
   )
 
   {
-    resource: {
-      ReventlessInfra.Adapter.service: "CloudWatchEvents"->Pulumi.Output.make,
-      name: ""->Pulumi.Output.make,
-      id: ""->Pulumi.Output.make,
-      urn: ""->Pulumi.Output.make,
-      info: ""->Pulumi.Output.make,
-    },
+    resource: ReventlessInfra.Adapter.make(
+      ~name=""->Pulumi.Output.make,
+      ~id=""->Pulumi.Output.make,
+      ~urn=""->Pulumi.Output.make,
+      ~service="CloudWatchEvents"->Pulumi.Output.make,
+      ~resourceType="aws:cloudwatch:EventRule"->Pulumi.Output.make,
+    ),
     operations: ({
       createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(
         role,

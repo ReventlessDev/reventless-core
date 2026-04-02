@@ -385,12 +385,32 @@ module MakeEventCollectorHelper = (
 
 
 // ---------------------------------------------------------------------------
+// Shared schema type — used by both pluginBuiltComponent and
+// pluginDeployedComponent to describe per-component schema details.
+// ---------------------------------------------------------------------------
+type pluginDeployedSchema = {
+  commandTypes?: array<string>,
+  eventTypes?: array<string>,
+  errorTypes?: array<string>,
+  stateType?: string,
+  sourceNames?: array<string>,
+  queryFields?: array<string>,
+  consumedEventTypes?: array<string>,
+  producedCommandTypes?: array<string>,
+  sharedBy?: array<string>,
+  extensionPointName?: string,
+  providerPlugin?: string,
+  subscriberPlugins?: array<string>,
+}
+
+// ---------------------------------------------------------------------------
 // Plugin-built hook — fires synchronously after plugin construction with a
 // plain-data summary of the plugin's components.
 // ---------------------------------------------------------------------------
 type pluginBuiltComponent = {
   name: string,
   kind: string,
+  schema: pluginDeployedSchema,
 }
 
 type pluginBuiltInfo = {
@@ -398,6 +418,10 @@ type pluginBuiltInfo = {
   version: string,
   components: array<pluginBuiltComponent>,
 }
+
+// Registry for component schemas — populated during Plugin_Builder.construct,
+// read by exportPluginOutputs to populate pluginDeployedComponent.schema.
+let componentSchemaRegistry: ref<dict<pluginDeployedSchema>> = ref(Dict.make())
 
 let onPluginBuiltHook: ref<option<pluginBuiltInfo => unit>> = ref(None)
 
@@ -407,6 +431,75 @@ let registerOnPluginBuilt = (hook: pluginBuiltInfo => unit) => {
 
 let clearOnPluginBuilt = () => {
   onPluginBuiltHook.contents = None
+}
+
+// ---------------------------------------------------------------------------
+// Plugin-deployed hook — fires inside Output.apply after all component
+// resources have resolved, providing fully resolved resource data.
+// ---------------------------------------------------------------------------
+type pluginDeployedSubComponent = {
+  role: string,
+  resources: array<ReventlessInterop.Resource.t>,
+}
+
+type pluginDeployedComponent = {
+  name: string,
+  kind: string,
+  schema: pluginDeployedSchema,
+  resources: array<ReventlessInterop.Resource.t>,
+  subComponents: array<pluginDeployedSubComponent>,
+}
+
+type extensionWiring = {
+  extensionName: string,
+  extensionPointName: string,
+  providerPlugin: string,
+  providerVersion: string,
+  subscriberPlugin: string,
+  subscriberVersion: string,
+}
+
+type pluginDeployedInfo = {
+  name: string,
+  version: string,
+  environment: string,
+  stackName: string,
+  components: array<pluginDeployedComponent>,
+  extensionWirings: array<extensionWiring>,
+}
+
+let onPluginDeployedHook: ref<option<pluginDeployedInfo => unit>> = ref(None)
+
+let registerOnPluginDeployed = (hook: pluginDeployedInfo => unit) => {
+  onPluginDeployedHook.contents = Some(hook)
+}
+
+let clearOnPluginDeployed = () => {
+  onPluginDeployedHook.contents = None
+}
+
+// ---------------------------------------------------------------------------
+// Platform-deployed hook — fires after deployPlatform / makePlatform
+// completes, providing platform-level metadata with resolved values.
+// ---------------------------------------------------------------------------
+type platformDeployedInfo = {
+  name: string,
+  environment: string,
+  region: string,
+  apiId: string,
+  apiRoleArn: string,
+  splitApiMode: bool,
+  adminResources: array<ReventlessInterop.Resource.t>,
+}
+
+let onPlatformDeployedHook: ref<option<platformDeployedInfo => unit>> = ref(None)
+
+let registerOnPlatformDeployed = (hook: platformDeployedInfo => unit) => {
+  onPlatformDeployedHook.contents = Some(hook)
+}
+
+let clearOnPlatformDeployed = () => {
+  onPlatformDeployedHook.contents = None
 }
 
 // ---------------------------------------------------------------------------
@@ -595,6 +688,28 @@ let getInteropMeta = (): Pulumi.Output.t<JSON.t> => {
 }
 
 // ---------------------------------------------------------------------------
+// Stack metadata export — environment, region, timestamp, actor, git SHA.
+// Called from both exportPluginOutputs and exportPlatformOutputs.
+// ---------------------------------------------------------------------------
+@val external processEnv: dict<string> = "process.env"
+
+let exportDeploymentMetadata = () => {
+  let metadata =
+    [
+      ("environment", Pulumi.Pulumi.getStackName()),
+      ("region", Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")),
+      ("timestamp", Date.make()->Date.toISOString),
+      ("gitSha", processEnv->Dict.get("GITHUB_SHA")->Option.getOr("unknown")),
+      ("actor", processEnv->Dict.get("GITHUB_ACTOR")->Option.getOr("unknown")),
+    ]
+    ->Dict.fromArray
+  Pulumi.Pulumi.export(
+    "deploymentMetadata",
+    metadata->Dict.mapValues(JSON.Encode.string)->JSON.Encode.object->Pulumi.Output.make,
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Serialize individual component output dicts as top-level Pulumi stack exports.
 // Each component type gets its own export key (e.g. "aggregates", "readModels").
 // ---------------------------------------------------------------------------
@@ -692,6 +807,9 @@ let exportPlatformOutputs = (
   ~outboundTranslationSlicesOutputs: dict<OutboundTranslationSlice.outputs>,
   ~inboundTranslationSlicesOutputs: dict<InboundTranslationSlice.outputs>,
 ) => {
+  // Stack metadata
+  exportDeploymentMetadata()
+
   // Extension points — always exported (the admin's primary component output)
   Pulumi.Pulumi.export(
     "extensionPoints",
@@ -812,6 +930,9 @@ let exportPlatformOutputs = (
 // Export all plugin outputs as individual top-level Pulumi stack exports.
 // Each component type is its own export key for flat, readable `pulumi stack output`.
 let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
+  // Stack metadata
+  exportDeploymentMetadata()
+
   // Scalar fields
   Pulumi.Pulumi.export("id", pluginOutputs.id->Pulumi.Output.apply(v => v->JSON.Encode.string))
   Pulumi.Pulumi.export(
@@ -906,4 +1027,264 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
   // Array exports
   Pulumi.Pulumi.export("tasks", serializeTasksOutputs(pluginOutputs))
   Pulumi.Pulumi.export("eventMappers", serializeEventMappersOutputs(pluginOutputs))
+
+  // Fire onPluginDeployed hook with fully resolved resource data.
+  switch onPluginDeployedHook.contents {
+  | Some(hook) =>
+    let schemaFor = name =>
+      componentSchemaRegistry.contents->Dict.get(name)->Option.getOr({})
+    let resolveAggregates = pluginOutputs.aggregates->Pulumi.Output.flatMap(aggs =>
+      aggs
+      ->Dict.toArray
+      ->Array.map(((name, outputs)) =>
+        outputs
+        ->Aggregate.toResolvedOutputs
+        ->Pulumi.Output.apply((resolved: ReventlessInterop.Aggregate.resolvedOutputs) => {
+          let component: pluginDeployedComponent = {
+            name,
+            kind: "Aggregate",
+            schema: schemaFor(name),
+            resources: [],
+            subComponents: [
+              {role: "commandGenerator", resources: resolved.commandGenerator.resources},
+              {role: "commandTopic", resources: resolved.commandTopic.resources},
+              {role: "eventLog", resources: resolved.eventLog.resources},
+              {role: "eventTopic", resources: resolved.eventLog.eventTopic.resources},
+            ],
+          }
+          component
+        })
+      )
+      ->Pulumi.Output.all
+    )
+
+    let resolveReadModels = pluginOutputs.readModels->Pulumi.Output.flatMap(rms =>
+      rms
+      ->Dict.toArray
+      ->Array.map(((name, outputs)) =>
+        outputs
+        ->ReadModel.toResolvedOutputs
+        ->Pulumi.Output.apply((resolved: ReventlessInterop.ReadModel.resolvedOutputs) => {
+          let component: pluginDeployedComponent = {
+            name,
+            kind: "ReadModel",
+            schema: schemaFor(name),
+            resources: [],
+            subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+          }
+          component
+        })
+      )
+      ->Pulumi.Output.all
+    )
+
+    let resolveExtensionPoints = pluginOutputs.extensionPoints->Pulumi.Output.flatMap(eps =>
+      eps
+      ->Dict.toArray
+      ->Array.map(((name, outputs)) =>
+        outputs
+        ->ExtensionPoint.toResolvedOutputs
+        ->Pulumi.Output.apply((resolved: ReventlessInterop.ExtensionPoint.resolvedOutputs) => {
+          let component: pluginDeployedComponent = {
+            name,
+            kind: "ExtensionPoint",
+            schema: schemaFor(name),
+            resources: [],
+            subComponents: [
+              {role: "commandTopic", resources: resolved.commandTopic.resources},
+              {role: "eventTopic", resources: resolved.eventTopic.resources},
+            ],
+          }
+          component
+        })
+      )
+      ->Pulumi.Output.all
+    )
+
+    let resolveStateChangeSlices = pluginOutputs.stateChangeSlices->Pulumi.Output.flatMap(slices =>
+      slices
+      ->Dict.toArray
+      ->Array.map(((name, outputs)) =>
+        outputs
+        ->StateChangeSlice.toResolvedOutputs
+        ->Pulumi.Output.apply((resolved: ReventlessInterop.StateChangeSlice.resolvedOutputs) => {
+          let component: pluginDeployedComponent = {
+            name,
+            kind: "StateChangeSlice",
+            schema: schemaFor(name),
+            resources: resolved.resources,
+            subComponents: [],
+          }
+          component
+        })
+      )
+      ->Pulumi.Output.all
+    )
+
+    let resolveStateViewSlices = pluginOutputs.stateViewSlices->Pulumi.Output.flatMap(slices =>
+      slices
+      ->Dict.toArray
+      ->Array.map(((name, outputs)) =>
+        outputs
+        ->StateViewSlice.toResolvedOutputs
+        ->Pulumi.Output.apply((resolved: ReventlessInterop.StateViewSlice.resolvedOutputs) => {
+          let component: pluginDeployedComponent = {
+            name,
+            kind: "StateViewSlice",
+            schema: schemaFor(name),
+            resources: resolved.resources,
+            subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+          }
+          component
+        })
+      )
+      ->Pulumi.Output.all
+    )
+
+    let resolveAutomationSlices = pluginOutputs.automationSlices->Pulumi.Output.flatMap(slices =>
+      slices
+      ->Dict.toArray
+      ->Array.map(((name, outputs)) =>
+        outputs
+        ->AutomationSlice.toResolvedOutputs
+        ->Pulumi.Output.apply((resolved: ReventlessInterop.AutomationSlice.resolvedOutputs) => {
+          let component: pluginDeployedComponent = {
+            name,
+            kind: "AutomationSlice",
+            schema: schemaFor(name),
+            resources: resolved.resources,
+            subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+          }
+          component
+        })
+      )
+      ->Pulumi.Output.all
+    )
+
+    let resolveOutboundTranslationSlices =
+      pluginOutputs.outboundTranslationSlices->Pulumi.Output.flatMap(slices =>
+        slices
+        ->Dict.toArray
+        ->Array.map(((name, outputs)) =>
+          outputs
+          ->OutboundTranslationSlice.toResolvedOutputs
+          ->Pulumi.Output.apply(
+            (resolved: ReventlessInterop.OutboundTranslationSlice.resolvedOutputs) => {
+              let component: pluginDeployedComponent = {
+                name,
+                kind: "OutboundTranslationSlice",
+                schema: schemaFor(name),
+                resources: resolved.resources,
+                subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+              }
+              component
+            },
+          )
+        )
+        ->Pulumi.Output.all
+      )
+
+    let resolveInboundTranslationSlices =
+      pluginOutputs.inboundTranslationSlices->Pulumi.Output.flatMap(slices =>
+        slices
+        ->Dict.toArray
+        ->Array.map(((name, outputs)) =>
+          outputs
+          ->InboundTranslationSlice.toResolvedOutputs
+          ->Pulumi.Output.apply(
+            (resolved: ReventlessInterop.InboundTranslationSlice.resolvedOutputs) => {
+              let component: pluginDeployedComponent = {
+                name,
+                kind: "InboundTranslationSlice",
+                schema: schemaFor(name),
+                resources: resolved.resources,
+                subComponents: [{role: "queryDb", resources: resolved.queryDb.resources}],
+              }
+              component
+            },
+          )
+        )
+        ->Pulumi.Output.all
+      )
+
+    let resolveDcbEventLog = pluginOutputs.dcbEventLog->Pulumi.Output.flatMap(opt =>
+      switch opt {
+      | Some(outputs) =>
+        outputs
+        ->DcbEventLog.toResolvedOutputs
+        ->Pulumi.Output.apply((resolved: ReventlessInterop.DcbEventLog.resolvedOutputs) => {
+          let component: pluginDeployedComponent = {
+            name: "DcbEventLog",
+            kind: "DcbEventLog",
+            schema: schemaFor("DcbEventLog"),
+            resources: resolved.resources,
+            subComponents: [{role: "eventTopic", resources: resolved.eventTopic.resources}],
+          }
+          [component]
+        })
+      | None => Pulumi.Output.make([])
+      }
+    )
+
+    // Resolve extension wiring metadata.
+    let resolveExtensionWirings = pluginOutputs.extensions->Pulumi.Output.flatMap(exts =>
+      pluginOutputs.id->Pulumi.Output.apply(id => {
+        let pluginName = id->String.split("@")->Array.getUnsafe(0)
+        let pluginVersion = id->String.split("@")->Array.getUnsafe(1)
+        exts
+        ->Dict.valuesToArray
+        ->Array.map((ext: ReventlessInfra.Extension.outputs) => {
+          // Derive provider plugin name from the extension point name
+          // (e.g. "Catalog.Products" → "Catalog").
+          let providerPlugin =
+            ext.extensionPointName->String.split(".")->Array.getUnsafe(0)
+          let wiring: extensionWiring = {
+            extensionName: ext.name,
+            extensionPointName: ext.extensionPointName,
+            providerPlugin,
+            providerVersion: "",
+            subscriberPlugin: pluginName,
+            subscriberVersion: pluginVersion,
+          }
+          wiring
+        })
+      })
+    )
+
+    // Collect all resolved components and fire the hook.
+    let _ =
+      (
+        pluginOutputs.id,
+        pluginOutputs.version,
+        resolveAggregates,
+        resolveReadModels,
+        resolveExtensionPoints,
+        resolveStateChangeSlices,
+      )
+      ->Pulumi.Output.all6
+      ->Pulumi.Output.flatMap(((id, version, aggs, rms, eps, scs)) =>
+        (
+          resolveStateViewSlices,
+          resolveAutomationSlices,
+          resolveOutboundTranslationSlices,
+          resolveInboundTranslationSlices,
+          resolveDcbEventLog,
+          resolveExtensionWirings,
+        )
+        ->Pulumi.Output.all6
+        ->Pulumi.Output.apply(((svs, autos, ots, its, dcb, wirings)) => {
+          let name = id->String.split("@")->Array.getUnsafe(0)
+          let info: pluginDeployedInfo = {
+            name,
+            version,
+            environment: Pulumi.Pulumi.getStackName(),
+            stackName: Pulumi.Pulumi.getStackName(),
+            components: Array.flat([aggs, rms, eps, scs, svs, autos, ots, its, dcb]),
+            extensionWirings: wirings,
+          }
+          hook(info)
+        })
+      )
+  | None => ()
+  }
 }

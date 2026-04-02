@@ -11,13 +11,14 @@ let toResolvedQueueOutput = ({name, id, arn}: PulumiAws.SQS.Queue.t) =>
     arn,
   })
 
-let toResource = (queue: PulumiAws.SQS.Queue.t): ReventlessInfra.Adapter.resource => {
-  ReventlessInfra.Adapter.service: queue.name->Pulumi.Output.apply(_ => AWS.SQS.service),
-  name: queue.name,
-  id: queue.id,
-  urn: queue.arn,
-  info: queue.name->Pulumi.Output.apply(_ => ""),
-}
+let toResource = (queue: PulumiAws.SQS.Queue.t): ReventlessInfra.Adapter.resource =>
+  ReventlessInfra.Adapter.make(
+    ~name=queue.name,
+    ~id=queue.id,
+    ~urn=queue.arn,
+    ~service=queue.name->Pulumi.Output.apply(_ => AWS.SQS.service),
+    ~resourceType="aws:sqs:Queue"->Pulumi.Output.make,
+  )
 
 let fromResource = ({id, name}: ReventlessInfra.Adapter.resource) => {
   name->Pulumi.Output.apply(name => PulumiAws.SQS.Queue.get(~name, ~id=id->Pulumi.Output.asInput))
@@ -57,11 +58,12 @@ let findResolvedResource = resources =>
   resources->ReventlessCore.Util.AdapterRuntime.findResolvedResource(AWS.SQS.service)
 
 module Subscription = {
-  let toResource = ({eventSourceMapping: {id, arn}}: PulumiAws.SQS.Queue.eventSubscription): ReventlessInfra.Adapter.resource => {
-    ReventlessInfra.Adapter.service: id->Pulumi.Output.apply(_ => AWS.SQS.service),
-    name: id,
-    id,
-    urn: arn,
-    info: id->Pulumi.Output.apply(_ => ""),
-  }
+  let toResource = ({eventSourceMapping: {id, arn}}: PulumiAws.SQS.Queue.eventSubscription): ReventlessInfra.Adapter.resource =>
+    ReventlessInfra.Adapter.make(
+      ~name=id,
+      ~id,
+      ~urn=arn,
+      ~service=id->Pulumi.Output.apply(_ => AWS.SQS.service),
+      ~resourceType="aws:sqs:Queue"->Pulumi.Output.make,
+    )
 }

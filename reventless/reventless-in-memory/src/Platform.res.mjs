@@ -784,6 +784,18 @@ function MakeWithConfig(Config) {
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook !== undefined) {
+      return hook({
+        name: "in-memory",
+        environment: "local",
+        region: "local",
+        apiId: "in-memory",
+        apiRoleArn: "in-memory",
+        splitApiMode: Config.splitApi,
+        adminResources: []
+      });
+    }
   };
   let deployPlugin = (version, plugin) => {
     log.info("Platform", undefined, `deployPlugin v` + version);
@@ -1567,6 +1579,18 @@ function Make($star) {
     GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook !== undefined) {
+      return hook({
+        name: "in-memory",
+        environment: "local",
+        region: "local",
+        apiId: "in-memory",
+        apiRoleArn: "in-memory",
+        splitApiMode: true,
+        adminResources: []
+      });
+    }
   };
   let deployPlugin = (version, plugin) => {
     log.info("Platform", undefined, `deployPlugin v` + version);

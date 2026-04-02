@@ -4,6 +4,7 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 
 function Make(Bus) {
   let make = (name, param, param$1) => {
@@ -14,13 +15,7 @@ function Make(Bus) {
       return Bus.publishEvent(name, service, meta, json);
     })).then(param => {})));
     return {
-      resources: [{
-          name: Pulumi.output(name),
-          id: Pulumi.output(name),
-          urn: Pulumi.output(name),
-          info: Pulumi.output(""),
-          service: Pulumi.output("InMemory")
-        }],
+      resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), Pulumi.output(name), Pulumi.output(name), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined)],
       publishJson: Pulumi.output((service, meta, json) => Bus.publishEvent(name, service, meta, json)),
       publishJsonStream: Pulumi.output(publishJsonStream)
     };

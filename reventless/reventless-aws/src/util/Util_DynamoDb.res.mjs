@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
@@ -15,11 +16,15 @@ import * as Util_DynamoDb_TableManager$ReventlessAws from "./Util_DynamoDb_Table
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function toInfo(param) {
+function toResourceInfo(param) {
   return Pulumi.all([
     param.hashKey,
     param.rangeKey
-  ]).apply(param => param[0] + ("," + Stdlib_Option.getOr(param[1], "")));
+  ]).apply(param => ({
+    TAG: "StorageKeys",
+    hashKey: param[0],
+    rangeKey: param[1]
+  }));
 }
 
 function toResolvedTableOutput(param) {
@@ -40,13 +45,7 @@ function toResolvedTableOutput(param) {
 
 function toResource(table) {
   let name = table.name;
-  return {
-    name: name,
-    id: table.id,
-    urn: table.arn,
-    info: toInfo(table),
-    service: name.apply(param => AWS$ReventlessAws.DynamoDb.service)
-  };
+  return Adapter$ReventlessInfra.make(name, table.id, table.arn, name.apply(param => AWS$ReventlessAws.DynamoDb.service), toResourceInfo(table), undefined, undefined, Pulumi.output("aws:dynamodb:Table"), undefined);
 }
 
 function arn2tableName(arn) {
@@ -200,7 +199,7 @@ function findResourceInOutput(resourcesOutput) {
 
 export {
   log,
-  toInfo,
+  toResourceInfo,
   toResolvedTableOutput,
   toResource,
   arn2tableName,

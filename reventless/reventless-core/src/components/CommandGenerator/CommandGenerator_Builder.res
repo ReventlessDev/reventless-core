@@ -8,10 +8,14 @@ module Make = (
     let resources = Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.get(Spec.name)->Option.getOr([])->Array.map(field => {
       let r: ReventlessInfra.Adapter.resource = {
         id: ""->Pulumi.Output.make,
-        info: `Mutation.${field}`->Pulumi.Output.make,
+        resourceInfo: ReventlessInfra.Adapter.ApiResolver({typeName: "Mutation", fieldName: field})->Pulumi.Output.make,
         name: ""->Pulumi.Output.make,
         urn: ""->Pulumi.Output.make,
         service: ""->Pulumi.Output.make,
+        role: "commandGenerator"->Pulumi.Output.make,
+        region: ""->Pulumi.Output.make,
+        resourceType: ""->Pulumi.Output.make,
+        configuration: Dict.make()->Pulumi.Output.make,
       }
       r
     })

@@ -20,8 +20,12 @@ function makeTopicResource(topicName) {
     name: topicName,
     id: topicName,
     urn: topicName,
-    info: "",
-    service: "InMemory"
+    resourceInfo: "NoInfo",
+    service: "memory:InMemory",
+    role: "",
+    region: "",
+    resourceType: "",
+    configuration: {}
   };
 }
 
@@ -38,13 +42,7 @@ describe("ScheduledPublisher_InMemory", () => {
       });
       let pub = SP.make("scheduler", {});
       let ops = await TestRunner$ReventlessInMemory.resolve(pub.operations);
-      await ops.createSchedule([{
-          name: "sched-topic",
-          id: "sched-topic",
-          urn: "sched-topic",
-          info: "",
-          service: "InMemory"
-        }], {
+      await ops.createSchedule([makeTopicResource("sched-topic")], {
         name: "one-shot",
         rate: {
           TAG: "Single",
@@ -73,13 +71,7 @@ describe("ScheduledPublisher_InMemory", () => {
       });
       let pub = SP.make("scheduler2", {});
       let ops = await TestRunner$ReventlessInMemory.resolve(pub.operations);
-      await ops.createSchedule([{
-          name: "repeat-topic",
-          id: "repeat-topic",
-          urn: "repeat-topic",
-          info: "",
-          service: "InMemory"
-        }], {
+      await ops.createSchedule([makeTopicResource("repeat-topic")], {
         name: "every-minute",
         rate: {
           TAG: "Minutes",
@@ -109,13 +101,7 @@ describe("ScheduledPublisher_InMemory", () => {
       });
       let pub = SP.make("scheduler3", {});
       let ops = await TestRunner$ReventlessInMemory.resolve(pub.operations);
-      await ops.createSchedule([{
-          name: "del-topic",
-          id: "del-topic",
-          urn: "del-topic",
-          info: "",
-          service: "InMemory"
-        }], {
+      await ops.createSchedule([makeTopicResource("del-topic")], {
         name: "to-delete",
         rate: {
           TAG: "Minutes",
@@ -141,13 +127,7 @@ describe("ScheduledPublisher_InMemory", () => {
       });
       let pub = SP.make("scheduler4", {});
       let ops = await TestRunner$ReventlessInMemory.resolve(pub.operations);
-      await ops.createSchedule([{
-          name: "reset-topic",
-          id: "reset-topic",
-          urn: "reset-topic",
-          info: "",
-          service: "InMemory"
-        }], {
+      await ops.createSchedule([makeTopicResource("reset-topic")], {
         name: "reset-sched",
         rate: {
           TAG: "Minutes",
@@ -172,13 +152,7 @@ describe("ScheduledPublisher_InMemory", () => {
       });
       let pub = SP.make("rate-scheduler", {});
       let ops = await TestRunner$ReventlessInMemory.resolve(pub.operations);
-      await ops.createSchedule([{
-          name: "rate-topic",
-          id: "rate-topic",
-          urn: "rate-topic",
-          info: "",
-          service: "InMemory"
-        }], {
+      await ops.createSchedule([makeTopicResource("rate-topic")], {
         name: "rate-sched",
         rate: {
           TAG: "Minutes",
@@ -205,13 +179,7 @@ describe("ScheduledPublisher_InMemory", () => {
       });
       let pub = SP.make("hours-scheduler", {});
       let ops = await TestRunner$ReventlessInMemory.resolve(pub.operations);
-      await ops.createSchedule([{
-          name: "hours-topic",
-          id: "hours-topic",
-          urn: "hours-topic",
-          info: "",
-          service: "InMemory"
-        }], {
+      await ops.createSchedule([makeTopicResource("hours-topic")], {
         name: "hours-sched",
         rate: {
           TAG: "Hours",

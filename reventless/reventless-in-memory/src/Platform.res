@@ -871,6 +871,21 @@ module MakeWithConfig = (
 
     GraphQL_Server.start()
     MCP_Server.start()
+
+    // Fire onPlatformDeployed hook with in-memory platform metadata.
+    switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
+    | Some(hook) =>
+      hook({
+        name: "in-memory",
+        environment: "local",
+        region: "local",
+        apiId: "in-memory",
+        apiRoleArn: "in-memory",
+        splitApiMode: Config.splitApi,
+        adminResources: [],
+      })
+    | None => ()
+    }
   }
 
   let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {

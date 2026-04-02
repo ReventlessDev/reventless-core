@@ -3,6 +3,7 @@
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 
 function Make(Bus) {
   let activeTimers = {
@@ -54,13 +55,7 @@ function Make(Bus) {
       }
     };
     return {
-      resource: {
-        name: Pulumi.output(""),
-        id: Pulumi.output(""),
-        urn: Pulumi.output(""),
-        info: Pulumi.output(""),
-        service: Pulumi.output("InMemory")
-      },
+      resource: Adapter$ReventlessInfra.make(Pulumi.output(""), Pulumi.output(""), Pulumi.output(""), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined),
       operations: Pulumi.output({
         createSchedule: createSchedule,
         deleteSchedule: deleteSchedule

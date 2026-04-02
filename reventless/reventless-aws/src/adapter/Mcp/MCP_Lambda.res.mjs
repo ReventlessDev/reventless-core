@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
@@ -256,7 +257,7 @@ function runEffect(correlationId, effect) {
 
 async function dispatchTool(tool, args, identity) {
   let queueRef = makeQueueRef(tool.commandTopicArn);
-  let publishJsons = CommandTopicChannel_SQS_RuntimeResMjs.publishJsons(queueRef, "SQS_FIFO");
+  let publishJsons = CommandTopicChannel_SQS_RuntimeResMjs.publishJsons(queueRef, AWS$ReventlessAws.SQS_FIFO.service);
   let generateCommand = CommandGenerator_CallbackResMjs.makeGenerateCommand(publishJsons, tool.name, S.json, tool.componentKind, false);
   let payload_command = tool.name;
   let payload_meta = {

@@ -4,6 +4,7 @@ import * as Aws from "@pulumi/aws";
 import * as Pulumi from "@pulumi/pulumi";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as Util_AdapterRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
 
@@ -20,13 +21,7 @@ function toResolvedQueueOutput(param) {
 }
 
 function toResource(queue) {
-  return {
-    name: queue.name,
-    id: queue.id,
-    urn: queue.arn,
-    info: queue.name.apply(param => ""),
-    service: queue.name.apply(param => AWS$ReventlessAws.SQS.service)
-  };
+  return Adapter$ReventlessInfra.make(queue.name, queue.id, queue.arn, queue.name.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined);
 }
 
 function fromResource(param) {
@@ -67,13 +62,7 @@ function findResolvedResource(resources) {
 function toResource$1(param) {
   let match = param.eventSourceMapping;
   let id = match.id;
-  return {
-    name: id,
-    id: id,
-    urn: match.arn,
-    info: id.apply(param => ""),
-    service: id.apply(param => AWS$ReventlessAws.SQS.service)
-  };
+  return Adapter$ReventlessInfra.make(id, id, match.arn, id.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined);
 }
 
 let Subscription = {

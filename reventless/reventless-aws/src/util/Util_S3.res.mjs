@@ -2,16 +2,11 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 
 function toResource(param) {
   let id = param.id;
-  return {
-    name: id,
-    id: id,
-    urn: param.arn,
-    info: id.apply(param => ""),
-    service: id.apply(param => AWS$ReventlessAws.S3.service)
-  };
+  return Adapter$ReventlessInfra.make(id, id, param.arn, id.apply(param => AWS$ReventlessAws.S3.service), undefined, undefined, undefined, Pulumi.output("aws:s3:Bucket"), undefined);
 }
 
 function toResolvedBucketOutput(param) {

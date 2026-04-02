@@ -15,7 +15,11 @@ function resource(name, arn, serviceOpt) {
     id: val(name),
     urn: val(arn),
     service: val(service),
-    info: val("")
+    resourceInfo: val(""),
+    role: val(""),
+    region: val(""),
+    resourceType: val(""),
+    configuration: val("")
   };
 }
 

@@ -775,6 +775,60 @@ module MakeWithConfig = (
       ~outboundTranslationSlicesOutputs=admin.outboundTranslationSlicesOutputs,
       ~inboundTranslationSlicesOutputs=admin.inboundTranslationSlicesOutputs,
     )
+
+    // Fire onPlatformDeployed hook with resolved platform metadata.
+    switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
+    | Some(hook) =>
+      let resolvedApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
+      let resolvedApiRoleArn = appSyncApiRole->Pulumi.Output.flatMap(role => role.arn)
+      // Collect admin aggregate + read model resources.
+      let adminResourcesOutput =
+        admin.aggregatesOutputs
+        ->Dict.valuesToArray
+        ->Array.map(agg =>
+          agg
+          ->ReventlessCore.Aggregate.toResolvedOutputs
+          ->Pulumi.Output.apply((r: ReventlessInterop.Aggregate.resolvedOutputs) =>
+            Array.flat([
+              r.eventLog.resources,
+              r.eventLog.eventTopic.resources,
+              r.commandTopic.resources,
+              r.commandGenerator.resources,
+            ])
+          )
+        )
+        ->Array.concat(
+          admin.readModelsOutputs
+          ->Dict.valuesToArray
+          ->Array.map(rm =>
+            rm
+            ->ReventlessCore.ReadModel.toResolvedOutputs
+            ->Pulumi.Output.apply((r: ReventlessInterop.ReadModel.resolvedOutputs) =>
+              r.queryDb.resources
+            )
+          ),
+        )
+        ->Pulumi.Output.all
+        ->Pulumi.Output.apply(arrays => Array.flat(arrays))
+      let _ =
+        (resolvedApiId, resolvedApiRoleArn, adminResourcesOutput)
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((apiId, apiRoleArn, adminResources)) => {
+          let region =
+            Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
+          let info: ReventlessCore.Plugin_Helpers.platformDeployedInfo = {
+            name: Pulumi.Pulumi.getProjectName(),
+            environment: Pulumi.Pulumi.getStackName(),
+            region,
+            apiId,
+            apiRoleArn,
+            splitApiMode: Config.splitApi,
+            adminResources,
+          }
+          hook(info)
+        })
+    | None => ()
+    }
   }
 
   let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {

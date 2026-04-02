@@ -128,34 +128,17 @@ function queryById(table, id) {
 }
 
 function keysFromResource(resource) {
-  let parts = resource.info.get().split(",");
-  let len = parts.length;
-  if (len < 3) {
-    switch (len) {
-      case 0 :
-        return Stdlib_JsError.throwWithMessage("No id field given for table " + resource.name.get());
-      case 1 :
-        let id = parts[0];
-        return [
-          id,
-          undefined
-        ];
-      case 2 :
-        let id$1 = parts[0];
-        let match = parts[1];
-        if (match === "") {
-          return [
-            id$1,
-            undefined
-          ];
-        }
-        break;
-    }
+  let match = resource.resourceInfo.get();
+  if (typeof match !== "object") {
+    return Stdlib_JsError.throwWithMessage("No StorageKeys given for table " + resource.name.get());
+  } else if (match.TAG === "StorageKeys") {
+    return [
+      match.hashKey,
+      match.rangeKey
+    ];
+  } else {
+    return Stdlib_JsError.throwWithMessage("No StorageKeys given for table " + resource.name.get());
   }
-  return [
-    parts[0],
-    parts[1]
-  ];
 }
 
 let purgeTimeAttributeName = "reventlessPurgeTime";

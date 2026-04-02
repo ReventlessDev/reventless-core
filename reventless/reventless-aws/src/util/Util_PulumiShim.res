@@ -10,7 +10,11 @@ type fakeResource = {
   id: fakeOutput,
   urn: fakeOutput,
   service: fakeOutput,
-  info: fakeOutput,
+  resourceInfo: fakeOutput,
+  role: fakeOutput,
+  region: fakeOutput,
+  resourceType: fakeOutput,
+  configuration: fakeOutput,
 }
 
 let resource = (~name, ~arn, ~service="unknown") => {
@@ -18,7 +22,11 @@ let resource = (~name, ~arn, ~service="unknown") => {
   id: val(name),
   urn: val(arn),
   service: val(service),
-  info: val(""),
+  resourceInfo: val(""),
+  role: val(""),
+  region: val(""),
+  resourceType: val(""),
+  configuration: val(""),
 }
 
 type fakeSqsQueue = {url: fakeOutput}

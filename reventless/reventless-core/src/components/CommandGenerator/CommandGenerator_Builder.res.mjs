@@ -15,8 +15,16 @@ function Make(Spec) {
         name: Pulumi.output(""),
         id: Pulumi.output(""),
         urn: Pulumi.output(""),
-        info: Pulumi.output(`Mutation.` + field),
-        service: Pulumi.output("")
+        resourceInfo: Pulumi.output({
+          TAG: "ApiResolver",
+          typeName: "Mutation",
+          fieldName: field
+        }),
+        service: Pulumi.output(""),
+        role: Pulumi.output("commandGenerator"),
+        region: Pulumi.output(""),
+        resourceType: Pulumi.output(""),
+        configuration: Pulumi.output({})
       }));
       let outputs = {
         resources: resources

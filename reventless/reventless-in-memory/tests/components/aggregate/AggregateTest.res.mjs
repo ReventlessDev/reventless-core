@@ -19,7 +19,7 @@ describe("InMemory_Bus", () => {
     TestBus.subscribeToEvents("t1", async (param, param$1, param$2) => {
       count.contents = count.contents + 1 | 0;
     });
-    await TestBus.publishEvent("t1", "InMemory", TestFixtures$ReventlessInMemory.testMeta, null);
+    await TestBus.publishEvent("t1", "memory:InMemory", TestFixtures$ReventlessInMemory.testMeta, null);
     expect(count.contents).toBe(2);
   });
   test("dispatches commands to registered handler", async () => {

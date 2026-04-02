@@ -3,12 +3,14 @@ let toResource: Types.AppSync.resolver => ReventlessInfra.Adapter.resource = ({
   arn,
   type_,
   field,
-}) => {
-  service: id->Pulumi.Output.apply(_ => AWS.AppSync.service),
-  name: id,
-  id,
-  urn: arn,
-  info: (type_, field)
-  ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((type_, field)) => type_ ++ ("." ++ field)),
-}
+}) =>
+  ReventlessInfra.Adapter.make(
+    ~name=id,
+    ~id,
+    ~urn=arn,
+    ~service=id->Pulumi.Output.apply(_ => AWS.AppSync.service),
+    ~resourceInfo=(type_, field)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((type_, field)) => ReventlessInfra.Adapter.ApiResolver({typeName: type_, fieldName: field})),
+    ~resourceType="aws:appsync:Resolver"->Pulumi.Output.make,
+  )

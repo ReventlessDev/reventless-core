@@ -4,29 +4,29 @@
 function toString(service) {
   switch (service) {
     case "AppSync" :
-      return "AppSync";
+      return "aws:AppSync";
     case "IAM" :
-      return "IAM";
+      return "aws:IAM";
     case "CloudwatchEventRule" :
-      return "CloudwatchEventRule";
+      return "aws:CloudwatchEventRule";
     case "DynamoDb" :
-      return "DynamoDb";
+      return "aws:DynamoDb";
     case "DynamoDbStream" :
-      return "DynamoDbStream";
+      return "aws:DynamoDbStream";
     case "SQS" :
-      return "SQS";
+      return "aws:SQS";
     case "SQS_FIFO" :
-      return "SQS_FIFO";
+      return "aws:SQS_FIFO";
     case "SNS" :
-      return "SNS";
+      return "aws:SNS";
     case "SNS_FIFO" :
-      return "SNS_FIFO";
+      return "aws:SNS_FIFO";
     case "Kinesis" :
-      return "Kinesis";
+      return "aws:Kinesis";
     case "Lambda" :
-      return "Lambda";
+      return "aws:Lambda";
     case "S3" :
-      return "S3";
+      return "aws:S3";
   }
 }
 
@@ -56,7 +56,7 @@ function toPrincipal(service) {
   }
 }
 
-let service = "DynamoDb";
+let service = "aws:DynamoDb";
 
 let principal = "dynamodb.amazonaws.com";
 
@@ -65,7 +65,7 @@ let DynamoDb = {
   principal: principal
 };
 
-let service$1 = "DynamoDbStream";
+let service$1 = "aws:DynamoDbStream";
 
 let principal$1 = "dynamodb.amazonaws.com";
 
@@ -74,7 +74,7 @@ let DynamoDbStream = {
   principal: principal$1
 };
 
-let service$2 = "Kinesis";
+let service$2 = "aws:Kinesis";
 
 let principal$2 = "kinesis.amazonaws.com";
 
@@ -83,7 +83,7 @@ let Kinesis = {
   principal: principal$2
 };
 
-let service$3 = "Lambda";
+let service$3 = "aws:Lambda";
 
 let principal$3 = "lambda.amazonaws.com";
 
@@ -92,7 +92,7 @@ let Lambda = {
   principal: principal$3
 };
 
-let service$4 = "SNS";
+let service$4 = "aws:SNS";
 
 let principal$4 = "sns.amazonaws.com";
 
@@ -101,7 +101,7 @@ let SNS = {
   principal: principal$4
 };
 
-let service$5 = "SNS_FIFO";
+let service$5 = "aws:SNS_FIFO";
 
 let principal$5 = "sns.amazonaws.com";
 
@@ -110,7 +110,7 @@ let SNS_FIFO = {
   principal: principal$5
 };
 
-let service$6 = "SQS";
+let service$6 = "aws:SQS";
 
 let principal$6 = "sqs.amazonaws.com";
 
@@ -119,7 +119,7 @@ let SQS = {
   principal: principal$6
 };
 
-let service$7 = "SQS_FIFO";
+let service$7 = "aws:SQS_FIFO";
 
 let principal$7 = "sqs.amazonaws.com";
 
@@ -128,7 +128,7 @@ let SQS_FIFO = {
   principal: principal$7
 };
 
-let service$8 = "AppSync";
+let service$8 = "aws:AppSync";
 
 let principal$8 = "appsync.amazonaws.com";
 
@@ -137,7 +137,7 @@ let AppSync = {
   principal: principal$8
 };
 
-let service$9 = "IAM";
+let service$9 = "aws:IAM";
 
 let principal$9 = "iam.amazonaws.com";
 
@@ -146,7 +146,7 @@ let IAM = {
   principal: principal$9
 };
 
-let service$10 = "CloudwatchEventRule";
+let service$10 = "aws:CloudwatchEventRule";
 
 let principal$10 = "events.amazonaws.com";
 
@@ -155,7 +155,7 @@ let CloudwatchEventRule = {
   principal: principal$10
 };
 
-let service$11 = "S3";
+let service$11 = "aws:S3";
 
 let principal$11 = "s3.amazonaws.com";
 

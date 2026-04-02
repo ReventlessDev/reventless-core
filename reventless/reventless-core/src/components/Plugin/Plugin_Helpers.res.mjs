@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Exn from "@rescript/runtime/lib/es6/Stdlib_Exn.js";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
@@ -270,6 +271,10 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
   });
 }
 
+let componentSchemaRegistry = {
+  contents: {}
+};
+
 let onPluginBuiltHook = {
   contents: undefined
 };
@@ -280,6 +285,30 @@ function registerOnPluginBuilt(hook) {
 
 function clearOnPluginBuilt() {
   onPluginBuiltHook.contents = undefined;
+}
+
+let onPluginDeployedHook = {
+  contents: undefined
+};
+
+function registerOnPluginDeployed(hook) {
+  onPluginDeployedHook.contents = hook;
+}
+
+function clearOnPluginDeployed() {
+  onPluginDeployedHook.contents = undefined;
+}
+
+let onPlatformDeployedHook = {
+  contents: undefined
+};
+
+function registerOnPlatformDeployed(hook) {
+  onPlatformDeployedHook.contents = hook;
+}
+
+function clearOnPlatformDeployed() {
+  onPlatformDeployedHook.contents = undefined;
 }
 
 let queryFieldNamesRegistry = {
@@ -364,6 +393,32 @@ function getInteropMeta() {
   }
 }
 
+function exportDeploymentMetadata() {
+  let metadata = Object.fromEntries([
+    [
+      "environment",
+      Pulumi.getStack()
+    ],
+    [
+      "region",
+      Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown")
+    ],
+    [
+      "timestamp",
+      new Date().toISOString()
+    ],
+    [
+      "gitSha",
+      Stdlib_Option.getOr(process.env["GITHUB_SHA"], "unknown")
+    ],
+    [
+      "actor",
+      Stdlib_Option.getOr(process.env["GITHUB_ACTOR"], "unknown")
+    ]
+  ]);
+  Pulumi$Pulumi.$$export("deploymentMetadata", Pulumi.output(Stdlib_Dict.mapValues(metadata, prim => prim)));
+}
+
 function serializePlainDictExport(dict, toResolved, schema) {
   return Pulumi.all(Object.entries(dict).map(param => {
     let name = param[0];
@@ -393,6 +448,7 @@ function serializeEventMappersOutputs(pluginOutputs) {
 }
 
 function exportPlatformOutputs(extensionPointsOutputs, aggregatesOutputs, readModelsOutputs, dcbEventLogOutputs, stateChangeSlicesOutputs, stateViewSlicesOutputs, automationSlicesOutputs, outboundTranslationSlicesOutputs, inboundTranslationSlicesOutputs) {
+  exportDeploymentMetadata();
   Pulumi$Pulumi.$$export("extensionPoints", Output$Pulumi.flatMap(extensionPointsOutputs, eps => Pulumi.all(eps.map(ep => ExtensionPoint$ReventlessCore.toResolvedOutputs(ep).apply(resolved => [
     ep.name,
     S.reverseConvertToJsonOrThrow(resolved, ExtensionPoint$ReventlessInterop.resolvedOutputsSchema)
@@ -424,6 +480,7 @@ function exportPlatformOutputs(extensionPointsOutputs, aggregatesOutputs, readMo
 }
 
 function exportPluginOutputs(pluginOutputs) {
+  exportDeploymentMetadata();
   Pulumi$Pulumi.$$export("id", pluginOutputs.id.apply(v => v));
   Pulumi$Pulumi.$$export("version", pluginOutputs.version.apply(v => v));
   Pulumi$Pulumi.$$export("aggregates", serializeDictExport(pluginOutputs.aggregates, Aggregate$ReventlessCore.toResolvedOutputs, Aggregate$ReventlessInterop.resolvedOutputsSchema));
@@ -443,6 +500,206 @@ function exportPluginOutputs(pluginOutputs) {
   }));
   Pulumi$Pulumi.$$export("tasks", serializeTasksOutputs(pluginOutputs));
   Pulumi$Pulumi.$$export("eventMappers", serializeEventMappersOutputs(pluginOutputs));
+  let hook = onPluginDeployedHook.contents;
+  if (hook === undefined) {
+    return;
+  }
+  let schemaFor = name => Stdlib_Option.getOr(componentSchemaRegistry.contents[name], {});
+  let resolveAggregates = Output$Pulumi.flatMap(pluginOutputs.aggregates, aggs => Pulumi.all(Object.entries(aggs).map(param => {
+    let name = param[0];
+    return Aggregate$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "Aggregate",
+      schema: schemaFor(name),
+      resources: [],
+      subComponents: [
+        {
+          role: "commandGenerator",
+          resources: resolved.commandGenerator.resources
+        },
+        {
+          role: "commandTopic",
+          resources: resolved.commandTopic.resources
+        },
+        {
+          role: "eventLog",
+          resources: resolved.eventLog.resources
+        },
+        {
+          role: "eventTopic",
+          resources: resolved.eventLog.eventTopic.resources
+        }
+      ]
+    }));
+  })));
+  let resolveReadModels = Output$Pulumi.flatMap(pluginOutputs.readModels, rms => Pulumi.all(Object.entries(rms).map(param => {
+    let name = param[0];
+    return ReadModel$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "ReadModel",
+      schema: schemaFor(name),
+      resources: [],
+      subComponents: [{
+          role: "queryDb",
+          resources: resolved.queryDb.resources
+        }]
+    }));
+  })));
+  let resolveExtensionPoints = Output$Pulumi.flatMap(pluginOutputs.extensionPoints, eps => Pulumi.all(Object.entries(eps).map(param => {
+    let name = param[0];
+    return ExtensionPoint$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "ExtensionPoint",
+      schema: schemaFor(name),
+      resources: [],
+      subComponents: [
+        {
+          role: "commandTopic",
+          resources: resolved.commandTopic.resources
+        },
+        {
+          role: "eventTopic",
+          resources: resolved.eventTopic.resources
+        }
+      ]
+    }));
+  })));
+  let resolveStateChangeSlices = Output$Pulumi.flatMap(pluginOutputs.stateChangeSlices, slices => Pulumi.all(Object.entries(slices).map(param => {
+    let name = param[0];
+    return StateChangeSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "StateChangeSlice",
+      schema: schemaFor(name),
+      resources: resolved.resources,
+      subComponents: []
+    }));
+  })));
+  let resolveStateViewSlices = Output$Pulumi.flatMap(pluginOutputs.stateViewSlices, slices => Pulumi.all(Object.entries(slices).map(param => {
+    let name = param[0];
+    return StateViewSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "StateViewSlice",
+      schema: schemaFor(name),
+      resources: resolved.resources,
+      subComponents: [{
+          role: "queryDb",
+          resources: resolved.queryDb.resources
+        }]
+    }));
+  })));
+  let resolveAutomationSlices = Output$Pulumi.flatMap(pluginOutputs.automationSlices, slices => Pulumi.all(Object.entries(slices).map(param => {
+    let name = param[0];
+    return AutomationSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "AutomationSlice",
+      schema: schemaFor(name),
+      resources: resolved.resources,
+      subComponents: [{
+          role: "queryDb",
+          resources: resolved.queryDb.resources
+        }]
+    }));
+  })));
+  let resolveOutboundTranslationSlices = Output$Pulumi.flatMap(pluginOutputs.outboundTranslationSlices, slices => Pulumi.all(Object.entries(slices).map(param => {
+    let name = param[0];
+    return OutboundTranslationSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "OutboundTranslationSlice",
+      schema: schemaFor(name),
+      resources: resolved.resources,
+      subComponents: [{
+          role: "queryDb",
+          resources: resolved.queryDb.resources
+        }]
+    }));
+  })));
+  let resolveInboundTranslationSlices = Output$Pulumi.flatMap(pluginOutputs.inboundTranslationSlices, slices => Pulumi.all(Object.entries(slices).map(param => {
+    let name = param[0];
+    return InboundTranslationSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
+      name: name,
+      kind: "InboundTranslationSlice",
+      schema: schemaFor(name),
+      resources: resolved.resources,
+      subComponents: [{
+          role: "queryDb",
+          resources: resolved.queryDb.resources
+        }]
+    }));
+  })));
+  let resolveDcbEventLog = Output$Pulumi.flatMap(pluginOutputs.dcbEventLog, opt => {
+    if (opt !== undefined) {
+      return DcbEventLog$ReventlessCore.toResolvedOutputs(opt).apply(resolved => [{
+          name: "DcbEventLog",
+          kind: "DcbEventLog",
+          schema: schemaFor("DcbEventLog"),
+          resources: resolved.resources,
+          subComponents: [{
+              role: "eventTopic",
+              resources: resolved.eventTopic.resources
+            }]
+        }]);
+    } else {
+      return Pulumi.output([]);
+    }
+  });
+  let resolveExtensionWirings = Output$Pulumi.flatMap(pluginOutputs.extensions, exts => pluginOutputs.id.apply(id => {
+    let pluginName = id.split("@")[0];
+    let pluginVersion = id.split("@")[1];
+    return Object.values(exts).map(ext => {
+      let providerPlugin = ext.extensionPointName.split(".")[0];
+      return {
+        extensionName: ext.name,
+        extensionPointName: ext.extensionPointName,
+        providerPlugin: providerPlugin,
+        providerVersion: "",
+        subscriberPlugin: pluginName,
+        subscriberVersion: pluginVersion
+      };
+    });
+  }));
+  Output$Pulumi.flatMap(Pulumi.all([
+    pluginOutputs.id,
+    pluginOutputs.version,
+    resolveAggregates,
+    resolveReadModels,
+    resolveExtensionPoints,
+    resolveStateChangeSlices
+  ]), param => {
+    let scs = param[5];
+    let eps = param[4];
+    let rms = param[3];
+    let aggs = param[2];
+    let version = param[1];
+    let id = param[0];
+    return Pulumi.all([
+      resolveStateViewSlices,
+      resolveAutomationSlices,
+      resolveOutboundTranslationSlices,
+      resolveInboundTranslationSlices,
+      resolveDcbEventLog,
+      resolveExtensionWirings
+    ]).apply(param => {
+      let name = id.split("@")[0];
+      hook({
+        name: name,
+        version: version,
+        environment: Pulumi.getStack(),
+        stackName: Pulumi.getStack(),
+        components: [
+          aggs,
+          rms,
+          eps,
+          scs,
+          param[0],
+          param[1],
+          param[2],
+          param[3],
+          param[4]
+        ].flat(),
+        extensionWirings: param[5]
+      });
+    });
+  });
 }
 
 let addEventMapperFns = Builder_Helpers$ReventlessCore.addEventMapperFns;
@@ -501,9 +758,16 @@ export {
   tasksOutputs,
   createTasks,
   MakeEventCollectorHelper,
+  componentSchemaRegistry,
   onPluginBuiltHook,
   registerOnPluginBuilt,
   clearOnPluginBuilt,
+  onPluginDeployedHook,
+  registerOnPluginDeployed,
+  clearOnPluginDeployed,
+  onPlatformDeployedHook,
+  registerOnPlatformDeployed,
+  clearOnPlatformDeployed,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,
   noHooks,
@@ -512,6 +776,7 @@ export {
   taskFieldUnion,
   toInteropMeta,
   getInteropMeta,
+  exportDeploymentMetadata,
   serializePlainDictExport,
   serializeDictExport,
   serializeTasksOutputs,

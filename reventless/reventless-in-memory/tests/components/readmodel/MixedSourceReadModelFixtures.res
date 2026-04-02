@@ -105,21 +105,19 @@ module MixedMappings: Mappings with module Target := MixedReadModelSpec = {
 let aggregateTopicName = "TestAggregateEventTopic"
 let dcbTopicName = "TestDcbEventTopic"
 
-let aggregateResource: ReventlessInfra.Adapter.resource = {
-  name: aggregateTopicName->Pulumi.Output.make,
-  id: aggregateTopicName->Pulumi.Output.make,
-  urn: aggregateTopicName->Pulumi.Output.make,
-  info: ""->Pulumi.Output.make,
-  service: "InMemory"->Pulumi.Output.make,
-}
+let aggregateResource: ReventlessInfra.Adapter.resource = ReventlessInfra.Adapter.make(
+  ~name=aggregateTopicName->Pulumi.Output.make,
+  ~id=aggregateTopicName->Pulumi.Output.make,
+  ~urn=aggregateTopicName->Pulumi.Output.make,
+  ~service="memory:InMemory"->Pulumi.Output.make,
+)
 
-let dcbResource: ReventlessInfra.Adapter.resource = {
-  name: dcbTopicName->Pulumi.Output.make,
-  id: dcbTopicName->Pulumi.Output.make,
-  urn: dcbTopicName->Pulumi.Output.make,
-  info: ""->Pulumi.Output.make,
-  service: "InMemory"->Pulumi.Output.make,
-}
+let dcbResource: ReventlessInfra.Adapter.resource = ReventlessInfra.Adapter.make(
+  ~name=dcbTopicName->Pulumi.Output.make,
+  ~id=dcbTopicName->Pulumi.Output.make,
+  ~urn=dcbTopicName->Pulumi.Output.make,
+  ~service="memory:InMemory"->Pulumi.Output.make,
+)
 
 let allEventTopics: ReventlessCore.EventTopic.allOutputs = Dict.fromArray([
   (aggregateTopicName, {ReventlessInfra.EventTopic.resources: [aggregateResource]}),

@@ -7,53 +7,37 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "./Util_DynamoDb.res.mjs";
 import * as Util_DynamoDb_TableManager$ReventlessAws from "./Util_DynamoDb_TableManager.res.mjs";
 
-function toInfo(table) {
-  return Pulumi.all([
-    table.hashKey,
-    table.rangeKey,
-    table.streamArn
-  ]).apply(param => param[0] + ("," + (Stdlib_Option.getOr(param[1], "") + ("," + param[2]))));
+function toResourceInfo(table) {
+  return table.streamArn.apply(streamArn => ({
+    TAG: "StreamSource",
+    sourceUrn: streamArn
+  }));
 }
 
 function streamArnFromDynamoDbTableResource(resource) {
-  return Pulumi.all([
-    resource.info,
-    resource.name
-  ]).apply(param => {
-    let parts = param[0].split(",");
-    if (parts.length < 3 || parts[2].trim() === "") {
-      return Stdlib_JsError.throwWithMessage("No streamArn field given for table " + param[1]);
-    } else {
-      return parts[2];
+  return resource.resourceInfo.apply(resourceInfo => {
+    if (typeof resourceInfo === "object" && resourceInfo.TAG === "StreamSource") {
+      return resourceInfo.sourceUrn;
     }
+    let tableName = resource.name.get();
+    return Stdlib_JsError.throwWithMessage("No streamArn field given for table " + tableName);
   });
 }
 
 function toResource(table) {
-  return {
-    name: table.name,
-    id: table.id,
-    urn: table.arn,
-    info: toInfo(table),
-    service: table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service)
-  };
+  return Adapter$ReventlessInfra.make(table.name, table.id, table.arn, table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service), toResourceInfo(table), undefined, undefined, Pulumi.output("aws:dynamodb:Table"), undefined);
 }
 
 function toStreamResource(table) {
   let streamArn = streamArnFromDynamoDbTableResource(table);
-  return {
-    name: table.name,
-    id: streamArn,
-    urn: streamArn,
-    info: table.name.apply(param => ""),
-    service: table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service)
-  };
+  return Adapter$ReventlessInfra.make(table.name, streamArn, streamArn, table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service), undefined, undefined, undefined, Pulumi.output("aws:dynamodb:Stream"), undefined);
 }
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -135,7 +119,7 @@ function findResolvedResource(resources) {
 }
 
 export {
-  toInfo,
+  toResourceInfo,
   streamArnFromDynamoDbTableResource,
   toResource,
   toStreamResource,

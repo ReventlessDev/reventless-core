@@ -1,13 +1,11 @@
-let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
-  let r: ReventlessInfra.Adapter.resource = {
-    service: name->Pulumi.Output.apply(_ => AWS.SNS_FIFO.service),
-    name,
-    id,
-    urn: arn,
-    info: name->Pulumi.Output.apply(_ => ""),
-  }
-  r
-}
+let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) =>
+  ReventlessInfra.Adapter.make(
+    ~name,
+    ~id,
+    ~urn=arn,
+    ~service=name->Pulumi.Output.apply(_ => AWS.SNS_FIFO.service),
+    ~resourceType="aws:sns:Topic"->Pulumi.Output.make,
+  )
 
 let findTopicInResolvedResources = resources =>
   switch resources->ReventlessCore.Util_Adapter.filterSupportedResolvedResources([

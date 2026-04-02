@@ -153,17 +153,21 @@ module Make = (
       aggregateResource->registerRuntimeSpec(~connect, ~memorySize, ~timeout)
       let infos =
         (commandGenerator->Component.outputs).resources
-        ->Array.map(resource => resource.info)
+        ->Array.map(resource => resource.resourceInfo)
         ->Pulumi.Output.all
       let _ =
         (infos, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
+          let infoStrs = infos->Array.filterMap(ri => switch ri {
+            | ReventlessInfra.Adapter.ApiResolver({typeName, fieldName}) => Some(`${typeName}.${fieldName}`)
+            | _ => None
+          })
           log.debug(
             ~comp="AggregateRuntime",
-            `forCommandGenerator ${commandGeneratorName}: set handler for ${infos->Array.join(", ")}`,
+            `forCommandGenerator ${commandGeneratorName}: set handler for ${infoStrs->Array.join(", ")}`,
           )
-          infos->Array.map(info => commandGeneratorHandlers->Dict.set(info, handler))
+          infoStrs->Array.map(info => commandGeneratorHandlers->Dict.set(info, handler))
         })
 
     | None =>

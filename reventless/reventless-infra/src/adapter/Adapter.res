@@ -1,3 +1,10 @@
+/** Platform-agnostic metadata for a resource's structural role. */
+type resourceInfo =
+  | StorageKeys({hashKey: string, rangeKey: option<string>})
+  | StreamSource({sourceUrn: string})
+  | ApiResolver({typeName: string, fieldName: string})
+  | NoInfo
+
 /**
 A deploy-time infrastructure resource with all fields wrapped in `Pulumi.Output.t`.
 
@@ -9,10 +16,41 @@ type resource = {
   name: Pulumi.Output.t<string>,
   id: Pulumi.Output.t<string>,
   urn: Pulumi.Output.t<string>,
-  /** Provider-specific metadata (e.g. ARN, connection string). */
-  info: Pulumi.Output.t<string>,
-  /** Cloud service type identifier (e.g. "dynamodb", "sqs"). */
+  /** Typed metadata describing the resource's structural characteristics. */
+  resourceInfo: Pulumi.Output.t<resourceInfo>,
+  /** Cloud service type identifier (e.g. "aws:DynamoDb", "aws:Lambda"). */
   service: Pulumi.Output.t<string>,
+  /** Functional role within a component (e.g. "eventLog", "commandTopic", "queryDb"). */
+  role: Pulumi.Output.t<string>,
+  /** Cloud region (e.g. "eu-west-1", "local"). */
+  region: Pulumi.Output.t<string>,
+  /** Full cloud resource type (e.g. "aws:dynamodb:Table", "aws:lambda:Function"). */
+  resourceType: Pulumi.Output.t<string>,
+  /** Key infrastructure configuration properties (informational, not used at runtime). */
+  configuration: Pulumi.Output.t<dict<string>>,
+}
+
+/** Create a deploy-time resource with sensible defaults for metadata fields. */
+let make = (
+  ~name,
+  ~id,
+  ~urn,
+  ~service,
+  ~resourceInfo=NoInfo->Pulumi.Output.make,
+  ~role=""->Pulumi.Output.make,
+  ~region=""->Pulumi.Output.make,
+  ~resourceType=""->Pulumi.Output.make,
+  ~configuration=Dict.make()->Pulumi.Output.make,
+): resource => {
+  name,
+  id,
+  urn,
+  resourceInfo,
+  service,
+  role,
+  region,
+  resourceType,
+  configuration,
 }
 
 /** A named dictionary of deploy-time infrastructure resources. */
@@ -29,8 +67,16 @@ type resolvedResource = {
   name: string,
   id: string,
   urn: string,
-  /** Provider-specific metadata (e.g. ARN, connection string). */
-  info: string,
-  /** Cloud service type identifier (e.g. "dynamodb", "sqs"). */
+  /** Typed metadata describing the resource's structural characteristics. */
+  resourceInfo: resourceInfo,
+  /** Cloud service type identifier (e.g. "aws:DynamoDb", "aws:Lambda"). */
   service: string,
+  /** Functional role within a component (e.g. "eventLog", "commandTopic", "queryDb"). */
+  role: string,
+  /** Cloud region (e.g. "eu-west-1", "local"). */
+  region: string,
+  /** Full cloud resource type (e.g. "aws:dynamodb:Table", "aws:lambda:Function"). */
+  resourceType: string,
+  /** Key infrastructure configuration properties (informational, not used at runtime). */
+  configuration: dict<string>,
 }

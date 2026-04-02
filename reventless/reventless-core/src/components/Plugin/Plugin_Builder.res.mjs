@@ -105,30 +105,58 @@ function Make(Spec) {
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+        let aggregateComponents = aggregates.map(M => {
+          let schema_commandTypes = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
+          let schema_eventTypes = DcbTag$Reventless.extractEventTypes(M.Spec.eventSchema);
+          let schema_errorTypes = DcbTag$Reventless.extractEventTypes(M.Spec.errorSchema);
+          let schema = {
+            commandTypes: schema_commandTypes,
+            eventTypes: schema_eventTypes,
+            errorTypes: schema_errorTypes
+          };
+          Plugin_Helpers$ReventlessCore.componentSchemaRegistry.contents[M.Spec.name] = schema;
+          return {
+            name: M.Spec.name,
+            kind: "Aggregate",
+            schema: schema
+          };
+        });
+        let readModelComponents = readModels.map(R => {
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name);
+          let schema_queryFields = [
+            qn.singleFieldName,
+            qn.listFieldName
+          ];
+          let schema = {
+            queryFields: schema_queryFields
+          };
+          Plugin_Helpers$ReventlessCore.componentSchemaRegistry.contents[R.Spec.name] = schema;
+          return {
+            name: R.Spec.name,
+            kind: "ReadModel",
+            schema: schema
+          };
+        });
+        let mapNames = (d, kind) => Object.keys(d).map(name => ({
+          name: name,
+          kind: kind,
+          schema: {}
+        }));
+        let components = [
+          aggregateComponents,
+          readModelComponents,
+          mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
+          mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
+          mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
+          mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
+          mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice")
+        ].flat();
         let hook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
         if (hook !== undefined) {
-          let mapNames = (d, kind) => Object.keys(d).map(name => ({
-            name: name,
-            kind: kind
-          }));
           hook({
             name: extra$1,
             version: version,
-            components: [
-              aggregates.map(M => ({
-                name: M.Spec.name,
-                kind: "Aggregate"
-              })),
-              readModels.map(R => ({
-                name: R.Spec.name,
-                kind: "ReadModel"
-              })),
-              mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
-              mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
-              mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
-              mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
-              mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice")
-            ].flat()
+            components: components
           });
         }
         let interstackAdminExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));

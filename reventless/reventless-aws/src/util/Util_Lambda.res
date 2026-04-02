@@ -9,13 +9,14 @@ let toResource: PulumiAws.Lambda.Function.t => ReventlessInfra.Adapter.resource 
   id,
   name,
   arn,
-}) => {
-  ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.Lambda.service),
-  name,
-  id,
-  urn: arn,
-  info: name->Pulumi.Output.apply(_ => ""),
-}
+}) =>
+  ReventlessInfra.Adapter.make(
+    ~name,
+    ~id,
+    ~urn=arn,
+    ~service=name->Pulumi.Output.apply(_ => AWS.Lambda.service),
+    ~resourceType="aws:lambda:Function"->Pulumi.Output.make,
+  )
 
 let fromResource = ({id, name}: ReventlessInfra.Adapter.resource) => {
   name->Pulumi.Output.apply(name =>
@@ -34,10 +35,11 @@ let functionToResource: PulumiAws.Lambda.Function.t => ReventlessInfra.Adapter.r
   id,
   name,
   arn,
-}) => {
-  ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.Lambda.service),
-  name,
-  id,
-  urn: arn,
-  info: name->Pulumi.Output.apply(_ => ""),
-}
+}) =>
+  ReventlessInfra.Adapter.make(
+    ~name,
+    ~id,
+    ~urn=arn,
+    ~service=name->Pulumi.Output.apply(_ => AWS.Lambda.service),
+    ~resourceType="aws:lambda:Function"->Pulumi.Output.make,
+  )

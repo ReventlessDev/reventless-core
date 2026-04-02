@@ -2,19 +2,18 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 
 function toResource(param) {
   let id = param.id;
-  return {
-    name: id,
-    id: id,
-    urn: param.arn,
-    info: Pulumi.all([
-      param.type,
-      param.field
-    ]).apply(param => param[0] + ("." + param[1])),
-    service: id.apply(param => AWS$ReventlessAws.AppSync.service)
-  };
+  return Adapter$ReventlessInfra.make(id, id, param.arn, id.apply(param => AWS$ReventlessAws.AppSync.service), Pulumi.all([
+    param.type,
+    param.field
+  ]).apply(param => ({
+    TAG: "ApiResolver",
+    typeName: param[0],
+    fieldName: param[1]
+  })), undefined, undefined, Pulumi.output("aws:appsync:Resolver"), undefined);
 }
 
 export {

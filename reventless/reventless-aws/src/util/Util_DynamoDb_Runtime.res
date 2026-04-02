@@ -118,12 +118,10 @@ let queryById = (table, id): Stream.t<JSON.t, DynamoDb_Error.t, unit> =>
   })
 
 let keysFromResource: ReventlessInfra.Adapter.resource => (string, option<string>) = resource =>
-  switch resource.info->Pulumi.Output.get->String.split(",") {
-  | [] =>
-    JsError.throwWithMessage("No id field given for table " ++ resource.name->Pulumi.Output.get)
-  | [id]
-  | [id, ""] => (id, None)
-  | parts => (parts->Array.getUnsafe(0), parts[1])
+  switch resource.resourceInfo->Pulumi.Output.get {
+  | StorageKeys({hashKey, rangeKey}) => (hashKey, rangeKey)
+  | _ =>
+    JsError.throwWithMessage("No StorageKeys given for table " ++ resource.name->Pulumi.Output.get)
   }
 
 let purgeTimeAttributeName = "reventlessPurgeTime"

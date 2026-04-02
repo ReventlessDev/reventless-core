@@ -41,8 +41,12 @@ let makeTopicResource = (topicName: string): ReventlessInfra.Adapter.resolvedRes
   name: topicName,
   id: topicName,
   urn: topicName,
-  info: "",
-  service: "InMemory",
+  resourceInfo: NoInfo,
+  service: "memory:InMemory",
+  role: "",
+  region: "",
+  resourceType: "",
+  configuration: Dict.make(),
 }
 
 describe("ScheduledPublisher_InMemory", () => {

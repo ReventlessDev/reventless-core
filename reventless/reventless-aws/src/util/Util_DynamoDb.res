@@ -1,12 +1,13 @@
 open PulumiAws.DynamoDb.Table
+@@warning("-44")
 open ReventlessInfra.Adapter
 
 let log = ReventlessCore.Logger.fromEnv()
 
-let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
+let toResourceInfo: table => Pulumi.Output.t<ReventlessInfra.Adapter.resourceInfo> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
   ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((hashKey, rangeKey)) => hashKey ++ ("," ++ rangeKey->Option.getOr("")))
+  ->Pulumi.Output.apply(((hashKey, rangeKey)) => ReventlessInfra.Adapter.StorageKeys({hashKey, rangeKey}))
 
 let toResolvedTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   (name, id, arn, hashKey, rangeKey)
@@ -19,13 +20,16 @@ let toResolvedTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
     rangeKey: ?(rangeKey->Option.map(rangeKey => rangeKey->Nullable.make)),
   })
 
-let toResource: table => resource = ({id, name, arn} as table) => {
-  ReventlessInfra.Adapter.service: name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
-  name,
-  id,
-  urn: arn,
-  info: table->toInfo,
-}
+let toResource: table => resource = ({id, name, arn} as table) =>
+  make(
+    ~name,
+    ~id,
+    ~urn=arn,
+    ~service=name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
+    ~resourceInfo=table->toResourceInfo,
+    ~resourceType="aws:dynamodb:Table"->Pulumi.Output.make,
+  )
+
 
 let arn2tableName = arn =>
   switch arn->String.split(":") {

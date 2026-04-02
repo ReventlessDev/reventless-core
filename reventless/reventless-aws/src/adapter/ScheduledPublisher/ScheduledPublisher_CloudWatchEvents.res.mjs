@@ -4,6 +4,7 @@ import * as Aws from "@pulumi/aws";
 import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws from "./ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
 
@@ -26,13 +27,7 @@ function make(name, opts) {
     ])))
   }, opts);
   return {
-    resource: {
-      name: Pulumi.output(""),
-      id: Pulumi.output(""),
-      urn: Pulumi.output(""),
-      info: Pulumi.output(""),
-      service: Pulumi.output("CloudWatchEvents")
-    },
+    resource: Adapter$ReventlessInfra.make(Pulumi.output(""), Pulumi.output(""), Pulumi.output(""), Pulumi.output("CloudWatchEvents"), undefined, undefined, undefined, Pulumi.output("aws:cloudwatch:EventRule"), undefined),
     operations: Pulumi.output({
       createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(role),
       deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule

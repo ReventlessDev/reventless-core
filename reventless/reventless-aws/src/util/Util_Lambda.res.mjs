@@ -2,7 +2,9 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Pulumi from "@pulumi/pulumi";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
 function findResource(resources) {
@@ -11,13 +13,7 @@ function findResource(resources) {
 
 function toResource(param) {
   let name = param.name;
-  return {
-    name: name,
-    id: param.id,
-    urn: param.arn,
-    info: name.apply(param => ""),
-    service: name.apply(param => AWS$ReventlessAws.Lambda.service)
-  };
+  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.Lambda.service), undefined, undefined, undefined, Pulumi.output("aws:lambda:Function"), undefined);
 }
 
 function fromResource(param) {
@@ -36,13 +32,7 @@ function fromOutput(output) {
 
 function functionToResource(param) {
   let name = param.name;
-  return {
-    name: name,
-    id: param.id,
-    urn: param.arn,
-    info: name.apply(param => ""),
-    service: name.apply(param => AWS$ReventlessAws.Lambda.service)
-  };
+  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.Lambda.service), undefined, undefined, undefined, Pulumi.output("aws:lambda:Function"), undefined);
 }
 
 export {

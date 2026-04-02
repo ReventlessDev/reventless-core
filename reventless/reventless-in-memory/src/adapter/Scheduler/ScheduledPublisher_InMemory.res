@@ -81,13 +81,12 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
 
     {
-      resource: {
-        ReventlessInfra.Adapter.service: "InMemory"->Pulumi.Output.make,
-        name: ""->Pulumi.Output.make,
-        id: ""->Pulumi.Output.make,
-        urn: ""->Pulumi.Output.make,
-        info: ""->Pulumi.Output.make,
-      },
+      resource: ReventlessInfra.Adapter.make(
+        ~name=""->Pulumi.Output.make,
+        ~id=""->Pulumi.Output.make,
+        ~urn=""->Pulumi.Output.make,
+        ~service="memory:InMemory"->Pulumi.Output.make,
+      ),
       operations: ({
         createSchedule,
         deleteSchedule,

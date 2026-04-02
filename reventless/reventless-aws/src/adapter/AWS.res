@@ -16,18 +16,18 @@ type service =
 
 let toString: service => string = service =>
   switch service {
-  | DynamoDb => "DynamoDb"
-  | DynamoDbStream => "DynamoDbStream"
-  | SQS => "SQS"
-  | SQS_FIFO => "SQS_FIFO"
-  | SNS => "SNS"
-  | SNS_FIFO => "SNS_FIFO"
-  | Kinesis => "Kinesis"
-  | Lambda => "Lambda"
-  | AppSync => "AppSync"
-  | IAM => "IAM"
-  | CloudwatchEventRule => "CloudwatchEventRule"
-  | S3 => "S3"
+  | DynamoDb => "aws:DynamoDb"
+  | DynamoDbStream => "aws:DynamoDbStream"
+  | SQS => "aws:SQS"
+  | SQS_FIFO => "aws:SQS_FIFO"
+  | SNS => "aws:SNS"
+  | SNS_FIFO => "aws:SNS_FIFO"
+  | Kinesis => "aws:Kinesis"
+  | Lambda => "aws:Lambda"
+  | AppSync => "aws:AppSync"
+  | IAM => "aws:IAM"
+  | CloudwatchEventRule => "aws:CloudwatchEventRule"
+  | S3 => "aws:S3"
   }
 
 let toPrincipal: service => string = service =>

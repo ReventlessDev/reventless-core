@@ -8,6 +8,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
+import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
 import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
@@ -166,41 +167,9 @@ let aggregateTopicName = "TestAggregateEventTopic";
 
 let dcbTopicName = "TestDcbEventTopic";
 
-let aggregateResource_name = Pulumi.output(aggregateTopicName);
+let aggregateResource = Adapter$ReventlessInfra.make(Pulumi.output(aggregateTopicName), Pulumi.output(aggregateTopicName), Pulumi.output(aggregateTopicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined);
 
-let aggregateResource_id = Pulumi.output(aggregateTopicName);
-
-let aggregateResource_urn = Pulumi.output(aggregateTopicName);
-
-let aggregateResource_info = Pulumi.output("");
-
-let aggregateResource_service = Pulumi.output("InMemory");
-
-let aggregateResource = {
-  name: aggregateResource_name,
-  id: aggregateResource_id,
-  urn: aggregateResource_urn,
-  info: aggregateResource_info,
-  service: aggregateResource_service
-};
-
-let dcbResource_name = Pulumi.output(dcbTopicName);
-
-let dcbResource_id = Pulumi.output(dcbTopicName);
-
-let dcbResource_urn = Pulumi.output(dcbTopicName);
-
-let dcbResource_info = Pulumi.output("");
-
-let dcbResource_service = Pulumi.output("InMemory");
-
-let dcbResource = {
-  name: dcbResource_name,
-  id: dcbResource_id,
-  urn: dcbResource_urn,
-  info: dcbResource_info,
-  service: dcbResource_service
-};
+let dcbResource = Adapter$ReventlessInfra.make(Pulumi.output(dcbTopicName), Pulumi.output(dcbTopicName), Pulumi.output(dcbTopicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined);
 
 let allEventTopics = Object.fromEntries([
   [

@@ -24,8 +24,12 @@ function makeTopicResource(name) {
     name: name,
     id: name,
     urn: name,
-    info: "",
-    service: "InMemory"
+    resourceInfo: "NoInfo",
+    service: "memory:InMemory",
+    role: "",
+    region: "",
+    resourceType: "",
+    configuration: {}
   };
 }
 

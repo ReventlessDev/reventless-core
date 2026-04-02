@@ -20,13 +20,12 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     {
       resources: [
-        {
-          service: "InMemory"->Pulumi.Output.make,
-          name: name->Pulumi.Output.make,
-          id: name->Pulumi.Output.make,
-          urn: name->Pulumi.Output.make,
-          info: ""->Pulumi.Output.make,
-        },
+        ReventlessInfra.Adapter.make(
+          ~name=name->Pulumi.Output.make,
+          ~id=name->Pulumi.Output.make,
+          ~urn=name->Pulumi.Output.make,
+          ~service="memory:InMemory"->Pulumi.Output.make,
+        ),
       ],
       publishJson: (
         (service, meta, json) => Bus.publishEvent(name, service, meta, json)

@@ -5,8 +5,12 @@ let resource: Resource.t = {
   name: "my-table",
   id: "abc123",
   urn: "urn:pulumi:stack::project::resource",
-  info: "arn:aws:dynamodb:us-east-1:123:table/my-table",
+  resourceInfo: StorageKeys({hashKey: "id", rangeKey: None}),
   service: "dynamodb",
+  role: "",
+  region: "",
+  resourceType: "",
+  configuration: Dict.make(),
 }
 
 let queryDb: QueryDb.resolvedOutputs = {resources: [resource]}
