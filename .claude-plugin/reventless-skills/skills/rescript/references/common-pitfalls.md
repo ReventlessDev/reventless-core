@@ -172,6 +172,44 @@ let makeId = (s: string): Id.String.t => {
 }
 ```
 
+### `ref` Around Mutable Collections
+
+`Array` and `Dict` are mutable in ReScript — `push`, `set`, `splice` mutate in place. Don't use `ref` just because the collection is mutable — use it only if you need to replace the entire collection.
+
+```rescript
+// WRONG — ref used only for push, not for replacement
+let items: ref<array<string>> = ref([])
+items.contents->Array.push("a")
+let first = items.contents->Array.getUnsafe(0)
+
+// CORRECT — plain array when you never reassign
+let items = []
+items->Array.push("a")
+let first = items->Array.getUnsafe(0)
+```
+
+`ref` **is** justified when you need to swap the collection entirely (e.g. clearing an accumulator):
+
+```rescript
+// OK — ref used for identity-replacement
+let pending = ref([])
+pending.contents->Array.push(info)
+// ... later, clear by replacing with a new empty array
+pending := []
+```
+
+Same applies to `Dict`:
+
+```rescript
+// WRONG — ref used only for Dict.set
+let cache: ref<dict<int>> = ref(Dict.make())
+cache.contents->Dict.set("k", 1)
+
+// CORRECT — plain dict
+let cache = Dict.make()
+cache->Dict.set("k", 1)
+```
+
 ## Deprecated APIs
 
 | Deprecated | Replacement |
