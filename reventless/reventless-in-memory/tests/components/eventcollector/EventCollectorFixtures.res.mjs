@@ -14,7 +14,7 @@ TestRunner$ReventlessInMemory.setup();
 
 let topicName = "TestECEventTopic";
 
-let topicResource = Adapter$ReventlessInfra.make(Pulumi.output(topicName), Pulumi.output(topicName), Pulumi.output(topicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined);
+let topicResource = Adapter$ReventlessInfra.make(Pulumi.output(topicName), Pulumi.output(topicName), Pulumi.output(topicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined);
 
 let allEventTopics = Object.fromEntries([[
     topicName,

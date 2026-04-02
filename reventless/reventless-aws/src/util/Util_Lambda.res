@@ -5,17 +5,14 @@ type runtimeParts = {
 
 let findResource = resources => resources->ReventlessCore.Util.Adapter.findResource(AWS.Lambda.service)
 
-let toResource: PulumiAws.Lambda.Function.t => ReventlessInfra.Adapter.resource = ({
-  id,
-  name,
-  arn,
-}) =>
+let toResource = (~tags=?, {id, name, arn}: PulumiAws.Lambda.Function.t): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name,
     ~id,
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.Lambda.service),
     ~resourceType="aws:lambda:Function"->Pulumi.Output.make,
+    ~tags=?tags,
   )
 
 let fromResource = ({id, name}: ReventlessInfra.Adapter.resource) => {
@@ -31,15 +28,12 @@ let fromOutput = (output: Pulumi.Output.t<PulumiAws.Lambda.Function.t>) => {
   invokeArn: output->Pulumi.Output.flatMap(({invokeArn}) => invokeArn),
 }
 
-let functionToResource: PulumiAws.Lambda.Function.t => ReventlessInfra.Adapter.resource = ({
-  id,
-  name,
-  arn,
-}) =>
+let functionToResource = (~tags=?, {id, name, arn}: PulumiAws.Lambda.Function.t): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name,
     ~id,
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.Lambda.service),
     ~resourceType="aws:lambda:Function"->Pulumi.Output.make,
+    ~tags=?tags,
   )

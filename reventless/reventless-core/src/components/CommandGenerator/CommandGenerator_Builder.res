@@ -16,6 +16,7 @@ module Make = (
         region: ""->Pulumi.Output.make,
         resourceType: ""->Pulumi.Output.make,
         configuration: Dict.make()->Pulumi.Output.make,
+        tags: Dict.make()->Pulumi.Output.make,
       }
       r
     })

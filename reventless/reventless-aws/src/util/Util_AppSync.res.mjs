@@ -13,7 +13,7 @@ function toResource(param) {
     TAG: "ApiResolver",
     typeName: param[0],
     fieldName: param[1]
-  })), undefined, undefined, Pulumi.output("aws:appsync:Resolver"), undefined);
+  })), undefined, undefined, Pulumi.output("aws:appsync:Resolver"), undefined, undefined);
 }
 
 export {

@@ -20,4 +20,5 @@ type t = {
   region: string,
   resourceType: string,
   configuration: dict<string>,
+  tags: dict<string>,
 }

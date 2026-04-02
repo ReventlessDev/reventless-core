@@ -47,6 +47,7 @@ let makeTopicResource = (topicName: string): ReventlessInfra.Adapter.resolvedRes
   region: "",
   resourceType: "",
   configuration: Dict.make(),
+  tags: Dict.make(),
 }
 
 describe("ScheduledPublisher_InMemory", () => {

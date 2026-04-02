@@ -12,6 +12,7 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~apiRole,
   ~opts,
 ) => {
+  let tags = AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType)
   let table = Util_DynamoDbStream.makeTable(
     name,
     ~attributes=attributes(subIdField, indexes),
@@ -19,12 +20,12 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
     ~streamViewType=NEW_AND_OLD_IMAGES,
-    ~tags=AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType),
+    ~tags,
     ~opts,
   )
   open QueryDbStorage_DynamoDb_Runtime
   {
-    resources: [table->Util_DynamoDbStream.toResource],
+    resources: [table->Util_DynamoDbStream.toResource(~tags=tags->Pulumi.Output.fromInput)],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     operations: table
     ->Util_DynamoDb.toResolvedTableOutput

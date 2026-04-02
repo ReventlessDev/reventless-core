@@ -27,9 +27,10 @@ function make(name, indexes, partitionTag, opts) {
     projectionType: "ALL",
     rangeKey: "position"
   }));
-  let table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, globalSecondaryIndexes, undefined, "position", "NEW_IMAGE", AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType), opts, name);
+  let tags = AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType);
+  let table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, globalSecondaryIndexes, undefined, "position", "NEW_IMAGE", tags, opts, name);
   return {
-    resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
+    resources: [Util_DynamoDbStream$ReventlessAws.toResource(tags, table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => {
       let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(resolvedTable, partitionTag);
       return {

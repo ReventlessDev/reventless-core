@@ -6,9 +6,9 @@ import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 
-function toResource(param) {
+function toResource(tags, param) {
   let name = param.name;
-  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.SQS_FIFO.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined);
+  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.SQS_FIFO.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined, tags);
 }
 
 function fromResource(param) {

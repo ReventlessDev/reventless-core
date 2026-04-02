@@ -12,6 +12,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
 > = (~name, ~opts=?) => {
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+  let tags = AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={
@@ -26,7 +27,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
       sqsManagedSseEnabled: false->Pulumi.Input.make,
       deduplicationScope: MessageGroup,
       fifoThroughputLimit: PerMessageGroupId,
-      tags: AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
+      tags,
     },
     ~opts?,
   )
@@ -35,7 +36,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
 
   {
     parts: {queue: queue},
-    resources: [queue->Util_SQS_FIFO.toResource],
+    resources: [queue->Util_SQS_FIFO.toResource(~tags=tags->Pulumi.Output.fromInput)],
     publishJsons: resolvedQueueOutput->Pulumi.Output.apply(resolvedQueue =>
       resolvedQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO, ...)
     ),

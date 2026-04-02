@@ -74,9 +74,10 @@ function dataSource(name, table, api, apiRole, opts) {
 }
 
 function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
-  let table = Util_DynamoDb$ReventlessAws.makeTable(attributes(subIdField, indexes), globalSecondaryIndexes(indexes), ttl, subIdField, AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType), opts, name);
+  let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType);
+  let table = Util_DynamoDb$ReventlessAws.makeTable(attributes(subIdField, indexes), globalSecondaryIndexes(indexes), ttl, subIdField, tags, opts, name);
   return {
-    resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
+    resources: [Util_DynamoDb$ReventlessAws.toResource(tags, table)],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => ({
       load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(resolvedTable),

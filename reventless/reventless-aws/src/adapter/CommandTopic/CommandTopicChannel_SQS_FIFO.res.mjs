@@ -18,11 +18,12 @@ import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicCh
 
 function make(name, opts) {
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
+  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
   let queue = new (Aws.sqs.Queue)(name, {
     contentBasedDeduplication: true,
     fifoQueue: true,
     redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
-    tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
+    tags: tags,
     visibilityTimeoutSeconds: 180,
     deduplicationScope: "messageGroup",
     fifoThroughputLimit: "perMessageGroupId",
@@ -33,7 +34,7 @@ function make(name, opts) {
     parts: {
       queue: queue
     },
-    resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
+    resources: [Util_SQS_FIFO$ReventlessAws.toResource(tags, queue)],
     publishJsons: resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS_FIFO")),
     publishJsonsStream: resolvedQueueOutput.apply(resolvedQueue => {
       let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS_FIFO");

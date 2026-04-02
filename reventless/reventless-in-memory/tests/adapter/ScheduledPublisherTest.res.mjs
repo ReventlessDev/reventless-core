@@ -25,7 +25,8 @@ function makeTopicResource(topicName) {
     role: "",
     region: "",
     resourceType: "",
-    configuration: {}
+    configuration: {},
+    tags: {}
   };
 }
 

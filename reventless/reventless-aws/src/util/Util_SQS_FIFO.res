@@ -1,10 +1,11 @@
-let toResource: PulumiAws.SQS_Queue.t => ReventlessInfra.Adapter.resource = ({id, name, arn}) =>
+let toResource = (~tags=?, {id, name, arn}: PulumiAws.SQS_Queue.t): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name,
     ~id,
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.SQS_FIFO.service),
     ~resourceType="aws:sqs:Queue"->Pulumi.Output.make,
+    ~tags=?tags,
   )
 
 let fromResource = ({id, name}: ReventlessInfra.Adapter.resource) => {

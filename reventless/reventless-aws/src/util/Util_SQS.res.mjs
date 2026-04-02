@@ -20,8 +20,8 @@ function toResolvedQueueOutput(param) {
   }));
 }
 
-function toResource(queue) {
-  return Adapter$ReventlessInfra.make(queue.name, queue.id, queue.arn, queue.name.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined);
+function toResource(tags, queue) {
+  return Adapter$ReventlessInfra.make(queue.name, queue.id, queue.arn, queue.name.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined, tags);
 }
 
 function fromResource(param) {
@@ -62,7 +62,7 @@ function findResolvedResource(resources) {
 function toResource$1(param) {
   let match = param.eventSourceMapping;
   let id = match.id;
-  return Adapter$ReventlessInfra.make(id, id, match.arn, id.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined);
+  return Adapter$ReventlessInfra.make(id, id, match.arn, id.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:sqs:Queue"), undefined, undefined);
 }
 
 let Subscription = {

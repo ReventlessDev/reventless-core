@@ -11,7 +11,7 @@ let streamArnFromDynamoDbTableResource = (resource: ReventlessInfra.Adapter.reso
     }
   )
 
-let toResource = (table: PulumiAws.DynamoDb.Table.t): ReventlessInfra.Adapter.resource =>
+let toResource = (~tags=?, table: PulumiAws.DynamoDb.Table.t): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name=table.name,
     ~id=table.id,
@@ -19,6 +19,7 @@ let toResource = (table: PulumiAws.DynamoDb.Table.t): ReventlessInfra.Adapter.re
     ~service=table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
     ~resourceInfo=table->toResourceInfo,
     ~resourceType="aws:dynamodb:Table"->Pulumi.Output.make,
+    ~tags=?tags,
   )
 
 let toStreamResource = (table: ReventlessInfra.Adapter.resource): ReventlessInfra.Adapter.resource => {

@@ -55,7 +55,7 @@ function Make(Bus) {
       }
     };
     return {
-      resource: Adapter$ReventlessInfra.make(Pulumi.output(""), Pulumi.output(""), Pulumi.output(""), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined),
+      resource: Adapter$ReventlessInfra.make(Pulumi.output(""), Pulumi.output(""), Pulumi.output(""), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined),
       operations: Pulumi.output({
         createSchedule: createSchedule,
         deleteSchedule: deleteSchedule

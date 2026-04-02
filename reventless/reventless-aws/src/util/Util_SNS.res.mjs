@@ -19,9 +19,9 @@ function toResolvedTopicOutput(param) {
   }));
 }
 
-function toResource(param) {
+function toResource(tags, param) {
   let name = param.name;
-  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.SNS.service), undefined, undefined, undefined, Pulumi.output("aws:sns:Topic"), undefined);
+  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.SNS.service), undefined, undefined, undefined, Pulumi.output("aws:sns:Topic"), undefined, tags);
 }
 
 function findResolvedResource(resources) {

@@ -15,7 +15,7 @@ function Make(Bus) {
       return Bus.publishEvent(name, service, meta, json);
     })).then(param => {})));
     return {
-      resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), Pulumi.output(name), Pulumi.output(name), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined)],
+      resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), Pulumi.output(name), Pulumi.output(name), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined)],
       publishJson: Pulumi.output((service, meta, json) => Bus.publishEvent(name, service, meta, json)),
       publishJsonStream: Pulumi.output(publishJsonStream)
     };

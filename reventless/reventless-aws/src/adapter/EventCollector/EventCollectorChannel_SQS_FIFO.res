@@ -11,6 +11,7 @@ let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'con
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
+  let tags = AWS.Tags.make(~name, ReventlessCore.EventCollector.componentType)
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={
@@ -25,7 +26,7 @@ let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'con
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,
-      tags: AWS.Tags.make(~name, ReventlessCore.EventCollector.componentType),
+      tags,
     },
     ~opts,
   )
@@ -51,7 +52,7 @@ let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'con
 
   {
     ReventlessCore.EventCollector_Adapter.parts: {queue: queue},
-    resources: eventTopicResources->Array.concat([queue->Util_SQS.toResource]),
+    resources: eventTopicResources->Array.concat([queue->Util_SQS.toResource(~tags=tags->Pulumi.Output.fromInput)]),
     enqueueEvent,
     handleChannelEvent,
   }

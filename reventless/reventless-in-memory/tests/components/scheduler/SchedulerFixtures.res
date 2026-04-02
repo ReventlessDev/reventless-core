@@ -35,6 +35,7 @@ let makeTopicResource = (name: string): ReventlessInfra.Adapter.resolvedResource
   region: "",
   resourceType: "",
   configuration: Dict.make(),
+  tags: Dict.make(),
 }
 
 let _ = beforeAll(() => {

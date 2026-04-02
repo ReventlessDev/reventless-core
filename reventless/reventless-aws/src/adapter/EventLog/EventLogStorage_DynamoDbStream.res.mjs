@@ -7,6 +7,7 @@ import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStre
 import * as EventLogStorage_DynamoDb_Runtime$ReventlessAws from "./EventLogStorage_DynamoDb_Runtime.res.mjs";
 
 function make(name, opts) {
+  let tags = AWS_Tags$ReventlessAws.make(name, EventLog$ReventlessCore.componentType);
   let table = Util_DynamoDbStream$ReventlessAws.makeTable([
     {
       name: "id",
@@ -16,9 +17,9 @@ function make(name, opts) {
       name: "seq",
       type: "S"
     }
-  ], undefined, undefined, "seq", "NEW_IMAGE", AWS_Tags$ReventlessAws.make(name, EventLog$ReventlessCore.componentType), opts, name);
+  ], undefined, undefined, "seq", "NEW_IMAGE", tags, opts, name);
   return {
-    resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
+    resources: [Util_DynamoDbStream$ReventlessAws.toResource(tags, table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => ({
       append: EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(resolvedTable),
       replay: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(resolvedTable),

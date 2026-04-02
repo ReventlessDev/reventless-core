@@ -167,9 +167,9 @@ let aggregateTopicName = "TestAggregateEventTopic";
 
 let dcbTopicName = "TestDcbEventTopic";
 
-let aggregateResource = Adapter$ReventlessInfra.make(Pulumi.output(aggregateTopicName), Pulumi.output(aggregateTopicName), Pulumi.output(aggregateTopicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined);
+let aggregateResource = Adapter$ReventlessInfra.make(Pulumi.output(aggregateTopicName), Pulumi.output(aggregateTopicName), Pulumi.output(aggregateTopicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined);
 
-let dcbResource = Adapter$ReventlessInfra.make(Pulumi.output(dcbTopicName), Pulumi.output(dcbTopicName), Pulumi.output(dcbTopicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined);
+let dcbResource = Adapter$ReventlessInfra.make(Pulumi.output(dcbTopicName), Pulumi.output(dcbTopicName), Pulumi.output(dcbTopicName), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined);
 
 let allEventTopics = Object.fromEntries([
   [

@@ -8,6 +8,7 @@ let resolvedToResource: Adapter.resolvedResource => ReventlessInfra.Adapter.reso
   region,
   resourceType,
   configuration,
+  tags,
 }) => {
   name: name->Pulumi.Output.make,
   id: id->Pulumi.Output.make,
@@ -18,6 +19,7 @@ let resolvedToResource: Adapter.resolvedResource => ReventlessInfra.Adapter.reso
   region: region->Pulumi.Output.make,
   resourceType: resourceType->Pulumi.Output.make,
   configuration: configuration->Pulumi.Output.make,
+  tags: tags->Pulumi.Output.make,
 }
 
 external unsafeUnwrapResource: ReventlessInfra.Adapter.resource => Adapter.resolvedResource =
@@ -39,6 +41,7 @@ let fromInteropResource: ReventlessInterop.Resource.t => ReventlessInfra.Adapter
   region,
   resourceType,
   configuration,
+  tags,
 }) => {
   name: name->Pulumi.Output.make,
   id: id->Pulumi.Output.make,
@@ -49,4 +52,5 @@ let fromInteropResource: ReventlessInterop.Resource.t => ReventlessInfra.Adapter
   region: region->Pulumi.Output.make,
   resourceType: resourceType->Pulumi.Output.make,
   configuration: configuration->Pulumi.Output.make,
+  tags: tags->Pulumi.Output.make,
 }

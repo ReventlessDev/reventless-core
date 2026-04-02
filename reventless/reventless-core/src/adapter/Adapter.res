@@ -12,6 +12,7 @@ let outputToResource: Pulumi.Output.t<
   region: resourceOutput->Pulumi.Output.flatMap(r => r.region),
   resourceType: resourceOutput->Pulumi.Output.flatMap(r => r.resourceType),
   configuration: resourceOutput->Pulumi.Output.flatMap(r => r.configuration),
+  tags: resourceOutput->Pulumi.Output.flatMap(r => r.tags),
 }
 
 let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessInfra.Adapter.resource>> => option<
@@ -29,12 +30,13 @@ let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessInfra.Adapter.res
     configuration: resourcesOutput->Pulumi.Output.flatMap(r =>
       (r->Array.getUnsafe(0)).configuration
     ),
+    tags: resourcesOutput->Pulumi.Output.flatMap(r => (r->Array.getUnsafe(0)).tags),
   }->Some catch {
   | _ => None
   }
 
 let resolvedToResource = (
-  {id, name, urn, resourceInfo, service, role, region, resourceType, configuration}: resolvedResource,
+  {id, name, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: resolvedResource,
 ): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
@@ -45,6 +47,7 @@ let resolvedToResource = (
   region: region->Pulumi.Output.make,
   resourceType: resourceType->Pulumi.Output.make,
   configuration: configuration->Pulumi.Output.make,
+  tags: tags->Pulumi.Output.make,
 }
 
 let resolvedToResources = (resolved: array<resolvedResource>) =>
@@ -62,15 +65,16 @@ let resolvedOutputToResource: Pulumi.Output.t<
   region: resolvedResource->Pulumi.Output.apply(r => r.region),
   resourceType: resolvedResource->Pulumi.Output.apply(r => r.resourceType),
   configuration: resolvedResource->Pulumi.Output.apply(r => r.configuration),
+  tags: resolvedResource->Pulumi.Output.apply(r => r.tags),
 }
 
 let resourceToResolvedOutput = (r: ReventlessInfra.Adapter.resource) =>
   (r.name, r.id, r.urn, r.resourceInfo, r.service, r.role)
   ->Pulumi.Output.all6
   ->Pulumi.Output.flatMap(((name, id, urn, resourceInfo, service, role)) =>
-    (r.region, r.resourceType, r.configuration)
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((region, resourceType, configuration)) => {
+    (r.region, r.resourceType, r.configuration, r.tags)
+    ->Pulumi.Output.all4
+    ->Pulumi.Output.apply(((region, resourceType, configuration, tags)) => {
       let result: resolvedResource = {
         name,
         id,
@@ -81,6 +85,7 @@ let resourceToResolvedOutput = (r: ReventlessInfra.Adapter.resource) =>
         region,
         resourceType,
         configuration,
+        tags,
       }
       result
     })
@@ -108,7 +113,7 @@ let urns = resources => resources->Array.map((resource: resolvedResource) => res
 // ---------------------------------------------------------------------------
 
 let toInteropResource = (
-  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration}: resolvedResource,
+  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: resolvedResource,
 ): ReventlessInterop.Resource.t => {
   name,
   id,
@@ -119,6 +124,7 @@ let toInteropResource = (
   region,
   resourceType,
   configuration,
+  tags,
 }
 
 let resourcesToInterop = (resources: array<ReventlessInfra.Adapter.resource>) =>
@@ -127,7 +133,7 @@ let resourcesToInterop = (resources: array<ReventlessInfra.Adapter.resource>) =>
   ->Pulumi.Output.apply(rs => rs->Array.map(toInteropResource))
 
 let fromInteropResolved = (
-  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration}: ReventlessInterop.Resource.t,
+  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: ReventlessInterop.Resource.t,
 ): resolvedResource => {
   name,
   id,
@@ -138,10 +144,11 @@ let fromInteropResolved = (
   region,
   resourceType,
   configuration,
+  tags,
 }
 
 let fromInteropResource = (
-  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration}: ReventlessInterop.Resource.t,
+  {name, id, urn, resourceInfo, service, role, region, resourceType, configuration, tags}: ReventlessInterop.Resource.t,
 ): ReventlessInfra.Adapter.resource => {
   id: id->Pulumi.Output.make,
   name: name->Pulumi.Output.make,
@@ -152,6 +159,7 @@ let fromInteropResource = (
   region: region->Pulumi.Output.make,
   resourceType: resourceType->Pulumi.Output.make,
   configuration: configuration->Pulumi.Output.make,
+  tags: tags->Pulumi.Output.make,
 }
 
 let fromInteropResources = (rs: array<ReventlessInterop.Resource.t>): array<

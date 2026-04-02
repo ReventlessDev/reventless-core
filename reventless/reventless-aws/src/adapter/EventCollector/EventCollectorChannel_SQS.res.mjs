@@ -27,9 +27,10 @@ function connect(name, channelSpecs, runtime, opts) {
 
 function make(name, eventTopics, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let tags = AWS_Tags$ReventlessAws.make(name, EventCollector$ReventlessCore.componentType);
   let queue = new (Aws.sqs.Queue)(name, {
     redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
-    tags: AWS_Tags$ReventlessAws.make(name, EventCollector$ReventlessCore.componentType),
+    tags: tags,
     visibilityTimeoutSeconds: 120,
     sqsManagedSseEnabled: false
   }, opts$1);
@@ -40,7 +41,7 @@ function make(name, eventTopics, opts) {
     parts: {
       queue: queue
     },
-    resources: eventTopicResources.concat([Util_SQS$ReventlessAws.toResource(queue)]),
+    resources: eventTopicResources.concat([Util_SQS$ReventlessAws.toResource(tags, queue)]),
     enqueueEvent: enqueueEvent,
     handleChannelEvent: handleChannelEvent
   };

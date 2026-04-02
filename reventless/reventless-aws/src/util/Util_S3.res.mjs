@@ -6,7 +6,7 @@ import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/ad
 
 function toResource(param) {
   let id = param.id;
-  return Adapter$ReventlessInfra.make(id, id, param.arn, id.apply(param => AWS$ReventlessAws.S3.service), undefined, undefined, undefined, Pulumi.output("aws:s3:Bucket"), undefined);
+  return Adapter$ReventlessInfra.make(id, id, param.arn, id.apply(param => AWS$ReventlessAws.S3.service), undefined, undefined, undefined, Pulumi.output("aws:s3:Bucket"), undefined, undefined);
 }
 
 function toResolvedBucketOutput(param) {

@@ -29,7 +29,8 @@ let schema = S.schema(s => ({
   role: s.m(S.string),
   region: s.m(S.string),
   resourceType: s.m(S.string),
-  configuration: s.m(S.dict(S.string))
+  configuration: s.m(S.dict(S.string)),
+  tags: s.m(S.dict(S.string))
 }));
 
 export {

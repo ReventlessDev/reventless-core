@@ -57,7 +57,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
   });
   return {
     resources: [
-      Adapter$ReventlessCore.outputToResource(lambda.apply(Util_Lambda$ReventlessAws.toResource)),
+      Adapter$ReventlessCore.outputToResource(lambda.apply(lambda => Util_Lambda$ReventlessAws.toResource(undefined, lambda))),
       Util_Cloudwatch$ReventlessAws.EventRule.toResource(cloudwatchEventRule)
     ]
   };

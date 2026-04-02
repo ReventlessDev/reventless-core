@@ -31,18 +31,19 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~p
 
   // Create DynamoDB table with stream enabled — EventTopicPublisher_DynamoDbStream
   // needs a DynamoDbStream resource to connect the EventTopic.
+  let tags = AWS.Tags.make(~name, ReventlessCore.DcbEventLog.componentType)
   let table = Util_DynamoDbStream.makeTable(
     name,
     ~attributes,
     ~rangeKey="position",
     ~globalSecondaryIndexes,
     ~streamViewType=NEW_IMAGE,
-    ~tags=AWS.Tags.make(~name, ReventlessCore.DcbEventLog.componentType),
+    ~tags,
     ~opts,
   )
 
   {
-    resources: [table->Util_DynamoDbStream.toResource],
+    resources: [table->Util_DynamoDbStream.toResource(~tags=tags->Pulumi.Output.fromInput)],
     operations: table
     ->Util_DynamoDb.toResolvedTableOutput
     ->Pulumi.Output.apply(resolvedTable => {

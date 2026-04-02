@@ -24,7 +24,8 @@ function Make(Spec) {
         role: Pulumi.output("commandGenerator"),
         region: Pulumi.output(""),
         resourceType: Pulumi.output(""),
-        configuration: Pulumi.output({})
+        configuration: Pulumi.output({}),
+        tags: Pulumi.output({})
       }));
       let outputs = {
         resources: resources

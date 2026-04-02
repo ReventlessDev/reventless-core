@@ -11,6 +11,7 @@ let resource: Resource.t = {
   region: "",
   resourceType: "",
   configuration: Dict.make(),
+  tags: Dict.make(),
 }
 
 let queryDb: QueryDb.resolvedOutputs = {resources: [resource]}

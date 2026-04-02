@@ -27,9 +27,10 @@ function connect(name, channel, runtime, resources, opts) {
 
 function make(name, opts) {
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
+  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
   let queue = new (Aws.sqs.Queue)(name, {
     redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
-    tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
+    tags: tags,
     visibilityTimeoutSeconds: 180,
     sqsManagedSseEnabled: false
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
@@ -38,7 +39,7 @@ function make(name, opts) {
     parts: {
       queue: queue
     },
-    resources: [Util_SQS$ReventlessAws.toResource(queue)],
+    resources: [Util_SQS$ReventlessAws.toResource(tags, queue)],
     publishJsons: resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS")),
     publishJsonsStream: resolvedQueueOutput.apply(resolvedQueue => {
       let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS");

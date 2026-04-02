@@ -2,12 +2,13 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 
-function make(name, id, urn, service, resourceInfoOpt, roleOpt, regionOpt, resourceTypeOpt, configurationOpt) {
+function make(name, id, urn, service, resourceInfoOpt, roleOpt, regionOpt, resourceTypeOpt, configurationOpt, tagsOpt) {
   let resourceInfo = resourceInfoOpt !== undefined ? resourceInfoOpt : Pulumi.output("NoInfo");
   let role = roleOpt !== undefined ? roleOpt : Pulumi.output("");
   let region = regionOpt !== undefined ? regionOpt : Pulumi.output("");
   let resourceType = resourceTypeOpt !== undefined ? resourceTypeOpt : Pulumi.output("");
   let configuration = configurationOpt !== undefined ? configurationOpt : Pulumi.output({});
+  let tags = tagsOpt !== undefined ? tagsOpt : Pulumi.output({});
   return {
     name: name,
     id: id,
@@ -17,7 +18,8 @@ function make(name, id, urn, service, resourceInfoOpt, roleOpt, regionOpt, resou
     role: role,
     region: region,
     resourceType: resourceType,
-    configuration: configuration
+    configuration: configuration,
+    tags: tags
   };
 }
 

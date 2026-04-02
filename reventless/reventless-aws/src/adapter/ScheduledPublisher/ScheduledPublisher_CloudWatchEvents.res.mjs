@@ -27,7 +27,7 @@ function make(name, opts) {
     ])))
   }, opts);
   return {
-    resource: Adapter$ReventlessInfra.make(Pulumi.output(""), Pulumi.output(""), Pulumi.output(""), Pulumi.output("CloudWatchEvents"), undefined, undefined, undefined, Pulumi.output("aws:cloudwatch:EventRule"), undefined),
+    resource: Adapter$ReventlessInfra.make(Pulumi.output(""), Pulumi.output(""), Pulumi.output(""), Pulumi.output("CloudWatchEvents"), undefined, undefined, undefined, Pulumi.output("aws:cloudwatch:EventRule"), undefined, undefined),
     operations: Pulumi.output({
       createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(role),
       deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule

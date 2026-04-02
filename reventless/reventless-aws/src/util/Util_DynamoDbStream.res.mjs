@@ -31,13 +31,13 @@ function streamArnFromDynamoDbTableResource(resource) {
   });
 }
 
-function toResource(table) {
-  return Adapter$ReventlessInfra.make(table.name, table.id, table.arn, table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service), toResourceInfo(table), undefined, undefined, Pulumi.output("aws:dynamodb:Table"), undefined);
+function toResource(tags, table) {
+  return Adapter$ReventlessInfra.make(table.name, table.id, table.arn, table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service), toResourceInfo(table), undefined, undefined, Pulumi.output("aws:dynamodb:Table"), undefined, tags);
 }
 
 function toStreamResource(table) {
   let streamArn = streamArnFromDynamoDbTableResource(table);
-  return Adapter$ReventlessInfra.make(table.name, streamArn, streamArn, table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service), undefined, undefined, undefined, Pulumi.output("aws:dynamodb:Stream"), undefined);
+  return Adapter$ReventlessInfra.make(table.name, streamArn, streamArn, table.name.apply(param => AWS$ReventlessAws.DynamoDbStream.service), undefined, undefined, undefined, Pulumi.output("aws:dynamodb:Stream"), undefined, undefined);
 }
 
 let log = Logger$ReventlessCore.fromEnv();

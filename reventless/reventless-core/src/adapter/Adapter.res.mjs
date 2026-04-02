@@ -14,7 +14,8 @@ function outputToResource(resourceOutput) {
     role: Output$Pulumi.flatMap(resourceOutput, r => r.role),
     region: Output$Pulumi.flatMap(resourceOutput, r => r.region),
     resourceType: Output$Pulumi.flatMap(resourceOutput, r => r.resourceType),
-    configuration: Output$Pulumi.flatMap(resourceOutput, r => r.configuration)
+    configuration: Output$Pulumi.flatMap(resourceOutput, r => r.configuration),
+    tags: Output$Pulumi.flatMap(resourceOutput, r => r.tags)
   };
 }
 
@@ -29,7 +30,8 @@ function resourcesOutputToResource(resourcesOutput) {
       role: Output$Pulumi.flatMap(resourcesOutput, r => r[0].role),
       region: Output$Pulumi.flatMap(resourcesOutput, r => r[0].region),
       resourceType: Output$Pulumi.flatMap(resourcesOutput, r => r[0].resourceType),
-      configuration: Output$Pulumi.flatMap(resourcesOutput, r => r[0].configuration)
+      configuration: Output$Pulumi.flatMap(resourcesOutput, r => r[0].configuration),
+      tags: Output$Pulumi.flatMap(resourcesOutput, r => r[0].tags)
     };
   } catch (exn) {
     return;
@@ -46,7 +48,8 @@ function resolvedToResource(param) {
     role: Pulumi.output(param.role),
     region: Pulumi.output(param.region),
     resourceType: Pulumi.output(param.resourceType),
-    configuration: Pulumi.output(param.configuration)
+    configuration: Pulumi.output(param.configuration),
+    tags: Pulumi.output(param.tags)
   };
 }
 
@@ -64,7 +67,8 @@ function resolvedOutputToResource(resolvedResource) {
     role: resolvedResource.apply(r => r.role),
     region: resolvedResource.apply(r => r.region),
     resourceType: resolvedResource.apply(r => r.resourceType),
-    configuration: resolvedResource.apply(r => r.configuration)
+    configuration: resolvedResource.apply(r => r.configuration),
+    tags: resolvedResource.apply(r => r.tags)
   };
 }
 
@@ -86,7 +90,8 @@ function resourceToResolvedOutput(r) {
     return Pulumi.all([
       r.region,
       r.resourceType,
-      r.configuration
+      r.configuration,
+      r.tags
     ]).apply(param => ({
       name: name,
       id: id,
@@ -96,7 +101,8 @@ function resourceToResolvedOutput(r) {
       role: role,
       region: param[0],
       resourceType: param[1],
-      configuration: param[2]
+      configuration: param[2],
+      tags: param[3]
     }));
   });
 }
@@ -129,7 +135,8 @@ function toInteropResource(param) {
     role: param.role,
     region: param.region,
     resourceType: param.resourceType,
-    configuration: param.configuration
+    configuration: param.configuration,
+    tags: param.tags
   };
 }
 
@@ -147,7 +154,8 @@ function fromInteropResolved(param) {
     role: param.role,
     region: param.region,
     resourceType: param.resourceType,
-    configuration: param.configuration
+    configuration: param.configuration,
+    tags: param.tags
   };
 }
 
@@ -161,7 +169,8 @@ function fromInteropResource(param) {
     role: Pulumi.output(param.role),
     region: Pulumi.output(param.region),
     resourceType: Pulumi.output(param.resourceType),
-    configuration: Pulumi.output(param.configuration)
+    configuration: Pulumi.output(param.configuration),
+    tags: Pulumi.output(param.tags)
   };
 }
 

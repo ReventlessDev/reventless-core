@@ -26,14 +26,15 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  let lambda = handler.apply(handler => new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType), undefined), opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined));
+  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
+  let lambda = handler.apply(handler => new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, tags, undefined), opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined));
   return {
     parts: {
       lambda: lambda,
       lambdaRole: lambdaRole
     },
     resources: [
-      Adapter$ReventlessCore.outputToResource(lambda.apply(Util_Lambda$ReventlessAws.toResource)),
+      Adapter$ReventlessCore.outputToResource(lambda.apply(lambda => Util_Lambda$ReventlessAws.toResource(tags, lambda))),
       Util_IAM_Role$ReventlessAws.toResource(lambdaRole)
     ]
   };
@@ -71,6 +72,7 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
   Stdlib_Dict.forEachWithKey(additionalEnvVars, (value, key) => {
     variables[key] = value;
   });
+  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: "nodejs22.x",
@@ -79,7 +81,7 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
     memorySize: memorySize,
     timeout: timeout,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
+    tags: tags,
     environment: {
       variables: variables
     },
@@ -91,7 +93,7 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
       lambdaRole: lambdaRole
     },
     resources: [
-      Util_Lambda$ReventlessAws.functionToResource(lambda),
+      Util_Lambda$ReventlessAws.functionToResource(tags, lambda),
       Util_IAM_Role$ReventlessAws.toResource(lambdaRole)
     ]
   };

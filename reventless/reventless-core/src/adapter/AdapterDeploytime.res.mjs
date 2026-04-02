@@ -12,7 +12,8 @@ function resolvedToResource(param) {
     role: Pulumi.output(param.role),
     region: Pulumi.output(param.region),
     resourceType: Pulumi.output(param.resourceType),
-    configuration: Pulumi.output(param.configuration)
+    configuration: Pulumi.output(param.configuration),
+    tags: Pulumi.output(param.tags)
   };
 }
 
@@ -28,7 +29,8 @@ function fromInteropResource(param) {
     role: Pulumi.output(param.role),
     region: Pulumi.output(param.region),
     resourceType: Pulumi.output(param.resourceType),
-    configuration: Pulumi.output(param.configuration)
+    configuration: Pulumi.output(param.configuration),
+    tags: Pulumi.output(param.tags)
   };
 }
 

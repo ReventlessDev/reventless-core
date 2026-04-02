@@ -28,6 +28,8 @@ type resource = {
   resourceType: Pulumi.Output.t<string>,
   /** Key infrastructure configuration properties (informational, not used at runtime). */
   configuration: Pulumi.Output.t<dict<string>>,
+  /** AWS resource tags applied at provisioning time. */
+  tags: Pulumi.Output.t<dict<string>>,
 }
 
 /** Create a deploy-time resource with sensible defaults for metadata fields. */
@@ -41,6 +43,7 @@ let make = (
   ~region=""->Pulumi.Output.make,
   ~resourceType=""->Pulumi.Output.make,
   ~configuration=Dict.make()->Pulumi.Output.make,
+  ~tags=Dict.make()->Pulumi.Output.make,
 ): resource => {
   name,
   id,
@@ -51,6 +54,7 @@ let make = (
   region,
   resourceType,
   configuration,
+  tags,
 }
 
 /** A named dictionary of deploy-time infrastructure resources. */
@@ -79,4 +83,6 @@ type resolvedResource = {
   resourceType: string,
   /** Key infrastructure configuration properties (informational, not used at runtime). */
   configuration: dict<string>,
+  /** AWS resource tags applied at provisioning time. */
+  tags: dict<string>,
 }

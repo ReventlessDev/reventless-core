@@ -11,14 +11,15 @@ import * as Util_SNS_FIFO$ReventlessAws from "../../util/Util_SNS_FIFO.res.mjs";
 import * as EventTopicPublisher_SNS_Runtime$ReventlessAws from "./EventTopicPublisher_SNS_Runtime.res.mjs";
 
 function make(name, param, opts) {
+  let tags = AWS_Tags$ReventlessAws.make(name, EventTopic$ReventlessCore.componentType);
   let topic = new (Aws.sns.Topic)(name, {
     contentBasedDeduplication: true,
     fifoTopic: true,
-    tags: AWS_Tags$ReventlessAws.make(name, EventTopic$ReventlessCore.componentType)
+    tags: tags
   }, opts);
   let resolvedTopicOutput = Util_SNS$ReventlessAws.toResolvedTopicOutput(topic);
   return {
-    resources: [Util_SNS_FIFO$ReventlessAws.toResource(topic)],
+    resources: [Util_SNS_FIFO$ReventlessAws.toResource(tags, topic)],
     publishJson: resolvedTopicOutput.apply(resolvedTopic => ((extra, extra$1, extra$2) => EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(resolvedTopic, extra, extra$1, extra$2))),
     publishJsonStream: resolvedTopicOutput.apply(resolvedTopic => {
       return stream => Stream$1.runForEach(Stream.grouped(stream, 10), items => Effect.promise(() => Promise.all(items.map(param => {

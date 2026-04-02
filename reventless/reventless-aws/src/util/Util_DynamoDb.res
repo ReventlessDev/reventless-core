@@ -20,7 +20,7 @@ let toResolvedTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
     rangeKey: ?(rangeKey->Option.map(rangeKey => rangeKey->Nullable.make)),
   })
 
-let toResource: table => resource = ({id, name, arn} as table) =>
+let toResource = (~tags=?, {id, name, arn} as table) =>
   make(
     ~name,
     ~id,
@@ -28,6 +28,7 @@ let toResource: table => resource = ({id, name, arn} as table) =>
     ~service=name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
     ~resourceInfo=table->toResourceInfo,
     ~resourceType="aws:dynamodb:Table"->Pulumi.Output.make,
+    ~tags=?tags,
   )
 
 

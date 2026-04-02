@@ -28,7 +28,7 @@ function makeHandler(callback) {
 
 function make(name, param) {
   return {
-    resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), Pulumi.output(name), Pulumi.output("urn:" + name), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined)],
+    resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), Pulumi.output(name), Pulumi.output("urn:" + name), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined)],
     parts: undefined
   };
 }

@@ -43,9 +43,9 @@ function toResolvedTableOutput(param) {
   }));
 }
 
-function toResource(table) {
+function toResource(tags, table) {
   let name = table.name;
-  return Adapter$ReventlessInfra.make(name, table.id, table.arn, name.apply(param => AWS$ReventlessAws.DynamoDb.service), toResourceInfo(table), undefined, undefined, Pulumi.output("aws:dynamodb:Table"), undefined);
+  return Adapter$ReventlessInfra.make(name, table.id, table.arn, name.apply(param => AWS$ReventlessAws.DynamoDb.service), toResourceInfo(table), undefined, undefined, Pulumi.output("aws:dynamodb:Table"), undefined, tags);
 }
 
 function arn2tableName(arn) {

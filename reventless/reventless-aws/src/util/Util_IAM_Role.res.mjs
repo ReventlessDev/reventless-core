@@ -12,7 +12,7 @@ function findResource(resources) {
 
 function toResource(param) {
   let name = param.name;
-  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.IAM.service), undefined, undefined, undefined, Pulumi.output("aws:iam:Role"), undefined);
+  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.IAM.service), undefined, undefined, undefined, Pulumi.output("aws:iam:Role"), undefined, undefined);
 }
 
 function fromResource(param) {

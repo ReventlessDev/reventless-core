@@ -33,6 +33,7 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
     ~opts?,
   )
 
+  let tags = AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)
   let lambda =
     handler->Pulumi.Output.apply(handler =>
       Lambda.CallbackFunction.make(
@@ -42,7 +43,7 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
           ~role=lambdaRole,
           ~memorySize=memorySize->Pulumi.Input.make,
           ~timeout=timeout->Pulumi.Input.make,
-          ~tags=AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
+          ~tags,
         ),
         ~opts?,
       )
@@ -56,7 +57,7 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
     parts: {lambda: lambdaAsFunction, lambdaRole},
     resources: [
       lambdaAsFunction
-      ->Pulumi.Output.apply(lambda => lambda->Util.Lambda.toResource)
+      ->Pulumi.Output.apply(lambda => lambda->Util.Lambda.toResource(~tags=tags->Pulumi.Output.fromInput))
       ->ReventlessCore.Adapter.outputToResource,
       Util_IAM_Role.toResource(lambdaRole),
     ],
@@ -131,6 +132,7 @@ let makeFromCodeAsset: (
     variables->Dict.set(key, value)
   })
 
+  let tags = AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)
   let lambda = Lambda.Function.make(
     ~name,
     ~args={
@@ -142,7 +144,7 @@ let makeFromCodeAsset: (
       memorySize: memorySize->Pulumi.Input.make,
       timeout: timeout->Pulumi.Input.make,
       layers,
-      tags: AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
+      tags,
       environment: ({Lambda.Function.variables: variables}: Lambda.Function.functionEnvironment)
         ->Pulumi.Input.make,
     },
@@ -152,7 +154,7 @@ let makeFromCodeAsset: (
   {
     parts: {lambda: lambda->Pulumi.Output.make, lambdaRole},
     resources: [
-      lambda->Util.Lambda.functionToResource,
+      lambda->Util.Lambda.functionToResource(~tags=tags->Pulumi.Output.fromInput),
       Util_IAM_Role.toResource(lambdaRole),
     ],
   }

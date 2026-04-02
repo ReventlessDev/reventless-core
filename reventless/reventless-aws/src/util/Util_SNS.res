@@ -7,13 +7,14 @@ let toResolvedTopicOutput = ({name, id, arn}: PulumiAws.SNS.Topic.t) =>
     arn,
   })
 
-let toResource: PulumiAws.SNS.Topic.t => ReventlessInfra.Adapter.resource = ({id, name, arn}) =>
+let toResource = (~tags=?, {id, name, arn}: PulumiAws.SNS.Topic.t): ReventlessInfra.Adapter.resource =>
   ReventlessInfra.Adapter.make(
     ~name,
     ~id,
     ~urn=arn,
     ~service=name->Pulumi.Output.apply(_ => AWS.SNS.service),
     ~resourceType="aws:sns:Topic"->Pulumi.Output.make,
+    ~tags=?tags,
   )
 
 let findResolvedResource = resources =>

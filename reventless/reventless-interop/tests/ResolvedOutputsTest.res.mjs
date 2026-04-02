@@ -22,6 +22,8 @@ let resource_resourceInfo = {
 
 let resource_configuration = {};
 
+let resource_tags = {};
+
 let resource = {
   name: "my-table",
   id: "abc123",
@@ -31,7 +33,8 @@ let resource = {
   role: "",
   region: "",
   resourceType: "",
-  configuration: resource_configuration
+  configuration: resource_configuration,
+  tags: resource_tags
 };
 
 let queryDb = {

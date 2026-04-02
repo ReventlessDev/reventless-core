@@ -6,7 +6,7 @@ import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/ad
 
 function toResource(param) {
   let name = param.name;
-  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.CloudwatchEventRule.service), undefined, undefined, undefined, Pulumi.output("aws:cloudwatch:EventRule"), undefined);
+  return Adapter$ReventlessInfra.make(name, param.id, param.arn, name.apply(param => AWS$ReventlessAws.CloudwatchEventRule.service), undefined, undefined, undefined, Pulumi.output("aws:cloudwatch:EventRule"), undefined, undefined);
 }
 
 let EventRule = {

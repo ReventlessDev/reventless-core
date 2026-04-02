@@ -21,7 +21,7 @@ function subscribeSqs(lambda, name, queue, opts) {
     functionName: Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     eventSourceArn: queue.arn
   }, opts);
-  return Adapter$ReventlessInfra.make(esm.id, esm.id, esm.arn, esm.id.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:lambda:EventSourceMapping"), undefined);
+  return Adapter$ReventlessInfra.make(esm.id, esm.id, esm.arn, esm.id.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:lambda:EventSourceMapping"), undefined, undefined);
 }
 
 export {

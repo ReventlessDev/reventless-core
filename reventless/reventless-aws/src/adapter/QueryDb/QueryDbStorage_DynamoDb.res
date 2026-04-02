@@ -85,19 +85,20 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~apiRole,
   ~opts,
 ) => {
+  let tags = AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType)
   let table = Util_DynamoDb.makeTable(
     name,
     ~attributes=attributes(subIdField, indexes),
     ~rangeKey=?subIdField,
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
-    ~tags=AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType),
+    ~tags,
     ~opts,
   )
 
   open QueryDbStorage_DynamoDb_Runtime
   {
-    resources: [table->Util_DynamoDb.toResource],
+    resources: [table->Util_DynamoDb.toResource(~tags=tags->Pulumi.Output.fromInput)],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     operations: table
     ->Util_DynamoDb.toResolvedTableOutput

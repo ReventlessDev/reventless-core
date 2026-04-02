@@ -1,14 +1,15 @@
 let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
+  let tags = AWS.Tags.make(~name, ReventlessCore.EventLog.componentType)
   let table = Util.DynamoDb.makeTable(
     name,
     ~attributes=[{name: "id", type_: "S"}, {name: "seq", type_: "S"}],
     ~rangeKey="seq",
-    ~tags=AWS.Tags.make(~name, ReventlessCore.EventLog.componentType),
+    ~tags,
     ~opts,
   )
 
   {
-    resources: [table->Util_DynamoDb.toResource],
+    resources: [table->Util_DynamoDb.toResource(~tags=tags->Pulumi.Output.fromInput)],
     operations: table
     ->Util_DynamoDb.toResolvedTableOutput
     ->Pulumi.Output.apply(resolvedTable => {
