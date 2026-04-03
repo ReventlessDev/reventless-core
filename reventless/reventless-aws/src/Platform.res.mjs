@@ -207,9 +207,9 @@ function MakeWithConfig(Config) {
         direct,
         defaultOutput
       ]).apply(param => {
-        let direct = param[0];
-        if (direct !== undefined) {
-          return direct;
+        let name = Stdlib_Option.flatMap(param[0], v => Stdlib_JSON.Decode.string(v));
+        if (name !== undefined) {
+          return name;
         } else {
           return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["pluginRmTableName"]), v => Stdlib_JSON.Decode.string(v));
         }
@@ -475,7 +475,13 @@ function MakeWithConfig(Config) {
       publishToAggregatesQueueUrls["Plugin"] = queueUrl;
     }
     let pluginRm = admin.readModelsOutputs["Plugin"];
-    let pluginReadModelTableName = pluginRm !== undefined ? Stdlib_Option.map(pluginRm.queryDb.resources[0], r => r.name) : undefined;
+    let pluginReadModelTableName;
+    if (pluginRm !== undefined) {
+      let r = pluginRm.queryDb.resources[0];
+      pluginReadModelTableName = r !== undefined ? r.name : undefined;
+    } else {
+      pluginReadModelTableName = undefined;
+    }
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, Config.cloner, undefined);
     if (Config.splitApi) {
@@ -720,9 +726,9 @@ function Make($star) {
         direct,
         defaultOutput
       ]).apply(param => {
-        let direct = param[0];
-        if (direct !== undefined) {
-          return direct;
+        let name = Stdlib_Option.flatMap(param[0], v => Stdlib_JSON.Decode.string(v));
+        if (name !== undefined) {
+          return name;
         } else {
           return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["pluginRmTableName"]), v => Stdlib_JSON.Decode.string(v));
         }
@@ -983,7 +989,13 @@ function Make($star) {
       publishToAggregatesQueueUrls["Plugin"] = queueUrl;
     }
     let pluginRm = admin.readModelsOutputs["Plugin"];
-    let pluginReadModelTableName = pluginRm !== undefined ? Stdlib_Option.map(pluginRm.queryDb.resources[0], r => r.name) : undefined;
+    let pluginReadModelTableName;
+    if (pluginRm !== undefined) {
+      let r = pluginRm.queryDb.resources[0];
+      pluginReadModelTableName = r !== undefined ? r.name : undefined;
+    } else {
+      pluginReadModelTableName = undefined;
+    }
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, false, undefined);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});

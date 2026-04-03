@@ -275,14 +275,14 @@ module MakeWithConfig = (
       // Read Plugin RM table name from platform StackReference.
       let pluginRmTableNameOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
       | Some(stackRef) =>
-        let direct: Pulumi.Output.t<option<string>> =
+        let direct: Pulumi.Output.t<option<JSON.t>> =
           stackRef->Pulumi.StackReference.getOutput("pluginRmTableName")
         let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
           stackRef->Pulumi.StackReference.getOutput("default")
         (direct, defaultOutput)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((direct, default)) =>
-          switch direct {
+          switch direct->Option.flatMap(v => v->JSON.Decode.string) {
           | Some(name) => Some(name)
           | None =>
             default
@@ -681,8 +681,16 @@ module MakeWithConfig = (
       publishToAggregatesQueueUrls->Dict.set("Plugin", queueUrl)
     | None => ()
     }
+    // Extract Plugin RM table name as Output.t<string>.
+    // IMPORTANT: Do NOT use option<Pulumi.Output.t<…>> — Pulumi Outputs use property
+    // lifting, which breaks ReScript's internal option encoding (BS_PRIVATE_NESTED_SOME_NONE).
+    // Instead, use Output.t<string> with a placeholder for "not available".
     let pluginReadModelTableName = switch admin.readModelsOutputs->Dict.get("Plugin") {
-    | Some(pluginRm) => pluginRm.queryDb.resources->Array.get(0)->Option.map(r => r.name)
+    | Some(pluginRm) =>
+      switch pluginRm.queryDb.resources->Array.get(0) {
+      | Some(r) => Some(r.name)
+      | None => None
+      }
     | None => None
     }
     PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
