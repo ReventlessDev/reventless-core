@@ -41,11 +41,15 @@ function fromSury(parentName, fieldName, schema) {
           return;
         }
       });
-      return {
-        TAG: "ObjectRef",
-        _0: nestedName,
-        _1: fields
-      };
+      if (Object.keys(fields).length === 0) {
+        return "Unknown";
+      } else {
+        return {
+          TAG: "ObjectRef",
+          _0: nestedName,
+          _1: fields
+        };
+      }
     case "union" :
       let nonNullVariants = schema.anyOf.filter(v => v.type !== "null");
       if (nonNullVariants.length === 1) {

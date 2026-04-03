@@ -52,7 +52,11 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
           fields->Dict.set(propName, fromSury(~parentName=nestedName, ~fieldName=propName, propSchema))
         }
       })
-      ObjectRef(nestedName, fields)
+      if fields->Dict.keysToArray->Array.length == 0 {
+        Unknown
+      } else {
+        ObjectRef(nestedName, fields)
+      }
     | Union({anyOf}) =>
       let nonNullVariants = anyOf->Array.filter(v =>
         switch v {
