@@ -210,6 +210,10 @@ let cache = Dict.make()
 cache->Dict.set("k", 1)
 ```
 
+### option\<Pulumi.Output.t\> Breaks Option Encoding
+
+See [Pulumi Patterns — Code Smells](../../reventless-aws/references/pulumi-patterns.md#why-optionpulumioutputt-breaks) for full explanation. In short: Pulumi Output property lifting makes `BS_PRIVATE_NESTED_SOME_NONE` truthy, which breaks `Option.map`, `Option.flatMap`, and pattern matching. Always use explicit `switch` instead of `Option.map` when the mapped value is a `Pulumi.Output.t`.
+
 ## Deprecated APIs
 
 | Deprecated | Replacement |
