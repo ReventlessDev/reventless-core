@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.33 (2026-04-03)
+
+### Bug Fixes
+
+* map empty Object schemas to Unknown in GraphQL SDL generation ([6fc5c19](https://github.com/ReventlessDev/reventless-core/commit/6fc5c192e7a92ee67634ddbccab7e4bc83caf76a))
+* feat!: support multi-command returns in InboundTranslationSlice ([eaac621](https://github.com/ReventlessDev/reventless-core/commit/eaac6213829b876db508b6a98db081ee40dc3e95))
+
+### BREAKING CHANGES
+
+* All `translate` implementations must wrap returns in arrays.
+
+
+
 # 3.0.0-alpha.32 (2026-04-02)
 
 ### Features

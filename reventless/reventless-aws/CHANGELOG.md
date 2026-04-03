@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.33 (2026-04-03)
+
+### Bug Fixes
+
+* resolve pluginRmTableName export and StackReference decoding in Platform ([de8a337](https://github.com/ReventlessDev/reventless-core/commit/de8a337551e6e0f2edad1daa97082e5cc61504c8))
+### Features
+
+* migrate AppSync resolvers from VTL to APPSYNC_JS runtime ([22f8c15](https://github.com/ReventlessDev/reventless-core/commit/22f8c15cee7d99859a56e5a6fbc11f9e9ff566c9))
+
+
 # 3.0.0-alpha.32 (2026-04-02)
 
 ### Features

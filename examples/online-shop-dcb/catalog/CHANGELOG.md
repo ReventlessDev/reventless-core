@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.17 (2026-04-03)
+
+* feat!: support multi-command returns in InboundTranslationSlice ([eaac621](https://github.com/ReventlessDev/reventless-core/commit/eaac6213829b876db508b6a98db081ee40dc3e95))
+
+### BREAKING CHANGES
+
+* All `translate` implementations must wrap returns in arrays.
+
+
+
 # 1.0.0-alpha.16 (2026-03-30)
 
 ### Features
