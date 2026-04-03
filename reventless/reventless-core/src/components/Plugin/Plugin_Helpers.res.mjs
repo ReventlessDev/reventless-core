@@ -323,8 +323,23 @@ let noHooks_adminExtensionPoints = {
   contents: Pulumi.output({})
 };
 
+let noHooks_scheduler = {
+  contents: undefined
+};
+
+let noHooks_api = {
+  contents: undefined
+};
+
+let noHooks_apiRole = {
+  contents: undefined
+};
+
 let noHooks = {
-  adminExtensionPoints: noHooks_adminExtensionPoints
+  adminExtensionPoints: noHooks_adminExtensionPoints,
+  scheduler: noHooks_scheduler,
+  api: noHooks_api,
+  apiRole: noHooks_apiRole
 };
 
 let NoopHooksConfig = {

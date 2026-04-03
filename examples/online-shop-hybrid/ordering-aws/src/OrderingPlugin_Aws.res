@@ -93,7 +93,7 @@ module Make = (
   )
 
   // ── Hybrid Plugin Assembly ───────────────────────────────────
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
@@ -101,9 +101,6 @@ module Make = (
       ~readModels=[module(CustomerReadModel)],
       ~extensionPoints=[module(OrdersExtensionPointMaker)],
       ~extensions=[module(ProductsExtensionMaker)],
-      ~api,
-      ~apiRole,
-      ~scheduler,
       ~stateChangeSlices=[
         module(PlaceOrderSlice),
         module(ShipOrderSlice),

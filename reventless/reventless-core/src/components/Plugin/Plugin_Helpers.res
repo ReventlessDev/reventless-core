@@ -586,11 +586,21 @@ type platformHooks = {
   // wire the local admin connection path (in-memory).  Starts as an empty
   // dict; AWS platforms leave it empty and use Interstack instead.
   adminExtensionPoints: ref<Pulumi.Output.t<dict<ExtensionPoint.outputs>>>,
+  // ── Platform context (populated by makePlatform/deployPlugin) ──────────
+  // Read by Plugin_Builder.make so app plugins don't need to pass these.
+  // api/apiRole stored as unknown; cast back via Obj.magic in Plugin_Builder
+  // where the concrete types are known from the ApiSpec functor arg.
+  scheduler: ref<option<Pulumi.Output.t<Scheduler.operations>>>,
+  api: ref<option<unknown>>,
+  apiRole: ref<option<unknown>>,
 }
 
-// Default hooks — no callbacks, empty admin extension points.
+// Default hooks — no callbacks, empty platform context.
 let noHooks: platformHooks = {
   adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+  scheduler: ref(None),
+  api: ref(None),
+  apiRole: ref(None),
 }
 
 // Functor parameter wrapper for platformHooks.

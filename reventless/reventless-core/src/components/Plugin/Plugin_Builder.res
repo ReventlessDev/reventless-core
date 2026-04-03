@@ -45,17 +45,37 @@ module Make = (
       module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
     >,
     ~tasks: array<module(ReventlessInfra.Task.T)>,
-    ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>,
     ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>,
     ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>,
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
-    ~api: api,
-    ~apiRole: role,
     self,
     name,
   ) => {
+    // Read platform context from hooks refs (populated by makePlatform/deployPlugin).
+    let scheduler = switch Spec.hooks.scheduler.contents {
+    | Some(s) => s
+    | None =>
+      JsError.throwWithMessage(
+        "Plugin_Builder: scheduler not set — call makePlatform/deployPlugin first",
+      )
+    }
+    let api: api = switch Spec.hooks.api.contents {
+    | Some(a) => Obj.magic(a)
+    | None =>
+      JsError.throwWithMessage(
+        "Plugin_Builder: api not set — call makePlatform/deployPlugin first",
+      )
+    }
+    let apiRole: role = switch Spec.hooks.apiRole.contents {
+    | Some(r) => Obj.magic(r)
+    | None =>
+      JsError.throwWithMessage(
+        "Plugin_Builder: apiRole not set — call makePlatform/deployPlugin first",
+      )
+    }
+
     let id = Plugin.makeId(name, version)
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let childName = name->ComponentType.name(Plugin.componentType)
@@ -175,10 +195,11 @@ module Make = (
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
-    // Fire onPluginBuiltHook synchronously with a plain-data summary.
-    // ExtensionPoint/Extension names are not accessible from their T module type,
-    // so only aggregates, read models, and DCB slice names are included.
     {
+      // Fire onPluginBuiltHook synchronously with a plain-data summary.
+      // ExtensionPoint/Extension names are not accessible from their T module type,
+      // so only aggregates, read models, and DCB slice names are included.
+
       let extractTypes = schema => Reventless.DcbTag.extractEventTypes(schema)
       // Build per-component schema data and register it for the deployed hook.
       let aggregateComponents = aggregates->Array.map((
@@ -236,12 +257,13 @@ module Make = (
         )
 
       // Derive local admin extension point resolved data (passed from makePlatform).
-      let localAdminResolvedEP = Spec.hooks.adminExtensionPoints.contents->Pulumi.Output.flatMap(eps =>
-        switch eps->Dict.get(PluginExtensionPointSpec.name) {
-        | Some(ep) => ep->ExtensionPoint.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
-        | None => Pulumi.Output.make(None)
-        }
-      )
+      let localAdminResolvedEP =
+        Spec.hooks.adminExtensionPoints.contents->Pulumi.Output.flatMap(eps =>
+          switch eps->Dict.get(PluginExtensionPointSpec.name) {
+          | Some(ep) => ep->ExtensionPoint.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
+          | None => Pulumi.Output.make(None)
+          }
+        )
 
       // Push schema fragment to the API before resolvers are created (AWS only).
       // The returned Output chains into the dependency tuple so Pulumi waits
@@ -543,9 +565,6 @@ module Make = (
       module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
     >=[],
     ~tasks=[],
-    ~api: api,
-    ~apiRole: role,
-    ~scheduler,
     ~stateChangeSlices=[],
     ~stateViewSlices=[],
     ~automationSlices=[],
@@ -565,14 +584,11 @@ module Make = (
         ~aggregates,
         ~readModels,
         ~tasks,
-        ~scheduler,
         ~stateChangeSlices,
         ~stateViewSlices,
         ~automationSlices,
         ~outboundTranslationSlices,
         ~inboundTranslationSlices,
-        ~api,
-        ~apiRole,
         ...
       ),
       ~opts,

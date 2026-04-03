@@ -174,11 +174,7 @@ module type T = {
   /** Module type for plugin assembly — matches the `make` function produced by
       every plugin's `Make` functor. Pass first-class modules to `makePlatform`. */
   module type PluginMaker = {
-    let make: (
-      ~scheduler: Pulumi.Output.t<Scheduler.operations>,
-      ~api: api,
-      ~apiRole: role,
-    ) => Plugin.component
+    let make: unit => Plugin.component
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,

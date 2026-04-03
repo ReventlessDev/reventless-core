@@ -3,6 +3,9 @@
 
 let noHooks: ReventlessCore.Plugin_Helpers.platformHooks = {
   adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+  scheduler: ref(None),
+  api: ref(None),
+  apiRole: ref(None),
 }
 
 // MakeWithHooks — full version used by the Platform (passes hook callbacks to core builder).

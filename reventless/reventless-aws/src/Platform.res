@@ -242,6 +242,10 @@ module MakeWithConfig = (
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+    // Platform context — populated by makePlatform/deployPlugin before plugin build.
+    scheduler: ref(None),
+    api: ref(None),
+    apiRole: ref(None),
     inboundAppSyncResolverHook: ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->Obj.magic
@@ -507,11 +511,7 @@ module MakeWithConfig = (
   )
 
   module type PluginMaker = {
-    let make: (
-      ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
-      ~api: api,
-      ~apiRole: role,
-    ) => Plugin.component
+    let make: unit => Plugin.component
   }
 
   let makeScheduler = () => {
@@ -526,8 +526,13 @@ module MakeWithConfig = (
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
     Console.log(`[Platform] v${version}`)
-    // Create scheduler and admin components internally.
+    // Create scheduler and populate platform context refs so Plugin_Builder
+    // can read them without app plugins having to pass them through.
     let scheduler = makeScheduler()
+    hooks.scheduler := Some(scheduler)
+    hooks.api := Some(appSyncApi->Obj.magic)
+    hooks.apiRole := Some(appSyncApiRole->Obj.magic)
+
     let _admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
@@ -544,11 +549,10 @@ module MakeWithConfig = (
       ~inboundTranslationSlices=[],
     )
 
-    // Build each plugin. AWS plugins use Interstack for admin extension points,
-    // so pass an empty dict — Plugin_Builder falls back to Interstack automatically.
+    // Build each plugin.
     let pluginComponents = plugins->Array.map(plugin => {
       module P = unpack(plugin)
-      P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
+      P.make()
     })
 
     // Export first plugin's outputs (monolithic mode = typically single plugin).
@@ -600,6 +604,9 @@ module MakeWithConfig = (
   let deployPlatform = (~version) => {
     Console.log(`[Platform:deployPlatform] v${version}`)
     let scheduler = makeScheduler()
+    hooks.scheduler := Some(scheduler)
+    hooks.api := Some(appSyncApi->Obj.magic)
+    hooks.apiRole := Some(appSyncApiRole->Obj.magic)
 
     // Create PluginExtensionPoint with runtime schema stitching.
     // When plugins connect/disconnect, the handler queries the Plugin read model
@@ -843,9 +850,12 @@ module MakeWithConfig = (
     Console.log(`[Platform:deployPlugin] v${version}`)
     // Each plugin stack creates its own scheduler (closures can't cross stacks).
     let scheduler = makeScheduler()
+    hooks.scheduler := Some(scheduler)
+    hooks.api := Some(appSyncApi->Obj.magic)
+    hooks.apiRole := Some(appSyncApiRole->Obj.magic)
 
     module P = unpack(plugin)
-    let pluginComponent = P.make(~scheduler, ~api=appSyncApi, ~apiRole=appSyncApiRole)
+    let pluginComponent = P.make()
 
     // Export interop metadata for cross-stack consumption.
     Pulumi.Pulumi.export("_interopMeta", ReventlessCore.Plugin_Helpers.getInteropMeta())

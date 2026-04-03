@@ -183,7 +183,7 @@ function Make(Platform) {
     moduleUrl: moduleUrl$2,
     mappings: mappings$2
   });
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoryReadModel], undefined, api, apiRole, scheduler, [
+  let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoryReadModel], undefined, [
     AddProductSlice,
     ChangeProductNameSlice,
     ChangeProductDescriptionSlice,

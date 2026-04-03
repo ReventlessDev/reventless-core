@@ -49,6 +49,10 @@ module MakeWithConfig = (
   // after Admin.construct returns, before plugins are built).
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
+    // Platform context — populated by makePlatform/deployPlugin before plugin build.
+    scheduler: ref(None),
+    api: ref(None),
+    apiRole: ref(None),
     // Phase 1: register SDL + resolver stub synchronously.
     mutationResolverHook: (~kind, ~fields, ~commandSchema) =>
       switch kind {
@@ -431,11 +435,7 @@ module MakeWithConfig = (
   )
 
   module type PluginMaker = {
-    let make: (
-      ~scheduler: Pulumi.Output.t<ReventlessInfra.Scheduler.operations>,
-      ~api: api,
-      ~apiRole: role,
-    ) => Plugin.component
+    let make: unit => Plugin.component
   }
 
   let makeScheduler = () => {
@@ -457,8 +457,12 @@ module MakeWithConfig = (
       ~comp="Platform",
       `silent: ${Config.silent->Bool.toString}, splitApi: ${Config.splitApi->Bool.toString}, cloner: ${Config.cloner->Bool.toString}`,
     )
-    // Create scheduler and admin components internally.
+    // Create scheduler and populate platform context refs.
     let scheduler = makeScheduler()
+    hooks.scheduler := Some(scheduler)
+    hooks.api := Some(()->Obj.magic)
+    hooks.apiRole := Some(()->Obj.magic)
+
     let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
@@ -481,10 +485,10 @@ module MakeWithConfig = (
         eps->Array.map(ep => (ep.name, ep))->Dict.fromArray
       )
 
-    // Build each plugin using the shared scheduler.
+    // Build each plugin.
     let plugins = plugins->Array.map(plugin => {
       module P = unpack(plugin)
-      P.make(~scheduler, ~api=(), ~apiRole=())
+      P.make()
     })
 
     // Create an in-memory Plugin QueryDb in the Bus.
@@ -822,6 +826,9 @@ module MakeWithConfig = (
   let deployPlatform = (~version) => {
     log.info(~comp="Platform", `deployPlatform v${version}`)
     let scheduler = makeScheduler()
+    hooks.scheduler := Some(scheduler)
+    hooks.api := Some(()->Obj.magic)
+    hooks.apiRole := Some(()->Obj.magic)
     let _admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
@@ -892,6 +899,9 @@ module MakeWithConfig = (
     log.info(~comp="Platform", `deployPlugin v${version}`)
     // Each plugin creates its own scheduler (mirrors AWS behaviour).
     let scheduler = makeScheduler()
+    hooks.scheduler := Some(scheduler)
+    hooks.api := Some(()->Obj.magic)
+    hooks.apiRole := Some(()->Obj.magic)
 
     // Admin components are needed in-memory even for single-plugin deploy.
     let admin = Admin.construct(
@@ -915,7 +925,7 @@ module MakeWithConfig = (
       )
 
     module P = unpack(plugin)
-    let pluginComponent = P.make(~scheduler, ~api=(), ~apiRole=())
+    let pluginComponent = P.make()
 
     // Register admin schema into the shared server alongside plugin schema.
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(

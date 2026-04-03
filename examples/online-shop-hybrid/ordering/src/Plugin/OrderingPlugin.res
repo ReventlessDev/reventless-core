@@ -71,7 +71,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   )
 
   // ── Hybrid Plugin Assembly ──────────────────────────────────
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
@@ -79,9 +79,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~readModels=[module(CustomerReadModel)],
       ~extensionPoints=[module(OrdersExtensionPointMaker)],
       ~extensions=[module(ProductsExtensionMaker)],
-      ~api,
-      ~apiRole,
-      ~scheduler,
       ~stateChangeSlices=[
         module(PlaceOrderSlice),
         module(ShipOrderSlice),

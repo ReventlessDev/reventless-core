@@ -173,7 +173,7 @@ function Make(Platform) {
     moduleUrl: moduleUrl$2,
     mappings: mappings$2
   });
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, [
+  let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, [
     PlaceOrderSlice,
     ShipOrderSlice,
     CancelOrderSlice,

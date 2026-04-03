@@ -96,7 +96,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
@@ -113,8 +113,5 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~extensionPoints=[module(OrdersExtensionPointMaker)],
       ~extensions=[module(ProductsExtensionMaker)],
       ~tasks=[module(OrderNotificationsTask)],
-      ~api,
-      ~apiRole,
-      ~scheduler,
     )
 }

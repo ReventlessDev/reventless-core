@@ -324,6 +324,15 @@ function MakeWithConfig(Config) {
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
+  let hooks_scheduler = {
+    contents: undefined
+  };
+  let hooks_api = {
+    contents: undefined
+  };
+  let hooks_apiRole = {
+    contents: undefined
+  };
   let hooks = {
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
@@ -332,7 +341,10 @@ function MakeWithConfig(Config) {
     onDcbCommandTopicCreated: hooks_onDcbCommandTopicCreated,
     onDcbSlicesCreated: hooks_onDcbSlicesCreated,
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
-    adminExtensionPoints: hooks_adminExtensionPoints
+    adminExtensionPoints: hooks_adminExtensionPoints,
+    scheduler: hooks_scheduler,
+    api: hooks_api,
+    apiRole: hooks_apiRole
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
     hooks: hooks
@@ -399,8 +411,11 @@ function MakeWithConfig(Config) {
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = Primitive_option.some(appSyncApi);
+    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
     Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
-    let pluginComponents = plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+    let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
@@ -432,6 +447,9 @@ function MakeWithConfig(Config) {
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = Primitive_option.some(appSyncApi);
+    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
@@ -550,7 +568,10 @@ function MakeWithConfig(Config) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    let pluginComponent = plugin.make(scheduler, appSyncApi, appSyncApiRole);
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = Primitive_option.some(appSyncApi);
+    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    let pluginComponent = plugin.make();
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
@@ -842,6 +863,15 @@ function Make($star) {
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
+  let hooks_scheduler = {
+    contents: undefined
+  };
+  let hooks_api = {
+    contents: undefined
+  };
+  let hooks_apiRole = {
+    contents: undefined
+  };
   let hooks = {
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
@@ -850,7 +880,10 @@ function Make($star) {
     onDcbCommandTopicCreated: hooks_onDcbCommandTopicCreated,
     onDcbSlicesCreated: hooks_onDcbSlicesCreated,
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
-    adminExtensionPoints: hooks_adminExtensionPoints
+    adminExtensionPoints: hooks_adminExtensionPoints,
+    scheduler: hooks_scheduler,
+    api: hooks_api,
+    apiRole: hooks_apiRole
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
     hooks: hooks
@@ -917,8 +950,11 @@ function Make($star) {
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = Primitive_option.some(appSyncApi);
+    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
     Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
-    let pluginComponents = plugins.map(plugin => plugin.make(scheduler, appSyncApi, appSyncApiRole));
+    let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
@@ -947,6 +983,9 @@ function Make($star) {
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = Primitive_option.some(appSyncApi);
+    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
@@ -1059,7 +1098,10 @@ function Make($star) {
   let deployPlugin = (version, plugin) => {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
-    let pluginComponent = plugin.make(scheduler, appSyncApi, appSyncApiRole);
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = Primitive_option.some(appSyncApi);
+    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    let pluginComponent = plugin.make();
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);

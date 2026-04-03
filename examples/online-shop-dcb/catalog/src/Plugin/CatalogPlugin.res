@@ -59,15 +59,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // --- Self-assembly: produce a ready-to-use Plugin.component ---
 
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
-      ~api,
-      ~apiRole,
-      ~scheduler,
       ~stateChangeSlices=[
         module(AddProductSlice),
         module(ChangeProductNameSlice),
