@@ -104,6 +104,12 @@ function Make(Spec) {
         }
         let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
+        Object.entries(dcbResult.stateViewSlicesOutputs).forEach(param => {
+          allQueryDbs[param[0]] = param[1].queryDb;
+        });
+        Object.entries(dcbResult.inboundTranslationSlicesOutputs).forEach(param => {
+          allQueryDbs[param[0]] = param[1].queryDb;
+        });
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
         let aggregateComponents = aggregates.map(M => {
           let schema_commandTypes = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);

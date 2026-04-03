@@ -165,6 +165,14 @@ module Make = (
 
     let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
+    // Merge DCB StateViewSlice, InboundTranslation, and AutomationSlice QueryDbs into
+    // allQueryDbs so createResolvers builds AppSync resolvers for them too.
+    dcbResult.stateViewSlicesOutputs
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
+    dcbResult.inboundTranslationSlicesOutputs
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     // Fire onPluginBuiltHook synchronously with a plain-data summary.

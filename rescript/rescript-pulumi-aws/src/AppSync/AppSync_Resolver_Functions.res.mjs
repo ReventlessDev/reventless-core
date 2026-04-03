@@ -147,7 +147,7 @@ export function request(ctx) {
   const values = {};
   for (const [key, value] of Object.entries(args)) {
     if (key === '` + idField + `' || key === 'limit' || key === 'nextToken' || key === 'forward') continue;
-    if (util.isNull(value) || util.isNullOrBlank(value)) continue;
+    if (value == null || value === '') continue;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
       if (value === true) {
@@ -173,9 +173,9 @@ export function request(ctx) {
     query,
     ...(expression ? { filter: { expression, expressionNames: names, expressionValues: util.dynamodb.toMapValues(values) } } : {}),
     index: '` + index + `',
-    limit: util.defaultIfNull(args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(args.forward, true)
+    limit: (args.limit ?? 50),
+    nextToken: (args.nextToken ?? null),
+    scanIndexForward: (args.forward ?? true)
   };
 }
 ` + resultResponseCode + `
@@ -205,7 +205,7 @@ export function request(ctx) {
   const values = {};
   for (const [key, value] of Object.entries(args)) {
     if (key === '` + idField + `' || key === '` + sortField + `' || key === 'limit' || key === 'nextToken' || key === 'forward') continue;
-    if (util.isNull(value) || util.isNullOrBlank(value)) continue;
+    if (value == null || value === '') continue;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
       if (value === true) {
@@ -231,9 +231,9 @@ export function request(ctx) {
     query,
     ...(expression ? { filter: { expression, expressionNames: names, expressionValues: util.dynamodb.toMapValues(values) } } : {}),
     index: '` + index + `',
-    limit: util.defaultIfNull(args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(args.forward, true)
+    limit: (args.limit ?? 50),
+    nextToken: (args.nextToken ?? null),
+    scanIndexForward: (args.forward ?? true)
   };
 }
 ` + resultResponseCode + `
@@ -244,8 +244,8 @@ let listAllItems = importUtil + `
 export function request(ctx) {
   return {
     operation: 'Scan',
-    limit: util.defaultIfNull(ctx.args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(ctx.args.nextToken, null)
+    limit: (ctx.args.limit ?? 50),
+    nextToken: (ctx.args.nextToken ?? null)
   };
 }
 ` + resultResponseCode + `
@@ -262,9 +262,9 @@ export function request(ctx) {
       expressionNames: { '#id': 'id' },
       expressionValues: { ':id': util.dynamodb.toDynamoDB(ctx.source.` + sourceIdField + `) }
     },
-    limit: util.defaultIfNull(ctx.args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(ctx.args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(ctx.args.forward, true)
+    limit: (ctx.args.limit ?? 50),
+    nextToken: (ctx.args.nextToken ?? null),
+    scanIndexForward: (ctx.args.forward ?? true)
   };
 }
 ` + firstResultResponseCode + `
@@ -284,9 +284,9 @@ export function request(ctx) {
         ':` + targetSortField + `': util.dynamodb.toDynamoDB(ctx.source.` + sourceSortField + `)
       }
     },
-    limit: util.defaultIfNull(ctx.args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(ctx.args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(ctx.args.forward, true)
+    limit: (ctx.args.limit ?? 50),
+    nextToken: (ctx.args.nextToken ?? null),
+    scanIndexForward: (ctx.args.forward ?? true)
   };
 }
 ` + firstResultResponseCode + `
@@ -313,9 +313,9 @@ export function request(ctx) {
   return {
     operation: 'Query',
     query,
-    limit: util.defaultIfNull(ctx.args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(ctx.args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(ctx.args.forward, true)
+    limit: (ctx.args.limit ?? 50),
+    nextToken: (ctx.args.nextToken ?? null),
+    scanIndexForward: (ctx.args.forward ?? true)
   };
 }
 ` + firstResultResponseCode + `
@@ -333,9 +333,9 @@ export function request(ctx) {
       expressionValues: { ':` + targetIdField + `': util.dynamodb.toDynamoDB(ctx.source.` + sourceIdField + `) }
     },
     index: '` + index + `',
-    limit: util.defaultIfNull(ctx.args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(ctx.args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(ctx.args.forward, true)
+    limit: (ctx.args.limit ?? 50),
+    nextToken: (ctx.args.nextToken ?? null),
+    scanIndexForward: (ctx.args.forward ?? true)
   };
 }
 ` + firstResultResponseCode + `
@@ -356,9 +356,9 @@ export function request(ctx) {
       }
     },
     index: '` + index + `',
-    limit: util.defaultIfNull(ctx.args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(ctx.args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(ctx.args.forward, true)
+    limit: (ctx.args.limit ?? 50),
+    nextToken: (ctx.args.nextToken ?? null),
+    scanIndexForward: (ctx.args.forward ?? true)
   };
 }
 ` + firstResultResponseCode + `
@@ -386,9 +386,9 @@ export function request(ctx) {
     operation: 'Query',
     query,
     index: '` + index + `',
-    limit: util.defaultIfNull(ctx.args.limit, 50),
-    nextToken: util.defaultIfNullOrBlank(ctx.args.nextToken, null),
-    scanIndexForward: util.defaultIfNull(ctx.args.forward, true)
+    limit: (ctx.args.limit ?? 50),
+    nextToken: (ctx.args.nextToken ?? null),
+    scanIndexForward: (ctx.args.forward ?? true)
   };
 }
 ` + firstResultResponseCode + `
