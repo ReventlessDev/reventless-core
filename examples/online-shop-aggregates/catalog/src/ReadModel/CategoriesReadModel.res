@@ -9,6 +9,3 @@ type state = {
   archived: bool,
 }
 
-open Reventless.ReadModel
-let config = config()
-let subIdConfig = None

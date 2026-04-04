@@ -2,6 +2,7 @@
   "name": "@reventlessdev/reventless-in-memory",
   "namespace": "ReventlessInMemory",
   "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
     "sury-ppx/bin"
   ],
   "warnings": {

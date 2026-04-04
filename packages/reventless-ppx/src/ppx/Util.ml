@@ -101,3 +101,40 @@ let filename_to_name fname =
     | None -> base
   in
   strip_component_suffix without_ext
+
+let is_readmodel_filename fname =
+  let base = Filename.basename fname in
+  let without_ext = match String.index_opt base '.' with
+    | Some i -> String.sub base 0 i
+    | None -> base
+  in
+  let sub = "ReadModel" in
+  let slen = String.length without_ext in
+  let sublen = String.length sub in
+  let rec check i =
+    if i > slen - sublen then false
+    else if String.sub without_ext i sublen = sub then true
+    else check (i + 1)
+  in
+  slen >= sublen && check 0
+
+let has_type_binding name (str : structure) =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, type_decls) ->
+      List.exists (fun (td : type_declaration) ->
+        String.equal td.ptype_name.txt name
+      ) type_decls
+    | _ -> false
+  ) str
+
+let has_schema_state_type (str : structure) =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, type_decls) ->
+      List.exists (fun (td : type_declaration) ->
+        String.equal td.ptype_name.txt "state"
+        && has_attr "schema" td.ptype_attributes
+      ) type_decls
+    | _ -> false
+  ) str

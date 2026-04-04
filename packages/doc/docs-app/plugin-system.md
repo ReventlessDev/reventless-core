@@ -65,8 +65,7 @@ The following shows all the pieces in context for a `CatalogItem` aggregate.
 
 ```rescript
 // CatalogItemSpec.res
-let name = "CatalogItem"
-module Id = Reventless.Id.String
+@@reventless.spec
 
 @schema
 type command =
@@ -89,7 +88,7 @@ type error =
 
 ```rescript
 // CatalogItemBehavior.res
-module Spec = CatalogItemSpec
+@@reventless.behavior
 
 @schema
 type state =
@@ -139,7 +138,7 @@ let execute: Behavior.execute<state, Spec.command, Spec.event, Spec.error> = (
 
 ```rescript
 // CatalogItemReadModelSpec.res
-module Id = Reventless.Id.String
+@@reventless.spec
 
 @schema
 type state = {
@@ -148,8 +147,6 @@ type state = {
   description: string,
   archived: bool,
 }
-
-let name = "CatalogItem"
 
 open Reventless.ReadModel
 let config = config()
@@ -219,11 +216,13 @@ Platform.makePlatform(
 
 ```rescript
 // ItemEventLogSpec.res
+@@reventless.dcbTags
+
 @schema
 type event =
-  | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
-  | ItemRenamed({itemId: @s.matches(DcbTag.string) string, newName: string})
-  | ItemDeleted({itemId: @s.matches(DcbTag.string) string})
+  | ItemCreated({itemId: string, name: string})
+  | ItemRenamed({itemId: string, newName: string})
+  | ItemDeleted({itemId: string})
 ```
 
 ```rescript

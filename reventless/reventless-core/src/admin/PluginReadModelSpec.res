@@ -34,6 +34,3 @@ type queryResult = {
 }
 
 
-open Reventless.ReadModel
-let config = config()
-let subIdConfig = None

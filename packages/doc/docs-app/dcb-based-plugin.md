@@ -44,7 +44,7 @@ DcbEventLog -> ViewSlice1: { class: projection-flow }
 
 ### DCB Tags
 
-Fields annotated with `@s.matches(DcbTag.string)` or `@s.matches(DcbTag.int)` become **DCB tags** that are indexed in the shared event log. Tags allow each slice to efficiently query only the events relevant to its decision model (e.g., all events for a specific `itemId`).
+Fields ending in `Id` with type `string` are automatically annotated as DCB tags by the `@@reventless.dcbTags` PPX annotation — no manual work needed. Under the hood, each tagged field gets `@s.matches(DcbTag.string)` (or `DcbTag.int` for integer tags, which must be annotated manually). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its decision model (e.g., all events for a specific `itemId`).
 
 ### Decision Model
 
@@ -60,15 +60,17 @@ The following example builds an **Item Catalog** plugin using DCB. Items can be 
 
 ### Step 1: Define the Shared Event Log Spec
 
-The `Reventless.DcbEventLog.Spec` requires only a single `@schema type event`. Every field that should act as a DCB tag must be annotated with `@s.matches(DcbTag.string)` (or `DcbTag.int`). These tags are extracted and stored alongside each event for efficient querying.
+The `Reventless.DcbEventLog.Spec` requires only a single `@schema type event`. Every field that should act as a DCB tag must be annotated with `@s.matches(DcbTag.string)` (or `DcbTag.int`). These tags are extracted and stored alongside each event for efficient querying. The `@@reventless.dcbTags` annotation auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string` fields — see the [Reventless PPX Guide](/guides/reventless-ppx#reventlessdcbtags).
 
 ```rescript
 // ItemEventLogSpec.res
+@@reventless.dcbTags
+
 @schema
 type event =
-  | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
-  | ItemRenamed({itemId: @s.matches(DcbTag.string) string, newName: string})
-  | ItemDeleted({itemId: @s.matches(DcbTag.string) string})
+  | ItemCreated({itemId: string, name: string})
+  | ItemRenamed({itemId: string, newName: string})
+  | ItemDeleted({itemId: string})
 ```
 
 All variant constructors must have a payload. Payload-less variants (e.g., `| SomeEvent`) serialize as JSON strings and are not handled correctly by the DCB infrastructure.
@@ -85,13 +87,14 @@ The `@schema` annotation on `type command` automatically generates `commandSchem
 
 ```rescript
 // CreateItemSpec.res
-let name = "CreateItem"
+@@reventless.spec
+@@reventless.dcbTags
 
 module DcbEventLogSpec = ItemEventLogSpec
 
 @schema
 type command =
-  | CreateItem({itemId: @s.matches(DcbTag.string) string, name: string})
+  | CreateItem({itemId: string, name: string})
 
 @schema
 type error =
@@ -122,13 +125,14 @@ let decide = (model, command) =>
 
 ```rescript
 // RenameItemSpec.res
-let name = "RenameItem"
+@@reventless.spec
+@@reventless.dcbTags
 
 module DcbEventLogSpec = ItemEventLogSpec
 
 @schema
 type command =
-  | RenameItem({itemId: @s.matches(DcbTag.string) string, newName: string})
+  | RenameItem({itemId: string, newName: string})
 
 @schema
 type error =
@@ -157,13 +161,14 @@ let decide = (model, command) =>
 
 ```rescript
 // DeleteItemSpec.res
-let name = "DeleteItem"
+@@reventless.spec
+@@reventless.dcbTags
 
 module DcbEventLogSpec = ItemEventLogSpec
 
 @schema
 type command =
-  | DeleteItem({itemId: @s.matches(DcbTag.string) string})
+  | DeleteItem({itemId: string})
 
 @schema
 type error =
@@ -198,7 +203,7 @@ The `project` function takes an `option<state>` (existing state or `None` if the
 
 ```rescript
 // ItemViewSpec.res
-let name = "ItemView"
+@@reventless.spec
 
 module DcbEventLogSpec = ItemEventLogSpec
 

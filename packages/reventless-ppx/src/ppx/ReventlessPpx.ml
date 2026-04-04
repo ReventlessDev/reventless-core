@@ -87,11 +87,198 @@ let derive_spec_name ~loc name_opt =
       plugin ^ "." ^ entity
     | _ -> entity
 
+(* --- Phase 6.2: ReadModel auto-defaults --- *)
+
+let gen_open_readmodel ~loc =
+  let lid = { txt = Ldot (Lident "Reventless", "ReadModel"); loc } in
+  { pstr_desc = Pstr_open {
+      popen_expr = { pmod_desc = Pmod_ident lid; pmod_loc = loc; pmod_attributes = [] };
+      popen_override = Fresh;
+      popen_loc = loc;
+      popen_attributes = [];
+    };
+    pstr_loc = loc }
+
+let gen_config_let ~loc =
+  ignore loc;
+  [%stri let config = config()]
+
+let gen_sub_id_config_let ~loc =
+  ignore loc;
+  [%stri let subIdConfig = None]
+
+(* --- Phase 6.1: @reventless.delegate inside Delegate modules --- *)
+
+let gen_schema_unit_type ~loc name =
+  let schema_attr = { attr_name = { txt = "schema"; loc };
+                      attr_payload = PStr [];
+                      attr_loc = loc } in
+  let unit_lid = { txt = Lident "unit"; loc } in
+  let unit_type = { ptyp_desc = Ptyp_constr (unit_lid, []);
+                    ptyp_loc = loc;
+                    ptyp_loc_stack = [];
+                    ptyp_attributes = [] } in
+  let type_decl = { ptype_name = { txt = name; loc };
+                    ptype_params = [];
+                    ptype_cstrs = [];
+                    ptype_kind = Ptype_abstract;
+                    ptype_private = Public;
+                    ptype_manifest = Some unit_type;
+                    ptype_attributes = [schema_attr];
+                    ptype_loc = loc } in
+  { pstr_desc = Pstr_type (Nonrecursive, [type_decl]);
+    pstr_loc = loc }
+
+let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_binding =
+  let attrs = List.filter (fun (a : attribute) ->
+    not (String.equal a.attr_name.txt "reventless.delegate")
+  ) mb.pmb_attributes in
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body ->
+    let body = DcbTagInference.transform_structure ~loc body in
+    let prefix =
+      (if not (Util.has_module_binding "Id" body) then [gen_module_id ~loc] else [])
+      @ (if not (Util.has_type_binding "command" body) then [gen_schema_unit_type ~loc "command"] else [])
+    in
+    let suffix =
+      (if not (Util.has_type_binding "error" body) then [gen_schema_unit_type ~loc "error"] else [])
+      @ (if not (Util.has_let_binding "moduleUrl" body) then [ModuleUrl.gen_module_url ~loc specifier] else [])
+    in
+    let new_body = { mb.pmb_expr with pmod_desc = Pmod_structure (prefix @ body @ suffix) } in
+    { mb with pmb_expr = new_body; pmb_attributes = attrs }
+  | _ -> { mb with pmb_attributes = attrs }
+
+(* --- Phase 5: @reventless.projections inside module bodies --- *)
+
+let extract_target_from_constraint (mty : module_type) : Longident.t option =
+  match mty.pmty_desc with
+  | Pmty_with (_, constraints) ->
+    let rec find = function
+      | [] -> None
+      | Pwith_modsubst ({ txt = Lident "Target"; _ }, { txt = lid; _ }) :: _ -> Some lid
+      | _ :: rest -> find rest
+    in
+    find constraints
+  | _ -> None
+
+let gen_mappings_make ~loc (target : Longident.t) =
+  let mappings_make = Ldot (Ldot (Ldot (Lident "Reventless", "Projection"), "Mappings"), "Make") in
+  let target_mod = {
+    pmod_desc = Pmod_ident { txt = target; loc };
+    pmod_loc = loc;
+    pmod_attributes = [];
+  } in
+  { pstr_desc = Pstr_module {
+      pmb_name = { txt = Some "M"; loc };
+      pmb_expr = {
+        pmod_desc = Pmod_apply ({
+          pmod_desc = Pmod_ident { txt = mappings_make; loc };
+          pmod_loc = loc;
+          pmod_attributes = [];
+        }, target_mod);
+        pmod_loc = loc;
+        pmod_attributes = [];
+      };
+      pmb_attributes = [];
+      pmb_loc = loc;
+    };
+    pstr_loc = loc }
+
+let gen_module_type_mapping ~loc =
+  { pstr_desc = Pstr_modtype {
+      pmtd_name = { txt = "Mapping"; loc };
+      pmtd_type = Some {
+        pmty_desc = Pmty_ident { txt = Ldot (Lident "M", "Mapping"); loc };
+        pmty_loc = loc;
+        pmty_attributes = [];
+      };
+      pmtd_attributes = [];
+      pmtd_loc = loc;
+    };
+    pstr_loc = loc }
+
+let transform_projections_module ~loc ~specifier (mb : module_binding) : module_binding =
+  let attrs = List.filter (fun (a : attribute) ->
+    not (String.equal a.attr_name.txt "reventless.projections")
+  ) mb.pmb_attributes in
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_constraint (body_expr, mty) ->
+    let target = extract_target_from_constraint mty in
+    (match target, body_expr.pmod_desc with
+     | Some target_lid, Pmod_structure body ->
+       let prefix =
+         (if not (Util.has_module_binding "M" body) then [gen_mappings_make ~loc target_lid] else [])
+         @ (if not (Util.has_module_binding "Mapping" body) then [gen_module_type_mapping ~loc] else [])
+         @ (if not (Util.has_let_binding "moduleUrl" body) then [ModuleUrl.gen_module_url ~loc specifier] else [])
+       in
+       let new_body = { body_expr with pmod_desc = Pmod_structure (prefix @ body) } in
+       { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_constraint (new_body, mty) };
+                 pmb_attributes = attrs }
+     | _ -> { mb with pmb_attributes = attrs })
+  | _ -> { mb with pmb_attributes = attrs }
+
+let rec walk_structure ~specifier (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_module mb ->
+      let has_proj = Util.has_attr "reventless.projections" mb.pmb_attributes in
+      let has_del = Util.has_attr "reventless.delegate" mb.pmb_attributes in
+      let mb = if has_proj then
+        transform_projections_module ~loc:item.pstr_loc ~specifier mb
+      else if has_del then
+        transform_delegate_module ~loc:item.pstr_loc ~specifier mb
+      else mb in
+      let mb = { mb with pmb_expr = walk_module_expr ~specifier mb.pmb_expr } in
+      { item with pstr_desc = Pstr_module mb }
+    | _ -> item
+  ) str
+
+and walk_module_expr ~specifier (me : module_expr) : module_expr =
+  match me.pmod_desc with
+  | Pmod_structure str ->
+    { me with pmod_desc = Pmod_structure (walk_structure ~specifier str) }
+  | Pmod_functor (param, body) ->
+    { me with pmod_desc = Pmod_functor (param, walk_module_expr ~specifier body) }
+  | Pmod_constraint (body, mty) ->
+    { me with pmod_desc = Pmod_constraint (walk_module_expr ~specifier body, mty) }
+  | _ -> me
+
+let has_module_level_attr_deep (str : structure) =
+  let found = ref false in
+  let rec scan_str items =
+    List.iter (fun (item : structure_item) ->
+      match item.pstr_desc with
+      | Pstr_module mb ->
+        if Util.has_attr "reventless.projections" mb.pmb_attributes
+           || Util.has_attr "reventless.delegate" mb.pmb_attributes
+        then found := true;
+        scan_mod mb.pmb_expr
+      | _ -> ()
+    ) items
+  and scan_mod (me : module_expr) =
+    match me.pmod_desc with
+    | Pmod_structure s -> scan_str s
+    | Pmod_functor (_, body) -> scan_mod body
+    | Pmod_constraint (body, _) -> scan_mod body
+    | _ -> ()
+  in
+  scan_str str;
+  !found
+
 let transform (str : structure) : structure =
+  let has_mode = detect_mode str <> None in
+  let has_module_attr = has_module_level_attr_deep str in
+  if not has_mode && not has_module_attr then str
+  else
+  let loc = match str with
+    | item :: _ -> item.pstr_loc
+    | [] -> Location.none
+  in
+  let specifier = ModuleUrl.compute_specifier loc in
+  let str = if has_module_attr then walk_structure ~specifier str else str in
   match detect_mode str with
   | None -> str
   | Some (mode, loc) ->
-    let specifier = ModuleUrl.compute_specifier loc in
     let dcb_tags = has_dcb_tags_attr str in
     let body = strip_ppx_attrs str in
     let body = if dcb_tags then DcbTagInference.transform_structure ~loc body else body in
@@ -108,12 +295,19 @@ let transform (str : structure) : structure =
         prefix := !prefix @ [gen_name ~loc name];
       if has_reventless_spec && not (Util.has_module_binding "Id" body) then
         prefix := !prefix @ [gen_module_id ~loc];
+      let readmodel_suffix =
+        if Util.is_readmodel_filename loc.loc_start.pos_fname
+           && Util.has_schema_state_type body
+           && not (Util.has_let_binding "config" body)
+        then [gen_open_readmodel ~loc; gen_config_let ~loc; gen_sub_id_config_let ~loc]
+        else []
+      in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then
           [ModuleUrl.gen_module_url ~loc specifier]
         else []
       in
-      !prefix @ body @ suffix
+      !prefix @ body @ readmodel_suffix @ suffix
 
     | Behavior spec_name_opt ->
       let spec_name = match spec_name_opt with

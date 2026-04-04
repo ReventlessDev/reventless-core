@@ -53,11 +53,11 @@ cat > "$PLUGIN/rescript.json" <<EOF
 {
   "name": "@test/my-plugin",
   "namespace": "TestPlugin",
-  "ppx-flags": ["$PPX_BIN"],
-  "package-specs": { "module": "commonjs", "in-source": true },
-  "suffix": ".js",
+  "ppx-flags": ["$PPX_BIN", "sury-ppx/bin"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
   "sources": [{ "dir": "src", "subdirs": true }],
-  "dependencies": ["@reventlessdev/reventless-spec"]
+  "dependencies": ["sury", "@reventlessdev/reventless-spec"]
 }
 EOF
 
@@ -82,10 +82,11 @@ let evolve = (_s, _e: Product.event) => true
 let decide = (_s, _c: Product.command) => Ok([Product.Created])
 EOF
 
-# ReadModel — strips "ReadModel" suffix
+# ReadModel — strips "ReadModel" suffix, auto-injects ReadModel defaults
 cat > "$PLUGIN/src/ReadModel/ProductsReadModel.res" <<'EOF'
 @@reventless.spec
 
+@schema
 type state = { productName: string }
 EOF
 
@@ -96,6 +97,21 @@ cat > "$PLUGIN/src/Aggregate/Order.res" <<'EOF'
 type command = Place
 type event = Placed
 type error = unit
+EOF
+
+# Projections inside functor — @reventless.projections
+mkdir -p "$PLUGIN/src/Plugin"
+cat > "$PLUGIN/src/Plugin/TestPlugin.res" <<'EOF'
+open Reventless.Projection
+
+module type PlatformT = { let x: int }
+
+module Make = (Platform: PlatformT) => {
+  @reventless.projections
+  module ProductProjections: Mappings with module Target := ProductsReadModel = {
+    let mappings = []
+  }
+}
 EOF
 
 # ─── Fixture: spec package (no reventless-spec, namespace ends in Spec) ──
@@ -112,8 +128,8 @@ cat > "$SPEC/rescript.json" <<EOF
   "name": "@test/my-spec",
   "namespace": "CatalogSpec",
   "ppx-flags": ["$PPX_BIN"],
-  "package-specs": { "module": "commonjs", "in-source": true },
-  "suffix": ".js",
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
   "sources": [{ "dir": "src", "subdirs": true }],
   "dependencies": []
 }
@@ -146,8 +162,8 @@ cat > "$DCB/rescript.json" <<EOF
   "name": "@test/my-dcb",
   "namespace": "TestDcb",
   "ppx-flags": ["$PPX_BIN", "sury-ppx/bin"],
-  "package-specs": { "module": "commonjs", "in-source": true },
-  "suffix": ".js",
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
   "sources": [{ "dir": "src", "subdirs": true }],
   "dependencies": ["sury", "@reventlessdev/reventless-spec"]
 }
@@ -170,6 +186,22 @@ type event = ItemAdded({itemId: string, name: string, count: int})
 type error = AlreadyExists
 EOF
 
+# DCB Delegate module — @reventless.delegate auto-injects Id, command/error unit types, dcbTags, moduleUrl
+cat > "$DCB/src/ItemMapping.res" <<'EOF'
+open Reventless
+
+@reventless.delegate
+module Delegate = {
+  let name = "ItemCatalog"
+  @schema
+  type event =
+    | ItemAdded({itemId: string, name: string})
+    | ItemRemoved({itemId: string})
+}
+
+let mapOutgoingEvent = None
+EOF
+
 # ─── Build PPX ──────────────────────────────────────────────────────
 
 echo "Building PPX..."
@@ -185,27 +217,36 @@ fi
 
 echo ""
 echo "=== Test: @@reventless.spec (filename-derived name) ==="
-JS="$PLUGIN/src/Aggregate/Product.js"
+JS="$PLUGIN/src/Aggregate/Product.res.mjs"
 assert_js_contains "$JS" 'let name = "Product"'           "derives name from filename"
 assert_js_contains "$JS" '@test/my-plugin/src/Aggregate/Product.res.mjs' "correct moduleUrl specifier"
 
 echo ""
 echo "=== Test: @@reventless.behavior (auto open + module Spec) ==="
-JS="$PLUGIN/src/Aggregate/ProductBehavior.js"
+JS="$PLUGIN/src/Aggregate/ProductBehavior.res.mjs"
 assert_js_contains "$JS" '@test/my-plugin/src/Aggregate/ProductBehavior.res.mjs' "behavior moduleUrl"
 # open + module Spec are compile-time only — success proves they were injected correctly
 pass "behavior compiles (open + module Spec injected correctly)"
 
 echo ""
-echo "=== Test: @@reventless.spec (ReadModel suffix stripped) ==="
-JS="$PLUGIN/src/ReadModel/ProductsReadModel.js"
+echo "=== Test: @@reventless.spec (ReadModel suffix stripped + defaults auto-injected) ==="
+JS="$PLUGIN/src/ReadModel/ProductsReadModel.res.mjs"
 assert_js_contains "$JS" 'let name = "Products"'          "strips ReadModel suffix"
+assert_js_contains "$JS" 'config'                         "ReadModel config auto-injected"
+assert_js_contains "$JS" 'subIdConfig'                    "ReadModel subIdConfig auto-injected"
 
 echo ""
 echo "=== Test: @@reventless.spec with explicit name ==="
-JS="$PLUGIN/src/Aggregate/Order.js"
+JS="$PLUGIN/src/Aggregate/Order.res.mjs"
 assert_js_contains "$JS" 'let name = "CustomOrder"'       "explicit name preserved"
 assert_js_not_contains "$JS" 'let name = "Order"'         "does not inject derived name"
+
+echo ""
+echo "=== Test: @reventless.projections inside functor ==="
+JS="$PLUGIN/src/Plugin/TestPlugin.res.mjs"
+assert_js_contains "$JS" 'moduleUrl'                       "projections moduleUrl injected"
+# The PPX should inject Mappings.Make which compiles to a module reference
+pass "projections module compiles (M + Mapping + moduleUrl injected correctly)"
 
 # ─── Compile spec package ───────────────────────────────────────────
 
@@ -218,7 +259,7 @@ fi
 
 echo ""
 echo "=== Test: @@reventless.spec in *Spec namespace (dotted name) ==="
-JS="$SPEC/src/ProductsExtensionPoint.js"
+JS="$SPEC/src/ProductsExtensionPoint.res.mjs"
 assert_js_contains "$JS" 'let name = "Catalog.Products"'  "derives dotted name from namespace"
 assert_js_contains "$JS" '@test/my-spec/src/ProductsExtensionPoint.res.mjs' "spec moduleUrl"
 
@@ -237,7 +278,7 @@ fi
 
 echo ""
 echo "=== Test: @@reventless.dcbTags (auto-inject @s.matches on *Id fields) ==="
-JS="$DCB/src/AddItem.js"
+JS="$DCB/src/AddItem.res.mjs"
 assert_js_contains "$JS" 'DcbTag'                         "DcbTag referenced in output (auto-injected)"
 assert_js_contains "$JS" 'let name = "AddItem"'           "DCB spec name derived from filename"
 # Verify itemId gets DcbTag.string, but name and count do not
@@ -250,6 +291,14 @@ else
   fail "DcbTag injection count" "expected >=2 DcbTag refs, got $DCB_COUNT"
 fi
 assert_js_contains "$JS" 'let moduleUrl'                   "DCB moduleUrl injected"
+
+echo ""
+echo "=== Test: @reventless.delegate (Delegate module auto-injection) ==="
+JS="$DCB/src/ItemMapping.res.mjs"
+assert_js_contains "$JS" 'DcbTag'                         "delegate: DcbTag injected on *Id event fields"
+assert_js_contains "$JS" 'moduleUrl'                      "delegate: moduleUrl injected"
+# Compilation proves module Id, @schema command/error types were injected correctly
+pass "delegate: module Id + @schema command/error auto-injected (compiles)"
 
 echo ""
 echo "─────────────────────────"

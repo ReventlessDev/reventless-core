@@ -62,10 +62,9 @@ function Make(Platform) {
     stateSchema: ProductsReadModel$CatalogPlugin.stateSchema,
     subIdConfig: undefined
   });
-  let moduleUrl = import.meta.url;
   let mappings = [ProductsProjections$CatalogPlugin.ProductMapping];
   let ProductProjections = {
-    moduleUrl: moduleUrl,
+    moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/CatalogPlugin.res.mjs",
     mappings: mappings
   };
   let ProductReadModel = Platform.ReadModel.Make({
@@ -82,10 +81,9 @@ function Make(Platform) {
     stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
     subIdConfig: undefined
   });
-  let moduleUrl$1 = import.meta.url;
   let mappings$1 = [CategoriesProjections$CatalogPlugin.CategoryMapping];
   let CategoryProjections = {
-    moduleUrl: moduleUrl$1,
+    moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/CatalogPlugin.res.mjs",
     mappings: mappings$1
   };
   let CategoryReadModel = Platform.ReadModel.Make({
@@ -119,13 +117,12 @@ function Make(Platform) {
     stateSchema: ProductDemandReadModel$CatalogPlugin.stateSchema,
     subIdConfig: undefined
   });
-  let moduleUrl$2 = import.meta.url;
   let mappings$2 = [
     ProductDemandProjections$CatalogPlugin.ProductMapping,
     ProductDemandProjections$CatalogPlugin.ProductDemandMapping
   ];
   let DemandProjections = {
-    moduleUrl: moduleUrl$2,
+    moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/CatalogPlugin.res.mjs",
     mappings: mappings$2
   };
   let ProductDemandReadModelMaker = Platform.ReadModel.Make({
@@ -136,7 +133,7 @@ function Make(Platform) {
     config: ProductDemandReadModel$CatalogPlugin.config,
     subIdConfig: undefined
   })(DemandProjections);
-  let moduleUrl$3 = import.meta.url;
+  let moduleUrl = import.meta.url;
   let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
@@ -156,7 +153,7 @@ function Make(Platform) {
     mapIncomingCommand: ProductsExtensionPoint$CatalogPlugin.ProductMapping.mapIncomingCommand,
     mapOutgoingEvent: ProductsExtensionPoint$CatalogPlugin.ProductMapping.mapOutgoingEvent
   })({
-    moduleUrl: moduleUrl$3
+    moduleUrl: moduleUrl
   });
   let OrdersExtensionMaker = Platform.Extension.Make({
     ExtensionPoint: {

@@ -18,15 +18,13 @@ let eventSchema = S.union([
   }))
 ]);
 
-let moduleUrl = import.meta.url;
-
 let Delegate = {
-  name: "CatalogEventLog",
   Id: undefined,
+  commandSchema: S.unit,
+  name: "CatalogEventLog",
   eventSchema: eventSchema,
   errorSchema: S.unit,
-  commandSchema: S.unit,
-  moduleUrl: moduleUrl
+  moduleUrl: "@reventlessdev/online-shop-dcb-catalog/src/ExtensionPoint/ProductsExtensionPointMapping.res.mjs"
 };
 
 function mapIncomingCommand(_id, _command, _meta) {

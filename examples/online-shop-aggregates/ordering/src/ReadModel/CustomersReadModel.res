@@ -10,6 +10,3 @@ type state = {
   deactivated: bool,
 }
 
-open Reventless.ReadModel
-let config = config()
-let subIdConfig = None

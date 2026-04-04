@@ -6,6 +6,3 @@
 @schema
 type state = {name: string, orderCount: int}
 
-open Reventless.ReadModel
-let config = config()
-let subIdConfig = None

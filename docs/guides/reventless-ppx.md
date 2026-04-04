@@ -30,6 +30,7 @@ Use on **all spec files**: aggregate specs, read model specs, extension point sp
 | `let name` | Not already declared | Derived from filename |
 | `module Id` | Not already declared, and `reventless-spec` is a dependency | `Reventless.Id.String` |
 | `let moduleUrl` | Not already declared | Computed npm specifier |
+| `open Reventless.ReadModel` + `let config` + `let subIdConfig` | Filename contains `ReadModel`, `@schema type state` present, `let config` not declared | ReadModel defaults |
 
 **Name derivation** strips known component suffixes from the filename:
 
@@ -224,13 +225,17 @@ type state = {
   name: string,
   archived: bool,
 }
+```
 
+PPX derives: `let name = "Categories"` (strips `ReadModel` suffix). Because the filename contains `ReadModel` and the file has `@schema type state` with no `let config`, the PPX also auto-injects:
+
+```rescript
 open Reventless.ReadModel
 let config = config()
 let subIdConfig = None
 ```
 
-PPX derives: `let name = "Categories"` (strips `ReadModel` suffix).
+To override, declare `let config` explicitly — the PPX skips injection when `let config` is present.
 
 ### Extension point spec (in a `*Spec` package)
 
@@ -323,13 +328,92 @@ Use `@@reventless.behavior(SpecName)` when:
 
 ### Files that cannot use PPX annotations
 
-The PPX operates at **file level only**. These patterns cannot be auto-generated:
+These patterns cannot be auto-generated:
 
-- `moduleUrl` inside functor bodies (e.g., projection modules in `*Plugin.res`)
-- `@s.matches(DcbTag.string)` inside inner modules (e.g., `Delegate` in `ExtensionPointMapping` files)
+- `moduleUrl` for ExtensionPoint inline modules inside functor bodies — requires top-level `%raw` captured by closure
 - Spec definitions inside inner modules in test fixtures
 
 For these cases, use the manual declarations.
+
+---
+
+## `@reventless.projections`
+
+Use on **projection module bindings** inside plugin functor bodies. This attribute works at any nesting depth (inside functors, modules, etc.).
+
+**What it injects** (into the module body):
+| Binding | Condition | Value |
+|---------|-----------|-------|
+| `module M` | Not already declared | `Reventless.Projection.Mappings.Make(Target)` |
+| `module type Mapping` | Not already declared | `M.Mapping` |
+| `let moduleUrl` | Not already declared | Computed npm specifier |
+
+The `Target` module is extracted from the module constraint (`with module Target := XReadModel`).
+
+**Before (manual):**
+```rescript
+module ProductProjections: Mappings with module Target := ProductsReadModel = {
+  module M = Mappings.Make(ProductsReadModel)
+  module type Mapping = M.Mapping
+  let moduleUrl: string = %raw(`import.meta.url`)
+  let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
+}
+```
+
+**After (with PPX):**
+```rescript
+@reventless.projections
+module ProductProjections: Mappings with module Target := ProductsReadModel = {
+  let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
+}
+```
+
+The `Mapping` module type is available for the `mappings` type annotation because the PPX injects `module type Mapping = M.Mapping` before the developer-authored code.
+
+---
+
+## `@reventless.delegate`
+
+Use on **`Delegate` module bindings** inside `ExtensionPointMapping` files (DCB approach only). Works at any nesting depth.
+
+**What it injects** (into the module body):
+| Binding | Condition | Value |
+|---------|-----------|-------|
+| `module Id` | Not already declared | `Reventless.Id.String` |
+| `@schema type command = unit` | Not already declared | Sury generates `commandSchema` from this |
+| dcbTags on `@schema type event` | Event type present | `@s.matches(Reventless.DcbTag.string)` on `*Id: string` fields |
+| `@schema type error = unit` | Not already declared | Sury generates `errorSchema` from this |
+| `let moduleUrl` | Not already declared | Computed npm specifier |
+
+**Before (manual):**
+```rescript
+module Delegate = {
+  let name = "CatalogEventLog"
+  module Id = Id.String
+  @schema type command = unit
+  @schema
+  type event =
+    | ProductAdded({productId: @s.matches(DcbTag.string) string, name: string, price: float})
+    | ProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
+  @schema type error = unit
+  let commandSchema = S.unit
+  let moduleUrl: string = %raw(`import.meta.url`)
+}
+```
+
+**After (with PPX):**
+```rescript
+@reventless.delegate
+module Delegate = {
+  let name = "CatalogEventLog"
+  @schema
+  type event =
+    | ProductAdded({productId: string, name: string, price: float})
+    | ProductPriceChanged({productId: string, price: float})
+}
+```
+
+The developer only writes `let name` and the `@schema type event`. Everything else is auto-generated. The `@s.matches(Reventless.DcbTag.string)` annotation is applied automatically to `*Id: string` fields via the same logic as `@@reventless.dcbTags`.
 
 ---
 
@@ -343,3 +427,6 @@ For these cases, use the manual declarations.
 | `let moduleUrl: string = %raw(\`import.meta.url\`)` | Computed at compile time |
 | `open Spec; module Spec = Spec` | Auto-injected by `@@reventless.behavior` |
 | `@s.matches(DcbTag.string)` on `*Id` fields | Auto-injected by `@@reventless.dcbTags` |
+| `module M = Mappings.Make(...)` + boilerplate | Auto-injected by `@reventless.projections` |
+| `open Reventless.ReadModel; let config = config(); let subIdConfig = None` | Auto-injected by `@@reventless.spec` for `*ReadModel*` files |
+| `module Id`, `@schema command/error = unit`, `@s.matches`, `moduleUrl` in Delegate | Auto-injected by `@reventless.delegate` |

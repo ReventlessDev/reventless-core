@@ -17,19 +17,15 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ReventlessInfra.NoEventMappings.Make(Category),
   )
 
+  @reventless.projections
   module ProductProjections: Mappings with module Target := ProductsReadModel = {
-    module M = Mappings.Make(ProductsReadModel)
-    module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
   }
 
   module ProductReadModel = Platform.ReadModel.Make(ProductsReadModel, ProductProjections)
 
+  @reventless.projections
   module CategoryProjections: Mappings with module Target := CategoriesReadModel = {
-    module M = Mappings.Make(CategoriesReadModel)
-    module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
   }
 
@@ -42,10 +38,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ReventlessInfra.NoEventMappings.Make(ProductDemand),
   )
 
+  @reventless.projections
   module DemandProjections: Mappings with module Target := ProductDemandReadModel = {
-    module M = Mappings.Make(ProductDemandReadModel)
-    module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [
       module(ProductDemandProjections.ProductMapping),
       module(ProductDemandProjections.ProductDemandMapping),

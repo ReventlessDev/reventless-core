@@ -10,6 +10,3 @@ type state = {
   status: string, // "placed" | "shipped" | "cancelled"
 }
 
-open Reventless.ReadModel
-let config = config()
-let subIdConfig = None

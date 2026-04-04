@@ -47,7 +47,7 @@ Build a custom ReScript PPX that eliminates repetitive boilerplate from Reventle
 - [x] Create `packages/reventless-ppx/test/run.sh` — integration test that creates temp ReScript packages, compiles through PPX, and verifies JS output
 - [x] Tests cover: spec name derivation, behavior injection, ReadModel suffix stripping, explicit name, dotted name from *Spec namespace, module Id skip
 - [x] Add `"test": "./test/run.sh"` to package.json
-- [x] 14 assertions, all passing (spec, behavior, namespace, DCB tags)
+- [x] 21 assertions, all passing (spec, behavior, namespace, DCB tags, ReadModel defaults, projections, delegate)
 
 ---
 
@@ -98,7 +98,7 @@ Build a custom ReScript PPX that eliminates repetitive boilerplate from Reventle
 - [x] Full build + test pass (252 framework tests)
 - 7 Builder files have `moduleUrl` inside functor inner modules — can't be migrated
 - 48 framework test fixtures define specs inside inner modules — can't be migrated
-- [ ] Add PPX to `reventless-in-memory/rescript.json` (no file-level specs to migrate, but enables future use)
+- [x] Add PPX to `reventless-in-memory/rescript.json` (no file-level specs to migrate, but enables future use)
 
 ---
 
@@ -226,7 +226,7 @@ Build a custom ReScript PPX that eliminates repetitive boilerplate from Reventle
 
 ---
 
-## Phase 5: Projection Mappings Macro (DEFERRED)
+## Phase 5: Projection Mappings Macro
 
 **Impact: 120 lines eliminated (5-line blocks × 24 instances)**
 
@@ -245,29 +245,97 @@ Extend the PPX to detect and expand `@reventless.projections` on module bindings
 - Pro: No architectural change, works in place
 - Con: Significantly more complex PPX (needs to walk into functor bodies, handle module expressions)
 
-**Decision:** Deferred. The ~120 lines saved don't justify the complexity. Revisit if plugin count grows significantly.
+**Decision:** Implement Approach B — extend PPX to handle module-level attributes inside functor bodies.
+
+### 5.1 — Design
+
+The current boilerplate inside a functor-body projection module:
+
+```rescript
+module XProjections: Projection.Mappings with module Target := XReadModel = {
+  module M = Projection.Mappings.Make(XReadModel)      // ← boilerplate
+  module type Mapping = M.Mapping                       // ← boilerplate
+  let moduleUrl = moduleUrl                             // ← boilerplate (or %raw)
+  let mappings: array<module(Mapping)> = [module(...)]  // ← developer-authored
+}
+```
+
+With `@reventless.projections`:
+
+```rescript
+@reventless.projections
+module XProjections: Projection.Mappings with module Target := XReadModel = {
+  let mappings = [module(XProjections.XMapping)]
+}
+```
+
+The PPX detects `@reventless.projections` on any module binding (at any nesting depth), reads the `Target` from the module constraint, and injects:
+1. `module M = Projection.Mappings.Make(Target)` (or `Reventless.Projection.Mappings.Make`)
+2. `module type Mapping = M.Mapping`
+3. `let moduleUrl: string = "<computed-specifier>"` (same computation as file-level)
+
+The `mappings` binding type annotation changes from `array<module(Mapping)>` to `array<module(M.Mapping)>` since `Mapping` is now auto-generated and the developer sees `M.Mapping`.
+
+**Implementation approach:** Add a recursive structure mapper in `ReventlessPpx.ml` that walks into all module expressions (Pmod_structure, Pmod_functor) and transforms module bindings with the `@reventless.projections` attribute.
+
+### 5.2 — Implement `@reventless.projections` transformation
+
+- [x] In `ReventlessPpx.ml`: add `transform_projections` — a recursive structure mapper that:
+  - Walks `Pstr_module` items looking for `@reventless.projections` attribute
+  - Extracts the `Target` module name from the module constraint (`with module Target := X`)
+  - Strips the `@reventless.projections` attribute
+  - Injects `module M`, `module type Mapping`, and `let moduleUrl` into the module body
+  - Recursively walks into `Pmod_structure` and `Pmod_functor` to handle any nesting depth
+- [x] In `ReventlessPpx.ml`: integrate into `transform` — apply the recursive mapper to the structure after existing transformations
+- [x] Handle both patterns: `Projection.Mappings` (with `open Reventless.Projection`) and `Reventless.Projection.Mappings` (fully qualified)
+
+### 5.3 — Tests
+
+- [x] Add test case to `packages/reventless-ppx/test/run.sh`: projection module inside functor body with `@reventless.projections`
+- [x] Verify: `module M`, `module type Mapping`, and `let moduleUrl` are injected (compilation proves it)
+- [x] Verify: existing `let mappings` is preserved
+- [x] Fix pre-existing DCB test failure (commonjs suffix mismatch with ESM sury) — all fixtures now use ESM
+- [x] 16 assertions, all passing
+
+### 5.4 — Migrate example plugins
+
+- [x] Migrate `CatalogPlugin.res` — replace 3 projection module boilerplate blocks with `@reventless.projections`
+- [x] Migrate `OrderingPlugin.res` — replace 3 projection module boilerplate blocks
+- [x] OrderingPlugin retains top-level `let moduleUrl = %raw(...)` for EP inline module (not a projection)
+- [x] Full build + test pass (935 tests, 0 warnings)
 
 ---
 
-## Phase 6: DCB Shim and ReadModel Defaults (DEFERRED)
+## Phase 6: DCB Shim and ReadModel Defaults
 
 **Impact: ~120 lines eliminated**
 
 ### 6.1 — DCB extension point delegate shim
 
-**Blocker:** Delegate modules are defined inside `ExtensionPointMapping` files as inner modules. Same functor-body limitation as Phase 5.
+Unblocked by Phase 5's module-level PPX support. Extend the PPX to handle `@reventless.delegate` on module bindings inside `ExtensionPointMapping` files.
+
+- [x] Implement `transform_delegate_module` — detects `@reventless.delegate` on any `Pstr_module`, injects:
+  - `module Id = Reventless.Id.String`
+  - `@schema type command = unit` (sury generates `commandSchema` from this)
+  - dcbTags inference on `@schema type event` fields
+  - `@schema type error = unit`
+  - `let moduleUrl`
+- [x] Extend `walk_structure` to handle `@reventless.delegate` alongside `@reventless.projections`
+- [x] Add test fixture and 3 assertions (21 total, all passing)
+- [x] Migrate `ProductsExtensionPointMapping.res` and `OrdersExtensionPointMapping.res`
+- [x] Full build + test pass (935 tests, 0 warnings)
 
 ### 6.2 — ReadModel spec defaults
 
-- [ ] When `@@reventless.spec` is present and file has `@schema type state` but no `let config`, auto-inject:
+- [x] When `@@reventless.spec` is present and filename contains `ReadModel`, file has `@schema type state`, and no `let config`, auto-inject:
   ```rescript
   open Reventless.ReadModel
   let config = config()
   let subIdConfig = None
   ```
-- [ ] Skip if `let config` is already declared (explicit overrides implicit)
-
-**Status:** 6.1 deferred (same blocker as Phase 5). 6.2 is feasible but low impact (~3 lines per ReadModel file × ~10 files = 30 lines). Implement when convenient.
+- [x] Skip if `let config` is already declared (explicit overrides implicit)
+- [x] Migrate 7 ReadModel spec files (6 online-shop-aggregates + PluginReadModelSpec)
+- [x] 18 PPX test assertions, all passing; 935 full tests passing
 
 ---
 
@@ -275,8 +343,8 @@ Extend the PPX to detect and expand `@reventless.projections` on module bindings
 
 - [x] Update `docs/guides/platform-and-plugin-guide.md` with PPX-based examples (aggregate spec, behavior, read model, EP spec, DCB StateChangeSlice sections)
 - [x] Update `.claude/rules/app-developer.md` with PPX annotation reference
-- [ ] Update component docs in `packages/doc/docs-app/` to show PPX syntax
-- [ ] Add PPX installation and configuration section to getting started guide
+- [x] Update component docs in `packages/doc/docs-app/` to show PPX syntax (aggregate-based-plugin, dcb-based-plugin guides)
+- [x] Add PPX installation and configuration section to getting started guide
 
 ---
 
@@ -291,20 +359,24 @@ Extend the PPX to detect and expand `@reventless.projections` on module bindings
 | 2 | DCB `*Id` auto-annotation | ✅ Done | 126+ |
 | 3 | Implicit `module Id` | ✅ Done | 195 |
 | 4 | Spec/Behavior header macros | ✅ Done | 780 |
-| 5 | Projection Mappings macro | ❌ Not started | 120 |
-| 6 | DCB shim + ReadModel defaults | ❌ Not started | 120 |
+| 5 | Projection Mappings macro | ✅ Done | 120 |
+| 6.1 | DCB delegate shim | ✅ Done | ~14 (2 files × 7 lines) |
+| 6.2 | ReadModel spec defaults | ✅ Done | 21 (7×3 lines) |
 | 7 | Documentation | 🔶 Partial (guide + rules updated) | — |
-| **Total done** | | **Phases 0–4, 7 (partial)** | **~1,400 lines** |
-| **Remaining** | | **Phases 0.2, 5–6, 7 (docs site)** | **~240 lines** |
+| **Total done** | | **Phases 0–6, 7 (partial)** | **~1,435 lines** |
+| **Remaining** | | **Phases 0.2, 7 (docs site completion)** | **~0 lines** |
 
 ### Known limitations (cannot be PPX-migrated)
-- `moduleUrl` inside functor bodies (OrderingPlugin.res, Builder files) — PPX appends at file end, but value needed inside functor
-- `@s.matches` inside inner modules (ExtensionPointMapping Delegate modules) — PPX only transforms file-level types
+- `moduleUrl` for ExtensionPoint inline modules inside functor bodies (OrderingPlugin.res, CatalogPlugin.res) — requires top-level `%raw` captured by closure
+- `moduleUrl` inside Builder framework files — PPX appends at file end, but value needed inside functor
+- `@s.matches` inside inner modules (ExtensionPointMapping Delegate modules) — addressed in Phase 6.1 via `@reventless.delegate`
 - Test fixture specs defined as inner modules (`module AggSpec = { ... }`) — same limitation
 
 ### PPX annotations (final API)
-- `@@reventless.spec` — auto-injects `let name`, `module Id`, `let moduleUrl`. Derives name from filename (strips component suffixes). In `*Spec` namespaces, prefixes with plugin name for dotted names.
+- `@@reventless.spec` — auto-injects `let name`, `module Id`, `let moduleUrl`. Derives name from filename (strips component suffixes). In `*Spec` namespaces, prefixes with plugin name for dotted names. For `*ReadModel*` files with `@schema type state` and no `let config`, also auto-injects `open Reventless.ReadModel; let config = config(); let subIdConfig = None`.
 - `@@reventless.spec("ExplicitName")` — same, but uses the provided name instead of deriving
 - `@@reventless.behavior` — auto-injects `open Spec`, `module Spec = Spec`, `let moduleUrl`. Derives spec name from filename.
 - `@@reventless.behavior(SpecName)` — same, but uses the provided spec module name
 - `@@reventless.dcbTags` — auto-injects `@s.matches(Reventless.DcbTag.string)` on `*Id: string` fields in `@schema` types
+- `@reventless.projections` — on module bindings inside functor bodies. Auto-injects `module M = Reventless.Projection.Mappings.Make(Target)`, `module type Mapping = M.Mapping`, and `let moduleUrl`. Extracts `Target` from the module constraint (`with module Target := X`). Works at any nesting depth.
+- `@reventless.delegate` — on `Delegate` module bindings inside ExtensionPointMapping files. Auto-injects `module Id = Reventless.Id.String`, `@schema type command = unit`, `@schema type error = unit`, dcbTags on `*Id: string` event fields, and `let moduleUrl`. Sury generates `commandSchema`/`errorSchema` from the injected type declarations.

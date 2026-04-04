@@ -64,6 +64,25 @@ npm install --save-dev rescript sury
 npm install
 ```
 
+### Configure ReScript
+
+Create a `rescript.json` in your project root with the PPX flags. The `reventless-ppx` **must** come before `sury-ppx`:
+
+```json
+{
+  "name": "my-plugin",
+  "namespace": "MyPlugin",
+  "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"],
+  "sources": [{ "dir": "src", "subdirs": true }],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-spec"
+  ]
+}
+```
+
+The PPX auto-injects boilerplate (`let name`, `module Id`, `let moduleUrl`, DCB tag annotations) so you can focus on domain logic. See the [Reventless PPX Guide](/guides/reventless-ppx) for details.
+
 ### Choose a Cloud Provider
 
 The Reventless-Framework is cloud-provider agnostic. Therefore there is a different package per provider, which contains pre-configured default components and the necessary adapters to configure the components yourself when needed.  

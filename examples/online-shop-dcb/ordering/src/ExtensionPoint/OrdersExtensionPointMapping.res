@@ -8,24 +8,13 @@ module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
 
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
+@reventless.delegate
 module Delegate = {
   let name = "OrderingEventLog"
-  module Id = Id.String
-  @schema type command = unit
   @schema
   type event =
-    | OrderPlaced({
-        orderId: @s.matches(DcbTag.string) string,
-        customerId: string,
-        productIds: array<string>,
-      })
-    | OrderCancelled({
-        orderId: @s.matches(DcbTag.string) string,
-        productIds: array<string>,
-      })
-  @schema type error = unit
-  let commandSchema = S.unit
-  let moduleUrl: string = %raw(`import.meta.url`)
+    | OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
+    | OrderCancelled({orderId: string, productIds: array<string>})
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []

@@ -50,9 +50,7 @@ The Spec defines the aggregate's **identity**, **commands**, **events**, and **e
 
 ```rescript
 // CatalogItemSpec.res
-let name = "CatalogItem"
-
-module Id = Reventless.Id.String
+@@reventless.spec
 
 @schema
 type command =
@@ -73,7 +71,7 @@ type error =
   | ItemAlreadyArchived
 ```
 
-The `@schema` annotation generates JSON serialization code via the [Sury `ppx`](./rescript-syntax.md#ppx). Every `command`, `event`, and `error` type must be annotated.
+The `@@reventless.spec` annotation auto-injects `let name` (derived from filename), `module Id`, and `let moduleUrl`. The `@schema` annotation generates JSON serialization code via the [Sury `ppx`](./rescript-syntax.md#ppx). Every `command`, `event`, and `error` type must be annotated. See the [Reventless PPX Guide](/guides/reventless-ppx) for details.
 
 ### Step 2: Implement the Behavior
 
@@ -86,7 +84,7 @@ The Behavior implements the aggregate's state machine. It defines four functions
 
 ```rescript
 // CatalogItemBehavior.res
-module Spec = CatalogItemSpec
+@@reventless.behavior
 
 // The internal state of a catalog item
 @schema
@@ -153,7 +151,7 @@ The ReadModel Spec defines the **shape of the read-side state** stored in the qu
 
 ```rescript
 // CatalogItemReadModelSpec.res
-module Id = Reventless.Id.String
+@@reventless.spec
 
 @schema
 type state = {
@@ -162,8 +160,6 @@ type state = {
   description: string,
   archived: bool,
 }
-
-let name = "CatalogItem"
 
 open Reventless.ReadModel
 let config = config()

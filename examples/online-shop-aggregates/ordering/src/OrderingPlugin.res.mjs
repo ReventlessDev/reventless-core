@@ -67,7 +67,7 @@ function Make(Platform) {
   });
   let mappings = [CustomersProjections$OrderingPlugin.CustomerMapping];
   let CustomerProjections = {
-    moduleUrl: moduleUrl,
+    moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/OrderingPlugin.res.mjs",
     mappings: mappings
   };
   let CustomerReadModel = Platform.ReadModel.Make({
@@ -86,7 +86,7 @@ function Make(Platform) {
   });
   let mappings$1 = [OrdersProjections$OrderingPlugin.OrderMapping];
   let OrderProjections = {
-    moduleUrl: moduleUrl,
+    moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/OrderingPlugin.res.mjs",
     mappings: mappings$1
   };
   let OrderReadModel = Platform.ReadModel.Make({
@@ -122,7 +122,7 @@ function Make(Platform) {
   });
   let mappings$2 = [AvailableProductsProjections$OrderingPlugin.CatalogProductMapping];
   let AvailableProductProjections = {
-    moduleUrl: moduleUrl,
+    moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/OrderingPlugin.res.mjs",
     mappings: mappings$2
   };
   let AvailableProductsReadModelMaker = Platform.ReadModel.Make({

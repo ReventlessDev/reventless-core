@@ -18,19 +18,15 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     Order_EventMappings,
   )
 
+  @reventless.projections
   module CustomerProjections: Projection.Mappings with module Target := CustomersReadModel = {
-    module M = Projection.Mappings.Make(CustomersReadModel)
-    module type Mapping = M.Mapping
-    let moduleUrl = moduleUrl
     let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
   }
 
   module CustomerReadModel = Platform.ReadModel.Make(CustomersReadModel, CustomerProjections)
 
+  @reventless.projections
   module OrderProjections: Projection.Mappings with module Target := OrdersReadModel = {
-    module M = Projection.Mappings.Make(OrdersReadModel)
-    module type Mapping = M.Mapping
-    let moduleUrl = moduleUrl
     let mappings: array<module(Mapping)> = [module(OrdersProjections.OrderMapping)]
   }
 
@@ -43,11 +39,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ReventlessInfra.NoEventMappings.Make(CatalogProduct),
   )
 
+  @reventless.projections
   module AvailableProductProjections: Projection.Mappings
     with module Target := AvailableProductsReadModel = {
-    module M = Projection.Mappings.Make(AvailableProductsReadModel)
-    module type Mapping = M.Mapping
-    let moduleUrl = moduleUrl
     let mappings: array<module(Mapping)> = [
       module(AvailableProductsProjections.CatalogProductMapping),
     ]
