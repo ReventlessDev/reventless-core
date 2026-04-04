@@ -1,17 +1,13 @@
 // Category aggregate behavior.
 // Implements the state machine for adding, renaming, and archiving categories.
 
-open Category
-
-module Spec = Category
+@@reventless.behavior
 
 @schema
 type state =
   | NotCreated
   | Active({name: string})
   | Archived
-
-let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated
 

@@ -1,11 +1,8 @@
 // CancelOrder StateChangeSlice.
 // Requires order to exist and not be shipped; idempotent if already cancelled.
 
-open Reventless
-
-let name = "CancelOrder"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
 
@@ -25,7 +22,7 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = CancelOrder({orderId: @s.matches(DcbTag.string) string})
+type command = CancelOrder({orderId: string})
 
 @schema
 type error =
@@ -35,7 +32,7 @@ type error =
 @schema
 type event =
   | OrderCancelled({
-      orderId: @s.matches(DcbTag.string) string,
+      orderId: string,
       productIds: array<string>,
     })
 

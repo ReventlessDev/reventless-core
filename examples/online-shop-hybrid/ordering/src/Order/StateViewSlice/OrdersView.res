@@ -1,10 +1,9 @@
 // OrdersView StateViewSlice.
 // Projects order events from the shared ordering event log into an Orders read model.
 
-open Reventless.Projection
+@@reventless.spec
 
-let name = "OrdersView"
-let moduleUrl: string = %raw(`import.meta.url`)
+open Reventless.Projection
 
 @schema
 type consumedEvent =

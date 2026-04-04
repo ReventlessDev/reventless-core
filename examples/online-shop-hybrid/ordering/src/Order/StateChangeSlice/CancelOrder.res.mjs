@@ -3,8 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let initialState_productIds = [];
 
 let initialState = {
@@ -100,10 +98,11 @@ let name = "CancelOrder";
 
 let Id;
 
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/CancelOrder.res.mjs";
+
 export {
   name,
   Id,
-  moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
@@ -111,5 +110,6 @@ export {
   errorSchema,
   eventSchema,
   decide,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* consumedEventSchema Not a pure module */

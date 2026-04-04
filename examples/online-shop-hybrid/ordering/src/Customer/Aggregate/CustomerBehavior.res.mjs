@@ -12,8 +12,6 @@ let stateSchema = S.union([
   S.literal("Deactivated")
 ]);
 
-let moduleUrl = import.meta.url;
-
 function evolve(state, event) {
   if (typeof state !== "object") {
     if (state === "NotCreated" && typeof event === "object" && event.TAG === "Registered") {
@@ -132,12 +130,14 @@ let Spec;
 
 let initialState = "NotCreated";
 
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/Aggregate/CustomerBehavior.res.mjs";
+
 export {
   Spec,
   stateSchema,
-  moduleUrl,
   initialState,
   evolve,
   decide,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

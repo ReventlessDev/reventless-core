@@ -2,18 +2,12 @@
 // Handles the PlaceOrder command; rejects duplicate placement and validates
 // that all referenced products have been synced to the ordering event log.
 //
-// The tagged array `productId: array<@s.matches(DcbTag.string) string>` triggers
-// automatic multi-clause query construction: one OR clause per orderId and per
-// productId element — fetching both Order and CatalogProduct events.
-//
-// The command field is named `productId` (singular) to match the tag key on
-// CatalogProductSynced events. The JSON wire format uses "productId" as well.
+// The tagged array `productIds: array<string>` triggers automatic multi-clause
+// query construction: one OR clause per orderId and per productIds element —
+// fetching both Order and CatalogProduct events.
 
-open Reventless
-
-let name = "PlaceOrder"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, availableProductIds: Set.t<string>}
 
@@ -35,9 +29,9 @@ let evolve = (state, event) =>
 @schema
 type command =
   | PlaceOrder({
-      orderId: @s.matches(DcbTag.string) string,
+      orderId: string,
       customerId: string,
-      productId: array<@s.matches(DcbTag.string) string>,
+      productIds: array<string>,
     })
 
 @schema
@@ -48,14 +42,14 @@ type error =
 @schema
 type event =
   | OrderPlaced({
-      orderId: @s.matches(DcbTag.string) string,
+      orderId: string,
       customerId: string,
       productIds: array<string>,
     })
 
 let decide = (state, command) =>
   switch command {
-  | PlaceOrder({orderId, customerId, productId: productIds}) =>
+  | PlaceOrder({orderId, customerId, productIds}) =>
     if state.exists {
       Error(OrderAlreadyPlaced)
     } else {

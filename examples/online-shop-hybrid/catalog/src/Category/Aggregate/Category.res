@@ -1,10 +1,7 @@
 // Category aggregate specification.
 // A named grouping of products (e.g. "Books", "Electronics").
 
-open Reventless
-module Id = Id.String
-
-let name = "Category"
+@@reventless.spec
 
 @schema
 type command =
@@ -23,5 +20,3 @@ type error =
   | CategoryAlreadyExists
   | CategoryNotFound
   | CategoryAlreadyArchived
-
-let moduleUrl: string = %raw(`import.meta.url`)

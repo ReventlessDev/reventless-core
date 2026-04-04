@@ -3,16 +3,14 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   })),
   S.schema(s => ({
     TAG: "OrderShipped",
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
@@ -58,13 +56,17 @@ function process(id, _item) {
 
 let name = "AutoShipOrder";
 
+let Id;
+
 let maxRetries = 3;
 
 let heartbeatInterval = 60;
 
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/AutomationSlice/AutoShipOrder.res.mjs";
+
 export {
   name,
-  moduleUrl,
+  Id,
   consumedEventSchema,
   todoItemSchema,
   commandSchema,
@@ -73,5 +75,6 @@ export {
   process,
   maxRetries,
   heartbeatInterval,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* consumedEventSchema Not a pure module */

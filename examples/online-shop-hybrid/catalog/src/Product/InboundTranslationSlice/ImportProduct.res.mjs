@@ -3,8 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let externalInputSchema = S.schema(s => ({
   sku: s.m(S.string),
   title: s.m(S.string),
@@ -56,11 +54,16 @@ function translate(input) {
 
 let name = "ImportProduct";
 
+let Id;
+
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslationSlice/ImportProduct.res.mjs";
+
 export {
   name,
-  moduleUrl,
+  Id,
   externalInputSchema,
   commandSchema,
   translate,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* externalInputSchema Not a pure module */

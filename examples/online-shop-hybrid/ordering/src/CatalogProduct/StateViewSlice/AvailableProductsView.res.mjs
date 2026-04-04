@@ -2,8 +2,6 @@
 
 import * as S from "sury/src/S.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "CatalogProductSynced",
@@ -49,13 +47,18 @@ function project(event) {
     }];
 }
 
-let name = "AvailableProductsView";
+let name = "AvailableProducts";
+
+let Id;
+
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateViewSlice/AvailableProductsView.res.mjs";
 
 export {
   name,
-  moduleUrl,
+  Id,
   consumedEventSchema,
   stateSchema,
   project,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* consumedEventSchema Not a pure module */

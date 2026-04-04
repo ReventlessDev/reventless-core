@@ -1,11 +1,8 @@
 // AddProduct StateChangeSlice.
 // Handles the AddProduct command; rejects duplicate creation via DCB optimistic concurrency.
 
-open Reventless
-
-let name = "AddProduct"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool}
 
@@ -23,7 +20,7 @@ let evolve = (_state, event) =>
 @schema
 type command =
   | AddProduct({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,
       name: string,
       description: string,
       price: float,
@@ -35,7 +32,7 @@ type error = ProductAlreadyExists
 @schema
 type event =
   | ProductAdded({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,
       name: string,
       description: string,
       price: float,

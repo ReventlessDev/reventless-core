@@ -3,8 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "CatalogProductSynced",
@@ -93,10 +91,11 @@ let initialState = {
 
 let errorSchema = S.unit;
 
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
+
 export {
   name,
   Id,
-  moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
@@ -104,5 +103,6 @@ export {
   errorSchema,
   eventSchema,
   decide,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* consumedEventSchema Not a pure module */

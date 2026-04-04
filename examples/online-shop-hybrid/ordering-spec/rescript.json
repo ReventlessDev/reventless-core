@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering-spec",
   "namespace": "OrderingSpec",
-  "ppx-flags": ["sury-ppx/bin"],
+  "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"],
   "warnings": { "error": "-44+101" },
   "sources": [
     { "dir": "src", "subdirs": true }

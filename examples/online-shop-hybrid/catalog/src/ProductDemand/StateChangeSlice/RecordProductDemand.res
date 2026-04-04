@@ -1,11 +1,8 @@
 // RecordProductDemand StateChangeSlice.
 // Records and revokes per-product order demand driven by Ordering's extension point events.
 
-open Reventless
-
-let name = "RecordProductDemand"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {recordedOrderIds: array<string>}
 let initialState = {recordedOrderIds: []}
@@ -27,8 +24,8 @@ let evolve = (state, event) =>
 
 @schema
 type command =
-  | RecordDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
-  | RevokeDemand({productId: @s.matches(DcbTag.string) string, orderId: string})
+  | RecordDemand({productId: string, orderId: string})
+  | RevokeDemand({productId: string, orderId: string})
 
 @schema
 type error = unit // always succeeds — demand recording is idempotent
@@ -36,11 +33,11 @@ type error = unit // always succeeds — demand recording is idempotent
 @schema
 type event =
   | ProductDemandRecorded({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,
       orderId: string,
     })
   | ProductDemandRevoked({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,
       orderId: string,
     })
 

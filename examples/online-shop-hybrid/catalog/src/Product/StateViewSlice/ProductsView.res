@@ -1,10 +1,9 @@
 // ProductsView StateViewSlice.
 // Projects product events from the shared catalog event log into a Products read model.
 
-open Reventless.Projection
+@@reventless.spec
 
-let name = "ProductsView"
-let moduleUrl: string = %raw(`import.meta.url`)
+open Reventless.Projection
 
 @schema
 type consumedEvent =

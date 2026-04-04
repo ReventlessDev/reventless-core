@@ -7,7 +7,7 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
     orderId: s.m(DcbTag$Reventless.string),
-    customerId: s.m(S.string),
+    customerId: s.m(DcbTag$Reventless.string),
     productIds: s.m(S.array(S.string))
   })),
   S.schema(s => ({
@@ -17,15 +17,13 @@ let eventSchema = S.union([
   }))
 ]);
 
-let moduleUrl = import.meta.url;
-
 let Delegate = {
-  name: "OrderingEventLog",
   Id: undefined,
+  commandSchema: S.unit,
+  name: "OrderingEventLog",
   eventSchema: eventSchema,
   errorSchema: S.unit,
-  commandSchema: S.unit,
-  moduleUrl: moduleUrl
+  moduleUrl: "@reventlessdev/online-shop-hybrid-ordering/src/ExtensionPoint/OrdersExtensionPointMapping.res.mjs"
 };
 
 function mapIncomingCommand(_id, _command, _meta) {

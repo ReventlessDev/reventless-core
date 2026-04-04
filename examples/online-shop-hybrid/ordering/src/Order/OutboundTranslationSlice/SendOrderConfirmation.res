@@ -2,8 +2,7 @@
 // When OrderPlaced is emitted, sends a confirmation email via EmailService.
 // Fire-and-forget pattern (no inbound command).
 
-let name = "SendOrderConfirmation"
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
 
 @schema
 type consumedEvent =

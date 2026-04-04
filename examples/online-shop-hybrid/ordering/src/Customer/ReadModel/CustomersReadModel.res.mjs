@@ -9,22 +9,22 @@ let stateSchema = S.schema(s => ({
   deactivated: s.m(S.bool)
 }));
 
-let moduleUrl = import.meta.url;
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
-
-let Id;
 
 let name = "Customers";
 
+let Id;
+
 let subIdConfig;
 
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModel/CustomersReadModel.res.mjs";
+
 export {
+  name,
   Id,
   stateSchema,
-  name,
-  moduleUrl,
   config,
   subIdConfig,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

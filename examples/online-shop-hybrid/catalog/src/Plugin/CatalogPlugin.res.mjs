@@ -113,7 +113,13 @@ function Make(Platform) {
     consumedEventSchema: ProductsView$CatalogPlugin.consumedEventSchema,
     project: ProductsView$CatalogPlugin.project
   });
-  let ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct$CatalogPlugin);
+  let ImportProductSlice = Platform.InboundTranslationSlice.Make({
+    name: ImportProduct$CatalogPlugin.name,
+    moduleUrl: ImportProduct$CatalogPlugin.moduleUrl,
+    externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
+    commandSchema: ImportProduct$CatalogPlugin.commandSchema,
+    translate: ImportProduct$CatalogPlugin.translate
+  });
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
     moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
@@ -135,7 +141,13 @@ function Make(Platform) {
   });
   let moduleUrl$1 = import.meta.url;
   let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
-    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
+    ExtensionPoint: {
+      name: ProductsExtensionPoint$CatalogSpec.name,
+      moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
+      commandSchema: ProductsExtensionPoint$CatalogSpec.commandSchema,
+      eventSchema: ProductsExtensionPoint$CatalogSpec.eventSchema,
+      directiveSchema: ProductsExtensionPoint$CatalogSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: ProductsExtensionPointMapping$CatalogPlugin.Delegate.name,
@@ -150,7 +162,13 @@ function Make(Platform) {
     moduleUrl: moduleUrl$1
   });
   let OrdersExtensionMaker = Platform.Extension.Make({
-    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
+    ExtensionPoint: {
+      name: OrdersExtensionPoint$OrderingSpec.name,
+      moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
+      commandSchema: OrdersExtensionPoint$OrderingSpec.commandSchema,
+      eventSchema: OrdersExtensionPoint$OrderingSpec.eventSchema,
+      directiveSchema: OrdersExtensionPoint$OrderingSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: RecordProductDemand$CatalogPlugin.name,

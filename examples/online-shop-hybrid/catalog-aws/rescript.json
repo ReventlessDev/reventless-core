@@ -11,7 +11,7 @@
     "@reventlessdev/online-shop-hybrid-catalog-spec",
     "@reventlessdev/online-shop-hybrid-ordering-spec"
   ],
-  "ppx-flags": ["sury-ppx/bin"],
+  "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"],
   "package-specs": { "module": "esmodule", "in-source": true },
   "suffix": ".res.mjs"
 }
