@@ -28,7 +28,7 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
 }
 
 let ProductMapping = {
-  Source: undefined,
+  ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined

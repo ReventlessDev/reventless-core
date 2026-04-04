@@ -57,6 +57,7 @@ module DelegateAggSpec = {
 // ─────────────────────────────────────────────────────────────
 
 module ForwardMapping = {
+  module ExtensionPoint = TestEPSpec
   module Delegate = DelegateAggSpec
 
   let mapIncomingCommand = (
@@ -83,7 +84,7 @@ module ForwardMapping = {
 // Pre-compiled mapping (Spec + Impl → T)
 // ─────────────────────────────────────────────────────────────
 
-module TestEPMapping1 = ReventlessInfra.ExtensionPointMapping.Make(TestEPSpec, ForwardMapping)
+module TestEPMapping1 = ReventlessInfra.ExtensionPointMapping.Make(ForwardMapping)
 
 // ─────────────────────────────────────────────────────────────
 // Mappings collection satisfying ExtensionPoint.Mappings

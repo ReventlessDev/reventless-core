@@ -164,8 +164,8 @@ module Make = (Spec: Spec) => {
   }
 
   module ConnectPluginMapping = ExtensionMapping.Make(
-    PluginExtensionPointSpec,
     {
+      module ExtensionPoint = PluginExtensionPointSpec
       module Delegate = ReventlessInfra.ExtensionMapping.NoDelegate
 
       let mapIncomingEvent: ReventlessInfra.ExtensionMapping.mapIncomingEvent<

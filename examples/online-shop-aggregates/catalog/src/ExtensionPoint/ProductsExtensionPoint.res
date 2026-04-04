@@ -5,6 +5,7 @@ open ReventlessInfra.ExtensionPointMapping
 module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
 
 module ProductMapping = {
+  module ExtensionPoint = ExtensionPoint
   module Delegate = Product
 
   let mapIncomingCommand = (_id, _command, _meta) => []

@@ -406,6 +406,7 @@ open ReventlessInfra.ExtensionPointMapping
 module ExtensionPoint = CatalogSpec.ProductsExtensionPoint  // Reference spec via namespace
 
 module ProductMapping = {
+  module ExtensionPoint = ExtensionPoint
   module Aggregate = Product
 
   let mapIncomingCommand = (_id, _command, _meta) => []  // No inbound commands
@@ -554,7 +555,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ── Extension Point (outbound) ──────────────────────────────
   module ProductsEPProductMapping = ReventlessInfra.ExtensionPointMapping.Make(
-    CatalogSpec.ProductsExtensionPoint,
     ProductsExtensionPoint.ProductMapping,
   )
   module ProductsEPMappings = {
@@ -564,13 +564,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     let mappings: array<module(Mapping)> = [module(ProductsEPProductMapping)]
   }
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
-    CatalogSpec.ProductsExtensionPoint,
     ProductsEPMappings,
   )
 
   // ── Extension (inbound from Ordering) ───────────────────────
   module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-    OrderingSpec.OrdersExtensionPoint,
     OrdersExtension.DemandMapping,
   )
   module OrdersExtensionMappings: ReventlessInfra.ExtensionMapping.Mappings
@@ -581,7 +579,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
   }
   module OrdersExtensionMaker = Platform.Extension.Make(
-    OrderingSpec.OrdersExtensionPoint,
     OrdersExtensionMappings,
   )
 
@@ -614,10 +611,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 1. **Build aggregates** — `Platform.Aggregate.Make(Spec, Behavior, EventMappings)`
 2. **Collect projections** — create a `Mappings` module per read model, listing all mapping modules
 3. **Build read models** — `Platform.ReadModel.Make(ReadModelSpec, Projections)`
-4. **Compile EP mappings** — `ExtensionPointMapping.Make(EPSpec, AggregateMapping)` per aggregate, collect into array
-5. **Build extension points** — `Platform.ExtensionPoint.Make(EPSpec, EPMappings)`
-6. **Compile extension mappings** — `ExtensionMapping.Make(EPSpec, ExtensionMappingModule)` per mapping, collect into array
-7. **Build extensions** — `Platform.Extension.Make(EPSpec, ExtensionMappings)`
+4. **Compile EP mappings** — `ExtensionPointMapping.Make(AggregateMapping)` per aggregate, collect into array
+5. **Build extension points** — `Platform.ExtensionPoint.Make(EPMappings)`
+6. **Compile extension mappings** — `ExtensionMapping.Make(ExtensionMappingModule)` per mapping, collect into array
+7. **Build extensions** — `Platform.Extension.Make(ExtensionMappings)`
 8. **Assemble** — `Platform.Plugin.make(...)` with all components
 
 The **projection Mappings boilerplate** follows a fixed pattern for every read model:
@@ -1091,14 +1088,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ── Extension Point (same pattern as aggregates) ────────────
   module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    CatalogSpec.ProductsExtensionPoint,
     ProductsExtensionPointMapping,
   )
   // ... EP wiring ...
 
   // ── Extension (functor application + Mappings wrapper) ─────
   module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-    OrderingSpec.OrdersExtensionPoint,
     OrdersExtension.DemandMappingImpl,
   )
   module OrdersExtensionMappings = {
@@ -1109,7 +1104,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
   }
   module OrdersExtensionMaker = Platform.Extension.Make(
-    OrderingSpec.OrdersExtensionPoint,
     OrdersExtensionMappings,
   )
 

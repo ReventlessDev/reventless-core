@@ -53,18 +53,17 @@ module Make = (
 
   // ── Extension Point (BUNDLED) ────────────────────────────────
   module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    CatalogSpec.ProductsExtensionPoint,
     CatalogPlugin.ProductsExtensionPointMapping,
   )
   module ProductsEPMappings = {
-    module Spec = CatalogSpec.ProductsExtensionPoint
+    module Spec = CatalogPlugin.ProductsExtensionPointMapping.ExtensionPoint
     module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
     let name = "ProductsEPMappings"
     let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
   module ProductsExtensionPointMaker = ReventlessAws.ExtensionPoint_Builder.Make(
-    CatalogSpec.ProductsExtensionPoint,
+    ProductsEPMappings.Spec,
     ProductsEPMappings,
     {
       let publishToAggregatesQueueUrls = Dict.make()
@@ -73,7 +72,6 @@ module Make = (
 
   // ── Extension (standard — via Platform) ──────────────────────
   module OrdersExtensionMaker = Platform.Extension.Make(
-    OrderingSpec.OrdersExtensionPoint,
     CatalogPlugin.OrdersExtension.DemandMapping,
   )
 

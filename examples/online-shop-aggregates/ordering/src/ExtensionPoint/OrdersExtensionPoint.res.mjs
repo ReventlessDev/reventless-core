@@ -34,6 +34,7 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
 };
 
 let OrderMapping = {
+  ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent

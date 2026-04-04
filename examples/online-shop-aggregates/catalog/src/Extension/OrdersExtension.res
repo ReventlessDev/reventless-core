@@ -4,10 +4,10 @@
 open ReventlessInfra.ExtensionMapping
 
 module DemandMapping = {
-  module Source = OrderingSpec.OrdersExtensionPoint
+  module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
   module Delegate = ProductDemand
 
-  open Source
+  open ExtensionPoint
   open Delegate
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {

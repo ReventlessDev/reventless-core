@@ -136,8 +136,8 @@ function MakeWithConfig(Config) {
   let ReadModel = {
     Make: Make$1
   };
-  let Make$2 = Spec => (Mapping => (Config => {
-    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Spec)(Mapping);
+  let Make$2 = Mapping => (Config => {
+    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
     let Mappings_moduleUrl = Config.moduleUrl;
@@ -147,10 +147,50 @@ function MakeWithConfig(Config) {
       mappings: mappings
     };
     let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
+    return ExtensionPoint_Builder$ReventlessAws.Make(Mapping.ExtensionPoint)(Mappings)({
+      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
+    });
+  });
+  let Make2 = Mapping1 => (Mapping2 => (Config => {
+    let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
+    let mappings = [
+      CM1,
+      CM2
+    ];
+    let Mappings_moduleUrl = Config.moduleUrl;
+    let Mappings = {
+      name: name,
+      moduleUrl: Mappings_moduleUrl,
+      mappings: mappings
+    };
+    let publishToAggregatesQueueUrls = {};
+    return ExtensionPoint_Builder$ReventlessAws.Make(Mapping1.ExtensionPoint)(Mappings)({
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   }));
+  let Make3 = Mapping1 => (Mapping2 => (Mapping3 => (Config => {
+    let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
+    let CM3 = ExtensionPointMapping$ReventlessInfra.Make(Mapping3);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
+    let mappings = [
+      CM1,
+      CM2,
+      CM3
+    ];
+    let Mappings_moduleUrl = Config.moduleUrl;
+    let Mappings = {
+      name: name,
+      moduleUrl: Mappings_moduleUrl,
+      mappings: mappings
+    };
+    let publishToAggregatesQueueUrls = {};
+    return ExtensionPoint_Builder$ReventlessAws.Make(Mapping1.ExtensionPoint)(Mappings)({
+      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
+    });
+  })));
   let MakeMulti = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
     return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
@@ -159,22 +199,58 @@ function MakeWithConfig(Config) {
   });
   let ExtensionPoint = {
     Make: Make$2,
+    Make2: Make2,
+    Make3: Make3,
     MakeMulti: MakeMulti
   };
-  let Make$3 = Spec => (Mapping => {
-    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Spec)(Mapping);
+  let Make$3 = Mapping => {
+    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
-    return Extension_Builder$ReventlessCore.Make(Spec)({
+    return Extension_Builder$ReventlessCore.Make(Mapping.ExtensionPoint)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  };
+  let Make2$1 = Mapping1 => (Mapping2 => {
+    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
+    let moduleUrl = Mapping1.Delegate.moduleUrl;
+    let mappings = [
+      CM1,
+      CM2
+    ];
+    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
       name: name,
       moduleUrl: moduleUrl,
       mappings: mappings
     });
   });
+  let Make3$1 = Mapping1 => (Mapping2 => (Mapping3 => {
+    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
+    let CM3 = ExtensionMapping$ReventlessInfra.Make(Mapping3);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
+    let moduleUrl = Mapping1.Delegate.moduleUrl;
+    let mappings = [
+      CM1,
+      CM2,
+      CM3
+    ];
+    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  }));
   let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
     Make: Make$3,
+    Make2: Make2$1,
+    Make3: Make3$1,
     MakeMulti: MakeMulti$1
   };
   let Make$4 = Spec => {
@@ -705,8 +781,8 @@ function Make($star) {
   let ReadModel = {
     Make: Make$2
   };
-  let Make$3 = Spec => (Mapping => (Config => {
-    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Spec)(Mapping);
+  let Make$3 = Mapping => (Config => {
+    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
     let Mappings_moduleUrl = Config.moduleUrl;
@@ -716,10 +792,50 @@ function Make($star) {
       mappings: mappings
     };
     let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
+    return ExtensionPoint_Builder$ReventlessAws.Make(Mapping.ExtensionPoint)(Mappings)({
+      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
+    });
+  });
+  let Make2 = Mapping1 => (Mapping2 => (Config => {
+    let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
+    let mappings = [
+      CM1,
+      CM2
+    ];
+    let Mappings_moduleUrl = Config.moduleUrl;
+    let Mappings = {
+      name: name,
+      moduleUrl: Mappings_moduleUrl,
+      mappings: mappings
+    };
+    let publishToAggregatesQueueUrls = {};
+    return ExtensionPoint_Builder$ReventlessAws.Make(Mapping1.ExtensionPoint)(Mappings)({
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   }));
+  let Make3 = Mapping1 => (Mapping2 => (Mapping3 => (Config => {
+    let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
+    let CM3 = ExtensionPointMapping$ReventlessInfra.Make(Mapping3);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
+    let mappings = [
+      CM1,
+      CM2,
+      CM3
+    ];
+    let Mappings_moduleUrl = Config.moduleUrl;
+    let Mappings = {
+      name: name,
+      moduleUrl: Mappings_moduleUrl,
+      mappings: mappings
+    };
+    let publishToAggregatesQueueUrls = {};
+    return ExtensionPoint_Builder$ReventlessAws.Make(Mapping1.ExtensionPoint)(Mappings)({
+      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
+    });
+  })));
   let MakeMulti = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
     return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
@@ -728,22 +844,58 @@ function Make($star) {
   });
   let ExtensionPoint = {
     Make: Make$3,
+    Make2: Make2,
+    Make3: Make3,
     MakeMulti: MakeMulti
   };
-  let Make$4 = Spec => (Mapping => {
-    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Spec)(Mapping);
+  let Make$4 = Mapping => {
+    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
-    return Extension_Builder$ReventlessCore.Make(Spec)({
+    return Extension_Builder$ReventlessCore.Make(Mapping.ExtensionPoint)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  };
+  let Make2$1 = Mapping1 => (Mapping2 => {
+    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
+    let moduleUrl = Mapping1.Delegate.moduleUrl;
+    let mappings = [
+      CM1,
+      CM2
+    ];
+    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
       name: name,
       moduleUrl: moduleUrl,
       mappings: mappings
     });
   });
+  let Make3$1 = Mapping1 => (Mapping2 => (Mapping3 => {
+    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
+    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
+    let CM3 = ExtensionMapping$ReventlessInfra.Make(Mapping3);
+    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
+    let moduleUrl = Mapping1.Delegate.moduleUrl;
+    let mappings = [
+      CM1,
+      CM2,
+      CM3
+    ];
+    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  }));
   let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
     Make: Make$4,
+    Make2: Make2$1,
+    Make3: Make3$1,
     MakeMulti: MakeMulti$1
   };
   let Make$5 = Spec => {

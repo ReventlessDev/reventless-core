@@ -6,6 +6,7 @@ open ReventlessInfra.ExtensionPointMapping
 module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
 
 module OrderMapping = {
+  module ExtensionPoint = ExtensionPoint
   module Delegate = Order
 
   let mapIncomingCommand = (_id, _command, _meta) => []

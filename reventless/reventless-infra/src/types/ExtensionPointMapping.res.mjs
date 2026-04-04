@@ -6,122 +6,121 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
-function Make(Spec) {
-  return MappingImpl => {
-    let Delegate = MappingImpl.Delegate;
-    let delegateName = Delegate.name;
-    let extensionPointName = Spec.name;
-    let mapIncomingCommands = (extra, extra$1, extra$2, extra$3) => {
-      let mapIncomingEventImpl = MappingImpl.mapIncomingCommand;
-      return extra.map(param => {
-        let reference = param.reference;
-        let match = param.command;
-        let meta = match.meta;
-        return mapIncomingEventImpl(Id$Reventless.$$String.toString(match.id), match.command, meta).map(x => {
-          if (x.TAG === "PublishCommand") {
-            let targetCmd = x._1;
-            let targetId = x._0;
-            let commandStr = JSON.stringify(Message$Reventless.encode(targetCmd, Delegate.commandSchema));
-            console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + ` to Target ` + delegateName + `: Publishing command: ` + commandStr + ` id: ` + targetId);
-            return {
-              TAG: "AbstractPublishCommand",
-              _0: delegateName,
-              _1: reference,
-              _2: {
-                id: targetId,
-                meta: {
-                  service: Delegate.name,
-                  time: meta.time,
-                  ip: meta.ip,
-                  user: meta.user,
-                  msgId: Uuid.v4(),
-                  correlationId: meta.correlationId
-                },
-                commandJson: Message$Reventless.encode(targetCmd, Delegate.commandSchema)
-              }
-            };
-          }
-          let directive = x._1;
-          let handler = x._0;
-          console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+function Make(MappingImpl) {
+  let Spec = MappingImpl.ExtensionPoint;
+  let Delegate = MappingImpl.Delegate;
+  let delegateName = Delegate.name;
+  let extensionPointName = Spec.name;
+  let mapIncomingCommands = (extra, extra$1, extra$2, extra$3) => {
+    let mapIncomingEventImpl = MappingImpl.mapIncomingCommand;
+    return extra.map(param => {
+      let reference = param.reference;
+      let match = param.command;
+      let meta = match.meta;
+      return mapIncomingEventImpl(Id$Reventless.$$String.toString(match.id), match.command, meta).map(x => {
+        if (x.TAG === "PublishCommand") {
+          let targetCmd = x._1;
+          let targetId = x._0;
+          let commandStr = JSON.stringify(Message$Reventless.encode(targetCmd, Delegate.commandSchema));
+          console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + ` to Target ` + delegateName + `: Publishing command: ` + commandStr + ` id: ` + targetId);
+          return {
+            TAG: "AbstractPublishCommand",
+            _0: delegateName,
+            _1: reference,
+            _2: {
+              id: targetId,
+              meta: {
+                service: Delegate.name,
+                time: meta.time,
+                ip: meta.ip,
+                user: meta.user,
+                msgId: Uuid.v4(),
+                correlationId: meta.correlationId
+              },
+              commandJson: Message$Reventless.encode(targetCmd, Delegate.commandSchema)
+            }
+          };
+        }
+        let directive = x._1;
+        let handler = x._0;
+        console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+        return {
+          TAG: "AbstractCall",
+          _0: reference,
+          _1: () => handler(extra$1, extra$2, extra$3, directive)
+        };
+      });
+    }).flat();
+  };
+  let mapOutgoingEvent = Stdlib_Option.map(MappingImpl.mapOutgoingEvent, mapOutgoingEventImpl => ((extra, extra$1, extra$2, extra$3) => {
+    let val;
+    try {
+      val = Message$Reventless.decodeEvent$p(extra, Delegate.Id.schema, Delegate.eventSchema);
+    } catch (raw_err) {
+      let err = Primitive_exceptions.internalToException(raw_err);
+      console.log("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err);
+      return [];
+    }
+    let meta = val.meta;
+    return mapOutgoingEventImpl(Delegate.Id.toString(val.id), val.event, meta, extra$3).map(eventAction => {
+      switch (eventAction.TAG) {
+        case "PublishEvent" :
+          let id = eventAction._0;
+          let eventJson = Message$Reventless.encode(eventAction._1, Spec.eventSchema);
+          console.log(`ExtensionPointMapping: outgoing from Target ` + delegateName + ` to ExtensionPoint ` + extensionPointName + `: Publishing event: ` + JSON.stringify(eventJson) + ` id: ` + id);
+          let meta_service = Spec.name;
+          let meta_time = meta.time;
+          let meta_ip = meta.ip;
+          let meta_user = meta.user;
+          let meta_msgId = Uuid.v4();
+          let meta_correlationId = meta.correlationId;
+          let meta$1 = {
+            service: meta_service,
+            time: meta_time,
+            ip: meta_ip,
+            user: meta_user,
+            msgId: meta_msgId,
+            correlationId: meta_correlationId
+          };
+          let eventJson$p = Message$Reventless.composeEventJson$p(id, meta$1, eventJson);
+          return {
+            TAG: "AbstractPublishEvent",
+            _0: id,
+            _1: meta$1,
+            _2: eventJson$p
+          };
+        case "PublishEventAsync" :
+          let toEvent$p = async promise => {
+            let match = await promise;
+            let id = match[0];
+            let eventJson = Message$Reventless.encode(match[1], Spec.eventSchema);
+            console.log(`ExtensionPointMapping: async outgoing from Target ` + delegateName + ` to ExtensionPoint ` + extensionPointName + `: Publishing event: ` + JSON.stringify(eventJson) + ` id: ` + id);
+            let eventJson$p = Message$Reventless.composeEventJson$p(id, meta, eventJson);
+            return [
+              id,
+              meta,
+              eventJson$p
+            ];
+          };
+          return {
+            TAG: "AbstractPublishEventAsync",
+            _0: toEvent$p(eventAction._0)
+          };
+        case "Call" :
+          let directive = eventAction._1;
+          let handler = eventAction._0;
+          console.log(`ExtensionPointMapping: outgoing from Target ` + delegateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
           return {
             TAG: "AbstractCall",
-            _0: reference,
-            _1: () => handler(extra$1, extra$2, extra$3, directive)
+            _0: () => handler(extra$1, extra$2, extra$3, directive)
           };
-        });
-      }).flat();
-    };
-    let mapOutgoingEvent = Stdlib_Option.map(MappingImpl.mapOutgoingEvent, mapOutgoingEventImpl => ((extra, extra$1, extra$2, extra$3) => {
-      let val;
-      try {
-        val = Message$Reventless.decodeEvent$p(extra, Delegate.Id.schema, Delegate.eventSchema);
-      } catch (raw_err) {
-        let err = Primitive_exceptions.internalToException(raw_err);
-        console.log("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err);
-        return [];
       }
-      let meta = val.meta;
-      return mapOutgoingEventImpl(Delegate.Id.toString(val.id), val.event, meta, extra$3).map(eventAction => {
-        switch (eventAction.TAG) {
-          case "PublishEvent" :
-            let id = eventAction._0;
-            let eventJson = Message$Reventless.encode(eventAction._1, Spec.eventSchema);
-            console.log(`ExtensionPointMapping: outgoing from Target ` + delegateName + ` to ExtensionPoint ` + extensionPointName + `: Publishing event: ` + JSON.stringify(eventJson) + ` id: ` + id);
-            let meta_service = Spec.name;
-            let meta_time = meta.time;
-            let meta_ip = meta.ip;
-            let meta_user = meta.user;
-            let meta_msgId = Uuid.v4();
-            let meta_correlationId = meta.correlationId;
-            let meta$1 = {
-              service: meta_service,
-              time: meta_time,
-              ip: meta_ip,
-              user: meta_user,
-              msgId: meta_msgId,
-              correlationId: meta_correlationId
-            };
-            let eventJson$p = Message$Reventless.composeEventJson$p(id, meta$1, eventJson);
-            return {
-              TAG: "AbstractPublishEvent",
-              _0: id,
-              _1: meta$1,
-              _2: eventJson$p
-            };
-          case "PublishEventAsync" :
-            let toEvent$p = async promise => {
-              let match = await promise;
-              let id = match[0];
-              let eventJson = Message$Reventless.encode(match[1], Spec.eventSchema);
-              console.log(`ExtensionPointMapping: async outgoing from Target ` + delegateName + ` to ExtensionPoint ` + extensionPointName + `: Publishing event: ` + JSON.stringify(eventJson) + ` id: ` + id);
-              let eventJson$p = Message$Reventless.composeEventJson$p(id, meta, eventJson);
-              return [
-                id,
-                meta,
-                eventJson$p
-              ];
-            };
-            return {
-              TAG: "AbstractPublishEventAsync",
-              _0: toEvent$p(eventAction._0)
-            };
-          case "Call" :
-            let directive = eventAction._1;
-            let handler = eventAction._0;
-            console.log(`ExtensionPointMapping: outgoing from Target ` + delegateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
-            return {
-              TAG: "AbstractCall",
-              _0: () => handler(extra$1, extra$2, extra$3, directive)
-            };
-        }
-      });
-    }));
-    return {
-      delegateName: delegateName,
-      mapIncomingCommands: mapIncomingCommands,
-      mapOutgoingEvent: mapOutgoingEvent
-    };
+    });
+  }));
+  return {
+    delegateName: delegateName,
+    mapIncomingCommands: mapIncomingCommands,
+    mapOutgoingEvent: mapOutgoingEvent
   };
 }
 

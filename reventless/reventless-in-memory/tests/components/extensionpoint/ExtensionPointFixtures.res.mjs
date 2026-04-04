@@ -74,18 +74,20 @@ function mapIncomingCommand(_id, cmd, _meta) {
 }
 
 let ForwardMapping = {
+  ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: undefined
 };
 
 let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make({
-  name: name,
-  moduleUrl: moduleUrl,
-  commandSchema: commandSchema,
-  eventSchema: eventSchema,
-  directiveSchema: directiveSchema
-})({
+  ExtensionPoint: {
+    name: name,
+    moduleUrl: moduleUrl,
+    commandSchema: commandSchema,
+    eventSchema: eventSchema,
+    directiveSchema: directiveSchema
+  },
   Delegate: {
     Id: {
       schema: Id$Reventless.StringPure.schema,

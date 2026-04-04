@@ -1,6 +1,6 @@
 # Single-Argument Make + Composable EP Mappings
 
-## Status: PLANNING
+## Status: DONE — Parts A+B+C complete; Part D replaced by `extension-plugin-naming-and-auto-merge.md`
 
 ## Goal
 

@@ -4,10 +4,10 @@
 open ReventlessInfra.ExtensionMapping
 
 module ProductMapping = {
-  module Source = CatalogSpec.ProductsExtensionPoint
+  module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
   module Delegate = CatalogProduct
 
-  open Source
+  open ExtensionPoint
   open Delegate
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {

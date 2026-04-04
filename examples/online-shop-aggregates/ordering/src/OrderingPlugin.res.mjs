@@ -134,7 +134,8 @@ function Make(Platform) {
     config: AvailableProductsReadModel$OrderingPlugin.config,
     subIdConfig: undefined
   })(AvailableProductProjections);
-  let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPoint$CatalogSpec)({
+  let ProductsExtensionMaker = Platform.Extension.Make({
+    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: CatalogProduct$OrderingPlugin.name,
@@ -147,7 +148,8 @@ function Make(Platform) {
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
   });
   let moduleUrl$3 = import.meta.url;
-  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPoint$OrderingSpec)({
+  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make({
+    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: Order$OrderingPlugin.name,

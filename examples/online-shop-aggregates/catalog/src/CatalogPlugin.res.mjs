@@ -137,7 +137,8 @@ function Make(Platform) {
     subIdConfig: undefined
   })(DemandProjections);
   let moduleUrl$3 = import.meta.url;
-  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPoint$CatalogSpec)({
+  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
+    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: Product$CatalogPlugin.name,
@@ -151,7 +152,8 @@ function Make(Platform) {
   })({
     moduleUrl: moduleUrl$3
   });
-  let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)({
+  let OrdersExtensionMaker = Platform.Extension.Make({
+    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: ProductDemand$CatalogPlugin.name,

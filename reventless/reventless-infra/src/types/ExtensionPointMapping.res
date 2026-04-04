@@ -156,9 +156,10 @@ module type T = {
   >
 }
 
-module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Spec): (
-  T with module ExtensionPoint := Spec
+module Make = (MappingImpl: Mapping): (
+  T with module ExtensionPoint := MappingImpl.ExtensionPoint
 ) => {
+  module Spec = MappingImpl.ExtensionPoint
   module Delegate = MappingImpl.Delegate
   let delegateName = Delegate.name
   let extensionPointName = Spec.name

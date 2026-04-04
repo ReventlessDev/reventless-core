@@ -356,7 +356,7 @@ module ProductMappingImpl = {
   let mapOutgoingEvent = None
 }
 
-module ProductMappingT = Make(Spec, ProductMappingImpl)
+module ProductMappingT = Make(ProductMappingImpl)
 
 module Mappings = {
   module Spec = Spec
@@ -463,7 +463,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ── Extension Point (outbound — published by this plugin) ──────────
   module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    ProductsExtensionPointSpec,
     ProductsExtensionPointMapping,
   )
   module ProductsEPMappings = {
@@ -472,11 +471,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
   module ProductsExtensionPointMaker =
-    Platform.ExtensionPoint.Make(ProductsExtensionPointSpec, ProductsEPMappings)
+    Platform.ExtensionPoint.Make(ProductsEPMappings)
 
   // ── Extension (inbound — subscribing to another plugin's EP) ───────
   module OrdersExtensionMaker =
-    Platform.Extension.Make(OrdersExtensionPointSpec, OrdersExtension.Mappings)
+    Platform.Extension.Make(OrdersExtension.Mappings)
 }
 ```
 
@@ -500,7 +499,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ── Extension Point (outbound) ─────────────────────────────────────
   module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    ProductsExtensionPointSpec,
     ProductsExtensionPointMapping,
   )
   module ProductsEPMappings = {
@@ -509,11 +507,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
   module ProductsExtensionPointMaker =
-    Platform.ExtensionPoint.Make(ProductsExtensionPointSpec, ProductsEPMappings)
+    Platform.ExtensionPoint.Make(ProductsEPMappings)
 
   // ── Extension (inbound) ────────────────────────────────────────────
   module OrdersExtensionMaker =
-    Platform.Extension.Make(OrdersExtensionPointSpec, OrdersExtension.Mappings)
+    Platform.Extension.Make(OrdersExtension.Mappings)
 
   // ── DCB Spec (collected for the Plugin builder) ────────────────────
   module DcbSpec = CatalogEventLog
@@ -542,8 +540,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 |---|---|---|
 | `Platform.Aggregate.Make` | `Spec`, `Behavior`, `EventMappings` | `Aggregate.T` |
 | `Platform.ReadModel.Make` | `Spec`, `Mappings` | `ReadModel.T` |
-| `Platform.ExtensionPoint.Make` | `Spec`, `Mappings` | `ExtensionPoint.T` |
-| `Platform.Extension.Make` | `Spec`, `Mappings` | `Extension.T` |
+| `Platform.ExtensionPoint.Make` | `Mappings` | `ExtensionPoint.T` |
+| `Platform.Extension.Make` | `Mappings` | `Extension.T` |
 | `Platform.Task.Make` | `Spec` | `Task.T` |
 | `Platform.DcbEventLog.Make` | `Spec` | `DcbEventLog.T` |
 | `Platform.StateChangeSlice.Make` | `Spec` | `StateChangeSlice.T` |

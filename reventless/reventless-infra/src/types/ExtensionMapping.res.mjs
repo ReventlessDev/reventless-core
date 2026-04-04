@@ -26,165 +26,164 @@ let NoDelegate = {
   moduleUrl: moduleUrl
 };
 
-function Make(Spec) {
-  return MappingImpl => {
-    let Delegate = MappingImpl.Delegate;
-    let delegateName = Delegate.name;
-    let extensionPointName = Spec.name;
-    let encodeMeta = (meta, service) => ({
-      service: service,
-      time: meta.time,
-      ip: meta.ip,
-      user: meta.user,
-      msgId: Uuid.v4(),
-      correlationId: meta.correlationId
-    });
-    let mapIncomingEvent = (extra, extra$1, extra$2) => {
-      let mapIncomingEventImpl = MappingImpl.mapIncomingEvent;
-      let meta = extra.meta;
-      let encodeTargetCommandJson = (targetCmd, targetId) => {
-        let commandStr = JSON.stringify(Message$Reventless.encode(targetCmd, Delegate.commandSchema));
-        console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + ` to Target ` + delegateName + `: Publishing command: ` + commandStr + ` id: ` + targetId);
-        return {
-          id: targetId,
-          meta: encodeMeta(meta, delegateName),
-          commandJson: Message$Reventless.encode(targetCmd, Delegate.commandSchema)
-        };
+function Make(MappingImpl) {
+  let Spec = MappingImpl.ExtensionPoint;
+  let Delegate = MappingImpl.Delegate;
+  let delegateName = Delegate.name;
+  let extensionPointName = Spec.name;
+  let encodeMeta = (meta, service) => ({
+    service: service,
+    time: meta.time,
+    ip: meta.ip,
+    user: meta.user,
+    msgId: Uuid.v4(),
+    correlationId: meta.correlationId
+  });
+  let mapIncomingEvent = (extra, extra$1, extra$2) => {
+    let mapIncomingEventImpl = MappingImpl.mapIncomingEvent;
+    let meta = extra.meta;
+    let encodeTargetCommandJson = (targetCmd, targetId) => {
+      let commandStr = JSON.stringify(Message$Reventless.encode(targetCmd, Delegate.commandSchema));
+      console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + ` to Target ` + delegateName + `: Publishing command: ` + commandStr + ` id: ` + targetId);
+      return {
+        id: targetId,
+        meta: encodeMeta(meta, delegateName),
+        commandJson: Message$Reventless.encode(targetCmd, Delegate.commandSchema)
       };
-      let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
-        let commandStr = JSON.stringify(commandJson);
-        console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + `: ` + action + `: ` + commandStr + ` id: ` + id);
-        return {
-          id: id,
-          meta: encodeMeta(meta, extensionPointName),
-          commandJson: commandJson
-        };
+    };
+    let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
+      let commandStr = JSON.stringify(commandJson);
+      console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + `: ` + action + `: ` + commandStr + ` id: ` + id);
+      return {
+        id: id,
+        meta: encodeMeta(meta, extensionPointName),
+        commandJson: commandJson
       };
-      let encodeExtensionPointCommand = (command, id, extensionPointName, action) => encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
-      return mapIncomingEventImpl(extra.id, extra.event, meta, extra$1, extra$2).map(x => {
-        switch (x.TAG) {
-          case "PublishAggregateCommand" :
-            return {
-              TAG: "AbstractPublishAggregateCommand",
-              _0: delegateName,
-              _1: encodeTargetCommandJson(x._1, x._0)
-            };
-          case "PublishAggregateCommandAsync" :
-            let toCommandJson = async promise => {
-              let match = await promise;
-              return [
-                delegateName,
-                encodeTargetCommandJson(match[1], match[0])
-              ];
-            };
-            return {
-              TAG: "AbstractPublishAggregateCommandAsync",
-              _0: toCommandJson(x._0)
-            };
-          case "PublishAggregateCommandsAsync" :
-            let toCommandJsons = async promise => (await promise).map(param => [
+    };
+    let encodeExtensionPointCommand = (command, id, extensionPointName, action) => encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
+    return mapIncomingEventImpl(extra.id, extra.event, meta, extra$1, extra$2).map(x => {
+      switch (x.TAG) {
+        case "PublishAggregateCommand" :
+          return {
+            TAG: "AbstractPublishAggregateCommand",
+            _0: delegateName,
+            _1: encodeTargetCommandJson(x._1, x._0)
+          };
+        case "PublishAggregateCommandAsync" :
+          let toCommandJson = async promise => {
+            let match = await promise;
+            return [
               delegateName,
-              encodeTargetCommandJson(param[1], param[0])
-            ]);
+              encodeTargetCommandJson(match[1], match[0])
+            ];
+          };
+          return {
+            TAG: "AbstractPublishAggregateCommandAsync",
+            _0: toCommandJson(x._0)
+          };
+        case "PublishAggregateCommandsAsync" :
+          let toCommandJsons = async promise => (await promise).map(param => [
+            delegateName,
+            encodeTargetCommandJson(param[1], param[0])
+          ]);
+          return {
+            TAG: "AbstractPublishAggregateCommandsAsync",
+            _0: toCommandJsons(x._0)
+          };
+        case "PublishExtensionPointCommand" :
+          let command = x._1;
+          let id = x._0;
+          if (Spec.name === PluginExtensionPointSpec$ReventlessInfra.name) {
             return {
-              TAG: "AbstractPublishAggregateCommandsAsync",
-              _0: toCommandJsons(x._0)
+              TAG: "AbstractPublishPluginExtensionPointCommand",
+              _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
             };
-          case "PublishExtensionPointCommand" :
-            let command = x._1;
-            let id = x._0;
-            if (Spec.name === PluginExtensionPointSpec$ReventlessInfra.name) {
-              return {
-                TAG: "AbstractPublishPluginExtensionPointCommand",
-                _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
-              };
-            } else {
-              return {
-                TAG: "AbstractPublishExtensionPointCommand",
-                _0: extensionPointName,
-                _1: encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
-              };
-            }
-          case "ForwardCommand" :
-            let match = x._0;
-            let extensionPointName$1 = match.extensionPointName;
+          } else {
             return {
               TAG: "AbstractPublishExtensionPointCommand",
-              _0: extensionPointName$1,
-              _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
+              _0: extensionPointName,
+              _1: encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
             };
-          case "Call" :
-            let directive = x._1;
-            let handler = x._0;
-            console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
-            return {
-              TAG: "AbstractCall",
-              _0: () => handler(directive)
-            };
-        }
-      });
-    };
-    let mapOutgoingEvent = Stdlib_Option.map(MappingImpl.mapOutgoingEvent, mapOutgoingEventImpl => ((extra, extra$1) => {
-      let val;
-      try {
-        val = Message$Reventless.decodeEvent$p(extra, Delegate.Id.schema, Delegate.eventSchema);
-      } catch (raw_err) {
-        let err = Primitive_exceptions.internalToException(raw_err);
-        console.log("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err);
-        return [];
+          }
+        case "ForwardCommand" :
+          let match = x._0;
+          let extensionPointName$1 = match.extensionPointName;
+          return {
+            TAG: "AbstractPublishExtensionPointCommand",
+            _0: extensionPointName$1,
+            _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
+          };
+        case "Call" :
+          let directive = x._1;
+          let handler = x._0;
+          console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+          return {
+            TAG: "AbstractCall",
+            _0: () => handler(directive)
+          };
       }
-      let meta = val.meta;
-      let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
-        let commandStr = JSON.stringify(commandJson);
-        console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: ` + action + `: ` + commandStr + ` id: ` + id);
-        return {
-          id: id,
-          meta: encodeMeta(meta, extensionPointName),
-          commandJson: commandJson
-        };
+    });
+  };
+  let mapOutgoingEvent = Stdlib_Option.map(MappingImpl.mapOutgoingEvent, mapOutgoingEventImpl => ((extra, extra$1) => {
+    let val;
+    try {
+      val = Message$Reventless.decodeEvent$p(extra, Delegate.Id.schema, Delegate.eventSchema);
+    } catch (raw_err) {
+      let err = Primitive_exceptions.internalToException(raw_err);
+      console.log("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err);
+      return [];
+    }
+    let meta = val.meta;
+    let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
+      let commandStr = JSON.stringify(commandJson);
+      console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: ` + action + `: ` + commandStr + ` id: ` + id);
+      return {
+        id: id,
+        meta: encodeMeta(meta, extensionPointName),
+        commandJson: commandJson
       };
-      let encodeExtensionPointCommand = (command, id, extensionPointName, action) => encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
-      return mapOutgoingEventImpl(Delegate.Id.toString(val.id), val.event, meta, extra$1).map(x => {
-        switch (x.TAG) {
-          case "PublishExtensionPointCommand" :
-            let command = x._1;
-            let id = x._0;
-            if (Spec.name === PluginExtensionPointSpec$ReventlessInfra.name) {
-              return {
-                TAG: "AbstractPublishPluginExtensionPointCommand",
-                _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
-              };
-            } else {
-              return {
-                TAG: "AbstractPublishExtensionPointCommand",
-                _0: extensionPointName,
-                _1: encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
-              };
-            }
-          case "ForwardCommand" :
-            let match = x._0;
-            let extensionPointName$1 = match.extensionPointName;
+    };
+    let encodeExtensionPointCommand = (command, id, extensionPointName, action) => encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
+    return mapOutgoingEventImpl(Delegate.Id.toString(val.id), val.event, meta, extra$1).map(x => {
+      switch (x.TAG) {
+        case "PublishExtensionPointCommand" :
+          let command = x._1;
+          let id = x._0;
+          if (Spec.name === PluginExtensionPointSpec$ReventlessInfra.name) {
+            return {
+              TAG: "AbstractPublishPluginExtensionPointCommand",
+              _0: encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")
+            };
+          } else {
             return {
               TAG: "AbstractPublishExtensionPointCommand",
-              _0: extensionPointName$1,
-              _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
+              _0: extensionPointName,
+              _1: encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
             };
-          case "Call" :
-            let directive = x._1;
-            let handler = x._0;
-            console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
-            return {
-              TAG: "AbstractCall",
-              _0: () => handler(directive)
-            };
-        }
-      });
-    }));
-    return {
-      delegateName: delegateName,
-      mapIncomingEvent: mapIncomingEvent,
-      mapOutgoingEvent: mapOutgoingEvent
-    };
+          }
+        case "ForwardCommand" :
+          let match = x._0;
+          let extensionPointName$1 = match.extensionPointName;
+          return {
+            TAG: "AbstractPublishExtensionPointCommand",
+            _0: extensionPointName$1,
+            _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
+          };
+        case "Call" :
+          let directive = x._1;
+          let handler = x._0;
+          console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+          return {
+            TAG: "AbstractCall",
+            _0: () => handler(directive)
+          };
+      }
+    });
+  }));
+  return {
+    delegateName: delegateName,
+    mapIncomingEvent: mapIncomingEvent,
+    mapOutgoingEvent: mapOutgoingEvent
   };
 }
 

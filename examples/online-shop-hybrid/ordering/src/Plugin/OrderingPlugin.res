@@ -37,13 +37,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ── Extension (inbound from Catalog) ────────────────────────
   module ProductsExtensionMaker = Platform.Extension.Make(
-    CatalogSpec.ProductsExtensionPoint,
     ProductsExtension.ProductMapping,
   )
 
   // ── Extension Point (outbound) ──────────────────────────────
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(
-    OrderingSpec.OrdersExtensionPoint,
     OrdersExtensionPointMapping,
     {let moduleUrl: string = %raw(`import.meta.url`)},
   )

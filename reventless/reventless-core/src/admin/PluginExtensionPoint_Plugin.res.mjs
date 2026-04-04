@@ -272,17 +272,19 @@ function Make(Spec) {
     }
   };
   let PluginMapping = {
+    ExtensionPoint: undefined,
     Delegate: undefined,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent
   };
   let Mapping = ExtensionPointMapping$ReventlessInfra.Make({
-    name: PluginExtensionPointSpec$ReventlessInfra.name,
-    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
-    commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
-    eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
-  })({
+    ExtensionPoint: {
+      name: PluginExtensionPointSpec$ReventlessInfra.name,
+      moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
+      commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
+      eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
+      directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: PluginSpec$ReventlessCore.name,

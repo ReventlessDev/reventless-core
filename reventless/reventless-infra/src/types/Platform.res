@@ -86,8 +86,25 @@ module type T = {
   /** Factory for extension point components (single mapping). */
   module ExtensionPoint: {
     module Make: (
-      Spec: ExtensionPointMapping.Spec,
-      Mapping: ExtensionPointMapping.Mapping with module ExtensionPoint := Spec,
+      Mapping: ExtensionPointMapping.Mapping,
+      Config: {let moduleUrl: string},
+    ) => ExtensionPoint.T
+
+    /** Two-mapping variant — merges per-slice EP mappings. */
+    module Make2: (
+      Mapping1: ExtensionPointMapping.Mapping,
+      Mapping2: ExtensionPointMapping.Mapping
+        with module ExtensionPoint = Mapping1.ExtensionPoint,
+      Config: {let moduleUrl: string},
+    ) => ExtensionPoint.T
+
+    /** Three-mapping variant — merges per-slice EP mappings. */
+    module Make3: (
+      Mapping1: ExtensionPointMapping.Mapping,
+      Mapping2: ExtensionPointMapping.Mapping
+        with module ExtensionPoint = Mapping1.ExtensionPoint,
+      Mapping3: ExtensionPointMapping.Mapping
+        with module ExtensionPoint = Mapping1.ExtensionPoint,
       Config: {let moduleUrl: string},
     ) => ExtensionPoint.T
 
@@ -101,8 +118,23 @@ module type T = {
   /** Factory for extension components (single mapping). */
   module Extension: {
     module Make: (
-      Spec: ExtensionMapping.Spec,
-      Mapping: ExtensionMapping.Mapping with module ExtensionPoint := Spec,
+      Mapping: ExtensionMapping.Mapping,
+    ) => Extension.T
+
+    /** Two-mapping variant — merges per-delegate extension mappings. */
+    module Make2: (
+      Mapping1: ExtensionMapping.Mapping,
+      Mapping2: ExtensionMapping.Mapping
+        with module ExtensionPoint = Mapping1.ExtensionPoint,
+    ) => Extension.T
+
+    /** Three-mapping variant — merges per-delegate extension mappings. */
+    module Make3: (
+      Mapping1: ExtensionMapping.Mapping,
+      Mapping2: ExtensionMapping.Mapping
+        with module ExtensionPoint = Mapping1.ExtensionPoint,
+      Mapping3: ExtensionMapping.Mapping
+        with module ExtensionPoint = Mapping1.ExtensionPoint,
     ) => Extension.T
 
     /** Multi-mapping variant with full control over name and mappings array. */

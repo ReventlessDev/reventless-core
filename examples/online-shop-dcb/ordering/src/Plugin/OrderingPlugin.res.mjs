@@ -121,7 +121,8 @@ function Make(Platform) {
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
   });
   let AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView$OrderingPlugin);
-  let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPoint$CatalogSpec)({
+  let ProductsExtensionMaker = Platform.Extension.Make({
+    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: SyncCatalogProduct$OrderingPlugin.name,
@@ -134,7 +135,8 @@ function Make(Platform) {
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
   });
   let moduleUrl = import.meta.url;
-  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPoint$OrderingSpec)({
+  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make({
+    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: OrdersExtensionPointMapping$OrderingPlugin.Delegate.name,

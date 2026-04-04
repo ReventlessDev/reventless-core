@@ -99,6 +99,7 @@ module Make = (Spec: Spec) => {
     }
 
   module PluginMapping = {
+    module ExtensionPoint = PluginExtensionPointSpec
     module Delegate = PluginSpec
 
     let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
@@ -171,5 +172,5 @@ module Make = (Spec: Spec) => {
     )
   }
 
-  module Mapping = ReventlessInfra.ExtensionPointMapping.Make(PluginExtensionPointSpec, PluginMapping)
+  module Mapping = ReventlessInfra.ExtensionPointMapping.Make(PluginMapping)
 }

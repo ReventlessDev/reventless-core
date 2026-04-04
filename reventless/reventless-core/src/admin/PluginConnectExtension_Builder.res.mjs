@@ -145,12 +145,13 @@ function Make(Spec) {
   };
   let $$let = ExtensionMapping$ReventlessInfra.NoDelegate.Id;
   let ConnectPluginMapping = ExtensionMapping$ReventlessInfra.Make({
-    name: PluginExtensionPointSpec$ReventlessInfra.name,
-    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
-    commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
-    eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
-    directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
-  })({
+    ExtensionPoint: {
+      name: PluginExtensionPointSpec$ReventlessInfra.name,
+      moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
+      commandSchema: PluginExtensionPointSpec$ReventlessInfra.commandSchema,
+      eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
+      directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
+    },
     Delegate: {
       Id: {
         schema: $$let.schema,

@@ -53,7 +53,7 @@ module Platform = ReventlessAws.Platform.Make(Config)
 | `Platform.StateChangeSlice.Make(Spec)` | Builds a DCB state change slice |
 | `Platform.StateViewSlice.Make(Spec)` | Builds a DCB state view slice |
 | `Platform.DcbEventLog.Make(Spec)` | Builds a DCB event log (used internally) |
-| `Platform.ExtensionPoint.Make(Spec, Mappings)` | Builds an extension point |
+| `Platform.ExtensionPoint.Make(Mappings)` | Builds an extension point |
 | `Platform.Task.Make(Spec)` | Builds a task component |
 | `Platform.Counter` | Pre-built counter component |
 

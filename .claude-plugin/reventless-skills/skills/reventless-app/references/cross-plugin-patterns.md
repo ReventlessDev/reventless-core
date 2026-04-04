@@ -34,6 +34,7 @@ open ReventlessInfra.ExtensionPointMapping
 module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
 
 module ProductMapping = {
+  module ExtensionPoint = ExtensionPoint
   module Aggregate = Product  // the aggregate spec
 
   let mapIncomingCommand = (_id, _command, _meta) => []
@@ -119,7 +120,7 @@ open Reventless
 open ReventlessInfra.ExtensionMapping
 
 module ProductMapping = {
-  module Source = CatalogSpec.ProductsExtensionPoint
+  module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
   module Target = CatalogProduct  // local aggregate
 
   module Aggregate = CatalogProduct  // same as Target
@@ -148,7 +149,7 @@ open Reventless
 open ReventlessInfra.ExtensionMapping
 
 module ProductMapping = {
-  module Source = CatalogSpec.ProductsExtensionPoint
+  module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
   module Target = SyncCatalogProduct  // StateChangeSlice
 
   // DCB shim: wrap slice as Aggregate.Spec for command encoding
@@ -187,7 +188,6 @@ module ProductMapping = {
 
 // 1. Compile EP mapping
 module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-  CatalogSpec.ProductsExtensionPoint,
   ProductsExtensionPointMapping,  // or ProductsExtensionPoint.ProductMapping
 )
 
@@ -203,7 +203,6 @@ module ProductsEPMappings = {
 
 // 3. Build EP component
 module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
-  CatalogSpec.ProductsExtensionPoint,
   ProductsEPMappings,
 )
 ```
@@ -213,7 +212,6 @@ module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
 ```rescript
 // 1. Compile extension mapping
 module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-  OrderingSpec.OrdersExtensionPoint,
   OrdersExtension.DemandMapping,
 )
 
@@ -229,7 +227,6 @@ module OrdersExtensionMappings = {
 
 // 3. Build extension component
 module OrdersExtensionMaker = Platform.Extension.Make(
-  OrderingSpec.OrdersExtensionPoint,
   OrdersExtensionMappings,
 )
 ```

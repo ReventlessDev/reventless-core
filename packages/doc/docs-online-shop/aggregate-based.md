@@ -479,7 +479,7 @@ module DemandMappingImpl = {
   let mapOutgoingEvent = None
 }
 
-module DemandMappingT = ReventlessCore.ExtensionMapping.Make(Spec, DemandMappingImpl)
+module DemandMappingT = ReventlessCore.ExtensionMapping.Make(DemandMappingImpl)
 
 module Mappings = {
   module Spec = Spec
@@ -550,7 +550,6 @@ module Make = (Platform: Platform.T) => {
 
   // Compile the Products extension point mapping, then build the EP component
   module ProductsEPMappingT = ReventlessCore.ExtensionPointMapping.Make(
-    ProductsExtensionPointSpec,
     ProductsExtensionPointMapping,
   )
   module ProductsEPMappings = {
@@ -559,13 +558,11 @@ module Make = (Platform: Platform.T) => {
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
-    ProductsExtensionPointSpec,
     ProductsEPMappings,
   )
 
   // Build the Orders extension (subscribing to Ordering's EP)
   module OrdersExtensionMaker = ReventlessCore.Extension_Builder.Make(
-    OrdersExtensionPointSpec,
     OrdersExtension.Mappings,
   )
 }

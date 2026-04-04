@@ -120,7 +120,8 @@ function Make(Platform) {
   });
   let ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView$CatalogPlugin);
   let moduleUrl = import.meta.url;
-  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPoint$CatalogSpec)({
+  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
+    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: ProductsExtensionPointMapping$CatalogPlugin.Delegate.name,
@@ -134,7 +135,8 @@ function Make(Platform) {
   })({
     moduleUrl: moduleUrl
   });
-  let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)({
+  let OrdersExtensionMaker = Platform.Extension.Make({
+    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
     Delegate: {
       Id: Id$Reventless.$$String,
       name: RecordProductDemand$CatalogPlugin.name,
