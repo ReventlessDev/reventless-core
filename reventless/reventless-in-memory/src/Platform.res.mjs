@@ -804,9 +804,13 @@ function MakeWithConfig(Config) {
         return JSON.stringify(result);
       }
     });
+    GraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+    GraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
     if (adminGraphQL !== undefined) {
+      adminGraphQL.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+      adminGraphQL.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
       adminGraphQL.start(4001, undefined);
       adminGraphQLRef.contents = adminGraphQL;
     }
@@ -1674,9 +1678,13 @@ function Make($star) {
         return JSON.stringify(result);
       }
     });
+    GraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+    GraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     MCP_Server$ReventlessInMemory.start(undefined, undefined);
     if (adminGraphQL !== undefined) {
+      adminGraphQL.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+      adminGraphQL.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
       adminGraphQL.start(4001, undefined);
       adminGraphQLRef.contents = adminGraphQL;
     }

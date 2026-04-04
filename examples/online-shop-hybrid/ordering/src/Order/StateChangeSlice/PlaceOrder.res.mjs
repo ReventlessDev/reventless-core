@@ -32,7 +32,7 @@ function evolve(state, event) {
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(S.string),
+  customerId: s.m(DcbTag$Reventless.string),
   productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 
@@ -46,7 +46,7 @@ let errorSchema = S.union([
 
 let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(DcbTag$Reventless.string),
+  orderId: s.m(DcbTag$Reventless.partition),
   customerId: s.m(DcbTag$Reventless.string),
   productId: s.m(S.array(DcbTag$Reventless.string))
 }));

@@ -34,6 +34,11 @@ let has_s_matches_attr (attrs : attributes) =
     String.equal attr.attr_name.txt "s.matches"
   ) attrs
 
+let strip_s_matches_attr (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "s.matches")
+  ) attrs
+
 (** @partitionTag — marks field as the DcbTag.partition key. *)
 let has_partition_tag_field_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) ->
@@ -151,15 +156,16 @@ let map_schema_fields (f : label_declaration -> label_declaration)
     | _ -> item
   ) str
 
-(** @partitionTag → @s.matches(Reventless.DcbTag.partition). Runs unconditionally. *)
+(** @partitionTag → @s.matches(Reventless.DcbTag.partition). Runs unconditionally.
+    Strips any existing @s.matches (e.g. auto-applied DcbTag.string) before injecting
+    DcbTag.partition, so @partitionTag works correctly on *Id fields in slice folders. *)
 let transform_partition_tags ~loc (str : structure) : structure =
   map_schema_fields (fun ld ->
     if has_partition_tag_field_attr ld.pld_attributes
-       && is_string_type ld.pld_type
-       && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
+       && is_string_type ld.pld_type then
       { ld with
         pld_type = { ld.pld_type with
-                     ptyp_attributes = (dcb_partition_attr ~loc) :: ld.pld_type.ptyp_attributes };
+                     ptyp_attributes = (dcb_partition_attr ~loc) :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
         pld_attributes = strip_partition_tag_field_attr ld.pld_attributes }
     else ld
   ) str

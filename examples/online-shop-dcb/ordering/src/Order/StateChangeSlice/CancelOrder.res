@@ -29,7 +29,7 @@ type error =
 
 @schema
 type event = OrderCancelled({
-  orderId: string,
+  @partitionTag orderId: string,
   productIds: array<string>,
 })
 

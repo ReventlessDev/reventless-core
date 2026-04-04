@@ -31,11 +31,11 @@ type error = unit // always succeeds — demand recording is idempotent
 @schema
 type event =
   | ProductDemandRecorded({
-      productId: string,
+      @partitionTag productId: string,
       orderId: string,
     })
   | ProductDemandRevoked({
-      productId: string,
+      @partitionTag productId: string,
       orderId: string,
     })
 

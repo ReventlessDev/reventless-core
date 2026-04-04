@@ -18,6 +18,24 @@ import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/C
 import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "../OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
 
+let toRelativePath = (function toRelativePath(moduleUrl) {
+  try {
+    const fs = process.getBuiltinModule('node:fs');
+    const path = process.getBuiltinModule('node:path');
+    const { fileURLToPath } = process.getBuiltinModule('node:url');
+    const builderReal = fs.realpathSync(fileURLToPath(import.meta.url));
+    const sliceReal = fs.realpathSync(fileURLToPath(moduleUrl));
+    let dir = path.dirname(builderReal);
+    while (dir !== path.dirname(dir)) {
+      if (fs.existsSync(path.join(dir, 'lerna.json'))) break;
+      dir = path.dirname(dir);
+    }
+    return path.relative(dir, sliceReal).replace(/\\.mjs$/, '.res');
+  } catch(e) {
+    return moduleUrl.replace('file://', '');
+  }
+});
+
 let emptyResult_stateChangeSlicesOutputs = {};
 
 let emptyResult_stateViewSlicesOutputs = {};
@@ -58,6 +76,11 @@ function Make(DcbEventLogStorage) {
         Sc.Spec.name,
         Sc.Spec.eventSchema
       ]);
+      let producedNamed = stateChangeSlices.map(Sc => [
+        Sc.Spec.name,
+        toRelativePath(Sc.Spec.moduleUrl),
+        Sc.Spec.eventSchema
+      ]);
       let consumed = stateChangeSlices.map(Sc => [
         Sc.Spec.name,
         Sc.Spec.consumedEventSchema
@@ -88,7 +111,7 @@ function Make(DcbEventLogStorage) {
           return true;
         }
       }).map(tagKey => `tag_` + tagKey);
-      let partitionTag = DcbTag$Reventless.derivePartitionTag(producedSchemas);
+      let partitionTag = DcbTag$Reventless.derivePartitionTag(producedNamed);
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, indexes, partitionTag, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));
@@ -341,6 +364,7 @@ function Make(DcbEventLogStorage) {
 }
 
 export {
+  toRelativePath,
   emptyResult,
   Make,
 }

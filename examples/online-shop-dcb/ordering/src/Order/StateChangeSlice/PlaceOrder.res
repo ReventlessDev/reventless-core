@@ -29,7 +29,7 @@ type error = OrderAlreadyPlaced
 @schema
 type event =
   | OrderPlaced({
-      orderId: string,
+      @partitionTag orderId: string,
       customerId: string,
       productIds: array<string>,
     })

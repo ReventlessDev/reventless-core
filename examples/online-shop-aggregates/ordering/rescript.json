@@ -31,5 +31,7 @@
     "@glennsl/rescript-jest"
   ],
   "compiler-flags": [],
+  "module": "esmodule",
+  "in-source": true,
   "suffix": ".res.mjs"
 }

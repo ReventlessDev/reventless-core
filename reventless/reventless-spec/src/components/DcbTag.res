@@ -582,7 +582,51 @@ let hasMultiTagVariant = (schema: S.t<unknown>): bool =>
   }
 
 /**
-Derives the partition tag from an array of event schemas.
+Returns the names of variants within a schema that have multiple tagged fields.
+Used to build diagnostic context for partition tag errors.
+*/
+let findMultiTagVariantNames = (schema: S.t<unknown>): array<string> => {
+  // Extract the variant name from a single object-variant schema via its TAG item.
+  let variantName = (variantSchema: S.t<unknown>): option<string> =>
+    switch variantSchema {
+    | Object({items, properties}) => {
+        let tagCount =
+          properties
+          ->Dict.toArray
+          ->Array.filter(((_, fieldSchema)) => isTagged(fieldSchema))
+          ->Array.length
+        if tagCount > 1 {
+          Some(
+            items
+            ->Array.find(item => item.location == "TAG")
+            ->Option.flatMap(item =>
+              switch item.schema {
+              | String({const}) => Some(const)
+              | _ => None
+              }
+            )
+            ->Option.getOr("(unknown)"),
+          )
+        } else {
+          None
+        }
+      }
+    | _ => None
+    }
+
+  switch schema {
+  | Union({anyOf}) => anyOf->Array.filterMap(variantName)
+  | _ =>
+    // Single-variant event type — schema is the object directly
+    switch variantName(schema) {
+    | Some(name) => [name]
+    | None => []
+    }
+  }
+}
+
+/**
+Derives the partition tag from an array of named event schemas.
 
 Rules:
 - If only one tagged field exists across all schemas, it is automatically selected.
@@ -592,9 +636,11 @@ Rules:
 - If any event variant has multiple tagged fields and exactly one is annotated
   with `DcbTag.partition`, that one is selected.
 - If any event variant has multiple tagged fields and none (or multiple) are
-  annotated with `DcbTag.partition`, throws an error.
+  annotated with `DcbTag.partition`, throws an error naming the affected slice,
+  variant(s), and source file path.
 */
-let derivePartitionTag = (schemas: array<S.t<unknown>>): partitionTag => {
+let derivePartitionTag = (namedSchemas: array<(string, string, S.t<unknown>)>): partitionTag => {
+  let schemas = namedSchemas->Array.map(((_, _, schema)) => schema)
   let allTaggedFields = {
     let seen = Set.make()
     schemas->Array.flatMap(schema => extractTaggedFields(schema))->Array.filter(f => {
@@ -615,6 +661,19 @@ let derivePartitionTag = (schemas: array<S.t<unknown>>): partitionTag => {
       let needsExplicitPartition = schemas->Array.some(schema => hasMultiTagVariant(schema))
 
       if needsExplicitPartition {
+        // Build diagnostic context: "SliceName (VariantA, VariantB) @ path, ..."
+        let context =
+          namedSchemas
+          ->Array.filterMap(((sliceName, path, schema)) => {
+            let variantNames = findMultiTagVariantNames(schema)
+            if variantNames->Array.length > 0 {
+              Some(`${sliceName} (${variantNames->Array.join(", ")}) @ ${path}`)
+            } else {
+              None
+            }
+          })
+          ->Array.join(", ")
+
         // Need explicit DcbTag.partition annotation
         let allPartitionFields = {
           let seen = Set.make()
@@ -631,11 +690,11 @@ let derivePartitionTag = (schemas: array<S.t<unknown>>): partitionTag => {
         | [singlePartition] => {key: singlePartition}
         | [] =>
           JsError.throwWithMessage(
-            `DCB spec has variants with multiple tagged fields (${multipleFields->Array.join(", ")}) but none is annotated with DcbTag.partition — mark one field as the partition key`,
+            `DCB spec has variants with multiple tagged fields (${multipleFields->Array.join(", ")}) but none is annotated with @partitionTag — affected: ${context} — mark one field as the partition key`,
           )
         | multiplePartitions =>
           JsError.throwWithMessage(
-            `DCB spec has multiple fields annotated with DcbTag.partition (${multiplePartitions->Array.join(", ")}) — only one is allowed`,
+            `DCB spec has multiple fields annotated with @partitionTag (${multiplePartitions->Array.join(", ")}) — only one is allowed — affected: ${context}`,
           )
         }
       } else {

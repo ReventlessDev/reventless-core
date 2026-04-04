@@ -351,7 +351,38 @@ function hasMultiTagVariant(schema) {
   }
 }
 
-function derivePartitionTag(schemas) {
+function findMultiTagVariantNames(schema) {
+  let variantName = variantSchema => {
+    if (variantSchema.type !== "object") {
+      return;
+    }
+    let tagCount = Object.entries(variantSchema.properties).filter(param => isTagged(param[1])).length;
+    if (tagCount > 1) {
+      return Stdlib_Option.getOr(Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+        let match = item.schema;
+        if (match.type !== "string") {
+          return;
+        }
+        let $$const = match.const;
+        if ($$const !== undefined) {
+          return $$const;
+        }
+      }), "(unknown)");
+    }
+  };
+  if (schema.type === "union") {
+    return Stdlib_Array.filterMap(schema.anyOf, variantName);
+  }
+  let name = variantName(schema);
+  if (name !== undefined) {
+    return [name];
+  } else {
+    return [];
+  }
+}
+
+function derivePartitionTag(namedSchemas) {
+  let schemas = namedSchemas.map(param => param[2]);
   let seen = new Set();
   let allTaggedFields = schemas.flatMap(extractTaggedFields).filter(f => {
     if (seen.has(f)) {
@@ -368,6 +399,12 @@ function derivePartitionTag(schemas) {
     }
     let needsExplicitPartition = schemas.some(hasMultiTagVariant);
     if (needsExplicitPartition) {
+      let context = Stdlib_Array.filterMap(namedSchemas, param => {
+        let variantNames = findMultiTagVariantNames(param[2]);
+        if (variantNames.length !== 0) {
+          return param[0] + ` (` + variantNames.join(", ") + `) @ ` + param[1];
+        }
+      }).join(", ");
       let seen$1 = new Set();
       let allPartitionFields = schemas.flatMap(extractPartitionTagFields).filter(f => {
         if (seen$1.has(f)) {
@@ -380,9 +417,9 @@ function derivePartitionTag(schemas) {
       let len$1 = allPartitionFields.length;
       if (len$1 !== 1) {
         if (len$1 !== 0) {
-          return Stdlib_JsError.throwWithMessage(`DCB spec has multiple fields annotated with DcbTag.partition (` + allPartitionFields.join(", ") + `) — only one is allowed`);
+          return Stdlib_JsError.throwWithMessage(`DCB spec has multiple fields annotated with @partitionTag (` + allPartitionFields.join(", ") + `) — only one is allowed — affected: ` + context);
         } else {
-          return Stdlib_JsError.throwWithMessage(`DCB spec has variants with multiple tagged fields (` + allTaggedFields.join(", ") + `) but none is annotated with DcbTag.partition — mark one field as the partition key`);
+          return Stdlib_JsError.throwWithMessage(`DCB spec has variants with multiple tagged fields (` + allTaggedFields.join(", ") + `) but none is annotated with @partitionTag — affected: ` + context + ` — mark one field as the partition key`);
         }
       }
       let singlePartition = allPartitionFields[0];
@@ -436,6 +473,7 @@ export {
   extractTaggedFields,
   extractPartitionTagFields,
   hasMultiTagVariant,
+  findMultiTagVariantNames,
   derivePartitionTag,
   getPartitionTagValue,
 }

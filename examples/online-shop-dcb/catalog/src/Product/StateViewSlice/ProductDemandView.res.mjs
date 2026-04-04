@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
@@ -12,16 +13,16 @@ let stateSchema = S.schema(s => ({
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductAdded",
-    productId: s.m(S.string),
+    productId: s.m(DcbTag$Reventless.string),
     name: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "ProductDemandRecorded",
-    productId: s.m(S.string)
+    productId: s.m(DcbTag$Reventless.string)
   })),
   S.schema(s => ({
     TAG: "ProductDemandRevoked",
-    productId: s.m(S.string)
+    productId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 

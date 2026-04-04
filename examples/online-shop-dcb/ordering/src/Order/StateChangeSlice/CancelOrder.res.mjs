@@ -60,7 +60,7 @@ let errorSchema = S.union([
 
 let eventSchema = S.schema(s => ({
   TAG: "OrderCancelled",
-  orderId: s.m(DcbTag$Reventless.string),
+  orderId: s.m(DcbTag$Reventless.partition),
   productIds: s.m(S.array(DcbTag$Reventless.string))
 }));
 

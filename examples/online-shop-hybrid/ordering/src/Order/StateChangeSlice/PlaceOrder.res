@@ -27,11 +27,7 @@ let evolve = (state, event) =>
 
 @schema
 type command =
-  | PlaceOrder({
-      orderId: string,
-      customerId: @s.matches(S.string) string,
-      productId: array<string>,
-    })
+  | PlaceOrder({orderId: string, customerId: string, productId: array<string>})
 
 @schema
 type error =
@@ -40,11 +36,7 @@ type error =
 
 @schema
 type event =
-  | OrderPlaced({
-      orderId: string,
-      customerId: string,
-      productId: array<string>,
-    })
+  | OrderPlaced({@partitionTag orderId: string, customerId: string, productId: array<string>})
 
 let decide = (state, command) =>
   switch command {

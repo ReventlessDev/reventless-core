@@ -874,10 +874,25 @@ module MakeWithConfig = (
     // Start servers.
     // In unified mode: one GraphQL + one MCP server with all schema combined.
     // In split mode: plugin servers on default ports, admin servers on +1 ports.
+    // Always inject Relay base types (Node interface, PageInfo) and the node
+    // query field into the plugin GraphQL server so that:
+    // 1. `type X implements Node { ... }` fragments compile (Node interface must exist)
+    // 2. The node resolver registered by QueryDbResolvers_GraphQL.res has a
+    //    matching `node(id: ID!): Node` field in the Query type.
+    GraphQL_Server.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
+    GraphQL_Server.registerQueries(
+      ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
+      ~resolvers=Dict.make(),
+    )
     GraphQL_Server.start()
     MCP_Server.start()
     switch adminGraphQL {
     | Some(inst) =>
+      inst.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
+      inst.registerQueries(
+        ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
+        ~resolvers=Dict.make(),
+      )
       inst.start(~port=4001, ())
       adminGraphQLRef := Some(inst)
     | None => ()

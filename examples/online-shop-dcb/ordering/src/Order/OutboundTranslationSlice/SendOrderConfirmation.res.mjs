@@ -3,13 +3,14 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as EmailService$OrderingPlugin from "../../Service/EmailService.res.mjs";
 
 let consumedEventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(S.string),
-  customerId: s.m(S.string)
+  orderId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(DcbTag$Reventless.string)
 }));
 
 let outboundItemSchema = S.schema(s => ({

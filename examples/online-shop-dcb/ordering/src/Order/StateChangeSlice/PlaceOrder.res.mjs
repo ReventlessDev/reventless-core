@@ -22,7 +22,7 @@ let errorSchema = S.literal("OrderAlreadyPlaced");
 
 let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
-  orderId: s.m(DcbTag$Reventless.string),
+  orderId: s.m(DcbTag$Reventless.partition),
   customerId: s.m(DcbTag$Reventless.string),
   productIds: s.m(S.array(DcbTag$Reventless.string))
 }));

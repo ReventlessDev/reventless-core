@@ -1,3 +1,24 @@
+// Converts a file:// module URL to a path relative to the project root (located by lerna.json),
+// resolving symlinks so workspace packages show their source location rather than node_modules.
+// Falls back to the bare URL string on any error.
+let toRelativePath: string => string = %raw(`function toRelativePath(moduleUrl) {
+  try {
+    const fs = process.getBuiltinModule('node:fs');
+    const path = process.getBuiltinModule('node:path');
+    const { fileURLToPath } = process.getBuiltinModule('node:url');
+    const builderReal = fs.realpathSync(fileURLToPath(import.meta.url));
+    const sliceReal = fs.realpathSync(fileURLToPath(moduleUrl));
+    let dir = path.dirname(builderReal);
+    while (dir !== path.dirname(dir)) {
+      if (fs.existsSync(path.join(dir, 'lerna.json'))) break;
+      dir = path.dirname(dir);
+    }
+    return path.relative(dir, sliceReal).replace(/\\.mjs$/, '.res');
+  } catch(e) {
+    return moduleUrl.replace('file://', '');
+  }
+}`)
+
 type dcbResult = {
   dcbEventLogOutputs: option<DcbEventLog.outputs>,
   stateChangeSlicesOutputs: dict<StateChangeSlice.outputs>,
@@ -53,6 +74,10 @@ module Make = (
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
             (Sc.Spec.name, Sc.Spec.eventSchema->S.castToUnknown)
           )
+        let producedNamed =
+          stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
+            (Sc.Spec.name, toRelativePath(Sc.Spec.moduleUrl), Sc.Spec.eventSchema->S.castToUnknown)
+          )
         let consumed =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
             (Sc.Spec.name, Sc.Spec.consumedEventSchema->S.castToUnknown)
@@ -99,7 +124,7 @@ module Make = (
           })
           ->Array.map(tagKey => `tag_${tagKey}`)
 
-        let partitionTag = Reventless.DcbTag.derivePartitionTag(producedSchemas)
+        let partitionTag = Reventless.DcbTag.derivePartitionTag(producedNamed)
 
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,
