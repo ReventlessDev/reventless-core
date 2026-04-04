@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-pulumi-aws",
-  "version": "2.4.0-alpha.7",
+  "version": "2.4.0-alpha.8",
   "description": "ReScript bindings for @pulumi/aws",
   "license": "MIT",
   "scripts": {

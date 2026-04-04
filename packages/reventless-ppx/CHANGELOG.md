@@ -1,0 +1,23 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+# 1.0.0-alpha.2 (2026-04-04)
+
+### Bug Fixes
+
+* **ci:** resolve PPX "Exec format error" on Linux ([0f2e014](https://github.com/ReventlessDev/reventless-core/commit/0f2e014929eaee522ac270ca8d3797fe6efe2db7))
+* DCB [@partition](https://github.com/partition)Tag runtime errors, GraphQL Node interface, and ESM config ([dc4c4e1](https://github.com/ReventlessDev/reventless-core/commit/dc4c4e10f1ef09aba840e7b359df453b122c6aa4))
+* **ppx:** add prebuilt Linux x64 binary ([8fb4dfc](https://github.com/ReventlessDev/reventless-core/commit/8fb4dfcb72a47fa01cfe175c14bef36fafe3130a))
+* **ppx:** replace bin with platform-dispatching shell wrapper ([90ca700](https://github.com/ReventlessDev/reventless-core/commit/90ca700dcd63d139d590724f9f5cdba104529793))
+* feat!: add reventless-ppx with @@reventless.spec, @@reventless.behavior, @@reventless.dcbTags ([cb203ec](https://github.com/ReventlessDev/reventless-core/commit/cb203ece5ea3a1b92ba7d1a57d9e12bb6c4c2487))
+### Features
+
+* reventless-ppx — [@partition](https://github.com/partition)Tag, [@no](https://github.com/no)Tag, [@dcb](https://github.com/dcb)Tag field annotations ([64646b8](https://github.com/ReventlessDev/reventless-core/commit/64646b8813ba8c55febb3383bc40a78c5b09147e))
+
+### BREAKING CHANGES
+
+* Example spec files no longer export manual moduleUrl/name/Id
+declarations — these are now PPX-generated. Downstream code referencing these
+exports is unaffected (same values, different source).

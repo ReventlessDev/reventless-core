@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.34 (2026-04-04)
+
+* feat!: add reventless-ppx with @@reventless.spec, @@reventless.behavior, @@reventless.dcbTags ([cb203ec](https://github.com/ReventlessDev/reventless-core/commit/cb203ece5ea3a1b92ba7d1a57d9e12bb6c4c2487))
+* feat!: Extension Blueprint pattern with auto-merge and plugin naming ([0856d4d](https://github.com/ReventlessDev/reventless-core/commit/0856d4d2a23b8d5175fd091f90110d4c44927191))
+### Features
+
+* add Relay server compliance to GraphQL API ([bd9245d](https://github.com/ReventlessDev/reventless-core/commit/bd9245da87023247643c5fa37cee21b0cde0f61e))
+* make Relay connection spec the default for all list queries ([fa8d258](https://github.com/ReventlessDev/reventless-core/commit/fa8d258ddeb30bf02f97b1c1f3cc564e15632e94))
+
+### BREAKING CHANGES
+
+* Example spec files no longer export manual moduleUrl/name/Id
+declarations — these are now PPX-generated. Downstream code referencing these
+exports is unaffected (same values, different source).
+* Platform.Extension.Make returns Extension.Blueprint
+instead of Extension.T. Plugin.make ~extensions param type changes
+accordingly. Make2/Make3/MakeMulti removed from Platform.T.
+
+
+
 # 3.0.0-alpha.33 (2026-04-03)
 
 ### Bug Fixes

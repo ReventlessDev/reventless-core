@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.15 (2026-04-04)
+
+### Bug Fixes
+
+* DCB [@partition](https://github.com/partition)Tag runtime errors, GraphQL Node interface, and ESM config ([dc4c4e1](https://github.com/ReventlessDev/reventless-core/commit/dc4c4e10f1ef09aba840e7b359df453b122c6aa4))
+* feat!: add reventless-ppx with @@reventless.spec, @@reventless.behavior, @@reventless.dcbTags ([cb203ec](https://github.com/ReventlessDev/reventless-core/commit/cb203ece5ea3a1b92ba7d1a57d9e12bb6c4c2487))
+
+### BREAKING CHANGES
+
+* Example spec files no longer export manual moduleUrl/name/Id
+declarations — these are now PPX-generated. Downstream code referencing these
+exports is unaffected (same values, different source).
+
+
+
 # 3.0.0-alpha.14 (2026-03-30)
 
 ### Features
