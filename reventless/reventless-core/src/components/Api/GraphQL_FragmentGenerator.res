@@ -208,7 +208,7 @@ let generate = (
 
   queryEntries->Array.forEach(entry => {
     let includeIdParam = entry.includeIdParam->Option.getOr(true)
-    let connectionSpec = entry.connectionSpec->Option.getOr(false)
+    let connectionSpec = entry.connectionSpec->Option.getOr(true)
     if !(seenTypes->Set.has(entry.returnTypeName)) {
       seenTypes->Set.add(entry.returnTypeName)
       let excludeFields = switch entry.excludeFields {

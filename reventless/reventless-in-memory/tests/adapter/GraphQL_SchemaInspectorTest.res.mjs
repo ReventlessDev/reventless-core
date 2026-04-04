@@ -221,14 +221,15 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl.includes("items: [RelayProduct!]!")).toBe(false);
       expect(sdl.includes("nextToken:")).toBe(false);
     });
-    test("connectionSpec=false (default) generates legacy plural wrapper", async () => {
+    test("explicit connectionSpec=false generates legacy plural wrapper (opt-out)", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Legacy_Product",
           listFieldName: "Legacy_Products",
           returnTypeName: "LegacyProduct",
           stateSchema: testStateSchema,
           authorization: undefined,
-          includeIdParam: true
+          includeIdParam: true,
+          connectionSpec: false
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
@@ -266,15 +267,16 @@ describe("GraphQL_SchemaInspector", () => {
           authorization: undefined
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
-      expect(inspection.types.length).toBe(2);
+      expect(inspection.types.length).toBe(3);
       expect(inspection.mutations.length).toBe(1);
       expect(inspection.queries.length).toBe(2);
       expect(inspection.sdlPreview.includes("type TestState")).toBe(true);
-      expect(inspection.sdlPreview.includes("type Test_States")).toBe(true);
-      expect(inspection.sdlPreview.includes("items: [TestState!]!")).toBe(true);
+      expect(inspection.sdlPreview.includes("type TestStateEdge")).toBe(true);
+      expect(inspection.sdlPreview.includes("type TestStateConnection")).toBe(true);
+      expect(inspection.sdlPreview.includes("edges: [TestStateEdge!]!")).toBe(true);
       expect(inspection.sdlPreview.includes("Test_Add")).toBe(true);
       expect(inspection.sdlPreview.includes("Test_State")).toBe(true);
-      expect(inspection.sdlPreview.includes("Test_States!")).toBe(true);
+      expect(inspection.sdlPreview.includes("TestStateConnection!")).toBe(true);
     });
   });
   describe("inspectPluginEntries", () => {

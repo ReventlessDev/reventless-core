@@ -111,10 +111,10 @@ module Make = (Bus: InMemory_Bus.T) => {
     | None => true
     }
 
-    // Resolve connectionSpec flag from registry (defaults to false)
+    // Resolve connectionSpec flag from registry (defaults to true)
     let connectionSpec = switch registryEntry {
     | Some({connectionSpec}) => connectionSpec
-    | None => false
+    | None => true
     }
 
     // Register this entity type in the Relay Node type registry

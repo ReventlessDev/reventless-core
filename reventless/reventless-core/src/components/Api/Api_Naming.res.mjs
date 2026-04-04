@@ -36,7 +36,7 @@ function sliceMutationField(plugin, slice) {
 }
 
 function queryFieldNamesForReadModel(plugin, name, connectionSpecOpt) {
-  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : false;
+  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   let singular = singularize(name);
   let plural = pluralize(name);
   return {
@@ -50,7 +50,7 @@ function queryFieldNamesForReadModel(plugin, name, connectionSpecOpt) {
 }
 
 function queryFieldNamesForStateView(plugin, viewName, connectionSpecOpt) {
-  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : false;
+  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   let entity = stripViewSuffix(viewName);
   let singular = singularize(entity);
   let plural = pluralize(entity);
@@ -65,7 +65,7 @@ function queryFieldNamesForStateView(plugin, viewName, connectionSpecOpt) {
 }
 
 function queryFieldNamesForSliceQueryDb(plugin, queryDbName, connectionSpecOpt) {
-  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : false;
+  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   return {
     singleFieldName: plugin + `_` + queryDbName,
     listFieldName: plugin + `_` + queryDbName + `s`,

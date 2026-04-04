@@ -287,6 +287,17 @@ Phase 3 — Integration
   [x] 3.2  Add SDL export via /sdl endpoint on in-memory graphql-yoga server
   [x]      Verify: in-memory server serves Relay-compliant schema (tests pass)
   [x]      Verify: AppSync serves Relay-compliant schema (resolver templates + NodeResolver_AppSync wiring)
+
+Phase 4 — Make Connection Spec the Default (global flag)
+  [x] 4.1  Plugin_Builder: pass connectionSpec=true when building querySchemaEntry for all read models
+  [x]      Dcb_Builder: same for StateViewSlice, AutomationSlice, OutboundTranslationSlice, InboundTranslationSlice query entries
+  [x] 4.2  Api_Naming: default connectionSpec=true in all queryFieldNamesFor* functions
+  [x]      GraphQL_FragmentGenerator: default Option.getOr(true) instead of false
+  [x]      In-memory resolver: default true when registry entry absent
+  [x]      AppSync resolver: default true when registry entry absent
+  [x]      (kept connectionSpec?: bool field as an explicit opt-out escape hatch)
+  [x] 4.3  Examples pick up connection spec automatically via Plugin_Builder/Dcb_Builder (no example changes needed)
+  [x] 4.4  GraphQL_SchemaInspectorTest: updated legacy test to use explicit connectionSpec=false; updated inspectFragment assertions for connection shape
 ```
 
 ---
@@ -331,6 +342,47 @@ Phase 3 — Integration
 |------|-----------|--------|------------|
 | `node` resolver performance (scanning all tables) | Medium | Medium | Type registry lookup instead of scan; cache mapping |
 | DynamoDB cursor encoding mismatch with Relay expectations | Low | High | Relay treats cursors as opaque strings — any encoding works |
-| Breaking existing non-Relay clients | High if no flag | High | Feature flag (Phase 3.1) ensures backward compatibility |
+| Breaking existing non-Relay clients | High if no flag | High | No non-Relay clients planned — making connection spec the default (Phase 4) |
 | AppSync `node` resolver complexity | Medium | Medium | Lambda resolver is flexible; VTL would be harder |
 | Connection spec in AppSync VTL templates | Medium | Medium | Use JS resolvers (AppSync supports both) |
+
+---
+
+## Phase 4: Make Connection Spec the Default
+
+### Context
+
+Phase 3 implemented `connectionSpec` as an opt-in flag per `querySchemaEntry`. However, since no non-Relay clients are planned, the opt-in adds noise without benefit. The goal is to make connection spec the unconditional default for all list queries.
+
+### 4.1 Plugin_Builder and Dcb_Builder
+
+`Plugin_Builder.res` builds `querySchemaEntry` records from read models without setting `connectionSpec` (defaults to `false`). Same for `Dcb_Builder.res` for StateViewSlice query entries.
+
+**Change:** Pass `connectionSpec: true` in the built entries, or remove the field check and always generate connection types.
+
+### 4.2 Remove or Default the Flag
+
+Two options:
+- **Keep field, default true** — least churn; existing code that sets `connectionSpec: false` can still opt out
+- **Remove field entirely** — cleaner; connection spec is unconditional
+
+Recommended: keep the field but default to `true` in `GraphQL_FragmentGenerator` and resolvers, so the field can still be used to opt out if ever needed.
+
+### 4.3 Update Examples
+
+Both `online-shop-aggregates` and `online-shop-dcb` will automatically pick up connection spec once `Plugin_Builder` / `Dcb_Builder` pass `connectionSpec: true`. Verify the generated SDL uses `ProductConnection`, `edges`, `pageInfo`, etc.
+
+### 4.4 Update Tests
+
+`GraphQL_SchemaInspectorTest.res` has test cases asserting the legacy plural wrapper shape (`connectionSpec=false (default) generates legacy plural wrapper`). These must be updated or removed once the default flips.
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `reventless-core/src/components/Plugin/Plugin_Builder.res` | Set `connectionSpec: true` in read model query entries |
+| `reventless-core/src/components/Dcb/Dcb_Builder.res` | Set `connectionSpec: true` in StateViewSlice query entries |
+| `reventless-core/src/components/Api/GraphQL_FragmentGenerator.res` | Change default from `false` to `true` |
+| `reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res` | Change default from `false` to `true` |
+| `reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res` | Change default from `false` to `true` |
+| `reventless-in-memory/tests/adapter/GraphQL_SchemaInspectorTest.res` | Update/remove legacy plural wrapper test |

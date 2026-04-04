@@ -59,7 +59,7 @@ function Make(Bus) {
     let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : "String";
     let pluralTypeName = registryEntry !== undefined ? registryEntry.pluralTypeName : "[String]";
     let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
-    let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : false;
+    let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : true;
     if (includeIdParam) {
       GraphQL_Server$ReventlessInMemory.registerNodeType(returnTypeName, name);
     }

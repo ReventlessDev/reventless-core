@@ -295,7 +295,7 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl->String.includes("nextToken:"))->toBe(false)
     })
 
-    testPromise("connectionSpec=false (default) generates legacy plural wrapper", async () => {
+    testPromise("explicit connectionSpec=false generates legacy plural wrapper (opt-out)", async () => {
       let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
         ~mutationEntries=[],
         ~queryEntries=[
@@ -306,6 +306,7 @@ describe("GraphQL_SchemaInspector", () => {
             stateSchema: testStateSchema->S.castToUnknown,
             authorization: None,
             includeIdParam: true,
+            connectionSpec: false,
           },
         ],
       )
@@ -361,15 +362,16 @@ describe("GraphQL_SchemaInspector", () => {
         ],
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      expect(inspection.types->Array.length)->toBe(2)
+      expect(inspection.types->Array.length)->toBe(3)
       expect(inspection.mutations->Array.length)->toBe(1)
       expect(inspection.queries->Array.length)->toBe(2)
       expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("type Test_States"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("items: [TestState!]!"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("type TestStateEdge"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("type TestStateConnection"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("edges: [TestStateEdge!]!"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("Test_Add"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("Test_State"))->toBe(true)
-      expect(inspection.sdlPreview->String.includes("Test_States!"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("TestStateConnection!"))->toBe(true)
     })
   })
 

@@ -47,7 +47,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[name$1];
   let fieldNameForSingle = registryEntry !== undefined ? registryEntry.singleFieldName : AppSync_Resolver_Functions$PulumiAws.uncapitalize(name$1);
   let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
-  let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : false;
+  let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : true;
   let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : name$1;
   if (includeIdParam) {
     NodeResolver_AppSync$ReventlessAws.registerNodeType(returnTypeName, dataSourceName);

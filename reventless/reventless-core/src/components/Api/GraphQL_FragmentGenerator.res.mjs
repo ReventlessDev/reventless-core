@@ -170,7 +170,7 @@ function generate(mutationEntries, queryEntries) {
   });
   queryEntries.forEach(entry => {
     let includeIdParam = Stdlib_Option.getOr(entry.includeIdParam, true);
-    let connectionSpec = Stdlib_Option.getOr(entry.connectionSpec, false);
+    let connectionSpec = Stdlib_Option.getOr(entry.connectionSpec, true);
     if (!seenTypes.has(entry.returnTypeName)) {
       seenTypes.add(entry.returnTypeName);
       let fields = entry.excludeFields;

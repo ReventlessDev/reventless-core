@@ -131,6 +131,7 @@ module Make = (
           returnTypeName: qn.returnTypeName,
           stateSchema: R.Spec.stateSchema->S.castToUnknown,
           authorization: None,
+          connectionSpec: true,
         }
       })
 

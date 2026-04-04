@@ -64,10 +64,10 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | None => true
   }
 
-  // Resolve connectionSpec flag from registry (defaults to false)
+  // Resolve connectionSpec flag from registry (defaults to true)
   let connectionSpec = switch registryEntry {
   | Some({connectionSpec}) => connectionSpec
-  | None => false
+  | None => true
   }
 
   // Resolve returnTypeName for Relay Node type registry

@@ -465,6 +465,7 @@ module Make = (
             stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
             authorization: None,
             includeIdParam: false,
+            connectionSpec: true,
           }
         })
 
@@ -478,6 +479,7 @@ module Make = (
             returnTypeName: qn.returnTypeName,
             stateSchema: AutomationSlice_Callback.todoRowSchema->S.castToUnknown,
             authorization: None,
+            connectionSpec: true,
           }
         })
 
@@ -491,6 +493,7 @@ module Make = (
             returnTypeName: qn.returnTypeName,
             stateSchema: OutboundTranslationSlice_Callback.todoRowSchema->S.castToUnknown,
             authorization: None,
+            connectionSpec: true,
           }
         })
 
@@ -504,6 +507,7 @@ module Make = (
             returnTypeName: qn.returnTypeName,
             stateSchema: InboundTranslationSlice_Callback.auditRowSchema->S.castToUnknown,
             authorization: None,
+            connectionSpec: true,
           }
         })
 

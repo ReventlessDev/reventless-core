@@ -79,7 +79,8 @@ function Make(Spec) {
             listFieldName: qn.listFieldName,
             returnTypeName: qn.returnTypeName,
             stateSchema: R.Spec.stateSchema,
-            authorization: undefined
+            authorization: undefined,
+            connectionSpec: true
           };
         });
         let queryEntries = queryEntriesFromReadModels.concat(dcbResult.queryEntries);

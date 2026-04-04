@@ -306,7 +306,8 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: V.Spec.stateSchema,
           authorization: undefined,
-          includeIdParam: false
+          includeIdParam: false,
+          connectionSpec: true
         };
       });
       let automationEntries = automationSlices.map(A => {
@@ -316,7 +317,8 @@ function Make(DcbEventLogStorage) {
           listFieldName: qn.listFieldName,
           returnTypeName: qn.returnTypeName,
           stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchema,
-          authorization: undefined
+          authorization: undefined,
+          connectionSpec: true
         };
       });
       let outboundEntries = outboundTranslationSlices.map(O => {
@@ -326,7 +328,8 @@ function Make(DcbEventLogStorage) {
           listFieldName: qn.listFieldName,
           returnTypeName: qn.returnTypeName,
           stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema,
-          authorization: undefined
+          authorization: undefined,
+          connectionSpec: true
         };
       });
       let inboundEntries = inboundTranslationSlices.map(I => {
@@ -336,7 +339,8 @@ function Make(DcbEventLogStorage) {
           listFieldName: qn.listFieldName,
           returnTypeName: qn.returnTypeName,
           stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
-          authorization: undefined
+          authorization: undefined,
+          connectionSpec: true
         };
       });
       let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.eventSchema);
