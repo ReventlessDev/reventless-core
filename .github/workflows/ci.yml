@@ -63,6 +63,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Check if PPX Linux binary is present
+        id: ppx_check
+        run: |
+          if [ -f packages/reventless-ppx/ppx-linux.exe ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup OCaml (fallback — ppx-linux.exe missing)
+        if: steps.ppx_check.outputs.present == 'false'
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.2.x"
+          dune-cache: true
+
+      - name: Build reventless-ppx for Linux (fallback)
+        if: steps.ppx_check.outputs.present == 'false'
+        run: |
+          opam install . --deps-only --yes
+          opam exec -- dune build
+          cp _build/default/bin/bin.exe ../../bin
+          chmod +x ../../bin
+        working-directory: packages/reventless-ppx/src
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -173,6 +198,32 @@ jobs:
             echo "select=some" >> "$GITHUB_OUTPUT"
             echo "projects=$PROJECTS" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Check if PPX Linux binary is present
+        if: steps.affected.outputs.select != 'none'
+        id: ppx_check
+        run: |
+          if [ -f packages/reventless-ppx/ppx-linux.exe ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup OCaml (fallback — ppx-linux.exe missing)
+        if: steps.affected.outputs.select != 'none' && steps.ppx_check.outputs.present == 'false'
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.2.x"
+          dune-cache: true
+
+      - name: Build reventless-ppx for Linux (fallback)
+        if: steps.affected.outputs.select != 'none' && steps.ppx_check.outputs.present == 'false'
+        run: |
+          opam install . --deps-only --yes
+          opam exec -- dune build
+          cp _build/default/bin/bin.exe ../../bin
+          chmod +x ../../bin
+        working-directory: packages/reventless-ppx/src
 
       - name: Setup Node.js
         if: steps.affected.outputs.select != 'none'

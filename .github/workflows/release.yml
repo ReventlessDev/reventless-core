@@ -55,6 +55,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check if PPX Linux binary is present
+        id: ppx_check
+        run: |
+          if [ -f packages/reventless-ppx/ppx-linux.exe ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup OCaml (fallback — ppx-linux.exe missing)
+        if: steps.ppx_check.outputs.present == 'false'
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.2.x"
+          dune-cache: true
+
+      - name: Build reventless-ppx for Linux (fallback)
+        if: steps.ppx_check.outputs.present == 'false'
+        run: |
+          opam install . --deps-only --yes
+          opam exec -- dune build
+          cp _build/default/bin/bin.exe ../../bin
+          chmod +x ../../bin
+        working-directory: packages/reventless-ppx/src
+
       - name: Check for releasable changes
         id: changes
         run: |

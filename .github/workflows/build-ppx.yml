@@ -15,22 +15,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14          # ARM (M1+)
-            artifact: ppx-osx.exe
           - os: macos-13          # x64
             artifact: ppx-osx-x64.exe
-          - os: ubuntu-24.04      # x64
-            artifact: ppx-linux.exe
-          - os: ubuntu-24.04-arm  # ARM
-            artifact: ppx-linux-arm.exe
-          - os: windows-latest    # x64
-            artifact: ppx-windows.exe
 
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.artifact }})
@@ -139,8 +134,16 @@ jobs:
         with:
           name: reventless-ppx-binaries
           path: |
-            packages/reventless-ppx/ppx-osx.exe
             packages/reventless-ppx/ppx-osx-x64.exe
-            packages/reventless-ppx/ppx-linux.exe
-            packages/reventless-ppx/ppx-linux-arm.exe
-            packages/reventless-ppx/ppx-windows.exe
+
+      - name: Commit binaries to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/reventless-ppx/ppx-osx-x64.exe
+          if git diff --cached --quiet; then
+            echo "No binary changes to commit"
+          else
+            git commit -m "chore(ppx): update prebuilt binaries [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
