@@ -219,6 +219,36 @@ The `@s.matches(DcbTag.string)` and `@s.matches(DcbTag.int)` annotations mark fi
   })
 ```
 
+### PPX Field Annotations
+
+In slice files (or files with `@@reventless.dcbTags`), the PPX auto-tags `*Id: string` and `*Ids: array<string>` fields. Three field annotations give fine-grained control:
+
+| Annotation | Effect |
+|---|---|
+| `@partitionTag` | Marks the field as the DCB partition key (`DcbTag.partition`). Required when a variant has multiple `*Id` fields and only one is the partition key. |
+| `@noTag` | Suppresses auto-tagging on a `*Id` field that is payload data, not a DCB key. |
+| `@dcbTag` | Explicitly opts in a field that doesn't follow `*Id` naming (e.g. `sku`, `slug`). |
+
+```rescript
+// Multiple *Id fields — declare which is the partition key
+@schema
+type event =
+  | DemandRecorded({
+      @partitionTag productId: string,  // partition key
+      @noTag orderId: string,           // payload only, not a DCB tag
+    })
+
+// Non-*Id field as a DCB tag
+@schema
+type event =
+  | SkuAdded({
+      @dcbTag sku: string,
+      name: string,
+    })
+```
+
+These annotations work in any `@@reventless.spec` or `@@reventless.behavior` file, regardless of whether dcbTags auto-inference is active.
+
 ### Available Tag Schemas
 
 ```rescript

@@ -249,6 +249,40 @@ type event = Transferred({fromId: string, toId: string,
 type error = NotFound
 EOF
 
+# @partitionTag + @noTag + @dcbTag: in a slice folder (dcbTags auto-enabled)
+cat > "$DCB/src/StateChangeSlice/RecordDemand.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type event =
+  | DemandRecorded({
+      @partitionTag productId: string,
+      @noTag orderId: string,
+    })
+
+@schema
+type command = Record({
+  @partitionTag productId: string,
+  orderId: string,
+})
+
+@schema
+type error = unit
+EOF
+
+# @dcbTag: outside a slice folder (no dcbTags auto-enabled), non-*Id field name
+cat > "$DCB/src/SkuCatalog.res" <<'EOF'
+@@reventless.spec
+@@reventless.dcbTags
+
+@schema
+type event =
+  | SkuAdded({
+      @dcbTag sku: string,
+      name: string,
+    })
+EOF
+
 # ─── Build PPX ──────────────────────────────────────────────────────
 
 echo "Building PPX..."
@@ -363,6 +397,32 @@ if [ "$SLICE_COUNT" -ge 6 ]; then
 else
   fail "slice folder DcbTag count" "expected >=6 for fromId+toId+productId[]+itemIds[], got $SLICE_COUNT"
 fi
+
+echo ""
+echo "=== Test: @partitionTag injects DcbTag.partition; @noTag suppresses auto-tag ==="
+JS="$DCB/src/StateChangeSlice/RecordDemand.res.mjs"
+assert_js_contains    "$JS" 'partition'  "@partitionTag: DcbTag.partition injected"
+assert_js_not_contains "$JS" 'partitionTag' "@partitionTag: field attr stripped"
+# orderId ends in Id but has @noTag — should NOT appear as DcbTag.string
+# productId has @partitionTag — count of 'partition' refs covers it
+# orderId should not produce a 'string' schema beyond the plain S.string
+assert_js_not_contains "$JS" 'noTag'     "@noTag: field attr stripped"
+# Check orderId is NOT tagged: no DcbTag.string ref for orderId
+# (partition ref covers productId; orderId must not add another DcbTag ref)
+PARTITION_COUNT=$(grep -c 'DcbTag' "$JS" 2>/dev/null || echo 0)
+if [ "$PARTITION_COUNT" -ge 1 ]; then
+  pass "@partitionTag: DcbTag referenced in output"
+else
+  fail "@partitionTag DcbTag count" "expected >=1 DcbTag refs, got $PARTITION_COUNT"
+fi
+# Verify DcbTag.string is NOT present (orderId was suppressed, productId uses partition)
+assert_js_not_contains "$JS" 'DcbTag.string' "@noTag: DcbTag.string absent (orderId suppressed)"
+
+echo ""
+echo "=== Test: @dcbTag injects DcbTag.string on non-*Id field ==="
+JS="$DCB/src/SkuCatalog.res.mjs"
+assert_js_contains    "$JS" 'DcbTag'    "@dcbTag: DcbTag referenced for non-*Id field"
+assert_js_not_contains "$JS" 'dcbTag'   "@dcbTag: field attr stripped"
 
 echo ""
 echo "─────────────────────────"

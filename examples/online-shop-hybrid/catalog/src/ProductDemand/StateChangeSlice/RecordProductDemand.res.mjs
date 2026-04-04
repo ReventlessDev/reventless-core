@@ -46,12 +46,12 @@ let commandSchema = S.union([
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductDemandRecorded",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.partition),
     orderId: s.m(DcbTag$Reventless.string)
   })),
   S.schema(s => ({
     TAG: "ProductDemandRevoked",
-    productId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.partition),
     orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);
