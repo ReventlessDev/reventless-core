@@ -41,6 +41,51 @@ ${resultResponseCode}
 `->Pulumi.Input.make
 
 // ---------------------------------------------------------------------------
+// Relay Node resolver — pipeline functions for node(id: ID!) query
+// ---------------------------------------------------------------------------
+
+/** Pipeline function (NONE datasource): decodes global ID and stashes typeName + localId. */
+let nodeDecodeGlobalId =
+  `${importUtil}
+export function request(ctx) {
+  const globalId = ctx.args.id;
+  try {
+    const decoded = util.base64Decode(globalId);
+    const colonIdx = decoded.indexOf(':');
+    if (colonIdx > 0) {
+      ctx.stash.typeName = decoded.substring(0, colonIdx);
+      ctx.stash.localId = decoded.substring(colonIdx + 1);
+    }
+  } catch (e) {
+    ctx.stash.typeName = null;
+    ctx.stash.localId = null;
+  }
+  return { payload: null };
+}
+export function response(ctx) {
+  return ctx.stash;
+}
+`->Pulumi.Input.make
+
+/** Pipeline function (DynamoDB datasource): fetches item if typeName matches, skips otherwise.
+    Generated per entity type at deploy time. */
+let nodeGetItemForType = (~typeName: string): Pulumi.Input.t<string> =>
+  `${importUtil}
+export function request(ctx) {
+  if (ctx.stash.typeName !== '${typeName}') return runtime.earlyReturn(ctx.prev.result);
+  return {
+    operation: 'GetItem',
+    key: { id: util.dynamodb.toDynamoDB(ctx.stash.localId) }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  if (!ctx.result) return null;
+  return { ...ctx.result, __typename: '${typeName}', id: ctx.args.id };
+}
+`->Pulumi.Input.make
+
+// ---------------------------------------------------------------------------
 // DynamoDB read — by primary key
 // ---------------------------------------------------------------------------
 
@@ -272,6 +317,39 @@ export function request(ctx) {
   };
 }
 ${resultResponseCode}
+`->Pulumi.Input.make
+
+// ---------------------------------------------------------------------------
+// DynamoDB read — list all (Relay Connection spec)
+// ---------------------------------------------------------------------------
+
+let listAllItemsConnection =
+  `${importUtil}
+export function request(ctx) {
+  return {
+    operation: 'Scan',
+    limit: (ctx.args.first ?? 50),
+    nextToken: (ctx.args.after ?? null)
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  const items = ctx.result.items ?? [];
+  const edges = items.map((item, i) => ({
+    node: item,
+    cursor: ctx.args.after ? ctx.args.after + '_' + i : String(i),
+  }));
+  return {
+    edges,
+    pageInfo: {
+      hasNextPage: !!ctx.result.nextToken,
+      hasPreviousPage: !!ctx.args.after,
+      startCursor: edges.length > 0 ? edges[0].cursor : null,
+      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+    },
+    totalCount: ctx.result.scannedCount ?? items.length,
+  };
+}
 `->Pulumi.Input.make
 
 // ---------------------------------------------------------------------------

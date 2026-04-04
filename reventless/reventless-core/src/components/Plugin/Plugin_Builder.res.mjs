@@ -73,7 +73,7 @@ function Make(Spec) {
         });
         let mutationEntries = mutationEntriesFromAggregates.concat(dcbResult.mutationEntries);
         let queryEntriesFromReadModels = readModels.map(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
           return {
             singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
@@ -90,7 +90,7 @@ function Make(Spec) {
         }));
         let eventLogEntries = eventLogEntriesFromAggregates.concat(dcbResult.eventLogEntries);
         readModels.forEach(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
           Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = qn;
         });
         let apiSchemaFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
@@ -136,7 +136,7 @@ function Make(Spec) {
           };
         });
         let readModelComponents = readModels.map(R => {
-          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name);
+          let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
           let schema_queryFields = [
             qn.singleFieldName,
             qn.listFieldName

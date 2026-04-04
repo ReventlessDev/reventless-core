@@ -31,6 +31,35 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
   }
 
+  // Register the Relay node resolver callback once per Bus functor instantiation.
+  // Scans all QueryDb instances to resolve node(id: ID!) queries.
+  let _nodeResolverRegistered = {
+    GraphQL_Server.registerNodeResolverCallback(async (~typeName, ~localId) => {
+      let queryDbName = switch GraphQL_Server.nodeTypeRegistry.contents->Dict.get(typeName) {
+      | Some(name) => name
+      | None => typeName
+      }
+      switch Bus.getQueryDb(queryDbName) {
+      | Some(ops) =>
+        let items =
+          await ops.loadStream(localId)
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
+        switch items->Array.get(0) {
+        | Some(item) =>
+          let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+          obj->Dict.set("__typename", JSON.Encode.string(typeName))
+          obj->Dict.set("id", GraphQL_Server.encodeGlobalId(~typeName, ~localId)->JSON.Encode.string)
+          Some(JSON.Encode.object(obj))
+        | None => None
+        }
+      | None => None
+      }
+    })
+    true
+  }
+
   let make: QueryDb_Adapter.resolversMaker<unit, unit> = (
     ~name,
     ~api as _,
@@ -82,6 +111,17 @@ module Make = (Bus: InMemory_Bus.T) => {
     | None => true
     }
 
+    // Resolve connectionSpec flag from registry (defaults to false)
+    let connectionSpec = switch registryEntry {
+    | Some({connectionSpec}) => connectionSpec
+    | None => false
+    }
+
+    // Register this entity type in the Relay Node type registry
+    if includeIdParam {
+      GraphQL_Server.registerNodeType(~typeName=returnTypeName, ~queryDbName=name)
+    }
+
     // -- Main query: getById ---------------------------------------------------
     let byIdSdl = if includeIdParam {
       switch subIdField {
@@ -107,9 +147,8 @@ module Make = (Bus: InMemory_Bus.T) => {
           switch items->Array.get(0) {
           | Some(item) =>
             if includeIdParam {
-              // Inject "id" into the response for ReadModel queries
               let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-              obj->Dict.set("id", JSON.Encode.string(id))
+              obj->Dict.set("id", GraphQL_Server.encodeGlobalId(~typeName=returnTypeName, ~localId=id)->JSON.Encode.string)
               JSON.Encode.object(obj)
             } else {
               item
@@ -122,22 +161,75 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
 
     // -- List query -------------------------------------------------------------
-    let listSdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
-    let listResolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
-      switch await runInterceptor(~ctx, ~args) {
-      | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
-      | Allow =>
-        let items = switch Bus.getQueryDbStream(name) {
-        | Some(makeStream) =>
-          await makeStream()->Stream.runCollect->Effect.runPromise
-        | None =>
-          switch Bus.getQueryDbScan(name) {
-          | Some(scanAll) => scanAll()
-          | None => []
+    let (listSdl, listResolver): (array<string>, GraphQL_Server.resolverFn) = if connectionSpec {
+      // Relay Connection spec format
+      let connectionTypeName = returnTypeName ++ "Connection"
+      let sdl = [`  ${listQueryName}(first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
+      let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+        switch await runInterceptor(~ctx, ~args) {
+        | Deny(_) =>
+          Obj.magic({
+            "edges": [],
+            "pageInfo": {
+              "hasNextPage": false,
+              "hasPreviousPage": false,
+              "startCursor": Nullable.null,
+              "endCursor": Nullable.null,
+            },
+            "totalCount": 0,
+          })
+        | Allow =>
+          let items = switch Bus.getQueryDbStream(name) {
+          | Some(makeStream) =>
+            await makeStream()->Stream.runCollect->Effect.runPromise
+          | None =>
+            switch Bus.getQueryDbScan(name) {
+            | Some(scanAll) => scanAll()
+            | None => []
+            }
           }
+          let edges = items->Array.mapWithIndex((item, i) => {
+            Obj.magic({"node": item, "cursor": Int.toString(i)})
+          })
+          let startCursor = edges->Array.get(0)->Option.map(_ => Int.toString(0))
+          let endCursor = if edges->Array.length > 0 {
+            Some(Int.toString(edges->Array.length - 1))
+          } else {
+            None
+          }
+          Obj.magic({
+            "edges": edges,
+            "pageInfo": {
+              "hasNextPage": false,
+              "hasPreviousPage": false,
+              "startCursor": startCursor->Nullable.fromOption,
+              "endCursor": endCursor->Nullable.fromOption,
+            },
+            "totalCount": items->Array.length,
+          })
         }
-        Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
       }
+      (sdl, resolver)
+    } else {
+      // Legacy AppSync-style format
+      let sdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
+      let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+        switch await runInterceptor(~ctx, ~args) {
+        | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
+        | Allow =>
+          let items = switch Bus.getQueryDbStream(name) {
+          | Some(makeStream) =>
+            await makeStream()->Stream.runCollect->Effect.runPromise
+          | None =>
+            switch Bus.getQueryDbScan(name) {
+            | Some(scanAll) => scanAll()
+            | None => []
+            }
+          }
+          Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
+        }
+      }
+      (sdl, resolver)
     }
     let listResolvers = [(listQueryName, listResolver)]
 

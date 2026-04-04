@@ -27,6 +27,7 @@ type querySchemaEntry = {
   excludeFields?: array<string>,
   description?: string,
   includeIdParam?: bool,
+  connectionSpec?: bool,
 }
 
 /**

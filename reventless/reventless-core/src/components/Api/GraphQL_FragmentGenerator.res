@@ -102,7 +102,7 @@ let deriveObjectTypeWithNested = (
     let mainTypeWithId = if includeIdParam {
       mainType->String.replace(
         `type ${typeName} {\n`,
-        `type ${typeName} {\n  id: ID!\n`,
+        `type ${typeName} implements Node {\n  id: ID!\n`,
       )
     } else {
       mainType
@@ -113,6 +113,11 @@ let deriveObjectTypeWithNested = (
 
 let derivePluralWrapperType = (~pluralTypeName: string, ~singularTypeName: string): string =>
   `type ${pluralTypeName} {\n  nextToken: String\n  scannedCount: Int!\n  items: [${singularTypeName}!]!\n}`
+
+let deriveConnectionTypes = (~singularTypeName: string): array<string> => [
+  `type ${singularTypeName}Edge {\n  node: ${singularTypeName}!\n  cursor: String!\n}`,
+  `type ${singularTypeName}Connection {\n  edges: [${singularTypeName}Edge!]!\n  pageInfo: PageInfo!\n  totalCount: Int\n}`,
+]
 
 // ── Query field derivation ─────────────────────────────────────────────────
 
@@ -132,6 +137,12 @@ let deriveListQueryField = (
   ~pluralTypeName: string,
 ): string =>
   `  ${listFieldName}(nextToken: String, limit: Int): ${pluralTypeName}!`
+
+let deriveConnectionQueryField = (
+  ~listFieldName: string,
+  ~singularTypeName: string,
+): string =>
+  `  ${listFieldName}(first: Int, after: String, last: Int, before: String): ${singularTypeName}Connection!`
 
 // ── Mutation field derivation ──────────────────────────────────────────────
 
@@ -197,6 +208,7 @@ let generate = (
 
   queryEntries->Array.forEach(entry => {
     let includeIdParam = entry.includeIdParam->Option.getOr(true)
+    let connectionSpec = entry.connectionSpec->Option.getOr(false)
     if !(seenTypes->Set.has(entry.returnTypeName)) {
       seenTypes->Set.add(entry.returnTypeName)
       let excludeFields = switch entry.excludeFields {
@@ -222,20 +234,37 @@ let generate = (
     queries->Array.push(singleField)
 
     let listFieldName = entry.listFieldName
-    if !(seenTypes->Set.has(listFieldName)) {
-      seenTypes->Set.add(listFieldName)
-      let pluralType = derivePluralWrapperType(
-        ~pluralTypeName=listFieldName,
+    if connectionSpec {
+      // Relay Connection spec: Edge + Connection types
+      let connectionTypeName = entry.returnTypeName ++ "Connection"
+      if !(seenTypes->Set.has(connectionTypeName)) {
+        let edgeName = entry.returnTypeName ++ "Edge"
+        seenTypes->Set.add(edgeName)
+        seenTypes->Set.add(connectionTypeName)
+        deriveConnectionTypes(~singularTypeName=entry.returnTypeName)
+        ->Array.forEach(t => types->Array.push(t))
+      }
+      let listField = deriveConnectionQueryField(
+        ~listFieldName,
         ~singularTypeName=entry.returnTypeName,
       )
-      types->Array.push(pluralType)
+      queries->Array.push(listField)
+    } else {
+      // Legacy AppSync-style: items/nextToken/scannedCount
+      if !(seenTypes->Set.has(listFieldName)) {
+        seenTypes->Set.add(listFieldName)
+        let pluralType = derivePluralWrapperType(
+          ~pluralTypeName=listFieldName,
+          ~singularTypeName=entry.returnTypeName,
+        )
+        types->Array.push(pluralType)
+      }
+      let listField = deriveListQueryField(
+        ~listFieldName,
+        ~pluralTypeName=listFieldName,
+      )
+      queries->Array.push(listField)
     }
-
-    let listField = deriveListQueryField(
-      ~listFieldName,
-      ~pluralTypeName=listFieldName,
-    )
-    queries->Array.push(listField)
   })
 
   let encoded =

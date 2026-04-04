@@ -4,6 +4,7 @@ type queryNames = {
   returnTypeName: string,
   pluralTypeName: string,
   includeIdParam: bool,
+  connectionSpec: bool,
 }
 
 let pluralize = (n: string) => n->String.endsWith("s") ? n : n ++ "s"
@@ -25,7 +26,7 @@ let aggregateMutationField = (~plugin: string, ~aggregate: string, ~command: str
 
 let sliceMutationField = (~plugin: string, ~slice: string) => `${plugin}_${slice}`
 
-let queryFieldNamesForReadModel = (~plugin: string, ~name: string): queryNames => {
+let queryFieldNamesForReadModel = (~plugin: string, ~name: string, ~connectionSpec: bool=false): queryNames => {
   let singular = singularize(name)
   let plural = pluralize(name)
   {
@@ -34,10 +35,11 @@ let queryFieldNamesForReadModel = (~plugin: string, ~name: string): queryNames =
     returnTypeName: `${plugin}_${singular}`,
     pluralTypeName: `${plugin}_${plural}`,
     includeIdParam: true,
+    connectionSpec,
   }
 }
 
-let queryFieldNamesForStateView = (~plugin: string, ~viewName: string): queryNames => {
+let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connectionSpec: bool=false): queryNames => {
   let entity = stripViewSuffix(viewName)
   let singular = singularize(entity)
   let plural = pluralize(entity)
@@ -47,16 +49,18 @@ let queryFieldNamesForStateView = (~plugin: string, ~viewName: string): queryNam
     returnTypeName: `${plugin}_${singular}`,
     pluralTypeName: `${plugin}_${plural}`,
     includeIdParam: false,
+    connectionSpec,
   }
 }
 
-let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string): queryNames => {
+let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string, ~connectionSpec: bool=false): queryNames => {
   {
     singleFieldName: `${plugin}_${queryDbName}`,
     listFieldName: `${plugin}_${queryDbName}s`,
     returnTypeName: `${plugin}_${queryDbName}`,
     pluralTypeName: `${plugin}_${queryDbName}s`,
     includeIdParam: false,
+    connectionSpec,
   }
 }
 

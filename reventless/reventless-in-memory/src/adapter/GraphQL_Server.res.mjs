@@ -2,6 +2,7 @@
 
 import * as Http from "http";
 import * as Graphql from "graphql";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as GraphqlYoga from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -9,6 +10,28 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
+
+function encodeGlobalId(typeName, localId) {
+  return btoa(typeName + `:` + localId);
+}
+
+function decodeGlobalId(globalId) {
+  try {
+    let decoded = atob(globalId);
+    let idx = decoded.indexOf(":");
+    if (idx <= 0) {
+      return;
+    }
+    let typeName = decoded.slice(0, idx);
+    let localId = decoded.slice(idx + 1 | 0, decoded.length);
+    return [
+      typeName,
+      localId
+    ];
+  } catch (exn) {
+    return;
+  }
+}
 
 let mutationResolvers = {
   contents: {}
@@ -56,6 +79,46 @@ function registerTypes(sdlTypes) {
   typeDefinitions.contents = typeDefinitions.contents.concat(sdlTypes);
 }
 
+let nodeTypeRegistry = {
+  contents: {}
+};
+
+function registerNodeType(typeName, queryDbName) {
+  nodeTypeRegistry.contents[typeName] = queryDbName;
+}
+
+let nodeResolverCallback = {
+  contents: undefined
+};
+
+function registerNodeResolverCallback(cb) {
+  nodeResolverCallback.contents = cb;
+}
+
+function buildNodeResolver() {
+  let resolve = nodeResolverCallback.contents;
+  if (resolve === undefined) {
+    return;
+  }
+  let resolver = async (_root, args, _ctx) => {
+    let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+    let match = decodeGlobalId(id);
+    if (match === undefined) {
+      return null;
+    }
+    let entity = await resolve(match[0], match[1]);
+    if (entity !== undefined) {
+      return entity;
+    } else {
+      return null;
+    }
+  };
+  return [
+    "node",
+    resolver
+  ];
+}
+
 let debug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
 
 let activeServer = {
@@ -89,6 +152,10 @@ type Mutation {
 
 function start(portOpt, param) {
   let port = portOpt !== undefined ? portOpt : 4000;
+  let match = buildNodeResolver();
+  if (match !== undefined) {
+    queryResolvers.contents[match[0]] = match[1];
+  }
   let resolvers = {};
   resolvers["Query"] = queryResolvers.contents;
   resolvers["Mutation"] = mutationResolvers.contents;
@@ -105,8 +172,19 @@ function start(portOpt, param) {
     logging: debug,
     maskedErrors: !debug
   });
-  let server = Http.createServer(yoga);
-  server.listen(port, () => log.info("GraphQL", undefined, `listening on http://localhost:` + port.toString() + `/graphql`));
+  let server = Http.createServer((req, res) => {
+    if (req.url !== "/sdl") {
+      return yoga(req, res);
+    }
+    let s = activeSchema.contents;
+    let sdlContent = s !== undefined ? Graphql.printSchema(Primitive_option.valFromOption(s)) : Stdlib_Option.getOr(lastFullSdl.contents, "");
+    res.writeHead(200, {
+      "Content-Type": "text/plain",
+      "Access-Control-Allow-Origin": "*"
+    });
+    res.end(sdlContent);
+  });
+  server.listen(port, () => log.info("GraphQL", undefined, `listening on http://localhost:` + port.toString() + `/graphql (SDL: /sdl)`));
   activeServer.contents = Primitive_option.some(server);
 }
 
@@ -133,6 +211,10 @@ function rebuildSchema(baseFragment, pluginFragments) {
       return;
     }
   });
+  let match = buildNodeResolver();
+  if (match !== undefined) {
+    queryResolvers.contents[match[0]] = match[1];
+  }
   let fullSdl = buildSdl();
   lastFullSdl.contents = fullSdl;
   let resolvers = {};
@@ -149,8 +231,19 @@ function rebuildSchema(baseFragment, pluginFragments) {
     logging: debug,
     maskedErrors: !debug
   });
-  let server = Http.createServer(yoga);
-  server.listen(4000, () => log.info("GraphQL", undefined, "rebuilt schema - http://localhost:4000/graphql"));
+  let server = Http.createServer((req, res) => {
+    if (req.url !== "/sdl") {
+      return yoga(req, res);
+    }
+    let s = activeSchema.contents;
+    let sdlContent = s !== undefined ? Graphql.printSchema(Primitive_option.valFromOption(s)) : Stdlib_Option.getOr(lastFullSdl.contents, "");
+    res.writeHead(200, {
+      "Content-Type": "text/plain",
+      "Access-Control-Allow-Origin": "*"
+    });
+    res.end(sdlContent);
+  });
+  server.listen(4000, () => log.info("GraphQL", undefined, "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)"));
   activeServer.contents = Primitive_option.some(server);
 }
 
@@ -160,6 +253,8 @@ function reset() {
   mutationFields.contents = [];
   queryFields.contents = [];
   typeDefinitions.contents = [];
+  nodeTypeRegistry.contents = {};
+  nodeResolverCallback.contents = undefined;
   activeSchema.contents = undefined;
   lastFullSdl.contents = undefined;
 }
@@ -292,6 +387,8 @@ let YG;
 export {
   YG,
   log,
+  encodeGlobalId,
+  decodeGlobalId,
   mutationResolvers,
   queryResolvers,
   mutationFields,
@@ -302,6 +399,11 @@ export {
   getMutationResolver,
   getQueryResolver,
   registerTypes,
+  nodeTypeRegistry,
+  registerNodeType,
+  nodeResolverCallback,
+  registerNodeResolverCallback,
+  buildNodeResolver,
   debug,
   activeServer,
   activeSchema,

@@ -10,6 +10,7 @@ import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDb.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as NodeResolver_AppSync$ReventlessAws from "./NodeResolver_AppSync.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 
 let queryInterceptorConfig = {
@@ -46,6 +47,11 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[name$1];
   let fieldNameForSingle = registryEntry !== undefined ? registryEntry.singleFieldName : AppSync_Resolver_Functions$PulumiAws.uncapitalize(name$1);
   let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
+  let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : false;
+  let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : name$1;
+  if (includeIdParam) {
+    NodeResolver_AppSync$ReventlessAws.registerNodeType(returnTypeName, dataSourceName);
+  }
   let makeQueryResolver = (resolverName, field, code) => {
     let match = queryInterceptorConfig.contents;
     if (match === undefined) {
@@ -61,7 +67,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   let resolverByIdSingle = includeIdParam ? makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Functions$PulumiAws.getItemById) : makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, AppSync_Resolver_Functions$PulumiAws.listAllItems);
   let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, _sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "ById", fieldNameForSingle + "ById", AppSync_Resolver_Functions$PulumiAws.queryById)) : undefined;
   let fieldNameForAll = registryEntry !== undefined ? registryEntry.listFieldName : name$1 + "s";
-  let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, AppSync_Resolver_Functions$PulumiAws.listAllItems);
+  let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection : AppSync_Resolver_Functions$PulumiAws.listAllItems);
   let resourcesMaker = allQueryDbs => {
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;

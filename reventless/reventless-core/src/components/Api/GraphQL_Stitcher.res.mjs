@@ -63,11 +63,23 @@ function extractLeadingName(str) {
   return Stdlib_Option.getOr(Stdlib_Option.getOr(Stdlib_Option.getOr(afterType.split("(")[0], "").trim().split(" ")[0], "").trim().split("{")[0], "").trim();
 }
 
+let relayBaseTypes = [
+  `interface Node {\n  id: ID!\n}`,
+  `type PageInfo {\n  hasNextPage: Boolean!\n  hasPreviousPage: Boolean!\n  startCursor: String\n  endCursor: String\n}`
+];
+
+let relayBaseQueries = [`  node(id: ID!): Node`];
+
 function stitch(baseFragment, pluginFragments) {
   let allFragments = [baseFragment].concat(pluginFragments);
   let parts = allFragments.map(decode);
   let seenTypeNames = new Set();
   let allTypes = [];
+  relayBaseTypes.forEach(typeDef => {
+    let name = extractLeadingName(typeDef);
+    seenTypeNames.add(name);
+    allTypes.push(typeDef);
+  });
   parts.forEach(param => {
     param.types.forEach(typeDef => {
       let name = extractLeadingName(typeDef);
@@ -96,6 +108,11 @@ function stitch(baseFragment, pluginFragments) {
   });
   let seenQueryFields = new Set();
   let allQueries = [];
+  relayBaseQueries.forEach(field => {
+    let fieldName = extractLeadingName(field);
+    seenQueryFields.add(fieldName);
+    allQueries.push(field);
+  });
   parts.forEach(param => {
     param.queries.forEach(field => {
       let fieldName = extractLeadingName(field);
@@ -122,6 +139,8 @@ export {
   encode,
   decode,
   extractLeadingName,
+  relayBaseTypes,
+  relayBaseQueries,
   stitch,
 }
 /* No side effect */

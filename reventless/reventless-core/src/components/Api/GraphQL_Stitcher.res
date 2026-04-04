@@ -72,12 +72,23 @@ let extractLeadingName = (str: string): string => {
   ->String.trim
 }
 
+// Relay base types injected into every stitched schema.
+let relayBaseTypes = [
+  `interface Node {\n  id: ID!\n}`,
+  `type PageInfo {\n  hasNextPage: Boolean!\n  hasPreviousPage: Boolean!\n  startCursor: String\n  endCursor: String\n}`,
+]
+
+let relayBaseQueries = [
+  `  node(id: ID!): Node`,
+]
+
 /**
 Stitch a base fragment with plugin fragments into a complete GraphQL SDL string.
 
 - Base fragment is always first (defines core types + Plugin mutations/queries).
 - Plugin fragments add their own types, mutations, and queries.
 - Collision detection: duplicate type definitions and field names are logged and skipped.
+- Relay base types (Node interface, PageInfo) and node query are always injected.
 
 Returns the full SDL string ready for use with AppSync or graphql-yoga.
 */
@@ -89,8 +100,14 @@ let stitch = (
   let parts = allFragments->Array.map(decode)
 
   // Collect all type definitions — detect collisions by type name
+  // Start with Relay base types (Node interface, PageInfo)
   let seenTypeNames: Set.t<string> = Set.make()
   let allTypes: array<string> = []
+  relayBaseTypes->Array.forEach(typeDef => {
+    let name = extractLeadingName(typeDef)
+    seenTypeNames->Set.add(name)
+    allTypes->Array.push(typeDef)
+  })
 
   parts->Array.forEach(({types}) =>
     types->Array.forEach(typeDef => {
@@ -123,8 +140,14 @@ let stitch = (
   )
 
   // Collect all query fields — detect collisions by field name
+  // Start with Relay node query
   let seenQueryFields: Set.t<string> = Set.make()
   let allQueries: array<string> = []
+  relayBaseQueries->Array.forEach(field => {
+    let fieldName = extractLeadingName(field)
+    seenQueryFields->Set.add(fieldName)
+    allQueries->Array.push(field)
+  })
 
   parts->Array.forEach(({queries}) =>
     queries->Array.forEach(field => {

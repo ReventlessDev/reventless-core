@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../src/test/TestRunner.res.mjs";
+import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "../../src/adapter/GraphQL_Server.res.mjs";
 import * as GraphQL_SchemaInspector$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_SchemaInspector.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
@@ -166,6 +167,90 @@ describe("GraphQL_SchemaInspector", () => {
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
       expect(sdl.includes("Default_Thing(id: ID!): DefaultThing")).toBe(true);
+    });
+  });
+  describe("Relay compliance", () => {
+    test("entity type includes 'implements Node' when includeIdParam is true", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Relay_Product",
+          listFieldName: "Relay_Products",
+          returnTypeName: "RelayProduct",
+          stateSchema: testStateSchema,
+          authorization: undefined,
+          includeIdParam: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("type RelayProduct implements Node")).toBe(true);
+      expect(sdl.includes("id: ID!")).toBe(true);
+    });
+    test("non-entity type does not include 'implements Node'", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Relay_View",
+          listFieldName: "Relay_Views",
+          returnTypeName: "RelayView",
+          stateSchema: svStateSchema,
+          authorization: undefined,
+          includeIdParam: false
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("type RelayView implements Node")).toBe(false);
+      expect(sdl.includes("type RelayView {")).toBe(true);
+    });
+    test("connectionSpec generates Edge and Connection types instead of plural wrapper", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Relay_Product",
+          listFieldName: "Relay_Products",
+          returnTypeName: "RelayProduct",
+          stateSchema: testStateSchema,
+          authorization: undefined,
+          includeIdParam: true,
+          connectionSpec: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("type RelayProductEdge")).toBe(true);
+      expect(sdl.includes("node: RelayProduct!")).toBe(true);
+      expect(sdl.includes("cursor: String!")).toBe(true);
+      expect(sdl.includes("type RelayProductConnection")).toBe(true);
+      expect(sdl.includes("edges: [RelayProductEdge!]!")).toBe(true);
+      expect(sdl.includes("pageInfo: PageInfo!")).toBe(true);
+      expect(sdl.includes("totalCount: Int")).toBe(true);
+      expect(sdl.includes("Relay_Products(first: Int, after: String, last: Int, before: String): RelayProductConnection!")).toBe(true);
+      expect(sdl.includes("items: [RelayProduct!]!")).toBe(false);
+      expect(sdl.includes("nextToken:")).toBe(false);
+    });
+    test("connectionSpec=false (default) generates legacy plural wrapper", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Legacy_Product",
+          listFieldName: "Legacy_Products",
+          returnTypeName: "LegacyProduct",
+          stateSchema: testStateSchema,
+          authorization: undefined,
+          includeIdParam: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("items: [LegacyProduct!]!")).toBe(true);
+      expect(sdl.includes("nextToken: String")).toBe(true);
+      expect(sdl.includes("LegacyProductEdge")).toBe(false);
+      expect(sdl.includes("LegacyProductConnection")).toBe(false);
+    });
+    test("stitcher injects Node interface and node query", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Stitch_Product",
+          listFieldName: "Stitch_Products",
+          returnTypeName: "StitchProduct",
+          stateSchema: testStateSchema,
+          authorization: undefined,
+          includeIdParam: true
+        }]);
+      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(fragment, []);
+      expect(sdl.includes("interface Node")).toBe(true);
+      expect(sdl.includes("node(id: ID!): Node")).toBe(true);
+      expect(sdl.includes("type PageInfo")).toBe(true);
+      expect(sdl.includes("hasNextPage: Boolean!")).toBe(true);
     });
   });
   describe("inspectFragment", () => {

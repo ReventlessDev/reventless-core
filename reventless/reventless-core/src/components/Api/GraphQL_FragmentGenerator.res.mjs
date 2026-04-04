@@ -89,12 +89,19 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   let seenTypes = new Set();
   seenTypes.add(typeName);
   let mainType = objectRefToGraphQL(typeName, filteredFields, collectedTypes, seenTypes);
-  let mainTypeWithId = includeIdParam ? mainType.replace(`type ` + typeName + ` {\n`, `type ` + typeName + ` {\n  id: ID!\n`) : mainType;
+  let mainTypeWithId = includeIdParam ? mainType.replace(`type ` + typeName + ` {\n`, `type ` + typeName + ` implements Node {\n  id: ID!\n`) : mainType;
   return collectedTypes.concat([mainTypeWithId]);
 }
 
 function derivePluralWrapperType(pluralTypeName, singularTypeName) {
   return `type ` + pluralTypeName + ` {\n  nextToken: String\n  scannedCount: Int!\n  items: [` + singularTypeName + `!]!\n}`;
+}
+
+function deriveConnectionTypes(singularTypeName) {
+  return [
+    `type ` + singularTypeName + `Edge {\n  node: ` + singularTypeName + `!\n  cursor: String!\n}`,
+    `type ` + singularTypeName + `Connection {\n  edges: [` + singularTypeName + `Edge!]!\n  pageInfo: PageInfo!\n  totalCount: Int\n}`
+  ];
 }
 
 function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt) {
@@ -108,6 +115,10 @@ function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt) {
 
 function deriveListQueryField(listFieldName, pluralTypeName) {
   return `  ` + listFieldName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`;
+}
+
+function deriveConnectionQueryField(listFieldName, singularTypeName) {
+  return `  ` + listFieldName + `(first: Int, after: String, last: Int, before: String): ` + singularTypeName + `Connection!`;
 }
 
 function deriveMutationFieldFromObject(fieldName, variantSchema) {
@@ -159,6 +170,7 @@ function generate(mutationEntries, queryEntries) {
   });
   queryEntries.forEach(entry => {
     let includeIdParam = Stdlib_Option.getOr(entry.includeIdParam, true);
+    let connectionSpec = Stdlib_Option.getOr(entry.connectionSpec, false);
     if (!seenTypes.has(entry.returnTypeName)) {
       seenTypes.add(entry.returnTypeName);
       let fields = entry.excludeFields;
@@ -171,13 +183,27 @@ function generate(mutationEntries, queryEntries) {
     let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName, includeIdParam);
     queries.push(singleField);
     let listFieldName = entry.listFieldName;
+    if (connectionSpec) {
+      let connectionTypeName = entry.returnTypeName + "Connection";
+      if (!seenTypes.has(connectionTypeName)) {
+        let edgeName = entry.returnTypeName + "Edge";
+        seenTypes.add(edgeName);
+        seenTypes.add(connectionTypeName);
+        deriveConnectionTypes(entry.returnTypeName).forEach(t => {
+          types.push(t);
+        });
+      }
+      let listField = deriveConnectionQueryField(listFieldName, entry.returnTypeName);
+      queries.push(listField);
+      return;
+    }
     if (!seenTypes.has(listFieldName)) {
       seenTypes.add(listFieldName);
       let pluralType = derivePluralWrapperType(listFieldName, entry.returnTypeName);
       types.push(pluralType);
     }
-    let listField = deriveListQueryField(listFieldName, listFieldName);
-    queries.push(listField);
+    let listField$1 = deriveListQueryField(listFieldName, listFieldName);
+    queries.push(listField$1);
   });
   let encoded = JSON.stringify(Object.fromEntries([
     [
@@ -205,8 +231,10 @@ export {
   deriveFieldType,
   deriveObjectTypeWithNested,
   derivePluralWrapperType,
+  deriveConnectionTypes,
   deriveObjectQueryField,
   deriveListQueryField,
+  deriveConnectionQueryField,
   deriveMutationFieldFromObject,
   generate,
 }

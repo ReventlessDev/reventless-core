@@ -23,6 +23,7 @@ type type_ =
   | AMAZON_DYNAMODB
   | AMAZON_ELASTICSEARCH
   | HTTP
+  | NONE
 
 type args = {
   @as("type") type_: type_,
@@ -58,6 +59,23 @@ let makeDynamoDBDataSourceWithTableName: (
       serviceRoleArn: serviceRole
       ->Pulumi.Output.flatMap(role => role.arn)
       ->Pulumi.Output.asInput,
+    },
+    ~opts=opts->Option.map(opts => {
+      ...opts,
+      deleteBeforeReplace: true,
+    }),
+  )
+
+let makeNoneDataSource: (
+  ~name: string,
+  ~api: Pulumi.Output.t<AppSync_GraphQLApi.t>,
+  ~opts: Pulumi.CustomResourceOptions.t=?,
+) => t = (~name, ~api, ~opts=?) =>
+  make(
+    ~name,
+    ~args={
+      type_: NONE,
+      apiId: api->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
     },
     ~opts=opts->Option.map(opts => {
       ...opts,

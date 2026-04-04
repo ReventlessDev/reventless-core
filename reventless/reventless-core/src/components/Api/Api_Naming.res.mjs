@@ -35,7 +35,8 @@ function sliceMutationField(plugin, slice) {
   return plugin + `_` + slice;
 }
 
-function queryFieldNamesForReadModel(plugin, name) {
+function queryFieldNamesForReadModel(plugin, name, connectionSpecOpt) {
+  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : false;
   let singular = singularize(name);
   let plural = pluralize(name);
   return {
@@ -43,11 +44,13 @@ function queryFieldNamesForReadModel(plugin, name) {
     listFieldName: plugin + `_` + plural,
     returnTypeName: plugin + `_` + singular,
     pluralTypeName: plugin + `_` + plural,
-    includeIdParam: true
+    includeIdParam: true,
+    connectionSpec: connectionSpec
   };
 }
 
-function queryFieldNamesForStateView(plugin, viewName) {
+function queryFieldNamesForStateView(plugin, viewName, connectionSpecOpt) {
+  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : false;
   let entity = stripViewSuffix(viewName);
   let singular = singularize(entity);
   let plural = pluralize(entity);
@@ -56,17 +59,20 @@ function queryFieldNamesForStateView(plugin, viewName) {
     listFieldName: plugin + `_` + plural,
     returnTypeName: plugin + `_` + singular,
     pluralTypeName: plugin + `_` + plural,
-    includeIdParam: false
+    includeIdParam: false,
+    connectionSpec: connectionSpec
   };
 }
 
-function queryFieldNamesForSliceQueryDb(plugin, queryDbName) {
+function queryFieldNamesForSliceQueryDb(plugin, queryDbName, connectionSpecOpt) {
+  let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : false;
   return {
     singleFieldName: plugin + `_` + queryDbName,
     listFieldName: plugin + `_` + queryDbName + `s`,
     returnTypeName: plugin + `_` + queryDbName,
     pluralTypeName: plugin + `_` + queryDbName + `s`,
-    includeIdParam: false
+    includeIdParam: false,
+    connectionSpec: connectionSpec
   };
 }
 

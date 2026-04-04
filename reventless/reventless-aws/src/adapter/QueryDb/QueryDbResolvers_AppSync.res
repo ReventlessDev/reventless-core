@@ -64,6 +64,23 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | None => true
   }
 
+  // Resolve connectionSpec flag from registry (defaults to false)
+  let connectionSpec = switch registryEntry {
+  | Some({connectionSpec}) => connectionSpec
+  | None => false
+  }
+
+  // Resolve returnTypeName for Relay Node type registry
+  let returnTypeName = switch registryEntry {
+  | Some({returnTypeName: rt}) => rt
+  | None => name
+  }
+
+  // Register entity type in the Relay Node type registry for node(id: ID!) resolution
+  if includeIdParam {
+    NodeResolver_AppSync.registerNodeType(~typeName=returnTypeName, ~dataSourceName)
+  }
+
   // Creates either a unit resolver (no interceptor) or a pipeline resolver
   // (interceptor Lambda → DynamoDB query) depending on queryInterceptorConfig.
   let makeQueryResolver = (~resolverName, ~field, ~code) =>
@@ -140,7 +157,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   let resolverAll = makeQueryResolver(
     ~resolverName=fieldNameForAll->String.capitalize,
     ~field=fieldNameForAll->Pulumi.Input.make,
-    ~code=Resolver.Functions.listAllItems,
+    ~code=if connectionSpec {
+      Resolver.Functions.listAllItemsConnection
+    } else {
+      Resolver.Functions.listAllItems
+    },
   )
 
   let resourcesMaker: ReventlessCore.QueryDb.resolversResourcesMaker = allQueryDbs => {

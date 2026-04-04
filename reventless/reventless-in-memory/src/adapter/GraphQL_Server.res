@@ -7,9 +7,42 @@ module YG = GraphqlYoga
 
 let log = ReventlessCore.Logger.fromEnv()
 
+// -- Node.js HTTP bindings for /sdl endpoint ---------------------------------
+
+type nodeRequest = {url: string}
+type nodeResponse
+@send external writeHead: (nodeResponse, int, {..}) => unit = "writeHead"
+@send external end_: (nodeResponse, string) => unit = "end"
+
+type requestHandler = (nodeRequest, nodeResponse) => unit
+@module("http") external createServerWithHandler: requestHandler => YG.httpServer = "createServer"
+
 // -- Resolver type alias ---------------------------------------------------
 
 type resolverFn = YG.resolverFn
+
+// -- Relay Global ID encoding/decoding -------------------------------------
+
+@val external btoa: string => string = "btoa"
+@val external atob: string => string = "atob"
+
+let encodeGlobalId = (~typeName: string, ~localId: string): string =>
+  btoa(`${typeName}:${localId}`)
+
+let decodeGlobalId = (globalId: string): option<(string, string)> =>
+  try {
+    let decoded = atob(globalId)
+    let idx = decoded->String.indexOf(":")
+    if idx > 0 {
+      let typeName = decoded->String.slice(~start=0, ~end=idx)
+      let localId = decoded->String.slice(~start=idx + 1, ~end=decoded->String.length)
+      Some((typeName, localId))
+    } else {
+      None
+    }
+  } catch {
+  | _ => None
+  }
 
 // -- Registry --------------------------------------------------------------
 
@@ -41,6 +74,45 @@ let getQueryResolver = (fieldName: string): option<resolverFn> =>
 let registerTypes = (~sdlTypes: array<string>) => {
   typeDefinitions.contents = typeDefinitions.contents->Array.concat(sdlTypes)
 }
+
+// -- Relay Node type registry -----------------------------------------------
+// Maps GraphQL type names to QueryDb component names for node(id: ID!) resolution.
+let nodeTypeRegistry: ref<dict<string>> = ref(Dict.make())
+
+let registerNodeType = (~typeName: string, ~queryDbName: string) =>
+  nodeTypeRegistry.contents->Dict.set(typeName, queryDbName)
+
+// -- Relay Node resolver callback ------------------------------------------
+// Set by QueryDbResolvers_GraphQL to resolve node(id: ID!) queries.
+// Takes (typeName, localId) and returns the entity JSON with __typename.
+type nodeResolverCallback = (~typeName: string, ~localId: string) => promise<option<JSON.t>>
+let nodeResolverCallback: ref<option<nodeResolverCallback>> = ref(None)
+let registerNodeResolverCallback = (cb: nodeResolverCallback) =>
+  nodeResolverCallback.contents = Some(cb)
+
+// Builds the internal node resolver using the registered callback and type registry.
+let buildNodeResolver = (): option<(string, resolverFn)> =>
+  switch nodeResolverCallback.contents {
+  | None => None
+  | Some(resolve) =>
+    let resolver: resolverFn = async (_root, args, _ctx) => {
+      let id =
+        args
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get("id"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr("")
+      switch decodeGlobalId(id) {
+      | Some((typeName, localId)) =>
+        switch await resolve(~typeName, ~localId) {
+        | Some(entity) => entity
+        | None => JSON.Encode.null
+        }
+      | None => JSON.Encode.null
+      }
+    }
+    Some(("node", resolver))
+  }
 
 // -- Server lifecycle ------------------------------------------------------
 
@@ -75,6 +147,11 @@ ${mutations}
 }
 
 let start = (~port: int=4000, ()) => {
+  // Register node resolver if callback is set
+  switch buildNodeResolver() {
+  | Some((name, resolver)) => queryResolvers.contents->Dict.set(name, resolver)
+  | None => ()
+  }
   let resolvers = Dict.make()
   resolvers->Dict.set("Query", queryResolvers.contents)
   resolvers->Dict.set("Mutation", mutationResolvers.contents)
@@ -83,9 +160,21 @@ let start = (~port: int=4000, ()) => {
   let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
   activeSchema.contents = Some(schema)
   let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": debug, "maskedErrors": !debug})
-  let server = YG.createServer(yoga)
+  // Custom HTTP handler: serves /sdl endpoint for Relay compiler, delegates rest to yoga
+  let server = createServerWithHandler((req, res) => {
+    if req.url == "/sdl" {
+      let sdlContent = switch activeSchema.contents {
+      | Some(s) => YG.printSchema(s)
+      | None => lastFullSdl.contents->Option.getOr("")
+      }
+      res->writeHead(200, {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
+      res->end_(sdlContent)
+    } else {
+      (yoga->Obj.magic)(req, res)
+    }
+  })
   server->YG.listen(port, () =>
-    log.info(~comp="GraphQL", `listening on http://localhost:${port->Int.toString}/graphql`)
+    log.info(~comp="GraphQL", `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`)
   )
   activeServer.contents = Some(server)
 }
@@ -119,6 +208,11 @@ let rebuildSchema = (
       existingNames->Set.add(name)
     }
   })
+  // Register node resolver if callback is set
+  switch buildNodeResolver() {
+  | Some((name, resolver)) => queryResolvers.contents->Dict.set(name, resolver)
+  | None => ()
+  }
   let fullSdl = buildSdl()
   lastFullSdl.contents = Some(fullSdl)
   let resolvers = Dict.make()
@@ -127,9 +221,20 @@ let rebuildSchema = (
   let schema = YG.createSchema({"typeDefs": fullSdl, "resolvers": resolvers})
   activeSchema.contents = Some(schema)
   let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": debug, "maskedErrors": !debug})
-  let server = YG.createServer(yoga)
+  let server = createServerWithHandler((req, res) => {
+    if req.url == "/sdl" {
+      let sdlContent = switch activeSchema.contents {
+      | Some(s) => YG.printSchema(s)
+      | None => lastFullSdl.contents->Option.getOr("")
+      }
+      res->writeHead(200, {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
+      res->end_(sdlContent)
+    } else {
+      (yoga->Obj.magic)(req, res)
+    }
+  })
   server->YG.listen(4000, () =>
-    log.info(~comp="GraphQL", "rebuilt schema - http://localhost:4000/graphql")
+    log.info(~comp="GraphQL", "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)")
   )
   activeServer.contents = Some(server)
 }
@@ -141,6 +246,8 @@ let reset = () => {
   mutationFields.contents = []
   queryFields.contents = []
   typeDefinitions.contents = []
+  nodeTypeRegistry.contents = Dict.make()
+  nodeResolverCallback.contents = None
   activeSchema.contents = None
   lastFullSdl.contents = None
 }

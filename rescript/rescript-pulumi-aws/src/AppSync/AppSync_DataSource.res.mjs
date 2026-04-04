@@ -19,12 +19,24 @@ function makeDynamoDBDataSourceWithTableName(name, api, tableName, serviceRole, 
   }));
 }
 
+function makeNoneDataSource(name, api, opts) {
+  return new (Aws.appsync.DataSource)(name, {
+    type: "NONE",
+    apiId: Output$Pulumi.flatMap(api, api => api.id)
+  }, Stdlib_Option.map(opts, opts => {
+    let newrecord = {...opts};
+    newrecord.deleteBeforeReplace = true;
+    return newrecord;
+  }));
+}
+
 function makeDynamoDBDataSource(name, api, table, serviceRole, opts) {
   return makeDynamoDBDataSourceWithTableName(name, api, table.name, serviceRole, opts);
 }
 
 export {
   makeDynamoDBDataSourceWithTableName,
+  makeNoneDataSource,
   makeDynamoDBDataSource,
 }
 /* @pulumi/aws Not a pure module */

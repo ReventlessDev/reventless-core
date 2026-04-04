@@ -220,6 +220,125 @@ describe("GraphQL_SchemaInspector", () => {
     })
   })
 
+  // ── Relay compliance — implements Node + Connection types ──────────────
+
+  describe("Relay compliance", () => {
+    testPromise("entity type includes 'implements Node' when includeIdParam is true", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Relay_Product",
+            listFieldName: "Relay_Products",
+            returnTypeName: "RelayProduct",
+            stateSchema: testStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      expect(sdl->String.includes("type RelayProduct implements Node"))->toBe(true)
+      expect(sdl->String.includes("id: ID!"))->toBe(true)
+    })
+
+    testPromise("non-entity type does not include 'implements Node'", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Relay_View",
+            listFieldName: "Relay_Views",
+            returnTypeName: "RelayView",
+            stateSchema: svStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: false,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      expect(sdl->String.includes("type RelayView implements Node"))->toBe(false)
+      expect(sdl->String.includes("type RelayView {"))->toBe(true)
+    })
+
+    testPromise("connectionSpec generates Edge and Connection types instead of plural wrapper", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Relay_Product",
+            listFieldName: "Relay_Products",
+            returnTypeName: "RelayProduct",
+            stateSchema: testStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+            connectionSpec: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      // Should have Edge and Connection types
+      expect(sdl->String.includes("type RelayProductEdge"))->toBe(true)
+      expect(sdl->String.includes("node: RelayProduct!"))->toBe(true)
+      expect(sdl->String.includes("cursor: String!"))->toBe(true)
+      expect(sdl->String.includes("type RelayProductConnection"))->toBe(true)
+      expect(sdl->String.includes("edges: [RelayProductEdge!]!"))->toBe(true)
+      expect(sdl->String.includes("pageInfo: PageInfo!"))->toBe(true)
+      expect(sdl->String.includes("totalCount: Int"))->toBe(true)
+      // Query field should use first/after/last/before args
+      expect(sdl->String.includes("Relay_Products(first: Int, after: String, last: Int, before: String): RelayProductConnection!"))->toBe(true)
+      // Should NOT have legacy plural wrapper type
+      expect(sdl->String.includes("items: [RelayProduct!]!"))->toBe(false)
+      expect(sdl->String.includes("nextToken:"))->toBe(false)
+    })
+
+    testPromise("connectionSpec=false (default) generates legacy plural wrapper", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Legacy_Product",
+            listFieldName: "Legacy_Products",
+            returnTypeName: "LegacyProduct",
+            stateSchema: testStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      expect(sdl->String.includes("items: [LegacyProduct!]!"))->toBe(true)
+      expect(sdl->String.includes("nextToken: String"))->toBe(true)
+      expect(sdl->String.includes("LegacyProductEdge"))->toBe(false)
+      expect(sdl->String.includes("LegacyProductConnection"))->toBe(false)
+    })
+
+    testPromise("stitcher injects Node interface and node query", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Stitch_Product",
+            listFieldName: "Stitch_Products",
+            returnTypeName: "StitchProduct",
+            stateSchema: testStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+          },
+        ],
+      )
+      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment=fragment, ~pluginFragments=[])
+      expect(sdl->String.includes("interface Node"))->toBe(true)
+      expect(sdl->String.includes("node(id: ID!): Node"))->toBe(true)
+      expect(sdl->String.includes("type PageInfo"))->toBe(true)
+      expect(sdl->String.includes("hasNextPage: Boolean!"))->toBe(true)
+    })
+  })
+
   // ── Plugin Level — Fragment Inspector ───────────────────────────────────
 
   describe("inspectFragment", () => {

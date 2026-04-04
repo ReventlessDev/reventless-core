@@ -5,6 +5,7 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
@@ -25,6 +26,23 @@ function Make(Bus) {
       return Identity$Reventless.anonymous;
     }
   };
+  GraphQL_Server$ReventlessInMemory.registerNodeResolverCallback(async (typeName, localId) => {
+    let name = GraphQL_Server$ReventlessInMemory.nodeTypeRegistry.contents[typeName];
+    let queryDbName = name !== undefined ? name : typeName;
+    let ops = Bus.getQueryDb(queryDbName);
+    if (ops === undefined) {
+      return;
+    }
+    let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(localId)), param => Effect.succeed([])));
+    let item = items[0];
+    if (item === undefined) {
+      return;
+    }
+    let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+    obj["__typename"] = typeName;
+    obj["id"] = GraphQL_Server$ReventlessInMemory.encodeGlobalId(typeName, localId);
+    return obj;
+  });
   let make = (name, param, param$1, param$2, indexes, subIdField, param$3, param$4, param$5) => {
     let runInterceptor = async (ctx, args) => {
       let interceptor = QueryDb_Callback$ReventlessCore.queryInterceptorHook.contents;
@@ -41,6 +59,10 @@ function Make(Bus) {
     let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : "String";
     let pluralTypeName = registryEntry !== undefined ? registryEntry.pluralTypeName : "[String]";
     let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
+    let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : false;
+    if (includeIdParam) {
+      GraphQL_Server$ReventlessInMemory.registerNodeType(returnTypeName, name);
+    }
     let byIdSdl = includeIdParam ? (
         subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName
       ) : `  ` + singleQueryName + `: ` + returnTypeName;
@@ -63,41 +85,94 @@ function Make(Bus) {
         return item;
       }
       let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-      obj["id"] = id;
+      obj["id"] = GraphQL_Server$ReventlessInMemory.encodeGlobalId(returnTypeName, id);
       return obj;
     };
-    let listSdl = [`  ` + listQueryName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`];
-    let listResolver = async (_root, args, ctx) => {
-      let match = await runInterceptor(ctx, args);
-      if (typeof match === "object") {
+    let match;
+    if (connectionSpec) {
+      let connectionTypeName = returnTypeName + "Connection";
+      let sdl = [`  ` + listQueryName + `(first: Int, after: String, last: Int, before: String): ` + connectionTypeName + `!`];
+      let resolver = async (_root, args, ctx) => {
+        let match = await runInterceptor(ctx, args);
+        if (typeof match === "object") {
+          return {
+            edges: [],
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null
+            },
+            totalCount: 0
+          };
+        }
+        let makeStream = Bus.getQueryDbStream(name);
+        let items;
+        if (makeStream !== undefined) {
+          items = await Effect.runPromise(Stream.runCollect(makeStream()));
+        } else {
+          let scanAll = Bus.getQueryDbScan(name);
+          items = scanAll !== undefined ? scanAll() : [];
+        }
+        let edges = items.map((item, i) => ({
+          node: item,
+          cursor: i.toString()
+        }));
+        let startCursor = Stdlib_Option.map(edges[0], param => (0).toString());
+        let endCursor = edges.length !== 0 ? (edges.length - 1 | 0).toString() : undefined;
+        return {
+          edges: edges,
+          pageInfo: {
+            hasNextPage: false,
+            hasPreviousPage: false,
+            startCursor: Stdlib_Nullable.fromOption(startCursor),
+            endCursor: Stdlib_Nullable.fromOption(endCursor)
+          },
+          totalCount: items.length
+        };
+      };
+      match = [
+        sdl,
+        resolver
+      ];
+    } else {
+      let sdl$1 = [`  ` + listQueryName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`];
+      let resolver$1 = async (_root, args, ctx) => {
+        let match = await runInterceptor(ctx, args);
+        if (typeof match === "object") {
+          return {
+            nextToken: null,
+            scannedCount: 0,
+            items: []
+          };
+        }
+        let makeStream = Bus.getQueryDbStream(name);
+        let items;
+        if (makeStream !== undefined) {
+          items = await Effect.runPromise(Stream.runCollect(makeStream()));
+        } else {
+          let scanAll = Bus.getQueryDbScan(name);
+          items = scanAll !== undefined ? scanAll() : [];
+        }
         return {
           nextToken: null,
-          scannedCount: 0,
-          items: []
+          scannedCount: items.length,
+          items: items
         };
-      }
-      let makeStream = Bus.getQueryDbStream(name);
-      let items;
-      if (makeStream !== undefined) {
-        items = await Effect.runPromise(Stream.runCollect(makeStream()));
-      } else {
-        let scanAll = Bus.getQueryDbScan(name);
-        items = scanAll !== undefined ? scanAll() : [];
-      }
-      return {
-        nextToken: null,
-        scannedCount: items.length,
-        items: items
       };
-    };
+      match = [
+        sdl$1,
+        resolver$1
+      ];
+    }
     let listResolvers = [[
         listQueryName,
-        listResolver
+        match[1]
       ]];
     let byIdListSdl = subIdField !== undefined ? [`  ` + singleQueryName + `ById(id: ID!): [String]`] : [];
     let byIdListResolvers;
     if (subIdField !== undefined) {
-      let resolver = async (_root, args, ctx) => {
+      let resolver$2 = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
           return [];
@@ -112,7 +187,7 @@ function Make(Bus) {
       };
       byIdListResolvers = [[
           singleQueryName + "ById",
-          resolver
+          resolver$2
         ]];
     } else {
       byIdListResolvers = [];
@@ -140,7 +215,7 @@ function Make(Bus) {
         resolver
       ];
     });
-    let allSdl = [byIdSdl].concat(listSdl).concat(byIdListSdl).concat(indexSdlFields);
+    let allSdl = [byIdSdl].concat(match[0]).concat(byIdListSdl).concat(indexSdlFields);
     let resolvers = {};
     resolvers[singleQueryName] = byIdResolver;
     listResolvers.forEach(param => {
@@ -160,6 +235,7 @@ function Make(Bus) {
   };
   return {
     extractIdentity: extractIdentity,
+    _nodeResolverRegistered: true,
     make: make
   };
 }
