@@ -1,5 +1,6 @@
 // Order event mappings — maps Order events to Order commands.
 // When an order is placed, automatically issue a Ship command.
+@@reventless.spec
 
 open Reventless
 
@@ -18,7 +19,6 @@ module AutoShipMapping = {
 
 module type Mapping = EventMapping.T with module Target := Target
 
-let moduleUrl: string = %raw(`import.meta.url`)
 let mappings: array<module(Mapping)> = [module(AutoShipMapping)]
 
 let counter = None

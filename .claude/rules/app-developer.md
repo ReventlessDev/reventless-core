@@ -16,11 +16,15 @@
 - **Plugin namespaces:** `{Plugin}Plugin` (CatalogPlugin)
 - **Spec namespaces:** `{Plugin}Spec` (CatalogSpec)
 
-## Required Annotations
+## PPX Annotations
 
+- `@@reventless.spec` — on all spec files (aggregates, read models, extension points, slices). Auto-injects `let name`, `module Id`, `let moduleUrl`. Derives name from filename (strips component suffixes like `ReadModel`, `ExtensionPoint`, `Behavior`, etc.). In `*Spec` namespaces, auto-prefixes with plugin name for dotted EP names.
+- `@@reventless.spec("ExplicitName")` — same, with explicit name override
+- `@@reventless.behavior` — on all behavior files. Auto-injects `open Spec`, `module Spec = Spec`, `let moduleUrl`. Derives spec module from filename (strips `Behavior` suffix).
+- `@@reventless.behavior(SpecName)` — same, with explicit spec module name
+- `@@reventless.dcbTags` — on DCB slice files. Auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string` fields in `@schema` types.
 - `@schema` on all serializable types (command, event, error, state)
-- `@s.matches(DcbTag.string)` on entity ID fields in DCB types (on the type, not the field name)
-- `let moduleUrl: string = %raw(\`import.meta.url\`)` on all spec files
+- PPX ordering in `rescript.json`: `"ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"]` (reventless-ppx before sury-ppx)
 
 ## Idempotency
 

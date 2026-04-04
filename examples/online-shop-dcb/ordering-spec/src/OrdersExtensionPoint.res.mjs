@@ -2,8 +2,6 @@
 
 import * as S from "sury/src/S.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemOrdered",
@@ -24,11 +22,13 @@ let commandSchema = S.unit;
 
 let directiveSchema = S.unit;
 
+let moduleUrl = "@reventlessdev/online-shop-dcb-ordering-spec/src/OrdersExtensionPoint.res.mjs";
+
 export {
   name,
-  moduleUrl,
   commandSchema,
   eventSchema,
   directiveSchema,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* eventSchema Not a pure module */

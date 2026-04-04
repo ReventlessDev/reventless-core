@@ -1,17 +1,13 @@
 // Customer aggregate behavior.
 // Implements the state machine for registering and managing customers.
 
-open Customer
-
-module Spec = Customer
+@@reventless.behavior
 
 @schema
 type state =
   | NotCreated
   | Active({email: string, address: string})
   | Deactivated
-
-let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated
 

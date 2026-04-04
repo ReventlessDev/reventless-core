@@ -22,6 +22,8 @@ import * as CatalogProductBehavior$OrderingPlugin from "./Aggregate/CatalogProdu
 import * as AvailableProductsReadModel$OrderingPlugin from "./ReadModel/AvailableProductsReadModel.res.mjs";
 import * as AvailableProductsProjections$OrderingPlugin from "./ReadModel/AvailableProductsProjections.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 function Make(Platform) {
   let CustomerAggregate = Platform.Aggregate.Make({
     Id: Id$Reventless.$$String,
@@ -63,7 +65,6 @@ function Make(Platform) {
     stateSchema: CustomersReadModel$OrderingPlugin.stateSchema,
     subIdConfig: undefined
   });
-  let moduleUrl = import.meta.url;
   let mappings = [CustomersProjections$OrderingPlugin.CustomerMapping];
   let CustomerProjections = {
     moduleUrl: moduleUrl,
@@ -83,10 +84,9 @@ function Make(Platform) {
     stateSchema: OrdersReadModel$OrderingPlugin.stateSchema,
     subIdConfig: undefined
   });
-  let moduleUrl$1 = import.meta.url;
   let mappings$1 = [OrdersProjections$OrderingPlugin.OrderMapping];
   let OrderProjections = {
-    moduleUrl: moduleUrl$1,
+    moduleUrl: moduleUrl,
     mappings: mappings$1
   };
   let OrderReadModel = Platform.ReadModel.Make({
@@ -120,10 +120,9 @@ function Make(Platform) {
     stateSchema: AvailableProductsReadModel$OrderingPlugin.stateSchema,
     subIdConfig: undefined
   });
-  let moduleUrl$2 = import.meta.url;
   let mappings$2 = [AvailableProductsProjections$OrderingPlugin.CatalogProductMapping];
   let AvailableProductProjections = {
-    moduleUrl: moduleUrl$2,
+    moduleUrl: moduleUrl,
     mappings: mappings$2
   };
   let AvailableProductsReadModelMaker = Platform.ReadModel.Make({
@@ -135,7 +134,13 @@ function Make(Platform) {
     subIdConfig: undefined
   })(AvailableProductProjections);
   let ProductsExtensionMaker = Platform.Extension.Make({
-    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
+    ExtensionPoint: {
+      name: ProductsExtensionPoint$CatalogSpec.name,
+      moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
+      commandSchema: ProductsExtensionPoint$CatalogSpec.commandSchema,
+      eventSchema: ProductsExtensionPoint$CatalogSpec.eventSchema,
+      directiveSchema: ProductsExtensionPoint$CatalogSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: CatalogProduct$OrderingPlugin.name,
@@ -147,9 +152,14 @@ function Make(Platform) {
     mapIncomingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
   });
-  let moduleUrl$3 = import.meta.url;
   let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make({
-    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
+    ExtensionPoint: {
+      name: OrdersExtensionPoint$OrderingSpec.name,
+      moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
+      commandSchema: OrdersExtensionPoint$OrderingSpec.commandSchema,
+      eventSchema: OrdersExtensionPoint$OrderingSpec.eventSchema,
+      directiveSchema: OrdersExtensionPoint$OrderingSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: Order$OrderingPlugin.name,
@@ -161,7 +171,7 @@ function Make(Platform) {
     mapIncomingCommand: OrdersExtensionPoint$OrderingPlugin.OrderMapping.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPoint$OrderingPlugin.OrderMapping.mapOutgoingEvent
   })({
-    moduleUrl: moduleUrl$3
+    moduleUrl: moduleUrl
   });
   let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
   let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
@@ -191,6 +201,7 @@ function Make(Platform) {
 }
 
 export {
+  moduleUrl,
   Make,
 }
-/* Id-Reventless Not a pure module */
+/* moduleUrl Not a pure module */

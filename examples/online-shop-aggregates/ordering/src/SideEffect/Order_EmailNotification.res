@@ -1,6 +1,5 @@
 // Send an order confirmation email when an order is placed.
-
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
 
 module Source = {
   let name = Order.name

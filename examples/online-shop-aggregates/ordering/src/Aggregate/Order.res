@@ -1,10 +1,7 @@
 // Order aggregate specification.
 // A confirmed purchase referencing Product IDs and a CustomerId.
 
-open Reventless
-module Id = Id.String
-
-let name = "Order"
+@@reventless.spec
 
 @schema
 type command =
@@ -24,5 +21,3 @@ type error =
   | OrderNotFound
   | OrderAlreadyShipped
   | OrderAlreadyCancelled
-
-let moduleUrl: string = %raw(`import.meta.url`)

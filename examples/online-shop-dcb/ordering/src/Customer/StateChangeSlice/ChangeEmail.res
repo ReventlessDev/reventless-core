@@ -1,11 +1,7 @@
 // ChangeEmail StateChangeSlice.
 // Requires customer to exist and not be deactivated; idempotent when email is unchanged.
-
-open Reventless
-
-let name = "ChangeEmail"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, deactivated: bool, currentEmail: string}
 
@@ -25,7 +21,7 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = ChangeEmail({customerId: @s.matches(DcbTag.string) string, email: string})
+type command = ChangeEmail({customerId: string, email: string})
 
 @schema
 type error =
@@ -33,7 +29,7 @@ type error =
   | CustomerAlreadyDeactivated
 
 @schema
-type event = EmailChanged({customerId: @s.matches(DcbTag.string) string, email: string})
+type event = EmailChanged({customerId: string, email: string})
 
 let decide = (state, command) =>
   switch command {

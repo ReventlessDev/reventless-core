@@ -22,8 +22,6 @@ let stateSchema = S.union([
   }))
 ]);
 
-let moduleUrl = import.meta.url;
-
 function decide(state, command) {
   if (typeof state !== "object") {
     if (state === "NotConnected") {
@@ -330,13 +328,15 @@ let initialState = "NotConnected";
 
 let atomicCounter;
 
+let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginBehavior.res.mjs";
+
 export {
   Spec,
   stateSchema,
   initialState,
   atomicCounter,
-  moduleUrl,
   decide,
   evolve,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

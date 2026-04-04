@@ -1,0 +1,7 @@
+(library
+ (name ReventlessPpx)
+ (public_name reventless-ppx)
+ (kind ppx_rewriter)
+ (libraries ppxlib yojson)
+ (flags (:standard -w -9))
+ (preprocess (pps ppxlib.metaquot)))

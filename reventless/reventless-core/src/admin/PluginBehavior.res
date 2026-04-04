@@ -1,7 +1,6 @@
-open PluginSpec
-open Reventless.Plugin
+@@reventless.behavior(PluginSpec)
 
-module Spec = PluginSpec
+open Reventless.Plugin
 
 @schema
 type state =
@@ -14,8 +13,6 @@ type state =
 let initialState = NotConnected
 
 let atomicCounter = None
-
-let moduleUrl: string = %raw(`import.meta.url`)
 
 let decide = (state, command) =>
   switch state {

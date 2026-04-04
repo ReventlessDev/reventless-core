@@ -1,10 +1,7 @@
 // Product aggregate specification.
 // A product listing with name, description, and price.
 
-open Reventless
-module Id = Id.String
-
-let name = "Product"
+@@reventless.spec
 
 @schema
 type command =
@@ -24,5 +21,3 @@ type event =
 type error =
   | ProductAlreadyExists
   | ProductNotFound
-
-let moduleUrl: string = %raw(`import.meta.url`)

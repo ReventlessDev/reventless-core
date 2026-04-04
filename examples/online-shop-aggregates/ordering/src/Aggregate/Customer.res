@@ -1,10 +1,7 @@
 // Customer aggregate specification.
 // A registered buyer with contact details and account status.
 
-open Reventless
-module Id = Id.String
-
-let name = "Customer"
+@@reventless.spec
 
 @schema
 type command =
@@ -25,5 +22,3 @@ type error =
   | CustomerAlreadyRegistered
   | CustomerNotFound
   | CustomerAlreadyDeactivated
-
-let moduleUrl: string = %raw(`import.meta.url`)

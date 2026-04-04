@@ -42,15 +42,15 @@ let errorSchema = S.union([
   S.literal("CustomerAlreadyDeactivated")
 ]);
 
-let moduleUrl = import.meta.url;
+let name = "Customer";
 
 let Id;
 
-let name = "Customer";
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Aggregate/Customer.res.mjs";
 
 export {
-  Id,
   name,
+  Id,
   commandSchema,
   eventSchema,
   errorSchema,

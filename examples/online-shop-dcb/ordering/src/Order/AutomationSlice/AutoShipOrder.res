@@ -2,10 +2,8 @@
 // When OrderPlaced is emitted, automatically issue a ShipOrder command.
 // Resolved when OrderShipped arrives.
 
-open Reventless
-
-let name = "AutoShipOrder"
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 @schema
 type consumedEvent =
@@ -16,7 +14,7 @@ type consumedEvent =
 type todoItem = {orderId: string}
 
 @schema
-type command = ShipOrder({orderId: @s.matches(DcbTag.string) string})
+type command = ShipOrder({orderId: string})
 
 let collect = event =>
   switch event {

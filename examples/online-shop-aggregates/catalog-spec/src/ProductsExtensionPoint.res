@@ -1,7 +1,5 @@
 // ProductsExtensionPoint spec — stable public API from Catalog
-
-let name = "Catalog.Products"
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
 
 @schema
 type command = unit // read-only: no inbound commands

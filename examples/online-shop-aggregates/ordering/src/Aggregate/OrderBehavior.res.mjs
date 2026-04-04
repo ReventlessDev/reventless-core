@@ -13,8 +13,6 @@ let stateSchema = S.union([
   S.literal("Cancelled")
 ]);
 
-let moduleUrl = import.meta.url;
-
 function evolve(state, event) {
   if (typeof state === "object") {
     if (typeof event !== "object") {
@@ -118,12 +116,14 @@ let Spec;
 
 let initialState = "NotCreated";
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Aggregate/OrderBehavior.res.mjs";
+
 export {
   Spec,
   stateSchema,
-  moduleUrl,
   initialState,
   evolve,
   decide,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

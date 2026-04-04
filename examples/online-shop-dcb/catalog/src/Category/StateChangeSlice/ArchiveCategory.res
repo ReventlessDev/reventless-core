@@ -1,11 +1,7 @@
 // ArchiveCategory StateChangeSlice.
 // Requires category to exist; idempotent if already archived.
-
-open Reventless
-
-let name = "ArchiveCategory"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, archived: bool}
 
@@ -23,13 +19,13 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = ArchiveCategory({categoryId: @s.matches(DcbTag.string) string})
+type command = ArchiveCategory({categoryId: string})
 
 @schema
 type error = CategoryNotFound
 
 @schema
-type event = CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
+type event = CategoryArchived({categoryId: string})
 
 let decide = (state, command) =>
   switch command {

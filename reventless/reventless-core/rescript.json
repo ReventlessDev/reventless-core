@@ -1,36 +1,37 @@
 {
-    "name": "@reventlessdev/reventless-core",
-    "namespace": "ReventlessCore",
-    "ppx-flags": [
-        "sury-ppx/bin"
-    ],
-    "warnings": {
-        "error": "-44+101"
+  "name": "@reventlessdev/reventless-core",
+  "namespace": "ReventlessCore",
+  "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
+    "sury-ppx/bin"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
     },
-    "sources": [
-        {
-            "dir": "src",
-            "subdirs": true
-        },
-        {
-            "dir": "tests",
-            "subdirs": true
-        }
-    ],
-    "dependencies": [
-        "sury",
-        "@glennsl/rescript-jest",
-        "@reventlessdev/rescript-effect",
-        "@reventlessdev/rescript-fast-csv",
-        "@reventlessdev/rescript-hash-object",
-        "@reventlessdev/rescript-node-streams",
-        "@reventlessdev/rescript-pulumi-pulumi",
-        "@reventlessdev/rescript-ssh2",
-        "@reventlessdev/rescript-uuid",
-        "@reventlessdev/reventless-infra",
-        "@reventlessdev/reventless-interop",
-        "@reventlessdev/reventless-spec"
-    ],
-    "compiler-flags": [
-    ]
+    {
+      "dir": "tests",
+      "subdirs": true
+    }
+  ],
+  "dependencies": [
+    "sury",
+    "@glennsl/rescript-jest",
+    "@reventlessdev/rescript-effect",
+    "@reventlessdev/rescript-fast-csv",
+    "@reventlessdev/rescript-hash-object",
+    "@reventlessdev/rescript-node-streams",
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/rescript-ssh2",
+    "@reventlessdev/rescript-uuid",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-interop",
+    "@reventlessdev/reventless-spec"
+  ],
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
 }

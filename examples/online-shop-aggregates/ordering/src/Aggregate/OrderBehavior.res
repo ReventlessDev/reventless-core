@@ -1,9 +1,7 @@
 // Order aggregate behavior.
 // Implements the lifecycle for placing, shipping, and cancelling orders.
 
-open Order
-
-module Spec = Order
+@@reventless.behavior
 
 @schema
 type state =
@@ -11,8 +9,6 @@ type state =
   | Placed({customerId: string, productIds: array<string>})
   | Shipped
   | Cancelled
-
-let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated
 

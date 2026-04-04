@@ -32,15 +32,15 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyCancelled")
 ]);
 
-let moduleUrl = import.meta.url;
+let name = "Order";
 
 let Id;
 
-let name = "Order";
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Aggregate/Order.res.mjs";
 
 export {
-  Id,
   name,
+  Id,
   commandSchema,
   eventSchema,
   errorSchema,

@@ -1,4 +1,4 @@
-module Id = Reventless.Id.String
+@@reventless.spec("Plugin")
 
 @schema
 type status =
@@ -33,8 +33,6 @@ type queryResult = {
   apiSchemaFragment: option<Reventless.Plugin.apiSchemaFragment>,
 }
 
-let name = "Plugin"
-let moduleUrl: string = %raw(`import.meta.url`)
 
 open Reventless.ReadModel
 let config = config()

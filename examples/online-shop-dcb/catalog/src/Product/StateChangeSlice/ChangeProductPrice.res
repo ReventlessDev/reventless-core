@@ -1,11 +1,7 @@
 // ChangeProductPrice StateChangeSlice.
 // Requires product to exist; idempotent when price is unchanged.
-
-open Reventless
-
-let name = "ChangeProductPrice"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, currentPrice: float}
 
@@ -23,13 +19,13 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = ChangeProductPrice({productId: @s.matches(DcbTag.string) string, price: float})
+type command = ChangeProductPrice({productId: string, price: float})
 
 @schema
 type error = ProductNotFound
 
 @schema
-type event = ProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
+type event = ProductPriceChanged({productId: string, price: float})
 
 let decide = (state, command) =>
   switch command {

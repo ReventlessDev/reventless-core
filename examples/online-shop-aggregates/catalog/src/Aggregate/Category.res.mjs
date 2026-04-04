@@ -32,15 +32,15 @@ let errorSchema = S.union([
   S.literal("CategoryAlreadyArchived")
 ]);
 
-let moduleUrl = import.meta.url;
+let name = "Category";
 
 let Id;
 
-let name = "Category";
+let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/Aggregate/Category.res.mjs";
 
 export {
-  Id,
   name,
+  Id,
   commandSchema,
   eventSchema,
   errorSchema,

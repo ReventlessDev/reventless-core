@@ -1,10 +1,10 @@
 // AvailableProductsView StateViewSlice.
 // Projects synced catalog product events into a queryable "available products" read model.
+@@reventless.spec
+
 
 open Reventless.Projection
 
-let name = "AvailableProductsView"
-let moduleUrl: string = %raw(`import.meta.url`)
 
 @schema
 type state = {productId: string, name: string, price: float}

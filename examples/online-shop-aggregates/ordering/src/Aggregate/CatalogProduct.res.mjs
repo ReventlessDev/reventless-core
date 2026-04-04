@@ -26,17 +26,17 @@ let eventSchema = S.union([
   }))
 ]);
 
-let moduleUrl = import.meta.url;
+let name = "CatalogProduct";
 
 let Id;
 
-let name = "CatalogProduct";
-
 let errorSchema = S.unit;
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Aggregate/CatalogProduct.res.mjs";
+
 export {
-  Id,
   name,
+  Id,
   commandSchema,
   eventSchema,
   errorSchema,

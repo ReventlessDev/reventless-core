@@ -1,10 +1,8 @@
 // ImportProduct InboundTranslationSlice.
 // Receives external supplier JSON, validates and translates to an AddProduct command.
 
-open Reventless
-
-let name = "ImportProduct"
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 @schema
 type externalInput = {
@@ -17,7 +15,7 @@ type externalInput = {
 
 @schema
 type command = AddProduct({
-  productId: @s.matches(DcbTag.string) string,
+  productId: string,
   name: string,
   description: string,
   price: float,

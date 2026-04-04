@@ -96,8 +96,7 @@ A spec package defines the **public API** of one plugin's extension points. It c
 
 ```rescript
 // Stable public API from the Catalog plugin
-
-let name = "Catalog.Products"
+@@reventless.spec
 
 @schema
 type command = unit // read-only: no inbound commands
@@ -111,11 +110,12 @@ type event =
 type directive = unit
 ```
 
+The PPX derives the dotted name `"Catalog.Products"` automatically from the `CatalogSpec` namespace + filename `ProductsExtensionPoint.res` (strips `ExtensionPoint` → `"Products"`, strips `Spec` from namespace → `"Catalog"`).
+
 Each extension point spec defines:
 
 | Field | Purpose |
 |-------|---------|
-| `name` | Unique identifier for the extension point consisting of Plugin and ExtensionPoint name|
 | `command` | Inbound commands other plugins can send (use `unit` for read-only) |
 | `event` | Outbound events published to subscribers |
 | `directive` | Out-of-band instructions (use `unit` when not needed) |
@@ -144,16 +144,17 @@ All types use `@schema` (sury-ppx) for automatic JSON serialization.
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog-spec",
   "namespace": "CatalogSpec",
+  "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"],
   "sources": [{"dir": "src", "subdirs": true}],
-  "bs-dependencies": ["sury"],
-  "bsc-flags": ["-open", "RescriptCore"]
+  "dependencies": ["sury"]
 }
 ```
 
 Key points:
-- **Minimal dependencies** — only `sury` and `reventless-spec`
-- **Explicit namespace** (e.g., `CatalogSpec`) — other packages reference types as `CatalogSpec.ProductsExtensionPoint`
-- **No `sury-ppx` in rescript.json** — it goes in `package.json` devDependencies and the ppx is configured in `bsc-flags` (inherited from project settings)
+- **Minimal dependencies** — only `sury` (no `reventless-spec` needed for EP specs)
+- **Explicit namespace ending in `Spec`** (e.g., `CatalogSpec`) — the PPX uses this to derive dotted EP names
+- **PPX ordering**: `reventless-ppx` must come before `sury-ppx` (injects annotations that sury then processes)
+- Other packages reference types as `CatalogSpec.ProductsExtensionPoint`
 
 ---
 
@@ -195,10 +196,7 @@ An aggregate spec defines the command/event vocabulary and error types.
 
 **`Product.res`** (aggregate spec):
 ```rescript
-open Reventless
-module Id = Id.String
-
-let name = "Product"
+@@reventless.spec
 
 @schema
 type command =
@@ -220,9 +218,14 @@ type error =
   | ProductNotFound
 ```
 
+The `@@reventless.spec` PPX annotation auto-injects:
+- **`let name = "Product"`** — derived from filename (`Product.res` → `"Product"`)
+- **`module Id = Reventless.Id.String`** — default aggregate identity type
+- **`let moduleUrl`** — npm specifier for runtime dynamic imports
+
+Use `@@reventless.spec("CustomName")` to override the derived name.
+
 Conventions:
-- **`module Id = Id.String`** — aggregate identity type (use `Id.String` for string IDs)
-- **`let name`** — unique aggregate name within the plugin
 - Commands are **imperative** (`Add`, `UpdateName`), events are **past tense** (`Added`, `NameUpdated`)
 - All types use `@schema` for serialization
 - Error variants for domain validation failures
@@ -235,15 +238,10 @@ A behavior implements the aggregate state machine: state evolution from events, 
 
 **`ProductBehavior.res`**:
 ```rescript
-open Reventless
-open Product          // Open the aggregate spec for unqualified access
-
-module Spec = Product // Required: links behavior to its aggregate spec
+@@reventless.behavior
 
 @schema
 type state = {name: string, description: string, price: float}
-
-
 
 let initialState = {name: "", description: "", price: 0.0}
 
@@ -291,8 +289,7 @@ A read model defines the query-side state shape.
 
 **`ProductsReadModel.res`**:
 ```rescript
-open Reventless
-module Id = Id.String
+@@reventless.spec
 
 @schema
 type state = {
@@ -302,15 +299,14 @@ type state = {
   price: float,
 }
 
-let name = "Products"
-
 open Reventless.ReadModel
 let config = config()
 let subIdConfig = None
 ```
 
+The PPX derives `let name = "Products"` from the filename (`ProductsReadModel.res` → strips `ReadModel` → `"Products"`).
+
 - **`state`** — the record stored per entity in the query database
-- **`name`** — unique read model name
 - **`config`** — default configuration (pagination, etc.)
 - **`subIdConfig`** — for sub-entity read models (`None` for top-level)
 
@@ -901,12 +897,12 @@ let moduleUrl: string = %raw(`import.meta.url`)
 ```
 
 Key points:
-- **`@s.matches(DcbTag.string)`** — required on every entity ID field. Without it, queries return ALL events instead of filtering by entity, causing phantom state in decision models
+- **`@s.matches(DcbTag.string)`** — required on every entity ID field. The `@@reventless.dcbTags` PPX annotation auto-injects this on all `*Id: string` fields in StateChangeSlice files. For event log type definitions, the annotation must still be explicit since the PPX only transforms files with `@@reventless.spec`
 - **Both command AND event types** need the tag annotation on entity ID fields
 - For cross-entity commands, use `array<@s.matches(DcbTag.string) string>` on array fields that reference other entities (see [Cross-Entity Queries](#cross-entity-queries-tagged-arrays) below)
 - All entity types (Product, Category, etc.) share the same event log
 - The event log file has no `name` or `Id` — it's just a type definition
-- **`let moduleUrl`** — required. The framework uses this at deploy time to locate the event log module at runtime, so that entry points can dynamically import it and reconstruct the `DcbEventLogSpec` on each slice (ReScript module aliases like `module DcbEventLogSpec = CatalogEventLog` compile to `undefined` in ESM output)
+- **`let moduleUrl`** — required. The framework uses this at deploy time to locate the event log module at runtime
 
 ---
 
@@ -916,17 +912,17 @@ A StateChangeSlice handles commands using a **state** (decision model) — a min
 
 **`AddProduct.res`**:
 ```rescript
-open Reventless
-open CatalogEventLog
+@@reventless.spec
+@@reventless.dcbTags
 
-let name = "AddProduct"
+open CatalogEventLog
 
 module DcbEventLogSpec = CatalogEventLog
 
 @schema
 type command =
   | AddProduct({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,
       name: string,
       description: string,
       price: float,
@@ -956,13 +952,14 @@ let decide = (state, command) =>
   }
 ```
 
+The `@@reventless.dcbTags` annotation auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string` fields in `@schema` types — no manual annotation needed.
+
 **StateChangeSlice spec fields:**
 
 | Field | Purpose |
 |-------|---------|
-| `name` | Unique slice name |
 | `module DcbEventLogSpec` | Links to the shared event log |
-| `command` | Commands this slice handles (with `@s.matches` tags) |
+| `command` | Commands this slice handles (entity ID fields auto-tagged by PPX) |
 | `error` | Domain error variants |
 | `state` | Minimal state needed for command decisions |
 | `initialState` | Starting value before any events |

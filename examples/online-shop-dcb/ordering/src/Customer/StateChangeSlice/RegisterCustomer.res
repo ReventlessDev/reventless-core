@@ -1,11 +1,7 @@
 // RegisterCustomer StateChangeSlice.
 // Handles the RegisterCustomer command; rejects duplicate registration.
-
-open Reventless
-
-let name = "RegisterCustomer"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool}
 
@@ -22,7 +18,7 @@ let evolve = (_state, event) =>
 
 @schema
 type command =
-  | RegisterCustomer({customerId: @s.matches(DcbTag.string) string, email: string, address: string})
+  | RegisterCustomer({customerId: string, email: string, address: string})
 
 @schema
 type error = CustomerAlreadyRegistered
@@ -30,7 +26,7 @@ type error = CustomerAlreadyRegistered
 @schema
 type event =
   | CustomerRegistered({
-      customerId: @s.matches(DcbTag.string) string,
+      customerId: string,
       email: string,
       address: string,
     })

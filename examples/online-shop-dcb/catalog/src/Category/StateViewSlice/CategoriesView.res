@@ -1,10 +1,10 @@
 // CategoriesView StateViewSlice.
 // Projects category events from the shared catalog event log into a Categories read model.
+@@reventless.spec
+
 
 open Reventless.Projection
 
-let name = "CategoriesView"
-let moduleUrl: string = %raw(`import.meta.url`)
 
 @schema
 type state = {categoryId: string, name: string, archived: bool}

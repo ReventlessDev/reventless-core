@@ -30,6 +30,6 @@
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-core"
   ],
-  "compiler-flags": [
-  ]
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
 }

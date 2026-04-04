@@ -1,16 +1,12 @@
 // CatalogProduct aggregate behavior.
 // Idempotently syncs Catalog product state into Ordering.
 
-open CatalogProduct
-
-module Spec = CatalogProduct
+@@reventless.behavior
 
 @schema
 type state =
   | NotCreated
   | Created({name: string, price: float})
-
-let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated
 

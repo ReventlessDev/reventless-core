@@ -68,7 +68,13 @@ function Make(Platform) {
     decide: DeactivateCustomer$OrderingPlugin.decide,
     commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema
   });
-  let CustomersViewSlice = Platform.StateViewSlice.Make(CustomersView$OrderingPlugin);
+  let CustomersViewSlice = Platform.StateViewSlice.Make({
+    name: CustomersView$OrderingPlugin.name,
+    moduleUrl: CustomersView$OrderingPlugin.moduleUrl,
+    stateSchema: CustomersView$OrderingPlugin.stateSchema,
+    consumedEventSchema: CustomersView$OrderingPlugin.consumedEventSchema,
+    project: CustomersView$OrderingPlugin.project
+  });
   let PlaceOrderSlice = Platform.StateChangeSlice.Make({
     name: PlaceOrder$OrderingPlugin.name,
     moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
@@ -105,9 +111,36 @@ function Make(Platform) {
     decide: CancelOrder$OrderingPlugin.decide,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema
   });
-  let AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder$OrderingPlugin);
-  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation$OrderingPlugin);
-  let OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView$OrderingPlugin);
+  let AutoShipOrderSlice = Platform.AutomationSlice.Make({
+    name: AutoShipOrder$OrderingPlugin.name,
+    moduleUrl: AutoShipOrder$OrderingPlugin.moduleUrl,
+    consumedEventSchema: AutoShipOrder$OrderingPlugin.consumedEventSchema,
+    todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
+    commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
+    collect: AutoShipOrder$OrderingPlugin.collect,
+    resolve: AutoShipOrder$OrderingPlugin.resolve,
+    process: AutoShipOrder$OrderingPlugin.process,
+    maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
+    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
+  });
+  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
+    name: SendOrderConfirmation$OrderingPlugin.name,
+    moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
+    consumedEventSchema: SendOrderConfirmation$OrderingPlugin.consumedEventSchema,
+    outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
+    inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
+    collect: SendOrderConfirmation$OrderingPlugin.collect,
+    translate: SendOrderConfirmation$OrderingPlugin.translate,
+    maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
+    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
+  });
+  let OrdersViewSlice = Platform.StateViewSlice.Make({
+    name: OrdersView$OrderingPlugin.name,
+    moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
+    stateSchema: OrdersView$OrderingPlugin.stateSchema,
+    consumedEventSchema: OrdersView$OrderingPlugin.consumedEventSchema,
+    project: OrdersView$OrderingPlugin.project
+  });
   let SyncCatalogProductSlice = Platform.StateChangeSlice.Make({
     name: SyncCatalogProduct$OrderingPlugin.name,
     moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
@@ -120,9 +153,21 @@ function Make(Platform) {
     decide: SyncCatalogProduct$OrderingPlugin.decide,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
   });
-  let AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView$OrderingPlugin);
+  let AvailableProductsViewSlice = Platform.StateViewSlice.Make({
+    name: AvailableProductsView$OrderingPlugin.name,
+    moduleUrl: AvailableProductsView$OrderingPlugin.moduleUrl,
+    stateSchema: AvailableProductsView$OrderingPlugin.stateSchema,
+    consumedEventSchema: AvailableProductsView$OrderingPlugin.consumedEventSchema,
+    project: AvailableProductsView$OrderingPlugin.project
+  });
   let ProductsExtensionMaker = Platform.Extension.Make({
-    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
+    ExtensionPoint: {
+      name: ProductsExtensionPoint$CatalogSpec.name,
+      moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
+      commandSchema: ProductsExtensionPoint$CatalogSpec.commandSchema,
+      eventSchema: ProductsExtensionPoint$CatalogSpec.eventSchema,
+      directiveSchema: ProductsExtensionPoint$CatalogSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: SyncCatalogProduct$OrderingPlugin.name,
@@ -136,7 +181,13 @@ function Make(Platform) {
   });
   let moduleUrl = import.meta.url;
   let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make({
-    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
+    ExtensionPoint: {
+      name: OrdersExtensionPoint$OrderingSpec.name,
+      moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
+      commandSchema: OrdersExtensionPoint$OrderingSpec.commandSchema,
+      eventSchema: OrdersExtensionPoint$OrderingSpec.eventSchema,
+      directiveSchema: OrdersExtensionPoint$OrderingSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: OrdersExtensionPointMapping$OrderingPlugin.Delegate.name,

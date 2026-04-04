@@ -1,10 +1,7 @@
 // ProductDemand aggregate specification.
 // Records per-product order demand, driven by Ordering's OrdersExtensionPoint.
 
-open Reventless
-module Id = Id.String
-
-let name = "ProductDemand"
+@@reventless.spec
 
 @schema
 type command =
@@ -18,5 +15,3 @@ type event =
 
 @schema
 type error = unit
-
-let moduleUrl: string = %raw(`import.meta.url`)

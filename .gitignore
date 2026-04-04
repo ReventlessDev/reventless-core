@@ -27,5 +27,8 @@ rescript/**/examples/*.res.mjs
 .security-key
 logs/security/
 
+# Reventless PPX dune build output
+packages/reventless-ppx/src/_build/
+
 # ast-grep tree-sitter grammar (compiled binary, rebuild with gcc)
 rescript.dylib

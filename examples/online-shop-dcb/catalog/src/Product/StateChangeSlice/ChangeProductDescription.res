@@ -1,11 +1,7 @@
 // ChangeProductDescription StateChangeSlice.
 // Requires product to exist; idempotent when description is unchanged.
-
-open Reventless
-
-let name = "ChangeProductDescription"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, currentDescription: string}
 
@@ -27,7 +23,7 @@ let evolve = (state, event) =>
 
 @schema
 type command =
-  | ChangeProductDescription({productId: @s.matches(DcbTag.string) string, description: string})
+  | ChangeProductDescription({productId: string, description: string})
 
 @schema
 type error = ProductNotFound
@@ -35,7 +31,7 @@ type error = ProductNotFound
 @schema
 type event =
   | ProductDescriptionChanged({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,
       description: string,
     })
 

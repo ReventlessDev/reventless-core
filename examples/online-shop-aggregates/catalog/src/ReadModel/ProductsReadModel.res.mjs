@@ -9,22 +9,22 @@ let stateSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-let moduleUrl = import.meta.url;
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
-
-let Id;
 
 let name = "Products";
 
+let Id;
+
 let subIdConfig;
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/ReadModel/ProductsReadModel.res.mjs";
+
 export {
+  name,
   Id,
   stateSchema,
-  name,
-  moduleUrl,
   config,
   subIdConfig,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

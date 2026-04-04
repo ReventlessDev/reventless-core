@@ -11,8 +11,6 @@ let stateSchema = S.union([
   }))
 ]);
 
-let moduleUrl = import.meta.url;
-
 function evolve(state, event) {
   if (typeof state !== "object") {
     if (event.TAG === "Synced") {
@@ -76,12 +74,14 @@ let Spec;
 
 let initialState = "NotCreated";
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Aggregate/CatalogProductBehavior.res.mjs";
+
 export {
   Spec,
   stateSchema,
-  moduleUrl,
   initialState,
   evolve,
   decide,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

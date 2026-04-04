@@ -19,5 +19,6 @@
     "@reventlessdev/rescript-effect",
     "@reventlessdev/rescript-uuid",
     "@reventlessdev/reventless-spec"
-  ]
+  ],
+  "suffix": ".res.mjs"
 }

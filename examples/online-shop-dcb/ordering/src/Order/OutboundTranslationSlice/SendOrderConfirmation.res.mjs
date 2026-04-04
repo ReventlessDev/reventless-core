@@ -6,8 +6,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as EmailService$OrderingPlugin from "../../Service/EmailService.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let consumedEventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
   orderId: s.m(S.string),
@@ -49,15 +47,19 @@ async function translate(_id, item) {
 
 let name = "SendOrderConfirmation";
 
+let Id;
+
 let inboundCommandSchema = S.unit;
 
 let maxRetries = 3;
 
 let heartbeatInterval = 60;
 
+let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
+
 export {
   name,
-  moduleUrl,
+  Id,
   consumedEventSchema,
   outboundItemSchema,
   inboundCommandSchema,
@@ -65,5 +67,6 @@ export {
   translate,
   maxRetries,
   heartbeatInterval,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* consumedEventSchema Not a pure module */

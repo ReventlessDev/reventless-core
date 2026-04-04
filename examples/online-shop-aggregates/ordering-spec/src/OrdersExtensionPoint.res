@@ -1,7 +1,5 @@
 // OrdersExtensionPoint spec — stable public API from Ordering
-
-let name = "Ordering.Orders"
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
 
 @schema
 type command = unit // read-only: no inbound commands

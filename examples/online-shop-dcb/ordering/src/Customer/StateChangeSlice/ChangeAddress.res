@@ -1,11 +1,7 @@
 // ChangeAddress StateChangeSlice.
 // Requires customer to exist and not be deactivated; idempotent when address is unchanged.
-
-open Reventless
-
-let name = "ChangeAddress"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, deactivated: bool, currentAddress: string}
 
@@ -29,7 +25,7 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = ChangeAddress({customerId: @s.matches(DcbTag.string) string, address: string})
+type command = ChangeAddress({customerId: string, address: string})
 
 @schema
 type error =
@@ -37,7 +33,7 @@ type error =
   | CustomerAlreadyDeactivated
 
 @schema
-type event = AddressChanged({customerId: @s.matches(DcbTag.string) string, address: string})
+type event = AddressChanged({customerId: string, address: string})
 
 let decide = (state, command) =>
   switch command {

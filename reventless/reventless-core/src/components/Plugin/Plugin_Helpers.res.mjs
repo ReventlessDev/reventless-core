@@ -138,11 +138,11 @@ function createExtensions(extensions, pluginName, publishToPluginExtensionPoint,
       moduleUrl: Mappings_moduleUrl,
       mappings: allMappings
     };
-    let Built = Extension_Builder$ReventlessCore.Make(First.Spec)(Mappings);
-    let extension = Built.make(publishToPluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-    let ops = Built.operations(extension);
+    let ExtensionMaker = Extension_Builder$ReventlessCore.Make(First.Spec)(Mappings);
+    let extension = ExtensionMaker.make(publishToPluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+    let ops = ExtensionMaker.operations(extension);
     return [
-      Built.outputs(extension),
+      ExtensionMaker.outputs(extension),
       ops.apply(param => ({
         outgoing: param.outgoingJsonEventsHandler,
         incoming: param.incomingJsonEventsHandler

@@ -1,16 +1,12 @@
 // ProductDemand aggregate behavior.
 // Idempotently records and revokes order demand per product.
 
-open ProductDemand
-
-module Spec = ProductDemand
+@@reventless.behavior
 
 @schema
 type state =
   | NotCreated
   | Created({recordedOrderIds: array<string>})
-
-let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated
 

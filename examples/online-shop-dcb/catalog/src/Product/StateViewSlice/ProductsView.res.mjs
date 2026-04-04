@@ -2,8 +2,6 @@
 
 import * as S from "sury/src/S.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
   name: s.m(S.string),
@@ -89,13 +87,18 @@ function project(event) {
   }
 }
 
-let name = "ProductsView";
+let name = "Products";
+
+let Id;
+
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateViewSlice/ProductsView.res.mjs";
 
 export {
   name,
-  moduleUrl,
+  Id,
   stateSchema,
   consumedEventSchema,
   project,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* stateSchema Not a pure module */

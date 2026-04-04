@@ -3,8 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 
-let moduleUrl = import.meta.url;
-
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
   name: s.m(S.string),
@@ -69,13 +67,18 @@ function project(event) {
   }
 }
 
-let name = "ProductDemandView";
+let name = "ProductDemand";
+
+let Id;
+
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateViewSlice/ProductDemandView.res.mjs";
 
 export {
   name,
-  moduleUrl,
+  Id,
   stateSchema,
   consumedEventSchema,
   project,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* stateSchema Not a pure module */

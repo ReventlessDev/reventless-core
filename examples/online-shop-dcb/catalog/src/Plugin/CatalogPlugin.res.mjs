@@ -67,7 +67,13 @@ function Make(Platform) {
     decide: ChangeProductPrice$CatalogPlugin.decide,
     commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
   });
-  let ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView$CatalogPlugin);
+  let ProductsViewSlice = Platform.StateViewSlice.Make({
+    name: ProductsView$CatalogPlugin.name,
+    moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
+    stateSchema: ProductsView$CatalogPlugin.stateSchema,
+    consumedEventSchema: ProductsView$CatalogPlugin.consumedEventSchema,
+    project: ProductsView$CatalogPlugin.project
+  });
   let AddCategorySlice = Platform.StateChangeSlice.Make({
     name: AddCategory$CatalogPlugin.name,
     moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
@@ -104,8 +110,20 @@ function Make(Platform) {
     decide: ArchiveCategory$CatalogPlugin.decide,
     commandSchema: ArchiveCategory$CatalogPlugin.commandSchema
   });
-  let CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView$CatalogPlugin);
-  let ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct$CatalogPlugin);
+  let CategoriesViewSlice = Platform.StateViewSlice.Make({
+    name: CategoriesView$CatalogPlugin.name,
+    moduleUrl: CategoriesView$CatalogPlugin.moduleUrl,
+    stateSchema: CategoriesView$CatalogPlugin.stateSchema,
+    consumedEventSchema: CategoriesView$CatalogPlugin.consumedEventSchema,
+    project: CategoriesView$CatalogPlugin.project
+  });
+  let ImportProductSlice = Platform.InboundTranslationSlice.Make({
+    name: ImportProduct$CatalogPlugin.name,
+    moduleUrl: ImportProduct$CatalogPlugin.moduleUrl,
+    externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
+    commandSchema: ImportProduct$CatalogPlugin.commandSchema,
+    translate: ImportProduct$CatalogPlugin.translate
+  });
   let RecordProductDemandSlice = Platform.StateChangeSlice.Make({
     name: RecordProductDemand$CatalogPlugin.name,
     moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
@@ -118,10 +136,22 @@ function Make(Platform) {
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });
-  let ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView$CatalogPlugin);
+  let ProductDemandViewSlice = Platform.StateViewSlice.Make({
+    name: ProductDemandView$CatalogPlugin.name,
+    moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
+    stateSchema: ProductDemandView$CatalogPlugin.stateSchema,
+    consumedEventSchema: ProductDemandView$CatalogPlugin.consumedEventSchema,
+    project: ProductDemandView$CatalogPlugin.project
+  });
   let moduleUrl = import.meta.url;
   let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
-    ExtensionPoint: ProductsExtensionPoint$CatalogSpec,
+    ExtensionPoint: {
+      name: ProductsExtensionPoint$CatalogSpec.name,
+      moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
+      commandSchema: ProductsExtensionPoint$CatalogSpec.commandSchema,
+      eventSchema: ProductsExtensionPoint$CatalogSpec.eventSchema,
+      directiveSchema: ProductsExtensionPoint$CatalogSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: ProductsExtensionPointMapping$CatalogPlugin.Delegate.name,
@@ -136,7 +166,13 @@ function Make(Platform) {
     moduleUrl: moduleUrl
   });
   let OrdersExtensionMaker = Platform.Extension.Make({
-    ExtensionPoint: OrdersExtensionPoint$OrderingSpec,
+    ExtensionPoint: {
+      name: OrdersExtensionPoint$OrderingSpec.name,
+      moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
+      commandSchema: OrdersExtensionPoint$OrderingSpec.commandSchema,
+      eventSchema: OrdersExtensionPoint$OrderingSpec.eventSchema,
+      directiveSchema: OrdersExtensionPoint$OrderingSpec.directiveSchema
+    },
     Delegate: {
       Id: Id$Reventless.$$String,
       name: RecordProductDemand$CatalogPlugin.name,

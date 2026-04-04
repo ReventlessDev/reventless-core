@@ -3,8 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let initialState = {
   recordedOrderIds: []
 };
@@ -12,11 +10,11 @@ let initialState = {
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductDemandRecorded",
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   })),
   S.schema(s => ({
     TAG: "ProductDemandRevoked",
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
@@ -36,12 +34,12 @@ let commandSchema = S.union([
   S.schema(s => ({
     TAG: "RecordDemand",
     productId: s.m(DcbTag$Reventless.string),
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   })),
   S.schema(s => ({
     TAG: "RevokeDemand",
     productId: s.m(DcbTag$Reventless.string),
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
@@ -49,12 +47,12 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductDemandRecorded",
     productId: s.m(DcbTag$Reventless.string),
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   })),
   S.schema(s => ({
     TAG: "ProductDemandRevoked",
     productId: s.m(DcbTag$Reventless.string),
-    orderId: s.m(S.string)
+    orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);
 
@@ -101,10 +99,11 @@ let Id;
 
 let errorSchema = S.unit;
 
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateChangeSlice/RecordProductDemand.res.mjs";
+
 export {
   name,
   Id,
-  moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
@@ -112,5 +111,6 @@ export {
   errorSchema,
   eventSchema,
   decide,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* consumedEventSchema Not a pure module */

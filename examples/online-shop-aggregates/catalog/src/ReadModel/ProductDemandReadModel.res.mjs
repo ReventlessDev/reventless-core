@@ -8,22 +8,22 @@ let stateSchema = S.schema(s => ({
   orderCount: s.m(S.int)
 }));
 
-let moduleUrl = import.meta.url;
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
-
-let Id;
 
 let name = "ProductDemand";
 
+let Id;
+
 let subIdConfig;
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/ReadModel/ProductDemandReadModel.res.mjs";
+
 export {
+  name,
   Id,
   stateSchema,
-  name,
-  moduleUrl,
   config,
   subIdConfig,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

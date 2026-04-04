@@ -1,11 +1,7 @@
 // RenameCategory StateChangeSlice.
 // Requires category to exist and not be archived.
-
-open Reventless
-
-let name = "RenameCategory"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, archived: bool}
 
@@ -23,7 +19,7 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = RenameCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
+type command = RenameCategory({categoryId: string, name: string})
 
 @schema
 type error =
@@ -31,7 +27,7 @@ type error =
   | CategoryAlreadyArchived
 
 @schema
-type event = CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
+type event = CategoryRenamed({categoryId: string, name: string})
 
 let decide = (state, command) =>
   switch command {

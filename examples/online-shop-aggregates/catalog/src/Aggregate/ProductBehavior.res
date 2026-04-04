@@ -1,16 +1,12 @@
 // Product aggregate behavior.
 // Implements the state machine for adding and updating products.
 
-open Product
-
-module Spec = Product
+@@reventless.behavior
 
 @schema
 type state =
   | NotCreated
   | Created({name: string, description: string, price: float})
-
-let moduleUrl: string = %raw(`import.meta.url`)
 
 let initialState = NotCreated
 

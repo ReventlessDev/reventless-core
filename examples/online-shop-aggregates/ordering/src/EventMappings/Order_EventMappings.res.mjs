@@ -23,8 +23,6 @@ let AutoShipMapping = {
   map: map
 };
 
-let moduleUrl = import.meta.url;
-
 let mappings = [{
     Source: {
       name: Order$OrderingPlugin.name,
@@ -34,15 +32,23 @@ let mappings = [{
     map: map
   }];
 
+let name = "Order_EventMappings";
+
+let Id;
+
 let Target;
 
 let counter;
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/EventMappings/Order_EventMappings.res.mjs";
+
 export {
+  name,
+  Id,
   Target,
   AutoShipMapping,
-  moduleUrl,
   mappings,
   counter,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* Id-Reventless Not a pure module */

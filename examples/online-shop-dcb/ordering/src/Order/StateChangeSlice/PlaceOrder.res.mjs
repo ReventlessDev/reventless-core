@@ -3,8 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let moduleUrl = import.meta.url;
-
 let consumedEventSchema = S.literal("OrderPlaced");
 
 function evolve(_state, event) {
@@ -16,7 +14,7 @@ function evolve(_state, event) {
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(S.string),
+  customerId: s.m(DcbTag$Reventless.string),
   productIds: s.m(S.array(S.string))
 }));
 
@@ -25,7 +23,7 @@ let errorSchema = S.literal("OrderAlreadyPlaced");
 let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
   orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(S.string),
+  customerId: s.m(DcbTag$Reventless.string),
   productIds: s.m(S.array(S.string))
 }));
 
@@ -56,10 +54,11 @@ let initialState = {
   exists: false
 };
 
+let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/StateChangeSlice/PlaceOrder.res.mjs";
+
 export {
   name,
   Id,
-  moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
@@ -67,5 +66,6 @@ export {
   errorSchema,
   eventSchema,
   decide,
+  moduleUrl,
 }
-/* moduleUrl Not a pure module */
+/* consumedEventSchema Not a pure module */

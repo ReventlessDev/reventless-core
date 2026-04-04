@@ -22,6 +22,6 @@
     "@reventlessdev/rescript-pulumi-pulumi",
     "@glennsl/rescript-jest"
   ],
-  "compiler-flags": [
-  ]
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
 }

@@ -1,11 +1,8 @@
 // AddCategory StateChangeSlice.
 // Handles the AddCategory command; rejects duplicate creation via DCB optimistic concurrency.
+@@reventless.spec
+@@reventless.dcbTags
 
-open Reventless
-
-let name = "AddCategory"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, archived: bool}
 
@@ -23,13 +20,13 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = AddCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
+type command = AddCategory({categoryId: string, name: string})
 
 @schema
 type error = CategoryAlreadyExists
 
 @schema
-type event = CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
+type event = CategoryAdded({categoryId: string, name: string})
 
 let decide = (state, command) =>
   switch command {

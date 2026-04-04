@@ -1,10 +1,10 @@
 // ProductDemandView StateViewSlice.
 // Projects catalog events into a per-product demand counter (order count).
+@@reventless.spec
+
 
 open Reventless.Projection
 
-let name = "ProductDemandView"
-let moduleUrl: string = %raw(`import.meta.url`)
 
 @schema
 type state = {productId: string, name: string, orderCount: int}

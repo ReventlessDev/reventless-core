@@ -53,11 +53,11 @@ let errorSchema = S.union([
   S.literal("IsInactive")
 ]);
 
-let moduleUrl = import.meta.url;
-
 let name = "Plugin";
 
 let Id;
+
+let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 
 export {
   name,

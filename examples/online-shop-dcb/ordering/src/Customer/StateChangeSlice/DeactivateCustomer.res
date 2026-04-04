@@ -1,11 +1,7 @@
 // DeactivateCustomer StateChangeSlice.
 // Requires customer to exist; idempotent if already deactivated.
-
-open Reventless
-
-let name = "DeactivateCustomer"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool, deactivated: bool}
 
@@ -23,13 +19,13 @@ let evolve = (state, event) =>
   }
 
 @schema
-type command = DeactivateCustomer({customerId: @s.matches(DcbTag.string) string})
+type command = DeactivateCustomer({customerId: string})
 
 @schema
 type error = CustomerNotFound
 
 @schema
-type event = CustomerDeactivated({customerId: @s.matches(DcbTag.string) string})
+type event = CustomerDeactivated({customerId: string})
 
 let decide = (state, command) =>
   switch command {

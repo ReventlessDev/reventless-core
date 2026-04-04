@@ -1,6 +1,4 @@
-let name = "Plugin"
-
-module Id = Reventless.Id.String
+@@reventless.spec("Plugin")
 
 open Reventless.Plugin
 
@@ -31,5 +29,3 @@ type error =
   | AlreadyConnected
   | IsDisconnected
   | IsInactive
-
-let moduleUrl: string = %raw(`import.meta.url`)

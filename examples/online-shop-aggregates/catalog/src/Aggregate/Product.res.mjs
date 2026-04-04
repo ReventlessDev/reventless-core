@@ -49,15 +49,15 @@ let errorSchema = S.union([
   S.literal("ProductNotFound")
 ]);
 
-let moduleUrl = import.meta.url;
+let name = "Product";
 
 let Id;
 
-let name = "Product";
+let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/Aggregate/Product.res.mjs";
 
 export {
-  Id,
   name,
+  Id,
   commandSchema,
   eventSchema,
   errorSchema,

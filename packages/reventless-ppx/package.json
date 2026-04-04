@@ -1,0 +1,25 @@
+{
+  "name": "@reventlessdev/reventless-ppx",
+  "version": "1.0.0-alpha.1",
+  "description": "ReScript PPX to eliminate boilerplate from Reventless application code",
+  "license": "MIT",
+  "files": [
+    "install.cjs",
+    "ppx-windows.exe",
+    "ppx-linux.exe",
+    "ppx-linux-arm.exe",
+    "ppx-osx.exe",
+    "ppx-osx-x64.exe",
+    "bin.cmd",
+    "bin"
+  ],
+  "scripts": {
+    "postinstall": "node ./install.cjs",
+    "build:ppx": "cd src && opam exec -- dune build",
+    "clean:ppx": "cd src && opam exec -- dune clean",
+    "test": "./test/run.sh"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

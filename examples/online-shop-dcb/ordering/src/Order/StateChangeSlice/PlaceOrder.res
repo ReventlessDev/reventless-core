@@ -1,11 +1,7 @@
 // PlaceOrder StateChangeSlice.
 // Handles the PlaceOrder command; rejects duplicate placement.
-
-open Reventless
-
-let name = "PlaceOrder"
-module Id = Reventless.Id.String
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
+@@reventless.dcbTags
 
 type state = {exists: bool}
 
@@ -23,7 +19,7 @@ let evolve = (_state, event) =>
 @schema
 type command =
   | PlaceOrder({
-      orderId: @s.matches(DcbTag.string) string,
+      orderId: string,
       customerId: string,
       productIds: array<string>,
     })
@@ -34,7 +30,7 @@ type error = OrderAlreadyPlaced
 @schema
 type event =
   | OrderPlaced({
-      orderId: @s.matches(DcbTag.string) string,
+      orderId: string,
       customerId: string,
       productIds: array<string>,
     })

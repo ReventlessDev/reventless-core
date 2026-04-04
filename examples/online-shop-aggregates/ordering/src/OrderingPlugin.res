@@ -1,8 +1,9 @@
 // Ordering plugin — platform-agnostic composition root.
 // Wires the Customer and Order aggregates and their read models,
 // the OrdersExtensionPoint (outbound), and the ProductsExtension (inbound).
-
 open Reventless
+
+let moduleUrl: string = %raw(`import.meta.url`)
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CustomerAggregate = Platform.Aggregate.Make(
@@ -20,7 +21,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CustomerProjections: Projection.Mappings with module Target := CustomersReadModel = {
     module M = Projection.Mappings.Make(CustomersReadModel)
     module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
+    let moduleUrl = moduleUrl
     let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
   }
 
@@ -29,7 +30,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module OrderProjections: Projection.Mappings with module Target := OrdersReadModel = {
     module M = Projection.Mappings.Make(OrdersReadModel)
     module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
+    let moduleUrl = moduleUrl
     let mappings: array<module(Mapping)> = [module(OrdersProjections.OrderMapping)]
   }
 
@@ -46,7 +47,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     with module Target := AvailableProductsReadModel = {
     module M = Projection.Mappings.Make(AvailableProductsReadModel)
     module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
+    let moduleUrl = moduleUrl
     let mappings: array<module(Mapping)> = [
       module(AvailableProductsProjections.CatalogProductMapping),
     ]
@@ -65,7 +66,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Build the Orders extension point component
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(
     OrdersExtensionPoint.OrderMapping,
-    {let moduleUrl: string = %raw(`import.meta.url`)},
+    {let moduleUrl = moduleUrl},
   )
 
   module OrderNotificationsTask = Platform.Task.Make(OrderNotifications)

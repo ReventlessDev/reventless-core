@@ -1,8 +1,7 @@
 // OrdersExtensionPoint spec — stable public API from Ordering to Catalog.
 // Extensions subscribing to this EP receive per-product order demand events.
 
-let name = "Ordering.Orders"
-let moduleUrl: string = %raw(`import.meta.url`)
+@@reventless.spec
 
 @schema
 type command = unit // read-only

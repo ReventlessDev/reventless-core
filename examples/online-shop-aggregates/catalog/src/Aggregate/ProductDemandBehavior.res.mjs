@@ -10,8 +10,6 @@ let stateSchema = S.union([
   }))
 ]);
 
-let moduleUrl = import.meta.url;
-
 function evolve(state, event) {
   if (typeof state !== "object") {
     if (event.TAG === "Recorded") {
@@ -91,12 +89,14 @@ let Spec;
 
 let initialState = "NotCreated";
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/Aggregate/ProductDemandBehavior.res.mjs";
+
 export {
   Spec,
   stateSchema,
-  moduleUrl,
   initialState,
   evolve,
   decide,
+  moduleUrl,
 }
 /* stateSchema Not a pure module */

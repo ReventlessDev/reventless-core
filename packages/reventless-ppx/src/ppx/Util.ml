@@ -1,0 +1,103 @@
+open Ppxlib
+
+let has_attr name attrs =
+  List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt name) attrs
+
+let find_attr name attrs =
+  List.find_opt (fun (attr : attribute) -> String.equal attr.attr_name.txt name) attrs
+
+let get_string_payload (attr : attribute) =
+  match attr.attr_payload with
+  | PStr [{ pstr_desc = Pstr_eval ({ pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _ }, _); _ }] ->
+    Some s
+  | _ -> None
+
+let get_ident_payload (attr : attribute) =
+  match attr.attr_payload with
+  | PStr [{ pstr_desc = Pstr_eval (expr, _); _ }] ->
+    (match expr.pexp_desc with
+     | Pexp_construct ({ txt = Lident name; _ }, None) -> Some name
+     | Pexp_ident { txt = Lident name; _ } -> Some name
+     | _ -> None)
+  | _ -> None
+
+let has_let_binding name structure =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_value (_, bindings) ->
+      List.exists (fun (vb : value_binding) ->
+        match vb.pvb_pat.ppat_desc with
+        | Ppat_var { txt; _ } -> String.equal txt name
+        | Ppat_constraint ({ ppat_desc = Ppat_var { txt; _ }; _ }, _) ->
+          String.equal txt name
+        | _ -> false
+      ) bindings
+    | _ -> false
+  ) structure
+
+let has_module_binding name structure =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_module mb ->
+      (match mb.pmb_name.txt with
+       | Some n -> String.equal n name
+       | None -> false)
+    | _ -> false
+  ) structure
+
+let has_open name structure =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_open od ->
+      (match od.popen_expr.pmod_desc with
+       | Pmod_ident { txt = Lident n; _ } -> String.equal n name
+       | _ -> false)
+    | _ -> false
+  ) structure
+
+let ends_with_id name =
+  let len = String.length name in
+  len >= 3
+  && name.[len - 1] = 'd'
+  && name.[len - 2] = 'I'
+  && (len = 2 || name.[len - 3] <> 'I')
+
+let strip_suffix s suffix =
+  let slen = String.length s in
+  let suflen = String.length suffix in
+  if slen > suflen && String.sub s (slen - suflen) suflen = suffix then
+    String.sub s 0 (slen - suflen)
+  else
+    s
+
+let component_suffixes = [
+  "ExtensionPointMapping";
+  "ExtensionPoint";
+  "ReadModel";
+  "Behavior";
+  "Projections";
+  "Projection";
+  "Aggregate";
+  "Plugin";
+  "Slice";
+  "Spec";
+  "View";
+]
+
+let strip_component_suffix name =
+  let rec try_suffixes = function
+    | [] -> name
+    | suffix :: rest ->
+      let stripped = strip_suffix name suffix in
+      if not (String.equal stripped name) then stripped
+      else try_suffixes rest
+  in
+  try_suffixes component_suffixes
+
+let filename_to_name fname =
+  let base = Filename.basename fname in
+  let without_ext = match String.index_opt base '.' with
+    | Some i -> String.sub base 0 i
+    | None -> base
+  in
+  strip_component_suffix without_ext

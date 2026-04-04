@@ -16,6 +16,6 @@
   "dependencies": [
     "sury"
   ],
-  "compiler-flags": [
-  ]
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
 }

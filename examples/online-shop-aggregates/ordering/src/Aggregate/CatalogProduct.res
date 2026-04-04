@@ -2,10 +2,7 @@
 // Stores a synced shadow of Catalog products inside Ordering,
 // driven by Catalog's ProductsExtensionPoint.
 
-open Reventless
-module Id = Id.String
-
-let name = "CatalogProduct"
+@@reventless.spec
 
 @schema
 type command =
@@ -19,5 +16,3 @@ type event =
 
 @schema
 type error = unit // always succeeds — sync is idempotent
-
-let moduleUrl: string = %raw(`import.meta.url`)

@@ -1,10 +1,10 @@
 // CustomersView StateViewSlice.
 // Projects customer events from the shared ordering event log into a Customers read model.
+@@reventless.spec
+
 
 open Reventless.Projection
 
-let name = "CustomersView"
-let moduleUrl: string = %raw(`import.meta.url`)
 
 @schema
 type state = {customerId: string, email: string, address: string, deactivated: bool}

@@ -1,0 +1,146 @@
+name: Build Reventless PPX
+
+on:
+  push:
+    branches: [main, beta, alpha]
+    paths:
+      - 'packages/reventless-ppx/**'
+  pull_request:
+    branches: [main, beta, alpha]
+    paths:
+      - 'packages/reventless-ppx/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14          # ARM (M1+)
+            artifact: ppx-osx.exe
+          - os: macos-13          # x64
+            artifact: ppx-osx-x64.exe
+          - os: ubuntu-24.04      # x64
+            artifact: ppx-linux.exe
+          - os: ubuntu-24.04-arm  # ARM
+            artifact: ppx-linux-arm.exe
+          - os: windows-latest    # x64
+            artifact: ppx-windows.exe
+
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.artifact }})
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.x
+          dune-cache: true
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test --yes
+        working-directory: packages/reventless-ppx/src
+
+      - name: Build binary
+        run: |
+          opam exec -- dune build
+        working-directory: packages/reventless-ppx/src
+
+      - name: Copy binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp packages/reventless-ppx/src/_build/default/bin/bin.exe ${{ matrix.artifact }}
+          chmod +x ${{ matrix.artifact }}
+
+      - name: Copy binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          copy packages\reventless-ppx\src\_build\default\bin\bin.exe ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Test PPX
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.1"
+          cache: "npm"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Install npm dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.x
+          dune-cache: true
+
+      - name: Install OCaml dependencies
+        run: opam install . --deps-only --yes
+        working-directory: packages/reventless-ppx/src
+
+      - name: Run PPX tests
+        run: npm test
+        working-directory: packages/reventless-ppx
+
+  assemble:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    name: Assemble binaries
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages/reventless-ppx/
+
+      - name: Move binaries into package
+        run: |
+          cd packages/reventless-ppx
+          for dir in ppx-*.exe; do
+            if [ -d "$dir" ]; then
+              mv "$dir/$dir" .
+              rmdir "$dir"
+              echo "Assembled: $dir"
+            fi
+          done
+          ls -la ppx-*.exe
+
+      - name: Upload assembled package
+        uses: actions/upload-artifact@v4
+        with:
+          name: reventless-ppx-binaries
+          path: |
+            packages/reventless-ppx/ppx-osx.exe
+            packages/reventless-ppx/ppx-osx-x64.exe
+            packages/reventless-ppx/ppx-linux.exe
+            packages/reventless-ppx/ppx-linux-arm.exe
+            packages/reventless-ppx/ppx-windows.exe

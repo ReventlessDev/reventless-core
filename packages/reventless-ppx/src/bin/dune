@@ -1,0 +1,7 @@
+(env
+ (static
+  (flags (:standard -ccopt -static))))
+
+(executable
+ (name bin)
+ (libraries reventless-ppx))
