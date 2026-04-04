@@ -24,8 +24,6 @@ function Make(ReadModelSpec) {
       return Stdlib_Array.reduce(events.map((json, idx) => {
         let context = Message$ReventlessCore.decode(json, Message$Reventless.contextSchema);
         let sourceName = context.meta.service;
-        Message$ReventlessCore.eventNameOfEvent$pJson(json);
-        Message$ReventlessCore.idMetaEventOfEvent$pJson(json);
         let actions = EventProjector.map(sourceName, json);
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         let idxStr = (idx + 1 | 0).toString();

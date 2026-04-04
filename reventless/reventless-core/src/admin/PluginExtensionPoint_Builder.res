@@ -21,8 +21,6 @@ module Make = (
     module type Mapping = ReventlessInfra.ExtensionPointMapping.T
       with module ExtensionPoint := PluginExtensionPointSpec
 
-    let name = "PluginExtensionPointMappings"
-    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [module(PluginMappingInstance.Mapping)]
   }
   include ExtensionPoint_Builder.Make(

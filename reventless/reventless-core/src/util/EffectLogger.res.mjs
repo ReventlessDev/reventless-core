@@ -25,7 +25,7 @@ function install() {
       return Logger$ReventlessCore.emit(level, undefined, undefined, raw);
     }
     let msg = raw.slice(0, idx);
-    let detailStr = raw.slice(idx + 1 | 0);
+    let detailStr = raw.slice(idx + 1 | 0, raw.length);
     let detail;
     try {
       detail = JSON.parse(detailStr);

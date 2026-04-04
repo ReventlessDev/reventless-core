@@ -726,7 +726,7 @@ let getInteropMeta = (): Pulumi.Output.t<JSON.t> => {
   let v = interopMetaOutput.contents
   // Use raw null check to avoid option wrapping of the Proxy value.
   if %raw(`v === null`) {
-    Exn.raiseError("getInteropMeta() called before Plugin_Builder.construct()")
+    JsError.throwWithMessage("getInteropMeta() called before Plugin_Builder.construct()")
   } else {
     v
   }

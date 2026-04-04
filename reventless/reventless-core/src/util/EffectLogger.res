@@ -43,7 +43,7 @@ let install = () =>
     let idx = raw->String.indexOf(Logger.detailSeparator)
     if idx >= 0 {
       let msg = raw->String.slice(~start=0, ~end=idx)
-      let detailStr = raw->String.sliceToEnd(~start=idx + 1)
+      let detailStr = raw->String.slice(~start=idx + 1, ~end=raw->String.length)
       let detail = try Some(detailStr->JSON.parseOrThrow) catch {
       | _ => None
       }

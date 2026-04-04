@@ -145,7 +145,6 @@ module CountOrderMapping = {
 module OrderMappings: EventMapper.Mappings with module Target = CmdTargetSpec = {
   module Target = CmdTargetSpec
   module type Mapping = Reventless.EventMapping.T with module Target := CmdTargetSpec
-  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(OrderMapping)]
   let counter = None
 }
@@ -153,7 +152,6 @@ module OrderMappings: EventMapper.Mappings with module Target = CmdTargetSpec = 
 module CountOrderMappings: EventMapper.Mappings with module Target = CmdTargetSpec = {
   module Target = CmdTargetSpec
   module type Mapping = Reventless.EventMapping.T with module Target := CmdTargetSpec
-  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(CountOrderMapping)]
   let counter = None
 }

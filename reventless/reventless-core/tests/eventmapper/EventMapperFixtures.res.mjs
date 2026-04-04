@@ -208,8 +208,6 @@ let CountOrderMapping = {
   map: map$1
 };
 
-(import.meta.url);
-
 let mappings = [{
     Source: {
       name: name$2,
@@ -237,8 +235,6 @@ let OrderMappings = {
   mappings: mappings,
   counter: undefined
 };
-
-(import.meta.url);
 
 let mappings$1 = [{
     Source: {

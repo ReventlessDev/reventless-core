@@ -21,8 +21,6 @@ module Make = (
       ->Array.mapWithIndex((json, idx) => {
         let context = json->Message.decode(Reventless.Message.contextSchema)
         let sourceName = context.meta.service
-        let eventName = json->Message.eventNameOfEvent'Json
-        let (id, _, _) = json->Message.idMetaEventOfEvent'Json
         let actions = json->EventProjector.map(~sourceName=Some(sourceName))
         let actionsStr = LogFormat.actionNames(actions)
         let idxStr = (idx + 1)->Int.toString
