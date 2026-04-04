@@ -44,11 +44,13 @@ DcbEventLog -> ViewSlice1: { class: projection-flow }
 
 ### DCB Tags
 
-Fields ending in `Id` with type `string` are automatically annotated as DCB tags by the `@@reventless.dcbTags` PPX annotation — no manual work needed. Under the hood, each tagged field gets `@s.matches(DcbTag.string)` (or `DcbTag.int` for integer tags, which must be annotated manually). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its decision model (e.g., all events for a specific `itemId`).
+Fields ending in `Id` with type `string` are automatically annotated as DCB tags by the `@@reventless.dcbTags` PPX annotation — no manual work needed. Under the hood, each tagged field gets `@s.matches(DcbTag.string)`. This also applies to `*Id: array<string>` and `*Ids: array<string>` fields (element types are tagged). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its state (e.g., all events for a specific `itemId`).
 
-### Decision Model
+When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key — see the [PPX guide](../../guides/reventless-ppx.md#partitiontag-notag-dcbtag--field-level-dcb-tag-control).
 
-Each `StateChangeSlice` builds a **decision model** by reading and folding relevant events from the shared log. The model captures the minimal state needed to accept or reject a command.
+### Decision State
+
+Each `StateChangeSlice` builds a **state** by reading and folding relevant events from the shared log. The state captures the minimal information needed to accept or reject a command.
 
 ### Optimistic Concurrency
 
@@ -79,8 +81,8 @@ All variant constructors must have a payload. Payload-less variants (e.g., `| So
 
 Each `StateChangeSlice` handles one command type (or a related group). The spec implements `Reventless.StateChangeSlice.Spec`:
 
-- **`decisionModel`** / **`initialDecisionModel`** — the minimal state built from past events
-- **`reduce`** — folds a DCB event into the decision model
+- **`state`** / **`initialState`** — the minimal state built from past events
+- **`evolve`** — folds a DCB event into the state
 - **`decide`** — accepts or rejects the command, returning events or an error
 
 The `@schema` annotation on `type command` automatically generates `commandSchema`, which the framework uses to route commands to the correct slice.
@@ -100,11 +102,11 @@ type command =
 type error =
   | ItemAlreadyExists
 
-type decisionModel = {exists: bool}
-let initialDecisionModel = {exists: false}
+type state = {exists: bool}
+let initialState = {exists: false}
 
 // Build the decision model by folding relevant events
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ItemEventLogSpec.ItemCreated(_) => {exists: true}
   | ItemEventLogSpec.ItemDeleted(_) => {exists: false}
@@ -138,10 +140,10 @@ type command =
 type error =
   | ItemNotFound
 
-type decisionModel = {exists: bool}
-let initialDecisionModel = {exists: false}
+type state = {exists: bool}
+let initialState = {exists: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ItemEventLogSpec.ItemCreated(_) => {exists: true}
   | ItemEventLogSpec.ItemDeleted(_) => {exists: false}
@@ -174,10 +176,10 @@ type command =
 type error =
   | ItemNotFound
 
-type decisionModel = {exists: bool}
-let initialDecisionModel = {exists: false}
+type state = {exists: bool}
+let initialState = {exists: false}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | ItemEventLogSpec.ItemCreated(_) => {exists: true}
   | ItemEventLogSpec.ItemDeleted(_) => {exists: false}
@@ -199,17 +201,22 @@ let decide = (model, command) =>
 
 A `StateViewSlice` projects events from the shared log into a queryable read model state. The spec implements `Reventless.StateViewSlice.Spec`.
 
-The `project` function takes an `option<state>` (existing state or `None` if the entry doesn't exist yet) and a DCB event, and returns an **array** of `Reventless.Projection.action` values.
+The `project` function takes a `consumedEvent` and returns an **array** of `Reventless.Projection.action` values. State-dependent updates use `Update(id, state => ...)` rather than receiving the existing state directly.
 
 ```rescript
 // ItemViewSpec.res
 @@reventless.spec
 
+open Reventless.Projection
+
 module DcbEventLogSpec = ItemEventLogSpec
 
-// Re-export the event type for the framework to use
+// Declare only the events this slice cares about
 @schema
-type event = ItemEventLogSpec.event
+type consumedEvent =
+  | ItemCreated({itemId: string, name: string})
+  | ItemRenamed({itemId: string, newName: string})
+  | ItemDeleted({itemId: string})
 
 // The read-side state stored per item
 @schema
@@ -219,24 +226,17 @@ type state = {
 }
 
 // Project DCB events into read model actions
-let project = (existingState, event) =>
+let project = event =>
   switch event {
-  | ItemEventLogSpec.ItemCreated({itemId, name}) =>
-    [Reventless.Projection.Set(itemId, {itemId, name})]
-  | ItemEventLogSpec.ItemRenamed({itemId, newName}) =>
-    switch existingState {
-    | Some(state) =>
-      [Reventless.Projection.Set(itemId, {...state, name: newName})]
-    | None => []
-    }
-  | ItemEventLogSpec.ItemDeleted({itemId}) =>
-    [Reventless.Projection.Delete(itemId)]
+  | ItemCreated({itemId, name}) => [Set(itemId, {itemId, name})]
+  | ItemRenamed({itemId, newName}) => [Update(itemId, state => {...state, name: newName})]
+  | ItemDeleted({itemId}) => [Delete(itemId)]
   }
 ```
 
 ### Step 4: Assemble the Plugin
 
-The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) over `Platform.T`**. Slices are built using `Platform.StateChangeSlice.Make` and `Platform.StateViewSlice.Make`, then bundled into a `DcbSpec` that the plugin infrastructure uses to wire up the shared event log and filtering handler.
+The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) over `Platform.T`**. Slices are built using `Platform.StateChangeSlice.Make` and `Platform.StateViewSlice.Make`, then passed directly to `Plugin.make`.
 
 ```rescript
 // ItemCatalogPlugin.res
@@ -283,7 +283,7 @@ Platform.makePlatform(
 | Event log | One per aggregate | Shared across all slices |
 | Consistency boundary | Per aggregate instance | Per command (optimistic) |
 | Concurrency | Sequential per instance | Optimistic concurrency |
-| Decision logic | State machine (init/apply) | Decision model (reduce/decide) |
+| Decision logic | State machine (initialState/evolve/decide) | Minimal state (initialState/evolve/decide) |
 | Cross-entity consistency | No | Yes (via shared log) |
 
 ## Next Steps

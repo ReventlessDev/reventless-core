@@ -897,7 +897,7 @@ let moduleUrl: string = %raw(`import.meta.url`)
 ```
 
 Key points:
-- **`@s.matches(DcbTag.string)`** — required on every entity ID field. The `@@reventless.dcbTags` PPX annotation auto-injects this on all `*Id: string` fields in StateChangeSlice files. For event log type definitions, the annotation must still be explicit since the PPX only transforms files with `@@reventless.spec`
+- **`@s.matches(DcbTag.string)`** — required on every entity ID field. In StateChangeSlice files the PPX auto-injects this on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields. For event log type definitions (outside slice folders), the annotation must be explicit
 - **Both command AND event types** need the tag annotation on entity ID fields
 - For cross-entity commands, use `array<@s.matches(DcbTag.string) string>` on array fields that reference other entities (see [Cross-Entity Queries](#cross-entity-queries-tagged-arrays) below)
 - All entity types (Product, Category, etc.) share the same event log
@@ -952,7 +952,9 @@ let decide = (state, command) =>
   }
 ```
 
-The `@@reventless.dcbTags` annotation auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string` fields in `@schema` types — no manual annotation needed.
+Since `AddProduct.res` is in a `StateChangeSlice/` folder, `@@reventless.dcbTags` is applied automatically by `@@reventless.spec` — the explicit `@@reventless.dcbTags` line is not needed here but harmless. The PPX auto-injects `@s.matches(Reventless.DcbTag.string)` on all `*Id: string`, `*Id: array<string>`, and `*Ids: array<string>` fields in `@schema` types.
+
+If a variant has multiple `*Id` fields and only one is the partition key, use the `@partitionTag` field annotation to disambiguate (see the [PPX guide](./reventless-ppx.md#partitiontag-notag-dcbtag--field-level-dcb-tag-control)).
 
 **StateChangeSlice spec fields:**
 
@@ -973,15 +975,15 @@ The `@@reventless.dcbTags` annotation auto-injects `@s.matches(Reventless.DcbTag
 
 #### Cross-Entity Queries (Tagged Arrays)
 
-When a command references multiple entities (e.g., PlaceOrder with a list of product IDs), annotate the array field with `@s.matches(DcbTag.string)` on its **elements**:
+When a command references multiple entities (e.g., PlaceOrder with a list of product IDs), use a `*Id: array<string>` field (singular name). The PPX auto-injects `@s.matches(DcbTag.string)` on the element type:
 
 ```rescript
 @schema
 type command =
   | PlaceOrder({
-      orderId: @s.matches(DcbTag.string) string,
-      customerId: string,
-      productId: array<@s.matches(DcbTag.string) string>,
+      orderId: string,                  // auto-tagged: DcbTag.string
+      customerId: string,               // NOT tagged (no *Id suffix query intent)
+      productId: array<string>,         // auto-tagged on elements: DcbTag.string
     })
 ```
 

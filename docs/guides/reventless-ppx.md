@@ -97,14 +97,17 @@ Use this when the spec module name doesn't match `{Filename minus Behavior}` —
 
 ### `@@reventless.dcbTags`
 
-Use on **DCB slice files** (StateChangeSlice, AutomationSlice, InboundTranslationSlice) that have entity ID fields in `@schema` types.
+Use on **DCB slice files** outside `*Slice/` folders that have entity ID fields in `@schema` types. Files inside any `*Slice/` folder (StateChangeSlice, StateViewSlice, AutomationSlice, InboundTranslationSlice, OutboundTranslationSlice) get dcbTags automatically via `@@reventless.spec` — no explicit `@@reventless.dcbTags` needed.
 
-**What it does:** Scans all `@schema`-annotated variant types. For every inline record field where:
-- The field name ends in `Id` (case-sensitive: `productId`, `orderId`, `customerId`)
-- The field type is `string`
-- No `@s.matches(...)` is already present
+**What it does:** Scans all `@schema`-annotated variant types and injects `@s.matches(Reventless.DcbTag.string)` on fields that match these rules (unless `@s.matches(...)` is already present):
 
-...it injects `@s.matches(Reventless.DcbTag.string)` on the type expression.
+| Field pattern | Type | Injection |
+|---|---|---|
+| `*Id: string` | scalar | `@s.matches(DcbTag.string)` on the type |
+| `*Id: array<string>` | array (singular name) | `@s.matches(DcbTag.string)` on the element type — for cross-entity queries |
+| `*Ids: array<string>` | array (plural name) | `@s.matches(DcbTag.string)` on the element type — for multi-value storage |
+
+The PPX generates the fully qualified `Reventless.DcbTag.string`, so no `open Reventless` is needed just for DCB tags.
 
 **Before (manual):**
 ```rescript
@@ -138,15 +141,59 @@ type event = ProductAdded({
 })
 ```
 
-The PPX generates the fully qualified `Reventless.DcbTag.string`, so no `open Reventless` is needed just for DCB tags.
-
-**Explicit annotations take precedence.** If a field already has `@s.matches(CustomSchema)`, the PPX won't overwrite it.
-
-**Combine with `@@reventless.spec`:** Most DCB files use both annotations:
+**Combine with `@@reventless.spec`:** Most DCB files outside slice folders use both annotations:
 
 ```rescript
 @@reventless.spec
 @@reventless.dcbTags
+```
+
+---
+
+### `@partitionTag`, `@noTag`, `@dcbTag` — field-level DCB tag control
+
+These field attributes give fine-grained control over DCB tag injection. They work in any `@@reventless.spec` or `@@reventless.behavior` file, regardless of whether dcbTags auto-inference is active.
+
+| Annotation | Placed on | Effect |
+|---|---|---|
+| `@partitionTag` | A `*Id: string` field | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. Required when a variant has multiple `*Id` fields. |
+| `@noTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use when the field is payload data, not a DCB query key. |
+| `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.string)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). |
+
+The PPX strips all three attributes from the output AST, so the compiler never sees them as unknown attributes.
+
+**`@partitionTag` — multiple `*Id` fields:**
+```rescript
+// In a StateChangeSlice file — both productId and orderId would otherwise
+// both get auto-tagged, making partition derivation ambiguous
+@schema
+type event =
+  | DemandRecorded({
+      @partitionTag productId: string,  // partition key
+      orderId: string,                  // also tagged as DcbTag.string
+    })
+```
+
+**`@noTag` — payload-only field:**
+```rescript
+@schema
+type event =
+  | DemandRecorded({
+      @partitionTag productId: string,
+      @noTag orderId: string,  // not a DCB tag — plain string in the event store
+    })
+```
+
+**`@dcbTag` — non-`*Id` field name:**
+```rescript
+@@reventless.dcbTags
+
+@schema
+type event =
+  | SkuAdded({
+      @dcbTag sku: string,  // not *Id naming, but should be a DCB tag
+      name: string,
+    })
 ```
 
 ---
@@ -374,7 +421,7 @@ The `Mapping` module type is available for the `mappings` type annotation becaus
 
 ## `@reventless.delegate`
 
-Use on **`Delegate` module bindings** inside `ExtensionPointMapping` files (DCB approach only). Works at any nesting depth.
+Use on **`Delegate` module bindings** outside `*ExtensionPointMapping*` files that need the same auto-transformation. Inside `*ExtensionPointMapping*` files, any module named `Delegate` is auto-transformed by `@@reventless.spec` without this attribute. Works at any nesting depth.
 
 **What it injects** (into the module body):
 | Binding | Condition | Value |
@@ -426,7 +473,10 @@ The developer only writes `let name` and the `@schema type event`. Everything el
 | `let name = "Category"` | Derived from filename |
 | `let moduleUrl: string = %raw(\`import.meta.url\`)` | Computed at compile time |
 | `open Spec; module Spec = Spec` | Auto-injected by `@@reventless.behavior` |
-| `@s.matches(DcbTag.string)` on `*Id` fields | Auto-injected by `@@reventless.dcbTags` |
+| `@s.matches(DcbTag.string)` on `*Id`/`*Ids` fields | Auto-injected by `@@reventless.dcbTags` (or automatically in `*Slice/` folders) |
+| `@s.matches(DcbTag.partition)` on partition key field | Use `@partitionTag` field annotation |
+| `@s.matches(DcbTag.string)` on non-`*Id` field | Use `@dcbTag` field annotation |
+| Suppress auto-tagging on a `*Id` field | Use `@noTag` field annotation |
 | `module M = Mappings.Make(...)` + boilerplate | Auto-injected by `@reventless.projections` |
 | `open Reventless.ReadModel; let config = config(); let subIdConfig = None` | Auto-injected by `@@reventless.spec` for `*ReadModel*` files |
-| `module Id`, `@schema command/error = unit`, `@s.matches`, `moduleUrl` in Delegate | Auto-injected by `@reventless.delegate` |
+| `module Id`, `@schema command/error = unit`, `@s.matches`, `moduleUrl` in Delegate | Auto-injected in `*ExtensionPointMapping*` files; use `@reventless.delegate` elsewhere |

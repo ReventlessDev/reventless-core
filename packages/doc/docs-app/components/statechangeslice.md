@@ -93,7 +93,8 @@ module type Spec = {
   type state
   let initialState: state
 
-  let evolve: (state, DcbEventLogSpec.event) => state
+  type consumedEvent
+  let evolve: (state, consumedEvent) => state
   let decide: (state, command) => result<array<DcbEventLogSpec.event>, error>
 }
 ```
@@ -175,10 +176,12 @@ switch await dcbEventLog.append(newEvents, ~condition) {
 
 The query is built automatically from the command schema via `DcbTag.buildQueryFromCommand`:
 
-- **Scalar tagged fields** (e.g., `itemId: @s.matches(DcbTag.string) string`) — all tags go into a single AND clause (single-entity query)
-- **Tagged array fields** (e.g., `productId: array<@s.matches(DcbTag.string) string>`) — each element becomes its own OR clause (cross-entity query)
+- **Scalar tagged fields** (e.g., `itemId: string` auto-tagged by PPX) — all tags go into a single AND clause (single-entity query)
+- **Tagged array fields** (e.g., `productId: array<string>` auto-tagged on elements) — each element becomes its own OR clause (cross-entity query)
 
 No configuration is needed — the schema determines the query mode automatically. See the [Cross-Entity Queries section in the Platform Guide](/guides/platform-and-plugin-guide#cross-entity-queries-tagged-arrays) for a full example.
+
+When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key — see the [PPX guide](/guides/reventless-ppx#partitiontag-notag-dcbtag--field-level-dcb-tag-control).
 
 ## Error Handling
 

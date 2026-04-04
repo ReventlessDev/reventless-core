@@ -629,20 +629,38 @@ At build time, `Dcb_Builder` calls `DcbTag.derivePartitionTag` on all produced e
 | **Any single event variant has multiple tag fields** | Requires explicit `@s.matches(DcbTag.partition)` annotation on one field. |
 | **Only one tag field across all schemas** | Auto-selected — no annotation needed. |
 
-### `DcbTag.partition` annotation
+### Marking the partition key
 
-When a single event variant has multiple tagged fields, annotate one with `DcbTag.partition` to designate it as the partition key:
+When a single event variant has multiple tagged fields, one must be designated as the partition key. There are two ways:
+
+**`@partitionTag` field annotation (recommended in slice files):**
+
+In files where `@@reventless.dcbTags` is active (including all `*Slice/` folders), use the `@partitionTag` field annotation — the PPX transforms it to `@s.matches(DcbTag.partition)`:
+
+```rescript
+// In a StateChangeSlice file
+@schema
+type event =
+  | DemandRecorded({
+      @partitionTag productId: string,  // partition key
+      orderId: string,                  // regular DcbTag.string
+    })
+```
+
+**`@s.matches(DcbTag.partition)` (explicit, for event log type definitions):**
+
+In event log type files where dcbTags is not active, annotate directly:
 
 ```rescript
 @schema
-type producedEvent =
+type event =
   | OrderPlaced({
       orderId: @s.matches(DcbTag.partition) string,
       customerId: @s.matches(DcbTag.string) string,
     })
 ```
 
-Both fields remain DCB tags (used for query filtering), but `orderId` determines the partition key. Events without the designated partition tag fall back to their first tag.
+Both fields remain DCB tags (used for query filtering), but the annotated field determines the partition key. Events without the designated partition tag fall back to their first tag.
 
 For most DCB specs — where each event variant has exactly one tagged field — no annotation is needed.
 

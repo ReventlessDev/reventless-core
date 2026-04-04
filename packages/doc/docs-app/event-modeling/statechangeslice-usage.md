@@ -27,10 +27,10 @@ module CreateItemSpec = {
     | ItemAlreadyExists
     | InvalidName
 
-  type decisionModel = {exists: bool}
-  let initialDecisionModel = {exists: false}
+  type state = {exists: bool}
+  let initialState = {exists: false}
 
-  let reduce = (model, event) =>
+  let evolve = (state, event) =>
     switch event {
     | DcbEventLogSpec.ItemCreated(_) => {exists: true}
     | _ => model
@@ -73,15 +73,15 @@ The decision model is the key abstraction that makes StateChangeSlice powerful:
 
 ```rescript
 // Example: Inventory management
-type decisionModel = {
+type state = {
   quantity: int,
   reserved: int,
   available: int,
 }
 
-let initialDecisionModel = {quantity: 0, reserved: 0, available: 0}
+let initialState = {quantity: 0, reserved: 0, available: 0}
 
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | StockReceived({qty}) => {
       ...model,
@@ -114,23 +114,9 @@ let decide = (model, command) =>
 
 ## Integration with Plugin
 
-StateChangeSlice is integrated into the Plugin via the `DcbSpec`:
+Slices are passed directly to `Plugin.make` — no `DcbSpec` wrapper needed:
 
 ```rescript
-module MyDcbSpec = {
-  @schema
-  type event = 
-    | ItemCreated({itemId: string, name: string})
-    | ItemRenamed({itemId: string, newName: string})
-    | ItemDeleted({itemId: string})
-
-  let stateChangeSlices = [
-    module(CreateItemSlice: StateChangeSlice.T with type dcbEvent = event),
-    module(RenameItemSlice: StateChangeSlice.T with type dcbEvent = event),
-    module(DeleteItemSlice: StateChangeSlice.T with type dcbEvent = event),
-  ]
-}
-
 // Inside the plugin's Make functor:
 let make = () =>
   Platform.Plugin.make(
@@ -159,34 +145,48 @@ type outputs = {
 
 ## DCB Tags
 
-StateChangeSlice uses DCB tags for efficient event queries. Tags are extracted from command fields marked with `@s.matches(DcbTag.string)`:
+StateChangeSlice uses DCB tags for efficient event queries. In slice files the PPX auto-injects `@s.matches(DcbTag.string)` on all `*Id: string` fields — no manual annotation needed:
+
+```rescript
+// In a StateChangeSlice file — PPX auto-tags *Id fields
+@schema
+type command =
+  | CreateItem({itemId: string, name: string})
+  | RenameItem({itemId: string, newName: string})
+```
+
+The DCB tag:
+1. Marks the field as a DCB query key
+2. Automatically extracts tag values from commands at runtime
+3. Enables efficient querying of relevant events from DcbEventLog
+
+### Multiple `*Id` fields — partition key
+
+When a variant has multiple `*Id` fields, use `@partitionTag` to mark which one is the partition key:
 
 ```rescript
 @schema
-type command =
-  | CreateItem({itemId: @s.matches(DcbTag.string) string, name: string})
-  | RenameItem({itemId: @s.matches(DcbTag.string) string, newName: string})
+type event =
+  | DemandRecorded({
+      @partitionTag productId: string,  // partition key
+      orderId: string,                  // also tagged as DcbTag.string
+    })
 ```
-
-The `@s.matches(DcbTag.string)` annotation:
-1. Marks the field as a DCB tag
-2. Automatically extracts tag values from commands
-3. Enables efficient querying of relevant events from DcbEventLog
 
 ### Cross-Entity Queries with Tagged Arrays
 
-When a command references multiple entities, annotate array element types with `@s.matches(DcbTag.string)`:
+When a command references multiple entities, use a `*Id: array<string>` field (singular name). The PPX auto-injects `@s.matches(DcbTag.string)` on the element type:
 
 ```rescript
 @schema
 type command =
   | PlaceOrder({
-      orderId: @s.matches(DcbTag.string) string,
-      productId: array<@s.matches(DcbTag.string) string>,
+      orderId: string,                  // tagged: DcbTag.string
+      productId: array<string>,         // elements tagged: DcbTag.string
     })
 ```
 
-The runtime automatically detects tagged array fields and builds multi-clause OR queries — one clause per scalar tag, one per array element. This fetches events for all referenced entities into the same decision model, enabling cross-entity validation at command time.
+The runtime automatically detects tagged array fields and builds multi-clause OR queries — one clause per scalar tag, one per array element. This fetches events for all referenced entities into the same state, enabling cross-entity validation at command time.
 
 **Key rule:** name the array field to match the tag key on the referenced events (e.g., command field `productId` matches the `productId` tag on `CatalogProductSynced` events).
 
@@ -196,13 +196,13 @@ The runtime automatically detects tagged array fields and builds multi-clause OR
 
 ```rescript
 // Good: Focused on specific domain concern
-type decisionModel = {
+type state = {
   active: bool,
   lastActivity: option<Js.Date.t>,
 }
 
 // Avoid: Bloated models trying to handle everything
-type decisionModel = {
+type state = {
   // ... 50+ fields for unrelated concerns
 }
 ```
@@ -211,7 +211,7 @@ type decisionModel = {
 
 ```rescript
 // Always include catch-all for future event types
-let reduce = (model, event) =>
+let evolve = (state, event) =>
   switch event {
   | KnownEvent1 => // handle
   | KnownEvent2 => // handle
