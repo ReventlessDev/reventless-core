@@ -72,21 +72,9 @@ module Make = (
   )
 
   // ── Extension (standard — via Platform) ──────────────────────
-  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-    OrderingSpec.OrdersExtensionPoint,
-    CatalogPlugin.OrdersExtension.DemandMapping,
-  )
-  module OrdersExtensionMappings = {
-    module Spec = OrderingSpec.OrdersExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := Spec
-    let name = "CatalogDemand"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
-  }
   module OrdersExtensionMaker = Platform.Extension.Make(
     OrderingSpec.OrdersExtensionPoint,
-    OrdersExtensionMappings,
+    CatalogPlugin.OrdersExtension.DemandMapping,
   )
 
   // ── Hybrid Plugin Assembly ───────────────────────────────────

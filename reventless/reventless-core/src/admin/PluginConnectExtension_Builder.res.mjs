@@ -143,7 +143,7 @@ function Make(Spec) {
       return [];
     }
   };
-  let $$let = ExtensionMapping$ReventlessInfra.NoAggregate.Id;
+  let $$let = ExtensionMapping$ReventlessInfra.NoDelegate.Id;
   let ConnectPluginMapping = ExtensionMapping$ReventlessInfra.Make({
     name: PluginExtensionPointSpec$ReventlessInfra.name,
     moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
@@ -151,7 +151,7 @@ function Make(Spec) {
     eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
     directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
   })({
-    Aggregate: {
+    Delegate: {
       Id: {
         schema: $$let.schema,
         make: prim => prim,
@@ -159,11 +159,11 @@ function Make(Spec) {
         toString: prim => prim,
         cmp: $$let.cmp
       },
-      name: ExtensionMapping$ReventlessInfra.NoAggregate.name,
-      eventSchema: ExtensionMapping$ReventlessInfra.NoAggregate.eventSchema,
-      errorSchema: ExtensionMapping$ReventlessInfra.NoAggregate.errorSchema,
-      commandSchema: ExtensionMapping$ReventlessInfra.NoAggregate.commandSchema,
-      moduleUrl: ExtensionMapping$ReventlessInfra.NoAggregate.moduleUrl
+      name: ExtensionMapping$ReventlessInfra.NoDelegate.name,
+      eventSchema: ExtensionMapping$ReventlessInfra.NoDelegate.eventSchema,
+      errorSchema: ExtensionMapping$ReventlessInfra.NoDelegate.errorSchema,
+      commandSchema: ExtensionMapping$ReventlessInfra.NoDelegate.commandSchema,
+      moduleUrl: ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl
     },
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined

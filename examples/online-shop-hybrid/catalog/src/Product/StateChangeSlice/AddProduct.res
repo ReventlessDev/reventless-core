@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "AddProduct"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool}
@@ -32,7 +33,7 @@ type command =
 type error = ProductAlreadyExists
 
 @schema
-type producedEvent =
+type event =
   | ProductAdded({
       productId: @s.matches(DcbTag.string) string,
       name: string,

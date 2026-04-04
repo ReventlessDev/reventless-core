@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "CancelOrder"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
@@ -32,7 +33,7 @@ type error =
   | OrderAlreadyShipped
 
 @schema
-type producedEvent =
+type event =
   | OrderCancelled({
       orderId: @s.matches(DcbTag.string) string,
       productIds: array<string>,

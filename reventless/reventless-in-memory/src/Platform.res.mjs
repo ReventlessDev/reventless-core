@@ -27,6 +27,7 @@ import * as TestRunner$ReventlessInMemory from "./test/TestRunner.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
+import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "./adapter/GraphQL_Server.res.mjs";
@@ -36,6 +37,7 @@ import * as Counter_Builder$ReventlessInMemory from "./components/Counter_Builde
 import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
+import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as MCP_ServerInstance$ReventlessInMemory from "./adapter/MCP_ServerInstance.res.mjs";
 import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_PluginSpec.res.mjs";
 import * as QueryEngine_InMemory$ReventlessInMemory from "./adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
@@ -325,13 +327,36 @@ function MakeWithConfig(Config) {
   let ReadModel = {
     Make: Make$1
   };
-  let Make$2 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
+  let Make$2 = Spec => (Mapping => (Config => {
+    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let mappings = [CompiledMapping];
+    return ExtensionPointMaker.Make(Spec)({
+      name: name,
+      moduleUrl: Config.moduleUrl,
+      mappings: mappings
+    });
+  }));
+  let MakeMulti = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
   let ExtensionPoint = {
-    Make: Make$2
+    Make: Make$2,
+    MakeMulti: MakeMulti
   };
-  let Make$3 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
+  let Make$3 = Spec => (Mapping => {
+    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let moduleUrl = Mapping.Delegate.moduleUrl;
+    let mappings = [CompiledMapping];
+    return Extension_Builder$ReventlessCore.Make(Spec)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  });
+  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$3
+    Make: Make$3,
+    MakeMulti: MakeMulti$1
   };
   let Make$4 = Spec => TaskMaker.Make(Spec);
   let Task = {
@@ -1142,13 +1167,36 @@ function Make($star) {
   let ReadModel = {
     Make: Make$2
   };
-  let Make$3 = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
+  let Make$3 = Spec => (Mapping => (Config => {
+    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let mappings = [CompiledMapping];
+    return ExtensionPointMaker.Make(Spec)({
+      name: name,
+      moduleUrl: Config.moduleUrl,
+      mappings: mappings
+    });
+  }));
+  let MakeMulti = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
   let ExtensionPoint = {
-    Make: Make$3
+    Make: Make$3,
+    MakeMulti: MakeMulti
   };
-  let Make$4 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
+  let Make$4 = Spec => (Mapping => {
+    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let moduleUrl = Mapping.Delegate.moduleUrl;
+    let mappings = [CompiledMapping];
+    return Extension_Builder$ReventlessCore.Make(Spec)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  });
+  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$4
+    Make: Make$4,
+    MakeMulti: MakeMulti$1
   };
   let Make$5 = Spec => TaskMaker.Make(Spec);
   let Task = {

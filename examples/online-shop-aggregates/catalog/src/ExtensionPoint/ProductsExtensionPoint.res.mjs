@@ -35,7 +35,7 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
 };
 
 let ProductMapping = {
-  Aggregate: undefined,
+  Delegate: undefined,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent
 };

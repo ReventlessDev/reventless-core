@@ -31,10 +31,10 @@ function Make(Spec) {
       Component$ReventlessCore.setOperations(extra, Pulumi.output(operations));
       let extOutputs_extensionPointName = Spec.name;
       let extOutputs_aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => {
-        if (Mapping.aggregateName === ExtensionMapping$ReventlessInfra.NoAggregate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
+        if (Mapping.delegateName === ExtensionMapping$ReventlessInfra.NoDelegate.name || Stdlib_Option.isNone(Mapping.mapOutgoingEvent)) {
           return;
         } else {
-          return Mapping.aggregateName;
+          return Mapping.delegateName;
         }
       });
       let extOutputs = {

@@ -17,8 +17,8 @@ let Id = {
 
 let moduleUrl = import.meta.url;
 
-let NoAggregate = {
-  name: "NoAggregate",
+let NoDelegate = {
+  name: "NoDelegate",
   Id: Id,
   eventSchema: S.unit,
   errorSchema: S.unit,
@@ -28,8 +28,8 @@ let NoAggregate = {
 
 function Make(Spec) {
   return MappingImpl => {
-    let Aggregate = MappingImpl.Aggregate;
-    let aggregateName = Aggregate.name;
+    let Delegate = MappingImpl.Delegate;
+    let delegateName = Delegate.name;
     let extensionPointName = Spec.name;
     let encodeMeta = (meta, service) => ({
       service: service,
@@ -42,13 +42,13 @@ function Make(Spec) {
     let mapIncomingEvent = (extra, extra$1, extra$2) => {
       let mapIncomingEventImpl = MappingImpl.mapIncomingEvent;
       let meta = extra.meta;
-      let encodeAggregateCommandJson = (aggregateCmd, aggregateId) => {
-        let commandStr = JSON.stringify(Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema));
-        console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + ` to Aggregate ` + aggregateName + `: Publishing command: ` + commandStr + ` id: ` + aggregateId);
+      let encodeTargetCommandJson = (targetCmd, targetId) => {
+        let commandStr = JSON.stringify(Message$Reventless.encode(targetCmd, Delegate.commandSchema));
+        console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + ` to Target ` + delegateName + `: Publishing command: ` + commandStr + ` id: ` + targetId);
         return {
-          id: aggregateId,
-          meta: encodeMeta(meta, aggregateName),
-          commandJson: Message$Reventless.encode(aggregateCmd, Aggregate.commandSchema)
+          id: targetId,
+          meta: encodeMeta(meta, delegateName),
+          commandJson: Message$Reventless.encode(targetCmd, Delegate.commandSchema)
         };
       };
       let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
@@ -66,15 +66,15 @@ function Make(Spec) {
           case "PublishAggregateCommand" :
             return {
               TAG: "AbstractPublishAggregateCommand",
-              _0: aggregateName,
-              _1: encodeAggregateCommandJson(x._1, x._0)
+              _0: delegateName,
+              _1: encodeTargetCommandJson(x._1, x._0)
             };
           case "PublishAggregateCommandAsync" :
             let toCommandJson = async promise => {
               let match = await promise;
               return [
-                aggregateName,
-                encodeAggregateCommandJson(match[1], match[0])
+                delegateName,
+                encodeTargetCommandJson(match[1], match[0])
               ];
             };
             return {
@@ -83,8 +83,8 @@ function Make(Spec) {
             };
           case "PublishAggregateCommandsAsync" :
             let toCommandJsons = async promise => (await promise).map(param => [
-              aggregateName,
-              encodeAggregateCommandJson(param[1], param[0])
+              delegateName,
+              encodeTargetCommandJson(param[1], param[0])
             ]);
             return {
               TAG: "AbstractPublishAggregateCommandsAsync",
@@ -127,7 +127,7 @@ function Make(Spec) {
     let mapOutgoingEvent = Stdlib_Option.map(MappingImpl.mapOutgoingEvent, mapOutgoingEventImpl => ((extra, extra$1) => {
       let val;
       try {
-        val = Message$Reventless.decodeEvent$p(extra, Aggregate.Id.schema, Aggregate.eventSchema);
+        val = Message$Reventless.decodeEvent$p(extra, Delegate.Id.schema, Delegate.eventSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         console.log("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err);
@@ -136,7 +136,7 @@ function Make(Spec) {
       let meta = val.meta;
       let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
         let commandStr = JSON.stringify(commandJson);
-        console.log(`ExtensionMapping outgoing from Aggregate ` + aggregateName + `: ` + action + `: ` + commandStr + ` id: ` + id);
+        console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: ` + action + `: ` + commandStr + ` id: ` + id);
         return {
           id: id,
           meta: encodeMeta(meta, extensionPointName),
@@ -144,7 +144,7 @@ function Make(Spec) {
         };
       };
       let encodeExtensionPointCommand = (command, id, extensionPointName, action) => encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
-      return mapOutgoingEventImpl(Aggregate.Id.toString(val.id), val.event, meta, extra$1).map(x => {
+      return mapOutgoingEventImpl(Delegate.Id.toString(val.id), val.event, meta, extra$1).map(x => {
         switch (x.TAG) {
           case "PublishExtensionPointCommand" :
             let command = x._1;
@@ -172,7 +172,7 @@ function Make(Spec) {
           case "Call" :
             let directive = x._1;
             let handler = x._0;
-            console.log(`ExtensionMapping outgoing from Aggregate ` + aggregateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+            console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
             return {
               TAG: "AbstractCall",
               _0: () => handler(directive)
@@ -181,7 +181,7 @@ function Make(Spec) {
       });
     }));
     return {
-      aggregateName: aggregateName,
+      delegateName: delegateName,
       mapIncomingEvent: mapIncomingEvent,
       mapOutgoingEvent: mapOutgoingEvent
     };
@@ -189,7 +189,7 @@ function Make(Spec) {
 }
 
 export {
-  NoAggregate,
+  NoDelegate,
   Make,
 }
 /* moduleUrl Not a pure module */

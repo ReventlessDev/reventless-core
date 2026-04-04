@@ -6,7 +6,7 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 
-let producedEventSchema = S.union([
+let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemCreated",
     itemId: s.m(DcbTag$Reventless.string),
@@ -187,9 +187,9 @@ Jest.describe("DcbDecode:", () => {
 });
 
 export {
-  producedEventSchema,
+  eventSchema,
   consumedPayloadLessSchema,
   consumedPartialSchema,
   consumedFullSchema,
 }
-/* producedEventSchema Not a pure module */
+/* eventSchema Not a pure module */

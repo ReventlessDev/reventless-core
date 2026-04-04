@@ -305,12 +305,45 @@ module MakeWithConfig = (
   module ExtensionPoint = {
     module Make = (
       Spec: ReventlessInfra.ExtensionPointMapping.Spec,
+      Mapping: ReventlessInfra.ExtensionPointMapping.Mapping with module ExtensionPoint := Spec,
+      Config: {let moduleUrl: string},
+    ): ReventlessInfra.ExtensionPoint.T => {
+      module CompiledMapping = ReventlessInfra.ExtensionPointMapping.Make(Spec, Mapping)
+      module Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec = {
+        module type Mapping = ReventlessInfra.ExtensionPointMapping.T
+          with module ExtensionPoint := Spec
+        let name = Mapping.Delegate.name
+        let moduleUrl = Config.moduleUrl
+        let mappings: array<module(Mapping)> = [module(CompiledMapping)]
+      }
+      module Inner = ExtensionPointMaker.Make(Spec, Mappings)
+      include Inner
+    }
+
+    module MakeMulti = (
+      Spec: ReventlessInfra.ExtensionPointMapping.Spec,
       Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
     ): ReventlessInfra.ExtensionPoint.T => ExtensionPointMaker.Make(Spec, Mappings)
   }
 
   module Extension = {
     module Make = (
+      Spec: ReventlessInfra.ExtensionMapping.Spec,
+      Mapping: ReventlessInfra.ExtensionMapping.Mapping with module ExtensionPoint := Spec,
+    ): ReventlessInfra.Extension.T => {
+      module CompiledMapping = ReventlessInfra.ExtensionMapping.Make(Spec, Mapping)
+      module Mappings: ReventlessInfra.ExtensionMapping.Mappings with module Spec := Spec = {
+        module type Mapping = ReventlessInfra.ExtensionMapping.T
+          with module ExtensionPoint := Spec
+        let name = Mapping.Delegate.name
+        let moduleUrl = Mapping.Delegate.moduleUrl
+        let mappings: array<module(Mapping)> = [module(CompiledMapping)]
+      }
+      module Inner = ReventlessCore.Extension_Builder.Make(Spec, Mappings)
+      include Inner
+    }
+
+    module MakeMulti = (
       Spec: ReventlessInfra.ExtensionMapping.Spec,
       Mappings: ReventlessInfra.ExtensionMapping.Mappings with module Spec := Spec,
     ): ReventlessInfra.Extension.T => ReventlessCore.Extension_Builder.Make(Spec, Mappings)

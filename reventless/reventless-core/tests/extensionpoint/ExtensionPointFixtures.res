@@ -36,7 +36,7 @@ let capturedCallCount = ref(0)
 
 module TestMapping = {
   module ExtensionPoint = TestEPSpec
-  let aggregateName = "TestTargetAgg"
+  let delegateName = "TestTargetAgg"
 
   let mapIncomingCommands = (
     topicItems: array<

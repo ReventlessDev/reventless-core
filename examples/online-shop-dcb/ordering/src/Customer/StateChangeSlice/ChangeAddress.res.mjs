@@ -50,7 +50,7 @@ let errorSchema = S.union([
   S.literal("CustomerAlreadyDeactivated")
 ]);
 
-let producedEventSchema = S.schema(s => ({
+let eventSchema = S.schema(s => ({
   TAG: "AddressChanged",
   customerId: s.m(DcbTag$Reventless.string),
   address: s.m(S.string)
@@ -89,6 +89,8 @@ function decide(state, command) {
 
 let name = "ChangeAddress";
 
+let Id;
+
 let initialState = {
   exists: false,
   deactivated: false,
@@ -97,13 +99,14 @@ let initialState = {
 
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

@@ -36,10 +36,11 @@ type objectEvent = {
 
 module TestCommandSpec = {
   let name = "TestStateChangeSlice"
+  module Id = Reventless.Id.String
   let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
-  type producedEvent =
+  type event =
     | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
     | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
 
@@ -68,7 +69,7 @@ module TestCommandSpec = {
     | ItemRenamed({newName}) => {...state, currentName: Some(newName)}
     }
 
-  let decide = (state, command): result<array<producedEvent>, error> =>
+  let decide = (state, command): result<array<event>, error> =>
     switch command {
     | CreateItem({itemId, name}) =>
       if state.exists {

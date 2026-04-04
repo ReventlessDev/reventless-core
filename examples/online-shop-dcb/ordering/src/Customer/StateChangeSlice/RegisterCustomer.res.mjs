@@ -22,7 +22,7 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CustomerAlreadyRegistered");
 
-let producedEventSchema = S.schema(s => ({
+let eventSchema = S.schema(s => ({
   TAG: "CustomerRegistered",
   customerId: s.m(DcbTag$Reventless.string),
   email: s.m(S.string),
@@ -50,19 +50,22 @@ function decide(state, command) {
 
 let name = "RegisterCustomer";
 
+let Id;
+
 let initialState = {
   exists: false
 };
 
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

@@ -9,7 +9,6 @@ import * as CatalogProduct$OrderingPlugin from "./Aggregate/CatalogProduct.res.m
 import * as OrdersReadModel$OrderingPlugin from "./ReadModel/OrdersReadModel.res.mjs";
 import * as CustomerBehavior$OrderingPlugin from "./Aggregate/CustomerBehavior.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as OrdersProjections$OrderingPlugin from "./ReadModel/OrdersProjections.res.mjs";
 import * as ProductsExtension$OrderingPlugin from "./Extension/ProductsExtension.res.mjs";
 import * as CustomersReadModel$OrderingPlugin from "./ReadModel/CustomersReadModel.res.mjs";
@@ -20,7 +19,6 @@ import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-
 import * as CustomersProjections$OrderingPlugin from "./ReadModel/CustomersProjections.res.mjs";
 import * as OrdersExtensionPoint$OrderingPlugin from "./ExtensionPoint/OrdersExtensionPoint.res.mjs";
 import * as CatalogProductBehavior$OrderingPlugin from "./Aggregate/CatalogProductBehavior.res.mjs";
-import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as AvailableProductsReadModel$OrderingPlugin from "./ReadModel/AvailableProductsReadModel.res.mjs";
 import * as AvailableProductsProjections$OrderingPlugin from "./ReadModel/AvailableProductsProjections.res.mjs";
 
@@ -136,8 +134,8 @@ function Make(Platform) {
     config: AvailableProductsReadModel$OrderingPlugin.config,
     subIdConfig: undefined
   })(AvailableProductProjections);
-  let ProductsProductMapping = ExtensionMapping$ReventlessInfra.Make(ProductsExtensionPoint$CatalogSpec)({
-    Aggregate: {
+  let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPoint$CatalogSpec)({
+    Delegate: {
       Id: Id$Reventless.$$String,
       name: CatalogProduct$OrderingPlugin.name,
       eventSchema: CatalogProduct$OrderingPlugin.eventSchema,
@@ -149,15 +147,8 @@ function Make(Platform) {
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
   });
   let moduleUrl$3 = import.meta.url;
-  let mappings$3 = [ProductsProductMapping];
-  let ProductsExtensionMappings = {
-    name: "OrderingProducts",
-    moduleUrl: moduleUrl$3,
-    mappings: mappings$3
-  };
-  let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPoint$CatalogSpec)(ProductsExtensionMappings);
-  let OrdersEPOrderMapping = ExtensionPointMapping$ReventlessInfra.Make(OrdersExtensionPoint$OrderingSpec)({
-    Aggregate: {
+  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPoint$OrderingSpec)({
+    Delegate: {
       Id: Id$Reventless.$$String,
       name: Order$OrderingPlugin.name,
       eventSchema: Order$OrderingPlugin.eventSchema,
@@ -167,20 +158,8 @@ function Make(Platform) {
     },
     mapIncomingCommand: OrdersExtensionPoint$OrderingPlugin.OrderMapping.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPoint$OrderingPlugin.OrderMapping.mapOutgoingEvent
-  });
-  let name = "OrdersEPMappings";
-  let moduleUrl$4 = import.meta.url;
-  let mappings$4 = [OrdersEPOrderMapping];
-  let OrdersEPMappings = {
-    Spec: undefined,
-    name: name,
-    moduleUrl: moduleUrl$4,
-    mappings: mappings$4
-  };
-  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPoint$OrderingSpec)({
-    name: name,
-    moduleUrl: moduleUrl$4,
-    mappings: mappings$4
+  })({
+    moduleUrl: moduleUrl$3
   });
   let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
   let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
@@ -202,11 +181,7 @@ function Make(Platform) {
     CatalogProductAggregate: CatalogProductAggregate,
     AvailableProductProjections: AvailableProductProjections,
     AvailableProductsReadModelMaker: AvailableProductsReadModelMaker,
-    ProductsProductMapping: ProductsProductMapping,
-    ProductsExtensionMappings: ProductsExtensionMappings,
     ProductsExtensionMaker: ProductsExtensionMaker,
-    OrdersEPOrderMapping: OrdersEPOrderMapping,
-    OrdersEPMappings: OrdersEPMappings,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
     OrderNotificationsTask: OrderNotificationsTask,
     make: make

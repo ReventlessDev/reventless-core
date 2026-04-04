@@ -7,7 +7,7 @@ module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
 
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
-module Aggregate = {
+module Delegate = {
   let name = "CatalogEventLog"
   module Id = Id.String
   @schema type command = unit
@@ -29,13 +29,13 @@ let mapIncomingCommand = (_id, _command, _meta) => []
 
 let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
-  | Aggregate.ProductAdded({productId, name, price}) => [
+  | Delegate.ProductAdded({productId, name, price}) => [
       PublishEvent(
         productId,
         CatalogSpec.ProductsExtensionPoint.ProductBecameAvailable({productId, name, price}),
       ),
     ]
-  | Aggregate.ProductPriceChanged({productId, price}) => [
+  | Delegate.ProductPriceChanged({productId, price}) => [
       PublishEvent(productId, CatalogSpec.ProductsExtensionPoint.ProductPriceChanged({productId, price})),
     ]
   }

@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "DeactivateCustomer"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, deactivated: bool}
@@ -28,7 +29,7 @@ type command = DeactivateCustomer({customerId: @s.matches(DcbTag.string) string}
 type error = CustomerNotFound
 
 @schema
-type producedEvent = CustomerDeactivated({customerId: @s.matches(DcbTag.string) string})
+type event = CustomerDeactivated({customerId: @s.matches(DcbTag.string) string})
 
 let decide = (state, command) =>
   switch command {

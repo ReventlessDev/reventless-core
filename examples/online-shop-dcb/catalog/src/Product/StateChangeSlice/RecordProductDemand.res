@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "RecordProductDemand"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {recordedOrderIds: array<string>}
@@ -33,7 +34,7 @@ type command =
 type error = unit // always succeeds — demand recording is idempotent
 
 @schema
-type producedEvent =
+type event =
   | ProductDemandRecorded({
       productId: @s.matches(DcbTag.string) string,
       orderId: string,

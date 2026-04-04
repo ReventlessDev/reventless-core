@@ -44,7 +44,7 @@ let capturedCallCount = {
   contents: 0
 };
 
-let aggregateName = "TestTargetAgg";
+let delegateName = "TestTargetAgg";
 
 function mapIncomingCommands(topicItems, _createSchedule, _deleteSchedule, _queryEngine) {
   return topicItems.flatMap(topicItem => {
@@ -74,7 +74,7 @@ function mapIncomingCommands(topicItems, _createSchedule, _deleteSchedule, _quer
 
 let TestMapping = {
   ExtensionPoint: undefined,
-  aggregateName: aggregateName,
+  delegateName: delegateName,
   mapIncomingCommands: mapIncomingCommands,
   mapOutgoingEvent: undefined
 };
@@ -82,7 +82,7 @@ let TestMapping = {
 let moduleUrl$1 = import.meta.url;
 
 let mappings = [{
-    aggregateName: aggregateName,
+    delegateName: delegateName,
     mapIncomingCommands: mapIncomingCommands,
     mapOutgoingEvent: undefined
   }];

@@ -45,7 +45,7 @@ let commandSchema = S.union([
   }))
 ]);
 
-let producedEventSchema = S.union([
+let eventSchema = S.union([
   S.schema(s => ({
     TAG: "CatalogProductSynced",
     productId: s.m(DcbTag$Reventless.string),
@@ -84,6 +84,8 @@ function decide(_state, command) {
 
 let name = "SyncCatalogProduct";
 
+let Id;
+
 let initialState = {
   name: "",
   price: 0.0
@@ -93,13 +95,14 @@ let errorSchema = S.unit;
 
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

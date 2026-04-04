@@ -55,21 +55,9 @@ module Make = (
   )
 
   // ── Extension (standard — via Platform) ──────────────────────
-  module ProductsExtensionMapping = ReventlessInfra.ExtensionMapping.Make(
-    CatalogSpec.ProductsExtensionPoint,
-    OrderingPlugin.ProductsExtension.ProductMapping,
-  )
-  module ProductsExtensionMappings = {
-    module Spec = CatalogSpec.ProductsExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := Spec
-    let name = "OrderingProducts"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(ProductsExtensionMapping)]
-  }
   module ProductsExtensionMaker = Platform.Extension.Make(
     CatalogSpec.ProductsExtensionPoint,
-    ProductsExtensionMappings,
+    OrderingPlugin.ProductsExtension.ProductMapping,
   )
 
   // ── Extension Point (BUNDLED) ────────────────────────────────

@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "SyncCatalogProduct"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {name: string, price: float}
@@ -29,7 +30,7 @@ type command =
 type error = unit // always succeeds — sync is idempotent
 
 @schema
-type producedEvent =
+type event =
   | CatalogProductSynced({
       productId: @s.matches(DcbTag.string) string,
       name: string,

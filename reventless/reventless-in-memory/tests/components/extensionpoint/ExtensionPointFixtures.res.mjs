@@ -51,7 +51,7 @@ let errorSchema = S.literal("TEAggNoError");
 
 let moduleUrl$1 = import.meta.url;
 
-let TargetAggSpec = {
+let DelegateAggSpec = {
   Id: undefined,
   name: name$1,
   commandSchema: commandSchema$1,
@@ -74,7 +74,7 @@ function mapIncomingCommand(_id, cmd, _meta) {
 }
 
 let ForwardMapping = {
-  Aggregate: undefined,
+  Delegate: undefined,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: undefined
 };
@@ -86,7 +86,7 @@ let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make({
   eventSchema: eventSchema,
   directiveSchema: directiveSchema
 })({
-  Aggregate: {
+  Delegate: {
     Id: {
       schema: Id$Reventless.StringPure.schema,
       make: prim => prim,
@@ -156,7 +156,7 @@ function resetMocks() {
 export {
   Bus,
   TestEPSpec,
-  TargetAggSpec,
+  DelegateAggSpec,
   ForwardMapping,
   TestEPMapping1,
   TestEPMappings,

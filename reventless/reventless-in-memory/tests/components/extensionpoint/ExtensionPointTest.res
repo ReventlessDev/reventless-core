@@ -50,8 +50,8 @@ describe("ExtensionPoint (in-memory)", () => {
       expect(cmd.id)->toBe("target-1")
 
       // commandJson should decode to Execute({targetId: "target-1"})
-      let decoded = cmd.commandJson->S.parseJsonOrThrow(TargetAggSpec.commandSchema)
-      expect(decoded)->toEqual(TargetAggSpec.Execute({targetId: "target-1"}))
+      let decoded = cmd.commandJson->S.parseJsonOrThrow(DelegateAggSpec.commandSchema)
+      expect(decoded)->toEqual(DelegateAggSpec.Execute({targetId: "target-1"}))
     },
   )
 

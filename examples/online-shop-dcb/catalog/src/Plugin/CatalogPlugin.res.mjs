@@ -12,11 +12,9 @@ import * as OrdersExtension$CatalogPlugin from "../Extension/OrdersExtension.res
 import * as ChangeProductName$CatalogPlugin from "../Product/StateChangeSlice/ChangeProductName.res.mjs";
 import * as ProductDemandView$CatalogPlugin from "../Product/StateViewSlice/ProductDemandView.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "../Product/StateChangeSlice/ChangeProductPrice.res.mjs";
-import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-dcb-ordering-spec/src/OrdersExtensionPoint.res.mjs";
 import * as RecordProductDemand$CatalogPlugin from "../Product/StateChangeSlice/RecordProductDemand.res.mjs";
 import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-dcb-catalog-spec/src/ProductsExtensionPoint.res.mjs";
-import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "../Product/StateChangeSlice/ChangeProductDescription.res.mjs";
 import * as ProductsExtensionPointMapping$CatalogPlugin from "../ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
 
@@ -28,7 +26,8 @@ function Make(Platform) {
     consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
     evolve: AddProduct$CatalogPlugin.evolve,
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
-    producedEventSchema: AddProduct$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: AddProduct$CatalogPlugin.eventSchema,
     decide: AddProduct$CatalogPlugin.decide,
     commandSchema: AddProduct$CatalogPlugin.commandSchema
   });
@@ -39,7 +38,8 @@ function Make(Platform) {
     consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
     evolve: ChangeProductName$CatalogPlugin.evolve,
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
-    producedEventSchema: ChangeProductName$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
     decide: ChangeProductName$CatalogPlugin.decide,
     commandSchema: ChangeProductName$CatalogPlugin.commandSchema
   });
@@ -50,7 +50,8 @@ function Make(Platform) {
     consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
     evolve: ChangeProductDescription$CatalogPlugin.evolve,
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
-    producedEventSchema: ChangeProductDescription$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
     decide: ChangeProductDescription$CatalogPlugin.decide,
     commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema
   });
@@ -61,7 +62,8 @@ function Make(Platform) {
     consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
     evolve: ChangeProductPrice$CatalogPlugin.evolve,
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
-    producedEventSchema: ChangeProductPrice$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
     decide: ChangeProductPrice$CatalogPlugin.decide,
     commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
   });
@@ -73,7 +75,8 @@ function Make(Platform) {
     consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
     evolve: AddCategory$CatalogPlugin.evolve,
     errorSchema: AddCategory$CatalogPlugin.errorSchema,
-    producedEventSchema: AddCategory$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: AddCategory$CatalogPlugin.eventSchema,
     decide: AddCategory$CatalogPlugin.decide,
     commandSchema: AddCategory$CatalogPlugin.commandSchema
   });
@@ -84,7 +87,8 @@ function Make(Platform) {
     consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
     evolve: RenameCategory$CatalogPlugin.evolve,
     errorSchema: RenameCategory$CatalogPlugin.errorSchema,
-    producedEventSchema: RenameCategory$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: RenameCategory$CatalogPlugin.eventSchema,
     decide: RenameCategory$CatalogPlugin.decide,
     commandSchema: RenameCategory$CatalogPlugin.commandSchema
   });
@@ -95,7 +99,8 @@ function Make(Platform) {
     consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
     evolve: ArchiveCategory$CatalogPlugin.evolve,
     errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
-    producedEventSchema: ArchiveCategory$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: ArchiveCategory$CatalogPlugin.eventSchema,
     decide: ArchiveCategory$CatalogPlugin.decide,
     commandSchema: ArchiveCategory$CatalogPlugin.commandSchema
   });
@@ -108,63 +113,38 @@ function Make(Platform) {
     consumedEventSchema: RecordProductDemand$CatalogPlugin.consumedEventSchema,
     evolve: RecordProductDemand$CatalogPlugin.evolve,
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
-    producedEventSchema: RecordProductDemand$CatalogPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: RecordProductDemand$CatalogPlugin.eventSchema,
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });
   let ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView$CatalogPlugin);
-  let ProductsEPMappingT = ExtensionPointMapping$ReventlessInfra.Make(ProductsExtensionPoint$CatalogSpec)({
-    Aggregate: {
+  let moduleUrl = import.meta.url;
+  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPoint$CatalogSpec)({
+    Delegate: {
       Id: Id$Reventless.$$String,
-      name: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.name,
-      eventSchema: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.eventSchema,
-      errorSchema: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.errorSchema,
-      commandSchema: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.commandSchema,
-      moduleUrl: ProductsExtensionPointMapping$CatalogPlugin.Aggregate.moduleUrl
+      name: ProductsExtensionPointMapping$CatalogPlugin.Delegate.name,
+      eventSchema: ProductsExtensionPointMapping$CatalogPlugin.Delegate.eventSchema,
+      errorSchema: ProductsExtensionPointMapping$CatalogPlugin.Delegate.errorSchema,
+      commandSchema: ProductsExtensionPointMapping$CatalogPlugin.Delegate.commandSchema,
+      moduleUrl: ProductsExtensionPointMapping$CatalogPlugin.Delegate.moduleUrl
     },
     mapIncomingCommand: ProductsExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
     mapOutgoingEvent: ProductsExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
+  })({
+    moduleUrl: moduleUrl
   });
-  let name = "ProductsEPMappings";
-  let moduleUrl = import.meta.url;
-  let mappings = [ProductsEPMappingT];
-  let ProductsEPMappings = {
-    Spec: undefined,
-    name: name,
-    moduleUrl: moduleUrl,
-    mappings: mappings
-  };
-  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPoint$CatalogSpec)({
-    name: name,
-    moduleUrl: moduleUrl,
-    mappings: mappings
-  });
-  let $$let = OrdersExtension$CatalogPlugin.DemandMapping.Aggregate;
-  let OrdersDemandMapping = ExtensionMapping$ReventlessInfra.Make(OrdersExtensionPoint$OrderingSpec)({
-    Aggregate: {
+  let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)({
+    Delegate: {
       Id: Id$Reventless.$$String,
-      name: $$let.name,
-      eventSchema: $$let.eventSchema,
-      errorSchema: $$let.errorSchema,
-      commandSchema: $$let.commandSchema,
-      moduleUrl: $$let.moduleUrl
+      name: RecordProductDemand$CatalogPlugin.name,
+      eventSchema: RecordProductDemand$CatalogPlugin.eventSchema,
+      errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
+      commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
+      moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl
     },
     mapIncomingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapOutgoingEvent
-  });
-  let name$1 = "CatalogDemand";
-  let moduleUrl$1 = import.meta.url;
-  let mappings$1 = [OrdersDemandMapping];
-  let OrdersExtensionMappings = {
-    Spec: undefined,
-    name: name$1,
-    moduleUrl: moduleUrl$1,
-    mappings: mappings$1
-  };
-  let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)({
-    name: name$1,
-    moduleUrl: moduleUrl$1,
-    mappings: mappings$1
   });
   let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, [
     AddProductSlice,
@@ -193,11 +173,7 @@ function Make(Platform) {
     ImportProductSlice: ImportProductSlice,
     RecordProductDemandSlice: RecordProductDemandSlice,
     ProductDemandViewSlice: ProductDemandViewSlice,
-    ProductsEPMappingT: ProductsEPMappingT,
-    ProductsEPMappings: ProductsEPMappings,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
-    OrdersDemandMapping: OrdersDemandMapping,
-    OrdersExtensionMappings: OrdersExtensionMappings,
     OrdersExtensionMaker: OrdersExtensionMaker,
     make: make
   };

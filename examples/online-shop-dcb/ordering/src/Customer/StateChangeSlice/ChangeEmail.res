@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "ChangeEmail"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, deactivated: bool, currentEmail: string}
@@ -32,7 +33,7 @@ type error =
   | CustomerAlreadyDeactivated
 
 @schema
-type producedEvent = EmailChanged({customerId: @s.matches(DcbTag.string) string, email: string})
+type event = EmailChanged({customerId: @s.matches(DcbTag.string) string, email: string})
 
 let decide = (state, command) =>
   switch command {

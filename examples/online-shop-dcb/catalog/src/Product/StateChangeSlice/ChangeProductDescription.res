@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "ChangeProductDescription"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, currentDescription: string}
@@ -32,7 +33,7 @@ type command =
 type error = ProductNotFound
 
 @schema
-type producedEvent =
+type event =
   | ProductDescriptionChanged({
       productId: @s.matches(DcbTag.string) string,
       description: string,

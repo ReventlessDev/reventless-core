@@ -13,7 +13,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {
-    let findOutgoingMapping = (aggregateNameOpt, mappings) => Stdlib_Option.flatMap(aggregateNameOpt, aggregateName => mappings.find(Mapping => Mapping.aggregateName === aggregateName));
+    let findOutgoingMapping = (delegateNameOpt, mappings) => Stdlib_Option.flatMap(delegateNameOpt, delegateName => mappings.find(Mapping => Mapping.delegateName === delegateName));
     let mapIncomingEvent = (event$p, pluginDef, queryEngine) => Mappings.mappings.map(Mapping => Mapping.mapIncomingEvent(event$p, pluginDef, queryEngine)).flat();
     let mapOutgoingEvent = (eventJson$p, pluginDef) => {
       let Mapping = findOutgoingMapping(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), Mappings.mappings);

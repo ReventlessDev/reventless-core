@@ -26,12 +26,12 @@ module Make = (
   Mappings: Mappings with module Spec := MappingSpec,
   Ops: Ops,
 ): T => {
-  let findOutgoingMapping = (aggregateNameOpt, mappings) =>
-    aggregateNameOpt->Option.flatMap(aggregateName =>
+  let findOutgoingMapping = (delegateNameOpt, mappings) =>
+    delegateNameOpt->Option.flatMap(delegateName =>
       mappings->Array.find((module(Mapping: Mappings.Mapping)) =>
-        Mapping.aggregateName == aggregateName
+        Mapping.delegateName == delegateName
       )
-    ) // TODO: handle multiple mappings for same Aggregate name
+    ) // TODO: handle multiple mappings for same Target name
 
   let mapIncomingEvent = (
     event': Message.event'<string, MappingSpec.event>,

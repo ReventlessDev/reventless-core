@@ -47,7 +47,7 @@ module Make = (
 
     let aggregateNames =
       Mappings.mappings->Array.filterMap((module(Mapping)) =>
-        Mapping.mapOutgoingEvent->Option.map(_ => Mapping.aggregateName)
+        Mapping.mapOutgoingEvent->Option.map(_ => Mapping.delegateName)
       )
 
     let commandTopicResources =

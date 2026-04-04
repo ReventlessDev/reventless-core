@@ -56,7 +56,7 @@ function Make(DcbEventLogStorage) {
       }
       let produced = stateChangeSlices.map(Sc => [
         Sc.Spec.name,
-        Sc.Spec.producedEventSchema
+        Sc.Spec.eventSchema
       ]);
       let consumed = stateChangeSlices.map(Sc => [
         Sc.Spec.name,
@@ -316,7 +316,7 @@ function Make(DcbEventLogStorage) {
           authorization: undefined
         };
       });
-      let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.producedEventSchema);
+      let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.eventSchema);
       return {
         dcbEventLogOutputs: Component$ReventlessCore.outputs(dcbEventLog),
         stateChangeSlicesOutputs: stateChangeSlicesOutputs,

@@ -24,38 +24,16 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView)
 
   // Build the Products extension (subscribing to Catalog's EP)
-  module ProductsExtensionMapping = ReventlessInfra.ExtensionMapping.Make(
+  module ProductsExtensionMaker = Platform.Extension.Make(
     CatalogSpec.ProductsExtensionPoint,
     ProductsExtension.ProductMapping,
   )
-  module ProductsExtensionMappings = {
-    module Spec = CatalogSpec.ProductsExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := Spec
-    let name = "OrderingProducts"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(ProductsExtensionMapping)]
-  }
-  module ProductsExtensionMaker = Platform.Extension.Make(
-    CatalogSpec.ProductsExtensionPoint,
-    ProductsExtensionMappings,
-  )
 
-  // Compile the Orders extension point mapping, then build the EP component
-  module OrdersEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    OrderingSpec.OrdersExtensionPoint,
-    OrdersExtensionPointMapping,
-  )
-  module OrdersEPMappings = {
-    module Spec = OrderingSpec.OrdersExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
-    let name = "OrdersEPMappings"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(OrdersEPMappingT)]
-  }
+  // Build the Orders extension point component
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(
     OrderingSpec.OrdersExtensionPoint,
-    OrdersEPMappings,
+    OrdersExtensionPointMapping,
+    {let moduleUrl: string = %raw(`import.meta.url`)},
   )
 
   // --- Self-assembly: produce a ready-to-use Plugin.component ---

@@ -44,7 +44,8 @@ let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({
   consumedEventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.consumedEventSchema,
   evolve: DcbFixtures$ReventlessCore.TestCommandSpec.evolve,
   errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
-  producedEventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.producedEventSchema,
+  Id: Id$Reventless.$$String,
+  eventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.eventSchema,
   decide: DcbFixtures$ReventlessCore.TestCommandSpec.decide,
   commandSchema: DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema
 });

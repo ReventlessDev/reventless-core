@@ -36,7 +36,7 @@ describe("ExtensionPoint (in-memory)", () => {
     expect(ExtensionPointFixtures$ReventlessInMemory.capturedCmds.contents.length).toBe(1);
     let cmd = ExtensionPointFixtures$ReventlessInMemory.capturedCmds.contents[0];
     expect(cmd.id).toBe("target-1");
-    let decoded = S.parseJsonOrThrow(cmd.commandJson, ExtensionPointFixtures$ReventlessInMemory.TargetAggSpec.commandSchema);
+    let decoded = S.parseJsonOrThrow(cmd.commandJson, ExtensionPointFixtures$ReventlessInMemory.DelegateAggSpec.commandSchema);
     expect(decoded).toEqual({
       TAG: "Execute",
       targetId: "target-1"

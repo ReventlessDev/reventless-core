@@ -44,7 +44,7 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyCancelled")
 ]);
 
-let producedEventSchema = S.schema(s => ({
+let eventSchema = S.schema(s => ({
   TAG: "OrderShipped",
   orderId: s.m(DcbTag$Reventless.string)
 }));
@@ -80,6 +80,8 @@ function decide(state, command) {
 
 let name = "ShipOrder";
 
+let Id;
+
 let initialState = {
   exists: false,
   shipped: false,
@@ -88,13 +90,14 @@ let initialState = {
 
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

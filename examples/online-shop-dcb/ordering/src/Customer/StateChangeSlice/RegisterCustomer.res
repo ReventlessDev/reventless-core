@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "RegisterCustomer"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool}
@@ -27,7 +28,7 @@ type command =
 type error = CustomerAlreadyRegistered
 
 @schema
-type producedEvent =
+type event =
   | CustomerRegistered({
       customerId: @s.matches(DcbTag.string) string,
       email: string,

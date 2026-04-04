@@ -55,7 +55,7 @@ let objectEventSchema = S.schema(s => ({
 
 let moduleUrl$1 = import.meta.url;
 
-let producedEventSchema = S.union([
+let eventSchema$2 = S.union([
   S.schema(s => ({
     TAG: "ItemCreated",
     itemId: s.m(DcbTag$Reventless.string),
@@ -160,8 +160,9 @@ let TestCommandSpec_initialState = {
 
 let TestCommandSpec = {
   name: "TestStateChangeSlice",
+  Id: undefined,
   moduleUrl: moduleUrl$1,
-  producedEventSchema: producedEventSchema,
+  eventSchema: eventSchema$2,
   consumedEventSchema: consumedEventSchema,
   commandSchema: commandSchema,
   errorSchema: errorSchema,

@@ -20,7 +20,7 @@ let eventSchema = S.union([
 
 let moduleUrl = import.meta.url;
 
-let Aggregate = {
+let Delegate = {
   name: "CatalogEventLog",
   Id: undefined,
   eventSchema: eventSchema,
@@ -63,7 +63,7 @@ let ExtensionPoint;
 
 export {
   ExtensionPoint,
-  Aggregate,
+  Delegate,
   mapIncomingCommand,
   mapOutgoingEvent,
 }

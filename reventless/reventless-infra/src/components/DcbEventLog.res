@@ -8,7 +8,7 @@ type outputs = {resources: array<Adapter.resource>, eventTopic: EventTopic.outpu
 
 /**
 A raw event ready to be stored in the DCB log.
-Produced by slice callbacks after encoding with their producedEventSchema.
+Produced by slice callbacks after encoding with their eventSchema.
 */
 type rawEvent = {
   eventType: string,

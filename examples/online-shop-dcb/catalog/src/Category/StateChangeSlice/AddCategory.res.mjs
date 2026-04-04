@@ -32,7 +32,7 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CategoryAlreadyExists");
 
-let producedEventSchema = S.schema(s => ({
+let eventSchema = S.schema(s => ({
   TAG: "CategoryAdded",
   categoryId: s.m(DcbTag$Reventless.string),
   name: s.m(S.string)
@@ -58,6 +58,8 @@ function decide(state, command) {
 
 let name = "AddCategory";
 
+let Id;
+
 let initialState = {
   exists: false,
   archived: false
@@ -65,13 +67,14 @@ let initialState = {
 
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

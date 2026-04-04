@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "AddCategory"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, archived: bool}
@@ -28,7 +29,7 @@ type command = AddCategory({categoryId: @s.matches(DcbTag.string) string, name: 
 type error = CategoryAlreadyExists
 
 @schema
-type producedEvent = CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
+type event = CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
 
 let decide = (state, command) =>
   switch command {

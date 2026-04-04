@@ -5,13 +5,10 @@ open ReventlessInfra.ExtensionMapping
 
 module DemandMapping = {
   module Source = OrderingSpec.OrdersExtensionPoint
-  module Target = ProductDemand
-
-  module ExtensionPoint = Source
-  module Aggregate = Target
+  module Delegate = ProductDemand
 
   open Source
-  open Target
+  open Delegate
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | ItemOrdered({productId, orderId}) => [

@@ -83,17 +83,30 @@ module type T = {
     ) => ReadModel.T with module Spec = Spec and type api = api and type role = role
   }
 
-  /** Factory for extension point components. */
+  /** Factory for extension point components (single mapping). */
   module ExtensionPoint: {
     module Make: (
+      Spec: ExtensionPointMapping.Spec,
+      Mapping: ExtensionPointMapping.Mapping with module ExtensionPoint := Spec,
+      Config: {let moduleUrl: string},
+    ) => ExtensionPoint.T
+
+    /** Multi-mapping variant with full control over name and mappings array. */
+    module MakeMulti: (
       Spec: ExtensionPointMapping.Spec,
       Mappings: ExtensionPoint.Mappings with module Spec := Spec,
     ) => ExtensionPoint.T
   }
 
-  /** Factory for extension components (bidirectional EP↔aggregate bridges). */
+  /** Factory for extension components (single mapping). */
   module Extension: {
     module Make: (
+      Spec: ExtensionMapping.Spec,
+      Mapping: ExtensionMapping.Mapping with module ExtensionPoint := Spec,
+    ) => Extension.T
+
+    /** Multi-mapping variant with full control over name and mappings array. */
+    module MakeMulti: (
       Spec: ExtensionMapping.Spec,
       Mappings: ExtensionMapping.Mappings with module Spec := Spec,
     ) => Extension.T

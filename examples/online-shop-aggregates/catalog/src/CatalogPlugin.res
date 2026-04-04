@@ -57,39 +57,17 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     DemandProjections,
   )
 
-  // Compile the Products extension point mappings, then build the EP component
-  module ProductsEPProductMapping = ReventlessInfra.ExtensionPointMapping.Make(
-    CatalogSpec.ProductsExtensionPoint,
-    ProductsExtensionPoint.ProductMapping,
-  )
-  module ProductsEPMappings = {
-    module Spec = CatalogSpec.ProductsExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
-    let name = "ProductsEPMappings"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(ProductsEPProductMapping)]
-  }
+  // Build the Products extension point component
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
     CatalogSpec.ProductsExtensionPoint,
-    ProductsEPMappings,
+    ProductsExtensionPoint.ProductMapping,
+    {let moduleUrl: string = %raw(`import.meta.url`)},
   )
 
   // Build the Orders extension (subscribing to Ordering's EP)
-  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-    OrderingSpec.OrdersExtensionPoint,
-    OrdersExtension.DemandMapping,
-  )
-  module OrdersExtensionMappings: ReventlessInfra.ExtensionMapping.Mappings
-    with module Spec := OrderingSpec.OrdersExtensionPoint = {
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := OrderingSpec.OrdersExtensionPoint
-    let name = "CatalogDemand"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
-  }
   module OrdersExtensionMaker = Platform.Extension.Make(
     OrderingSpec.OrdersExtensionPoint,
-    OrdersExtensionMappings,
+    OrdersExtension.DemandMapping,
   )
 
   module ImportProductsTask = Platform.Task.Make(ImportProducts)

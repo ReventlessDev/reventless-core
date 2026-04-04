@@ -38,7 +38,7 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("ProductNotFound");
 
-let producedEventSchema = S.schema(s => ({
+let eventSchema = S.schema(s => ({
   TAG: "ProductPriceChanged",
   productId: s.m(DcbTag$Reventless.string),
   price: s.m(S.float)
@@ -71,6 +71,8 @@ function decide(state, command) {
 
 let name = "ChangeProductPrice";
 
+let Id;
+
 let initialState = {
   exists: false,
   currentPrice: 0.0
@@ -78,13 +80,14 @@ let initialState = {
 
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

@@ -46,7 +46,7 @@ let errorSchema = S.union([
   }))
 ]);
 
-let producedEventSchema = S.schema(s => ({
+let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
   orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(S.string),
@@ -85,15 +85,18 @@ function decide(state, command) {
 
 let name = "PlaceOrder";
 
+let Id;
+
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

@@ -47,7 +47,7 @@ let outgoingMeta: Message.meta = {
 
 module TestPublishMapping = {
   module ExtensionPoint = OpsEPSpec
-  let aggregateName = "PublishAgg"
+  let delegateName = "PublishAgg"
 
   let mapIncomingCommands = (
     _topicItems,
@@ -71,7 +71,7 @@ module TestPublishMapping = {
 
 module TestCallMapping = {
   module ExtensionPoint = OpsEPSpec
-  let aggregateName = "CallAgg"
+  let delegateName = "CallAgg"
 
   let mapIncomingCommands = (
     _topicItems,
@@ -97,7 +97,7 @@ module TestCallMapping = {
 
 module TestAsyncMapping = {
   module ExtensionPoint = OpsEPSpec
-  let aggregateName = "AsyncAgg"
+  let delegateName = "AsyncAgg"
 
   let mapIncomingCommands = (
     _topicItems,

@@ -5,11 +5,11 @@ open ReventlessInfra.ExtensionPointMapping
 module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
 
 module ProductMapping = {
-  module Aggregate = Product
+  module Delegate = Product
 
   let mapIncomingCommand = (_id, _command, _meta) => []
 
-  open Aggregate
+  open Delegate
   open ExtensionPoint
   let mapOutgoingEvent = Some((id, event, _meta, _queryEngine) =>
     switch event {

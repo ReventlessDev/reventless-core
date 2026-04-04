@@ -18,7 +18,7 @@ receives a command from an extension.
 - `PublishCommand(id, cmd)` — publish a command to the wrapped aggregate
 - `Call(handler, msg)` — invoke an async side-effect handler
 */
-/* these actions are needed for Impl */
+/* these actions are needed for Mapping */
 type commandAction<'command, 'msg> =
   | PublishCommand(string, 'command)
   | Call(callHandler<'msg>, 'msg)
@@ -83,21 +83,21 @@ type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'extensionPointDire
 Application-level implementation of the command / event mapping for one
 aggregate connected to an extension point.
 
-Pass this to `ExtensionPointMapping.Make(Spec, Impl)` to produce a compiled
+Pass this to `ExtensionPointMapping.Make(Spec, Mapping)` to produce a compiled
 `ExtensionPointMapping.T` module.
 */
-module type Impl = {
+module type Mapping = {
   module ExtensionPoint: Spec
-  module Aggregate: Reventless.Aggregate.Spec
+  module Delegate: Reventless.Aggregate.Spec
 
   let mapIncomingCommand: mapIncomingCommand<
     ExtensionPoint.command,
-    Aggregate.command,
+    Delegate.command,
     ExtensionPoint.directive,
   >
 
   let mapOutgoingEvent: option<
-    mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.directive>,
+    mapOutgoingEvent<Delegate.event, ExtensionPoint.event, ExtensionPoint.directive>,
   >
 }
 
@@ -117,19 +117,19 @@ type abstractEventAction<'extensionPointEvent> =
   | AbstractCall(unit => promise<unit>)
 
 /**
-A pre-compiled mapping module produced by `ExtensionPointMapping.Make(Spec, Impl)`.
+A pre-compiled mapping module produced by `ExtensionPointMapping.Make(Spec, Mapping)`.
 
 The runtime uses `mapIncomingCommands` and `mapOutgoingEvent` to dispatch commands
 and events without knowing the concrete extension point or aggregate types.
 Application developers call `Make` themselves; the result satisfies this type.
 */
-// Pre-compiled mapping module type. Created by ExtensionPointMapping.Make(Spec, Impl).
+// Pre-compiled mapping module type. Created by ExtensionPointMapping.Make(Spec, Mapping).
 // App developers call Make themselves; the result satisfies this type.
 module type T = {
   module ExtensionPoint: Spec
 
-  /** Name of the aggregate this mapping connects to the extension point. */
-  let aggregateName: string
+  /** Name of the target this mapping connects to the extension point. */
+  let delegateName: string
 
   /**
   Converts a batch of typed extension point commands into pre-encoded abstract actions.
@@ -156,11 +156,11 @@ module type T = {
   >
 }
 
-module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec): (
+module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Spec): (
   T with module ExtensionPoint := Spec
 ) => {
-  module Aggregate = MappingImpl.Aggregate
-  let aggregateName = Aggregate.name
+  module Delegate = MappingImpl.Delegate
+  let delegateName = Delegate.name
   let extensionPointName = Spec.name
 
   let doMapIncomingCommands = (
@@ -174,23 +174,23 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     ->Array.map(({CommandTopic.reference: reference, command: {Reventless.Message.id: id, command, meta}}) =>
       mapIncomingEventImpl(id->Reventless.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
-        | PublishCommand(aggregateId, aggregateCmd) =>
-          let commandStr = aggregateCmd->Reventless.Message.encode(Aggregate.commandSchema)->JSON.stringify
+        | PublishCommand(targetId, targetCmd) =>
+          let commandStr = targetCmd->Reventless.Message.encode(Delegate.commandSchema)->JSON.stringify
           Console.log(
-            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName} to Aggregate ${aggregateName}: Publishing command: ${commandStr} id: ${aggregateId}`,
+            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName} to Target ${delegateName}: Publishing command: ${commandStr} id: ${targetId}`,
           )
 
           AbstractPublishCommand(
-            aggregateName,
+            delegateName,
             reference,
             {
-              id: aggregateId,
+              id: targetId,
               meta: {
                 ...meta,
-                service: Aggregate.name,
+                service: Delegate.name,
                 msgId: Message.uuid(),
               },
-              commandJson: aggregateCmd->Reventless.Message.encode(Aggregate.commandSchema),
+              commandJson: targetCmd->Reventless.Message.encode(Delegate.commandSchema),
             },
           )
         | Call(handler, directive) =>
@@ -212,15 +212,15 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
 
   let doMapOutgoingEvent = (
     mapOutgoingEventImpl,
-    aggregateEventJson',
+    targetEventJson',
     createSchedule,
     deleteSchedule,
     queryEngine,
   ) =>
-    switch aggregateEventJson'->Reventless.Message.decodeEvent'(Aggregate.Id.schema, Aggregate.eventSchema) {
+    switch targetEventJson'->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema) {
     | {id, meta, event} =>
       mapOutgoingEventImpl(
-        id->Aggregate.Id.toString,
+        id->Delegate.Id.toString,
         event,
         meta,
         queryEngine,
@@ -229,7 +229,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         | PublishEvent(id, event) =>
           let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
           Console.log(
-            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
+            `ExtensionPointMapping: outgoing from Target ${delegateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
           )
           let meta = {
             ...meta,
@@ -243,7 +243,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             let (id, event) = await promise
             let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
             Console.log(
-              `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
+              `ExtensionPointMapping: async outgoing from Target ${delegateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
             )
             let eventJson' = Reventless.Message.composeEventJson'(id, meta, eventJson) // TODO: check if meta is correct
             (id, meta, eventJson')
@@ -251,7 +251,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           AbstractPublishEventAsync(promise->toEvent')
         | Call(handler, directive) =>
           Console.log2(
-            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling directive`,
+            `ExtensionPointMapping: outgoing from Target ${delegateName}: Handling directive`,
             directive->Reventless.Message.encode(Spec.directiveSchema)->JSON.stringify,
           )
 

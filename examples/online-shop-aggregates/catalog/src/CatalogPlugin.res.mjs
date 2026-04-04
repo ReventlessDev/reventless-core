@@ -11,7 +11,6 @@ import * as ProductBehavior$CatalogPlugin from "./Aggregate/ProductBehavior.res.
 import * as CategoryBehavior$CatalogPlugin from "./Aggregate/CategoryBehavior.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as ProductsReadModel$CatalogPlugin from "./ReadModel/ProductsReadModel.res.mjs";
-import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as CategoriesReadModel$CatalogPlugin from "./ReadModel/CategoriesReadModel.res.mjs";
 import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/OrdersExtensionPoint.res.mjs";
 import * as ProductsProjections$CatalogPlugin from "./ReadModel/ProductsProjections.res.mjs";
@@ -20,7 +19,6 @@ import * as CategoriesProjections$CatalogPlugin from "./ReadModel/CategoriesProj
 import * as ProductDemandBehavior$CatalogPlugin from "./Aggregate/ProductDemandBehavior.res.mjs";
 import * as ProductDemandReadModel$CatalogPlugin from "./ReadModel/ProductDemandReadModel.res.mjs";
 import * as ProductsExtensionPoint$CatalogPlugin from "./ExtensionPoint/ProductsExtensionPoint.res.mjs";
-import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as ProductDemandProjections$CatalogPlugin from "./ReadModel/ProductDemandProjections.res.mjs";
 
 function Make(Platform) {
@@ -138,8 +136,9 @@ function Make(Platform) {
     config: ProductDemandReadModel$CatalogPlugin.config,
     subIdConfig: undefined
   })(DemandProjections);
-  let ProductsEPProductMapping = ExtensionPointMapping$ReventlessInfra.Make(ProductsExtensionPoint$CatalogSpec)({
-    Aggregate: {
+  let moduleUrl$3 = import.meta.url;
+  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPoint$CatalogSpec)({
+    Delegate: {
       Id: Id$Reventless.$$String,
       name: Product$CatalogPlugin.name,
       eventSchema: Product$CatalogPlugin.eventSchema,
@@ -149,23 +148,11 @@ function Make(Platform) {
     },
     mapIncomingCommand: ProductsExtensionPoint$CatalogPlugin.ProductMapping.mapIncomingCommand,
     mapOutgoingEvent: ProductsExtensionPoint$CatalogPlugin.ProductMapping.mapOutgoingEvent
+  })({
+    moduleUrl: moduleUrl$3
   });
-  let name = "ProductsEPMappings";
-  let moduleUrl$3 = import.meta.url;
-  let mappings$3 = [ProductsEPProductMapping];
-  let ProductsEPMappings = {
-    Spec: undefined,
-    name: name,
-    moduleUrl: moduleUrl$3,
-    mappings: mappings$3
-  };
-  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPoint$CatalogSpec)({
-    name: name,
-    moduleUrl: moduleUrl$3,
-    mappings: mappings$3
-  });
-  let OrdersDemandMapping = ExtensionMapping$ReventlessInfra.Make(OrdersExtensionPoint$OrderingSpec)({
-    Aggregate: {
+  let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)({
+    Delegate: {
       Id: Id$Reventless.$$String,
       name: ProductDemand$CatalogPlugin.name,
       eventSchema: ProductDemand$CatalogPlugin.eventSchema,
@@ -176,14 +163,6 @@ function Make(Platform) {
     mapIncomingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapOutgoingEvent
   });
-  let moduleUrl$4 = import.meta.url;
-  let mappings$4 = [OrdersDemandMapping];
-  let OrdersExtensionMappings = {
-    name: "CatalogDemand",
-    moduleUrl: moduleUrl$4,
-    mappings: mappings$4
-  };
-  let OrdersExtensionMaker = Platform.Extension.Make(OrdersExtensionPoint$OrderingSpec)(OrdersExtensionMappings);
   let ImportProductsTask = Platform.Task.Make({
     name: ImportProducts$CatalogPlugin.name,
     setup: ImportProducts$CatalogPlugin.setup
@@ -207,11 +186,7 @@ function Make(Platform) {
     ProductDemandAggregate: ProductDemandAggregate,
     DemandProjections: DemandProjections,
     ProductDemandReadModelMaker: ProductDemandReadModelMaker,
-    ProductsEPProductMapping: ProductsEPProductMapping,
-    ProductsEPMappings: ProductsEPMappings,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
-    OrdersDemandMapping: OrdersDemandMapping,
-    OrdersExtensionMappings: OrdersExtensionMappings,
     OrdersExtensionMaker: OrdersExtensionMaker,
     ImportProductsTask: ImportProductsTask,
     make: make

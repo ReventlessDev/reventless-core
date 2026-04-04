@@ -17,10 +17,10 @@ function Make(Spec) {
   let comp = `StateChangeSlice(` + Spec.name + `)`;
   let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
   let queryEventTypes = decoder.eventTypes;
-  let encodeProducedEvent = event => {
-    let json = S.reverseConvertToJsonOrThrow(event, Spec.producedEventSchema);
+  let encodeEvent = event => {
+    let json = S.reverseConvertToJsonOrThrow(event, Spec.eventSchema);
     let match = Message$ReventlessCore.splitMessage(json);
-    let tags = DcbTag$Reventless.extractTags(Spec.producedEventSchema, event);
+    let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, event);
     return {
       eventType: match[0],
       data: match[1],
@@ -61,7 +61,7 @@ function Make(Spec) {
             _0: "ok"
           }));
         }
-        let rawEvents = newEvents$1.map(encodeProducedEvent);
+        let rawEvents = newEvents$1.map(encodeEvent);
         let eventCount = rawEvents.length.toString();
         let eventDetails = rawEvents.map(e => {
           let dict = e.data;

@@ -6,11 +6,11 @@ open ReventlessInfra.ExtensionPointMapping
 module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
 
 module OrderMapping = {
-  module Aggregate = Order
+  module Delegate = Order
 
   let mapIncomingCommand = (_id, _command, _meta) => []
 
-  open Aggregate
+  open Delegate
   open ExtensionPoint
   let mapOutgoingEvent = Some((id, event, _meta, _queryEngine) =>
     switch event {

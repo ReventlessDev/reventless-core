@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "ChangeProductPrice"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, currentPrice: float}
@@ -28,7 +29,7 @@ type command = ChangeProductPrice({productId: @s.matches(DcbTag.string) string, 
 type error = ProductNotFound
 
 @schema
-type producedEvent =
+type event =
   | ProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
 
 let decide = (state, command) =>

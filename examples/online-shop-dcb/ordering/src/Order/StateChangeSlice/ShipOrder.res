@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "ShipOrder"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, shipped: bool, cancelled: bool}
@@ -32,7 +33,7 @@ type error =
   | OrderAlreadyCancelled
 
 @schema
-type producedEvent = OrderShipped({orderId: @s.matches(DcbTag.string) string})
+type event = OrderShipped({orderId: @s.matches(DcbTag.string) string})
 
 let decide = (state, command) =>
   switch command {

@@ -6,7 +6,7 @@ commands by reading the relevant events from a shared `DcbEventLog`, building
 a `state` (ephemeral read model), and appending new events conditioned
 on no concurrent changes to the same entities.
 
-Each slice declares its own `producedEvent` (what it emits) and `consumedEvent`
+Each slice declares its own `event` (what it emits) and `consumedEvent`
 (what it reads to build its decision model). Consumed events may be payload-less,
 carry a field subset, or use the full shape.
 
@@ -30,7 +30,7 @@ let evolve = (state, event) => switch event {
 @schema type command = AddCategory({categoryId: @s.matches(DcbTag.string) string, name: string})
 @schema type error = CategoryAlreadyExists
 
-@schema type producedEvent =
+@schema type event =
   | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
 
 let decide = (state, command) => switch command {
@@ -78,15 +78,18 @@ module type Spec = {
   @schema
   type error
 
+  /** Identity type — always `Id.String` for DCB slices. */
+  module Id: Id.T
+
   /** Events this slice emits (from decide). Must carry `@schema` and include tag annotations. */
   @schema
-  type producedEvent
+  type event
 
   /**
   Decides what events to append given the current state and the command.
   Return `Ok(events)` to append, or `Error(error)` to reject the command.
   */
-  let decide: (state, command) => result<array<producedEvent>, error>
+  let decide: (state, command) => result<array<event>, error>
 
   /** Schema for the command type — used to extract DCB tags for the conditional read. */
   let commandSchema: S.t<command>

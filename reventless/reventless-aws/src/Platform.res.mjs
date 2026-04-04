@@ -30,6 +30,7 @@ import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginProjection.res.mjs";
+import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./adapter/Cloner/ClonerRunner_Fargate.res.mjs";
@@ -40,6 +41,7 @@ import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoi
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
 import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationSlice_Builder.res.mjs";
+import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
@@ -134,18 +136,46 @@ function MakeWithConfig(Config) {
   let ReadModel = {
     Make: Make$1
   };
-  let Make$2 = Spec => (Mappings => {
+  let Make$2 = Spec => (Mapping => (Config => {
+    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let mappings = [CompiledMapping];
+    let Mappings_moduleUrl = Config.moduleUrl;
+    let Mappings = {
+      name: name,
+      moduleUrl: Mappings_moduleUrl,
+      mappings: mappings
+    };
+    let publishToAggregatesQueueUrls = {};
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
+      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
+    });
+  }));
+  let MakeMulti = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
     return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
   let ExtensionPoint = {
-    Make: Make$2
+    Make: Make$2,
+    MakeMulti: MakeMulti
   };
-  let Make$3 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
+  let Make$3 = Spec => (Mapping => {
+    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let moduleUrl = Mapping.Delegate.moduleUrl;
+    let mappings = [CompiledMapping];
+    return Extension_Builder$ReventlessCore.Make(Spec)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  });
+  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$3
+    Make: Make$3,
+    MakeMulti: MakeMulti$1
   };
   let Make$4 = Spec => {
     let callbackModulePaths = {};
@@ -675,18 +705,46 @@ function Make($star) {
   let ReadModel = {
     Make: Make$2
   };
-  let Make$3 = Spec => (Mappings => {
+  let Make$3 = Spec => (Mapping => (Config => {
+    let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let mappings = [CompiledMapping];
+    let Mappings_moduleUrl = Config.moduleUrl;
+    let Mappings = {
+      name: name,
+      moduleUrl: Mappings_moduleUrl,
+      mappings: mappings
+    };
+    let publishToAggregatesQueueUrls = {};
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
+      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
+    });
+  }));
+  let MakeMulti = Spec => (Mappings => {
     let publishToAggregatesQueueUrls = {};
     return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
       publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
   let ExtensionPoint = {
-    Make: Make$3
+    Make: Make$3,
+    MakeMulti: MakeMulti
   };
-  let Make$4 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
+  let Make$4 = Spec => (Mapping => {
+    let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Spec)(Mapping);
+    let name = Mapping.Delegate.name;
+    let moduleUrl = Mapping.Delegate.moduleUrl;
+    let mappings = [CompiledMapping];
+    return Extension_Builder$ReventlessCore.Make(Spec)({
+      name: name,
+      moduleUrl: moduleUrl,
+      mappings: mappings
+    });
+  });
+  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$4
+    Make: Make$4,
+    MakeMulti: MakeMulti$1
   };
   let Make$5 = Spec => {
     let callbackModulePaths = {};

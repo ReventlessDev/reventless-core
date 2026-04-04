@@ -19,7 +19,7 @@ type outputs = {
 Module type for a provisioned extension component.
 
 An `Extension` connects a host plugin's extension point to one or more aggregates,
-translating commands and events in both directions via `ExtensionMapping.Impl`.
+translating commands and events in both directions via `ExtensionMapping.Mapping`.
 
 `operations` is left abstract at the spec level to avoid a circular dependency.
 The concrete type is defined in the `reventless` package.

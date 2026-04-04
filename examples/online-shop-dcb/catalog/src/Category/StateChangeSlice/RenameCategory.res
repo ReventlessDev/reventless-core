@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "RenameCategory"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, archived: bool}
@@ -30,7 +31,7 @@ type error =
   | CategoryAlreadyArchived
 
 @schema
-type producedEvent = CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
+type event = CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
 
 let decide = (state, command) =>
   switch command {

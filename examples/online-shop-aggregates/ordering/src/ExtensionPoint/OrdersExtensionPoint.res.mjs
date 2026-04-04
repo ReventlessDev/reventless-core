@@ -34,7 +34,7 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
 };
 
 let OrderMapping = {
-  Aggregate: undefined,
+  Delegate: undefined,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent
 };

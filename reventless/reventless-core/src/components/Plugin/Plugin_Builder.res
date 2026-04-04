@@ -351,7 +351,7 @@ module Make = (
         let collectAggregateNames = ex =>
           ex
           ->Set.fromArray
-          ->Set.remove(ReventlessInfra.ExtensionMapping.NoAggregate.name)
+          ->Set.remove(ReventlessInfra.ExtensionMapping.NoDelegate.name)
 
         let extensionPointAggregateNames =
           extensionPointsOutputs

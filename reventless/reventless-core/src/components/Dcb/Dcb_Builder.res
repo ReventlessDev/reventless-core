@@ -51,7 +51,7 @@ module Make = (
         // Run validation: check produced vs consumed event compatibility
         let produced =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
-            (Sc.Spec.name, Sc.Spec.producedEventSchema->S.castToUnknown)
+            (Sc.Spec.name, Sc.Spec.eventSchema->S.castToUnknown)
           )
         let consumed =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
@@ -485,7 +485,7 @@ module Make = (
         // Collect all event schemas from produced events for eventLogEntries
         let allProducedSchemas =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
-            Sc.Spec.producedEventSchema->S.castToUnknown
+            Sc.Spec.eventSchema->S.castToUnknown
           )
 
         {

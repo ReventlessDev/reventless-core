@@ -47,7 +47,7 @@ let outgoingMeta = {
   correlationId: "ops-corr-1"
 };
 
-let aggregateName = "PublishAgg";
+let delegateName = "PublishAgg";
 
 function mapIncomingCommands(_topicItems, _createSchedule, _deleteSchedule, _queryEngine) {
   return [];
@@ -62,12 +62,12 @@ let mapOutgoingEvent = (eventJson, _createSchedule, _deleteSchedule, _queryEngin
 
 let TestPublishMapping = {
   ExtensionPoint: undefined,
-  aggregateName: aggregateName,
+  delegateName: delegateName,
   mapIncomingCommands: mapIncomingCommands,
   mapOutgoingEvent: mapOutgoingEvent
 };
 
-let aggregateName$1 = "CallAgg";
+let delegateName$1 = "CallAgg";
 
 function mapIncomingCommands$1(_topicItems, _createSchedule, _deleteSchedule, _queryEngine) {
   return [];
@@ -82,12 +82,12 @@ let mapOutgoingEvent$1 = (_eventJson, _createSchedule, _deleteSchedule, _queryEn
 
 let TestCallMapping = {
   ExtensionPoint: undefined,
-  aggregateName: aggregateName$1,
+  delegateName: delegateName$1,
   mapIncomingCommands: mapIncomingCommands$1,
   mapOutgoingEvent: mapOutgoingEvent$1
 };
 
-let aggregateName$2 = "AsyncAgg";
+let delegateName$2 = "AsyncAgg";
 
 function mapIncomingCommands$2(_topicItems, _createSchedule, _deleteSchedule, _queryEngine) {
   return [];
@@ -107,7 +107,7 @@ let mapOutgoingEvent$2 = (eventJson, _createSchedule, _deleteSchedule, _queryEng
 
 let TestAsyncMapping = {
   ExtensionPoint: undefined,
-  aggregateName: aggregateName$2,
+  delegateName: delegateName$2,
   mapIncomingCommands: mapIncomingCommands$2,
   mapOutgoingEvent: mapOutgoingEvent$2
 };
@@ -116,17 +116,17 @@ let moduleUrl$1 = import.meta.url;
 
 let mappings = [
   {
-    aggregateName: aggregateName,
+    delegateName: delegateName,
     mapIncomingCommands: mapIncomingCommands,
     mapOutgoingEvent: mapOutgoingEvent
   },
   {
-    aggregateName: aggregateName$1,
+    delegateName: delegateName$1,
     mapIncomingCommands: mapIncomingCommands$1,
     mapOutgoingEvent: mapOutgoingEvent$1
   },
   {
-    aggregateName: aggregateName$2,
+    delegateName: delegateName$2,
     mapIncomingCommands: mapIncomingCommands$2,
     mapOutgoingEvent: mapOutgoingEvent$2
   }

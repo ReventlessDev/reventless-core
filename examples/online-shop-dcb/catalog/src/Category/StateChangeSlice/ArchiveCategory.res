@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "ArchiveCategory"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool, archived: bool}
@@ -28,7 +29,7 @@ type command = ArchiveCategory({categoryId: @s.matches(DcbTag.string) string})
 type error = CategoryNotFound
 
 @schema
-type producedEvent = CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
+type event = CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
 
 let decide = (state, command) =>
   switch command {

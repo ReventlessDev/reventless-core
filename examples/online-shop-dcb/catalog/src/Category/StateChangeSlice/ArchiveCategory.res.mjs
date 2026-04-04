@@ -31,7 +31,7 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("CategoryNotFound");
 
-let producedEventSchema = S.schema(s => ({
+let eventSchema = S.schema(s => ({
   TAG: "CategoryArchived",
   categoryId: s.m(DcbTag$Reventless.string)
 }));
@@ -62,6 +62,8 @@ function decide(state, command) {
 
 let name = "ArchiveCategory";
 
+let Id;
+
 let initialState = {
   exists: false,
   archived: false
@@ -69,13 +71,14 @@ let initialState = {
 
 export {
   name,
+  Id,
   moduleUrl,
   initialState,
   consumedEventSchema,
   evolve,
   commandSchema,
   errorSchema,
-  producedEventSchema,
+  eventSchema,
   decide,
 }
 /* moduleUrl Not a pure module */

@@ -3,7 +3,7 @@ open Expect
 
 // Produced event schema (full shape with tags — represents what's in storage)
 @schema
-type producedEvent =
+type event =
   | ItemCreated({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
   | ItemRenamed({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
   | ItemArchived({itemId: @s.matches(Reventless.DcbTag.string) string})

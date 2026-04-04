@@ -98,13 +98,13 @@ module Make = (Spec: Spec) => {
       }
     }
 
-  module Impl = {
-    module Aggregate = PluginSpec
+  module PluginMapping = {
+    module Delegate = PluginSpec
 
     let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
       switch cmd {
       | PluginExtensionPointSpec.Heartbeat(interval) => [
-          PublishCommand(id, Aggregate.Heartbeat),
+          PublishCommand(id, Delegate.Heartbeat),
           // Re-create timeout (+2 minute to avoid toggling)
           // 1 minute because Schedules can only be created by minute
           // 1 additional minute to allow additional latency
@@ -129,11 +129,11 @@ module Make = (Spec: Spec) => {
               ->JSON.stringifyAny
               ->Option.getOr("[]")}`,
           )->Effect.runSync
-          [PublishCommand(id, Aggregate.ReportIncompatibility(pluginDefinition))]
+          [PublishCommand(id, Delegate.ReportIncompatibility(pluginDefinition))]
         } else {
           []
         }
-        Array.concat([PublishCommand(id, Aggregate.Connect(pluginDefinition))], reportAction)
+        Array.concat([PublishCommand(id, Delegate.Connect(pluginDefinition))], reportAction)
       | DisconnectPlugin => [
           PublishCommand(id, Disconnect),
           Call(callHandler, DeleteDisconnectSchedule(id)),
@@ -144,7 +144,7 @@ module Make = (Spec: Spec) => {
     let mapOutgoingEvent = Some(
       (id, event, _meta, _queryEngine) =>
         switch event {
-        | Aggregate.UnknownPluginDetected => [
+        | Delegate.UnknownPluginDetected => [
             PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
           ]
         | Connected(pluginDefinition) => [
@@ -171,5 +171,5 @@ module Make = (Spec: Spec) => {
     )
   }
 
-  module Mapping = ReventlessInfra.ExtensionPointMapping.Make(PluginExtensionPointSpec, Impl)
+  module Mapping = ReventlessInfra.ExtensionPointMapping.Make(PluginExtensionPointSpec, PluginMapping)
 }

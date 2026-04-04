@@ -4,6 +4,7 @@
 open Reventless
 
 let name = "PlaceOrder"
+module Id = Reventless.Id.String
 let moduleUrl: string = %raw(`import.meta.url`)
 
 type state = {exists: bool}
@@ -31,7 +32,7 @@ type command =
 type error = OrderAlreadyPlaced
 
 @schema
-type producedEvent =
+type event =
   | OrderPlaced({
       orderId: @s.matches(DcbTag.string) string,
       customerId: string,

@@ -35,10 +35,10 @@ module Make = (
       name,
       extensionPointName: Spec.name,
       aggregateNames: Mappings.mappings->Array.filterMap((module(Mapping)) =>
-        Mapping.aggregateName == ReventlessInfra.ExtensionMapping.NoAggregate.name ||
+        Mapping.delegateName == ReventlessInfra.ExtensionMapping.NoDelegate.name ||
           Mapping.mapOutgoingEvent->Option.isNone
           ? None
-          : Some(Mapping.aggregateName)
+          : Some(Mapping.delegateName)
       ),
     }
     self->Component.setOutputs(extOutputs)

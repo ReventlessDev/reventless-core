@@ -271,8 +271,8 @@ function Make(Spec) {
           }];
     }
   };
-  let Impl = {
-    Aggregate: undefined,
+  let PluginMapping = {
+    Delegate: undefined,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent
   };
@@ -283,7 +283,7 @@ function Make(Spec) {
     eventSchema: PluginExtensionPointSpec$ReventlessInfra.eventSchema,
     directiveSchema: PluginExtensionPointSpec$ReventlessInfra.directiveSchema
   })({
-    Aggregate: {
+    Delegate: {
       Id: Id$Reventless.$$String,
       name: PluginSpec$ReventlessCore.name,
       eventSchema: PluginSpec$ReventlessCore.eventSchema,
@@ -297,7 +297,7 @@ function Make(Spec) {
   return {
     forwardCommand: forwardCommand,
     callHandler: callHandler,
-    Impl: Impl,
+    PluginMapping: PluginMapping,
     Mapping: Mapping
   };
 }

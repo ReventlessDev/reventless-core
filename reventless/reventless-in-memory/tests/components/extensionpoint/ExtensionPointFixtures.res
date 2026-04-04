@@ -36,7 +36,7 @@ module TestEPSpec = {
 // Target aggregate spec (receives forwarded commands)
 // ─────────────────────────────────────────────────────────────
 
-module TargetAggSpec = {
+module DelegateAggSpec = {
   module Id = Reventless.Id.StringPure
   let name = "TargetAgg"
 
@@ -57,22 +57,22 @@ module TargetAggSpec = {
 // ─────────────────────────────────────────────────────────────
 
 module ForwardMapping = {
-  module Aggregate = TargetAggSpec
+  module Delegate = DelegateAggSpec
 
   let mapIncomingCommand = (
     _id: string,
     cmd: TestEPSpec.command,
     _meta: Reventless.Message.meta,
-  ): array<ReventlessInfra.ExtensionPointMapping.commandAction<TargetAggSpec.command, TestEPSpec.directive>> =>
+  ): array<ReventlessInfra.ExtensionPointMapping.commandAction<DelegateAggSpec.command, TestEPSpec.directive>> =>
     switch cmd {
     | Forward({targetId}) =>
-      let execCmd = TargetAggSpec.Execute({targetId: targetId})
+      let execCmd = DelegateAggSpec.Execute({targetId: targetId})
       [ReventlessInfra.ExtensionPointMapping.PublishCommand(targetId, execCmd)]
     }
 
   let mapOutgoingEvent: option<
     ReventlessInfra.ExtensionPointMapping.mapOutgoingEvent<
-      TargetAggSpec.event,
+      DelegateAggSpec.event,
       TestEPSpec.event,
       TestEPSpec.directive,
     >,

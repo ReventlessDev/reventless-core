@@ -36,38 +36,16 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
 
   // ── Extension Point (outbound) ──────────────────────────────
-  module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    CatalogSpec.ProductsExtensionPoint,
-    ProductsExtensionPointMapping,
-  )
-  module ProductsEPMappings = {
-    module Spec = CatalogSpec.ProductsExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
-    let name = "ProductsEPMappings"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
-  }
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
     CatalogSpec.ProductsExtensionPoint,
-    ProductsEPMappings,
+    ProductsExtensionPointMapping,
+    {let moduleUrl: string = %raw(`import.meta.url`)},
   )
 
   // ── Extension (inbound from Ordering) ───────────────────────
-  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-    OrderingSpec.OrdersExtensionPoint,
-    OrdersExtension.DemandMapping,
-  )
-  module OrdersExtensionMappings = {
-    module Spec = OrderingSpec.OrdersExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := Spec
-    let name = "CatalogDemand"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
-  }
   module OrdersExtensionMaker = Platform.Extension.Make(
     OrderingSpec.OrdersExtensionPoint,
-    OrdersExtensionMappings,
+    OrdersExtension.DemandMapping,
   )
 
   // ── Hybrid Plugin Assembly ──────────────────────────────────

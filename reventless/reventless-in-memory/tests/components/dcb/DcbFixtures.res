@@ -18,10 +18,11 @@ module ItemEventLog = {
 
 module AddItemSpec = {
   let name = "AddItem"
+  module Id = Reventless.Id.String
   let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
-  type producedEvent = ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
+  type event = ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
 
   @schema
   type consumedEvent = ItemAdded
@@ -37,7 +38,7 @@ module AddItemSpec = {
 
   let evolve = (_state, _event) => true // any event means item exists
 
-  let decide = (state, command): result<array<producedEvent>, error> =>
+  let decide = (state, command): result<array<event>, error> =>
     if state {
       Error(ItemAlreadyExists)
     } else {

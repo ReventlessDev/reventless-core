@@ -12,7 +12,7 @@ import * as EventPublish_Callback$ReventlessCore from "../EventLog/EventPublish_
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {
-    let findOutgoingMapping = (aggregateNameOpt, mappings) => Stdlib_Option.flatMap(aggregateNameOpt, aggregateName => mappings.find(Mapping => Mapping.aggregateName === aggregateName));
+    let findOutgoingMapping = (delegateNameOpt, mappings) => Stdlib_Option.flatMap(delegateNameOpt, delegateName => mappings.find(Mapping => Mapping.delegateName === delegateName));
     let mapOutgoingEvent = (eventJson$p, mappings, scheduler, queue, queryEngine, resourceNaming) => {
       let Mapping = findOutgoingMapping(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), mappings);
       if (Mapping === undefined) {

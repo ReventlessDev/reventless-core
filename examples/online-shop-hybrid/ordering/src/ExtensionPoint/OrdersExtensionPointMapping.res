@@ -8,7 +8,7 @@ module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
 
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
-module Aggregate = {
+module Delegate = {
   let name = "OrderingEventLog"
   module Id = Id.String
   @schema type command = unit
@@ -32,14 +32,14 @@ let mapIncomingCommand = (_id, _command, _meta) => []
 
 let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
-  | Aggregate.OrderPlaced({orderId, customerId, productIds}) =>
+  | Delegate.OrderPlaced({orderId, customerId, productIds}) =>
     productIds->Array.map(productId =>
       PublishEvent(
         productId,
         OrderingSpec.OrdersExtensionPoint.ItemOrdered({productId, orderId, customerId}),
       )
     )
-  | Aggregate.OrderCancelled({orderId, productIds}) =>
+  | Delegate.OrderCancelled({orderId, productIds}) =>
     productIds->Array.map(productId =>
       PublishEvent(productId, OrderingSpec.OrdersExtensionPoint.ItemOrderCancelled({productId, orderId}))
     )

@@ -58,38 +58,16 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   )
 
   // Build the Products extension (subscribing to Catalog's EP)
-  module ProductsProductMapping = ReventlessInfra.ExtensionMapping.Make(
+  module ProductsExtensionMaker = Platform.Extension.Make(
     CatalogSpec.ProductsExtensionPoint,
     ProductsExtension.ProductMapping,
   )
-  module ProductsExtensionMappings: ReventlessInfra.ExtensionMapping.Mappings
-    with module Spec := CatalogSpec.ProductsExtensionPoint = {
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := CatalogSpec.ProductsExtensionPoint
-    let name = "OrderingProducts"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(ProductsProductMapping)]
-  }
-  module ProductsExtensionMaker = Platform.Extension.Make(
-    CatalogSpec.ProductsExtensionPoint,
-    ProductsExtensionMappings,
-  )
 
-  // Compile the Orders extension point mappings, then build the EP component
-  module OrdersEPOrderMapping = ReventlessInfra.ExtensionPointMapping.Make(
-    OrderingSpec.OrdersExtensionPoint,
-    OrdersExtensionPoint.OrderMapping,
-  )
-  module OrdersEPMappings = {
-    module Spec = OrderingSpec.OrdersExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
-    let name = "OrdersEPMappings"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(OrdersEPOrderMapping)]
-  }
+  // Build the Orders extension point component
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(
     OrderingSpec.OrdersExtensionPoint,
-    OrdersEPMappings,
+    OrdersExtensionPoint.OrderMapping,
+    {let moduleUrl: string = %raw(`import.meta.url`)},
   )
 
   module OrderNotificationsTask = Platform.Task.Make(OrderNotifications)

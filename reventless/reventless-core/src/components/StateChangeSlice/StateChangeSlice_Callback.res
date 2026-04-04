@@ -18,10 +18,10 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
   let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
   let queryEventTypes = decoder.eventTypes
 
-  let encodeProducedEvent = (event: Spec.producedEvent): ReventlessInfra.DcbEventLog.rawEvent => {
-    let json = event->S.reverseConvertToJsonOrThrow(Spec.producedEventSchema)
+  let encodeEvent = (event: Spec.event): ReventlessInfra.DcbEventLog.rawEvent => {
+    let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
-    let tags = Reventless.DcbTag.extractTags(Spec.producedEventSchema, event)
+    let tags = Reventless.DcbTag.extractTags(Spec.eventSchema, event)
     {eventType, data: JSON.Object(data), tags}
   }
 
@@ -80,7 +80,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
         | Ok(newEvents) if newEvents->Array.length == 0 =>
           EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
         | Ok(newEvents) =>
-          let rawEvents = newEvents->Array.map(encodeProducedEvent)
+          let rawEvents = newEvents->Array.map(encodeEvent)
           let eventCount = rawEvents->Array.length->Int.toString
           let eventDetails =
             rawEvents
