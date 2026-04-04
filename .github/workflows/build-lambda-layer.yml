@@ -110,7 +110,7 @@ jobs:
           git commit -m "chore(ci): update Lambda Layer ARN to $LAYER_ARN [skip ci]" || { echo "No change to layer ARN"; exit 0; }
           BRANCH="${GITHUB_REF#refs/heads/}"
           for i in 1 2 3; do
-            git pull --rebase origin "$BRANCH" && \
+            git pull --rebase --autostash origin "$BRANCH" && \
             git push && exit 0
             echo "Push attempt $i failed, retrying..."
             sleep 5
