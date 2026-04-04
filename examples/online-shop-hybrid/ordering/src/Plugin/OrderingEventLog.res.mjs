@@ -8,7 +8,7 @@ let eventSchema = S.union([
     TAG: "OrderPlaced",
     orderId: s.m(DcbTag$Reventless.string),
     customerId: s.m(S.string),
-    productIds: s.m(S.array(S.string))
+    productId: s.m(S.array(S.string))
   })),
   S.schema(s => ({
     TAG: "OrderShipped",
@@ -17,7 +17,7 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderCancelled",
     orderId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(S.array(S.string))
+    productId: s.m(S.array(S.string))
   })),
   S.schema(s => ({
     TAG: "CatalogProductSynced",

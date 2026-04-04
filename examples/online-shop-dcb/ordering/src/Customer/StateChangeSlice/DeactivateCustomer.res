@@ -1,7 +1,6 @@
 // DeactivateCustomer StateChangeSlice.
 // Requires customer to exist; idempotent if already deactivated.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, deactivated: bool}
 

@@ -2,7 +2,6 @@
 // Records and revokes per-product order demand driven by Ordering's extension point events.
 
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {recordedOrderIds: array<string>}
 let initialState = {recordedOrderIds: []}

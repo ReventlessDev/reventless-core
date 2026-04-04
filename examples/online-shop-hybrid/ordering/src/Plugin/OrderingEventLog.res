@@ -8,12 +8,12 @@ type event =
   | OrderPlaced({
       orderId: @s.matches(DcbTag.string) string,
       customerId: string,
-      productIds: array<string>,
+      productId: array<string>,
     })
   | OrderShipped({orderId: @s.matches(DcbTag.string) string})
   | OrderCancelled({
       orderId: @s.matches(DcbTag.string) string,
-      productIds: array<string>,
+      productId: array<string>,
     })
   | CatalogProductSynced({
       productId: @s.matches(DcbTag.string) string,

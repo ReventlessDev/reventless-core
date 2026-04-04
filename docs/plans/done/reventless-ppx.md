@@ -1,6 +1,6 @@
 # Reventless PPX
 
-## Status: IN PROGRESS
+## Status: IN PROGRESS (phases 0–9 done; remaining: CI verification, docs site)
 
 ## Goal
 
@@ -47,7 +47,7 @@ Build a custom ReScript PPX that eliminates repetitive boilerplate from Reventle
 - [x] Create `packages/reventless-ppx/test/run.sh` — integration test that creates temp ReScript packages, compiles through PPX, and verifies JS output
 - [x] Tests cover: spec name derivation, behavior injection, ReadModel suffix stripping, explicit name, dotted name from *Spec namespace, module Id skip
 - [x] Add `"test": "./test/run.sh"` to package.json
-- [x] 21 assertions, all passing (spec, behavior, namespace, DCB tags, ReadModel defaults, projections, delegate)
+- [x] 25 assertions, all passing (spec, behavior, namespace, DCB tags, ReadModel defaults, projections, delegate, EP mapping open, slice folder auto-dcbTags, *Ids array annotation)
 
 ---
 
@@ -325,6 +325,14 @@ Unblocked by Phase 5's module-level PPX support. Extend the PPX to handle `@reve
 - [x] Migrate `ProductsExtensionPointMapping.res` and `OrdersExtensionPointMapping.res`
 - [x] Full build + test pass (935 tests, 0 warnings)
 
+**Phase 6.1 follow-up (completed):**
+
+- [x] `@@reventless.spec` already present on all ExtensionPointMapping files; `module Delegate` auto-detected via `is_spec` flag in `walk_structure` (no `@reventless.delegate` needed)
+- [x] Auto-inject `open ReventlessInfra.ExtensionPointMapping` for `*ExtensionPointMapping.res` files — detected by filename via `is_extensionpointmapping_filename`; skipped if already present
+- [x] Remove `open ReventlessInfra.ExtensionPointMapping` from all 4 EP mapping files (dcb + hybrid, catalog + ordering)
+- [x] Add test fixture `ItemExtensionPointMapping.res` that uses `PublishEvent` without manual open; 2 new assertions (25 total, all passing)
+- [x] Full build + test pass, 0 warnings
+
 ### 6.2 — ReadModel spec defaults
 
 - [x] When `@@reventless.spec` is present and filename contains `ReadModel`, file has `@schema type state`, and no `let config`, auto-inject:
@@ -348,35 +356,150 @@ Unblocked by Phase 5's module-level PPX support. Extend the PPX to handle `@reve
 
 ---
 
+## Phase 8: Auto-detect DCB Slices — eliminate `@@reventless.dcbTags` ✅
+
+**Impact: Removes the `@@reventless.dcbTags` annotation from all `*Slice.res` spec files (~16+ files)**
+
+### Motivation
+
+Files named `*Slice.res` are always DCB slices. Requiring an explicit `@@reventless.dcbTags` alongside `@@reventless.spec` is redundant — the PPX already auto-infers ReadModel defaults from filename, and `"Slice"` is already in `component_suffixes`.
+
+### Design
+
+The reliable signal is not the filename but the **parent folder name** — every file needing dcbTags lives inside a folder whose name ends with `Slice`:
+
+```
+StateChangeSlice/AddProduct.res         ← needs dcbTags
+StateViewSlice/ProductsView.res         ← needs dcbTags
+AutomationSlice/AutoShipOrder.res       ← needs dcbTags
+InboundTranslationSlice/ImportProduct.res ← needs dcbTags
+OutboundTranslationSlice/SendOrderConfirmation.res ← needs dcbTags
+```
+
+This means files keep clean names (`AddProduct.res`, not `AddProductSlice.res`) and the folder structure carries the slice type. Test files inside those folders (`CategoryDecisionTest.res`) are safe — dcbTags only touches `@schema` variant types, which test files don't define.
+
+Implementation: check whether any path segment of `Filename.dirname(pos_fname)` either ends with `"Slice"` OR matches a known slice base name (without the suffix). This lets teams use either `StateChangeSlice/` or `StateChange/` as their folder name.
+
+```ocaml
+let known_slice_bases = [
+  "StateChange"; "StateView"; "Automation";
+  "InboundTranslation"; "OutboundTranslation"
+]
+
+let ends_with_slice part =
+  let len = String.length part in
+  len >= 5 && String.sub part (len - 5) 5 = "Slice"
+
+let is_slice_folder_segment part =
+  ends_with_slice part || List.mem part known_slice_bases
+
+let is_in_slice_folder fname =
+  let dir = Filename.dirname fname in
+  let parts = String.split_on_char '/' dir in
+  List.exists is_slice_folder_segment parts
+```
+
+In the `Spec` branch of `transform`:
+
+```ocaml
+let dcb_tags = has_dcb_tags_attr str
+               || Util.is_in_slice_folder loc.loc_start.pos_fname in
+```
+
+- `@@reventless.dcbTags` continues to work as an explicit opt-in for edge cases
+- Files inside any `*Slice/` folder with `@@reventless.spec` get dcbTags automatically
+
+### Implementation steps
+
+- [x] Add `is_in_slice_folder` to `Util.ml` — checks if any dirname path segment ends with `"Slice"`
+- [x] In `ReventlessPpx.ml` `transform`: change `dcb_tags` derivation to also check `is_in_slice_folder`
+- [x] Remove `@@reventless.dcbTags` from all slice spec files in the DCB example packages
+- [x] Add PPX test assertion: file inside `StateChangeSlice/` gets dcbTags without explicit annotation
+- [x] Update `@@reventless.dcbTags` entry in the PPX annotations API section
+- [x] Full build + test pass
+
+---
+
+## Phase 9: `*Id(s): array<string>` DCB Tag Annotation ✅
+
+**Impact: Eliminates the last remaining manual `@s.matches` annotations on array-of-ID fields**
+
+### Motivation
+
+`@@reventless.dcbTags` only handled `*Id: string` (singular scalar). Array-of-entity-IDs fields
+must still be annotated manually. Two patterns need coverage:
+
+- `*Ids: array<string>` — plural name, multi-value storage (e.g. `tagIds`, `itemIds`)
+- `*Id: array<string>` — singular name, multi-clause cross-entity query (e.g. `productId: array<string>` in `PlaceOrder` queries events stored under `productId` key by `SyncCatalogProduct`)
+
+### Design
+
+Extend `DcbTagInference.ml` to detect both patterns and inject `@s.matches(Reventless.DcbTag.string)` on the **inner element type** of the array:
+
+```rescript
+// Before (manual):
+tagIds: array<@s.matches(Reventless.DcbTag.string) string>
+productId: array<@s.matches(Reventless.DcbTag.string) string>
+
+// After (PPX-generated, both forms):
+tagIds: array<string>      // *Ids — plural suffix
+productId: array<string>   // *Id with array<string> type
+```
+
+**Singular `*Id: array<string>` vs `*Ids: array<string>`:**
+The DcbTag key is the field name. `productId: array<string>` produces per-element query clauses
+`{key: "productId", value: element}`, matching events stored with the `productId` tag
+(e.g. `CatalogProductSynced` from `SyncCatalogProduct`). Using `productIds` would look for a
+different tag key and miss those events. Field naming must match the stored event's tag key.
+
+**Auto-tagging suppression:** The heuristic tags all `*Id: string` fields, including payload-only
+fields like `customerId` that are not DCB query keys. Use `@s.matches(S.string)` to suppress:
+`customerId: @s.matches(S.string) string`. See `docs/analysis/dcb-tag-auto-tagging-suppression.md`
+for a full analysis of options including a cleaner `@dcb.skip` opt-out (Option B).
+
+The same extension applies inside `@reventless.delegate` module transforms (Phase 6.1).
+
+### Implementation steps
+
+- [x] In `DcbTagInference.ml`: add `ends_with_ids` predicate (`*Ids` suffix)
+- [x] Extend `transform_label_decl` — if name ends with `*Ids` OR (`*Id` AND type is `array<string>`), inject annotation on inner element type; skip if already annotated
+- [x] Apply via shared `transform_structure` (covers both dcbTags mode and delegate transforms)
+- [x] Add PPX test assertions: `*Ids: array<string>` and `*Id: array<string>` in `StateChangeSlice/` folder both annotated
+- [x] Update `@@reventless.dcbTags` entry in the PPX annotations API section
+- [x] Full build (0 warnings, 0 errors) + test pass (935 Jest tests, 25 PPX integration tests)
+
+---
+
 ## Summary
 
 | Phase | Feature | Status | Lines Eliminated |
 |---|---|---|---|
 | 0.1 | Project scaffold | ✅ Done | — |
 | 0.2 | CI cross-compilation | 🔶 Workflow created, needs verification | — |
-| 0.3 | Test infrastructure | ✅ Done (14 assertions) | — |
+| 0.3 | Test infrastructure | ✅ Done (25 assertions) | — |
 | 1 | `moduleUrl` auto-injection | ✅ Done | 298 |
 | 2 | DCB `*Id` auto-annotation | ✅ Done | 126+ |
 | 3 | Implicit `module Id` | ✅ Done | 195 |
 | 4 | Spec/Behavior header macros | ✅ Done | 780 |
 | 5 | Projection Mappings macro | ✅ Done | 120 |
-| 6.1 | DCB delegate shim | ✅ Done | ~14 (2 files × 7 lines) |
+| 6.1 | DCB delegate shim + EP mapping `open` | ✅ Done | ~18 (4 files × ~2 lines each) |
 | 6.2 | ReadModel spec defaults | ✅ Done | 21 (7×3 lines) |
 | 7 | Documentation | 🔶 Partial (guide + rules updated) | — |
-| **Total done** | | **Phases 0–6, 7 (partial)** | **~1,435 lines** |
-| **Remaining** | | **Phases 0.2, 7 (docs site completion)** | **~0 lines** |
+| 8 | Auto-detect slice folder → drop `@@reventless.dcbTags` | ✅ Done | ~16 annotations |
+| 9 | `*Id(s): array<string>` DCB tag annotation | ✅ Done | ~few manual annotations |
+| **Total done** | | **Phases 0–9, 7 (partial)** | **~1,570+ lines** |
+| **Remaining** | | **Phases 0.2, 7 (docs site completion)** | — |
 
 ### Known limitations (cannot be PPX-migrated)
 - `moduleUrl` for ExtensionPoint inline modules inside functor bodies (OrderingPlugin.res, CatalogPlugin.res) — requires top-level `%raw` captured by closure
 - `moduleUrl` inside Builder framework files — PPX appends at file end, but value needed inside functor
-- `@s.matches` inside inner modules (ExtensionPointMapping Delegate modules) — addressed in Phase 6.1 via `@reventless.delegate`
-- Test fixture specs defined as inner modules (`module AggSpec = { ... }`) — same limitation
+- Test fixture specs defined as inner modules (`module AggSpec = { ... }`) — file-level PPX cannot inject into inner module bodies
 
 ### PPX annotations (final API)
-- `@@reventless.spec` — auto-injects `let name`, `module Id`, `let moduleUrl`. Derives name from filename (strips component suffixes). In `*Spec` namespaces, prefixes with plugin name for dotted names. For `*ReadModel*` files with `@schema type state` and no `let config`, also auto-injects `open Reventless.ReadModel; let config = config(); let subIdConfig = None`.
+- `@@reventless.spec` — auto-injects `let name`, `module Id`, `let moduleUrl`. Derives name from filename (strips component suffixes). In `*Spec` namespaces, prefixes with plugin name for dotted names. For `*ReadModel*` files with `@schema type state` and no `let config`, also auto-injects `open Reventless.ReadModel; let config = config(); let subIdConfig = None`. For `*ExtensionPointMapping*` files, auto-injects `open ReventlessInfra.ExtensionPointMapping` (brings `PublishEvent`, `PublishCommand`, `PublishEventAsync`, `Call` into scope). In `@@reventless.spec`-annotated files, any module named `Delegate` is auto-transformed (injects `module Id`, `@schema type command = unit`, dcbTags on `*Id`/`*Ids` event fields, `@schema type error = unit`, `let moduleUrl`).
 - `@@reventless.spec("ExplicitName")` — same, but uses the provided name instead of deriving
 - `@@reventless.behavior` — auto-injects `open Spec`, `module Spec = Spec`, `let moduleUrl`. Derives spec name from filename.
 - `@@reventless.behavior(SpecName)` — same, but uses the provided spec module name
-- `@@reventless.dcbTags` — auto-injects `@s.matches(Reventless.DcbTag.string)` on `*Id: string` fields in `@schema` types
+- `@@reventless.dcbTags` — explicit opt-in for DCB tag annotation outside slice folders. Auto-injects `@s.matches(Reventless.DcbTag.string)` on: `*Id: string` scalar fields; element types of `*Id: array<string>` fields (singular with array type, for cross-entity queries); element types of `*Ids: array<string>` fields (plural, for multi-value storage). Implicit for files inside `*Slice/` folders (Phase 8). To suppress auto-tagging on a specific `*Id` payload field that is not a DCB query key, use `@s.matches(S.string)` on the type expression. See `docs/analysis/dcb-tag-auto-tagging-suppression.md`.
 - `@reventless.projections` — on module bindings inside functor bodies. Auto-injects `module M = Reventless.Projection.Mappings.Make(Target)`, `module type Mapping = M.Mapping`, and `let moduleUrl`. Extracts `Target` from the module constraint (`with module Target := X`). Works at any nesting depth.
-- `@reventless.delegate` — on `Delegate` module bindings inside ExtensionPointMapping files. Auto-injects `module Id = Reventless.Id.String`, `@schema type command = unit`, `@schema type error = unit`, dcbTags on `*Id: string` event fields, and `let moduleUrl`. Sury generates `commandSchema`/`errorSchema` from the injected type declarations.
+- `@reventless.delegate` — explicit opt-in for `Delegate`-style transforms outside `*ExtensionPointMapping*` files. In `@@reventless.spec`-annotated `*ExtensionPointMapping*` files, `module Delegate` is auto-transformed without this attribute.

@@ -53,7 +53,7 @@ describe("PlaceOrder:", () => {
             PlaceOrder.OrderPlaced({
               orderId: "ord-1",
               customerId: "cust-1",
-              productIds: ["prod-1", "prod-2"],
+              productId: ["prod-1", "prod-2"],
             }),
           ]),
         ),
@@ -156,11 +156,11 @@ describe("CancelOrder:", () => {
       () =>
         expect(
           CancelOrder.decide(
-            {CancelOrder.exists: true, shipped: false, cancelled: false, productIds: ["prod-1"]},
+            {CancelOrder.exists: true, shipped: false, cancelled: false, productId: ["prod-1"]},
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(
-          Ok([CancelOrder.OrderCancelled({orderId: "ord-1", productIds: ["prod-1"]})]),
+          Ok([CancelOrder.OrderCancelled({orderId: "ord-1", productId: ["prod-1"]})]),
         ),
     )
 
@@ -169,7 +169,7 @@ describe("CancelOrder:", () => {
       () =>
         expect(
           CancelOrder.decide(
-            {CancelOrder.exists: true, shipped: false, cancelled: true, productIds: ["prod-1"]},
+            {CancelOrder.exists: true, shipped: false, cancelled: true, productId: ["prod-1"]},
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Ok([])),
@@ -180,7 +180,7 @@ describe("CancelOrder:", () => {
       () =>
         expect(
           CancelOrder.decide(
-            {CancelOrder.exists: true, shipped: true, cancelled: false, productIds: ["prod-1"]},
+            {CancelOrder.exists: true, shipped: true, cancelled: false, productId: ["prod-1"]},
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Error(CancelOrder.OrderAlreadyShipped)),

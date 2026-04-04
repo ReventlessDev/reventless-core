@@ -2,7 +2,6 @@
 // Maintains a local shadow of Catalog products inside the Ordering DCB event log.
 
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {name: string, price: float}
 let initialState = {name: "", price: 0.0}

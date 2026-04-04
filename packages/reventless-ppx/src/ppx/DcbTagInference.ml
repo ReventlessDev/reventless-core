@@ -16,6 +16,13 @@ let dcb_tag_attr ~loc =
     attr_payload = payload;
     attr_loc = loc }
 
+let ends_with_ids name =
+  let len = String.length name in
+  len >= 4
+  && name.[len - 1] = 's'
+  && name.[len - 2] = 'd'
+  && name.[len - 3] = 'I'
+
 let has_s_matches_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) ->
     String.equal attr.attr_name.txt "s.matches"
@@ -34,6 +41,19 @@ let transform_label_decl ~loc (ld : label_declaration) =
     let new_type = { ld.pld_type with
                      ptyp_attributes = attr :: ld.pld_type.ptyp_attributes } in
     { ld with pld_type = new_type }
+  else if Util.ends_with_id ld.pld_name.txt || ends_with_ids ld.pld_name.txt then
+    (* *Id: array<string> or *Ids: array<string> → annotate inner element type *)
+    (match ld.pld_type.ptyp_desc with
+     | Ptyp_constr ({ txt = Lident "array"; _ } as arr_lid, [elem])
+       when (match elem.ptyp_desc with
+             | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
+             | _ -> false)
+            && not (has_s_matches_attr elem.ptyp_attributes) ->
+       let attr = dcb_tag_attr ~loc in
+       let new_elem = { elem with ptyp_attributes = attr :: elem.ptyp_attributes } in
+       let new_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [new_elem]) } in
+       { ld with pld_type = new_type }
+     | _ -> ld)
   else
     ld
 

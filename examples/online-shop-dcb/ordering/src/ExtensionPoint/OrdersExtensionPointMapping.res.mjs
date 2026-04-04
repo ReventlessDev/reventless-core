@@ -8,12 +8,12 @@ let eventSchema = S.union([
     TAG: "OrderPlaced",
     orderId: s.m(DcbTag$Reventless.string),
     customerId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(S.array(S.string))
+    productIds: s.m(S.array(DcbTag$Reventless.string))
   })),
   S.schema(s => ({
     TAG: "OrderCancelled",
     orderId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(S.array(S.string))
+    productIds: s.m(S.array(DcbTag$Reventless.string))
   }))
 ]);
 
@@ -57,12 +57,21 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   }));
 };
 
+let name = "Orders";
+
+let Id;
+
 let ExtensionPoint;
 
+let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
+
 export {
+  name,
+  Id,
   ExtensionPoint,
   Delegate,
   mapIncomingCommand,
   mapOutgoingEvent,
+  moduleUrl,
 }
 /* eventSchema Not a pure module */

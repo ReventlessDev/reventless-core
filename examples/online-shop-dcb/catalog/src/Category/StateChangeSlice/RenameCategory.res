@@ -1,7 +1,6 @@
 // RenameCategory StateChangeSlice.
 // Requires category to exist and not be archived.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, archived: bool}
 

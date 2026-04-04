@@ -47,7 +47,7 @@ Jest.describe("PlaceOrder:", () => {
           TAG: "OrderPlaced",
           orderId: "ord-1",
           customerId: "cust-1",
-          productIds: [
+          productId: [
             "prod-1",
             "prod-2"
           ]
@@ -144,7 +144,7 @@ Jest.describe("CancelOrder:", () => Jest.describe("decide", () => {
     exists: true,
     shipped: false,
     cancelled: false,
-    productIds: ["prod-1"]
+    productId: ["prod-1"]
   }, {
     TAG: "CancelOrder",
     orderId: "ord-1"
@@ -153,14 +153,14 @@ Jest.describe("CancelOrder:", () => Jest.describe("decide", () => {
     _0: [{
         TAG: "OrderCancelled",
         orderId: "ord-1",
-        productIds: ["prod-1"]
+        productId: ["prod-1"]
       }]
   }));
   Jest.test("on cancelled order is idempotent (no events)", () => Jest.Expect.toEqual(Jest.Expect.expect(CancelOrder$OrderingPlugin.decide({
     exists: true,
     shipped: false,
     cancelled: true,
-    productIds: ["prod-1"]
+    productId: ["prod-1"]
   }, {
     TAG: "CancelOrder",
     orderId: "ord-1"
@@ -172,7 +172,7 @@ Jest.describe("CancelOrder:", () => Jest.describe("decide", () => {
     exists: true,
     shipped: true,
     cancelled: false,
-    productIds: ["prod-1"]
+    productId: ["prod-1"]
   }, {
     TAG: "CancelOrder",
     orderId: "ord-1"

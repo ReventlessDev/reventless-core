@@ -57,12 +57,21 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
     }];
 };
 
+let name = "Products";
+
+let Id;
+
 let ExtensionPoint;
 
+let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
+
 export {
+  name,
+  Id,
   ExtensionPoint,
   Delegate,
   mapIncomingCommand,
   mapOutgoingEvent,
+  moduleUrl,
 }
 /* eventSchema Not a pure module */

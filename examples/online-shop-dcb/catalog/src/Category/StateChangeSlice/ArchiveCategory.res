@@ -1,7 +1,6 @@
 // ArchiveCategory StateChangeSlice.
 // Requires category to exist; idempotent if already archived.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, archived: bool}
 

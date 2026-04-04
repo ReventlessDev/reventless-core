@@ -15,7 +15,7 @@ let initialState = {
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
-    productIds: s.m(S.array(S.string))
+    productIds: s.m(S.array(DcbTag$Reventless.string))
   })),
   S.literal("OrderShipped"),
   S.literal("OrderCancelled")
@@ -61,7 +61,7 @@ let errorSchema = S.union([
 let eventSchema = S.schema(s => ({
   TAG: "OrderCancelled",
   orderId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(S.array(S.string))
+  productIds: s.m(S.array(DcbTag$Reventless.string))
 }));
 
 function decide(state, command) {

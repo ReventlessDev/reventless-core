@@ -1,7 +1,6 @@
 // AddCategory StateChangeSlice.
 // Handles the AddCategory command; rejects duplicate creation via DCB optimistic concurrency.
 @@reventless.spec
-@@reventless.dcbTags
 
 
 type state = {exists: bool, archived: bool}

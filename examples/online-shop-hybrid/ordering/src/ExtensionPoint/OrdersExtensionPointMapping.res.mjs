@@ -8,12 +8,12 @@ let eventSchema = S.union([
     TAG: "OrderPlaced",
     orderId: s.m(DcbTag$Reventless.string),
     customerId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(S.array(S.string))
+    productId: s.m(S.array(DcbTag$Reventless.string))
   })),
   S.schema(s => ({
     TAG: "OrderCancelled",
     orderId: s.m(DcbTag$Reventless.string),
-    productIds: s.m(S.array(S.string))
+    productId: s.m(S.array(DcbTag$Reventless.string))
   }))
 ]);
 
@@ -34,35 +34,44 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   if (event.TAG === "OrderPlaced") {
     let customerId = event.customerId;
     let orderId = event.orderId;
-    return event.productIds.map(productId => ({
+    return event.productId.map(pid => ({
       TAG: "PublishEvent",
-      _0: productId,
+      _0: pid,
       _1: {
         TAG: "ItemOrdered",
-        productId: productId,
+        productId: pid,
         orderId: orderId,
         customerId: customerId
       }
     }));
   }
   let orderId$1 = event.orderId;
-  return event.productIds.map(productId => ({
+  return event.productId.map(pid => ({
     TAG: "PublishEvent",
-    _0: productId,
+    _0: pid,
     _1: {
       TAG: "ItemOrderCancelled",
-      productId: productId,
+      productId: pid,
       orderId: orderId$1
     }
   }));
 };
 
+let name = "Orders";
+
+let Id;
+
 let ExtensionPoint;
 
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
+
 export {
+  name,
+  Id,
   ExtensionPoint,
   Delegate,
   mapIncomingCommand,
   mapOutgoingEvent,
+  moduleUrl,
 }
 /* eventSchema Not a pure module */

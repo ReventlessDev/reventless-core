@@ -2,7 +2,6 @@
 // Receives external supplier JSON, validates and translates to an AddProduct command.
 
 @@reventless.spec
-@@reventless.dcbTags
 
 @schema
 type externalInput = {

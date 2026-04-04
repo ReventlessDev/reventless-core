@@ -1,7 +1,6 @@
 // RegisterCustomer StateChangeSlice.
 // Handles the RegisterCustomer command; rejects duplicate registration.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool}
 

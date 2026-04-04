@@ -3,19 +3,19 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let initialState_productIds = [];
+let initialState_productId = [];
 
 let initialState = {
   exists: false,
   shipped: false,
   cancelled: false,
-  productIds: initialState_productIds
+  productId: initialState_productId
 };
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
-    productIds: s.m(S.array(S.string))
+    productId: s.m(S.array(DcbTag$Reventless.string))
   })),
   S.literal("OrderShipped"),
   S.literal("OrderCancelled")
@@ -28,14 +28,14 @@ function evolve(state, event) {
         exists: state.exists,
         shipped: true,
         cancelled: state.cancelled,
-        productIds: state.productIds
+        productId: state.productId
       };
     } else {
       return {
         exists: state.exists,
         shipped: state.shipped,
         cancelled: true,
-        productIds: state.productIds
+        productId: state.productId
       };
     }
   } else {
@@ -43,7 +43,7 @@ function evolve(state, event) {
       exists: true,
       shipped: false,
       cancelled: false,
-      productIds: event.productIds
+      productId: event.productId
     };
   }
 }
@@ -61,7 +61,7 @@ let errorSchema = S.union([
 let eventSchema = S.schema(s => ({
   TAG: "OrderCancelled",
   orderId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(S.array(S.string))
+  productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 
 function decide(state, command) {
@@ -82,7 +82,7 @@ function decide(state, command) {
         _0: [{
             TAG: "OrderCancelled",
             orderId: command.orderId,
-            productIds: state.productIds
+            productId: state.productId
           }]
       };
     }

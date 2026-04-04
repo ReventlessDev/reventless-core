@@ -1,13 +1,10 @@
 // Maps internal Catalog events to the stable ProductsExtensionPoint public API.
-
-open Reventless
-open ReventlessInfra.ExtensionPointMapping
+@@reventless.spec
 
 module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
 
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
-@reventless.delegate
 module Delegate = {
   let name = "CatalogEventLog"
   @schema

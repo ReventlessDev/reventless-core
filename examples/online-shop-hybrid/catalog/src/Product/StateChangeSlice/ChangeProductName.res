@@ -2,7 +2,6 @@
 // Requires product to exist; idempotent when name is unchanged.
 
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, currentName: string}
 

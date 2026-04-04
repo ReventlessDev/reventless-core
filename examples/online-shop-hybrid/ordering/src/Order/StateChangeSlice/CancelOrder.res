@@ -2,21 +2,20 @@
 // Requires order to exist and not be shipped; idempotent if already cancelled.
 
 @@reventless.spec
-@@reventless.dcbTags
 
-type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
+type state = {exists: bool, shipped: bool, cancelled: bool, productId: array<string>}
 
-let initialState = {exists: false, shipped: false, cancelled: false, productIds: []}
+let initialState = {exists: false, shipped: false, cancelled: false, productId: []}
 
 @schema
 type consumedEvent =
-  | OrderPlaced({productIds: array<string>})
+  | OrderPlaced({productId: array<string>})
   | OrderShipped
   | OrderCancelled
 
 let evolve = (state, event) =>
   switch event {
-  | OrderPlaced({productIds}) => {exists: true, shipped: false, cancelled: false, productIds}
+  | OrderPlaced({productId}) => {exists: true, shipped: false, cancelled: false, productId}
   | OrderShipped => {...state, shipped: true}
   | OrderCancelled => {...state, cancelled: true}
   }
@@ -33,7 +32,7 @@ type error =
 type event =
   | OrderCancelled({
       orderId: string,
-      productIds: array<string>,
+      productId: array<string>,
     })
 
 let decide = (state, command) =>
@@ -46,6 +45,6 @@ let decide = (state, command) =>
     } else if state.cancelled {
       Ok([]) // idempotent — already cancelled
     } else {
-      Ok([OrderCancelled({orderId: theId, productIds: state.productIds})])
+      Ok([OrderCancelled({orderId: theId, productId: state.productId})])
     }
   }

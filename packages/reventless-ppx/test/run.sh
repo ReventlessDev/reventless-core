@@ -78,8 +78,8 @@ cat > "$PLUGIN/src/Aggregate/ProductBehavior.res" <<'EOF'
 
 type state = bool
 let initialState = false
-let evolve = (_s, _e: Product.event) => true
-let decide = (_s, _c: Product.command) => Ok([Product.Created])
+let evolve = (_s, _e: event) => true
+let decide = (_s, _c: command) => Ok([Created])
 EOF
 
 # ReadModel — strips "ReadModel" suffix, auto-injects ReadModel defaults
@@ -165,32 +165,31 @@ cat > "$DCB/rescript.json" <<EOF
   "package-specs": { "module": "esmodule", "in-source": true },
   "suffix": ".res.mjs",
   "sources": [{ "dir": "src", "subdirs": true }],
-  "dependencies": ["sury", "@reventlessdev/reventless-spec"]
+  "dependencies": ["sury", "@reventlessdev/reventless-spec", "@reventlessdev/reventless-infra"]
 }
 EOF
 
 ln -s "$REPO_ROOT/node_modules" "$DCB/node_modules"
 
-# DCB StateChangeSlice — *Id fields should get auto-annotated
+# DCB StateChangeSlice — *Id fields should get auto-annotated (explicit @@reventless.dcbTags)
 cat > "$DCB/src/AddItem.res" <<'EOF'
 @@reventless.spec
 @@reventless.dcbTags
 
 @schema
-type command = AddItem({itemId: string, name: string, count: int})
+type command = AddItem({itemId: string, name: string, count: int, tagIds: array<string>})
 
 @schema
-type event = ItemAdded({itemId: string, name: string, count: int})
+type event = ItemAdded({itemId: string, name: string, count: int, tagIds: array<string>})
 
 @schema
 type error = AlreadyExists
 EOF
 
-# DCB Delegate module — @reventless.delegate auto-injects Id, command/error unit types, dcbTags, moduleUrl
+# DCB Delegate module — @@reventless.spec auto-detects module Delegate, no @reventless.delegate needed
 cat > "$DCB/src/ItemMapping.res" <<'EOF'
-open Reventless
+@@reventless.spec
 
-@reventless.delegate
 module Delegate = {
   let name = "ItemCatalog"
   @schema
@@ -200,6 +199,54 @@ module Delegate = {
 }
 
 let mapOutgoingEvent = None
+EOF
+
+# ExtensionPointMapping — open ReventlessInfra.ExtensionPointMapping auto-injected by filename
+cat > "$DCB/src/ItemExtensionPointMapping.res" <<'EOF'
+@@reventless.spec
+
+module ExtensionPoint = {
+  let name = "Test.Items"
+  let moduleUrl = "test"
+  @schema type command = unit
+  @schema type event = | ItemPublished({itemId: string})
+  @schema type directive = unit
+}
+
+module Delegate = {
+  let name = "ItemCatalog"
+  @schema
+  type event =
+    | ItemAdded({itemId: string, name: string})
+}
+
+let mapIncomingCommand = (_id, _command, _meta) => []
+
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+  switch event {
+  | Delegate.ItemAdded({itemId, name: _}) => [
+      PublishEvent(itemId, ExtensionPoint.ItemPublished({itemId: itemId})),
+    ]
+  }
+)
+EOF
+
+# Phase 8 + 9: file in StateChangeSlice/ folder — dcbTags auto-applied;
+# *Id: array<string> and *Ids: array<string> also annotated on inner element
+mkdir -p "$DCB/src/StateChangeSlice"
+cat > "$DCB/src/StateChangeSlice/TransferItems.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Transfer({fromId: string, toId: string,
+  productId: array<string>, itemIds: array<string>})
+
+@schema
+type event = Transferred({fromId: string, toId: string,
+  productId: array<string>, itemIds: array<string>})
+
+@schema
+type error = NotFound
 EOF
 
 # ─── Build PPX ──────────────────────────────────────────────────────
@@ -277,28 +324,45 @@ if ! (cd "$DCB" && npx rescript build 2>&1); then
 fi
 
 echo ""
-echo "=== Test: @@reventless.dcbTags (auto-inject @s.matches on *Id fields) ==="
+echo "=== Test: @@reventless.dcbTags (*Id + *Ids auto-annotation) ==="
 JS="$DCB/src/AddItem.res.mjs"
 assert_js_contains "$JS" 'DcbTag'                         "DcbTag referenced in output (auto-injected)"
 assert_js_contains "$JS" 'let name = "AddItem"'           "DCB spec name derived from filename"
-# Verify itemId gets DcbTag.string, but name and count do not
-# In the compiled JS, sury generates schema with s.m(DcbTag.string) for annotated fields
-# Count the DcbTag occurrences — should be exactly 2 (command.itemId + event.itemId)
+# itemId (x2 types) + tagIds element (x2 types) + import = DcbTag refs
 DCB_COUNT=$(grep -c 'DcbTag' "$JS" 2>/dev/null || echo 0)
-if [ "$DCB_COUNT" -ge 2 ]; then
-  pass "DcbTag injected on itemId fields only (found $DCB_COUNT references)"
+if [ "$DCB_COUNT" -ge 4 ]; then
+  pass "*Id and *Ids fields annotated (found $DCB_COUNT DcbTag refs)"
 else
-  fail "DcbTag injection count" "expected >=2 DcbTag refs, got $DCB_COUNT"
+  fail "DcbTag injection count" "expected >=4 DcbTag refs for itemId+tagIds, got $DCB_COUNT"
 fi
 assert_js_contains "$JS" 'let moduleUrl'                   "DCB moduleUrl injected"
 
 echo ""
-echo "=== Test: @reventless.delegate (Delegate module auto-injection) ==="
+echo "=== Test: module Delegate auto-detected via @@reventless.spec (no @reventless.delegate needed) ==="
 JS="$DCB/src/ItemMapping.res.mjs"
 assert_js_contains "$JS" 'DcbTag'                         "delegate: DcbTag injected on *Id event fields"
 assert_js_contains "$JS" 'moduleUrl'                      "delegate: moduleUrl injected"
-# Compilation proves module Id, @schema command/error types were injected correctly
-pass "delegate: module Id + @schema command/error auto-injected (compiles)"
+pass "delegate: auto-detected by module name (no @reventless.delegate attr, compiles)"
+
+echo ""
+echo "=== Test: *ExtensionPointMapping filename — open ReventlessInfra.ExtensionPointMapping auto-injected ==="
+JS="$DCB/src/ItemExtensionPointMapping.res.mjs"
+# PublishEvent is used without explicit open — compiles proves PPX injected the open
+pass "EP mapping: compiles using PublishEvent without explicit open (PPX auto-injected)"
+assert_js_contains "$JS" 'moduleUrl'                      "EP mapping: moduleUrl injected"
+
+echo ""
+echo "=== Test: Phase 8 — slice folder auto-applies dcbTags (no @@reventless.dcbTags needed) ==="
+JS="$DCB/src/StateChangeSlice/TransferItems.res.mjs"
+assert_js_contains "$JS" 'DcbTag'                         "slice folder: DcbTag auto-injected"
+# fromId + toId each in command+event = 4 *Id refs; itemIds element in command+event = 2 more
+# fromId+toId (x2 types) + productId array elems (x2 types) + itemIds array elems (x2 types)
+SLICE_COUNT=$(grep -c 'DcbTag' "$JS" 2>/dev/null || echo 0)
+if [ "$SLICE_COUNT" -ge 6 ]; then
+  pass "slice folder: *Id scalar, *Id array, *Ids array all annotated (found $SLICE_COUNT)"
+else
+  fail "slice folder DcbTag count" "expected >=6 for fromId+toId+productId[]+itemIds[], got $SLICE_COUNT"
+fi
 
 echo ""
 echo "─────────────────────────"

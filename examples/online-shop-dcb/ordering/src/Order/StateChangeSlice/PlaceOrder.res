@@ -1,7 +1,6 @@
 // PlaceOrder StateChangeSlice.
 // Handles the PlaceOrder command; rejects duplicate placement.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool}
 

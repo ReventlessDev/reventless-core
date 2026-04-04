@@ -15,7 +15,7 @@ let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(S.array(S.string))
+  productIds: s.m(S.array(DcbTag$Reventless.string))
 }));
 
 let errorSchema = S.literal("OrderAlreadyPlaced");
@@ -24,7 +24,7 @@ let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
   orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(S.array(S.string))
+  productIds: s.m(S.array(DcbTag$Reventless.string))
 }));
 
 function decide(state, command) {

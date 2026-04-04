@@ -7,7 +7,7 @@ open Reventless.Projection
 
 @schema
 type consumedEvent =
-  | OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
+  | OrderPlaced({orderId: string, customerId: string, productId: array<string>})
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
 
@@ -15,14 +15,14 @@ type consumedEvent =
 type state = {
   orderId: string,
   customerId: string,
-  productIds: array<string>,
+  productId: array<string>,
   status: string, // "placed" | "shipped" | "cancelled"
 }
 
 let project = event =>
   switch event {
-  | OrderPlaced({orderId, customerId, productIds}) => [
-      Set(orderId, {orderId, customerId, productIds, status: "placed"}),
+  | OrderPlaced({orderId, customerId, productId}) => [
+      Set(orderId, {orderId, customerId, productId, status: "placed"}),
     ]
   | OrderShipped({orderId}) => [Update(orderId, state => {...state, status: "shipped"})]
   | OrderCancelled({orderId}) => [Update(orderId, state => {...state, status: "cancelled"})]

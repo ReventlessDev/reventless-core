@@ -1,7 +1,6 @@
 // ChangeAddress StateChangeSlice.
 // Requires customer to exist and not be deactivated; idempotent when address is unchanged.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, deactivated: bool, currentAddress: string}
 

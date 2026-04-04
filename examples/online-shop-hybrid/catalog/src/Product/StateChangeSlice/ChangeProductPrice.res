@@ -2,7 +2,6 @@
 // Requires product to exist; idempotent when price is unchanged.
 
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, currentPrice: float}
 

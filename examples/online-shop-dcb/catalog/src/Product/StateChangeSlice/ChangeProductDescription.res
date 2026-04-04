@@ -1,7 +1,6 @@
 // ChangeProductDescription StateChangeSlice.
 // Requires product to exist; idempotent when description is unchanged.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, currentDescription: string}
 

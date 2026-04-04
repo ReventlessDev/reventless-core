@@ -1,7 +1,6 @@
 // ChangeEmail StateChangeSlice.
 // Requires customer to exist and not be deactivated; idempotent when email is unchanged.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, deactivated: bool, currentEmail: string}
 

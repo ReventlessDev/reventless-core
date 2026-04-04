@@ -1,7 +1,6 @@
 // AddProduct StateChangeSlice.
 // Handles the AddProduct command; rejects duplicate creation via DCB optimistic concurrency.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool}
 

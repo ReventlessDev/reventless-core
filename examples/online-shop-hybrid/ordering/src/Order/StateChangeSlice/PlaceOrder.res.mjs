@@ -32,7 +32,7 @@ function evolve(state, event) {
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(S.string),
   productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 
@@ -48,7 +48,7 @@ let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
   orderId: s.m(DcbTag$Reventless.string),
   customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(S.array(S.string))
+  productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 
 function decide(state, command) {
@@ -58,8 +58,8 @@ function decide(state, command) {
       _0: "OrderAlreadyPlaced"
     };
   }
-  let productIds = command.productId;
-  let missing = productIds.filter(pid => !state.availableProductIds.has(pid));
+  let productId = command.productId;
+  let missing = productId.filter(pid => !state.availableProductIds.has(pid));
   if (missing.length !== 0) {
     return {
       TAG: "Error",
@@ -75,7 +75,7 @@ function decide(state, command) {
           TAG: "OrderPlaced",
           orderId: command.orderId,
           customerId: command.customerId,
-          productIds: productIds
+          productId: productId
         }]
     };
   }

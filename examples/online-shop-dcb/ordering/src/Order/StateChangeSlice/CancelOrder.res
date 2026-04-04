@@ -1,7 +1,6 @@
 // CancelOrder StateChangeSlice.
 // Requires order to exist and not be shipped; idempotent if already cancelled.
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
 

@@ -89,6 +89,16 @@ let derive_spec_name ~loc name_opt =
 
 (* --- Phase 6.2: ReadModel auto-defaults --- *)
 
+let gen_open_ep_mapping ~loc =
+  let lid = { txt = Ldot (Lident "ReventlessInfra", "ExtensionPointMapping"); loc } in
+  { pstr_desc = Pstr_open {
+      popen_expr = { pmod_desc = Pmod_ident lid; pmod_loc = loc; pmod_attributes = [] };
+      popen_override = Fresh;
+      popen_loc = loc;
+      popen_attributes = [];
+    };
+    pstr_loc = loc }
+
 let gen_open_readmodel ~loc =
   let lid = { txt = Ldot (Lident "Reventless", "ReadModel"); loc } in
   { pstr_desc = Pstr_open {
@@ -217,30 +227,32 @@ let transform_projections_module ~loc ~specifier (mb : module_binding) : module_
      | _ -> { mb with pmb_attributes = attrs })
   | _ -> { mb with pmb_attributes = attrs }
 
-let rec walk_structure ~specifier (str : structure) : structure =
+let rec walk_structure ~specifier ~is_spec (str : structure) : structure =
   List.map (fun (item : structure_item) ->
     match item.pstr_desc with
     | Pstr_module mb ->
       let has_proj = Util.has_attr "reventless.projections" mb.pmb_attributes in
       let has_del = Util.has_attr "reventless.delegate" mb.pmb_attributes in
+      let is_delegate = has_del ||
+        (is_spec && (match mb.pmb_name.txt with Some "Delegate" -> true | _ -> false)) in
       let mb = if has_proj then
         transform_projections_module ~loc:item.pstr_loc ~specifier mb
-      else if has_del then
+      else if is_delegate then
         transform_delegate_module ~loc:item.pstr_loc ~specifier mb
       else mb in
-      let mb = { mb with pmb_expr = walk_module_expr ~specifier mb.pmb_expr } in
+      let mb = { mb with pmb_expr = walk_module_expr ~specifier ~is_spec mb.pmb_expr } in
       { item with pstr_desc = Pstr_module mb }
     | _ -> item
   ) str
 
-and walk_module_expr ~specifier (me : module_expr) : module_expr =
+and walk_module_expr ~specifier ~is_spec (me : module_expr) : module_expr =
   match me.pmod_desc with
   | Pmod_structure str ->
-    { me with pmod_desc = Pmod_structure (walk_structure ~specifier str) }
+    { me with pmod_desc = Pmod_structure (walk_structure ~specifier ~is_spec str) }
   | Pmod_functor (param, body) ->
-    { me with pmod_desc = Pmod_functor (param, walk_module_expr ~specifier body) }
+    { me with pmod_desc = Pmod_functor (param, walk_module_expr ~specifier ~is_spec body) }
   | Pmod_constraint (body, mty) ->
-    { me with pmod_desc = Pmod_constraint (walk_module_expr ~specifier body, mty) }
+    { me with pmod_desc = Pmod_constraint (walk_module_expr ~specifier ~is_spec body, mty) }
   | _ -> me
 
 let has_module_level_attr_deep (str : structure) =
@@ -266,7 +278,9 @@ let has_module_level_attr_deep (str : structure) =
   !found
 
 let transform (str : structure) : structure =
-  let has_mode = detect_mode str <> None in
+  let initial_mode = detect_mode str in
+  let has_mode = initial_mode <> None in
+  let is_spec = match initial_mode with Some (Spec _, _) -> true | _ -> false in
   let has_module_attr = has_module_level_attr_deep str in
   if not has_mode && not has_module_attr then str
   else
@@ -275,11 +289,12 @@ let transform (str : structure) : structure =
     | [] -> Location.none
   in
   let specifier = ModuleUrl.compute_specifier loc in
-  let str = if has_module_attr then walk_structure ~specifier str else str in
+  let str = if has_module_attr || is_spec then walk_structure ~specifier ~is_spec str else str in
   match detect_mode str with
   | None -> str
   | Some (mode, loc) ->
-    let dcb_tags = has_dcb_tags_attr str in
+    let dcb_tags = has_dcb_tags_attr str
+                   || Util.is_in_slice_folder loc.loc_start.pos_fname in
     let body = strip_ppx_attrs str in
     let body = if dcb_tags then DcbTagInference.transform_structure ~loc body else body in
     match mode with
@@ -291,6 +306,9 @@ let transform (str : structure) : structure =
         | None -> false
       in
       let prefix = ref [] in
+      if Util.is_extensionpointmapping_filename loc.loc_start.pos_fname
+         && not (Util.has_open_dotted "ReventlessInfra" "ExtensionPointMapping" body) then
+        prefix := !prefix @ [gen_open_ep_mapping ~loc];
       if not (Util.has_let_binding "name" body) then
         prefix := !prefix @ [gen_name ~loc name];
       if has_reventless_spec && not (Util.has_module_binding "Id" body) then

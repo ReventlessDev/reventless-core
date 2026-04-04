@@ -2,12 +2,11 @@
 // Handles the PlaceOrder command; rejects duplicate placement and validates
 // that all referenced products have been synced to the ordering event log.
 //
-// The tagged array `productIds: array<string>` triggers automatic multi-clause
-// query construction: one OR clause per orderId and per productIds element —
+// The tagged array `productId: array<string>` triggers automatic multi-clause
+// query construction: one OR clause per orderId and per productId element —
 // fetching both Order and CatalogProduct events.
 
 @@reventless.spec
-@@reventless.dcbTags
 
 type state = {exists: bool, availableProductIds: Set.t<string>}
 
@@ -30,8 +29,8 @@ let evolve = (state, event) =>
 type command =
   | PlaceOrder({
       orderId: string,
-      customerId: string,
-      productIds: array<string>,
+      customerId: @s.matches(S.string) string,
+      productId: array<string>,
     })
 
 @schema
@@ -44,20 +43,20 @@ type event =
   | OrderPlaced({
       orderId: string,
       customerId: string,
-      productIds: array<string>,
+      productId: array<string>,
     })
 
 let decide = (state, command) =>
   switch command {
-  | PlaceOrder({orderId, customerId, productIds}) =>
+  | PlaceOrder({orderId, customerId, productId}) =>
     if state.exists {
       Error(OrderAlreadyPlaced)
     } else {
-      let missing = productIds->Array.filter(pid => !(state.availableProductIds->Set.has(pid)))
+      let missing = productId->Array.filter(pid => !(state.availableProductIds->Set.has(pid)))
       if missing->Array.length > 0 {
         Error(ProductsNotAvailable({missing: missing}))
       } else {
-        Ok([OrderPlaced({orderId, customerId, productIds})])
+        Ok([OrderPlaced({orderId, customerId, productId})])
       }
     }
   }

@@ -3,7 +3,6 @@
 // Resolved when OrderShipped arrives.
 
 @@reventless.spec
-@@reventless.dcbTags
 
 @schema
 type consumedEvent =
