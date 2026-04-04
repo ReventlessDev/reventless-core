@@ -28,7 +28,6 @@ import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
-import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "./adapter/GraphQL_Server.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
@@ -379,50 +378,15 @@ function MakeWithConfig(Config) {
     let name = Mapping.Delegate.name;
     let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
-    return Extension_Builder$ReventlessCore.Make(Mapping.ExtensionPoint)({
+    return {
+      Spec: Mapping.ExtensionPoint,
       name: name,
       moduleUrl: moduleUrl,
       mappings: mappings
-    });
+    };
   };
-  let Make2$1 = Mapping1 => (Mapping2 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  });
-  let Make3$1 = Mapping1 => (Mapping2 => (Mapping3 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let CM3 = ExtensionMapping$ReventlessInfra.Make(Mapping3);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2,
-      CM3
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  }));
-  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$3,
-    Make2: Make2$1,
-    Make3: Make3$1,
-    MakeMulti: MakeMulti$1
+    Make: Make$3
   };
   let Make$4 = Spec => TaskMaker.Make(Spec);
   let Task = {
@@ -1285,50 +1249,15 @@ function Make($star) {
     let name = Mapping.Delegate.name;
     let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
-    return Extension_Builder$ReventlessCore.Make(Mapping.ExtensionPoint)({
+    return {
+      Spec: Mapping.ExtensionPoint,
       name: name,
       moduleUrl: moduleUrl,
       mappings: mappings
-    });
+    };
   };
-  let Make2$1 = Mapping1 => (Mapping2 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  });
-  let Make3$1 = Mapping1 => (Mapping2 => (Mapping3 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let CM3 = ExtensionMapping$ReventlessInfra.Make(Mapping3);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2,
-      CM3
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  }));
-  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$4,
-    Make2: Make2$1,
-    Make3: Make3$1,
-    MakeMulti: MakeMulti$1
+    Make: Make$4
   };
   let Make$5 = Spec => TaskMaker.Make(Spec);
   let Task = {

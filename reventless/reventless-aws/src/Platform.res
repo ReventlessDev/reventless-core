@@ -239,71 +239,16 @@ module MakeWithConfig = (
   module Extension = {
     module Make = (
       Mapping: ReventlessInfra.ExtensionMapping.Mapping,
-    ): ReventlessInfra.Extension.T => {
+    ): ReventlessInfra.Extension.Blueprint => {
       module Spec = Mapping.ExtensionPoint
       module CompiledMapping = ReventlessInfra.ExtensionMapping.Make(Mapping)
-      module Mappings: ReventlessInfra.ExtensionMapping.Mappings with module Spec := Spec = {
-        module type Mapping = ReventlessInfra.ExtensionMapping.T
-          with module ExtensionPoint := Spec
-        let name = Mapping.Delegate.name
-        let moduleUrl = Mapping.Delegate.moduleUrl
-        let mappings: array<module(Mapping)> = [module(CompiledMapping)]
-      }
-      module Inner = ReventlessCore.Extension_Builder.Make(Spec, Mappings)
-      include Inner
+      module type Mapping = ReventlessInfra.ExtensionMapping.T
+        with module ExtensionPoint := Spec
+      let name = Mapping.Delegate.name
+      let moduleUrl = Mapping.Delegate.moduleUrl
+      let mappings: array<module(Mapping)> = [module(CompiledMapping)]
     }
 
-    module Make2 = (
-      Mapping1: ReventlessInfra.ExtensionMapping.Mapping,
-      Mapping2: ReventlessInfra.ExtensionMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
-    ): ReventlessInfra.Extension.T => {
-      module Spec = Mapping1.ExtensionPoint
-      module CM1 = ReventlessInfra.ExtensionMapping.Make(Mapping1)
-      module CM2 = ReventlessInfra.ExtensionMapping.Make(Mapping2)
-      module Mappings: ReventlessInfra.ExtensionMapping.Mappings with module Spec := Spec = {
-        module type Mapping = ReventlessInfra.ExtensionMapping.T
-          with module ExtensionPoint := Spec
-        let name =
-          Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
-        let moduleUrl = Mapping1.Delegate.moduleUrl
-        let mappings: array<module(Mapping)> = [module(CM1), module(CM2)]
-      }
-      module Inner = ReventlessCore.Extension_Builder.Make(Spec, Mappings)
-      include Inner
-    }
-
-    module Make3 = (
-      Mapping1: ReventlessInfra.ExtensionMapping.Mapping,
-      Mapping2: ReventlessInfra.ExtensionMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
-      Mapping3: ReventlessInfra.ExtensionMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
-    ): ReventlessInfra.Extension.T => {
-      module Spec = Mapping1.ExtensionPoint
-      module CM1 = ReventlessInfra.ExtensionMapping.Make(Mapping1)
-      module CM2 = ReventlessInfra.ExtensionMapping.Make(Mapping2)
-      module CM3 = ReventlessInfra.ExtensionMapping.Make(Mapping3)
-      module Mappings: ReventlessInfra.ExtensionMapping.Mappings with module Spec := Spec = {
-        module type Mapping = ReventlessInfra.ExtensionMapping.T
-          with module ExtensionPoint := Spec
-        let name =
-          Mapping1.Delegate.name ++
-          "+" ++
-          Mapping2.Delegate.name ++
-          "+" ++
-          Mapping3.Delegate.name
-        let moduleUrl = Mapping1.Delegate.moduleUrl
-        let mappings: array<module(Mapping)> = [module(CM1), module(CM2), module(CM3)]
-      }
-      module Inner = ReventlessCore.Extension_Builder.Make(Spec, Mappings)
-      include Inner
-    }
-
-    module MakeMulti = (
-      Spec: ReventlessInfra.ExtensionMapping.Spec,
-      Mappings: ReventlessInfra.ExtensionMapping.Mappings with module Spec := Spec,
-    ): ReventlessInfra.Extension.T => ReventlessCore.Extension_Builder.Make(Spec, Mappings)
   }
 
   module Task = {

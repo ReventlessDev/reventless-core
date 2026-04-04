@@ -115,33 +115,14 @@ module type T = {
     ) => ExtensionPoint.T
   }
 
-  /** Factory for extension components (single mapping). */
+  /** Factory for extension blueprints (single mapping).
+      Returns a blueprint — not a built component. `Plugin.make` builds it,
+      using the plugin name for the extension's component name and auto-merging
+      blueprints that target the same extension point. */
   module Extension: {
     module Make: (
       Mapping: ExtensionMapping.Mapping,
-    ) => Extension.T
-
-    /** Two-mapping variant — merges per-delegate extension mappings. */
-    module Make2: (
-      Mapping1: ExtensionMapping.Mapping,
-      Mapping2: ExtensionMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
-    ) => Extension.T
-
-    /** Three-mapping variant — merges per-delegate extension mappings. */
-    module Make3: (
-      Mapping1: ExtensionMapping.Mapping,
-      Mapping2: ExtensionMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
-      Mapping3: ExtensionMapping.Mapping
-        with module ExtensionPoint = Mapping1.ExtensionPoint,
-    ) => Extension.T
-
-    /** Multi-mapping variant with full control over name and mappings array. */
-    module MakeMulti: (
-      Spec: ExtensionMapping.Spec,
-      Mappings: ExtensionMapping.Mappings with module Spec := Spec,
-    ) => Extension.T
+    ) => Extension.Blueprint
   }
 
   /** Factory for task (background job / S3 trigger) components. */

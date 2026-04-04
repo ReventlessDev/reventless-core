@@ -31,7 +31,6 @@ import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginProjection.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
-import * as Extension_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Extension/Extension_Builder.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./adapter/Cloner/ClonerRunner_Fargate.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
@@ -208,50 +207,15 @@ function MakeWithConfig(Config) {
     let name = Mapping.Delegate.name;
     let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
-    return Extension_Builder$ReventlessCore.Make(Mapping.ExtensionPoint)({
+    return {
+      Spec: Mapping.ExtensionPoint,
       name: name,
       moduleUrl: moduleUrl,
       mappings: mappings
-    });
+    };
   };
-  let Make2$1 = Mapping1 => (Mapping2 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  });
-  let Make3$1 = Mapping1 => (Mapping2 => (Mapping3 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let CM3 = ExtensionMapping$ReventlessInfra.Make(Mapping3);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2,
-      CM3
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  }));
-  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$3,
-    Make2: Make2$1,
-    Make3: Make3$1,
-    MakeMulti: MakeMulti$1
+    Make: Make$3
   };
   let Make$4 = Spec => {
     let callbackModulePaths = {};
@@ -853,50 +817,15 @@ function Make($star) {
     let name = Mapping.Delegate.name;
     let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
-    return Extension_Builder$ReventlessCore.Make(Mapping.ExtensionPoint)({
+    return {
+      Spec: Mapping.ExtensionPoint,
       name: name,
       moduleUrl: moduleUrl,
       mappings: mappings
-    });
+    };
   };
-  let Make2$1 = Mapping1 => (Mapping2 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  });
-  let Make3$1 = Mapping1 => (Mapping2 => (Mapping3 => {
-    let CM1 = ExtensionMapping$ReventlessInfra.Make(Mapping1);
-    let CM2 = ExtensionMapping$ReventlessInfra.Make(Mapping2);
-    let CM3 = ExtensionMapping$ReventlessInfra.Make(Mapping3);
-    let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name + "+" + Mapping3.Delegate.name;
-    let moduleUrl = Mapping1.Delegate.moduleUrl;
-    let mappings = [
-      CM1,
-      CM2,
-      CM3
-    ];
-    return Extension_Builder$ReventlessCore.Make(Mapping1.ExtensionPoint)({
-      name: name,
-      moduleUrl: moduleUrl,
-      mappings: mappings
-    });
-  }));
-  let MakeMulti$1 = Spec => (Mappings => Extension_Builder$ReventlessCore.Make(Spec)(Mappings));
   let Extension = {
-    Make: Make$4,
-    Make2: Make2$1,
-    Make3: Make3$1,
-    MakeMulti: MakeMulti$1
+    Make: Make$4
   };
   let Make$5 = Spec => {
     let callbackModulePaths = {};

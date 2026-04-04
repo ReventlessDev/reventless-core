@@ -12,7 +12,7 @@ module type T = {
     ~name: string,
     ~heartbeatInterval: int,
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPoint.T)>=?,
-    ~extensions: array<module(ReventlessInfra.Extension.T)>=?,
+    ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=?,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=?,
     ~readModels: array<
       module(ReventlessInfra.ReadModel.T with type api = api and type role = role),

@@ -1,6 +1,6 @@
 # Extension Plugin Naming + Auto-Merge
 
-## Status: PLANNING
+## Status: DONE
 
 ## Goal
 
@@ -112,7 +112,7 @@ This means the merge must be done with runtime checks (comparing `Spec.name`) an
 
 2. **Phase 2**: Implement Option D — split Extension into blueprint + build. Update Plugin.make to accept blueprints, auto-merge, and set plugin name.
 
-3. **Phase 3**: Deprecate Extension.Make2/Make3 once auto-merge is working (keep MakeMulti for full control).
+3. **Phase 3**: Remove Extension.Make2/Make3/MakeMulti — auto-merge makes them unnecessary.
 
 ---
 

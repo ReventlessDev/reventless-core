@@ -45,7 +45,7 @@ module type T = {
     /** How often (in seconds) the heartbeat Lambda fires. */
     ~heartbeatInterval: int,
     ~extensionPoints: array<module(ExtensionPoint.T)>=?,
-    ~extensions: array<module(Extension.T)>=?,
+    ~extensions: array<module(Extension.Blueprint)>=?,
     ~aggregates: array<module(Aggregate.T with type api = api)>=?,
     ~readModels: array<module(ReadModel.T with type api = api and type role = role)>=?,
     ~tasks: array<module(Task.T)>=?,

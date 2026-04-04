@@ -38,3 +38,19 @@ module type T = {
   let outputs: component => outputs
   let operations: component => Pulumi.Output.t<operations>
 }
+
+/**
+Pre-build blueprint for an extension — compiled mappings that have not yet been
+instantiated as a Pulumi component.
+
+`Plugin.make` receives blueprints, groups them by extension point name,
+auto-merges mappings for the same EP, sets the component name to the plugin
+name, and builds the actual `Extension` component.
+*/
+module type Blueprint = {
+  module Spec: ExtensionMapping.Spec
+  module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
+  let name: string
+  let moduleUrl: string
+  let mappings: array<module(Mapping)>
+}

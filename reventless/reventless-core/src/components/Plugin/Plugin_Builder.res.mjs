@@ -225,7 +225,7 @@ function Make(Spec) {
             coreSetup = undefined;
           }
           let publishToPluginExtensionPoint = coreSetup !== undefined ? coreSetup[1].remotePublish : async param => {};
-          let match$2 = Plugin_Helpers$ReventlessCore.createExtensions(extensions, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
+          let match$2 = Plugin_Helpers$ReventlessCore.createExtensions(extensions, extra$1, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts);
           let extensionsHandlers = match$2[1];
           let extensionsOutputs = match$2[0];
           let extensionPointsDefinitions = Plugin_Helpers$ReventlessCore.extractExtensionPointDefinitions(extensionPointsOutputs);

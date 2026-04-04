@@ -115,16 +115,52 @@ let serviceNameToJsonEventsHandlers: (
 include Builder_Helpers
 
 let createExtensions = (
-  extensions,
+  extensions: array<module(ReventlessInfra.Extension.Blueprint)>,
+  ~pluginName,
   ~publishToPluginExtensionPoint,
   ~publishToAggregates,
   ~publishToReadModels,
   ~queryEngine,
   ~opts,
-) =>
-  extensions
-  ->Array.map((module(SpecificExtension: ReventlessInfra.Extension.T)) => {
-    let extension = SpecificExtension.make(
+) => {
+  // Group blueprints by extension point name for auto-merge.
+  let groups: dict<array<module(ReventlessInfra.Extension.Blueprint)>> = Dict.make()
+  extensions->Array.forEach(bp => {
+    let module(BP: ReventlessInfra.Extension.Blueprint) = bp
+    let epName = BP.Spec.name
+    switch groups->Dict.get(epName) {
+    | Some(existing) => existing->Array.push(bp)
+    | None => groups->Dict.set(epName, [bp])
+    }
+  })
+
+  // For each EP group: merge mappings, build Extension component.
+  groups
+  ->Dict.toArray
+  ->Array.map(((_epName, blueprints)) => {
+    // Use the first blueprint's Spec as the canonical type.
+    let module(First: ReventlessInfra.Extension.Blueprint) = blueprints->Array.getUnsafe(0)
+
+    // Merge all mappings arrays. Blueprints for the same EP have the same Spec
+    // at runtime — use Obj.magic to unify the existential Mapping types.
+    let allMappings: array<module(First.Mapping)> =
+      blueprints->Array.flatMap(bp => {
+        let module(BP: ReventlessInfra.Extension.Blueprint) = bp
+        (BP.mappings: array<module(BP.Mapping)>)->Obj.magic
+      })
+
+    // Build the Extension component with pluginName as the extension name.
+    module Spec = First.Spec
+    module Mappings: Extension.Mappings with module Spec := Spec = {
+      module type Mapping = ReventlessInfra.ExtensionMapping.T
+        with module ExtensionPoint := Spec
+      let name = pluginName
+      let moduleUrl = First.moduleUrl
+      let mappings: array<module(Mapping)> = allMappings->Obj.magic
+    }
+    module ExtensionMaker = Extension_Builder.Make(Spec, Mappings)
+
+    let extension = ExtensionMaker.make(
       ~publishToPluginExtensionPoint,
       ~publishToAggregates,
       ~readModelNamesForSourceName,
@@ -132,12 +168,10 @@ let createExtensions = (
       ~queryEngine,
       ~opts=Some(opts),
     )
-    // operations() returns abstract type from ReventlessInfra.Extension.T;
-    // coerce to the concrete Extension.operations (always identical at runtime).
     let ops: Pulumi.Output.t<Extension.operations> =
-      SpecificExtension.operations(extension)->Obj.magic
+      ExtensionMaker.operations(extension)->Obj.magic
     (
-      SpecificExtension.outputs(extension),
+      ExtensionMaker.outputs(extension),
       ops->Pulumi.Output.apply(({outgoingJsonEventsHandler, incomingJsonEventsHandler}) => {
         incoming: incomingJsonEventsHandler,
         outgoing: outgoingJsonEventsHandler,
@@ -145,6 +179,7 @@ let createExtensions = (
     )
   })
   ->Array.unzip
+}
 
 let extractExtensionPointDefinitions = (extensionPointsOutputs: array<ExtensionPoint.outputs>) =>
   extensionPointsOutputs

@@ -35,6 +35,7 @@ import * as Builder_Helpers$ReventlessCore from "../Builder_Helpers.res.mjs";
 import * as Plugin_Callback$ReventlessCore from "./Plugin_Callback.res.mjs";
 import * as StateChangeSlice$ReventlessCore from "../StateChangeSlice/StateChangeSlice.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
+import * as Extension_Builder$ReventlessCore from "../Extension/Extension_Builder.res.mjs";
 import * as StateViewSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/StateViewSlice.res.mjs";
 import * as AutomationSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/AutomationSlice.res.mjs";
 import * as StateChangeSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/StateChangeSlice.res.mjs";
@@ -116,12 +117,32 @@ function serviceNameToJsonEventsHandlers(outputs, getServiceNames, handlers, get
   return dict;
 }
 
-function createExtensions(extensions, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts) {
-  return Stdlib_Array.unzip(extensions.map(SpecificExtension => {
-    let extension = SpecificExtension.make(publishToPluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-    let ops = SpecificExtension.operations(extension);
+function createExtensions(extensions, pluginName, publishToPluginExtensionPoint, publishToAggregates, publishToReadModels, queryEngine, opts) {
+  let groups = {};
+  extensions.forEach(bp => {
+    let epName = bp.Spec.name;
+    let existing = groups[epName];
+    if (existing !== undefined) {
+      existing.push(bp);
+    } else {
+      groups[epName] = [bp];
+    }
+  });
+  return Stdlib_Array.unzip(Object.entries(groups).map(param => {
+    let blueprints = param[1];
+    let First = blueprints[0];
+    let allMappings = blueprints.flatMap(bp => bp.mappings);
+    let Mappings_moduleUrl = First.moduleUrl;
+    let Mappings = {
+      name: pluginName,
+      moduleUrl: Mappings_moduleUrl,
+      mappings: allMappings
+    };
+    let Built = Extension_Builder$ReventlessCore.Make(First.Spec)(Mappings);
+    let extension = Built.make(publishToPluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+    let ops = Built.operations(extension);
     return [
-      SpecificExtension.outputs(extension),
+      Built.outputs(extension),
       ops.apply(param => ({
         outgoing: param.outgoingJsonEventsHandler,
         incoming: param.incomingJsonEventsHandler
