@@ -209,13 +209,9 @@ module Make = (Platform: Reventless.Platform.T) => {
 module Platform = ReventlessAws.Platform.Make(Config)
 module App = CatalogItemPlugin.Make(Platform)
 
-let plugin = ReventlessAws.Plugin.make(
-  ~name="catalog-plugin",
-  ~version="1.0.0",
-  ~heartbeatInterval=30,
-  ~aggregates=[module(App.ItemAggregate)],
-  ~readModels=[module(App.ItemReadModel)],
-  ~scheduler,
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(App)],
 )
 ```
 
@@ -232,26 +228,19 @@ type event =
 
 ```rescript
 // ItemCatalogPlugin.res
-module Make = (Platform: Reventless.Platform.T) => {
+module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CreateItem = Platform.StateChangeSlice.Make(CreateItemSpec)
   module RenameItem = Platform.StateChangeSlice.Make(RenameItemSpec)
   module DeleteItem = Platform.StateChangeSlice.Make(DeleteItemSpec)
   module ItemView   = Platform.StateViewSlice.Make(ItemViewSpec)
 
-  module DcbSpec: Reventless.Plugin.DcbSpec = {
-    @schema
-    type event = ItemEventLogSpec.event
-
-    let stateChangeSlices: array<module(Reventless.StateChangeSlice.T with type dcbEvent = event)> = [
-      module(CreateItem),
-      module(RenameItem),
-      module(DeleteItem),
-    ]
-
-    let stateViewSlices: array<module(Reventless.StateViewSlice.T with type dcbEvent = event)> = [
-      module(ItemView),
-    ]
-  }
+  let make = () =>
+    Platform.Plugin.make(
+      ~name="ItemCatalog",
+      ~heartbeatInterval=60,
+      ~stateChangeSlices=[module(CreateItem), module(RenameItem), module(DeleteItem)],
+      ~stateViewSlices=[module(ItemView)],
+    )
 }
 ```
 
@@ -260,12 +249,9 @@ module Make = (Platform: Reventless.Platform.T) => {
 module Platform = ReventlessAws.Platform.Make(Config)
 module App = ItemCatalogPlugin.Make(Platform)
 
-let plugin = ReventlessAws.Plugin.make(
-  ~name="item-catalog-plugin",
-  ~version="1.0.0",
-  ~heartbeatInterval=30,
-  ~dcbSpec=module(App.DcbSpec),
-  ~scheduler,
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(App)],
 )
 ```
 
@@ -276,15 +262,17 @@ let plugin = ReventlessAws.Plugin.make(
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `~name` | `string` | Yes | Plugin name (used for resource naming) |
-| `~version` | `string` | Yes | Plugin version (`name@version` is the plugin ID) |
 | `~heartbeatInterval` | `int` | Yes | Seconds between heartbeat signals to the core |
 | `~aggregates` | `array<module(Aggregate.T)>` | No | Aggregate-based components |
 | `~readModels` | `array<module(ReadModel.T)>` | No | Read model components (for aggregate-based plugins) |
-| `~dcbSpec` | `module(Plugin.DcbSpec)` | No | DCB spec bundle (for DCB-based plugins) |
 | `~extensionPoints` | `array<module(ExtensionPoint.T)>` | No | Public API surfaces for cross-plugin communication |
-| `~extensions` | `array<module(Extension.T)>` | No | Subscriptions to another plugin's ExtensionPoint |
+| `~extensions` | `array<module(Extension.Blueprint)>` | No | Extension blueprints — auto-merged by EP, named after the plugin |
 | `~tasks` | `array<module(Task.T)>` | No | Scheduled or triggered tasks |
-| `~scheduler` | `Pulumi.Output.t<Scheduler.operations>` | Yes | Scheduler for heartbeats and tasks |
+| `~stateChangeSlices` | `array<module(StateChangeSlice.T)>` | No | DCB write-side slices |
+| `~stateViewSlices` | `array<module(StateViewSlice.T)>` | No | DCB read-side slices |
+| `~automationSlices` | `array<module(AutomationSlice.T)>` | No | DCB automation (TODO list) slices |
+| `~outboundTranslationSlices` | `array<module(OutboundTranslationSlice.T)>` | No | DCB outbound translation slices |
+| `~inboundTranslationSlices` | `array<module(InboundTranslationSlice.T)>` | No | DCB inbound translation slices |
 | `~opts` | `Pulumi.ComponentResource.options` | No | Pulumi parent/provider options |
 
 ## When to Use Which Approach

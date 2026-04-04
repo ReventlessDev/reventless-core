@@ -249,13 +249,14 @@ module MyDcbSpec = {
 ### 5. Create the plugin
 
 ```rescript
-let plugin = MyPlugin.make(
-  ~name="my-plugin",
-  ~version="1.0.0",
-  ~heartbeatInterval=300,
-  ~scheduler,
-  ~dcbSpec=module(MyDcbSpec),
-)
+// Inside the plugin's Make functor:
+let make = () =>
+  Platform.Plugin.make(
+    ~name="MyPlugin",
+    ~heartbeatInterval=300,
+    ~stateChangeSlices=[module(CreateItemSlice), module(RenameItemSlice)],
+    ~stateViewSlices=[module(ItemViewSlice)],
+  )
 ```
 
 ## Plugin Outputs
@@ -269,7 +270,7 @@ type outputs = {
 }
 ```
 
-- `dcbEventLog`: `Some(outputs)` when `~dcbSpec` is provided, `None` otherwise
+- `dcbEventLog`: `Some(outputs)` when any DCB slice array is non-empty, `None` otherwise
 - `stateChangeSlices`: keyed by `Spec.name`, contains resources for each slice
 - `stateViewSlices`: keyed by `Spec.name`, contains QueryDb outputs for each slice
 
@@ -409,7 +410,7 @@ module Make = (
 ): Plugin.T
 ```
 
-These are always required as functor parameters even if a specific plugin instance doesn't use DCB (`~dcbSpec` is optional at the `make` call site).
+These are always required as functor parameters even if a specific plugin instance doesn't use DCB (DCB slice arrays are optional at the `make` call site).
 
 ## Design Decisions
 

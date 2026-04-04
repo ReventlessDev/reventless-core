@@ -139,13 +139,14 @@ module MyDcbSpec = {
   ]
 }
 
-let plugin = MyPlugin.make(
-  ~name="my-plugin",
-  ~version="1.0.0",
-  ~heartbeatInterval=300,
-  ~scheduler,
-  ~dcbSpec=module(MyDcbSpec),
-)
+// Inside the plugin's Make functor:
+let make = () =>
+  Platform.Plugin.make(
+    ~name="MyPlugin",
+    ~heartbeatInterval=300,
+    ~stateChangeSlices=[module(CreateItemSlice), module(RenameItemSlice)],
+    ~stateViewSlices=[module(InventoryViewSlice)],
+  )
 ```
 
 ### Plugin Outputs

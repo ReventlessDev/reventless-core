@@ -273,7 +273,7 @@ module Make = (
   module OrdersViewSlice = Platform.StateViewSlice.Make(OrderingPlugin.OrdersView)
 
   // Assembly is identical to the platform-agnostic version
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(~name="Ordering", ...)
 }
 ```

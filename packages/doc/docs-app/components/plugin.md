@@ -103,14 +103,17 @@ A Plugin is configured with the following parameters:
 ```rescript
 let make: (
   ~name: string,                                    // Unique plugin name
-  ~version: string,                                 // Semantic version
-  ~heartbeatInterval: int,                          // Health check interval (ms)
-  ~extensionPoints: array<module(ExtensionPoint.T)>,
-  ~extensions: array<module(Extension.T)>,
-  ~aggregates: array<module(Aggregate.T)>,
-  ~readModels: array<module(ReadModel.T)>,
-  ~tasks: array<module(Task.T)>,
-  ~scheduler: Pulumi.Output.t<Scheduler.operations>,
+  ~heartbeatInterval: int,                          // Health check interval (seconds)
+  ~extensionPoints: array<module(ExtensionPoint.T)>=?,
+  ~extensions: array<module(Extension.Blueprint)>=?,
+  ~aggregates: array<module(Aggregate.T)>=?,
+  ~readModels: array<module(ReadModel.T)>=?,
+  ~tasks: array<module(Task.T)>=?,
+  ~stateChangeSlices: array<module(StateChangeSlice.T)>=?,
+  ~stateViewSlices: array<module(StateViewSlice.T)>=?,
+  ~automationSlices: array<module(AutomationSlice.T)>=?,
+  ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>=?,
+  ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>=?,
   ~opts: Pulumi.ComponentResource.options=?,
 ) => component
 ```
@@ -120,14 +123,14 @@ let make: (
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `name` | `string` | Unique identifier for the Plugin within the system |
-| `version` | `string` | Semantic version string (e.g., "1.0.0") |
-| `heartbeatInterval` | `int` | Interval in milliseconds for health check signals |
+| `heartbeatInterval` | `int` | Interval in seconds for health check signals |
 | `extensionPoints` | `array<module(ExtensionPoint.T)>` | ExtensionPoints exposed by this Plugin |
-| `extensions` | `array<module(Extension.T)>` | Extensions consuming other Plugins' ExtensionPoints |
+| `extensions` | `array<module(Extension.Blueprint)>` | Extension blueprints — auto-merged by EP and named after the plugin |
 | `aggregates` | `array<module(Aggregate.T)>` | Aggregates contained in this Plugin |
 | `readModels` | `array<module(ReadModel.T)>` | ReadModels for query projections |
 | `tasks` | `array<module(Task.T)>` | Tasks for file processing and integrations |
-| `scheduler` | `Pulumi.Output.t<Scheduler.operations>` | Scheduler for time-based operations |
+| `stateChangeSlices` | `array<module(StateChangeSlice.T)>` | DCB write-side slices |
+| `stateViewSlices` | `array<module(StateViewSlice.T)>` | DCB read-side slices |
 
 ## Plugin Outputs
 

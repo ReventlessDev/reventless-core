@@ -293,7 +293,7 @@ Choose the aggregate-based approach when entity lifecycles are independent and y
 
 ### Combining Both Approaches
 
-The framework supports both `~aggregates` and `~dcbSpec` in the same `Plugin.make` call. This lets you model each entity with the approach that fits best:
+The framework supports both `~aggregates` and DCB slice arrays in the same `Plugin.make` call. This lets you model each entity with the approach that fits best:
 
 - **Independent entities** — like Category and Customer — stay as aggregates with isolated event streams and per-instance consistency
 - **Interdependent entities** — like Product + ProductDemand and Order + CatalogProduct — share a DCB event log with tag-filtered reads and per-command optimistic concurrency

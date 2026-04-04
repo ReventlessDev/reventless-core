@@ -237,7 +237,7 @@ The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) 
 // ItemCatalogPlugin.res
 // Imports only `reventless-spec`, not `reventless` or `reventless-aws`
 
-module Make = (Platform: Reventless.Platform.T) => {
+module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Build each StateChangeSlice from its spec
   module CreateItem = Platform.StateChangeSlice.Make(CreateItemSpec)
   module RenameItem = Platform.StateChangeSlice.Make(RenameItemSpec)
@@ -246,22 +246,14 @@ module Make = (Platform: Reventless.Platform.T) => {
   // Build the StateViewSlice
   module ItemView = Platform.StateViewSlice.Make(ItemViewSpec)
 
-  // Bundle into a DcbSpec for the plugin
-  // The event type must match the shared DcbEventLogSpec.event
-  module DcbSpec: Reventless.Plugin.DcbSpec = {
-    @schema
-    type event = ItemEventLogSpec.event
-
-    let stateChangeSlices: array<module(Reventless.StateChangeSlice.T with type dcbEvent = event)> = [
-      module(CreateItem),
-      module(RenameItem),
-      module(DeleteItem),
-    ]
-
-    let stateViewSlices: array<module(Reventless.StateViewSlice.T with type dcbEvent = event)> = [
-      module(ItemView),
-    ]
-  }
+  // Pass slices directly to Plugin.make — no DcbSpec bundle needed
+  let make = () =>
+    Platform.Plugin.make(
+      ~name="ItemCatalog",
+      ~heartbeatInterval=60,
+      ~stateChangeSlices=[module(CreateItem), module(RenameItem), module(DeleteItem)],
+      ~stateViewSlices=[module(ItemView)],
+    )
 }
 ```
 
@@ -273,12 +265,9 @@ module Make = (Platform: Reventless.Platform.T) => {
 module Platform = ReventlessAws.Platform.Make(Config)
 module App = ItemCatalogPlugin.Make(Platform)
 
-let plugin = ReventlessAws.Plugin.make(
-  ~name="item-catalog-plugin",
-  ~version="1.0.0",
-  ~heartbeatInterval=30,
-  ~dcbSpec=module(App.DcbSpec),
-  ~scheduler,
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(App)],
 )
 ```
 

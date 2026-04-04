@@ -541,7 +541,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 | `Platform.Aggregate.Make` | `Spec`, `Behavior`, `EventMappings` | `Aggregate.T` |
 | `Platform.ReadModel.Make` | `Spec`, `Mappings` | `ReadModel.T` |
 | `Platform.ExtensionPoint.Make` | `Mappings` | `ExtensionPoint.T` |
-| `Platform.Extension.Make` | `Mappings` | `Extension.T` |
+| `Platform.Extension.Make` | `Mapping` | `Extension.Blueprint` |
 | `Platform.Task.Make` | `Spec` | `Task.T` |
 | `Platform.DcbEventLog.Make` | `Spec` | `DcbEventLog.T` |
 | `Platform.StateChangeSlice.Make` | `Spec` | `StateChangeSlice.T` |
@@ -611,7 +611,7 @@ component builders inside `CatalogPlugin.Make(Platform)` publish and subscribe
 through this bus. Tests interact with the plugin via the bus directly:
 
 ```rescript
-let agg = CatalogAgg.make(~api=(), ~apiRole=())
+let catalog = Catalog.make()
 
 testPromise("AddProduct stores state", async () => {
   let _ = await Bus.dispatchCommand("ProductCmdTopic", commandJson)

@@ -284,13 +284,9 @@ module Platform = ReventlessAws.Platform.Make(Config)
 module App = CatalogItemPlugin.Make(Platform)
 
 // Deploy the plugin as a Pulumi component resource
-let plugin = ReventlessAws.Plugin.make(
-  ~name="catalog-plugin",
-  ~version="1.0.0",
-  ~heartbeatInterval=30,
-  ~aggregates=[module(App.ItemAggregate)],
-  ~readModels=[module(App.ItemReadModel)],
-  ~scheduler,
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(App)],
 )
 ```
 

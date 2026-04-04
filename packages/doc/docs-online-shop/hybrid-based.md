@@ -245,7 +245,7 @@ Cross-plugin communication is identical to the other two implementations. Extens
 
 ## Plugin Composition
 
-This is the key section — the hybrid `Plugin.make` call that passes both `~aggregates` and `~dcbSpec`.
+This is the key section — the hybrid `Plugin.make` call that passes both `~aggregates` and DCB slice arrays.
 
 ### CatalogPlugin
 
@@ -288,38 +288,28 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // ── Extension Point and Extension (same as other approaches) ──
   // ... (EP and Extension wiring omitted for brevity)
 
-  // ── DCB Spec (excludes Category — it's an aggregate) ───────
-  module DcbSpec = {
-    @schema
-    type event = CatalogEventLog.event
-    let stateChangeSlices = [
-      module(AddProductSlice), module(ChangeProductNameSlice),
-      module(ChangeProductDescriptionSlice), module(ChangeProductPriceSlice),
-      module(RecordProductDemandSlice),
-    ]
-    let stateViewSlices = [module(ProductsViewSlice), module(ProductDemandViewSlice)]
-    let automationSlices = []
-    let outboundTranslationSlices = []
-    let inboundTranslationSlices = [module(ImportProductSlice)]
-  }
-
   // ── Hybrid Plugin Assembly ──────────────────────────────────
-  let make = (~scheduler, ~api, ~apiRole) =>
+  // DCB slices are passed directly — no DcbSpec bundle needed
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~version="1.0.0",
       ~heartbeatInterval=60,
       ~aggregates=[module(CategoryAggregate)],     // ← aggregate entities
       ~readModels=[module(CategoryReadModel)],     // ← aggregate read models
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
-      ~api, ~apiRole, ~scheduler,
-      ~dcbSpec=module(DcbSpec),                    // ← DCB entities
+      ~stateChangeSlices=[                         // ← DCB entities
+        module(AddProductSlice), module(ChangeProductNameSlice),
+        module(ChangeProductDescriptionSlice), module(ChangeProductPriceSlice),
+        module(RecordProductDemandSlice),
+      ],
+      ~stateViewSlices=[module(ProductsViewSlice), module(ProductDemandViewSlice)],
+      ~inboundTranslationSlices=[module(ImportProductSlice)],
     )
 }
 ```
 
-The key difference from the other approaches: `Plugin.make` receives both `~aggregates` (for Category) and `~dcbSpec` (for Product/ProductDemand). The framework handles the routing — aggregate commands go to per-instance event logs, DCB commands go to the shared event log.
+The key difference from the other approaches: `Plugin.make` receives both `~aggregates` (for Category) and DCB slice arrays (for Product/ProductDemand). The framework handles the routing — aggregate commands go to per-instance event logs, DCB commands go to the shared event log.
 
 ### OrderingPlugin
 
@@ -352,37 +342,27 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // ── Extension Point and Extension (same as other approaches) ──
   // ... (EP and Extension wiring omitted for brevity)
 
-  // ── DCB Spec (excludes Customer — it's an aggregate) ───────
-  module DcbSpec = {
-    @schema
-    type event = OrderingEventLog.event
-    let stateChangeSlices = [
-      module(PlaceOrderSlice), module(ShipOrderSlice),
-      module(CancelOrderSlice), module(SyncCatalogProductSlice),
-    ]
-    let stateViewSlices = [module(OrdersViewSlice), module(AvailableProductsViewSlice)]
-    let automationSlices = [module(AutoShipOrderSlice)]
-    let outboundTranslationSlices = [module(SendOrderConfirmationSlice)]
-    let inboundTranslationSlices = []
-  }
-
   // ── Hybrid Plugin Assembly ──────────────────────────────────
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
-      ~version="1.0.0",
       ~heartbeatInterval=60,
       ~aggregates=[module(CustomerAggregate)],      // ← aggregate entities
       ~readModels=[module(CustomerReadModel)],      // ← aggregate read models
       ~extensionPoints=[module(OrdersExtensionPointMaker)],
       ~extensions=[module(ProductsExtensionMaker)],
-      ~api, ~apiRole, ~scheduler,
-      ~dcbSpec=module(DcbSpec),                     // ← DCB entities
+      ~stateChangeSlices=[                          // ← DCB entities
+        module(PlaceOrderSlice), module(ShipOrderSlice),
+        module(CancelOrderSlice), module(SyncCatalogProductSlice),
+      ],
+      ~stateViewSlices=[module(OrdersViewSlice), module(AvailableProductsViewSlice)],
+      ~automationSlices=[module(AutoShipOrderSlice)],
+      ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
     )
 }
 ```
 
-Same pattern: `~aggregates` for Customer, `~dcbSpec` for Order/CatalogProduct.
+Same pattern: `~aggregates` for Customer, DCB slice arrays for Order/CatalogProduct.
 
 ---
 

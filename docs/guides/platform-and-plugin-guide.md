@@ -524,6 +524,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductProjections: Mappings with module Target := ProductsReadModel = {
     module M = Mappings.Make(ProductsReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [
       module(ProductsProjections.ProductMapping),
     ]
@@ -533,6 +534,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CategoryProjections: Mappings with module Target := CategoriesReadModel = {
     module M = Mappings.Make(CategoriesReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [
       module(CategoriesProjections.CategoryMapping),
     ]
@@ -543,6 +545,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module DemandProjections: Mappings with module Target := ProductDemandReadModel = {
     module M = Mappings.Make(ProductDemandReadModel)
     module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
     let mappings: array<module(Mapping)> = [
       module(ProductDemandProjections.ProductMapping),
       module(ProductDemandProjections.ProductDemandMapping),
@@ -554,36 +557,20 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   )
 
   // ── Extension Point (outbound) ──────────────────────────────
-  module ProductsEPProductMapping = ReventlessInfra.ExtensionPointMapping.Make(
-    ProductsExtensionPoint.ProductMapping,
-  )
-  module ProductsEPMappings = {
-    module Spec = CatalogSpec.ProductsExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionPointMapping.T
-      with module ExtensionPoint := Spec
-    let mappings: array<module(Mapping)> = [module(ProductsEPProductMapping)]
-  }
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
-    ProductsEPMappings,
+    ProductsExtensionPoint.ProductMapping,
+    {let moduleUrl: string = %raw(`import.meta.url`)},
   )
 
   // ── Extension (inbound from Ordering) ───────────────────────
-  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
+  module OrdersExtensionMaker = Platform.Extension.Make(
     OrdersExtension.DemandMapping,
   )
-  module OrdersExtensionMappings: ReventlessInfra.ExtensionMapping.Mappings
-    with module Spec := OrderingSpec.OrdersExtensionPoint = {
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := OrderingSpec.OrdersExtensionPoint
-    let name = "CatalogDemand"
-    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
-  }
-  module OrdersExtensionMaker = Platform.Extension.Make(
-    OrdersExtensionMappings,
-  )
+
+  module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
   // ── Self-assembly ───────────────────────────────────────────
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
@@ -599,9 +586,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ],
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
-      ~api,
-      ~apiRole,
-      ~scheduler,
+      ~tasks=[module(ImportProductsTask)],
     )
 }
 ```
@@ -611,17 +596,16 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 1. **Build aggregates** — `Platform.Aggregate.Make(Spec, Behavior, EventMappings)`
 2. **Collect projections** — create a `Mappings` module per read model, listing all mapping modules
 3. **Build read models** — `Platform.ReadModel.Make(ReadModelSpec, Projections)`
-4. **Compile EP mappings** — `ExtensionPointMapping.Make(AggregateMapping)` per aggregate, collect into array
-5. **Build extension points** — `Platform.ExtensionPoint.Make(EPMappings)`
-6. **Compile extension mappings** — `ExtensionMapping.Make(ExtensionMappingModule)` per mapping, collect into array
-7. **Build extensions** — `Platform.Extension.Make(ExtensionMappings)`
-8. **Assemble** — `Platform.Plugin.make(...)` with all components
+4. **Build extension points** — `Platform.ExtensionPoint.Make(Mapping, Config)`
+5. **Create extension blueprints** — `Platform.Extension.Make(Mapping)` per mapping
+6. **Assemble** — `Platform.Plugin.make(...)` with all components (blueprints for the same EP are auto-merged; extensions are named after the plugin)
 
 The **projection Mappings boilerplate** follows a fixed pattern for every read model:
 ```rescript
 module MyProjections: Mappings with module Target := MyReadModel = {
   module M = Mappings.Make(MyReadModel)
   module type Mapping = M.Mapping
+  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(MyProjections.SomeMapping)]
 }
 ```
@@ -1086,36 +1070,23 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
   // ... more views ...
 
-  // ── Extension Point (same pattern as aggregates) ────────────
-  module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
+  // ── Extension Point (outbound) ──────────────────────────────
+  module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
     ProductsExtensionPointMapping,
+    {let moduleUrl: string = %raw(`import.meta.url`)},
   )
-  // ... EP wiring ...
 
-  // ── Extension (functor application + Mappings wrapper) ─────
-  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-    OrdersExtension.DemandMappingImpl,
-  )
-  module OrdersExtensionMappings = {
-    module Spec = OrderingSpec.OrdersExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := Spec
-    let name = "CatalogDemand"
-    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
-  }
+  // ── Extension (inbound from Ordering) ───────────────────────
   module OrdersExtensionMaker = Platform.Extension.Make(
-    OrdersExtensionMappings,
+    OrdersExtension.DemandMapping,
   )
 
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
-      ~api,
-      ~apiRole,
-      ~scheduler,
       ~stateChangeSlices=[
         module(AddProductSlice),
         module(ChangeProductNameSlice),
@@ -1304,7 +1275,7 @@ The **double namespace** pattern applies here too: `CatalogPlugin.CatalogPlugin.
 
 ## Part 3: Hybrid Composition
 
-The aggregate and DCB approaches can be mixed within a single plugin. `Plugin.make` accepts both `~aggregates` and `~dcbSpec` as optional parameters — entities that are self-contained use aggregates, while entities that share consistency boundaries use a DCB event log.
+The aggregate and DCB approaches can be mixed within a single plugin. `Plugin.make` accepts both `~aggregates` and DCB slice arrays as optional parameters — entities that are self-contained use aggregates, while entities that share consistency boundaries use a DCB event log.
 
 ### When to Use Each Approach
 
@@ -1336,7 +1307,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
   module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
 
-  let make = (~scheduler, ~api, ~apiRole) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
@@ -1350,7 +1321,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(ProductsViewSlice),
         module(ProductDemandViewSlice),
       ],
-      ~api, ~apiRole, ~scheduler,
     )
 }
 ```

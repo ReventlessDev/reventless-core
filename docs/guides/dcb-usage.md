@@ -329,13 +329,10 @@ module CatalogPlugin = {
 Pass slice arrays directly to `Plugin.make`. Empty arrays can be omitted.
 
 ```rescript
-let make = (~scheduler, ~api, ~apiRole) =>
+let make = () =>
   Platform.Plugin.make(
     ~name="Catalog",
     ~heartbeatInterval=60,
-    ~api,
-    ~apiRole,
-    ~scheduler,
     ~stateChangeSlices=[
       module(AddProductSlice),
       module(ChangeProductNameSlice),

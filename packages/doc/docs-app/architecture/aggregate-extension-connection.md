@@ -85,23 +85,18 @@ Extensions also receive the ability to publish to aggregates:
 
 ```rescript
 let createExtensions = (
-  extensions,
-  ~publishToCorePluginExtensionPoint,
+  extensions: array<module(Extension.Blueprint)>,
+  ~pluginName,
+  ~publishToPluginExtensionPoint,
   ~publishToAggregates,      // ← Extensions can publish to aggregates
   ~publishToReadModels,
   ~queryEngine,
   ~opts,
-) =>
-  extensions->Array.map((module(SpecificExtension: Extension.T)) => {
-    let extension = SpecificExtension.make(
-      ~publishToCorePluginExtensionPoint,
-      ~publishToAggregates,   // Pass the publish functions
-      ~readModelNamesForSourceName,
-      ~publishToReadModels,
-      ~queryEngine,
-      ~opts=Some(opts),
-    )
-  })
+) => {
+  // Group blueprints by EP name, merge same-EP mappings,
+  // name each extension after the plugin, then build.
+  // ...
+}
 ```
 
 ### Usage Example

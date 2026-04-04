@@ -731,19 +731,9 @@ module Make = (Platform: Platform.T) => {
     ProductsEPMappings,
   )
 
-  // Build the Orders extension (subscribing to Ordering's EP)
-  module OrdersDemandMapping = ReventlessInfra.ExtensionMapping.Make(
-    OrdersExtension.DemandMappingImpl,
-  )
-  module OrdersExtensionMappings = {
-    module Spec = OrdersExtensionPointSpec
-    module type Mapping = ReventlessInfra.ExtensionMapping.T
-      with module ExtensionPoint := Spec
-    let name = "CatalogDemand"
-    let mappings: array<module(Mapping)> = [module(OrdersDemandMapping)]
-  }
+  // Build the Orders extension blueprint (subscribing to Ordering's EP)
   module OrdersExtensionMaker = Platform.Extension.Make(
-    OrdersExtensionMappings,
+    OrdersExtension.DemandMappingImpl,
   )
 
   module DcbSpec = CatalogEventLog
