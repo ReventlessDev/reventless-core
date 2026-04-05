@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.10 (2026-04-05)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates
+
+
+
+
+
 # 1.0.0-alpha.9 (2026-04-04)
 
 * feat!: add reventless-ppx with @@reventless.spec, @@reventless.behavior, @@reventless.dcbTags ([cb203ec](https://github.com/ReventlessDev/reventless-core/commit/cb203ece5ea3a1b92ba7d1a57d9e12bb6c4c2487))

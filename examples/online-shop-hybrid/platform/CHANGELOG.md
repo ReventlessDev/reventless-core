@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.12 (2026-04-05)
+
+### Dependency Updates
+
+* **@reventlessdev/online-shop-hybrid-catalog** updated to `^1.0.0-alpha.12`
+* **@reventlessdev/online-shop-hybrid-ordering** updated to `^1.0.0-alpha.11`
+
+
 # 1.0.0-alpha.11 (2026-04-04)
 
 ### Features
