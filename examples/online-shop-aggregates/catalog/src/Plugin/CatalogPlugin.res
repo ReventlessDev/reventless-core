@@ -53,7 +53,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // Build the Products extension point component
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
-    ProductsExtensionPoint.ProductMapping,
+    ProductsExtensionPointMapping,
     {let moduleUrl: string = %raw(`import.meta.url`)},
   )
 

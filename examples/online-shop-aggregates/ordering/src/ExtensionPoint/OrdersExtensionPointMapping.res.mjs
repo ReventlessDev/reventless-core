@@ -5,7 +5,7 @@ function mapIncomingCommand(_id, _command, _meta) {
   return [];
 }
 
-let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
+let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   if (typeof event !== "object") {
     return [];
   }
@@ -16,7 +16,7 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
       _1: {
         TAG: "ItemOrderCancelled",
         productId: productId,
-        orderId: id
+        orderId: _id
       }
     }));
   }
@@ -27,23 +27,29 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
     _1: {
       TAG: "ItemOrdered",
       productId: productId,
-      orderId: id,
+      orderId: _id,
       customerId: customerId
     }
   }));
 };
 
-let OrderMapping = {
-  ExtensionPoint: undefined,
-  Delegate: undefined,
-  mapIncomingCommand: mapIncomingCommand,
-  mapOutgoingEvent: mapOutgoingEvent
-};
+let name = "Orders";
+
+let Id;
 
 let ExtensionPoint;
 
+let Delegate;
+
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
+
 export {
+  name,
+  Id,
   ExtensionPoint,
-  OrderMapping,
+  Delegate,
+  mapIncomingCommand,
+  mapOutgoingEvent,
+  moduleUrl,
 }
 /* No side effect */

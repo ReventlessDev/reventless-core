@@ -59,7 +59,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // Build the Orders extension point component
   module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(
-    OrdersExtensionPoint.OrderMapping,
+    OrdersExtensionPointMapping,
     {let moduleUrl = moduleUrl},
   )
 

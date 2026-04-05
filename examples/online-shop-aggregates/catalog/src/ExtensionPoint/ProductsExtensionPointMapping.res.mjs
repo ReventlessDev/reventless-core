@@ -34,17 +34,23 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
   }
 };
 
-let ProductMapping = {
-  ExtensionPoint: undefined,
-  Delegate: undefined,
-  mapIncomingCommand: mapIncomingCommand,
-  mapOutgoingEvent: mapOutgoingEvent
-};
+let name = "Products";
+
+let Id;
 
 let ExtensionPoint;
 
+let Delegate;
+
+let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
+
 export {
+  name,
+  Id,
   ExtensionPoint,
-  ProductMapping,
+  Delegate,
+  mapIncomingCommand,
+  mapOutgoingEvent,
+  moduleUrl,
 }
 /* No side effect */
