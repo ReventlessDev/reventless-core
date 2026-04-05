@@ -33,17 +33,19 @@ let derivePartitionKey = (
   ~partitionTag=?,
   tags: array<Reventless.DcbTag.tag>,
 ): string => {
-  // Try the designated partition tag first; fall back to the event's first tag
-  // (multi-entity DCB logs have different tag fields per entity type)
-  let tag = switch partitionTag {
-  | None => tags->Array.getUnsafe(0)
-  | Some(pt: Reventless.DcbTag.partitionTag) =>
-    switch tags->Array.find(t => t.key == pt.key) {
-    | Some(t) => t
+  if tags->Array.length == 0 {
+    "dcb"
+  } else {
+    let tag = switch partitionTag {
     | None => tags->Array.getUnsafe(0)
+    | Some(pt: Reventless.DcbTag.partitionTag) =>
+      switch tags->Array.find(t => t.key == pt.key) {
+      | Some(t) => t
+      | None => tags->Array.getUnsafe(0)
+      }
     }
+    `${tag.key}:${tag.value}`
   }
-  `${tag.key}:${tag.value}`
 }
 
 // --- Item Conversion ---
@@ -295,11 +297,11 @@ let executeQueryItem = async (
     await queryByPartitionKey(table, `${tag.key}:${tag.value}`, ~after?)
 
   // Multiple tags: use composite GSI
-  | Some(tags) =>
+  | Some(tags) if tags->Array.length > 1 =>
     await queryByCompositeTags(table, tags, ~after?)
 
-  // No tags: fall back to scan
-  | None =>
+  // No tags (or empty): fall back to scan
+  | None | Some([]) | Some(_) =>
     switch queryItem.eventTypes {
     | Some(eventTypes) => await scanWithFilter(table, ~eventTypes, ~after?)
     | None => await scanWithFilter(table, ~after?)
@@ -719,11 +721,11 @@ let executeQueryItemStream = (
     queryByPartitionKeyStream(table, `${tag.key}:${tag.value}`, ~after?)
 
   // Multiple tags: use composite GSI
-  | Some(tags) =>
+  | Some(tags) if tags->Array.length > 1 =>
     queryByCompositeTagsStream(table, tags, ~after?)
 
-  // No tags: fall back to scan
-  | None =>
+  // No tags (or empty): fall back to scan
+  | None | Some([]) | Some(_) =>
     switch queryItem.eventTypes {
     | Some(eventTypes) => scanWithFilterStream(table, ~eventTypes, ~after?)
     | None => scanWithFilterStream(table, ~after?)

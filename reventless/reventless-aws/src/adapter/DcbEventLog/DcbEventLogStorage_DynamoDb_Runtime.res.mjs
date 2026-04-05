@@ -39,6 +39,9 @@ function compositeTagKey(tags) {
 }
 
 function derivePartitionKey(partitionTag, tags) {
+  if (tags.length === 0) {
+    return "dcb";
+  }
   let tag;
   if (partitionTag !== undefined) {
     let t = tags.find(t => t.key === partitionTag.key);
@@ -241,10 +244,14 @@ async function executeQueryItem(table, queryItem, after) {
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
-      return await queryByCompositeTags(table, tags, after);
+      if (tags.length > 1) {
+        return await queryByCompositeTags(table, tags, after);
+      }
+      tags.length !== 0;
+    } else {
+      let tag = tags[0];
+      return await queryByPartitionKey(table, tag.key + `:` + tag.value, after);
     }
-    let tag = tags[0];
-    return await queryByPartitionKey(table, tag.key + `:` + tag.value, after);
   }
   let eventTypes = queryItem.eventTypes;
   if (eventTypes !== undefined) {
@@ -591,10 +598,14 @@ function executeQueryItemStream(table, queryItem, after) {
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
-      return queryByCompositeTagsStream(table, tags, after);
+      if (tags.length > 1) {
+        return queryByCompositeTagsStream(table, tags, after);
+      }
+      tags.length !== 0;
+    } else {
+      let tag = tags[0];
+      return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after);
     }
-    let tag = tags[0];
-    return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after);
   }
   let eventTypes = queryItem.eventTypes;
   if (eventTypes !== undefined) {

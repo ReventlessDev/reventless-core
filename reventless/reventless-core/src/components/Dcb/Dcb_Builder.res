@@ -123,6 +123,11 @@ module Make = (
             })
           })
           ->Array.map(tagKey => `tag_${tagKey}`)
+        let indexes = if indexes->Array.length > 1 {
+          indexes->Array.concat(["tag_composite"])
+        } else {
+          indexes
+        }
 
         let partitionTag = Reventless.DcbTag.derivePartitionTag(producedNamed)
 

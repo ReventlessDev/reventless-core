@@ -4,10 +4,28 @@ type result =
   | NewAndOldImage(string, JSON.t, JSON.t)
   | Invalid
 
-let buildJsonEvent' = dict =>
+let buildJsonEvent' = dict => {
+  // DCB events lack meta fields (service, time, msgId) — synthesise a minimal meta
+  // so composeMeta doesn't crash on Option.getOrThrow.
+  let hasMeta = dict->Dict.get("service")->Option.isSome
+  let meta = if hasMeta {
+    dict->ReventlessCore.Message.composeMeta
+  } else {
+    let position = dict->Dict.get("position")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+    [
+      ("service", ""->JSON.Encode.string),
+      ("time", position->JSON.Encode.string),
+      ("ip", ""->JSON.Encode.string),
+      ("user", ""->JSON.Encode.string),
+      ("msgId", position->JSON.Encode.string),
+      ("correlationId", position->JSON.Encode.string),
+    ]
+    ->Dict.fromArray
+    ->JSON.Encode.object
+  }
   [
     ("id", dict->Dict.get("id")->Option.getOrThrow),
-    ("meta", dict->ReventlessCore.Message.composeMeta),
+    ("meta", meta),
     (
       "event",
       switch (dict->Dict.get("event"), dict->Dict.get("data")) {
@@ -21,6 +39,7 @@ let buildJsonEvent' = dict =>
   ]
   ->Dict.fromArray
   ->JSON.Encode.object
+}
 
 let buildJsonState = dict => dict->JSON.Encode.object
 
