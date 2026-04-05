@@ -7,7 +7,7 @@ sidebar_position: 5
 
 **Source:** `reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res`
 
-**AWS equivalent:** [QueryDb → DynamoDB](/providers/aws/adapters/querydb)
+**AWS equivalent:** [QueryDb → DynamoDB](/infrastructure/aws/adapters/querydb)
 
 ## Data Structure
 

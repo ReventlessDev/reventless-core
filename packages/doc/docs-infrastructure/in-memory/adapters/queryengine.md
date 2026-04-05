@@ -7,7 +7,7 @@ sidebar_position: 10
 
 **Source:** `reventless-in-memory/src/adapter/QueryEngine/QueryEngine_InMemory.res`
 
-**AWS equivalent:** [QueryEngine → DynamoDB](/providers/aws/adapters/queryengine)
+**AWS equivalent:** [QueryEngine → DynamoDB](/infrastructure/aws/adapters/queryengine)
 
 ## How It Works
 

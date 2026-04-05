@@ -1,5 +1,5 @@
 ---
-title: Understand the Inner Workings of the Reventless Framework
+title: Framework Inner Workings
 date: 2021-11-22
 draft: false
 ---
@@ -29,7 +29,7 @@ This pattern ensures clear separation of concerns, type safety through module ty
 - [Serialization](./serialization.md) - Data encoding/decoding patterns
 - [Resources](./resources.md) - Infrastructure resource management
 - [MCP (Model Context Protocol)](./mcp.md) - AI-native access via tools and resources
-- [AWS Adapters](/providers/aws) - Provider-specific implementations
+- [AWS Adapters](/infrastructure/aws) - Provider-specific implementations
 
 # Framework Inner Workings
 
@@ -69,13 +69,13 @@ The framework employs several other important patterns:
 
 Provider-specific implementations of framework components:
 
-- [**CommandGenerator**](/providers/aws/adapters/commandgenerator)
-- [**CommandTopic**](/providers/aws/adapters/commandtopic)
-- [**EventCollector**](/providers/aws/adapters/eventcollector)
-- [**EventLog**](/providers/aws/adapters/eventlog)
-- [**EventTopic**](/providers/aws/adapters/eventtopic)
-- [**ScheduledPublisher**](/providers/aws/adapters/scheduledpublisher)
-- [**Task**](/providers/aws/adapters/task)
+- [**CommandGenerator**](/infrastructure/aws/adapters/commandgenerator)
+- [**CommandTopic**](/infrastructure/aws/adapters/commandtopic)
+- [**EventCollector**](/infrastructure/aws/adapters/eventcollector)
+- [**EventLog**](/infrastructure/aws/adapters/eventlog)
+- [**EventTopic**](/infrastructure/aws/adapters/eventtopic)
+- [**ScheduledPublisher**](/infrastructure/aws/adapters/scheduledpublisher)
+- [**Task**](/infrastructure/aws/adapters/task)
 
 ## Understanding the Framework
 

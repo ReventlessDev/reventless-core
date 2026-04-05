@@ -186,4 +186,4 @@ SideEffectHandlerComponent.Effects -> External: call
 
 ## AWS Implementation
 
-For detailed implementation, see [EventCollector AWS Adapter Documentation](/providers/aws/adapters/eventcollector).
+For detailed implementation, see [EventCollector AWS Adapter Documentation](/infrastructure/aws/adapters/eventcollector).

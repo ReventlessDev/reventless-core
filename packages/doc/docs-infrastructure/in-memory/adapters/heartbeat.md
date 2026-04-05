@@ -7,7 +7,7 @@ sidebar_position: 9
 
 **Source:** `reventless-in-memory/src/adapter/Heartbeat/HeartbeatRunner_InMemory.res`
 
-**AWS equivalent:** [Heartbeat → CloudWatch Events](/providers/aws/adapters/heartbeat)
+**AWS equivalent:** [Heartbeat → CloudWatch Events](/infrastructure/aws/adapters/heartbeat)
 
 ## How It Works
 

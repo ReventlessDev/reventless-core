@@ -7,7 +7,7 @@ sidebar_position: 2
 
 **Source:** `reventless-in-memory/src/adapter/CommandTopic/CommandTopicChannel_InMemory.res`
 
-**AWS equivalent:** [CommandTopic → SQS FIFO](/providers/aws/adapters/commandtopic)
+**AWS equivalent:** [CommandTopic → SQS FIFO](/infrastructure/aws/adapters/commandtopic)
 
 ## How It Works
 

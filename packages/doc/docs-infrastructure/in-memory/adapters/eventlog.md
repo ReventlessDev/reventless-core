@@ -7,7 +7,7 @@ sidebar_position: 1
 
 **Source:** `reventless-in-memory/src/adapter/EventLog/EventLogStorage_InMemory.res`
 
-**AWS equivalent:** [EventLog → DynamoDB](/providers/aws/adapters/eventlog)
+**AWS equivalent:** [EventLog → DynamoDB](/infrastructure/aws/adapters/eventlog)
 
 ## Data Structure
 

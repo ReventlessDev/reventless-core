@@ -51,6 +51,14 @@ Reventless pairs the programming model with an [Event Storming](https://en.wikip
 
 The framework is designed for serverless infrastructure: pay-as-you-go, automatic scaling, no servers to manage. The core framework is cloud-agnostic; `reventless-aws` provides the AWS implementation.
 
+## The Three Sections
+
+| Section | Who It's For |
+|---------|-------------|
+| **App Guide** (this section) | Developers building applications with Reventless — plugins, aggregates, read models, DCB slices |
+| **Tutorials** | Worked examples of complete plugins (online shop) to follow and reference |
+| **Infrastructure** | Developers integrating with cloud providers — AWS adapter configuration, Pulumi, InMemory testing |
+
 ## Get Productive
 
 1. [Get started](./get-started.md) — set up your project and create your first plugin

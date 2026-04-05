@@ -76,4 +76,4 @@ Running `node src/Main.res.mjs` starts:
 - **MCP server** on port 3001 — AI agents can discover and use all tools/resources
 - **Admin API** on port 4001/4002 — platform administration
 
-The AI-generated code is identical in structure to the hand-written [DCB-based example](/online-shop/dcb-based) in this documentation.
+The AI-generated code is identical in structure to the hand-written [DCB-based example](/tutorials/dcb-based) in this documentation.

@@ -509,4 +509,4 @@ let generateCommand = async (payload) => {
 
 ## AWS Implementation
 
-For detailed AWS implementation, see [CommandGenerator AWS Adapter Documentation](/providers/aws/adapters/commandgenerator).
+For detailed AWS implementation, see [CommandGenerator AWS Adapter Documentation](/infrastructure/aws/adapters/commandgenerator).

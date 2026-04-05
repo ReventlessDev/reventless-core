@@ -420,6 +420,10 @@ An ExtensionPoint deploys:
 - **CommandTopic:** Receives commands from Extensions
 - **EventTopic:** Publishes events to Extensions
 
+## Protocol Versioning
+
+When you evolve an ExtensionPoint's commands or events over time, you need to maintain backwards compatibility with Extensions that may be on an older version. See [Extension Point Protocol Versioning](/framework/architecture/extension-point-protocol-versioning) for the framework's approach to versioning extension point protocols.
+
 ## Related Components
 
 - [Plugin](./plugin.md) - Container for ExtensionPoints

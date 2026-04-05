@@ -485,5 +485,5 @@ type outputs = {
 
 ## AWS Implementation
 
-For detailed implementation, see [QueryDb AWS Adapter Documentation](/providers/aws/adapters/querydb).
+For detailed implementation, see [QueryDb AWS Adapter Documentation](/infrastructure/aws/adapters/querydb).
 

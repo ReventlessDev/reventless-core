@@ -7,7 +7,7 @@ sidebar_position: 4
 
 **Source:** `reventless-in-memory/src/adapter/EventCollector/EventCollectorChannel_InMemory.res`
 
-**AWS equivalent:** [EventCollector → SQS FIFO](/providers/aws/adapters/eventcollector)
+**AWS equivalent:** [EventCollector → SQS FIFO](/infrastructure/aws/adapters/eventcollector)
 
 ## How It Works
 

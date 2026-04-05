@@ -256,4 +256,4 @@ The StateChangeSlice reuses resources from the shared DcbEventLog:
 
 ## AWS Implementation
 
-For detailed implementation with AWS services (DynamoDB for storage, SNS for publishing, SQS for commands), see [StateChangeSlice AWS Adapter Documentation](/providers/aws/adapters/statetopic) (reuses EventLog infrastructure).
+For detailed implementation with AWS services (DynamoDB for storage, SNS for publishing, SQS for commands), see [StateChangeSlice AWS Adapter Documentation](/infrastructure/aws/adapters/statetopic) (reuses EventLog infrastructure).

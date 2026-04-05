@@ -3,7 +3,7 @@ title: Updating Skills
 sidebar_position: 6
 ---
 
-# When to Update Skills
+# Updating Skills
 
 Skills encode framework knowledge. When the framework changes, skills must be updated to stay accurate.
 
@@ -42,8 +42,14 @@ Skills and Docusaurus docs serve different audiences:
 
 ## Versioning
 
-The plugin version in `.claude-plugin/marketplace.json` and `.claude-plugin/plugin.json` should be bumped when skills are updated. Follow semantic versioning:
+The `.claude-plugin/` directory contains Claude Code plugin distribution metadata (`marketplace.json`, `plugin.json`). These files are open source (MIT) and checked into the repo. They enable the Claude Code plugin marketplace to discover and distribute Reventless skills.
+
+Bump the plugin version in both files when skills are updated. Follow semantic versioning:
 
 - **Patch** — typo fixes, clarifications, minor reference updates
 - **Minor** — new reference files, new skills, expanded coverage
 - **Major** — breaking changes to skill activation or command behavior
+
+:::note
+The plugin marketplace distribution mechanism (`.claude-plugin/`) is specific to Claude Code. Other AI assistants (Cursor, Copilot, Codex CLI) discover skills directly from `.claude/skills/` without needing these files.
+:::

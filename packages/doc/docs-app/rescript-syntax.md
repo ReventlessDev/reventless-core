@@ -106,10 +106,35 @@ let notPossibleAsWell = command => {
 The [option](https://rescript-lang.org/docs/manual/latest/null-undefined-option) type is used to explicitly represent a value, which may be present (or not).
 
 ```rescript
-type person = { name: string, title: option(string) }
+type person = { name: string, title: option<string> }
 
 let alice = {name: "Alice",  title: Some("Dr.")}
 let bob = {name: "Bob", title: None}
+```
+
+## Result
+
+The [`result`](https://rescript-lang.org/docs/manual/latest/api/core/result) type represents either success (`Ok`) or failure (`Error`). It is how Reventless commands signal outcomes.
+
+```rescript
+// Commands return result<array<event>, error>
+let handle = (state, command) =>
+  switch command {
+  | CreateItem({name}) =>
+    switch state {
+    | Some(_) => Error(AlreadyExists)  // reject — entity already exists
+    | None => Ok([ItemCreated({name: name})])  // accept — emit event
+    }
+  }
+```
+
+Pattern-match to handle both cases:
+
+```rescript
+switch await aggregate.handle(command) {
+| Ok(events) => Js.log("events emitted: " ++ events->Array.length->Int.toString)
+| Error(err) => Js.log("command rejected")
+}
 ```
 
 ## Control Structures
@@ -122,6 +147,26 @@ let bob = {name: "Bob", title: None}
 let hello = (name) => "Hello " ++ name ++ "!"
 let helloGuest = hello("Guest") // "Hello Guest!"
 ```
+
+### Pipe Operator `->`
+
+The pipe operator `->` passes the left-hand value as the **first argument** of the right-hand function. It chains transformations without nested calls or intermediate variables.
+
+```rescript
+// Without pipe
+let result = Array.map(events, encodeEvent)
+
+// With pipe — reads left to right
+let result = events->Array.map(encodeEvent)
+
+// Chain multiple operations
+let ids =
+  events
+  ->Array.filter(e => e.version > 0)
+  ->Array.map(e => e.id)
+```
+
+Reventless uses `->` everywhere — reading code fluently requires recognizing this pattern.
 
 ### Switch
 
@@ -194,7 +239,7 @@ let sayHiAdvanced = ({name: personName} as person) =>
     "hello "
     ++ personName
     ++ ", you are "
-    ++ person.age->Belt.Int.toString
+    ++ person.age->Int.toString
     ++ " years old."
 
 // in this specific case, age could also be destructured
@@ -203,9 +248,68 @@ let sayHiAdvanced = ({name: personName, age}) =>
     "hello "
     ++ personName
     ++ ", you are "
-    ++ age->Belt.Int.toString
+    ++ age->Int.toString
     ++ " years old."
 ```
+
+## Arrays
+
+Arrays are the primary collection type in Reventless. Commands return `array<event>`, and many APIs accept or return arrays.
+
+```rescript
+// Array literal
+let events: array<event> = [ItemCreated({name: "Widget"}), ItemTagged({tag: "new"})]
+
+// Empty array — "no events" from a command that makes no change
+let noChange: array<event> = []
+
+// Common operations (from RescriptCore)
+let count = events->Array.length
+let first = events->Array.getUnsafe(0)  // unsafe — only when index is known valid
+let mapped = events->Array.map(encodeEvent)
+let filtered = events->Array.filter(e => e != IgnoredEvent)
+```
+
+## `open` Statement
+
+`open` brings all values and types from a module into the current scope, avoiding repeated module prefixes.
+
+```rescript
+// Without open
+let result = Reventless.EventLog.make(~name="orders")
+
+// With open
+open Reventless.EventLog
+let result = make(~name="orders")
+```
+
+Files in Reventless often begin with `open RescriptCore` (from `-open RescriptCore` in `rescript.json`) which makes standard library functions (`Array`, `String`, `Int`, etc.) available without prefix.
+
+:::caution Warning 44: open shadows
+If two opened modules export the same name, the compiler emits warning 44. Fix by removing the redundant `open`, qualifying the ambiguous name, or adding `@@warning("-44")` at the top of the file.
+:::
+
+## `include` Statement
+
+`include` copies all definitions from a module (or module type) into the current one. It is used to compose module types in specs.
+
+```rescript
+// Reuse a common module type
+module type MySpec = {
+  include Reventless.Aggregate.Spec
+  let extraConfig: string
+}
+
+// A concrete module satisfying MySpec
+module MyImpl: MySpec = {
+  // Must include everything from Aggregate.Spec
+  let name = "MyAggregate"
+  // ... plus the extra field
+  let extraConfig = "value"
+}
+```
+
+In Reventless, `include` appears in spec packages to build up composite module types without copying individual definitions.
 
 ## Modules
 
@@ -268,7 +372,7 @@ In Reventless, first-class modules are used extensively for dependency injection
 
 ```rescript
 // A plugin that accepts module implementations
-let createPlugin = (module Aggregate: Aggregate.Spec, module ReadModel: ReadModel.Spec) => {
+let createPlugin = (module(Aggregate: Aggregate.Spec), module(ReadModel: ReadModel.Spec)) => {
   // Use the modules...
 }
 
@@ -372,6 +476,66 @@ Common patterns in Reventless:
 
 PPX (PreProcessor eXtensions) are compile-time code generators that transform your code. Reventless uses PPX extensions to automatically generate boilerplate code.
 
+### Reventless PPX Annotations
+
+Reventless uses its own PPX (`@reventlessdev/reventless-ppx`) to auto-generate boilerplate. These annotations appear in spec and behavior files.
+
+#### `@@reventless.spec`
+
+Place at the top of any spec file (aggregates, read models, extension points, DCB slices). Automatically injects:
+- `let name` (derived from filename, strips component suffixes)
+- `module Id` (default string-based ID)
+- `let moduleUrl` (build-time module path)
+
+```rescript
+// ItemSpec.res
+@@reventless.spec
+
+@schema type command = | CreateItem({name: string}) | DeleteItem
+@schema type event = | ItemCreated({name: string}) | ItemDeleted
+@schema type error = | AlreadyExists | NotFound
+@schema type state = option<{name: string}>
+```
+
+For files in a `*Spec` namespace, the PPX also auto-prefixes extension point names with the plugin name.
+
+#### `@@reventless.behavior`
+
+Place at the top of behavior files. Automatically injects:
+- `open Spec` (brings spec types into scope)
+- `module Spec = Spec`
+- `let moduleUrl`
+
+```rescript
+// ItemBehavior.res  (PPX derives Spec from "Item" in filename)
+@@reventless.behavior
+
+let initialState = None
+
+let handle = (state, command) =>
+  switch (state, command) {
+  | (None, CreateItem({name})) => Ok([ItemCreated({name: name})])
+  | (Some(_), CreateItem(_)) => Error(AlreadyExists)
+  | (None, DeleteItem) => Ok([])
+  | (Some(_), DeleteItem) => Ok([ItemDeleted])
+  }
+
+let apply = (state, event) =>
+  switch event {
+  | ItemCreated({name}) => Some({name: name})
+  | ItemDeleted => None
+  }
+```
+
+#### `@reventless.projections`
+
+Used inside plugin functor bodies to wire projection mappings:
+
+```rescript
+@reventless.projections
+module CatalogProjections = CatalogProjections.Make with module Target := CatalogReadModel
+```
+
 ### @schema
 
 The `@schema` PPX generates serialization/deserialization code for types:
@@ -390,28 +554,34 @@ This automatically generates:
 
 ### @s.matches
 
-Used in DCB (Dynamic Consistency Boundary) contexts to mark fields as queryable tags:
+Used in DCB (Dynamic Consistency Boundary) contexts to mark fields as queryable tags. In most cases you **do not need to write this annotation manually** — the Reventless PPX auto-injects it.
+
+#### PPX Auto-Injection (Normal Case)
+
+Files inside any `*Slice/` folder (StateChangeSlice, StateViewSlice, AutomationSlice, etc.) automatically get DCB tags applied by `@@reventless.spec`. Fields named `*Id: string` and `*Ids: array<string>` are tagged without any manual annotation:
 
 ```rescript
-@schema
-type event =
-  | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
-  | ItemRenamed({itemId: @s.matches(DcbTag.string) string, newName: string})
+// ItemStateChangeSlice/ItemSpec.res
+@@reventless.spec
+
+@schema type command = | CreateItem({itemId: string, name: string})
+// ↑ PPX auto-injects @s.matches(DcbTag.string) on itemId
 ```
 
-The `@s.matches(DcbTag.string)` marks `itemId` as a DCB tag, enabling efficient lookups when building decision models.
+#### Manual Use (Edge Cases)
 
-#### Why DCB Tags?
+Outside slice folders, or when field names don't follow the `*Id`/`*Ids` convention, annotate explicitly. **The annotation must go on the type expression (after the colon), not on the field name:**
 
-In DCB-based plugins, multiple state change slices share a single event log. When processing a command, a slice needs to query relevant events to build its decision model. DCB tags allow efficient filtering:
+```rescript
+// Correct — annotation on the type expression
+type event =
+  | ItemCreated({itemId: @s.matches(DcbTag.string) string, name: string})
 
-- `@s.matches(DcbTag.string)` - Tag for string-based entity IDs (e.g., `itemId`, `userId`)
-- `@s.matches(DcbTag.int)` - Tag for integer-based IDs
+// Wrong — annotation on the field name (silently ignored by ppx)
+type event =
+  | ItemCreated({@s.matches(DcbTag.string) itemId: string, name: string})
+```
 
-The framework extracts these tagged fields and indexes events by them, enabling fast queries like "get all events for entity X".
-
-:::note Future simplification
-In a future version the DCB tag annotation will be simplified from `@s.matches(DcbTag.string)` to `@s.tag`. This is currently not supported by Sury.
-:::
+Fine-grained control is available via field-level annotations: `@partitionTag` (marks the partition key when multiple `*Id` fields exist), `@noTag` (suppresses auto-tagging), `@dcbTag` (tags a field that doesn't follow `*Id` naming).
 
 See [DCB-Based Plugin](./dcb-based-plugin.md) for how DCB tags are used in practice.

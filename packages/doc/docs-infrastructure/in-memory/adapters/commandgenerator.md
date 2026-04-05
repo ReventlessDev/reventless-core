@@ -7,7 +7,7 @@ sidebar_position: 7
 
 **Source:** `reventless-in-memory/src/adapter/CommandGenerator/CommandGeneratorResolvers_InMemory.res`
 
-**AWS equivalent:** [CommandGenerator → AppSync](/providers/aws/adapters/commandgenerator)
+**AWS equivalent:** [CommandGenerator → AppSync](/infrastructure/aws/adapters/commandgenerator)
 
 ## How It Works
 

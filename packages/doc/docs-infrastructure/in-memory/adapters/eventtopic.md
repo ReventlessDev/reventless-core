@@ -7,7 +7,7 @@ sidebar_position: 3
 
 **Source:** `reventless-in-memory/src/adapter/EventTopic/EventTopicPublisher_InMemory.res`
 
-**AWS equivalent:** [EventTopic → SNS](/providers/aws/adapters/eventtopic)
+**AWS equivalent:** [EventTopic → SNS](/infrastructure/aws/adapters/eventtopic)
 
 ## How It Works
 

@@ -1,5 +1,5 @@
 ---
-title: MCP (Model Context Protocol)
+title: MCP Server
 date: 2026-03-04
 draft: false
 ---

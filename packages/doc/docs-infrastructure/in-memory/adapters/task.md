@@ -7,7 +7,7 @@ sidebar_position: 6
 
 **Source:** `reventless-in-memory/src/adapter/Task/TaskBucket_InMemory.res`
 
-**AWS equivalent:** [Task → S3](/providers/aws/adapters/task)
+**AWS equivalent:** [Task → S3](/infrastructure/aws/adapters/task)
 
 ## How It Works
 

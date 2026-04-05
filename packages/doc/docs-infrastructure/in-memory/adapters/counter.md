@@ -7,7 +7,7 @@ sidebar_position: 8
 
 **Source:** `reventless-in-memory/src/adapter/Counter/CounterHandler_InMemory.res`
 
-**AWS equivalent:** [Counter → DynamoDB Streams](/providers/aws/adapters/counter)
+**AWS equivalent:** [Counter → DynamoDB Streams](/infrastructure/aws/adapters/counter)
 
 ## Data Structure
 

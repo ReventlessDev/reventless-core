@@ -130,6 +130,16 @@ Reventless uses serverless AWS services with pay-per-use pricing:
 
 For typical development and low-traffic production workloads, costs are negligible.
 
+## Testing AWS Adapters
+
+The `reventless-aws/__tests__` directory contains tests for adapters and utilities. Tests verify both deploy-time resource creation and runtime operation logic.
+
+When developing custom adapters or modifying existing ones, ensure:
+- Deploy-time code creates resources with correct properties
+- Runtime functions handle success and error cases
+- IAM permissions are correctly configured
+- Resources are properly tagged for cost tracking
+
 ## Next Steps
 
 - [AWS Adapters Overview](./index.md) — understand how components map to AWS services

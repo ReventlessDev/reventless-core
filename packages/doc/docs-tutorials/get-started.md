@@ -1,9 +1,9 @@
 ---
-title: Overview
+title: Tutorials Overview
 sidebar_position: 1
 ---
 
-# Online Shop Example
+# Tutorials — Online Shop Example
 
 A simple, educational event-sourced application covering two Plugins.
 

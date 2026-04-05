@@ -1,10 +1,10 @@
 ---
-title: Aggregate-Extension Connection (Implementation)
+title: Aggregate-Extension Connection
 ---
 
 # Aggregate-Extension Connection — Framework Implementation
 
-This page covers how the routing between aggregates and extensions is implemented inside the framework. For the application developer's view of how to use this mechanism, see the [App Guide](/app/architecture/aggregate-extension-connection).
+This page covers how the routing between aggregates and extensions is implemented inside the framework. For the application developer's view of how to use this mechanism, see the [App Guide](/app/concepts/aggregate-extension-connection).
 
 ## Overview
 

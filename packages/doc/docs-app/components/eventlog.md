@@ -334,4 +334,4 @@ type outputs = {
 
 ## AWS Implementation
 
-For detailed implementation, see [EventLog AWS Adapter Documentation](/providers/aws/adapters/eventlog).
+For detailed implementation, see [EventLog AWS Adapter Documentation](/infrastructure/aws/adapters/eventlog).

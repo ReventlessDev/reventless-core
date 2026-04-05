@@ -19,10 +19,12 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Architecture',
+      label: 'Concepts',
       items: [
-        'architecture/aggregate-extension-connection',
-        'architecture/dcb',
+        'concepts/aggregate-extension-connection',
+        'concepts/dcb',
+        'concepts/statechangeslice-usage',
+        'concepts/stateviewslice-usage',
       ],
     },
     {
@@ -55,15 +57,7 @@ const sidebars = {
         'components/task',
       ],
     },
-    {
-      type: 'category',
-      label: 'Event Modeling',
-      items: [
-        'event-modeling/statechangeslice-usage',
-        'event-modeling/stateviewslice-usage',
-      ],
-    },
-    {
+{
       type: 'category',
       label: 'Common Modules',
       items: [
@@ -93,6 +87,7 @@ const sidebars = {
         'ai-assisted/iterating',
       ],
     },
+    'glossary',
   ],
 };
 

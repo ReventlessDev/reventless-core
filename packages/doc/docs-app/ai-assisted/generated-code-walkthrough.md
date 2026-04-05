@@ -3,7 +3,7 @@ title: Generated Code Walkthrough
 sidebar_position: 5
 ---
 
-# What Gets Generated
+# Generated Code Walkthrough
 
 When you ask the AI to create a Reventless application, it generates a complete set of files. Here's what each file does.
 

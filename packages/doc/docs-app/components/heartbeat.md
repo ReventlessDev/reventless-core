@@ -250,4 +250,4 @@ heartbeat->Reventless.Heartbeat.connect(~runtime, ~remoteChannel, ~timeout=10)
 
 ## AWS Implementation
 
-For detailed AWS-specific implementation including CloudWatch Events integration, Lambda permissions, IAM policies, and admin Plugin SQS integration, see [Heartbeat → EventBridge Rule + Lambda](/providers/aws/adapters/heartbeat).
+For detailed AWS-specific implementation including CloudWatch Events integration, Lambda permissions, IAM policies, and admin Plugin SQS integration, see [Heartbeat → EventBridge Rule + Lambda](/infrastructure/aws/adapters/heartbeat).

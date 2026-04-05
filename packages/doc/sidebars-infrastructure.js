@@ -2,7 +2,7 @@
 
 /** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
 const sidebars = {
-  providersSidebar: [
+  infrastructureSidebar: [
     'index',
     'get-started',
     'adapter-pattern',
@@ -57,6 +57,7 @@ const sidebars = {
       items: [
         'aws/index',
         'aws/get-started',
+        'aws/architecture',
         {
           type: 'category',
           label: 'Core Event Sourcing',

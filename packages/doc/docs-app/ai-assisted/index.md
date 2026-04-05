@@ -37,13 +37,16 @@ The skills use the portable [SKILL.md open standard](https://agentskills.io/spec
 
 ### Claude Code (recommended)
 
-Skills are automatically available when working in a Reventless project — they live in `.claude/skills/` at the repo root.
+Skills are automatically available when working in a Reventless project — they live in `.claude/skills/` at the repo root and are picked up by Claude Code automatically.
 
-For projects outside the reventless-core repo:
+For projects outside the reventless-core repo, copy or symlink the `.claude/` folder from reventless-core into your project root:
 
-```
-/plugin marketplace add ReventlessDev/reventless-core
-/plugin install reventless-skills
+```bash
+# Symlink (stays up-to-date when reventless-core is updated)
+ln -s /path/to/reventless-core/.claude .claude
+
+# Or copy (standalone snapshot)
+cp -r /path/to/reventless-core/.claude .claude
 ```
 
 ### Other Assistants
@@ -52,10 +55,6 @@ Skills in `.claude/skills/` are cross-discovered by Cursor and GitHub Copilot au
 
 ## MCP Integration
 
-When a Reventless application is running (via `node src/Main.res.mjs`), the built-in MCP server exposes:
+Reventless includes a built-in MCP server that gives Claude Code native access to your application's commands and read models while it is running.
 
-- **Tools** — one per command (auto-generated from sury schemas)
-- **Resources** — one per read model / view slice (single-item + list)
-- **Event History** — paginated event replay per entity
-
-Claude Code connects automatically via the plugin's MCP configuration (ports 3001/3002).
+See [MCP Server](/framework/inner-workings/mcp) for details on what the server exposes and how to configure it.

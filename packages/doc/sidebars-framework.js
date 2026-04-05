@@ -36,7 +36,7 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'AI Skills Development',
+      label: 'AI Skills',
       items: [
         'ai-skills/index',
         'ai-skills/writing-skills',

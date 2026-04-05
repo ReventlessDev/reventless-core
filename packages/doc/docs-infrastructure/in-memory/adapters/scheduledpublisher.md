@@ -7,7 +7,7 @@ sidebar_position: 11
 
 **Source:** `reventless-in-memory/src/adapter/Scheduler/ScheduledPublisher_InMemory.res`
 
-**AWS equivalent:** [ScheduledPublisher → CloudWatch Events](/providers/aws/adapters/scheduledpublisher)
+**AWS equivalent:** [ScheduledPublisher → CloudWatch Events](/infrastructure/aws/adapters/scheduledpublisher)
 
 ## How It Works
 

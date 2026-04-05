@@ -3,7 +3,7 @@ title: Describing Your Domain
 sidebar_position: 3
 ---
 
-# How to Describe Your Domain
+# Describing Your Domain
 
 The better you describe your domain, the better the generated code. Here's what the AI needs to know.
 

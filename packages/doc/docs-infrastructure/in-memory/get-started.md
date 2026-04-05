@@ -121,5 +121,5 @@ The MCP server starts alongside the GraphQL server, providing AI-native access t
 ## Next Steps
 
 - [InMemory Provider Overview](./index.md) — architecture and service mappings
-- [Providers Overview](/providers) — compare with the AWS provider
-- [AWS Getting Started](/providers/aws/get-started) — deploy to production on AWS
+- [Infrastructure Overview](/infrastructure) — compare with the AWS provider
+- [AWS Getting Started](/infrastructure/aws/get-started) — deploy to production on AWS

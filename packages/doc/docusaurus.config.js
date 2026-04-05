@@ -116,7 +116,7 @@ const config = {
         language: ["en"],
         indexDocs: true,
         indexBlog: false,
-        docsRouteBasePath: ["/app", "/framework", "/providers", "/online-shop"],
+        docsRouteBasePath: ["/app", "/framework", "/infrastructure", "/tutorials"],
         // Enable search in dev mode by using the production index
         removeDefaultStopWordFilter: true,
         // Highlight search terms
@@ -164,10 +164,10 @@ const config = {
     [
       "@docusaurus/plugin-content-docs",
       {
-        id: "providers",
-        path: "docs-providers",
-        routeBasePath: "providers",
-        sidebarPath: "./sidebars-providers.js",
+        id: "infrastructure",
+        path: "docs-infrastructure",
+        routeBasePath: "infrastructure",
+        sidebarPath: "./sidebars-infrastructure.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
@@ -177,10 +177,10 @@ const config = {
     [
       "@docusaurus/plugin-content-docs",
       {
-        id: "online-shop",
-        path: "docs-online-shop",
-        routeBasePath: "online-shop",
-        sidebarPath: "./sidebars-online-shop.js",
+        id: "tutorials",
+        path: "docs-tutorials",
+        routeBasePath: "tutorials",
+        sidebarPath: "./sidebars-tutorials.js",
         remarkPlugins: [[d2PrependStyles, { stylesPath: d2StylesPath }], [d2, d2Opts]],
         rehypePlugins: [rehypeSequenceDiagramClass],
         editUrl:
@@ -235,28 +235,33 @@ const config = {
           },
           {
             type: "docSidebar",
+            sidebarId: "tutorialsSidebar",
+            docsPluginId: "tutorials",
+            position: "left",
+            label: "Tutorials",
+          },
+          {
+            type: "docSidebar",
             sidebarId: "frameworkSidebar",
             docsPluginId: "framework",
             position: "left",
-            label: "Framework",
+            label: "Contributing",
           },
           {
             type: "docSidebar",
-            sidebarId: "providersSidebar",
-            docsPluginId: "providers",
+            sidebarId: "infrastructureSidebar",
+            docsPluginId: "infrastructure",
             position: "left",
-            label: "Providers",
-          },
-          {
-            type: "docSidebar",
-            sidebarId: "onlineShopSidebar",
-            docsPluginId: "online-shop",
-            position: "left",
-            label: "Example",
+            label: "Infrastructure",
           },
           {
             href: "https://github.com/ReventlessDev/reventless-core",
             label: "GitHub",
+            position: "right",
+          },
+          {
+            href: "https://github.com/ReventlessDev/reventless-core/releases",
+            label: "Releases",
             position: "right",
           },
         ],
@@ -281,12 +286,12 @@ const config = {
             title: "Developer Guides",
             items: [
               {
-                label: "Framework",
+                label: "Contributing",
                 to: "/framework",
               },
               {
-                label: "Providers",
-                to: "/providers",
+                label: "Infrastructure",
+                to: "/infrastructure",
               },
             ],
           },
