@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.9 (2026-04-05)
+
+### Bug Fixes
+
+* DCB command pipeline runtime fixes ([9646c97](https://github.com/ReventlessDev/reventless-core/commit/9646c97e7fd86f28d5035d77ff40af66f592e61e))
+
+
 # 2.4.0-alpha.8 (2026-04-04)
 
 ### Bug Fixes
