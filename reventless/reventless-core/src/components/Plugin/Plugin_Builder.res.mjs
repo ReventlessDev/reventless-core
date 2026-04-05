@@ -6,7 +6,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Plugin$ReventlessCore from "./Plugin.res.mjs";
 import * as StackReference$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/StackReference.res.mjs";
@@ -46,10 +45,10 @@ function Make(Spec) {
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let s = Spec.hooks.scheduler.contents;
         let scheduler = s !== undefined ? s : Stdlib_JsError.throwWithMessage("Plugin_Builder: scheduler not set — call makePlatform/deployPlugin first");
-        let a = Spec.hooks.api.contents;
-        let api = a !== undefined ? Primitive_option.valFromOption(a) : Stdlib_JsError.throwWithMessage("Plugin_Builder: api not set — call makePlatform/deployPlugin first");
-        let r = Spec.hooks.apiRole.contents;
-        let apiRole = r !== undefined ? Primitive_option.valFromOption(r) : Stdlib_JsError.throwWithMessage("Plugin_Builder: apiRole not set — call makePlatform/deployPlugin first");
+        let match = Spec.hooks.api.contents;
+        let api = match !== undefined ? match.val : Stdlib_JsError.throwWithMessage("Plugin_Builder: api not set — call makePlatform/deployPlugin first");
+        let match$1 = Spec.hooks.apiRole.contents;
+        let apiRole = match$1 !== undefined ? match$1.val : Stdlib_JsError.throwWithMessage("Plugin_Builder: apiRole not set — call makePlatform/deployPlugin first");
         let id = Plugin$ReventlessCore.makeId(extra$1, version);
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {

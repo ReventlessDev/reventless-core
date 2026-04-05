@@ -387,7 +387,7 @@ module MakeWithConfig = (
             Console.log(
               "[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence",
             )
-            Promise.resolve([])
+            Promise.resolve([pluginFragment])
           | Some(tableName) =>
             open AwsSdk.DynamoDb.DocumentClient
             // Write this plugin's fragment so subsequent plugin deployments find it.
@@ -610,8 +610,8 @@ module MakeWithConfig = (
     // can read them without app plugins having to pass them through.
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(appSyncApi->Obj.magic)
-    hooks.apiRole := Some(appSyncApiRole->Obj.magic)
+    hooks.api := Some({val: appSyncApi->Obj.magic})
+    hooks.apiRole := Some({val: appSyncApiRole->Obj.magic})
 
     let _admin = Admin.construct(
       ~version,
@@ -685,8 +685,8 @@ module MakeWithConfig = (
     Console.log(`[Platform:deployPlatform] v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(appSyncApi->Obj.magic)
-    hooks.apiRole := Some(appSyncApiRole->Obj.magic)
+    hooks.api := Some({val: appSyncApi->Obj.magic})
+    hooks.apiRole := Some({val: appSyncApiRole->Obj.magic})
 
     // Create PluginExtensionPoint with runtime schema stitching.
     // When plugins connect/disconnect, the handler queries the Plugin read model
@@ -931,8 +931,8 @@ module MakeWithConfig = (
     // Each plugin stack creates its own scheduler (closures can't cross stacks).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(appSyncApi->Obj.magic)
-    hooks.apiRole := Some(appSyncApiRole->Obj.magic)
+    hooks.api := Some({val: appSyncApi->Obj.magic})
+    hooks.apiRole := Some({val: appSyncApiRole->Obj.magic})
 
     module P = unpack(plugin)
     let pluginComponent = P.make()

@@ -255,7 +255,7 @@ let readDcbEventLogHistory = async (
     hashKey: "id",
   }
 
-  let result = await DcbEventLogStorage_DynamoDb_Runtime.read(table, {Reventless.DcbTag.key: ""})(
+  let result = await DcbEventLogStorage_DynamoDb_Runtime.read(table)(
     ~query=[],
     ~after?,
   )

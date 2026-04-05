@@ -32,11 +32,11 @@ function make(name, indexes, partitionTag, opts) {
   return {
     resources: [Util_DynamoDbStream$ReventlessAws.toResource(tags, table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => {
-      let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(resolvedTable, partitionTag);
+      let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(resolvedTable);
       return {
         read: readFn,
         append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(resolvedTable, partitionTag),
-        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(resolvedTable, partitionTag)
+        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(resolvedTable)
       };
     })
   };

@@ -62,14 +62,14 @@ module Make = (
       )
     }
     let api: api = switch Spec.hooks.api.contents {
-    | Some(a) => Obj.magic(a)
+    | Some({val}) => Obj.magic(val)
     | None =>
       JsError.throwWithMessage(
         "Plugin_Builder: api not set — call makePlatform/deployPlugin first",
       )
     }
     let apiRole: role = switch Spec.hooks.apiRole.contents {
-    | Some(r) => Obj.magic(r)
+    | Some({val}) => Obj.magic(val)
     | None =>
       JsError.throwWithMessage(
         "Plugin_Builder: apiRole not set — call makePlatform/deployPlugin first",

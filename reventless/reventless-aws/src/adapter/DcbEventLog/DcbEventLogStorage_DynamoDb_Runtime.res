@@ -30,14 +30,18 @@ let compositeTagKey = (tags: array<Reventless.DcbTag.tag>) =>
 // --- Partition Key Derivation ---
 
 let derivePartitionKey = (
-  partitionTag: Reventless.DcbTag.partitionTag,
+  ~partitionTag=?,
   tags: array<Reventless.DcbTag.tag>,
 ): string => {
   // Try the designated partition tag first; fall back to the event's first tag
   // (multi-entity DCB logs have different tag fields per entity type)
-  let tag = switch tags->Array.find(t => t.key == partitionTag.key) {
-  | Some(t) => t
+  let tag = switch partitionTag {
   | None => tags->Array.getUnsafe(0)
+  | Some(pt: Reventless.DcbTag.partitionTag) =>
+    switch tags->Array.find(t => t.key == pt.key) {
+    | Some(t) => t
+    | None => tags->Array.getUnsafe(0)
+    }
   }
   `${tag.key}:${tag.value}`
 }
@@ -47,11 +51,11 @@ let derivePartitionKey = (
 let toItem = (
   position: string,
   event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent,
-  partitionTag: Reventless.DcbTag.partitionTag,
+  ~partitionTag=?,
 ): JSON.t => {
   // Create base item
   let item = Dict.make()
-  item->Dict.set("id", derivePartitionKey(partitionTag, event.tags)->JSON.Encode.string)
+  item->Dict.set("id", derivePartitionKey(~partitionTag?, event.tags)->JSON.Encode.string)
   item->Dict.set("position", position->JSON.Encode.string)
   item->Dict.set("event", event.eventType->JSON.Encode.string)
   item->Dict.set("data", event.data)
@@ -282,7 +286,6 @@ let queryByPartitionKey = async (
 
 let executeQueryItem = async (
   table: resolvedTable,
-  _partitionTag: Reventless.DcbTag.partitionTag,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
 ) => {
@@ -423,14 +426,14 @@ let mergeSortedEvents = (
 
 // --- Main Operations ---
 
-let read = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag) =>
+let read = (table: resolvedTable) =>
   async (
     ~query: Reventless.DcbTag.query,
     ~after=?,
   ) => {
     // Execute queries for each queryItem
     let queryResults = await query
-    ->Array.map(queryItem => executeQueryItem(table, partitionTag, queryItem, ~after?))
+    ->Array.map(queryItem => executeQueryItem(table, queryItem, ~after?))
     ->Promise.all
 
     // Merge and deduplicate results
@@ -459,11 +462,11 @@ let writeEventsWithPosition = async (
   table: resolvedTable,
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   basePosition: string,
-  partitionTag: Reventless.DcbTag.partitionTag,
+  ~partitionTag=?,
 ) => {
   let items = events->Array.mapWithIndex((event, idx) => {
     let position = generatePositionForBatch(basePosition, idx)
-    toItem(position, event, partitionTag)
+    toItem(position, event, ~partitionTag?)
   })
 
   await items
@@ -473,7 +476,7 @@ let writeEventsWithPosition = async (
   ->Effect.runPromise
 }
 
-let append = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag) =>
+let append = (table: resolvedTable, ~partitionTag=?) =>
   async (
     events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
     ~condition=?,
@@ -482,7 +485,7 @@ let append = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag
     | None => {
         // Unconditional append
         let position = generatePosition()
-        switch await writeEventsWithPosition(table, events, position, partitionTag) {
+        switch await writeEventsWithPosition(table, events, position, ~partitionTag?) {
         | Ok() => Ok(position)
         | Error(msg) => Error(msg)
         }
@@ -490,7 +493,7 @@ let append = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag
 
     | Some(cond: Reventless.DcbTag.appendCondition) => {
         // Conditional append: check for conflicts first
-        let readResult = await read(table, partitionTag)(~query=cond.query, ~after=?cond.after)
+        let readResult = await read(table)(~query=cond.query, ~after=?cond.after)
 
         if readResult.events->Array.length > 0 {
           // Conflict detected
@@ -498,7 +501,7 @@ let append = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag
         } else {
           // No conflicts, proceed with append
           let position = generatePosition()
-          switch await writeEventsWithPosition(table, events, position, partitionTag) {
+          switch await writeEventsWithPosition(table, events, position, ~partitionTag?) {
           | Ok() => Ok(position)
           | Error(msg) => Error(msg)
           }
@@ -707,7 +710,6 @@ let scanWithFilterStream = (
 
 let executeQueryItemStream = (
   table: resolvedTable,
-  _partitionTag: Reventless.DcbTag.partitionTag,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
 ) => {
@@ -729,9 +731,9 @@ let executeQueryItemStream = (
   }
 }
 
-let readStream = (table: resolvedTable, partitionTag: Reventless.DcbTag.partitionTag) =>
+let readStream = (table: resolvedTable) =>
   (~query: Reventless.DcbTag.query, ~after=?) => {
-    let streams = query->Array.map(qi => executeQueryItemStream(table, partitionTag, qi, ~after?))
+    let streams = query->Array.map(qi => executeQueryItemStream(table, qi, ~after?))
     switch streams->Array.length {
     | 0 => Stream.empty
     | 1 => (streams->Array.getUnsafe(0))->Stream.map(fromItem)

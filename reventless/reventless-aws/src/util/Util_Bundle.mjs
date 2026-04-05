@@ -6,6 +6,11 @@ import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 
+// Cache populated by getModuleSpecifier: packageName → absolute package root dir.
+// Allows resolvePackageRoot to find packages that aren't resolvable via require
+// (e.g. the deploy stack's own package, which is not a workspace member).
+const packageRootCache = new Map();
+
 /**
  * Convert an import.meta.url file URL to an npm module specifier.
  * Walks up from the file to find the nearest package.json, reads the package name,
@@ -15,6 +20,10 @@ const require = createRequire(import.meta.url);
  * @returns {string} - npm specifier (e.g. "@reventlessdev/catalog/src/Category.res.mjs")
  */
 export function getModuleSpecifier(importMetaUrl) {
+  // If it's already a package specifier (not a file:// URL), return it directly.
+  if (!importMetaUrl.startsWith("file://")) {
+    return importMetaUrl;
+  }
   const filePath = new URL(importMetaUrl).pathname;
   let dir = path.dirname(filePath);
   while (dir !== "/") {
@@ -22,6 +31,7 @@ export function getModuleSpecifier(importMetaUrl) {
     if (fs.existsSync(pkgPath)) {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
       if (pkg.name) {
+        packageRootCache.set(pkg.name, dir);
         const relPath = path.relative(dir, filePath);
         return pkg.name + "/" + relPath;
       }
@@ -53,8 +63,18 @@ export function extractPackageName(specifier) {
  * @returns {string} - Absolute path to package root directory
  */
 export function resolvePackageRoot(packageName) {
-  const pkgJsonPath = require.resolve(packageName + "/package.json");
-  return path.dirname(pkgJsonPath);
+  // Fast path: populated by getModuleSpecifier when it walks the package tree.
+  if (packageRootCache.has(packageName)) {
+    return packageRootCache.get(packageName);
+  }
+  try {
+    const pkgJsonPath = require.resolve(packageName + "/package.json");
+    return path.dirname(pkgJsonPath);
+  } catch (_e) {
+    const cwdRequire = createRequire(process.cwd() + "/index.js");
+    const pkgJsonPath = cwdRequire.resolve(packageName + "/package.json");
+    return path.dirname(pkgJsonPath);
+  }
 }
 
 /**
@@ -99,8 +119,8 @@ export function createFilteredPackageArchive(packageRoot) {
         walk(path.join(dir, name), prefix ? prefix + "/" + name : name);
         continue;
       }
-      // Include only *.res.mjs and package.json
-      if (name === "package.json" || name.endsWith(".res.mjs")) {
+      // Include *.mjs (both compiled *.res.mjs and hand-written entry points) and package.json
+      if (name === "package.json" || name.endsWith(".mjs")) {
         const relPath = prefix ? prefix + "/" + name : name;
         assets[relPath] = new pulumi.asset.FileAsset(path.join(dir, name));
       }

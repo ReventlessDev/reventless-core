@@ -11,7 +11,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
@@ -488,8 +487,8 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some();
-    hooks_apiRole.contents = Primitive_option.some();
+    hooks_api.contents = undefined;
+    hooks_apiRole.contents = undefined;
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
@@ -830,8 +829,8 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some();
-    hooks_apiRole.contents = Primitive_option.some();
+    hooks_api.contents = undefined;
+    hooks_apiRole.contents = undefined;
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
@@ -879,8 +878,8 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some();
-    hooks_apiRole.contents = Primitive_option.some();
+    hooks_api.contents = undefined;
+    hooks_apiRole.contents = undefined;
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
@@ -1362,8 +1361,8 @@ function Make($star) {
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some();
-    hooks_apiRole.contents = Primitive_option.some();
+    hooks_api.contents = undefined;
+    hooks_apiRole.contents = undefined;
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
@@ -1704,8 +1703,8 @@ function Make($star) {
     log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some();
-    hooks_apiRole.contents = Primitive_option.some();
+    hooks_api.contents = undefined;
+    hooks_apiRole.contents = undefined;
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
@@ -1753,8 +1752,8 @@ function Make($star) {
     log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some();
-    hooks_apiRole.contents = Primitive_option.some();
+    hooks_api.contents = undefined;
+    hooks_apiRole.contents = undefined;
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,

@@ -349,7 +349,7 @@ function MakeWithConfig(Config) {
           });
         }
         console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
-        return Promise.resolve([]);
+        return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
         let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
@@ -482,8 +482,12 @@ function MakeWithConfig(Config) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some(appSyncApi);
-    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    hooks_api.contents = {
+      val: appSyncApi
+    };
+    hooks_apiRole.contents = {
+      val: appSyncApiRole
+    };
     Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
@@ -518,8 +522,12 @@ function MakeWithConfig(Config) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some(appSyncApi);
-    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    hooks_api.contents = {
+      val: appSyncApi
+    };
+    hooks_apiRole.contents = {
+      val: appSyncApiRole
+    };
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
@@ -639,8 +647,12 @@ function MakeWithConfig(Config) {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some(appSyncApi);
-    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    hooks_api.contents = {
+      val: appSyncApi
+    };
+    hooks_apiRole.contents = {
+      val: appSyncApiRole
+    };
     let pluginComponent = plugin.make();
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
@@ -958,7 +970,7 @@ function Make($star) {
           });
         }
         console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
-        return Promise.resolve([]);
+        return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(emptyBaseFragment, allPluginFragments);
@@ -1090,8 +1102,12 @@ function Make($star) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some(appSyncApi);
-    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    hooks_api.contents = {
+      val: appSyncApi
+    };
+    hooks_apiRole.contents = {
+      val: appSyncApiRole
+    };
     Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, appSyncApi, appSyncApiRole, [], [], [], [], []);
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
@@ -1123,8 +1139,12 @@ function Make($star) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some(appSyncApi);
-    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    hooks_api.contents = {
+      val: appSyncApi
+    };
+    hooks_apiRole.contents = {
+      val: appSyncApiRole
+    };
     let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
     let updateApiSchema = async queryEngine => {
       let apiId = appSyncApiId.get();
@@ -1238,8 +1258,12 @@ function Make($star) {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Primitive_option.some(appSyncApi);
-    hooks_apiRole.contents = Primitive_option.some(appSyncApiRole);
+    hooks_api.contents = {
+      val: appSyncApi
+    };
+    hooks_apiRole.contents = {
+      val: appSyncApiRole
+    };
     let pluginComponent = plugin.make();
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);

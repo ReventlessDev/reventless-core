@@ -39,8 +39,13 @@ function compositeTagKey(tags) {
 }
 
 function derivePartitionKey(partitionTag, tags) {
-  let t = tags.find(t => t.key === partitionTag.key);
-  let tag = t !== undefined ? t : tags[0];
+  let tag;
+  if (partitionTag !== undefined) {
+    let t = tags.find(t => t.key === partitionTag.key);
+    tag = t !== undefined ? t : tags[0];
+  } else {
+    tag = tags[0];
+  }
   return tag.key + `:` + tag.value;
 }
 
@@ -232,7 +237,7 @@ async function queryByPartitionKey(table, partitionKey, after) {
   return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
-async function executeQueryItem(table, _partitionTag, queryItem, after) {
+async function executeQueryItem(table, queryItem, after) {
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
@@ -338,9 +343,9 @@ function mergeSortedEvents(streams) {
   }));
 }
 
-function read(table, partitionTag) {
+function read(table) {
   return async (query, after) => {
-    let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, partitionTag, queryItem, after)));
+    let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, queryItem, after)));
     let allItems = queryResults.flat();
     let allEvents = allItems.map(fromItem);
     let deduplicatedEvents = deduplicateByPosition(allEvents);
@@ -364,7 +369,7 @@ async function writeEventsWithPosition(table, events, basePosition, partitionTag
 function append(table, partitionTag) {
   return async (events, condition) => {
     if (condition !== undefined) {
-      let readResult = await read(table, partitionTag)(condition.query, condition.after);
+      let readResult = await read(table)(condition.query, condition.after);
       if (readResult.events.length !== 0) {
         return {
           TAG: "Error",
@@ -582,7 +587,7 @@ function scanWithFilterStream(table, eventTypes, after) {
   ]));
 }
 
-function executeQueryItemStream(table, _partitionTag, queryItem, after) {
+function executeQueryItemStream(table, queryItem, after) {
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
@@ -599,9 +604,9 @@ function executeQueryItemStream(table, _partitionTag, queryItem, after) {
   }
 }
 
-function readStream(table, partitionTag) {
+function readStream(table) {
   return (query, after) => {
-    let streams = query.map(qi => executeQueryItemStream(table, partitionTag, qi, after));
+    let streams = query.map(qi => executeQueryItemStream(table, qi, after));
     let match = streams.length;
     if (match === 0) {
       return Stream$1.empty;

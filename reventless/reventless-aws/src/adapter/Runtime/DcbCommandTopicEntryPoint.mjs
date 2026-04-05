@@ -21,7 +21,7 @@ const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifie
 function extractTypeName(json) {
   if (typeof json === 'string') return json;
   if (json && typeof json === 'object') {
-    const commandJson = json.commandJson || json;
+    const commandJson = json.commandJson || json.command || json;
     if (typeof commandJson === 'string') return commandJson;
     if (commandJson && commandJson.TAG) return commandJson.TAG;
     const keys = Object.keys(commandJson);

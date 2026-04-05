@@ -1,5 +1,11 @@
 let log = Logger.fromEnv()
 
+// Wrapper to safely store Pulumi Output values as option fields.
+// Pulumi Outputs are JS Proxies; wrapping them directly in Some() triggers
+// the BS_PRIVATE_NESTED_SOME_NONE sentinel bug.  Storing as {val: x} avoids
+// this because the plain record has no BS_PRIVATE_NESTED_SOME_NONE property.
+type hookedValue<'a> = {val: 'a}
+
 // Local-only intermediate type used by Plugin_Builder during construction.
 // All fields use Pulumi.Output.t-wrapped component output types because they
 // originate from freshly-built local components (not deserialized stack exports).
@@ -623,11 +629,12 @@ type platformHooks = {
   adminExtensionPoints: ref<Pulumi.Output.t<dict<ExtensionPoint.outputs>>>,
   // ── Platform context (populated by makePlatform/deployPlugin) ──────────
   // Read by Plugin_Builder.make so app plugins don't need to pass these.
-  // api/apiRole stored as unknown; cast back via Obj.magic in Plugin_Builder
-  // where the concrete types are known from the ApiSpec functor arg.
+  // api/apiRole stored as hookedValue<unknown> to avoid Pulumi Output Proxy
+  // corrupting ReScript option boxing (BS_PRIVATE_NESTED_SOME_NONE sentinel).
+  // Cast back via Obj.magic in Plugin_Builder where concrete types are known.
   scheduler: ref<option<Pulumi.Output.t<Scheduler.operations>>>,
-  api: ref<option<unknown>>,
-  apiRole: ref<option<unknown>>,
+  api: ref<option<hookedValue<unknown>>>,
+  apiRole: ref<option<hookedValue<unknown>>>,
 }
 
 // Default hooks — no callbacks, empty platform context.

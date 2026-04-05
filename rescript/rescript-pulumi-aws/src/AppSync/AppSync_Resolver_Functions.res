@@ -337,7 +337,7 @@ export function response(ctx) {
   const items = ctx.result.items ?? [];
   const edges = items.map((item, i) => ({
     node: item,
-    cursor: ctx.args.after ? ctx.args.after + '_' + i : String(i),
+    cursor: ctx.args.after ? ctx.args.after + '_' + i : '' + i,
   }));
   return {
     edges,

@@ -299,6 +299,13 @@ module Make = (
         let pkg = Util_Bundle.extractPackageName(specPath)
         packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
       })
+      // Include reventless-aws itself so hand-written entry point (.mjs) files
+      // in the zip take precedence over the Lambda layer, ensuring the latest
+      // local version is used.
+      packageDirs->Dict.set(
+        "@reventlessdev/reventless-aws",
+        Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+      )
 
       let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs";`
 
@@ -329,6 +336,32 @@ module Make = (
         ~timeout,
         ~opts,
       )
+
+      // The DCB command topic Lambda is invoked directly by AppSync (Route 1) and
+      // needs sqs:SendMessage to publish commands to the FIFO queue for processing.
+      // makeWithDefaultPolicy only grants sqs:Receive* (for SQS trigger Route 2).
+      let _ = queue.arn->Pulumi.Output.apply(queueArn => {
+        PulumiAws.IAM.RolePolicy.make(
+          ~name=`${name}-sqsSend`,
+          ~args={
+            policy: PulumiAws.PolicyDocument.make(
+              ~id=`${name}-sqsSendPolicy`,
+              ~statements=[
+                {
+                  sid: "AllowSqsSend",
+                  effect: Allow,
+                  actions: Action("sqs:SendMessage"),
+                  resources: Resource(queueArn),
+                },
+              ],
+            )
+            ->PulumiAws.PolicyDocument.toJsonString
+            ->Pulumi.Input.make,
+            role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+          },
+        )
+      })
+
       connect(~runtime)
     }
   }

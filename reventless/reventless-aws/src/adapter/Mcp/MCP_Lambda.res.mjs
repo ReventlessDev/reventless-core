@@ -172,9 +172,7 @@ async function readDcbEventLogHistory(tableName, entityId, limit, after) {
     arn: "",
     hashKey: "id"
   };
-  let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, {
-    key: ""
-  })([], after);
+  let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table)([], after);
   let filtered = entityId.length > 0 ? result.events.filter(e => e.tags.some(tag => tag.value === entityId)) : result.events;
   let match = limit !== undefined && filtered.length > limit ? [
       filtered.slice(0, limit),
