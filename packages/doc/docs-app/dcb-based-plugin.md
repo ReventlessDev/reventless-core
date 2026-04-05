@@ -110,14 +110,14 @@ let evolve = (state, event) =>
   switch event {
   | ItemEventLogSpec.ItemCreated(_) => {exists: true}
   | ItemEventLogSpec.ItemDeleted(_) => {exists: false}
-  | _ => model
+  | _ => state
   }
 
 // Accept or reject the command based on the decision model
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | CreateItem({itemId, name}) =>
-    if model.exists {
+    if state.exists {
       Error(ItemAlreadyExists)
     } else {
       Ok([ItemEventLogSpec.ItemCreated({itemId, name})])
@@ -147,13 +147,13 @@ let evolve = (state, event) =>
   switch event {
   | ItemEventLogSpec.ItemCreated(_) => {exists: true}
   | ItemEventLogSpec.ItemDeleted(_) => {exists: false}
-  | _ => model
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | RenameItem({itemId, newName}) =>
-    if !model.exists {
+    if !state.exists {
       Error(ItemNotFound)
     } else {
       Ok([ItemEventLogSpec.ItemRenamed({itemId, newName})])
@@ -183,13 +183,13 @@ let evolve = (state, event) =>
   switch event {
   | ItemEventLogSpec.ItemCreated(_) => {exists: true}
   | ItemEventLogSpec.ItemDeleted(_) => {exists: false}
-  | _ => model
+  | _ => state
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | DeleteItem({itemId}) =>
-    if !model.exists {
+    if !state.exists {
       Error(ItemNotFound)
     } else {
       Ok([ItemEventLogSpec.ItemDeleted({itemId})])

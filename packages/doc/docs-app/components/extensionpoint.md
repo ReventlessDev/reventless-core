@@ -84,20 +84,20 @@ module type Spec = {
 let name = "CustomerPlugin.Customer"
 
 // Commands that Extensions can send to this ExtensionPoint
-@decco
+@schema
 type command =
   | RequestCustomerInfo(string)           // Request customer details by ID
   | UpdateCustomerPreferences(string, preferences)
 
 // Events that this ExtensionPoint publishes to Extensions
-@decco
+@schema
 type event =
   | CustomerCreated(string, customerInfo)
   | CustomerUpdated(string, customerInfo)
   | CustomerDeleted(string)
 
 // Side-effect commands for async operations
-@decco
+@schema
 type callCommand =
   | NotifyExternalSystem(string)
   | SendWelcomeEmail(string, string)
@@ -321,7 +321,7 @@ ExtensionPoints can trigger side effects using the `callCommand` type and `Call`
 
 ```rescript
 // In the Spec
-@decco
+@schema
 type callCommand =
   | SendNotification(string, string)
   | CallExternalAPI(string)

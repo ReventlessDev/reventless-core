@@ -75,12 +75,11 @@ The `@@reventless.spec` annotation auto-injects `let name` (derived from filenam
 
 ### Step 2: Implement the Behavior
 
-The Behavior implements the aggregate's state machine. It defines four functions:
+The Behavior implements the aggregate's state machine. It defines three values:
 
-- **`init`** — creates the initial state from the very first event ever emitted for this aggregate instance
-- **`apply`** — evolves the state when a subsequent event is applied
-- **`create`** — handles commands when the aggregate does **not yet exist**
-- **`execute`** — handles commands on an **existing** aggregate
+- **`initialState`** — the starting state before any events have been applied (represents a "not yet created" instance)
+- **`evolve`** — calculates the next state from the current state and an event; called once per historic event during replay
+- **`decide`** — takes the current state and a command, returns `result<array<event>, error>`; `Ok([...events])` accepts the command, `Error(err)` rejects it
 
 ```rescript
 // CatalogItemBehavior.res
@@ -89,61 +88,38 @@ The Behavior implements the aggregate's state machine. It defines four functions
 // The internal state of a catalog item
 @schema
 type state =
+  | NotCreated
   | Active({name: string, description: string})
   | Archived
 
-// Called with the first event to establish the initial state
-let init: Behavior.init<state, Spec.event> = event =>
-  switch event {
-  | CatalogItemSpec.ItemCreated({name, description}) => Active({name, description})
-  | _ => throw(Message.InvalidEvent(event->Message.encode(CatalogItemSpec.eventSchema)))
-  }
+let initialState = NotCreated
 
-// Transitions the state when subsequent events are applied
-let apply: Behavior.apply<state, Spec.event> = (state, event) =>
+// Evolve state by applying an event
+let evolve = (state, event) =>
   switch (state, event) {
-  | (Active(_), CatalogItemSpec.ItemUpdated({name, description})) =>
-    Active({name, description})
+  | (_, CatalogItemSpec.ItemCreated({name, description})) => Active({name, description})
+  | (Active(_), CatalogItemSpec.ItemUpdated({name, description})) => Active({name, description})
   | (Active(_), CatalogItemSpec.ItemArchived(_)) => Archived
-  | _ => throw(Message.InvalidEvent(event->Message.encode(CatalogItemSpec.eventSchema)))
+  | _ => state
   }
 
-// Handles commands when no aggregate instance exists yet
-let create: Behavior.create<Spec.command, Spec.event, Spec.error> = (command, context, error) =>
-  switch command {
-  | CatalogItemSpec.CreateItem({itemId, name, description}) =>
-    [CatalogItemSpec.ItemCreated({itemId, name, description})]
-  | CatalogItemSpec.UpdateItem(_) | CatalogItemSpec.ArchiveItem(_) =>
-    error(CatalogItemSpec.ItemNotFound, command, context)
-  }
-
-// Handles commands on an existing aggregate instance
-let execute: Behavior.execute<state, Spec.command, Spec.event, Spec.error> = (
-  state,
-  command,
-  context,
-  error,
-) =>
-  switch state {
-  | Active(_) =>
-    switch command {
-    | CatalogItemSpec.CreateItem(_) =>
-      error(CatalogItemSpec.ItemAlreadyExists, command, context)
-    | CatalogItemSpec.UpdateItem({itemId, name, description}) =>
-      [CatalogItemSpec.ItemUpdated({itemId, name, description})]
-    | CatalogItemSpec.ArchiveItem({itemId}) =>
-      [CatalogItemSpec.ItemArchived({itemId})]
-    }
-  | Archived =>
-    switch command {
-    | CatalogItemSpec.CreateItem(_) | CatalogItemSpec.UpdateItem(_) =>
-      error(CatalogItemSpec.ItemAlreadyArchived, command, context)
-    | CatalogItemSpec.ArchiveItem(_) => []
-    }
+// Decide whether to accept or reject a command
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, CatalogItemSpec.CreateItem({itemId, name, description})) =>
+    Ok([CatalogItemSpec.ItemCreated({itemId, name, description})])
+  | (NotCreated, _) =>
+    Error(CatalogItemSpec.ItemNotFound)
+  | (Active(_), CatalogItemSpec.CreateItem(_)) =>
+    Error(CatalogItemSpec.ItemAlreadyExists)
+  | (Active(_), CatalogItemSpec.UpdateItem({itemId, name, description})) =>
+    Ok([CatalogItemSpec.ItemUpdated({itemId, name, description})])
+  | (Active(_), CatalogItemSpec.ArchiveItem({itemId})) =>
+    Ok([CatalogItemSpec.ItemArchived({itemId})])
+  | (Archived, _) =>
+    Error(CatalogItemSpec.ItemAlreadyArchived)
   }
 ```
-
-The `error` callback is `(errorValue, command, context) => array<event>`. It publishes error events for logging and monitoring—it does **not** throw.
 
 ### Step 3: Define the ReadModel Spec
 
@@ -245,7 +221,7 @@ The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) 
 // CatalogItemPlugin.res
 // Imports only `reventless-spec`, not `reventless` or `reventless-aws`
 
-module Make = (Platform: Reventless.Platform.T) => {
+module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Build the aggregate component from spec + behavior + event mappings
   module ItemAggregate = Platform.Aggregate.Make(
     CatalogItemSpec,

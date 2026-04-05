@@ -208,18 +208,18 @@ CustomerPlugin.CustomerEP -> OrderPlugin.CustomerExt: CustomerCreated { class: c
 // This is the same spec used by the ExtensionPoint
 let name = "CustomerPlugin.Customer"
 
-@decco
+@schema
 type command =
   | RequestCustomerInfo(string)
   | UpdateCustomerPreferences(string, preferences)
 
-@decco
+@schema
 type event =
   | CustomerCreated(string, customerInfo)
   | CustomerUpdated(string, customerInfo)
   | CustomerDeleted(string)
 
-@decco
+@schema
 type callCommand =
   | NotifyExternalSystem(string)
 ```

@@ -92,47 +92,34 @@ type error =
 
 @schema
 type state =
+  | NotCreated
   | Active({name: string, description: string})
   | Archived
 
-let init: Behavior.init<state, Spec.event> = event =>
-  switch event {
-  | CatalogItemSpec.ItemCreated({name, description}) => Active({name, description})
-  | _ => throw(Message.InvalidEvent(event->Message.encode(CatalogItemSpec.eventSchema)))
-  }
+let initialState = NotCreated
 
-let apply: Behavior.apply<state, Spec.event> = (state, event) =>
+let evolve = (state, event) =>
   switch (state, event) {
+  | (_, CatalogItemSpec.ItemCreated({name, description})) => Active({name, description})
   | (Active(_), CatalogItemSpec.ItemUpdated({name, description})) => Active({name, description})
   | (Active(_), CatalogItemSpec.ItemArchived(_)) => Archived
-  | _ => throw(Message.InvalidEvent(event->Message.encode(CatalogItemSpec.eventSchema)))
+  | _ => state
   }
 
-let create: Behavior.create<Spec.command, Spec.event, Spec.error> = (command, context, error) =>
-  switch command {
-  | CatalogItemSpec.CreateItem({itemId, name, description}) =>
-    [CatalogItemSpec.ItemCreated({itemId, name, description})]
-  | CatalogItemSpec.UpdateItem(_) | CatalogItemSpec.ArchiveItem(_) =>
-    error(CatalogItemSpec.ItemNotFound, command, context)
-  }
-
-let execute: Behavior.execute<state, Spec.command, Spec.event, Spec.error> = (
-  state, command, context, error,
-) =>
-  switch state {
-  | Active(_) =>
-    switch command {
-    | CatalogItemSpec.CreateItem(_) => error(CatalogItemSpec.ItemAlreadyExists, command, context)
-    | CatalogItemSpec.UpdateItem({itemId, name, description}) =>
-      [CatalogItemSpec.ItemUpdated({itemId, name, description})]
-    | CatalogItemSpec.ArchiveItem({itemId}) => [CatalogItemSpec.ItemArchived({itemId})]
-    }
-  | Archived =>
-    switch command {
-    | CatalogItemSpec.CreateItem(_) | CatalogItemSpec.UpdateItem(_) =>
-      error(CatalogItemSpec.ItemAlreadyArchived, command, context)
-    | CatalogItemSpec.ArchiveItem(_) => []
-    }
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, CatalogItemSpec.CreateItem({itemId, name, description})) =>
+    Ok([CatalogItemSpec.ItemCreated({itemId, name, description})])
+  | (NotCreated, _) =>
+    Error(CatalogItemSpec.ItemNotFound)
+  | (Active(_), CatalogItemSpec.CreateItem(_)) =>
+    Error(CatalogItemSpec.ItemAlreadyExists)
+  | (Active(_), CatalogItemSpec.UpdateItem({itemId, name, description})) =>
+    Ok([CatalogItemSpec.ItemUpdated({itemId, name, description})])
+  | (Active(_), CatalogItemSpec.ArchiveItem({itemId})) =>
+    Ok([CatalogItemSpec.ItemArchived({itemId})])
+  | (Archived, _) =>
+    Error(CatalogItemSpec.ItemAlreadyArchived)
   }
 ```
 
@@ -181,7 +168,7 @@ let mappings: array<module(MappingsHelper.Mapping)> = [module(ItemMapping)]
 
 ```rescript
 // CatalogItemPlugin.res
-module Make = (Platform: Reventless.Platform.T) => {
+module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ItemAggregate = Platform.Aggregate.Make(
     CatalogItemSpec,
     CatalogItemBehavior,

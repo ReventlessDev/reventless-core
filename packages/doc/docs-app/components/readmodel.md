@@ -46,7 +46,7 @@ let name = "Customer"
 
 module Id = Reventless.Id.String
 
-@decco
+@schema
 type state = {
   name: name,
   address: address,
