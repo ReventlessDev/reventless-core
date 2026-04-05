@@ -4,9 +4,9 @@ date: 2022-09-27
 draft: false
 ---
 
-## Aggregate-Based Plugin
+## Plugin with Aggregates
 
-The following diagram shows how all components of an **aggregate-based plugin** work together:
+The following diagram shows how all components work together in a plugin using Aggregates:
 
 ```d2
 direction: down
@@ -117,9 +117,9 @@ scheduling.heartbeat -> plugins.ext_point: periodic signals { class: event-flow 
 - **Plugin System**: Cross-plugin communication via ExtensionPoints and Extensions
 - **Scheduling**: Time-based command generation and health monitoring
 
-## DCB-Based Plugin
+## Plugin with DCB Slices
 
-The following diagram shows how the components of a **DCB-based plugin** (Dynamic Consistency Boundary) work together. The key differences from the aggregate-based approach are the shared **DcbEventLog** across all StateChangeSlices and the **StateViewSlice** that combines the EventCollector and ReadModel roles.
+The following diagram shows how the components work together in a plugin using DCB Slices (Dynamic Consistency Boundary). The key differences from the Aggregate approach are the shared **DcbEventLog** across all StateChangeSlices and the **StateViewSlice** that combines the EventCollector and ReadModel roles.
 
 ```d2
 vars: {

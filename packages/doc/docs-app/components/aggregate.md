@@ -50,48 +50,30 @@ An Aggregate Spec defines the id, name, command and event types of an Aggregate 
 ### Example
 
 ```rescript title="Customer.res" showLineNumbers
-//open Reventless
-
-module Id = Reventless.Id.String
-
-@schema
-type id = Id.t
-
-let name = "Customer"
-
-@schema
-type name = string
-@schema
-type address = string
-
-@schema
-type customer = {
-  name: name,
-  address: address,
-}
+@@reventless.spec
 
 @schema
 type command =
-  | Create(customer)
-  | ChangeAddress(address)
-  | ChangeName(name)
-  | Delete
+  | Register({email: string, address: string})
+  | UpdateEmail({email: string})
+  | UpdateAddress({address: string})
+  | Deactivate
 
 @schema
 type event =
-  | Created(customer)
-  | AddressChanged(address)
-  | NameChanged(name)
-  | Unchanged
-  | Deleted
+  | Registered({email: string, address: string})
+  | EmailUpdated({email: string})
+  | AddressUpdated({address: string})
+  | Deactivated
 
 @schema
 type error =
-  | AlreadyExisting
-  | NotExisting
+  | CustomerAlreadyRegistered
+  | CustomerNotFound
+  | CustomerAlreadyDeactivated
 ```
 
-For information about `@schema` see [Schema annotation](/framework/inner-workings/serialization#schema-annotation).
+The `@@reventless.spec` annotation auto-injects `let name` (derived from filename) and other boilerplate. For information about `@schema` see [Schema annotation](/framework/inner-workings/serialization#schema-annotation).
 
 ### Id
 
@@ -135,46 +117,46 @@ It defines:
 
 ### Example
 
-```rescript title="Customer_Behavior.res" showLineNumbers
-open Reventless
-open Customer
+```rescript title="CustomerBehavior.res" showLineNumbers
+@@reventless.behavior
 
 @schema
-type state = {
-  address: address,
-  name: name,
-  deleted: bool,
-}
+type state =
+  | NotCreated
+  | Active({email: string, address: string})
+  | Deactivated
 
-let initialState = {address: "", name: "", deleted: true}
+let initialState = NotCreated
 
 // (state, event) => state
 let evolve = (state, event) =>
-  switch event {
-  | Created({Customer.address: address, name}) => {address, name, deleted: false}
-  | AddressChanged(address) => {...state, address}
-  | NameChanged(name) => {...state, name}
-  | Unchanged => state
-  | Deleted => {...state, deleted: true}
+  switch (state, event) {
+  | (NotCreated, Registered({email, address})) => Active({email, address})
+  | (Active(_), Registered({email, address})) => Active({email, address})
+  | (Active(s), EmailUpdated({email})) => Active({...s, email})
+  | (Active(s), AddressUpdated({address})) => Active({...s, address})
+  | (Active(_), Customer.Deactivated) => Deactivated
+  | (Deactivated, _) => state
+  | (NotCreated, _) => state
   }
 
 // (state, command) => result<array<event>, error>
 let decide = (state, command) =>
-  switch (command, state) {
-  | (Create(customer), {deleted: true}) => Ok([Created(customer)])
-  | (Create(_), {deleted: false}) => Error(AlreadyExisting)
-
-  | (ChangeAddress(_), {deleted: true}) => Error(NotExisting)
-  | (ChangeAddress(address), {address: oldAddress}) if address != oldAddress =>
-    Ok([AddressChanged(address)])
-  | (ChangeAddress(_), _) => Ok([Unchanged])
-
-  | (ChangeName(_), {deleted: true}) => Error(NotExisting)
-  | (ChangeName(name), {name: oldName}) if name != oldName => Ok([NameChanged(name)])
-  | (ChangeName(_), _) => Ok([Unchanged])
-
-  | (Delete, {deleted: true}) => Ok([Unchanged])
-  | (Delete, {deleted: false}) => Ok([Deleted])
+  switch (state, command) {
+  | (NotCreated, Register({email, address})) => Ok([Registered({email, address})])
+  | (NotCreated, UpdateEmail(_)) => Error(CustomerNotFound)
+  | (NotCreated, UpdateAddress(_)) => Error(CustomerNotFound)
+  | (NotCreated, Deactivate) => Error(CustomerNotFound)
+  | (Active(_), Register(_)) => Error(CustomerAlreadyRegistered)
+  | (Active(s), UpdateEmail({email})) if email == s.email => Ok([]) // idempotent
+  | (Active(_), UpdateEmail({email})) => Ok([EmailUpdated({email})])
+  | (Active(s), UpdateAddress({address})) if address == s.address => Ok([])
+  | (Active(_), UpdateAddress({address})) => Ok([AddressUpdated({address})])
+  | (Active(_), Deactivate) => Ok([Customer.Deactivated])
+  | (Deactivated, Register(_)) => Error(CustomerAlreadyDeactivated)
+  | (Deactivated, UpdateEmail(_)) => Error(CustomerAlreadyDeactivated)
+  | (Deactivated, UpdateAddress(_)) => Error(CustomerAlreadyDeactivated)
+  | (Deactivated, Deactivate) => Ok([]) // idempotent
   }
 ```
 
@@ -242,8 +224,6 @@ Aggregate -> EventLog: "append(event3)"
 Each `Aggregate` can specify `EventMapping`s from one ore more source Aggregates:
 
 ```rescript title="Customer_EventMappings.res" showLineNumbers
-open Reventless
-
 module Target = Customer
 
 module CustomerMapping = {
@@ -252,13 +232,13 @@ module CustomerMapping = {
   let map = (. customerId, event, _queryEngine) =>
     switch event {
     | Customer.Created(customer) => [
-        EventMapping.Publish(customerId, Customer.ChangeAddress(customer.address ++ " Suffix")),
+        Reventless.EventMapping.Publish(customerId, Customer.ChangeAddress(customer.address ++ " Suffix")),
       ]
     | _ => []
     }
 }
 
-module type Mapping = EventMapping.T with module Target := Target
+module type Mapping = Reventless.EventMapping.T with module Target := Target
 
 let mappings: array<module(Mapping)> = [module(CustomerMapping)]
 

@@ -484,8 +484,6 @@ Reventless uses its own PPX (`@reventlessdev/reventless-ppx`) to auto-generate b
 
 Place at the top of any spec file (aggregates, read models, extension points, DCB slices). Automatically injects:
 - `let name` (derived from filename, strips component suffixes)
-- `module Id` (default string-based ID)
-- `let moduleUrl` (build-time module path)
 
 ```rescript
 // ItemSpec.res
@@ -504,7 +502,6 @@ For files in a `*Spec` namespace, the PPX also auto-prefixes extension point nam
 Place at the top of behavior files. Automatically injects:
 - `open Spec` (brings spec types into scope)
 - `module Spec = Spec`
-- `let moduleUrl`
 
 ```rescript
 // ItemBehavior.res  (PPX derives Spec from "Item" in filename)
@@ -584,4 +581,4 @@ type event =
 
 Fine-grained control is available via field-level annotations: `@partitionTag` (marks the partition key when multiple `*Id` fields exist), `@noTag` (suppresses auto-tagging), `@dcbTag` (tags a field that doesn't follow `*Id` naming).
 
-See [DCB-Based Plugin](./dcb-based-plugin.md) for how DCB tags are used in practice.
+See [DCB Slices](./dcb-slices.md) for how DCB tags are used in practice.

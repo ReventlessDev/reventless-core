@@ -337,5 +337,5 @@ type operations = {
 - **[CommandTopic](./commandtopic.md)** -- Receives commands from the processor
 - **[EventCollector](./eventcollector.md)** -- Subscribes to DcbEventLog events
 - **[QueryDb](./querydb.md)** -- Stores the TODO list for observability
-- **[EventMapper](./eventmapper.md)** -- Stateless alternative for aggregate-based plugins
+- **[EventMapper](./eventmapper.md)** -- Stateless alternative for plugins using Aggregates
 - **[Plugin](./plugin.md)** -- Hosts AutomationSlice via DcbSpec

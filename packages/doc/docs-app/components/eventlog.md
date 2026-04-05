@@ -37,13 +37,11 @@ The **EventLog** is the foundational storage component for event sourcing in Rev
 
 ## Component Spec
 
-The EventLog component requires a spec that defines the EventLog's name, id type, and event type:
+The EventLog component requires a spec that defines the EventLog's name and event type:
 
 ```rescript
 module type Spec = {
   let name: string
-
-  module Id: Reventless.Id.T
 
   @schema
   type event
@@ -53,9 +51,7 @@ module type Spec = {
 For example, a Customer aggregate might define its spec as follows:
 
 ```rescript title="Customer.res"
-let name = "Customer"
-
-module Id = Reventless.Id.String
+@@reventless.spec
 
 @schema
 type event =

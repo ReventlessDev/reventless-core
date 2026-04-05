@@ -35,16 +35,13 @@ The **QueryDb** is the read model storage component that provides efficient quer
 
 ## Component Spec
 
-The QueryDb uses the ReadModel spec which defines the QueryDb's name, Id module and state type:
+The QueryDb uses the ReadModel spec which defines the QueryDb's name and state type:
 
-```rescript title="CustomerReadModel_Spec.res"
-let name = "Customer"
-
-module Id = Reventless.Id.String
+```rescript title="CustomersReadModel.res"
+@@reventless.spec
 
 @schema
 type state = {
-  id: id,
   name: string,
   address: string,
 }

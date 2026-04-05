@@ -39,25 +39,33 @@ Events may trigger updates to the state of a Read Model. A Read Model may act on
 
 ### Example
 
-```rescript title="Customer_ReadModelSpec.res" showLineNumbers
-open Customer
-
-let name = "Customer"
-
-module Id = Reventless.Id.String
+```rescript title="ProductsReadModel.res" showLineNumbers
+@@reventless.spec
 
 @schema
 type state = {
-  name: name,
-  address: address,
+  name: string,
+  description: string,
+  price: float,
+}
+```
+
+The `@@reventless.spec` annotation auto-injects `let name`, `let config = config()`, and `let subIdConfig = None`. Custom indexes can be added by explicitly declaring `let config`:
+
+```rescript title="CustomersReadModel.res" showLineNumbers
+@@reventless.spec
+
+@schema
+type state = {
+  email: string,
+  address: string,
+  deactivated: bool,
 }
 
-let subIdConfig = None
-
-let config = Reventless.ReadModel.Spec.config(
+let config = Reventless.ReadModel.config(
   ~indexes=[
     {
-      index: "name",
+      index: "email",
       _type: "S",
       projectionType: #ALL,
     },
@@ -204,23 +212,18 @@ Example result of `customer("1234")` API query:
 ### Example
 
 ```rescript title="Customer_Projection.res" showLineNumbers
-open Reventless.Message
-open Reventless.Projection
-open Customer_ReadModelSpec
-
 module Mapping = Reventless.Projection.Mapping.Make(
   Customer,
   Customer_ReadModelSpec,
   {
-    let project = ({event, id}) => {
+    let project = ({event, id}) =>
       switch event {
-      | Customer.Created({Customer.name: name, address}) => Create(id, {name, address})
-      | AddressChanged(address) => Update(id, state => {...state, address})
-      | NameChanged(name) => Update(id, state => {...state, name})
-      | Deleted => Delete(id)
-      | Unchanged => Ignore
+      | Customer.Created({Customer.name: name, address}) => Reventless.Projection.Create(id, {name, address})
+      | Customer.AddressChanged(address) => Reventless.Projection.Update(id, state => {...state, address})
+      | Customer.NameChanged(name) => Reventless.Projection.Update(id, state => {...state, name})
+      | Customer.Deleted => Reventless.Projection.Delete(id)
+      | Customer.Unchanged => Reventless.Projection.Ignore
       }
-    }
   },
 )
 

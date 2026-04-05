@@ -59,7 +59,7 @@ A component in a DCB-based plugin that processes a subset of events from a share
 
 ## Spec
 
-A ReScript module that defines the type contract for a component: `type command`, `type event`, `type error`, `type state`, `let name`, `module Id`. Specs are annotated with `@@reventless.spec` and live in `*Spec.res` files.
+A ReScript module that defines the type contract for a component: `type command`, `type event`, `type error`, `type state`, `let name`. Specs are annotated with `@@reventless.spec` and live in `*Spec.res` files.
 
 ## StateChangeSlice
 

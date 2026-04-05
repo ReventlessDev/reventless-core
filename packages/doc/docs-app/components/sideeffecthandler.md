@@ -42,7 +42,6 @@ Each side effect is defined by implementing the `SideEffect.T` module type:
 ```rescript
 module type Source = {
   let name: string
-  module Id: Id.T
   @schema
   type event
 }
@@ -62,55 +61,23 @@ module type T = {
 
 ### Defining a SideEffect
 
-```rescript title="Customer_EmailNotification.res"
-module Source = Customer
+```rescript title="Order_EmailNotification.res"
+@@reventless.spec
 
-let execute = async (customerId, meta, event, queryEngine) =>
+module Source = Order
+
+let execute = async (orderId, _meta, event, _queryEngine) =>
   switch event {
-  | Customer.Created({name, email}) => {
-      // Send welcome email
-      await EmailService.send({
-        to: email,
-        subject: "Welcome!",
-        body: `Hello ${name}, welcome to our service!`,
-      })
-      Js.log(`Sent welcome email to ${email}`)
-    }
-  | Customer.AddressChanged(newAddress) => {
-      // Query customer data for email
-      let customer = await queryEngine.get(
-        ~table="CustomerReadModel",
-        ~id=customerId->Customer.Id.toString,
-      )
-      switch customer {
-      | Some({email}) =>
-        await EmailService.send({
-          to: email,
-          subject: "Address Updated",
-          body: `Your address has been updated to: ${newAddress}`,
-        })
-      | None => ()
-      }
-    }
-  | Customer.Deleted => {
-      // Send goodbye email
-      let customer = await queryEngine.get(
-        ~table="CustomerReadModel",
-        ~id=customerId->Customer.Id.toString,
-      )
-      switch customer {
-      | Some({email}) =>
-        await EmailService.send({
-          to: email,
-          subject: "Account Deleted",
-          body: "Your account has been deleted. We're sorry to see you go!",
-        })
-      | None => ()
-      }
-    }
+  | Order.Placed({customerId}) =>
+    await EmailService.sendOrderConfirmation(
+      ~email=customerId,
+      ~orderId=orderId->Order.Id.toString,
+    )
   | _ => ()
   }
 ```
+
+The `Source` module defines which aggregate's events to subscribe to — typically `module Source = Order` directly reuses the aggregate module. `@@reventless.spec` handles wiring; `execute` receives the decoded event and runs the side effect.
 
 ### Registering SideEffects
 
@@ -263,40 +230,17 @@ await sideEffectHandler.operations.deleteSchedule("reminder-123")
 ### Email Notifications
 
 ```rescript title="Order_EmailNotification.res"
+@@reventless.spec
+
 module Source = Order
 
-let execute = async (orderId, meta, event, queryEngine) =>
+let execute = async (orderId, _meta, event, _queryEngine) =>
   switch event {
-  | Order.Created({customerId, items}) => {
-      let customer = await queryEngine.get(
-        ~table="CustomerReadModel",
-        ~id=customerId,
-      )
-      switch customer {
-      | Some({email, name}) =>
-        await EmailService.send({
-          to: email,
-          subject: "Order Confirmation",
-          body: `Hi ${name}, your order #${orderId} has been received!`,
-        })
-      | None => ()
-      }
-    }
-  | Order.Shipped({trackingNumber}) => {
-      let order = await queryEngine.get(
-        ~table="OrderReadModel",
-        ~id=orderId->Order.Id.toString,
-      )
-      switch order {
-      | Some({customerEmail}) =>
-        await EmailService.send({
-          to: customerEmail,
-          subject: "Order Shipped",
-          body: `Your order has shipped! Tracking: ${trackingNumber}`,
-        })
-      | None => ()
-      }
-    }
+  | Order.Placed({customerId}) =>
+    await EmailService.sendOrderConfirmation(
+      ~email=customerId,
+      ~orderId=orderId->Order.Id.toString,
+    )
   | _ => ()
   }
 ```

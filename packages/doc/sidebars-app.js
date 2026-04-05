@@ -5,8 +5,8 @@ const sidebars = {
   appSidebar: [
     'index',
     'get-started',
-    'aggregate-based-plugin',
-    'dcb-based-plugin',
+    'aggregates',
+    'dcb-slices',
     'plugin-system',
     'component-overview',
     {

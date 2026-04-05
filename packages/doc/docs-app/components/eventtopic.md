@@ -41,12 +41,10 @@ The **EventTopic** is the event distribution component that enables fan-out deli
 
 ## Component Spec
 
-The EventTopic requires a spec defining the aggregate's id type and event type:
+The EventTopic requires a spec defining the aggregate's event type:
 
 ```rescript
 module type Spec = {
-  module Id: Reventless.Id.T
-
   @schema
   type event
 }
@@ -55,7 +53,7 @@ module type Spec = {
 For example, a Customer aggregate might define its spec as follows:
 
 ```rescript title="Customer.res"
-module Id = Reventless.Id.String
+@@reventless.spec
 
 @schema
 type event =

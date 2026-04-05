@@ -104,8 +104,6 @@ await addToCounterTarget({
 The Counter is typically used within EventMapper configurations:
 
 ```rescript title="Invoice_EventMappings.res"
-open Reventless
-
 module Target = Invoice
 
 // Map Order events to Invoice commands
@@ -116,23 +114,23 @@ module OrderMapping = {
     switch event {
     | Order.Created({expectedItems}) => [
         // Set the expected count (negative number)
-        EventMapping.CountMulti(
+        Reventless.EventMapping.CountMulti(
           orderId->Order.Id.toString,
           -expectedItems  // Expect this many items
         ),
       ]
     | Order.ItemAdded({itemId, quantity, price}) => [
         // Add item data to counter targets
-        EventMapping.AddToCounterTarget({
+        Reventless.EventMapping.AddToCounterTarget({
           counterId: orderId->Order.Id.toString,
           target: {itemId, quantity, price}
         }),
         // Increment counter by 1
-        EventMapping.Count(orderId->Order.Id.toString),
+        Reventless.EventMapping.Count(orderId->Order.Id.toString),
       ]
     | Order.ItemRemoved(_) => [
         // Decrement counter when item removed
-        EventMapping.CountMulti(
+        Reventless.EventMapping.CountMulti(
           orderId->Order.Id.toString,
           -1
         ),
@@ -151,7 +149,7 @@ module CounterMapping = {
         // Counter reached zero - all items collected
         // Targets contain all the collected item data
         [
-          EventMapping.Publish(
+          Reventless.EventMapping.Publish(
             counterId->Invoice.Id.fromString,
             Invoice.Generate
           ),
@@ -160,7 +158,7 @@ module CounterMapping = {
     }
 }
 
-module type Mapping = EventMapping.T with module Target := Target
+module type Mapping = Reventless.EventMapping.T with module Target := Target
 
 let mappings: array<module(Mapping)> = [
   module(OrderMapping),
@@ -246,7 +244,6 @@ The Counter emits events as `Counter.Source`:
 
 ```rescript
 module Counter.Source = {
-  module Id = Reventless.Id.String
   let name = "Counter"
   
   type event = 

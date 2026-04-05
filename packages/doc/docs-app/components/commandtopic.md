@@ -37,8 +37,6 @@ The CommandTopic requires a spec defining the Aggregate's id type and command ty
 
 ```rescript
 module type Spec = {
-  module Id: Reventless.Id.T
-
   @schema
   type command
 }
@@ -46,14 +44,14 @@ module type Spec = {
 
 Take the following spec for a Customer aggregate as an example:
 ```rescript title="Customer.res"
-module Id = Reventless.Id.String
+@@reventless.spec
 
 @schema
 type command =
-  | Create({name: string, address: string})
-  | ChangeAddress(string)
-  | ChangeName(string)
-  | Delete
+  | Register({email: string, address: string})
+  | UpdateEmail({email: string})
+  | UpdateAddress({address: string})
+  | Deactivate
 ```
 
 This spec is used to create a type-safe CommandTopic for the Customer aggregate.

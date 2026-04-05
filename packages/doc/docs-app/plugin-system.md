@@ -7,16 +7,19 @@ sidebar_position: 6
 
 # Plugin System
 
-A **Plugin** is the fundamental deployment unit in Reventless. It encapsulates a bounded context—its aggregates or DCB slices, read models, and optional extension points—and produces the cloud infrastructure needed to run them.
+A **Plugin** is the fundamental deployment unit in Reventless. It encapsulates a bounded context—its aggregates, DCB slices, read models, extension points, and extensions—and produces the cloud infrastructure needed to run them.
 
 ## Overview
 
-Reventless supports two approaches for building plugins:
+A plugin can contain any combination of the following building blocks:
 
-1. **[Aggregate-Based Plugin](./aggregate-based-plugin.md)** — Uses the traditional Aggregate pattern with a per-aggregate event log and sequential command processing
-2. **[DCB-Based Plugin](./dcb-based-plugin.md)** — Uses Dynamic Consistency Boundaries with a shared event log and optimistic concurrency control
+- **[Aggregates](./aggregates.md)** — entity-scoped event logs with sequential command processing
+- **[DCB Slices](./dcb-slices.md)** — shared event log with optimistic concurrency across entities
+- **Read Models** — query-side projections of aggregate or slice events
+- **Extension Points** — the plugin's public outbound interface (events out, commands in)
+- **Extensions** — subscriptions to another plugin's Extension Point (events in, commands out)
 
-Both approaches follow the same assembly pattern: write **platform-agnostic specs** and **behaviors**, then wire them together using the `Platform` abstraction.
+These are not mutually exclusive. A single plugin can have aggregates for self-contained entities alongside DCB slices for cross-entity operations.
 
 ## The Platform Abstraction
 
@@ -25,17 +28,17 @@ The `Platform.T` module type is a factory interface that decouples your applicat
 ```
 packages/
   my-plugin/
-    CatalogItemSpec.res        ← only imports reventless-spec
-    CatalogItemBehavior.res    ← only imports reventless-spec
-    CatalogItemProjection.res  ← only imports reventless (for Projection.Mapping.Make)
-    CatalogItemPlugin.res      ← only imports reventless-spec, wraps in Make(Platform)
+    ProductSpec.res           ← only imports reventless-spec
+    ProductBehavior.res       ← only imports reventless-spec
+    ProductsProjections.res   ← only imports reventless (for Projection.Mapping.Make)
+    CatalogPlugin.res         ← only imports reventless-spec, wraps in Make(Platform)
   infra/
-    index.res                  ← imports reventless-aws, the only file that does
+    index.res                 ← imports reventless-aws, the only file that does
 ```
 
 ### Creating the AWS Platform
 
-`ReventlessAws.Platform.Make` is a **[module function](./rescript-syntax.md#functors)** that produces a `Platform.T` wired to DynamoDB, Lambda, SQS, SNS, and DynamoDB Streams:
+`ReventlessAws.Platform.Make` produces a `Platform.T` wired to DynamoDB, Lambda, SQS, SNS, and DynamoDB Streams:
 
 ```rescript
 // index.res — composition root
@@ -50,190 +53,45 @@ module Platform = ReventlessAws.Platform.Make(Config)
 |---------|---------|
 | `Platform.Aggregate.Make(Spec, Behavior, EventMappings)` | Builds an aggregate component |
 | `Platform.ReadModel.Make(Spec, Mappings)` | Builds a read model component |
-| `Platform.StateChangeSlice.Make(Spec)` | Builds a DCB state change slice |
-| `Platform.StateViewSlice.Make(Spec)` | Builds a DCB state view slice |
+| `Platform.StateChangeSlice.Make(Spec)` | Builds a DCB write-side slice |
+| `Platform.StateViewSlice.Make(Spec)` | Builds a DCB read-side view slice |
 | `Platform.DcbEventLog.Make(Spec)` | Builds a DCB event log (used internally) |
-| `Platform.ExtensionPoint.Make(Mappings)` | Builds an extension point |
+| `Platform.ExtensionPoint.Make(Mappings, Env)` | Builds an extension point |
+| `Platform.Extension.Make(Mapping)` | Builds an extension |
 | `Platform.Task.Make(Spec)` | Builds a task component |
 | `Platform.Counter` | Pre-built counter component |
 
-## Aggregate-Based Plugin — Full Example
+## Plugin Assembly
 
-The following shows all the pieces in context for a `CatalogItem` aggregate.
-
-### Specs and Behavior (app code)
+All plugins follow the same pattern: a **module function** over `Platform.T` that builds components and calls `Plugin.make`:
 
 ```rescript
-// CatalogItemSpec.res
-@@reventless.spec
-
-@schema
-type command =
-  | CreateItem({itemId: string, name: string, description: string})
-  | UpdateItem({itemId: string, name: string, description: string})
-  | ArchiveItem({itemId: string})
-
-@schema
-type event =
-  | ItemCreated({itemId: string, name: string, description: string})
-  | ItemUpdated({itemId: string, name: string, description: string})
-  | ItemArchived({itemId: string})
-
-@schema
-type error =
-  | ItemAlreadyExists
-  | ItemNotFound
-  | ItemAlreadyArchived
-```
-
-```rescript
-// CatalogItemBehavior.res
-@@reventless.behavior
-
-@schema
-type state =
-  | NotCreated
-  | Active({name: string, description: string})
-  | Archived
-
-let initialState = NotCreated
-
-let evolve = (state, event) =>
-  switch (state, event) {
-  | (_, CatalogItemSpec.ItemCreated({name, description})) => Active({name, description})
-  | (Active(_), CatalogItemSpec.ItemUpdated({name, description})) => Active({name, description})
-  | (Active(_), CatalogItemSpec.ItemArchived(_)) => Archived
-  | _ => state
-  }
-
-let decide = (state, command) =>
-  switch (state, command) {
-  | (NotCreated, CatalogItemSpec.CreateItem({itemId, name, description})) =>
-    Ok([CatalogItemSpec.ItemCreated({itemId, name, description})])
-  | (NotCreated, _) =>
-    Error(CatalogItemSpec.ItemNotFound)
-  | (Active(_), CatalogItemSpec.CreateItem(_)) =>
-    Error(CatalogItemSpec.ItemAlreadyExists)
-  | (Active(_), CatalogItemSpec.UpdateItem({itemId, name, description})) =>
-    Ok([CatalogItemSpec.ItemUpdated({itemId, name, description})])
-  | (Active(_), CatalogItemSpec.ArchiveItem({itemId})) =>
-    Ok([CatalogItemSpec.ItemArchived({itemId})])
-  | (Archived, _) =>
-    Error(CatalogItemSpec.ItemAlreadyArchived)
-  }
-```
-
-```rescript
-// CatalogItemReadModelSpec.res
-@@reventless.spec
-
-@schema
-type state = {
-  itemId: string,
-  name: string,
-  description: string,
-  archived: bool,
-}
-
-open Reventless.ReadModel
-let config = config()
-let subIdConfig = None
-```
-
-```rescript
-// CatalogItemProjection.res
-open Reventless.Projection
-
-module ItemMapping = Reventless.Projection.Mapping.Make(
-  CatalogItemSpec,
-  CatalogItemReadModelSpec,
-  {
-    let map = ({event, id, meta: _}) =>
-      switch event {
-      | CatalogItemSpec.ItemCreated({name, description}) =>
-        Set(id, {CatalogItemReadModelSpec.itemId: id, name, description, archived: false})
-      | CatalogItemSpec.ItemUpdated({name, description}) =>
-        Update(id, state => {...state, name, description})
-      | CatalogItemSpec.ItemArchived(_) =>
-        Update(id, state => {...state, archived: true})
-      }
-  },
-)
-
-module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemReadModelSpec)
-let mappings: array<module(MappingsHelper.Mapping)> = [module(ItemMapping)]
-```
-
-### Plugin Assembly (app code, no AWS dependency)
-
-```rescript
-// CatalogItemPlugin.res
+// CatalogPlugin.res
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  module ItemAggregate = Platform.Aggregate.Make(
-    CatalogItemSpec,
-    CatalogItemBehavior,
-    Reventless.NoEventMappings.Make(CatalogItemSpec),
-  )
-
-  module MappingsHelper = Reventless.Projection.Mappings.Make(CatalogItemReadModelSpec)
-  module Mappings: Reventless.Projection.Mappings with module Target := CatalogItemReadModelSpec = {
-    module Target = CatalogItemReadModelSpec
-    module type Mapping = MappingsHelper.Mapping
-    let mappings = CatalogItemProjection.mappings
-  }
-
-  module ItemReadModel = Platform.ReadModel.Make(CatalogItemReadModelSpec, Mappings)
-}
-```
-
-### Composition Root (AWS-specific)
-
-```rescript
-// index.res
-module Platform = ReventlessAws.Platform.Make(Config)
-module App = CatalogItemPlugin.Make(Platform)
-
-Platform.makePlatform(
-  ~version=Reventless.PackageVersion.fromCwd(),
-  ~plugins=[module(App)],
-)
-```
-
-## DCB-Based Plugin — Full Example
-
-```rescript
-// ItemEventLogSpec.res
-@@reventless.dcbTags
-
-@schema
-type event =
-  | ItemCreated({itemId: string, name: string})
-  | ItemRenamed({itemId: string, newName: string})
-  | ItemDeleted({itemId: string})
-```
-
-```rescript
-// ItemCatalogPlugin.res
-module Make = (Platform: ReventlessInfra.Platform.T) => {
-  module CreateItem = Platform.StateChangeSlice.Make(CreateItemSpec)
-  module RenameItem = Platform.StateChangeSlice.Make(RenameItemSpec)
-  module DeleteItem = Platform.StateChangeSlice.Make(DeleteItemSpec)
-  module ItemView   = Platform.StateViewSlice.Make(ItemViewSpec)
+  // ... build components using Platform builders ...
 
   let make = () =>
     Platform.Plugin.make(
-      ~name="ItemCatalog",
+      ~name="Catalog",
       ~heartbeatInterval=60,
-      ~stateChangeSlices=[module(CreateItem), module(RenameItem), module(DeleteItem)],
-      ~stateViewSlices=[module(ItemView)],
+      ~aggregates=[...],
+      ~readModels=[...],
+      ~extensionPoints=[...],
+      ~extensions=[...],
     )
 }
 ```
 
+See [Aggregates](./aggregates.md) and [DCB Slices](./dcb-slices.md) for step-by-step guides.
+
+### Composition Root (AWS-specific)
+
+The composition root is the only file that imports `reventless-aws`. It instantiates the platform and passes it to every plugin:
+
 ```rescript
 // index.res
 module Platform = ReventlessAws.Platform.Make(Config)
-module App = ItemCatalogPlugin.Make(Platform)
+module App = CatalogPlugin.Make(Platform)
 
 Platform.makePlatform(
   ~version=Reventless.PackageVersion.fromCwd(),
@@ -241,38 +99,144 @@ Platform.makePlatform(
 )
 ```
 
-## Plugin.make Parameters
+## Cross-Plugin Communication
 
-`ReventlessAws.Plugin.make` accepts the following parameters:
+Plugins communicate through **Extension Points** and **Extensions**. This keeps plugins fully decoupled — no direct imports, no shared event logs across plugin boundaries.
+
+```d2
+PluginA: "Plugin A (Provider)" {
+  class: plugin-area
+  Agg: Aggregate { class: aggregate }
+  EPM: EP Mapping { class: event-mapper }
+  EP: ExtensionPoint {
+    class: extension-point-area
+    ET: Event Topic { class: event-topic }
+    CT: Command Topic { class: command-topic }
+  }
+  Agg -> EPM: internal event { class: event-flow }
+  EPM -> EP.ET: mapped event { class: event-flow }
+  EP.CT -> EPM: command { class: command-flow }
+  EPM -> Agg: internal command { class: command-flow }
+}
+
+Admin: Platform Admin { class: plugin-area }
+
+PluginB: "Plugin B (Consumer)" {
+  class: plugin-area
+  Ext: Extension { class: extension }
+}
+
+PluginA.EP.ET -> Admin: event { class: cross-plugin }
+Admin -> PluginB.Ext: event { class: cross-plugin }
+PluginB.Ext -> Admin: command { class: cross-plugin }
+Admin -> PluginA.EP.CT: command { class: cross-plugin }
+```
+
+### Extension Point
+
+An **ExtensionPoint** is the public outbound interface of a plugin. It:
+- **Publishes events** translated from internal aggregate/slice events
+- **Receives commands** from other plugins and routes them to internal aggregates
+
+An Extension Point Mapping file defines the translation:
+
+```rescript
+// ProductsExtensionPointMapping.res
+@@reventless.spec
+
+// The spec (ProductsExtensionPoint) defines command/event/callCommand types
+// The mapping translates between internal and external representations
+
+module Delegate = ProductDemand  // internal aggregate to delegate commands to
+
+let map = event =>
+  switch event {
+  | Product.Added({productId, name, price}) =>
+    PublishEvent(ProductsExtensionPoint.ProductAdded({productId, name, price}))
+  | _ => PublishEvent(ProductsExtensionPoint.Unchanged)
+  }
+```
+
+Register it in the plugin:
+
+```rescript
+module ProductsEP = Platform.ExtensionPoint.Make(
+  ProductsExtensionPointMapping,
+  {let moduleUrl: string = %raw(`import.meta.url`)},
+)
+// ...
+Platform.Plugin.make(~extensionPoints=[module(ProductsEP)], ...)
+```
+
+See [ExtensionPoint component](./components/extensionpoint.md) for full documentation.
+
+### Extension
+
+An **Extension** connects a plugin to another plugin's Extension Point. It subscribes to the EP's events and can send commands back.
+
+```rescript
+// OrdersExtension.res — inside the Catalog plugin
+// Subscribes to Ordering plugin's OrdersExtensionPoint
+
+module DemandMapping = {
+  module Source = OrdersExtensionPoint  // the EP's spec package
+  module Target = ProductDemand         // internal aggregate to command
+
+  let map = (orderId, event, _queryEngine) =>
+    switch event {
+    | OrdersExtensionPoint.OrderPlaced({items}) =>
+      items->Array.map(item =>
+        Reventless.EventMapping.Publish(
+          item.productId->ProductDemand.Id.fromString,
+          ProductDemand.RecordSale({orderId, quantity: item.quantity}),
+        )
+      )
+    | _ => []
+    }
+}
+```
+
+Register it in the plugin:
+
+```rescript
+module OrdersExt = Platform.Extension.Make(OrdersExtension.DemandMapping)
+// ...
+Platform.Plugin.make(~extensions=[module(OrdersExt)], ...)
+```
+
+See [Extension component](./components/extension.md) for full documentation.
+
+## Plugin.make Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `~name` | `string` | Yes | Plugin name (used for resource naming) |
 | `~heartbeatInterval` | `int` | Yes | Seconds between heartbeat signals to the core |
-| `~aggregates` | `array<module(Aggregate.T)>` | No | Aggregate-based components |
-| `~readModels` | `array<module(ReadModel.T)>` | No | Read model components (for aggregate-based plugins) |
+| `~aggregates` | `array<module(Aggregate.T)>` | No | Aggregate components |
+| `~readModels` | `array<module(ReadModel.T)>` | No | Read model components |
 | `~extensionPoints` | `array<module(ExtensionPoint.T)>` | No | Public API surfaces for cross-plugin communication |
 | `~extensions` | `array<module(Extension.Blueprint)>` | No | Extension blueprints — auto-merged by EP, named after the plugin |
 | `~tasks` | `array<module(Task.T)>` | No | Scheduled or triggered tasks |
 | `~stateChangeSlices` | `array<module(StateChangeSlice.T)>` | No | DCB write-side slices |
 | `~stateViewSlices` | `array<module(StateViewSlice.T)>` | No | DCB read-side slices |
-| `~automationSlices` | `array<module(AutomationSlice.T)>` | No | DCB automation (TODO list) slices |
+| `~automationSlices` | `array<module(AutomationSlice.T)>` | No | DCB automation slices |
 | `~outboundTranslationSlices` | `array<module(OutboundTranslationSlice.T)>` | No | DCB outbound translation slices |
 | `~inboundTranslationSlices` | `array<module(InboundTranslationSlice.T)>` | No | DCB inbound translation slices |
 | `~opts` | `Pulumi.ComponentResource.options` | No | Pulumi parent/provider options |
 
-## When to Use Which Approach
+## When to Use Which Pattern
 
-| Aspect | Aggregate-Based | DCB-Based |
-|--------|-----------------|-----------|
-| Event log | One per aggregate | Single shared log |
-| Consistency boundary | Per aggregate instance | Per command (optimistic) |
+| Aspect | Aggregates | DCB Slices |
+|--------|------------|------------|
+| Event log | One per entity | Single shared log |
+| Consistency boundary | Per entity instance | Per command (optimistic) |
 | Concurrency | Sequential per instance | Optimistic with retry |
-| Complexity | Lower | Higher |
 | Cross-entity consistency | No | Yes |
 | Best for | Independent entities | Related entities needing cross-boundary consistency |
 
 ## Next Steps
 
-- [Aggregate-Based Plugin Guide](./aggregate-based-plugin.md) - Step-by-step aggregate plugin walkthrough
-- [DCB-Based Plugin Guide](./dcb-based-plugin.md) - Step-by-step DCB plugin walkthrough
+- [Aggregates](./aggregates.md) — step-by-step guide for the Aggregate pattern
+- [DCB Slices](./dcb-slices.md) — step-by-step guide for the DCB pattern
+- [ExtensionPoint component](./components/extensionpoint.md) — full ExtensionPoint reference
+- [Extension component](./components/extension.md) — full Extension reference

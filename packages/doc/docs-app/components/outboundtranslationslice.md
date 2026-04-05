@@ -61,7 +61,7 @@ The key difference from AutomationSlice is that the "process" step involves an *
 | **Visibility** | No queryable state | QueryDb stores full processing history |
 | **Command emission** | Never | Optional -- can publish commands back |
 
-**Choose SideEffectHandler** when you have aggregate-based plugins and need simple fire-and-forget event reactions.
+**Choose SideEffectHandler** when you have plugins using Aggregates and need simple fire-and-forget event reactions.
 
 **Choose OutboundTranslationSlice** when you need tracked, retryable external calls with full observability in a DCB-based plugin.
 
@@ -352,7 +352,7 @@ type operations = {
 
 - **[AutomationSlice](./automationslice.md)** -- Similar TODO list pattern for internal command automation (no external calls)
 - **[InboundTranslationSlice](./inboundtranslationslice.md)** -- Complementary component for receiving external input
-- **[SideEffectHandler](./sideeffecthandler.md)** -- Simpler fire-and-forget pattern for aggregate-based plugins
+- **[SideEffectHandler](./sideeffecthandler.md)** -- Simpler fire-and-forget pattern for plugins using Aggregates
 - **[DcbEventLog](./dcbeventlog.md)** -- Shared event log that OutboundTranslationSlice subscribes to
 - **[StateChangeSlice](./statechangeslice.md)** -- Processes the commands OutboundTranslationSlice optionally produces
 - **[CommandTopic](./commandtopic.md)** -- Receives optional commands from the translator

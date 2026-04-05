@@ -81,7 +81,7 @@ Create a `rescript.json` in your project root with the PPX flags. The `reventles
 }
 ```
 
-The PPX auto-injects boilerplate (`let name`, `module Id`, `let moduleUrl`, DCB tag annotations) so you can focus on domain logic. See the [Reventless PPX Guide](/guides/reventless-ppx) for details.
+The PPX auto-injects boilerplate (`let name`, DCB tag annotations, and more) so you can focus on domain logic. See the [Reventless PPX Guide](/guides/reventless-ppx) for details.
 
 ### Choose a Cloud Provider
 
@@ -101,12 +101,12 @@ The foundation of any platform built using Reventless is a Core-Stack. This is t
 
 A **Plugin** is a deployment unit in Reventless. It encapsulates a bounded context with its own components.
 
-Reventless supports two approaches for building plugins:
+A plugin can mix two building-block patterns:
 
-1. **[Aggregate-Based Plugin](./aggregate-based-plugin.md)** - Uses the traditional Aggregate pattern with Command Handlers and Event Log
-2. **[DCB-Based Plugin](./dcb-based-plugin.md)** - Uses Dynamic Consistency Boundaries with shared event log and optimistic concurrency
+1. **[Aggregates](./aggregates.md)** - Each entity has its own event log and sequential command processing
+2. **[DCB Slices](./dcb-slices.md)** - Shared event log with optimistic concurrency across entities
 
-For an overview of both approaches and how to create a plugin, see the [Plugin System](./plugin-system.md) guide.
+For an overview of plugins, patterns, and cross-plugin communication, see the [Plugin System](./plugin-system.md) guide.
 
 ## Next Steps
 

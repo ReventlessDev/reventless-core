@@ -87,8 +87,6 @@ type action<'id, 'command> =
 Here's a complete example of mapping Customer events to Order commands:
 
 ```rescript title="Order_EventMappings.res"
-open Reventless
-
 // Define the target aggregate
 module Target = Order
 
@@ -100,7 +98,7 @@ module CustomerMapping = {
     switch event {
     | Customer.Created({name, address}) => [
         // When customer is created, create a welcome order
-        EventMapping.Publish(
+        Reventless.EventMapping.Publish(
           Order.Id.make(),
           Order.CreateWelcomeOrder({
             customerId: customerId,
@@ -118,7 +116,7 @@ module CustomerMapping = {
           ~value=customerId->Customer.Id.toString,
         )
         [
-          EventMapping.PublishAsync(
+          Reventless.EventMapping.PublishAsync(
             ordersPromise->Promise.then(orders =>
               orders->Array.map(order => (
                 order.orderId,
@@ -130,7 +128,7 @@ module CustomerMapping = {
       }
     | Customer.Deleted => [
         // When customer is deleted, cancel their orders
-        EventMapping.Publish(
+        Reventless.EventMapping.Publish(
           customerId->Customer.Id.toString->Order.Id.fromString,
           Order.CancelAllForCustomer
         ),
@@ -140,7 +138,7 @@ module CustomerMapping = {
 }
 
 // Define the module type constraint
-module type Mapping = EventMapping.T with module Target := Target
+module type Mapping = Reventless.EventMapping.T with module Target := Target
 
 // Register all mappings for this target
 let mappings: array<module(Mapping)> = [
@@ -156,8 +154,6 @@ let counter = None
 For more complex scenarios requiring deduplication or coordination across multiple events:
 
 ```rescript title="Invoice_EventMappings.res"
-open Reventless
-
 module Target = Invoice
 
 module OrderMapping = {
@@ -167,7 +163,7 @@ module OrderMapping = {
     switch event {
     | Order.ItemAdded({itemId, quantity, price}) => [
         // Add this item to the invoice counter
-        EventMapping.AddToCounterTarget({
+        Reventless.EventMapping.AddToCounterTarget({
           counterId: orderId->Order.Id.toString,
           target: {
             itemId: itemId,
@@ -176,12 +172,12 @@ module OrderMapping = {
           }
         }),
         // Increment the counter
-        EventMapping.Count(orderId->Order.Id.toString),
+        Reventless.EventMapping.Count(orderId->Order.Id.toString),
       ]
     | Order.Completed({expectedItems}) => [
         // When order is complete, we expect counter to reach expectedItems
         // Counter will trigger invoice generation when count matches
-        EventMapping.Count(orderId->Order.Id.toString),
+        Reventless.EventMapping.Count(orderId->Order.Id.toString),
       ]
     | _ => []
     }
@@ -200,7 +196,7 @@ module CounterMapping = {
           price: target.price,
         })
         [
-          EventMapping.Publish(
+          Reventless.EventMapping.Publish(
             counterId->Invoice.Id.fromString,
             Invoice.Generate({items: items})
           ),
@@ -210,7 +206,7 @@ module CounterMapping = {
     }
 }
 
-module type Mapping = EventMapping.T with module Target := Target
+module type Mapping = Reventless.EventMapping.T with module Target := Target
 
 let mappings: array<module(Mapping)> = [
   module(OrderMapping),
