@@ -378,8 +378,8 @@ function MakeWithConfig(Config) {
     let channelParts = channel.parts;
     AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
   };
-  let hooks_onDcbSlicesCreated = _dcbEventLogUnknown => {
-    StateViewSliceRuntime_Builder_Single$ReventlessAws.finish();
+  let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
+    StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   };
   let hooks_onHeartbeatEpChannelAvailable = remoteChannelUnknown => {
@@ -998,8 +998,8 @@ function Make($star) {
     let channelParts = channel.parts;
     AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
   };
-  let hooks_onDcbSlicesCreated = _dcbEventLogUnknown => {
-    StateViewSliceRuntime_Builder_Single$ReventlessAws.finish();
+  let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
+    StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   };
   let hooks_onHeartbeatEpChannelAvailable = remoteChannelUnknown => {

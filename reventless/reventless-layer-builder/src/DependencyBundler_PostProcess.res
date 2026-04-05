@@ -17,7 +17,8 @@ let reventlessCoreDeploytime: postProcessFn = async (_node, cwd) => {
   // Delete deploy-time-only compiled modules (*_Builder, *_Adapter, Pulumi utils, Cloner, etc.)
   // These are never imported by any Lambda entry point — only used at pulumi up time.
   let rmBuilders = Rimraf.rimrafWithOptions("**/*_Builder*.res.mjs", {glob: {cwd: cwd}})
-  let rmAdapters = Rimraf.rimrafWithOptions("**/*_Adapter*.res.mjs", {glob: {cwd: cwd}})
+  // Exclude Util_AdapterRuntime — needed at runtime by Util_DynamoDbStream_Runtime
+  let rmAdapters = Rimraf.rimrafWithOptions("**/components/*_Adapter*.res.mjs", {glob: {cwd: cwd}})
   let rmDeploytime = Rimraf.rimrafMany([
     // Deploy-time utilities that import Pulumi
     NodePath.resolve([cwd, "src", "util", "Util_Pulumi.res.mjs"]),

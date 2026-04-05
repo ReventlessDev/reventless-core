@@ -369,6 +369,11 @@ module Make = (
           aggregatesOutputs->Aggregate.filterEventTopics(
             extensionPointAggregateNames->Set.union(extensionAggregateNames),
           )
+        // Include DCB EventTopic so the EventCollector subscribes to DynamoDB Stream events
+        switch dcbResult.dcbEventLogOutputs {
+        | Some(dcbOutputs) => eventTopics->Dict.set(name ++ "DcbEventLog", dcbOutputs.eventTopic)
+        | None => ()
+        }
         switch coreSetup {
         | Some((pluginExtensionPointUnwrapped, _)) =>
           eventTopics->Dict.set(

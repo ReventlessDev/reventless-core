@@ -509,8 +509,9 @@ module MakeWithConfig = (
       AutomationSliceRuntime_Builder_Single.setDcbQueueUrl(channelParts.queue.id)
     },
     // DCB slices created hook — finalize bundled slice Lambdas.
-    onDcbSlicesCreated: _dcbEventLogUnknown => {
-      StateViewSliceRuntime_Builder_Single.finish()
+    onDcbSlicesCreated: dcbEventLogUnknown => {
+      let dcbEventLog: ReventlessCore.DcbEventLog.component = Obj.magic(dcbEventLogUnknown)
+      StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog(dcbEventLog)
       AutomationSliceRuntime_Builder_Single.finish()
     },
     // Heartbeat EP channel hook — extracts SQS queue URL for bundled heartbeat handler.

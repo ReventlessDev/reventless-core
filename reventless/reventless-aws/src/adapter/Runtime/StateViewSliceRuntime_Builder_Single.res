@@ -7,6 +7,7 @@ type runtimeParts = Util.Lambda.runtimeParts
 type bundledStateViewSliceInfo = {
   specModulePath: string,
   queryDbTableName: Pulumi.Output.t<string>,
+  queryDbResources: array<ReventlessInfra.Adapter.resource>,
 }
 
 let bundledInfos: dict<bundledStateViewSliceInfo> = Dict.make()
@@ -15,8 +16,9 @@ let registerStateViewSlice = (
   ~name,
   ~specModulePath,
   ~queryDbTableName,
+  ~queryDbResources=[],
 ) =>
-  bundledInfos->Dict.set(name, {specModulePath, queryDbTableName})
+  bundledInfos->Dict.set(name, {specModulePath, queryDbTableName, queryDbResources})
 
 type storedSpec = {
   componentName: string,
@@ -89,8 +91,110 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
 
 let finished = ref(false)
 
+let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs) => {
+  let opts = {Pulumi.ComponentResource.parent: parent}
+  let handlerConfigOutput =
+    Pulumi.Output.all(handlerOutputs)
+    ->Pulumi.Output.apply(handlers =>
+      `{"handlers":[${handlers->Array.join(",")}]}`
+    )
+
+  let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
+  envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+
+  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs";`
+
+  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+  archiveContents->Dict.set(
+    "index.mjs",
+    Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+  )
+  packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+    archiveContents->Dict.set(
+      `node_modules/${pkgName}`,
+      Util_Bundle.createFilteredPackageArchive(pkgRoot)
+      ->Pulumi.Archive.archiveToAssetOrArchive,
+    )
+  })
+
+  let code = Pulumi.Archive.assetArchive(archiveContents)
+  let sourceCodeHash = Util_Bundle.hashString(
+    reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+  )
+
+  let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
+    ~name="AllStateViewSlices",
+    ~code,
+    ~sourceCodeHash,
+    ~envVars,
+    ~memorySize=1024,
+    ~timeout=30,
+    ~opts,
+  )
+
+  let _connectResources = EventCollectorChannel.connect(
+    ~name="AllStateViewSlices",
+    ~channelSpecs,
+    ~runtime,
+    ~opts,
+  )
+}
+
+let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) =>
+  if !finished.contents {
+    let infoCount = bundledInfos->Dict.keysToArray->Array.length
+    if infoCount > 0 {
+      let dcbResource = dcbEventLog->ReventlessCore.Component.toPulumiResource
+      switch dcbResource.parent {
+      | Some(parent) =>
+        let dcbOutputs: ReventlessCore.DcbEventLog.outputs = dcbEventLog->ReventlessCore.Component.outputs
+        let eventTopics: ReventlessCore.EventTopic.allOutputs = Dict.fromArray([
+          ("DcbEventLog", dcbOutputs.eventTopic),
+        ])
+        let channel = EventCollectorChannel.make(
+          ~name="AllStateViewSlices",
+          ~eventTopics,
+          ~opts={Pulumi.ComponentResource.parent: parent},
+        )
+
+        let handlerOutputs: array<Pulumi.Output.t<string>> = []
+        let packageDirs: dict<string> = Dict.make()
+        let allQueryDbResources: array<ReventlessInfra.Adapter.resource> = []
+
+        bundledInfos->Dict.forEachWithKey((info, _name) => {
+          info.queryDbResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
+          let pkg = Util_Bundle.extractPackageName(info.specModulePath)
+          packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
+
+          let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let etResources: array<ReventlessInfra.Adapter.resource> = dcbOutputs.eventTopic.resources
+          let sourceUrn = etResources->Array.getUnsafe(0)
+          let sourceUrn = sourceUrn.urn
+
+          let handlerJson =
+            Pulumi.Output.all2((info.queryDbTableName, sourceUrn))
+            ->Pulumi.Output.apply(((tableName, urn)) => {
+              `{"specModule":${specModule},"queryDbTableName":"${tableName}","sourceUrn":"${urn}"}`
+            })
+          let _ = handlerOutputs->Array.push(handlerJson)
+        })
+
+        buildLambda(
+          ~parent,
+          ~handlerOutputs,
+          ~packageDirs,
+          ~channelSpecs=[{channel: channel, eventTopics, resources: allQueryDbResources}],
+        )
+      | None =>
+        Console.warn("StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog: DCB EventLog has no parent")
+      }
+    }
+    finished := true
+  }
+
 let finish = () =>
   if !finished.contents {
+    Console.log(`StateViewSliceRuntime_Builder_Single.finish: ${storedSpecs->Array.length->Int.toString} storedSpecs, ${bundledInfos->Dict.keysToArray->Array.length->Int.toString} bundledInfos, grandParent=${grandParent.contents->Option.map(_ => "Some")->Option.getOr("None")}`)
     if storedSpecs->Array.length > 0 {
       let (maxMemorySize, maxTimeout) = storedSpecs->Array.reduce((0, 0), (
         (accMemorySize, accTimeout),

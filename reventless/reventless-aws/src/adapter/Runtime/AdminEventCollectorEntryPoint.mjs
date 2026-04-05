@@ -9,7 +9,7 @@ import { patchSpecId, makeQueueRef, scanByTableName } from "./HandlerFactoryHelp
 import { val as shimVal, resource as shimResource } from "@reventlessdev/reventless-aws/src/util/Util_PulumiShim.res.mjs";
 import { sendMessage } from "@reventlessdev/reventless-aws/src/util/Util_PluginMessage_Runtime.res.mjs";
 import { publish as snsPublish } from "@reventlessdev/reventless-aws/src/util/Util_SNS_Runtime.res.mjs";
-import PluginExtensionPointSpec from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
+import * as PluginExtensionPointSpec from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import { Make as pluginEPPluginMake } from "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs";
 import { Make as extensionPointOperationsMake } from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Operations.res.mjs";
 import { handleDynamoDbOrSqsEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res.mjs";
@@ -154,7 +154,16 @@ function buildHandler() {
     Stream.mapEffect(stream, eventJson =>
       Effect.flatMap(
         Effect.logInfo("Admin handleJsonEvents: outgoing event: " + JSON.stringify(eventJson).substring(0, 200)),
-        _ => Effect.promise(async () => await epOps.outgoingJsonEventsHandler(eventJson, fakePluginDefinition))
+        _ => Effect.catchAllDefect(
+          Effect.promise(async () => await epOps.outgoingJsonEventsHandler(eventJson, fakePluginDefinition)),
+          defect => {
+            const msg = defect && defect.message || "";
+            if (msg.includes("Missing mapping")) {
+              return Effect.logDebug("Admin handleJsonEvents: no mapping for event, skipping");
+            }
+            return Effect.die(defect);
+          }
+        )
       )
     )
   );

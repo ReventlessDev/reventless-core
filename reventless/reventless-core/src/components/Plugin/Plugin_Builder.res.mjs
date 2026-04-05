@@ -234,6 +234,10 @@ function Make(Spec) {
           let extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs.flatMap(ex => ex.aggregateNames));
           let extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(ex => ex.aggregateNames));
           let eventTopics = Aggregate$ReventlessCore.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
+          let dcbOutputs = dcbResult.dcbEventLogOutputs;
+          if (dcbOutputs !== undefined) {
+            eventTopics[extra$1 + "DcbEventLog"] = dcbOutputs.eventTopic;
+          }
           if (coreSetup !== undefined) {
             eventTopics[PluginExtensionPointSpec$ReventlessInfra.name] = {
               resources: coreSetup[0].eventTopic.resources.map(AdapterDeploytime$ReventlessCore.fromInteropResource)

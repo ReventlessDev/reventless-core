@@ -47,27 +47,32 @@ function Make(RuntimeEnvironment) {
     });
     let validateParent = parent => {
       let parentName = Stdlib_Option.getOr(parent.__name, "UnnamedParent");
+      if (grandParent.contents === undefined) {
+        grandParent.contents = parent.__parentResource;
+      }
       return parent.urn.apply(urn => {
         let pulumiType = Stdlib_Option.getOr(Stdlib_Option.map(urn.split("::")[2], fullType => {
           let parts = fullType.split(":");
           return parts[parts.length - 1 | 0];
         }), "Unknown");
         log.debug("EventCollectorRuntime", undefined, `validateParent: parent ` + parentName + ` type: ` + pulumiType);
-        let match = grandParent.contents;
-        let match$1 = parentType.contents;
-        if (match !== undefined) {
-          if (Primitive_object.notequal(match, parent.__parentResource)) {
-            let grandParentName = Stdlib_Option.getOr(match.__name, "UnnamedGrandParent");
-            return Stdlib_JsError.throwWithMessage(`registerRuntimeSpec: parent ` + parentName + ` has different parent than ` + grandParentName);
+        let existingType = parentType.contents;
+        if (existingType !== undefined) {
+          if (existingType !== pulumiType) {
+            Stdlib_JsError.throwWithMessage(`registerRuntimeSpec: parent ` + parentName + ` has different type ` + pulumiType + ` than ` + existingType);
           }
-        } else if (match$1 === undefined) {
+        } else {
           parentType.contents = pulumiType;
-          grandParent.contents = parent.__parentResource;
+        }
+        let grandParent$1 = grandParent.contents;
+        if (grandParent$1 === undefined) {
           return;
         }
-        if (match$1 !== undefined && match$1 !== pulumiType) {
-          return Stdlib_JsError.throwWithMessage(`registerRuntimeSpec: parent ` + parentName + ` has different type ` + pulumiType + ` than ` + match$1);
+        if (!Primitive_object.notequal(grandParent$1, parent.__parentResource)) {
+          return;
         }
+        let grandParentName = Stdlib_Option.getOr(grandParent$1.__name, "UnnamedGrandParent");
+        Stdlib_JsError.throwWithMessage(`registerRuntimeSpec: parent ` + parentName + ` has different parent than ` + grandParentName);
       });
     };
     let registerRuntimeSpec = (channel, eventTopics, resources, memorySize, timeout, parent) => validateParent(parent).apply(() => {
@@ -115,28 +120,18 @@ function Make(RuntimeEnvironment) {
       if (finished.contents) {
         return;
       }
-      let match = grandParent.contents;
-      let match$1 = parentType.contents;
-      let exit = 0;
-      if (match !== undefined && match$1 !== undefined) {
-        let name = `All` + match$1 + `s`;
-        let match$2 = runtimeSpec.contents;
-        let runtime = RuntimeEnvironment.make(name, Pulumi.output(eventCollectorHandler(name)), match$2.maxMemorySize, match$2.maxTimeout, {
-          parent: match
+      let grandParent$1 = grandParent.contents;
+      if (grandParent$1 !== undefined) {
+        let name = `All` + Stdlib_Option.getOr(parentType.contents, "EventCollector") + `s`;
+        let match = runtimeSpec.contents;
+        let runtime = RuntimeEnvironment.make(name, Pulumi.output(eventCollectorHandler(name)), match.maxMemorySize, match.maxTimeout, {
+          parent: grandParent$1
         });
-        let opts_parent = match;
+        let opts_parent = grandParent$1;
         let opts = {
           parent: opts_parent
         };
-        EventCollectorChannel.connect(name, match$2.channelSpecs, runtime, opts);
-      } else {
-        exit = 1;
-      }
-      if (exit === 1) {
-        let gpInfo = Stdlib_Option.getOr(Stdlib_Option.map(grandParent.contents, gp => gp.__pulumiType + ` ` + Stdlib_Option.getOr(gp.__name, "UnnamedGrandParent")), "None");
-        let ptInfo = Stdlib_Option.getOr(parentType.contents, "None");
-        console.warn(`EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set: grandParent=` + gpInfo + `, parentType=` + ptInfo);
-        Stdlib_JsError.throwWithMessage("EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set");
+        EventCollectorChannel.connect(name, match.channelSpecs, runtime, opts);
       }
       finished.contents = true;
     };

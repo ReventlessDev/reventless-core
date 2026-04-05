@@ -69,6 +69,11 @@ module Make = (
 
   let validateParent = (parent: Pulumi.Resource.t) => {
     let parentName = parent.name->Option.getOr("UnnamedParent")
+    // Set grandParent synchronously so finish() can create resources
+    // during the same build phase. Type validation defers to Output.apply.
+    if grandParent.contents == None {
+      grandParent := parent.parent
+    }
     parent.urn->Pulumi.Output.apply(urn => {
       let pulumiType =
         (urn->String.split("::"))[2]
@@ -78,18 +83,20 @@ module Make = (
         })
         ->Option.getOr("Unknown")
       log.debug(~comp="EventCollectorRuntime", `validateParent: parent ${parentName} type: ${pulumiType}`)
-      switch (grandParent.contents, parentType.contents) {
-      | (None, None) =>
+      switch (parentType.contents) {
+      | None =>
         parentType := Some(pulumiType)
-        grandParent := parent.parent
-      | (Some(grandParent), _) if Some(grandParent) != parent.parent =>
+      | Some(existingType) if existingType != pulumiType =>
+        JsError.throwWithMessage(
+          `registerRuntimeSpec: parent ${parentName} has different type ${pulumiType} than ${existingType}`,
+        )
+      | _ => ()
+      }
+      switch grandParent.contents {
+      | Some(grandParent) if Some(grandParent) != parent.parent =>
         let grandParentName = grandParent.name->Option.getOr("UnnamedGrandParent")
         JsError.throwWithMessage(
           `registerRuntimeSpec: parent ${parentName} has different parent than ${grandParentName}`,
-        )
-      | (_, Some(parentType)) if parentType != pulumiType =>
-        JsError.throwWithMessage(
-          `registerRuntimeSpec: parent ${parentName} has different type ${pulumiType} than ${parentType}`,
         )
       | _ => ()
       }
@@ -170,9 +177,9 @@ module Make = (
 
   let finish = () =>
     if !finished.contents {
-      switch (grandParent.contents, parentType.contents) {
-      | (Some(grandParent), Some(parentType)) =>
-        let name = `All${parentType}s`
+      switch grandParent.contents {
+      | Some(grandParent) =>
+        let name = `All${parentType.contents->Option.getOr("EventCollector")}s`
         let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
         let runtime = RuntimeEnvironment.make(
           ~name,
@@ -185,17 +192,10 @@ module Make = (
 
         let _connectResources = EventCollectorChannel.connect(~name, ~channelSpecs, ~runtime, ~opts)
       | _ =>
-        let gpInfo =
-          grandParent.contents
-          ->Option.map(gp => `${gp.pulumiType} ${gp.name->Option.getOr("UnnamedGrandParent")}`)
-          ->Option.getOr("None")
-        let ptInfo = parentType.contents->Option.getOr("None")
-        Console.warn(
-          `EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set: grandParent=${gpInfo}, parentType=${ptInfo}`,
-        )
-        JsError.throwWithMessage(
-          "EventCollectorRuntime_Builder_Single.finish: grandParent or parentType not set",
-        )
+        // grandParent/parentType not set — either no handlers were registered
+        // (e.g. all StateViewSlices went through Bundled path) or Pulumi outputs
+        // haven't resolved yet. Skip silently.
+        ()
       }
       finished := true
     }

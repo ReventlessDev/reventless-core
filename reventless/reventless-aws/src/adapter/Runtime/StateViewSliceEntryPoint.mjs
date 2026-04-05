@@ -71,7 +71,10 @@ async function buildAllHandlers() {
   await Promise.all(config.handlers.map(async h => {
     const specModule = await dynamicImport(h.specModule);
     const jsonEventsHandler = buildJsonEventsHandler(specModule, h.queryDbTableName);
-    handlers[h.sourceUrn] = (event, context) => handleStreamEvent(jsonEventsHandler, event, context);
+    const streamHandler = (event, context) => handleStreamEvent(jsonEventsHandler, event, context);
+    const existing = handlers[h.sourceUrn] || [];
+    existing.push(streamHandler);
+    handlers[h.sourceUrn] = existing;
   }));
   return handlers;
 }
@@ -84,10 +87,12 @@ export async function handler(event, context) {
   const grouped = groupBySource(records);
 
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
-    const streamHandler = handlers[arn];
-    if (streamHandler !== undefined) {
-      console.log("----- stateViewSliceHandler: found handler for " + arn);
-      await runEffect(undefined, streamHandler({ Records: subRecords }, context));
+    const streamHandlers = handlers[arn];
+    if (streamHandlers !== undefined && streamHandlers.length > 0) {
+      console.log("----- stateViewSliceHandler: found " + streamHandlers.length + " handler(s) for " + arn);
+      await Promise.all(streamHandlers.map(h =>
+        runEffect(undefined, h({ Records: subRecords }, context))
+      ));
     } else {
       console.warn("stateViewSliceHandler: no handler found: " + arn);
     }

@@ -37,6 +37,7 @@ module Make = (Api: {
         ~name=Spec.name,
         ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
         ~queryDbTableName,
+        ~queryDbResources=queryDbOutputs.resources,
       )
 
       sv

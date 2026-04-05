@@ -32,7 +32,7 @@ async function reventlessCoreDeploytime(_node, cwd) {
       cwd: cwd
     }
   });
-  let rmAdapters = Rimraf.rimraf("**/*_Adapter*.res.mjs", {
+  let rmAdapters = Rimraf.rimraf("**/components/*_Adapter*.res.mjs", {
     glob: {
       cwd: cwd
     }

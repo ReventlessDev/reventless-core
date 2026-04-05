@@ -38,7 +38,7 @@ function Make(Api) {
       let queryDbOutputs = Component$ReventlessCore.outputs(sv).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(InnerMake.Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(InnerMake.Spec.moduleUrl), queryDbTableName);
+      StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(InnerMake.Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(InnerMake.Spec.moduleUrl), queryDbTableName, queryDbOutputs.resources);
       return sv;
     };
     return {

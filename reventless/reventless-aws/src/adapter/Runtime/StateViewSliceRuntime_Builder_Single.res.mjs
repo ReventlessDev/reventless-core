@@ -12,10 +12,12 @@ import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCol
 
 let bundledInfos = {};
 
-function registerStateViewSlice(name, specModulePath, queryDbTableName) {
+function registerStateViewSlice(name, specModulePath, queryDbTableName, queryDbResourcesOpt) {
+  let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
   bundledInfos[name] = {
     specModulePath: specModulePath,
-    queryDbTableName: queryDbTableName
+    queryDbTableName: queryDbTableName,
+    queryDbResources: queryDbResources
   };
 }
 
@@ -59,10 +61,79 @@ let finished = {
   contents: false
 };
 
+function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs) {
+  let opts_parent = parent;
+  let opts = {
+    parent: opts_parent
+  };
+  let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
+  let envVars = {};
+  envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs";`;
+  let archiveContents = {};
+  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
+  Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
+    archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
+  });
+  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
+  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", code, sourceCodeHash, envVars, 1024, 30, opts);
+  EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllStateViewSlices", channelSpecs, runtime, opts);
+}
+
+function finishWithDcbEventLog(dcbEventLog) {
+  if (finished.contents) {
+    return;
+  }
+  let infoCount = Object.keys(bundledInfos).length;
+  if (infoCount > 0) {
+    let dcbResource = Component$ReventlessCore.toPulumiResource(dcbEventLog);
+    let parent = dcbResource.__parentResource;
+    if (parent !== undefined) {
+      let dcbOutputs = Component$ReventlessCore.outputs(dcbEventLog);
+      let eventTopics = Object.fromEntries([[
+          "DcbEventLog",
+          dcbOutputs.eventTopic
+        ]]);
+      let channel = EventCollectorChannel_DynamoDbStream$ReventlessAws.make("AllStateViewSlices", eventTopics, {
+        parent: parent
+      });
+      let handlerOutputs = [];
+      let packageDirs = {};
+      let allQueryDbResources = [];
+      Stdlib_Dict.forEachWithKey(bundledInfos, (info, _name) => {
+        info.queryDbResources.forEach(r => {
+          allQueryDbResources.push(r);
+        });
+        let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
+        packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+        let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+        let etResources = dcbOutputs.eventTopic.resources;
+        let sourceUrn = etResources[0];
+        let sourceUrn$1 = sourceUrn.urn;
+        let handlerJson = Pulumi.all([
+          info.queryDbTableName,
+          sourceUrn$1
+        ]).apply(param => `{"specModule":` + specModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + param[1] + `"}`);
+        handlerOutputs.push(handlerJson);
+      });
+      buildLambda(parent, handlerOutputs, packageDirs, [{
+          channel: channel,
+          eventTopics: eventTopics,
+          resources: allQueryDbResources
+        }]);
+    } else {
+      console.warn("StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog: DCB EventLog has no parent");
+    }
+  }
+  finished.contents = true;
+}
+
 function finish() {
   if (finished.contents) {
     return;
   }
+  console.log(`StateViewSliceRuntime_Builder_Single.finish: ` + storedSpecs.length.toString() + ` storedSpecs, ` + Object.keys(bundledInfos).length.toString() + ` bundledInfos, grandParent=` + Stdlib_Option.getOr(Stdlib_Option.map(grandParent.contents, param => "Some"), "None"));
   if (storedSpecs.length !== 0) {
     let match = Stdlib_Array.reduce(storedSpecs, [
       0,
@@ -131,6 +202,8 @@ export {
   grandParent,
   forEventCollector,
   finished,
+  buildLambda,
+  finishWithDcbEventLog,
   finish,
 }
 /* @pulumi/pulumi Not a pure module */
