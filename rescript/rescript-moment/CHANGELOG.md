@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.10.0-alpha.4 (2026-04-06)
+
+### Bug Fixes
+
+* add package-specs to all rescript.json to prevent CJS .js output ([780f1e0](https://github.com/ReventlessDev/reventless-core/commit/780f1e035173b73b17b78466ad01fb69c7cca350))
+
+
 # [0.10.0-alpha.3](https://github.com/ReventlessDev/reventless-core/compare/@reventlessdev/rescript-moment@0.10.0-alpha.0...@reventlessdev/rescript-moment@0.10.0-alpha.3) (2026-03-27)
 
 **Note:** Version bump only for package @reventlessdev/rescript-moment

@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.4 (2026-04-06)
+
+### Bug Fixes
+
+* **ppx:** only strip top-level suffixes outside slice folders ([c87da58](https://github.com/ReventlessDev/reventless-core/commit/c87da580dac03fb279cd34f68cc87f19b44752e2))
+* **ppx:** preserve full entity name for files in slice folders ([5471b3f](https://github.com/ReventlessDev/reventless-core/commit/5471b3f2a64e5dbc85441ae22bfa53c194f84689))
+* **ppx:** restore bin as platform-dispatching shell wrapper ([be8defd](https://github.com/ReventlessDev/reventless-core/commit/be8defdeab835f157da3e4f69ebcb5eb34b211fc))
+
+
 # 1.0.0-alpha.3 (2026-04-06)
 
 ### Features
