@@ -66,7 +66,7 @@ function project(event) {
   }
 }
 
-let name = "OrdersView";
+let name = "Orders";
 
 let Id;
 

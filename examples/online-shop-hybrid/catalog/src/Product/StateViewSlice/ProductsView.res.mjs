@@ -88,7 +88,7 @@ function project(event) {
   }
 }
 
-let name = "ProductsView";
+let name = "Products";
 
 let Id;
 
