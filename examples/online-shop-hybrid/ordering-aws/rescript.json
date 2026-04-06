@@ -1,5 +1,9 @@
 {
   "name": "deploy-aws-ordering",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "sources": [
     {
       "dir": "src",

@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/reventless-infra",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "ReventlessInfra",
   "ppx-flags": [
     "sury-ppx/bin"

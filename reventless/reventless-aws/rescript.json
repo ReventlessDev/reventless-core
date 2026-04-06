@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/reventless-aws",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "ReventlessAws",
   "ppx-flags": [
     "sury-ppx/bin"

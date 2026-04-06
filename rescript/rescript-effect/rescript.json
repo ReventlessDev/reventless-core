@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/rescript-effect",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "suffix": ".res.mjs",
   "ppx-flags": [],
   "warnings": {

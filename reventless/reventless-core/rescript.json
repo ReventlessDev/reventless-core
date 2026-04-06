@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/reventless-core",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "ReventlessCore",
   "ppx-flags": [
     "@reventlessdev/reventless-ppx/bin",

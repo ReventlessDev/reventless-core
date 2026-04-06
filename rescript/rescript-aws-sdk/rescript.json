@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/rescript-aws-sdk",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "AwsSdk",
   "suffix": ".res.mjs",
   "ppx-flags": [],

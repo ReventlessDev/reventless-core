@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": true,
   "ppx-flags": [
     "@reventlessdev/reventless-ppx/bin",

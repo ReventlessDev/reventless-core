@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform-aws",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "sources": [
     {
       "dir": "src",

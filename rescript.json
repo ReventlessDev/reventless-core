@@ -1,5 +1,9 @@
 {
   "name": "reventless-monorepo",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "dependencies": [
     "@reventlessdev/rescript-aws-sdk",
     "@reventlessdev/rescript-fast-csv",

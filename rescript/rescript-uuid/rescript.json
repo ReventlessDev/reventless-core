@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/rescript-uuid",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": false,
   "suffix": ".res.mjs",
   "ppx-flags": [],

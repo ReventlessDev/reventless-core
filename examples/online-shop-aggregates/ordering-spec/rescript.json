@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-ordering-spec",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "OrderingSpec",
   "ppx-flags": [
     "@reventlessdev/reventless-ppx/bin",

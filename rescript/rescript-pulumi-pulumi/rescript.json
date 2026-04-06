@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/rescript-pulumi-pulumi",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "Pulumi",
   "suffix": ".res.mjs",
   "ppx-flags": [],

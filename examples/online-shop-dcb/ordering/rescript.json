@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/online-shop-dcb-ordering",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "OrderingPlugin",
   "ppx-flags": [
     "@reventlessdev/reventless-ppx/bin",

@@ -1,5 +1,9 @@
 {
   "name": "@reventlessdev/reventless-spec",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
   "namespace": "Reventless",
   "ppx-flags": [
     "sury-ppx/bin"
