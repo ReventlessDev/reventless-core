@@ -6,6 +6,7 @@ const sidebars = {
     'index',
     'get-started',
     'development-process',
+    'ppx-binary-management',
     {
       type: 'link',
       label: 'ReScript Syntax',

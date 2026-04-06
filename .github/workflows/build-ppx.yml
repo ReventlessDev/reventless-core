@@ -19,56 +19,62 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-13          # x64
-            artifact: ppx-osx-x64.exe
-
-    runs-on: ${{ matrix.os }}
-    name: Build (${{ matrix.artifact }})
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup OCaml
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: 5.2.x
-          dune-cache: true
-
-      - name: Install dependencies
-        run: |
-          opam install . --deps-only --with-test --yes
-        working-directory: packages/reventless-ppx/src
-
-      - name: Build binary
-        run: |
-          opam exec -- dune build
-        working-directory: packages/reventless-ppx/src
-
-      - name: Copy binary (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          cp packages/reventless-ppx/src/_build/default/bin/bin.exe ${{ matrix.artifact }}
-          chmod +x ${{ matrix.artifact }}
-
-      - name: Copy binary (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          copy packages\reventless-ppx\src\_build\default\bin\bin.exe ${{ matrix.artifact }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
+  # macOS build disabled — GitHub deprecated free macos-13 (x64) runners and
+  # macos-14 (arm64) was not re-enabled. Build macOS binaries locally instead.
+  # See packages/doc/docs-framework/ppx-binary-management.md for instructions.
+  # To re-enable: uncomment this job, set contents: write above, and uncomment
+  # the assemble job below.
+  #
+  # build:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - os: macos-14          # arm64 (Apple Silicon)
+  #           artifact: ppx-osx.exe
+  #
+  #   runs-on: ${{ matrix.os }}
+  #   name: Build (${{ matrix.artifact }})
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup OCaml
+  #       uses: ocaml/setup-ocaml@v3
+  #       with:
+  #         ocaml-compiler: 5.2.x
+  #         dune-cache: true
+  #
+  #     - name: Install dependencies
+  #       run: |
+  #         opam install . --deps-only --with-test --yes
+  #       working-directory: packages/reventless-ppx/src
+  #
+  #     - name: Build binary
+  #       run: |
+  #         opam exec -- dune build
+  #       working-directory: packages/reventless-ppx/src
+  #
+  #     - name: Copy binary (Unix)
+  #       if: runner.os != 'Windows'
+  #       run: |
+  #         cp packages/reventless-ppx/src/_build/default/bin/bin.exe ${{ matrix.artifact }}
+  #         chmod +x ${{ matrix.artifact }}
+  #
+  #     - name: Copy binary (Windows)
+  #       if: runner.os == 'Windows'
+  #       run: |
+  #         copy packages\reventless-ppx\src\_build\default\bin\bin.exe ${{ matrix.artifact }}
+  #
+  #     - name: Upload artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ matrix.artifact }}
+  #         path: ${{ matrix.artifact }}
 
   test:
-    needs: build
+    # needs: build  # uncomment when build job is re-enabled
     runs-on: ubuntu-latest
     name: Test PPX
 
@@ -102,48 +108,51 @@ jobs:
         run: npm test
         working-directory: packages/reventless-ppx
 
-  assemble:
-    needs: [build, test]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    name: Assemble binaries
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: packages/reventless-ppx/
-
-      - name: Move binaries into package
-        run: |
-          cd packages/reventless-ppx
-          for dir in ppx-*.exe; do
-            if [ -d "$dir" ]; then
-              mv "$dir/$dir" .
-              rmdir "$dir"
-              echo "Assembled: $dir"
-            fi
-          done
-          ls -la ppx-*.exe
-
-      - name: Upload assembled package
-        uses: actions/upload-artifact@v4
-        with:
-          name: reventless-ppx-binaries
-          path: |
-            packages/reventless-ppx/ppx-osx-x64.exe
-
-      - name: Commit binaries to repo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add packages/reventless-ppx/ppx-osx-x64.exe
-          if git diff --cached --quiet; then
-            echo "No binary changes to commit"
-          else
-            git commit -m "chore(ppx): update prebuilt binaries [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-          fi
+  # Disabled together with the build job above.
+  # To re-enable: uncomment this job and the build job.
+  #
+  # assemble:
+  #   needs: [build, test]
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push'
+  #   name: Assemble binaries
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Download all artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         path: packages/reventless-ppx/
+  #
+  #     - name: Move binaries into package
+  #       run: |
+  #         cd packages/reventless-ppx
+  #         for dir in ppx-*.exe; do
+  #           if [ -d "$dir" ]; then
+  #             mv "$dir/$dir" .
+  #             rmdir "$dir"
+  #             echo "Assembled: $dir"
+  #           fi
+  #         done
+  #         ls -la ppx-*.exe
+  #
+  #     - name: Upload assembled package
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: reventless-ppx-binaries
+  #         path: |
+  #           packages/reventless-ppx/ppx-osx.exe
+  #
+  #     - name: Commit binaries to repo
+  #       run: |
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+  #         git add packages/reventless-ppx/ppx-osx.exe
+  #         if git diff --cached --quiet; then
+  #           echo "No binary changes to commit"
+  #         else
+  #           git commit -m "chore(ppx): update prebuilt binaries [skip ci]"
+  #           git push origin HEAD:${{ github.ref_name }}
+  #         fi
