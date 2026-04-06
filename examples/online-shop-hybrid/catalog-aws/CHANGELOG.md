@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.12 (2026-04-06)
+
+### Bug Fixes
+
+* **ci:** fix stale .mjs files and double-deploy gate gap ([1ca59d0](https://github.com/ReventlessDev/reventless-core/commit/1ca59d029c09abdf6e1cdedd2092aac68454b69c))
+
+
 # 1.0.0-alpha.11 (2026-04-06)
 
 ### Bug Fixes
