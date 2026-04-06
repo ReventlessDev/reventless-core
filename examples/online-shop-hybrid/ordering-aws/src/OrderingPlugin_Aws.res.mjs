@@ -10,7 +10,6 @@ import * as CancelOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-o
 import * as AutoShipOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as CustomerBehavior$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/Aggregate/CustomerBehavior.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as ProductsExtension$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Extension/ProductsExtension.res.mjs";
 import * as CustomersReadModel$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModel/CustomersReadModel.res.mjs";
 import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-hybrid-ordering-spec/src/OrdersExtensionPoint.res.mjs";
@@ -70,7 +69,8 @@ function Make(Platform) {
     consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
     evolve: PlaceOrder$OrderingPlugin.evolve,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
-    producedEventSchema: PlaceOrder$OrderingPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
     decide: PlaceOrder$OrderingPlugin.decide,
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema
   });
@@ -81,7 +81,8 @@ function Make(Platform) {
     consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
     evolve: ShipOrder$OrderingPlugin.evolve,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
-    producedEventSchema: ShipOrder$OrderingPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: ShipOrder$OrderingPlugin.eventSchema,
     decide: ShipOrder$OrderingPlugin.decide,
     commandSchema: ShipOrder$OrderingPlugin.commandSchema
   });
@@ -92,7 +93,8 @@ function Make(Platform) {
     consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
     evolve: CancelOrder$OrderingPlugin.evolve,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
-    producedEventSchema: CancelOrder$OrderingPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: CancelOrder$OrderingPlugin.eventSchema,
     decide: CancelOrder$OrderingPlugin.decide,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema
   });
@@ -103,12 +105,34 @@ function Make(Platform) {
     consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
     evolve: SyncCatalogProduct$OrderingPlugin.evolve,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
-    producedEventSchema: SyncCatalogProduct$OrderingPlugin.producedEventSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
     decide: SyncCatalogProduct$OrderingPlugin.decide,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
   });
-  let AutoShipOrderSlice = Platform.AutomationSlice.Bundled.Make(AutoShipOrder$OrderingPlugin);
-  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Bundled.Make(SendOrderConfirmation$OrderingPlugin);
+  let AutoShipOrderSlice = Platform.AutomationSlice.Bundled.Make({
+    name: AutoShipOrder$OrderingPlugin.name,
+    moduleUrl: AutoShipOrder$OrderingPlugin.moduleUrl,
+    consumedEventSchema: AutoShipOrder$OrderingPlugin.consumedEventSchema,
+    todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
+    commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
+    collect: AutoShipOrder$OrderingPlugin.collect,
+    resolve: AutoShipOrder$OrderingPlugin.resolve,
+    process: AutoShipOrder$OrderingPlugin.process,
+    maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
+    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
+  });
+  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Bundled.Make({
+    name: SendOrderConfirmation$OrderingPlugin.name,
+    moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
+    consumedEventSchema: SendOrderConfirmation$OrderingPlugin.consumedEventSchema,
+    outboundItemSchema: SendOrderConfirmation$OrderingPlugin.outboundItemSchema,
+    inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
+    collect: SendOrderConfirmation$OrderingPlugin.collect,
+    translate: SendOrderConfirmation$OrderingPlugin.translate,
+    maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
+    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
+  });
   let OrdersViewSlice = Platform.StateViewSlice.Bundled.Make({
     name: OrdersView$OrderingPlugin.name,
     moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
@@ -123,63 +147,68 @@ function Make(Platform) {
     consumedEventSchema: AvailableProductsView$OrderingPlugin.consumedEventSchema,
     project: AvailableProductsView$OrderingPlugin.project
   });
-  let $$let = ProductsExtension$OrderingPlugin.ProductMapping.Aggregate;
-  let ProductsExtensionMapping = ExtensionMapping$ReventlessInfra.Make(ProductsExtensionPoint$CatalogSpec)({
-    Aggregate: {
+  let ProductsExtensionMaker = Platform.Extension.Make({
+    ExtensionPoint: {
+      name: ProductsExtensionPoint$CatalogSpec.name,
+      moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
+      commandSchema: ProductsExtensionPoint$CatalogSpec.commandSchema,
+      eventSchema: ProductsExtensionPoint$CatalogSpec.eventSchema,
+      directiveSchema: ProductsExtensionPoint$CatalogSpec.directiveSchema
+    },
+    Delegate: {
       Id: Id$Reventless.$$String,
-      name: $$let.name,
-      eventSchema: $$let.eventSchema,
-      errorSchema: $$let.errorSchema,
-      commandSchema: $$let.commandSchema,
-      moduleUrl: $$let.moduleUrl
+      name: SyncCatalogProduct$OrderingPlugin.name,
+      eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
+      errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
+      commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
+      moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl
     },
     mapIncomingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
   });
-  let name = "OrderingProducts";
-  let moduleUrl$1 = import.meta.url;
-  let mappings$1 = [ProductsExtensionMapping];
-  let ProductsExtensionMappings = {
-    Spec: undefined,
-    name: name,
-    moduleUrl: moduleUrl$1,
-    mappings: mappings$1
-  };
-  let ProductsExtensionMaker = Platform.Extension.Make(ProductsExtensionPoint$CatalogSpec)({
-    name: name,
-    moduleUrl: moduleUrl$1,
-    mappings: mappings$1
-  });
-  let OrdersEPMappingT = ExtensionPointMapping$ReventlessInfra.Make(OrdersExtensionPoint$OrderingSpec)({
-    Aggregate: {
+  let OrdersEPMappingT = ExtensionPointMapping$ReventlessInfra.Make({
+    ExtensionPoint: {
+      name: OrdersExtensionPoint$OrderingSpec.name,
+      moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
+      commandSchema: OrdersExtensionPoint$OrderingSpec.commandSchema,
+      eventSchema: OrdersExtensionPoint$OrderingSpec.eventSchema,
+      directiveSchema: OrdersExtensionPoint$OrderingSpec.directiveSchema
+    },
+    Delegate: {
       Id: Id$Reventless.$$String,
-      name: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.name,
-      eventSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.eventSchema,
-      errorSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.errorSchema,
-      commandSchema: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.commandSchema,
-      moduleUrl: OrdersExtensionPointMapping$OrderingPlugin.Aggregate.moduleUrl
+      name: OrdersExtensionPointMapping$OrderingPlugin.Delegate.name,
+      eventSchema: OrdersExtensionPointMapping$OrderingPlugin.Delegate.eventSchema,
+      errorSchema: OrdersExtensionPointMapping$OrderingPlugin.Delegate.errorSchema,
+      commandSchema: OrdersExtensionPointMapping$OrderingPlugin.Delegate.commandSchema,
+      moduleUrl: OrdersExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl
     },
     mapIncomingCommand: OrdersExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });
-  let name$1 = "OrdersEPMappings";
-  let moduleUrl$2 = import.meta.url;
-  let mappings$2 = [OrdersEPMappingT];
+  let name = "OrdersEPMappings";
+  let moduleUrl$1 = import.meta.url;
+  let mappings$1 = [OrdersEPMappingT];
   let OrdersEPMappings = {
     Spec: undefined,
-    name: name$1,
-    moduleUrl: moduleUrl$2,
-    mappings: mappings$2
+    name: name,
+    moduleUrl: moduleUrl$1,
+    mappings: mappings$1
   };
   let publishToAggregatesQueueUrls = {};
-  let OrdersExtensionPointMaker = ExtensionPoint_Builder$ReventlessAws.Make(OrdersExtensionPoint$OrderingSpec)({
-    name: name$1,
-    moduleUrl: moduleUrl$2,
-    mappings: mappings$2
+  let OrdersExtensionPointMaker = ExtensionPoint_Builder$ReventlessAws.Make({
+    name: OrdersExtensionPoint$OrderingSpec.name,
+    moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
+    commandSchema: OrdersExtensionPoint$OrderingSpec.commandSchema,
+    eventSchema: OrdersExtensionPoint$OrderingSpec.eventSchema,
+    directiveSchema: OrdersExtensionPoint$OrderingSpec.directiveSchema
+  })({
+    name: name,
+    moduleUrl: moduleUrl$1,
+    mappings: mappings$1
   })({
     publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
   });
-  let make = (scheduler, api, apiRole) => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, api, apiRole, scheduler, [
+  let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomerReadModel], undefined, [
     PlaceOrderSlice,
     ShipOrderSlice,
     CancelOrderSlice,
@@ -200,8 +229,6 @@ function Make(Platform) {
     SendOrderConfirmationSlice: SendOrderConfirmationSlice,
     OrdersViewSlice: OrdersViewSlice,
     AvailableProductsViewSlice: AvailableProductsViewSlice,
-    ProductsExtensionMapping: ProductsExtensionMapping,
-    ProductsExtensionMappings: ProductsExtensionMappings,
     ProductsExtensionMaker: ProductsExtensionMaker,
     OrdersEPMappingT: OrdersEPMappingT,
     OrdersEPMappings: OrdersEPMappings,

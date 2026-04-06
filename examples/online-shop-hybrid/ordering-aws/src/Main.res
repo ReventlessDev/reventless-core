@@ -8,7 +8,7 @@ let _ = ReventlessAws.PluginRuntime_Builder.registerDcbConfig(
 module Platform = ReventlessAws.Platform.Make()
 module Ordering = OrderingPlugin_Aws.Make(Platform)
 
-Platform.deployPlugin(
+let _ = Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~plugin=module(Ordering),
 )

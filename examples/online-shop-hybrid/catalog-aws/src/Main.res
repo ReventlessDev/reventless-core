@@ -10,7 +10,7 @@ let _ = ReventlessAws.PluginRuntime_Builder.registerDcbConfig(
 module Platform = ReventlessAws.Platform.Make()
 module Catalog = CatalogPlugin_Aws.Make(Platform)
 
-Platform.deployPlugin(
+let _ = Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~plugin=module(Catalog),
 )
