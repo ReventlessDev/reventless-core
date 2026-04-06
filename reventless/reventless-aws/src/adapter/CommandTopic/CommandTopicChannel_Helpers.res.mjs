@@ -79,7 +79,10 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
             "dynamodb:DeleteItem",
             "dynamodb:BatchWriteItem"
           ],
-          Resource: Adapter_Helpers$ReventlessAws.dynamoDbResources(resources).map(dynamoDbResource => dynamoDbResource.urn)
+          Resource: Adapter_Helpers$ReventlessAws.dynamoDbResources(resources).flatMap(dynamoDbResource => [
+            dynamoDbResource.urn,
+            dynamoDbResource.urn + "/index/*"
+          ])
         }]) : undefined;
     let allowLambdaWriteCloudWatchEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaCloudWatchEventsPolicy", [{
         Sid: "AllowLambdaWriteCloudWatchEvents",

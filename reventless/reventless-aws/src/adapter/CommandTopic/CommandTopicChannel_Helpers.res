@@ -104,7 +104,10 @@ let createLambdaPolicy = (
                     resources: Resources(
                       resources
                       ->dynamoDbResources
-                      ->Array.map(dynamoDbResource => dynamoDbResource.urn),
+                      ->Array.flatMap(dynamoDbResource => [
+                        dynamoDbResource.urn,
+                        dynamoDbResource.urn ++ "/index/*",
+                      ]),
                     ),
                   },
                 ],

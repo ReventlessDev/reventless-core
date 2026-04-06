@@ -541,7 +541,7 @@ export function request(ctx) {
       identity: {
         userId: ctx.identity.sub,
         username: ctx.identity.username,
-        groups: ctx.identity.claims['cognito:groups'] ?? [],
+        groups: ctx.identity.claims?.['cognito:groups'] ?? [],
         claims: ctx.identity.claims,
         provider: 'Cognito'
       }
@@ -568,7 +568,7 @@ export function request(ctx) {
       identity: {
         userId: ctx.identity.sub,
         username: ctx.identity.username,
-        groups: ctx.identity.claims['cognito:groups'] ?? [],
+        groups: ctx.identity.claims?.['cognito:groups'] ?? [],
         claims: ctx.identity.claims,
         provider: 'Cognito'
       }
@@ -609,7 +609,7 @@ function authorizeIndexedAccess(index, group) {
   return importUtil + `
 import { runtime } from '@aws-appsync/utils';
 export function request(ctx) {
-  const groups = ctx.identity.claims['cognito:groups'] ?? [];
+  const groups = ctx.identity.claims?.['cognito:groups'] ?? [];
   if (groups.includes('` + group + `')) {
     return { operation: 'GetItem', key: { id: util.dynamodb.toDynamoDB(ctx.args.` + index + `) } };
   }

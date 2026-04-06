@@ -28,7 +28,7 @@ export function request(ctx) {
       identity: {
         userId: ctx.identity.sub,
         username: ctx.identity.username,
-        groups: ctx.identity.claims['cognito:groups'] ?? [],
+        groups: ctx.identity.claims?.['cognito:groups'] ?? [],
         claims: ctx.identity.claims,
         provider: 'Cognito'
       }
