@@ -87,12 +87,26 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_LAYER_SECRET_ACCESS_KEY }}
           aws-region: ${{ matrix.region }}
 
+      - name: Determine layer name and ARN file
+        id: layer
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          case "$BRANCH" in
+            main)  LAYER_NAME="reventless-aws";       ARN_FILE=".github/layer-arn.txt" ;;
+            beta)  LAYER_NAME="reventless-aws-beta";  ARN_FILE=".github/layer-arn-beta.txt" ;;
+            alpha) LAYER_NAME="reventless-aws-alpha"; ARN_FILE=".github/layer-arn-alpha.txt" ;;
+            *)     LAYER_NAME="reventless-aws-alpha"; ARN_FILE=".github/layer-arn-alpha.txt" ;;
+          esac
+          echo "name=$LAYER_NAME" >> $GITHUB_OUTPUT
+          echo "arn_file=$ARN_FILE" >> $GITHUB_OUTPUT
+          echo "Branch: $BRANCH → layer: $LAYER_NAME → ARN file: $ARN_FILE"
+
       - name: Publish Lambda layer
         id: publish
         run: |
           LAYER_VERSION=$(aws lambda publish-layer-version \
-            --layer-name reventless-aws \
-            --description "reventless-aws v${{ steps.version.outputs.version }}" \
+            --layer-name ${{ steps.layer.outputs.name }} \
+            --description "${{ steps.layer.outputs.name }} v${{ steps.version.outputs.version }}" \
             --zip-file fileb://reventless/reventless-layer-builder/builder/reventless-layer.zip \
             --compatible-runtimes nodejs20.x nodejs22.x \
             --query 'LayerVersionArn' \
@@ -103,10 +117,11 @@ jobs:
       - name: Commit layer ARN to repository
         run: |
           LAYER_ARN="${{ steps.publish.outputs.layer_arn }}"
-          echo "$LAYER_ARN" > .github/layer-arn.txt
+          ARN_FILE="${{ steps.layer.outputs.arn_file }}"
+          echo "$LAYER_ARN" > "$ARN_FILE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/layer-arn.txt
+          git add "$ARN_FILE"
           git commit -m "chore(ci): update Lambda Layer ARN to $LAYER_ARN [skip ci]" || { echo "No change to layer ARN"; exit 0; }
           BRANCH="${GITHUB_REF#refs/heads/}"
           for i in 1 2 3; do
