@@ -1,14 +1,15 @@
 name: Build Reventless PPX
 
 on:
-  push:
-    branches: [main, beta, alpha]
-    paths:
-      - 'packages/reventless-ppx/**'
-  pull_request:
-    branches: [main, beta, alpha]
-    paths:
-      - 'packages/reventless-ppx/**'
+  # Disabled — PPX is built locally (see packages/doc/docs-framework/ppx-binary-management.md)
+  # push:
+  #   branches: [main, beta, alpha]
+  #   paths:
+  #     - 'packages/reventless-ppx/**'
+  # pull_request:
+  #   branches: [main, beta, alpha]
+  #   paths:
+  #     - 'packages/reventless-ppx/**'
   workflow_dispatch:
 
 concurrency:

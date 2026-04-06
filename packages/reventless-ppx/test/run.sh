@@ -270,6 +270,19 @@ type command = Record({
 type error = unit
 EOF
 
+# Slice file whose name ends in a top-level-only suffix (Plugin)
+# Entity name must retain the suffix
+cat > "$DCB/src/StateChangeSlice/SyncPlugin.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Sync
+@schema
+type event = Synced
+@schema
+type error = unit
+EOF
+
 # @dcbTag: outside a slice folder (no dcbTags auto-enabled), non-*Id field name
 cat > "$DCB/src/SkuCatalog.res" <<'EOF'
 @@reventless.spec
@@ -281,6 +294,15 @@ type event =
       @dcbTag sku: string,
       name: string,
     })
+EOF
+
+# StateView slice — View suffix should still be stripped inside slice folder
+mkdir -p "$PLUGIN/src/StateView"
+cat > "$PLUGIN/src/StateView/ProductsView.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { count: int }
 EOF
 
 # ─── Build PPX ──────────────────────────────────────────────────────
@@ -399,6 +421,11 @@ else
 fi
 
 echo ""
+echo "=== Test: slice folder — top-level-only suffix NOT stripped (Plugin retained) ==="
+JS="$DCB/src/StateChangeSlice/SyncPlugin.res.mjs"
+assert_js_contains "$JS" 'let name = "SyncPlugin"'  "Plugin suffix retained inside slice folder"
+
+echo ""
 echo "=== Test: @partitionTag injects DcbTag.partition; @noTag suppresses auto-tag ==="
 JS="$DCB/src/StateChangeSlice/RecordDemand.res.mjs"
 assert_js_contains    "$JS" 'partition'  "@partitionTag: DcbTag.partition injected"
@@ -423,6 +450,11 @@ echo "=== Test: @dcbTag injects DcbTag.string on non-*Id field ==="
 JS="$DCB/src/SkuCatalog.res.mjs"
 assert_js_contains    "$JS" 'DcbTag'    "@dcbTag: DcbTag referenced for non-*Id field"
 assert_js_not_contains "$JS" 'dcbTag'   "@dcbTag: field attr stripped"
+
+echo ""
+echo "=== Test: slice folder — slice-layer suffix View still stripped ==="
+JS="$PLUGIN/src/StateView/ProductsView.res.mjs"
+assert_js_contains "$JS" 'let name = "Products"'  "View suffix still stripped inside slice folder"
 
 echo ""
 echo "─────────────────────────"

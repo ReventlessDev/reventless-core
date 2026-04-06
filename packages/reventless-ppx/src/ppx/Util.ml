@@ -81,7 +81,16 @@ let strip_suffix s suffix =
   else
     s
 
-let component_suffixes = [
+(* Slice-layer suffixes: describe the category of a slice.
+   Stripped everywhere, including inside slice folders. *)
+let slice_layer_suffixes = [
+  "View"; "Slice"; "Spec"
+]
+
+(* Framework component suffixes: describe top-level architectural types.
+   Only stripped when the file is NOT inside a slice folder.
+   Inside a slice folder these can be part of the entity name (e.g. SyncPlugin). *)
+let top_level_only_suffixes = [
   "ExtensionPointMapping";
   "ExtensionPoint";
   "ReadModel";
@@ -90,20 +99,7 @@ let component_suffixes = [
   "Projection";
   "Aggregate";
   "Plugin";
-  "Slice";
-  "Spec";
-  "View";
 ]
-
-let strip_component_suffix name =
-  let rec try_suffixes = function
-    | [] -> name
-    | suffix :: rest ->
-      let stripped = strip_suffix name suffix in
-      if not (String.equal stripped name) then stripped
-      else try_suffixes rest
-  in
-  try_suffixes component_suffixes
 
 let known_slice_bases = [
   "StateChange"; "StateView"; "Automation";
@@ -128,8 +124,18 @@ let filename_to_name fname =
     | Some i -> String.sub base 0 i
     | None -> base
   in
-  if is_in_slice_folder fname then without_ext
-  else strip_component_suffix without_ext
+  let suffixes =
+    if is_in_slice_folder fname then slice_layer_suffixes
+    else slice_layer_suffixes @ top_level_only_suffixes
+  in
+  let rec try_suffixes name = function
+    | [] -> name
+    | suffix :: rest ->
+      let stripped = strip_suffix name suffix in
+      if not (String.equal stripped name) then stripped
+      else try_suffixes name rest
+  in
+  try_suffixes without_ext suffixes
 
 let is_extensionpointmapping_filename fname =
   let base = Filename.basename fname in
