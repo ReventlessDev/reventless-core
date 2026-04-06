@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.12 (2026-04-06)
+
+### Bug Fixes
+
+* **examples:** suppress [@no](https://github.com/no)Tag on customerId in PlaceOrder command to prevent cross-order DCB query contamination ([f9d674e](https://github.com/ReventlessDev/reventless-core/commit/f9d674eb425989b2b49231ec0fedc9833e76485b))
+### Features
+
+* implement [@composite](https://github.com/composite)PartitionTag PPX annotation for multi-field DCB partition keys ([cf26b15](https://github.com/ReventlessDev/reventless-core/commit/cf26b15f639d151451c9aa04d32603ef9d5df315))
+
+
 # 1.0.0-alpha.11 (2026-04-05)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

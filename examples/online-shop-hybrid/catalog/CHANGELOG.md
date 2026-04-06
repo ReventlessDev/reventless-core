@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.13 (2026-04-06)
+
+### Features
+
+* implement [@composite](https://github.com/composite)PartitionTag PPX annotation for multi-field DCB partition keys ([cf26b15](https://github.com/ReventlessDev/reventless-core/commit/cf26b15f639d151451c9aa04d32603ef9d5df315))
+
+
 # 1.0.0-alpha.12 (2026-04-05)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

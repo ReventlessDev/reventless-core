@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.11 (2026-04-06)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates
+
+
+
+
+
 # 1.0.0-alpha.10 (2026-04-05)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates

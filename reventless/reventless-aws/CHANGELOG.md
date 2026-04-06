@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.37 (2026-04-06)
+
+### Bug Fixes
+
+* DCB runtime — empty tags fallback, tag_composite GSI, stream meta ([4c3a6ad](https://github.com/ReventlessDev/reventless-core/commit/4c3a6ad9f0e1a9fa357a7230d7151ba34a0c116b))
+* wire DCB EventCollector and StateViewSlice Lambda pipeline ([846228f](https://github.com/ReventlessDev/reventless-core/commit/846228fc9193a4c344399ecae924241e7944204f))
+### Features
+
+* implement [@composite](https://github.com/composite)PartitionTag PPX annotation for multi-field DCB partition keys ([cf26b15](https://github.com/ReventlessDev/reventless-core/commit/cf26b15f639d151451c9aa04d32603ef9d5df315))
+
+
 # 3.0.0-alpha.36 (2026-04-05)
 
 ### Bug Fixes

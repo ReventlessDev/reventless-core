@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.24 (2026-04-06)
+
+### Dependency Updates
+
+* **@reventlessdev/reventless-spec** updated to `^3.0.0-alpha.19`
+
+
 # 3.0.0-alpha.23 (2026-04-04)
 
 * feat!: add reventless-ppx with @@reventless.spec, @@reventless.behavior, @@reventless.dcbTags ([cb203ec](https://github.com/ReventlessDev/reventless-core/commit/cb203ece5ea3a1b92ba7d1a57d9e12bb6c4c2487))
