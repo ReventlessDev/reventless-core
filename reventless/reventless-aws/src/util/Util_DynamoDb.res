@@ -65,14 +65,17 @@ let verifyTtl: (~expectedTtl: int=?, table) => Pulumi.Output.t<ttl> = (
 ) =>
   (name, ttl)
   ->Pulumi.Output.all2
-  ->Pulumi.Output.flatMap(((tableName, ttl)) =>
-    switch (ttl.enabled, expectedTtl) {
+  ->Pulumi.Output.flatMap(((tableName, ttl)) => {
+    // Pulumi resolves table.ttl to undefined when no TTL is configured on the table.
+    // Cast to Nullable to safely handle this at the JS boundary.
+    let ttlOpt: option<ttl> = (ttl->Obj.magic: Nullable.t<ttl>)->Nullable.toOption
+    switch (ttlOpt->Option.flatMap(t => t.enabled), expectedTtl) {
     | (None, Some(_))
     | (Some(false), Some(_)) =>
       enableTtl(tableName)
-    | _ => ttl->Promise.resolve
+    | _ => ttlOpt->Option.getOr({attributeName: ""})->Promise.resolve
     }->Pulumi.Output.fromPromise
-  )
+  })
 
 let enablePointInTimeRecovery = async tableName => {
   log.info(~comp="DynamoDb", `enablePointInTimeRecovery for ${tableName}`)

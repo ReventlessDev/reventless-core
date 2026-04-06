@@ -5,6 +5,7 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
@@ -77,20 +78,19 @@ function verifyTtl(expectedTtl, param) {
     param.name,
     param.ttl
   ]), param => {
-    let ttl = param[1];
     let tableName = param[0];
-    let match = ttl.enabled;
+    let ttlOpt = Primitive_option.fromNullable(param[1]);
+    let match = Stdlib_Option.flatMap(ttlOpt, t => t.enabled);
     if (match !== undefined) {
-      if (match || expectedTtl === undefined) {
-        return Promise.resolve(ttl);
-      } else {
+      if (!match && expectedTtl !== undefined) {
         return enableTtl(tableName);
       }
     } else if (expectedTtl !== undefined) {
       return enableTtl(tableName);
-    } else {
-      return Promise.resolve(ttl);
     }
+    return Promise.resolve(Stdlib_Option.getOr(ttlOpt, {
+      attributeName: ""
+    }));
   });
 }
 
