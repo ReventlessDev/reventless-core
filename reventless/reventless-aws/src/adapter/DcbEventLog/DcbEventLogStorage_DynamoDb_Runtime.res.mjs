@@ -11,6 +11,7 @@ import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
@@ -42,14 +43,17 @@ function derivePartitionKey(partitionTag, tags) {
   if (tags.length === 0) {
     return "dcb";
   }
-  let tag;
   if (partitionTag !== undefined) {
-    let t = tags.find(t => t.key === partitionTag.key);
-    tag = t !== undefined ? t : tags[0];
-  } else {
-    tag = tags[0];
+    if (partitionTag.TAG !== "Simple") {
+      return DcbTag$Reventless.getCompositePartitionKeyValue(tags, partitionTag._0);
+    }
+    let pt = partitionTag._0;
+    let t = tags.find(t => t.key === pt.key);
+    let tag = t !== undefined ? t : tags[0];
+    return tag.key + `:` + tag.value;
   }
-  return tag.key + `:` + tag.value;
+  let tag$1 = tags[0];
+  return tag$1.key + `:` + tag$1.value;
 }
 
 function toItem(position, event, partitionTag) {

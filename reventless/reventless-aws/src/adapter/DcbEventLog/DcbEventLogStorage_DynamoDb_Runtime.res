@@ -30,21 +30,25 @@ let compositeTagKey = (tags: array<Reventless.DcbTag.tag>) =>
 // --- Partition Key Derivation ---
 
 let derivePartitionKey = (
-  ~partitionTag=?,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
   tags: array<Reventless.DcbTag.tag>,
 ): string => {
   if tags->Array.length == 0 {
     "dcb"
   } else {
-    let tag = switch partitionTag {
-    | None => tags->Array.getUnsafe(0)
-    | Some(pt: Reventless.DcbTag.partitionTag) =>
-      switch tags->Array.find(t => t.key == pt.key) {
+    switch partitionTag {
+    | None =>
+      let tag = tags->Array.getUnsafe(0)
+      `${tag.key}:${tag.value}`
+    | Some(Simple(pt)) =>
+      let tag = switch tags->Array.find(t => t.key == pt.key) {
       | Some(t) => t
       | None => tags->Array.getUnsafe(0)
       }
+      `${tag.key}:${tag.value}`
+    | Some(Composite(spec)) =>
+      Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
     }
-    `${tag.key}:${tag.value}`
   }
 }
 

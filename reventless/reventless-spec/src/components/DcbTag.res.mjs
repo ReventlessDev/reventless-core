@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
@@ -12,11 +13,25 @@ let dcbTagId = S.Metadata.Id.make("dcb", "tag");
 
 let dcbPartitionTagId = S.Metadata.Id.make("dcb", "partitionTag");
 
+let dcbCompositePartitionMemberId = S.Metadata.Id.make("dcb", "compositePartitionMember");
+
 let string = S.Metadata.set(S.string, dcbTagId, true);
 
 let int = S.Metadata.set(S.int, dcbTagId, true);
 
 let partition = S.Metadata.set(S.Metadata.set(S.string, dcbTagId, true), dcbPartitionTagId, true);
+
+function compositePartitionMember(position, sepOpt) {
+  let sep = sepOpt !== undefined ? sepOpt : "/";
+  return S.Metadata.set(S.Metadata.set(S.string, dcbTagId, true), dcbCompositePartitionMemberId, {
+    position: position,
+    sep: sep
+  });
+}
+
+function isCompositePartitionMember(fieldSchema) {
+  return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbCompositePartitionMemberId));
+}
 
 function isTagged(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbTagId));
@@ -438,6 +453,105 @@ function derivePartitionTag(namedSchemas) {
   };
 }
 
+function extractCompositePartitionFieldsFromProperties(properties) {
+  return Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let meta = S.Metadata.get(param[1], dcbCompositePartitionMemberId);
+    if (meta !== undefined) {
+      return {
+        name: param[0],
+        position: meta.position,
+        sep: meta.sep
+      };
+    }
+  }).toSorted((a, b) => Primitive_int.compare(a.position, b.position));
+}
+
+function extractCompositePartitionFields(schema) {
+  let seen = new Set();
+  let collect = properties => extractCompositePartitionFieldsFromProperties(properties).filter(info => {
+    if (seen.has(info.name)) {
+      return false;
+    } else {
+      seen.add(info.name);
+      return true;
+    }
+  });
+  switch (schema.type) {
+    case "object" :
+      return collect(schema.properties);
+    case "union" :
+      return schema.anyOf.flatMap(variantSchema => {
+        if (variantSchema.type === "object") {
+          return collect(variantSchema.properties);
+        } else {
+          return [];
+        }
+      });
+    default:
+      return [];
+  }
+}
+
+function getCompositePartitionKeyValue(tags, spec) {
+  return spec.keys.map((fieldName, i) => {
+    let v = Stdlib_Option.getOr(Stdlib_Array.findMap(tags, t => {
+      if (t.key === fieldName) {
+        return t.value;
+      }
+    }), "");
+    if (i === 0) {
+      return v;
+    } else {
+      return spec.seps[i - 1 | 0] + v;
+    }
+  }).join("");
+}
+
+function derivePartitionTagV2(namedSchemas) {
+  let schemas = namedSchemas.map(param => param[2]);
+  let seen = new Set();
+  let allCompositeFields = schemas.flatMap(extractCompositePartitionFields).filter(info => {
+    if (seen.has(info.name)) {
+      return false;
+    } else {
+      seen.add(info.name);
+      return true;
+    }
+  });
+  let hasComposite = allCompositeFields.length !== 0;
+  let seen$1 = new Set();
+  let allPartitionFields = schemas.flatMap(extractPartitionTagFields).filter(f => {
+    if (seen$1.has(f)) {
+      return false;
+    } else {
+      seen$1.add(f);
+      return true;
+    }
+  });
+  if (hasComposite && allPartitionFields.length !== 0) {
+    Stdlib_JsError.throwWithMessage(`DCB spec mixes @compositePartitionTag and @partitionTag — use one strategy per schema`);
+  }
+  if (!hasComposite) {
+    return {
+      TAG: "Simple",
+      _0: derivePartitionTag(namedSchemas)
+    };
+  }
+  if (allCompositeFields.length < 2) {
+    Stdlib_JsError.throwWithMessage(`@compositePartitionTag requires at least 2 annotated fields — only ` + allCompositeFields.length.toString() + ` found`);
+  }
+  let sorted = allCompositeFields.toSorted((a, b) => Primitive_int.compare(a.position, b.position));
+  let keys = sorted.map(info => info.name);
+  let seps = sorted.slice(0, sorted.length - 1 | 0).map(info => info.sep);
+  return {
+    TAG: "Composite",
+    _0: {
+      keys: keys,
+      seps: seps
+    }
+  };
+}
+
 function getPartitionTagValue(query, pt) {
   return Stdlib_Array.filterMap(query, queryItem => {
       let tags = queryItem.tags;
@@ -454,9 +568,12 @@ function getPartitionTagValue(query, pt) {
 export {
   dcbTagId,
   dcbPartitionTagId,
+  dcbCompositePartitionMemberId,
   string,
   int,
   partition,
+  compositePartitionMember,
+  isCompositePartitionMember,
   isTagged,
   isTaggedArray,
   isPartitionTag,
@@ -475,6 +592,10 @@ export {
   hasMultiTagVariant,
   findMultiTagVariantNames,
   derivePartitionTag,
+  extractCompositePartitionFieldsFromProperties,
+  extractCompositePartitionFields,
+  getCompositePartitionKeyValue,
+  derivePartitionTagV2,
   getPartitionTagValue,
 }
 /* dcbTagId Not a pure module */

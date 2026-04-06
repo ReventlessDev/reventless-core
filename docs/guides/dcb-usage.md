@@ -664,6 +664,41 @@ Both fields remain DCB tags (used for query filtering), but the annotated field 
 
 For most DCB specs — where each event variant has exactly one tagged field — no annotation is needed.
 
+### Composite partition keys (`@compositePartitionTag`)
+
+When the optimal partition key is formed from **multiple fields concatenated together** (e.g. `environment/platform/plugin`), use `@compositePartitionTag` instead of `@partitionTag`:
+
+```rescript
+@@reventless.spec
+
+@schema
+type event =
+  | PluginSynced({
+      @compositePartitionTag environment: string,   // sep "/" after this field
+      @compositePartitionTag platformName: string,  // sep "/" after this field
+      @compositePartitionTag pluginName: string,    // last — sep ignored
+      version: string,
+    })
+// Partition key written as:  "environment/platformName/pluginName" values joined
+// e.g.  "prod/acme-platform/billing"
+```
+
+Each `@compositePartitionTag` field is still a regular DCB tag — individually queryable via `tags: [{key: "environment", value: "prod"}]`. The composite key is only used for the DynamoDB partition; the runtime builds it from the stored tag values at append time.
+
+**Separator control** — the separator after each field is configurable:
+
+```rescript
+@compositePartitionTag            // default: "/"
+@compositePartitionTag("/")       // explicit default — same behaviour
+@compositePartitionTag(":")       // use ":" between this and the next field
+```
+
+**Rules:**
+- Requires ≥ 2 annotated fields — `derivePartitionTagV2` throws at startup if only 1 is found.
+- Cannot mix `@compositePartitionTag` with `@partitionTag` on the same schema — throws at startup.
+- Annotations must be on `string` fields; non-string fields are silently ignored.
+- Placement is **before the field name** (field-level attribute), not after the colon.
+
 ## Open Issues
 
 ### No Explicit Lambda Serialization Ordering

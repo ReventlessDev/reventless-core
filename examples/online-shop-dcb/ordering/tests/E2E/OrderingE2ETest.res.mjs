@@ -33,7 +33,10 @@ TestRunner$ReventlessInMemory.setup();
 let OrderingEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
 let eventLog = OrderingEventLogMaker.make("Ordering", undefined, {
-  key: "orderId"
+  TAG: "Simple",
+  _0: {
+    key: "orderId"
+  }
 }, undefined);
 
 let RegisterCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({

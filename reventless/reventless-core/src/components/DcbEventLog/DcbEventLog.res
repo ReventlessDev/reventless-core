@@ -36,7 +36,7 @@ module type T = {
   let make: (
     ~name: string,
     ~indexes: array<string>=?,
-    ~partitionTag: Reventless.DcbTag.partitionTag,
+    ~partitionTag: Reventless.DcbTag.derivedPartitionTag,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

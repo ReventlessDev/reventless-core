@@ -12,7 +12,7 @@ let makeStorage = () =>
   DcbEventLogStorage_InMemory.make(
     ~name="test-dcb",
     ~indexes=[],
-    ~partitionTag={Reventless.DcbTag.key: "itemId"},
+    ~partitionTag=Reventless.DcbTag.Simple({key: "itemId"}),
     ~opts,
   )
 

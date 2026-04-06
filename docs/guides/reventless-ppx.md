@@ -198,6 +198,59 @@ type event =
 
 ---
 
+### `@compositePartitionTag` — composite DCB partition key
+
+`@compositePartitionTag` lets you form the DynamoDB partition key from multiple fields, concatenated in declaration order with a configurable separator. Use it when a single field is too coarse for partitioning and a composite identity (e.g. `environment/platform/plugin`) distributes events better across partitions.
+
+Each annotated field is still a regular DCB tag (individually queryable). The composite key is derived automatically at runtime from the stored tag values.
+
+**Syntax:**
+
+```rescript
+@compositePartitionTag            // uses "/" after this field (default)
+@compositePartitionTag("/")       // explicit default — identical behaviour
+@compositePartitionTag(":")       // uses ":" after this field
+```
+
+The separator on the **last** annotated field is ignored (nothing follows it).
+
+**Example — three-segment composite key `env/platform/plugin`:**
+
+```rescript
+@@reventless.spec
+
+@schema
+type event =
+  | PluginSynced({
+      @compositePartitionTag environment: string,   // partition: env/...
+      @compositePartitionTag platformName: string,  // partition: env/platform/...
+      @compositePartitionTag pluginName: string,    // last field — sep ignored
+      version: string,
+    })
+// Composite partition key value: "{environment}/{platformName}/{pluginName}"
+// Each field is also individually queryable as a DcbTag.string.
+```
+
+**Constraints:**
+
+| Rule | Behaviour |
+|---|---|
+| Non-`string` field annotated | No-op — field is left untouched |
+| `@compositePartitionTag` and `@partitionTag` on the same schema | `derivePartitionTagV2` throws at startup |
+| Fewer than 2 fields annotated | `derivePartitionTagV2` throws at startup |
+
+**Placement:** Place `@compositePartitionTag` **before the field name**, exactly like `@partitionTag`:
+
+```rescript
+// CORRECT
+@compositePartitionTag environment: string
+
+// WRONG — annotation on the type, not the field (silently ignored)
+environment: @compositePartitionTag string
+```
+
+---
+
 ## Examples
 
 ### Aggregate spec

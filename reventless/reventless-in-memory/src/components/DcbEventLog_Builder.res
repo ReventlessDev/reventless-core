@@ -8,7 +8,7 @@ module Make = (Bus: InMemory_Bus.T) => {
   let make: (
     ~name: string,
     ~indexes: array<string>=?,
-    ~partitionTag: Reventless.DcbTag.partitionTag,
+    ~partitionTag: Reventless.DcbTag.derivedPartitionTag,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component = Inner.make->Obj.magic
   // Expose `operations` so callers can resolve the Output chain

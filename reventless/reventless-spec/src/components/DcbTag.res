@@ -91,6 +91,13 @@ let dcbTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name
 /** Internal sury metadata ID used to mark the partition tag field. */
 let dcbPartitionTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name="partitionTag")
 
+/** Metadata value for a composite partition member field. */
+type compositePartitionMemberMeta = {position: int, sep: string}
+
+/** Internal sury metadata ID used to mark a composite partition member field. */
+let dcbCompositePartitionMemberId: S.Metadata.Id.t<compositePartitionMemberMeta> =
+  S.Metadata.Id.make(~namespace="dcb", ~name="compositePartitionMember")
+
 /**
 A sury string schema annotated as a DCB tag field.
 
@@ -138,6 +145,39 @@ optional (auto-selected) when only one tagged field exists.
 */
 let partition: S.t<string> =
   S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbPartitionTagId, true)
+
+/**
+A sury string schema marking a field as a composite partition key member.
+
+Use via the `@compositePartitionTag` PPX annotation. The annotation injects
+`@s.matches(DcbTag.compositePartitionMember(~position=N, ~sep="S"))` automatically.
+Each such field is also a regular DCB tag (individually queryable).
+
+@param position Zero-based index of this field in the composite key construction order.
+@param sep Separator placed after this field's value (ignored on the last field).
+*/
+let compositePartitionMember = (~position: int, ~sep: string="/"): S.t<string> =>
+  S.string
+  ->S.Metadata.set(~id=dcbTagId, true)
+  ->S.Metadata.set(~id=dcbCompositePartitionMemberId, {position, sep})
+
+/** Returns `true` if the schema was annotated as a composite partition member. */
+let isCompositePartitionMember = (fieldSchema: S.t<unknown>): bool =>
+  S.Metadata.get(fieldSchema, ~id=dcbCompositePartitionMemberId)->Option.isSome
+
+/**
+Composite partition key specification — the ordered field names and inter-field separators.
+`seps[i]` is placed between `keys[i]` and `keys[i+1]`; length is always `keys.length - 1`.
+*/
+type compositePartitionSpec = {
+  keys: array<string>,
+  seps: array<string>,
+}
+
+/** Union of simple and composite partition tag strategies. */
+type derivedPartitionTag =
+  | Simple(partitionTag)
+  | Composite(compositePartitionSpec)
 
 // --- Tag extraction from sury schemas ---
 
@@ -705,6 +745,142 @@ let derivePartitionTag = (namedSchemas: array<(string, string, S.t<unknown>)>): 
         {key: sorted->Array.getUnsafe(0)}
       }
     }
+  }
+}
+
+// --- Composite partition key helpers ---
+
+type compositePartitionFieldInfo = {name: string, position: int, sep: string}
+
+/**
+Extracts all composite partition member fields from a single object-variant schema.
+Returns an array sorted by `position`.
+*/
+let extractCompositePartitionFieldsFromProperties = (
+  properties: dict<S.t<unknown>>,
+): array<compositePartitionFieldInfo> =>
+  properties
+  ->Dict.toArray
+  ->Array.filterMap(((fieldName, fieldSchema)) =>
+    switch S.Metadata.get(fieldSchema, ~id=dcbCompositePartitionMemberId) {
+    | Some(meta) => Some({name: fieldName, position: meta.position, sep: meta.sep})
+    | None => None
+    }
+  )
+  ->Array.toSorted((a, b) => Int.compare(a.position, b.position))
+
+/**
+Extracts all composite partition member fields across all variants of a schema.
+Returns deduplicated entries sorted by position (assumes all variants agree on positions).
+*/
+let extractCompositePartitionFields = (schema: S.t<'event>): array<compositePartitionFieldInfo> => {
+  let seen = Set.make()
+  let collect = (properties: dict<S.t<unknown>>) =>
+    extractCompositePartitionFieldsFromProperties(properties)->Array.filter(info => {
+      if seen->Set.has(info.name) {
+        false
+      } else {
+        seen->Set.add(info.name)
+        true
+      }
+    })
+  switch schema->toUnknownSchema {
+  | Union({anyOf}) =>
+    anyOf->Array.flatMap(variantSchema =>
+      switch variantSchema {
+      | Object({properties}) => collect(properties)
+      | _ => []
+      }
+    )
+  | Object({properties}) => collect(properties)
+  | _ => []
+  }
+}
+
+/**
+Computes the composite partition key value from an array of tags and a spec.
+Joins the tag values in key order, inserting separators between them.
+*/
+let getCompositePartitionKeyValue = (tags: array<tag>, spec: compositePartitionSpec): string =>
+  spec.keys
+  ->Array.mapWithIndex((fieldName, i) => {
+    let v =
+      tags->Array.findMap(t => if t.key == fieldName {Some(t.value)} else {None})->Option.getOr("")
+    if i == 0 {
+      v
+    } else {
+      spec.seps->Array.getUnsafe(i - 1) ++ v
+    }
+  })
+  ->Array.join("")
+
+/**
+Derives the partition tag strategy from an array of named event schemas.
+
+Returns `Simple(partitionTag)` when the schema uses `@partitionTag` (or a single tag),
+or `Composite(compositePartitionSpec)` when it uses `@compositePartitionTag`.
+
+Throws when:
+- A schema mixes `@compositePartitionTag` and `@partitionTag` fields.
+- Some schemas use composite and others use simple.
+- Fewer than 2 fields are annotated with `@compositePartitionTag`.
+*/
+let derivePartitionTagV2 = (
+  namedSchemas: array<(string, string, S.t<unknown>)>,
+): derivedPartitionTag => {
+  let schemas = namedSchemas->Array.map(((_, _, schema)) => schema)
+
+  // Collect composite fields from all schemas
+  let allCompositeFields = {
+    let seen = Set.make()
+    schemas
+    ->Array.flatMap(schema => extractCompositePartitionFields(schema))
+    ->Array.filter(info => {
+      if seen->Set.has(info.name) {
+        false
+      } else {
+        seen->Set.add(info.name)
+        true
+      }
+    })
+  }
+
+  let hasComposite = allCompositeFields->Array.length > 0
+
+  // Check for mixed strategies (composite + simple @partitionTag)
+  let allPartitionFields = {
+    let seen = Set.make()
+    schemas->Array.flatMap(schema => extractPartitionTagFields(schema))->Array.filter(f => {
+      if seen->Set.has(f) {
+        false
+      } else {
+        seen->Set.add(f)
+        true
+      }
+    })
+  }
+
+  if hasComposite && allPartitionFields->Array.length > 0 {
+    JsError.throwWithMessage(
+      `DCB spec mixes @compositePartitionTag and @partitionTag — use one strategy per schema`,
+    )
+  }
+
+  if hasComposite {
+    if allCompositeFields->Array.length < 2 {
+      JsError.throwWithMessage(
+        `@compositePartitionTag requires at least 2 annotated fields — only ${allCompositeFields->Array.length->Int.toString} found`,
+      )
+    }
+    let sorted = allCompositeFields->Array.toSorted((a, b) => Int.compare(a.position, b.position))
+    let keys = sorted->Array.map(info => info.name)
+    // seps[i] is placed between keys[i] and keys[i+1]; last sep is ignored
+    let seps = sorted->Array.slice(~start=0, ~end=sorted->Array.length - 1)->Array.map(info =>
+      info.sep
+    )
+    Composite({keys, seps})
+  } else {
+    Simple(derivePartitionTag(namedSchemas))
   }
 }
 

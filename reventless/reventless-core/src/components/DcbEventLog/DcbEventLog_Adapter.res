@@ -39,7 +39,7 @@ type storage = {
 type storageMaker = (
   ~name: string,
   ~indexes: array<string>,
-  ~partitionTag: Reventless.DcbTag.partitionTag,
+  ~partitionTag: Reventless.DcbTag.derivedPartitionTag,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => storage
 

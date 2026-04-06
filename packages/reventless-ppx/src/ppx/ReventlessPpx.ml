@@ -298,6 +298,7 @@ let transform (str : structure) : structure =
     let body = strip_ppx_attrs str in
     let body = if dcb_tags then DcbTagInference.transform_structure ~loc body else body in
     let body = DcbTagInference.transform_partition_tags ~loc body in
+    let body = DcbTagInference.transform_composite_partition_tags ~loc body in
     let body = DcbTagInference.transform_explicit_dcb_tags ~loc body in
     let body = DcbTagInference.strip_no_tag_attrs body in
     match mode with

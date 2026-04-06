@@ -9,7 +9,10 @@ let opts = {};
 
 function makeStorage() {
   return DcbEventLogStorage_InMemory$ReventlessInMemory.make("test-dcb", [], {
-    key: "itemId"
+    TAG: "Simple",
+    _0: {
+      key: "itemId"
+    }
   }, opts);
 }
 

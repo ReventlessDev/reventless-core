@@ -103,7 +103,10 @@ TestRunner$ReventlessInMemory.setup();
 let ItemEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
 let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined, {
-  key: "id"
+  TAG: "Simple",
+  _0: {
+    key: "id"
+  }
 }, undefined);
 
 let SVMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);

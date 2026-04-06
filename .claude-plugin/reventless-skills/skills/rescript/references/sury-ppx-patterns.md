@@ -49,6 +49,35 @@ productId: @s.matches(DcbTag.string) string
 
 Both command AND event types need `@s.matches` on entity ID fields. Without it, queries return ALL events and the decision model sees phantom state from other entities.
 
+### Composite partition keys
+
+When the partition key should be formed from multiple fields, use the `@compositePartitionTag` **field-level** PPX annotation (before the field name, not after the colon) instead of writing `@s.matches` manually:
+
+```rescript
+// PPX annotation — recommended
+@@reventless.spec
+@schema
+type event =
+  | PluginSynced({
+      @compositePartitionTag environment: string,
+      @compositePartitionTag platform: string,
+      @compositePartitionTag plugin: string,
+      version: string,
+    })
+
+// Equivalent hand-written @s.matches (what the PPX generates):
+@schema
+type event =
+  | PluginSynced({
+      environment: @s.matches(DcbTag.compositePartitionMember(~position=0, ~sep="/")) string,
+      platform:    @s.matches(DcbTag.compositePartitionMember(~position=1, ~sep="/")) string,
+      plugin:      @s.matches(DcbTag.compositePartitionMember(~position=2, ~sep="/")) string,
+      version: string,
+    })
+```
+
+Each composite field is still a regular `DcbTag.string` — individually queryable. The runtime joins the tag values with their separators to form the DynamoDB partition key (`"prod/acme/billing"`).
+
 ## Cross-Entity Queries
 
 When a command references multiple entities (e.g., an order referencing multiple product IDs), annotate array element types:
