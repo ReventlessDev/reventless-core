@@ -1,16 +1,12 @@
 {
   "name": "@reventlessdev/rescript-aws-sdk",
   "namespace": "AwsSdk",
-  "package-specs": {
-    "module": "esmodule",
-    "in-source": true
-  },
   "suffix": ".res.mjs",
   "ppx-flags": [],
   "warnings": {
     "error": "-44+101"
   },
- "sources": [
+  "sources": [
     {
       "dir": "src",
       "subdirs": true
@@ -19,6 +15,5 @@
   "dependencies": [
     "@reventlessdev/rescript-node-streams"
   ],
-  "compiler-flags": [
-  ]
+  "compiler-flags": []
 }

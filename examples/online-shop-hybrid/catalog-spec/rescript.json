@@ -1,18 +1,22 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog-spec",
   "namespace": "CatalogSpec",
-  "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"],
-  "warnings": { "error": "-44+101" },
+  "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
+    "sury-ppx/bin"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
   "sources": [
-    { "dir": "src", "subdirs": true }
+    {
+      "dir": "src",
+      "subdirs": true
+    }
   ],
   "dependencies": [
     "sury"
   ],
   "compiler-flags": [],
-  "package-specs": {
-    "module": "esmodule",
-    "in-source": true
-  },
   "suffix": ".res.mjs"
 }

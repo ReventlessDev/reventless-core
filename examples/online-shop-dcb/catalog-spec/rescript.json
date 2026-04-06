@@ -18,7 +18,5 @@
     "sury"
   ],
   "compiler-flags": [],
-  "module": "esmodule",
-  "in-source": true,
   "suffix": ".res.mjs"
 }

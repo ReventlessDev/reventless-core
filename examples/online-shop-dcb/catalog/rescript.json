@@ -29,7 +29,5 @@
     "@reventlessdev/online-shop-dcb-ordering-spec"
   ],
   "compiler-flags": [],
-  "module": "esmodule",
-  "in-source": true,
   "suffix": ".res.mjs"
 }

@@ -1,6 +1,11 @@
 {
   "name": "deploy-aws-catalog",
-  "sources": [{ "dir": "src", "subdirs": false }],
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": false
+    }
+  ],
   "dependencies": [
     "sury",
     "@reventlessdev/reventless-aws",
@@ -11,7 +16,9 @@
     "@reventlessdev/online-shop-hybrid-catalog-spec",
     "@reventlessdev/online-shop-hybrid-ordering-spec"
   ],
-  "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"],
-  "package-specs": { "module": "esmodule", "in-source": true },
+  "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
+    "sury-ppx/bin"
+  ],
   "suffix": ".res.mjs"
 }

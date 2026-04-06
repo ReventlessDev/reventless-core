@@ -1,12 +1,7 @@
 {
   "name": "@reventlessdev/rescript-moment",
-  "package-specs": {
-    "module": "esmodule",
-    "in-source": true
-  },
   "suffix": ".res.mjs",
-  "compiler-flags": [
-  ],
+  "compiler-flags": [],
   "sources": [
     {
       "dir": "src",

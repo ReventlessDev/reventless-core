@@ -1,2 +1,4 @@
 lib
+src/**/*.js
 tests/*.res.mjs
+tests/**/*.js
