@@ -48,7 +48,7 @@ function project(event) {
     }];
 }
 
-let name = "AvailableProducts";
+let name = "AvailableProductsView";
 
 let Id;
 

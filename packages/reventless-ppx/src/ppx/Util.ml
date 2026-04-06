@@ -105,13 +105,31 @@ let strip_component_suffix name =
   in
   try_suffixes component_suffixes
 
+let known_slice_bases = [
+  "StateChange"; "StateView"; "Automation";
+  "InboundTranslation"; "OutboundTranslation"
+]
+
+let ends_with_slice part =
+  let len = String.length part in
+  len >= 5 && String.sub part (len - 5) 5 = "Slice"
+
+let is_slice_folder_segment part =
+  ends_with_slice part || List.mem part known_slice_bases
+
+let is_in_slice_folder fname =
+  let dir = Filename.dirname fname in
+  let parts = String.split_on_char '/' dir in
+  List.exists is_slice_folder_segment parts
+
 let filename_to_name fname =
   let base = Filename.basename fname in
   let without_ext = match String.index_opt base '.' with
     | Some i -> String.sub base 0 i
     | None -> base
   in
-  strip_component_suffix without_ext
+  if is_in_slice_folder fname then without_ext
+  else strip_component_suffix without_ext
 
 let is_extensionpointmapping_filename fname =
   let base = Filename.basename fname in
@@ -154,23 +172,6 @@ let has_type_binding name (str : structure) =
       ) type_decls
     | _ -> false
   ) str
-
-let known_slice_bases = [
-  "StateChange"; "StateView"; "Automation";
-  "InboundTranslation"; "OutboundTranslation"
-]
-
-let ends_with_slice part =
-  let len = String.length part in
-  len >= 5 && String.sub part (len - 5) 5 = "Slice"
-
-let is_slice_folder_segment part =
-  ends_with_slice part || List.mem part known_slice_bases
-
-let is_in_slice_folder fname =
-  let dir = Filename.dirname fname in
-  let parts = String.split_on_char '/' dir in
-  List.exists is_slice_folder_segment parts
 
 let has_schema_state_type (str : structure) =
   List.exists (fun (item : structure_item) ->
