@@ -60,7 +60,7 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
     | Union({anyOf}) =>
       let nonNullVariants = anyOf->Array.filter(v =>
         switch v {
-        | Null(_) => false
+        | Null(_) | Undefined(_) => false
         | _ => true
         }
       )

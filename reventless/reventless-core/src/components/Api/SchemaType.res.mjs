@@ -51,7 +51,15 @@ function fromSury(parentName, fieldName, schema) {
         };
       }
     case "union" :
-      let nonNullVariants = schema.anyOf.filter(v => v.type !== "null");
+      let nonNullVariants = schema.anyOf.filter(v => {
+        switch (v.type) {
+          case "null" :
+          case "undefined" :
+            return false;
+          default:
+            return true;
+        }
+      });
       if (nonNullVariants.length === 1) {
         return {
           TAG: "Nullable",
