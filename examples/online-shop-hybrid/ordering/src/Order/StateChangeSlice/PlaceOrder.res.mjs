@@ -32,7 +32,7 @@ function evolve(state, event) {
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(DcbTag$Reventless.string),
+  customerId: s.m(S.string),
   productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 
