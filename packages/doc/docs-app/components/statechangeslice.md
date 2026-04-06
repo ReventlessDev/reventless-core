@@ -181,7 +181,7 @@ The query is built automatically from the command schema via `DcbTag.buildQueryF
 
 No configuration is needed — the schema determines the query mode automatically. See the [Cross-Entity Queries section in the Platform Guide](/guides/platform-and-plugin-guide#cross-entity-queries-tagged-arrays) for a full example.
 
-When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key — see the [PPX guide](/guides/reventless-ppx#partitiontag-notag-dcbtag--field-level-dcb-tag-control).
+When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key, or `@compositePartitionTag` on multiple fields to form a composite key joined in declaration order — see the [PPX guide](/guides/reventless-ppx#partitiontag-notag-dcbtag--field-level-dcb-tag-control).
 
 ## Error Handling
 

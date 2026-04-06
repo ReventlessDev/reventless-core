@@ -173,6 +173,24 @@ type event =
     })
 ```
 
+### Composite partition keys
+
+When the partition key should be derived from **multiple fields joined in declaration order**, use `@compositePartitionTag`. Each annotated field is still individually queryable as a regular tag:
+
+```rescript
+@schema
+type event =
+  | PluginSynced({
+      @compositePartitionTag environment: string,   // "/"  after (default)
+      @compositePartitionTag platformName: string,  // "/"  after
+      @compositePartitionTag pluginName: string,    // last — sep ignored
+      version: string,
+    })
+// Partition key: e.g. "prod/acme-platform/billing"
+```
+
+Use `@compositePartitionTag(":")` to set a different separator after a field. Cannot be combined with `@partitionTag` on the same schema.
+
 ### Cross-Entity Queries with Tagged Arrays
 
 When a command references multiple entities, use a `*Id: array<string>` field (singular name). The PPX auto-injects `@s.matches(DcbTag.string)` on the element type:
