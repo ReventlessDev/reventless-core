@@ -12,7 +12,16 @@ let put = (table, item) => {
   {PutCommand.tableName: table.name, item}->PutCommand.make->PutCommand.send
 }
 
-let putWithRetries = (table, id, item) =>
+let injectId = (item, key, id) =>
+  switch item->JSON.Decode.object {
+  | Some(obj) =>
+    obj->Dict.set(key, id->JSON.Encode.string)
+    obj->JSON.Encode.object
+  | None => item
+  }
+
+let putWithRetries = (table, id, item) => {
+  let item = item->injectId(table.hashKey, id)
   Effect.tryPromise(~catch=DynamoDb_Error.classify, () => table->put(item))
   ->Effect.map(_ => Ok())
   ->Effect.retry(DynamoDb_Error.retrySchedule)
@@ -27,8 +36,10 @@ let putWithRetries = (table, id, item) =>
       Effect.succeed(Error(`Stale State: id=${id}: ${msg}`))
     }
   )
+}
 
-let putIfNotExistsWithRetries = (~idKey, ~sortKey=?, table, id, item) =>
+let putIfNotExistsWithRetries = (~idKey, ~sortKey=?, table, id, item) => {
+  let item = item->injectId(idKey, id)
   Effect.tryPromise(
     ~catch=DynamoDb_Error.classify,
     () => putIfNotExists(table.name, idKey, sortKey, item),
@@ -45,6 +56,7 @@ let putIfNotExistsWithRetries = (~idKey, ~sortKey=?, table, id, item) =>
       ->Effect.map(_ => Error(`putIfNotExists id=${id} failed: ${msg}`))
     }
   )
+}
 
 let delete = (table, ~sort=?, id) => {
   delete(~tableName=table.name, ~sort?, ~id)

@@ -179,7 +179,7 @@ function saveBatch(table) {
         };
       }
       let ids = items.map(param => param[0]);
-      return await writeMultiple(items.map(param => Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]))), "finished put", ids, table);
+      return await writeMultiple(items.map(param => Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(Util_DynamoDb_Runtime$ReventlessAws.injectId(param[1], table.hashKey, param[0]), param[2]))), "finished put", ids, table);
     }
     let match = items[0];
     return await save(table)(match[0], match[1], "Any", match[2]);

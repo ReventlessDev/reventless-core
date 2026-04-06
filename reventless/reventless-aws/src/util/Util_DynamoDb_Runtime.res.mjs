@@ -18,8 +18,19 @@ function put(table, item) {
   }));
 }
 
+function injectId(item, key, id) {
+  let obj = Stdlib_JSON.Decode.object(item);
+  if (obj !== undefined) {
+    obj[key] = id;
+    return obj;
+  } else {
+    return item;
+  }
+}
+
 function putWithRetries(table, id, item) {
-  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => put(table, item)), param => ({
+  let item$1 = injectId(item, table.hashKey, id);
+  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => put(table, item$1)), param => ({
     TAG: "Ok",
     _0: undefined
   })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
@@ -42,7 +53,8 @@ function putWithRetries(table, id, item) {
 }
 
 function putIfNotExistsWithRetries(idKey, sortKey, table, id, item) {
-  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item)), param => ({
+  let item$1 = injectId(item, idKey, id);
+  return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item$1)), param => ({
     TAG: "Ok",
     _0: undefined
   })), DynamoDb_Error$ReventlessAws.retrySchedule), err => {
@@ -222,6 +234,7 @@ function toTable(writeRequests, tableName) {
 
 export {
   put,
+  injectId,
   putWithRetries,
   putIfNotExistsWithRetries,
   $$delete,

@@ -178,8 +178,8 @@ let saveBatch = table =>
       let _tableName = table.name
       let ids = items->Array.map(((id, _, _)) => id)
       await items
-      ->Array.map(((_id, json, ttl)) => {
-        json->insertTtl(ttl)->toPutRequest
+      ->Array.map(((id, json, ttl)) => {
+        json->Util_DynamoDb_Runtime.injectId(table.hashKey, id)->insertTtl(ttl)->toPutRequest
       })
       ->writeMultiple("finished put", ids, table)
     }
