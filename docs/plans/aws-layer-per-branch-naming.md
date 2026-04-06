@@ -24,7 +24,7 @@ Delete all 72 existing `reventless-aws` versions so the production name starts c
 
 File: `.github/workflows/build-lambda-layer.yml`
 
-- [ ] Add a step to derive the layer name from `github.ref_name`:
+- [x] Add a step to derive the layer name from `github.ref_name`:
   ```yaml
   - name: Determine layer name
     id: layer-name
@@ -36,9 +36,9 @@ File: `.github/workflows/build-lambda-layer.yml`
         *)     echo "name=reventless-aws-alpha" >> $GITHUB_OUTPUT ;;
       esac
   ```
-- [ ] Replace the hardcoded `--layer-name reventless-aws` in the publish step with `--layer-name ${{ steps.layer-name.outputs.name }}`
-- [ ] Update the description to include the branch: `reventless-aws v{VERSION} ({BRANCH})`
-- [ ] Derive the branch-specific ARN file path and write to it:
+- [x] Replace the hardcoded `--layer-name reventless-aws` in the publish step with `--layer-name ${{ steps.layer-name.outputs.name }}`
+- [x] Update the description to include the branch: `reventless-aws v{VERSION} ({BRANCH})`
+- [x] Derive the branch-specific ARN file path and write to it:
   ```yaml
   - name: Determine ARN file
     id: arn-file
@@ -50,14 +50,14 @@ File: `.github/workflows/build-lambda-layer.yml`
         *)     echo "path=.github/layer-arn-alpha.txt" >> $GITHUB_OUTPUT ;;
       esac
   ```
-- [ ] Replace the hardcoded `echo "$LAYER_ARN" > .github/layer-arn.txt` with `echo "$LAYER_ARN" > ${{ steps.arn-file.outputs.path }}`
-- [ ] Update the `git add` to use the dynamic path
+- [x] Replace the hardcoded `echo "$LAYER_ARN" > .github/layer-arn.txt` with `echo "$LAYER_ARN" > ${{ steps.arn-file.outputs.path }}`
+- [x] Update the `git add` to use the dynamic path
 
 ### Step 2 — Update `deploy-reventless-aws.yml`
 
 File: `.github/workflows/deploy-reventless-aws.yml`
 
-- [ ] Replace the static `layer-arn.txt` read with a branch-aware lookup:
+- [x] Replace the static `layer-arn.txt` read with a branch-aware lookup:
   ```yaml
   - name: Resolve layer ARN file
     id: arn-file
@@ -69,12 +69,12 @@ File: `.github/workflows/deploy-reventless-aws.yml`
         *)     echo "path=.github/layer-arn-alpha.txt" >> $GITHUB_OUTPUT ;;
       esac
   ```
-- [ ] Update the ARN resolution logic to read from `${{ steps.arn-file.outputs.path }}`
-- [ ] Verify both places where the ARN is resolved (platform deploy ~line 234 and plugin deploy ~line 338) use the dynamic path
+- [x] Update the ARN resolution logic to read from `${{ steps.arn-file.outputs.path }}`
+- [x] Verify both places where the ARN is resolved (platform deploy ~line 234 and plugin deploy ~line 338) use the dynamic path
 
 ### Step 3 — Commit workflow changes and push to `alpha`
 
-- [ ] Commit the two workflow file changes with message:
+- [x] Commit the two workflow file changes with message:
   `feat(ci): use branch-scoped Lambda layer names (alpha/beta/prod)`
 - [ ] Push to `alpha` branch
 - [ ] Confirm the workflow runs and publishes `reventless-aws-alpha:1`
