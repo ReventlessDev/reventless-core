@@ -666,7 +666,7 @@ For most DCB specs — where each event variant has exactly one tagged field —
 
 ### Composite partition keys (`@compositePartitionTag`)
 
-When the optimal partition key is formed from **multiple fields concatenated together** (e.g. `environment/platform/plugin`), use `@compositePartitionTag` instead of `@partitionTag`:
+When the optimal partition key is formed from **multiple fields concatenated together in declaration order** (e.g. `environment/platform/plugin`), use `@compositePartitionTag` instead of `@partitionTag`:
 
 ```rescript
 @@reventless.spec
@@ -679,7 +679,7 @@ type event =
       @compositePartitionTag pluginName: string,    // last — sep ignored
       version: string,
     })
-// Partition key written as:  "environment/platformName/pluginName" values joined
+/// Partition key: field values joined in declaration order
 // e.g.  "prod/acme-platform/billing"
 ```
 

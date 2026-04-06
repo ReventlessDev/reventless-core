@@ -51,7 +51,7 @@ Both command AND event types need `@s.matches` on entity ID fields. Without it, 
 
 ### Composite partition keys
 
-When the partition key should be formed from multiple fields, use the `@compositePartitionTag` **field-level** PPX annotation (before the field name, not after the colon) instead of writing `@s.matches` manually:
+When the partition key should be formed from multiple fields **joined in declaration order**, use the `@compositePartitionTag` **field-level** PPX annotation (before the field name, not after the colon) instead of writing `@s.matches` manually:
 
 ```rescript
 // PPX annotation — recommended
