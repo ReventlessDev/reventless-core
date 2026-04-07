@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.16 (2026-04-07)
+
+### Bug Fixes
+
+* **in-memory:** queue commands and receive calls that arrive before handlers bind ([4566da3](https://github.com/ReventlessDev/reventless-core/commit/4566da3bf756dca5ea151e0bdb7ef46999cd3090))
+
+
 # 3.0.0-alpha.15 (2026-04-06)
 
 ### Bug Fixes
