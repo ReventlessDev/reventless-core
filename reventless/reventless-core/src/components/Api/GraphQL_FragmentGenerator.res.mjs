@@ -104,6 +104,14 @@ function deriveConnectionTypes(singularTypeName) {
   ];
 }
 
+function deriveByIdConnectionType(typeName) {
+  return `type ` + typeName + `ByIdConnection {\n  items: [` + typeName + `!]!\n  nextToken: String\n}`;
+}
+
+function deriveByIdConnectionQueryField(singleFieldName, returnTypeName) {
+  return `  ` + singleFieldName + `ById(id: ID!, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ` + returnTypeName + `ByIdConnection!`;
+}
+
 function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt) {
   let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
   if (includeIdParam) {
@@ -183,6 +191,15 @@ function generate(mutationEntries, queryEntries) {
     let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName, includeIdParam);
     queries.push(singleField);
     let listFieldName = entry.listFieldName;
+    let _sf = entry.subIdField;
+    if (_sf !== undefined) {
+      let byIdConnTypeName = entry.returnTypeName + "ByIdConnection";
+      if (!seenTypes.has(byIdConnTypeName)) {
+        seenTypes.add(byIdConnTypeName);
+        types.push(deriveByIdConnectionType(entry.returnTypeName));
+      }
+      queries.push(deriveByIdConnectionQueryField(entry.singleFieldName, entry.returnTypeName));
+    }
     if (connectionSpec) {
       let connectionTypeName = entry.returnTypeName + "Connection";
       if (!seenTypes.has(connectionTypeName)) {
@@ -232,6 +249,8 @@ export {
   deriveObjectTypeWithNested,
   derivePluralWrapperType,
   deriveConnectionTypes,
+  deriveByIdConnectionType,
+  deriveByIdConnectionQueryField,
   deriveObjectQueryField,
   deriveListQueryField,
   deriveConnectionQueryField,

@@ -119,6 +119,15 @@ let deriveConnectionTypes = (~singularTypeName: string): array<string> => [
   `type ${singularTypeName}Connection {\n  edges: [${singularTypeName}Edge!]!\n  pageInfo: PageInfo!\n  totalCount: Int\n}`,
 ]
 
+let deriveByIdConnectionType = (~typeName: string): string =>
+  `type ${typeName}ByIdConnection {\n  items: [${typeName}!]!\n  nextToken: String\n}`
+
+let deriveByIdConnectionQueryField = (
+  ~singleFieldName: string,
+  ~returnTypeName: string,
+): string =>
+  `  ${singleFieldName}ById(id: ID!, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ${returnTypeName}ByIdConnection!`
+
 // ── Query field derivation ─────────────────────────────────────────────────
 
 let deriveObjectQueryField = (
@@ -234,6 +243,23 @@ let generate = (
     queries->Array.push(singleField)
 
     let listFieldName = entry.listFieldName
+    // ByIdConnection query (sort key conditions) — generated when subIdField is set
+    switch entry.subIdField {
+    | Some(_sf) =>
+      let byIdConnTypeName = entry.returnTypeName ++ "ByIdConnection"
+      if !(seenTypes->Set.has(byIdConnTypeName)) {
+        seenTypes->Set.add(byIdConnTypeName)
+        types->Array.push(deriveByIdConnectionType(~typeName=entry.returnTypeName))
+      }
+      queries->Array.push(
+        deriveByIdConnectionQueryField(
+          ~singleFieldName=entry.singleFieldName,
+          ~returnTypeName=entry.returnTypeName,
+        ),
+      )
+    | None => ()
+    }
+
     if connectionSpec {
       // Relay Connection spec: Edge + Connection types
       let connectionTypeName = entry.returnTypeName ++ "Connection"

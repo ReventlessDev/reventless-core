@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
 let stateSchema = S.schema(s => ({
   customerId: s.m(S.string),
@@ -85,9 +86,13 @@ function project(event) {
   }
 }
 
+let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+
 let name = "Customers";
 
 let Id;
+
+let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Customer/StateViewSlice/CustomersView.res.mjs";
 
@@ -97,6 +102,8 @@ export {
   stateSchema,
   consumedEventSchema,
   project,
+  config,
+  subIdConfig,
   moduleUrl,
 }
 /* stateSchema Not a pure module */

@@ -73,13 +73,15 @@ function Make(Spec) {
         let mutationEntries = mutationEntriesFromAggregates.concat(dcbResult.mutationEntries);
         let queryEntriesFromReadModels = readModels.map(R => {
           let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
+          let subIdField = Stdlib_Option.map(R.Spec.subIdConfig, c => c.subIdField);
           return {
             singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
             returnTypeName: qn.returnTypeName,
             stateSchema: R.Spec.stateSchema,
             authorization: undefined,
-            connectionSpec: true
+            connectionSpec: true,
+            subIdField: subIdField
           };
         });
         let queryEntries = queryEntriesFromReadModels.concat(dcbResult.queryEntries);

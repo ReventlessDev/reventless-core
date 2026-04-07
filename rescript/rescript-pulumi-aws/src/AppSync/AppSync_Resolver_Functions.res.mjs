@@ -87,6 +87,46 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
+function queryByIdWithSortConditions(sortField) {
+  return importUtil + `
+export function request(ctx) {
+  const args = ctx.args;
+  const expressionNames = { '#id': 'id', '#sk': '` + sortField + `' };
+  const expressionValues = { ':id': util.dynamodb.toDynamoDB(args.id) };
+  let skCondition;
+  if (args.eq != null) {
+    expressionValues[':eq'] = util.dynamodb.toDynamoDB(args.eq);
+    skCondition = '#sk = :eq';
+  } else if (args.prefix != null) {
+    expressionValues[':prefix'] = util.dynamodb.toDynamoDB(args.prefix);
+    skCondition = 'begins_with(#sk, :prefix)';
+  } else if (args.from != null && args.to != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+    skCondition = '#sk BETWEEN :from AND :to';
+  } else if (args.from != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
+    skCondition = '#sk >= :from';
+  } else if (args.to != null) {
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+    skCondition = '#sk <= :to';
+  }
+  const expression = skCondition ? \`#id = :id AND \${skCondition}\` : '#id = :id';
+  return {
+    operation: 'Query',
+    query: { expression, expressionNames, expressionValues },
+    scanIndexForward: !(args.reverse ?? false),
+    limit: (args.limit ?? 50),
+    nextToken: (args.nextToken ?? null),
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return { items: ctx.result.items ?? [], nextToken: ctx.result.nextToken ?? null };
+}
+`;
+}
+
 function queryByIdSort(sortField) {
   return importUtil + `
 export function request(ctx) {
@@ -679,6 +719,7 @@ export {
   nodeGetItemForType,
   getItemById,
   queryById,
+  queryByIdWithSortConditions,
   queryByIdSort,
   queryByIndex,
   queryByIndexDeletable,

@@ -14,100 +14,95 @@ import * as StateViewSlice_Builder$ReventlessInMemory from "../../../src/compone
 
 let eventSchema = S.union([
   S.schema(s => ({
-    TAG: "ItemAdded",
+    TAG: "ScoreRecorded",
     id: s.m(DcbTag$Reventless.string),
-    name: s.m(S.string)
+    category: s.m(S.string),
+    date: s.m(S.string),
+    score: s.m(S.int)
   })),
   S.schema(s => ({
-    TAG: "ItemRenamed",
+    TAG: "ScoreRemoved",
     id: s.m(DcbTag$Reventless.string),
-    name: s.m(S.string)
-  })),
-  S.schema(s => ({
-    TAG: "ItemRemoved",
-    id: s.m(DcbTag$Reventless.string)
+    category: s.m(S.string),
+    date: s.m(S.string)
   }))
 ]);
 
-let ItemEventLog = {
+let ScoreEventLog = {
   eventSchema: eventSchema
 };
 
-let name = "ItemsView";
+let name = "ScoresView";
 
 let moduleUrl = import.meta.url;
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
-    TAG: "ItemAdded",
+    TAG: "ScoreRecorded",
     id: s.m(S.string),
-    name: s.m(S.string)
+    category: s.m(S.string),
+    date: s.m(S.string),
+    score: s.m(S.int)
   })),
   S.schema(s => ({
-    TAG: "ItemRenamed",
+    TAG: "ScoreRemoved",
     id: s.m(S.string),
-    name: s.m(S.string)
-  })),
-  S.schema(s => ({
-    TAG: "ItemRemoved",
-    id: s.m(S.string)
+    category: s.m(S.string),
+    date: s.m(S.string)
   }))
 ]);
 
 let stateSchema = S.schema(s => ({
   id: s.m(S.string),
-  name: s.m(S.string)
+  category: s.m(S.string),
+  date: s.m(S.string),
+  score: s.m(S.int)
 }));
 
 function project(event) {
-  switch (event.TAG) {
-    case "ItemAdded" :
-      let id = event.id;
-      return [{
-          TAG: "Set",
-          _0: id,
-          _1: {
-            id: id,
-            name: event.name
-          }
-        }];
-    case "ItemRenamed" :
-      let name = event.name;
-      return [{
-          TAG: "Update",
-          _0: event.id,
-          _1: s => ({
-            id: s.id,
-            name: name
-          })
-        }];
-    case "ItemRemoved" :
-      return [{
-          TAG: "Delete",
-          _0: event.id
-        }];
+  if (event.TAG !== "ScoreRecorded") {
+    return [{
+        TAG: "Delete",
+        _0: event.id
+      }];
   }
+  let id = event.id;
+  return [{
+      TAG: "Set",
+      _0: id,
+      _1: {
+        id: id,
+        category: event.category,
+        date: event.date,
+        score: event.score
+      }
+    }];
 }
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
-let ItemsViewSpec = {
+let subIdConfig = {
+  subIdField: "_subId",
+  getSubId: state => state.category + "/" + state.date
+};
+
+let ScoresViewSpec = {
   name: name,
   moduleUrl: moduleUrl,
   consumedEventSchema: consumedEventSchema,
   stateSchema: stateSchema,
   project: project,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: subIdConfig
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
 TestRunner$ReventlessInMemory.setup();
 
-let ItemEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
+let ScoreEventLogMaker = DcbEventLog_Builder$ReventlessInMemory.Make(Bus);
 
-let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined, {
+let eventLog = ScoreEventLogMaker.make("ScoreEventLog", undefined, {
   TAG: "Simple",
   _0: {
     key: "id"
@@ -116,17 +111,17 @@ let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined, {
 
 let SVMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
 
-let ItemsViewMaker = SVMaker.Make({
+let ScoresViewMaker = SVMaker.Make({
   name: name,
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   consumedEventSchema: consumedEventSchema,
   project: project,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: subIdConfig
 });
 
-let sv = ItemsViewMaker.make(eventLog, undefined);
+let sv = ScoresViewMaker.make(eventLog, undefined);
 
 let dcbEventTopicResource = Component$ReventlessCore.outputs(eventLog).eventTopic.resources[0];
 
@@ -142,12 +137,12 @@ function encodeEvent(event) {
 }
 
 async function appendEvent(event) {
-  let ops = await TestRunner$ReventlessInMemory.resolve(ItemEventLogMaker.operations(eventLog));
+  let ops = await TestRunner$ReventlessInMemory.resolve(ScoreEventLogMaker.operations(eventLog));
   await ops.append([encodeEvent(event)], undefined);
 }
 
-async function loadState(id) {
-  let ops = Bus.getQueryDb("ItemsView");
+async function loadScores(id) {
+  let ops = Bus.getQueryDb("ScoresView");
   if (ops === undefined) {
     return [];
   }
@@ -156,17 +151,17 @@ async function loadState(id) {
 }
 
 export {
-  ItemEventLog,
-  ItemsViewSpec,
+  ScoreEventLog,
+  ScoresViewSpec,
   Bus,
-  ItemEventLogMaker,
+  ScoreEventLogMaker,
   eventLog,
   SVMaker,
-  ItemsViewMaker,
+  ScoresViewMaker,
   sv,
   dcbEventTopicResource,
   encodeEvent,
   appendEvent,
-  loadState,
+  loadScores,
 }
 /* eventSchema Not a pure module */

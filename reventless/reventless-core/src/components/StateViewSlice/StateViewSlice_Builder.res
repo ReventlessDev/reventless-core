@@ -26,8 +26,8 @@ module Make = (
       let moduleUrl: string = %raw(`import.meta.url`)
       type state = Spec.state
       let stateSchema = Spec.stateSchema
-      let config = Reventless.ReadModel.config()
-      let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
+      let config = Spec.config
+      let subIdConfig = Spec.subIdConfig
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(SvQueryDbSpec, QueryDbStorage, QueryDbResolvers)

@@ -85,7 +85,9 @@ Configuration for a DynamoDB Global Secondary Index on a read model table.
 
 - `index` — the index name
 - `type_` — the DynamoDB attribute type of the index key (`"S"`, `"N"`, etc.)
-- `idField` / `subIdField` — index key field overrides
+- `idField` / `subIdField` — index key field overrides (set to synthetic `_name_pk`/`_name_sk` for composite keys)
+- `pkFields` / `skFields` — source state field names for composite pk/sk; runtime uses these to compute synthetic attribute values
+- `pkSep` / `skSep` — separator for composite pk/sk concatenation (default `"/"`)
 - `projectionType` — which attributes are projected into the index
 - `authorization` — optional AppSync authorization rule
 */
@@ -94,6 +96,10 @@ type indexConfig = {
   type_: string,
   idField?: string,
   subIdField?: string,
+  pkFields?: array<string>,
+  pkSep?: string,
+  skFields?: array<string>,
+  skSep?: string,
   projectionType: projectionType,
   authorization?: authorization,
 }

@@ -27,7 +27,7 @@ let evolve = (state, event) =>
 
 @schema
 type command =
-  | PlaceOrder({orderId: string, @noTag customerId: string, productId: array<string>})
+  | PlaceOrder({orderId: string, @noDcbTag customerId: string, productId: array<string>})
 
 @schema
 type error =

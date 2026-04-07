@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
+import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -10,6 +11,7 @@ import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/I
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "../GraphQL_Server.res.mjs";
+import * as SortKey_Filter$ReventlessInMemory from "./SortKey_Filter.res.mjs";
 
 function Make(Bus) {
   let extractIdentity = ctx => {
@@ -169,21 +171,46 @@ function Make(Bus) {
         listQueryName,
         match[1]
       ]];
-    let byIdListSdl = subIdField !== undefined ? [`  ` + singleQueryName + `ById(id: ID!): [String]`] : [];
+    let byIdListSdl;
+    if (subIdField !== undefined) {
+      let connectionTypeName$1 = returnTypeName + "ByIdConnection";
+      byIdListSdl = [`  ` + singleQueryName + `ById(id: ID!, ` + subIdField + `: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ` + connectionTypeName$1 + `!`];
+    } else {
+      byIdListSdl = [];
+    }
     let byIdListResolvers;
     if (subIdField !== undefined) {
       let resolver$2 = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
-          return [];
+          return {
+            items: [],
+            nextToken: null
+          };
         }
-        let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+        let argsDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(args), {});
+        let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["id"], Stdlib_JSON.Decode.string), "");
+        let filterPrefix = Stdlib_Option.flatMap(argsDict["prefix"], Stdlib_JSON.Decode.string);
+        let filterFrom = Stdlib_Option.flatMap(argsDict["from"], Stdlib_JSON.Decode.string);
+        let filterTo = Stdlib_Option.flatMap(argsDict["to"], Stdlib_JSON.Decode.string);
+        let filterEq = Stdlib_Option.flatMap(argsDict["eq"], Stdlib_JSON.Decode.string);
+        let reverse = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["reverse"], Stdlib_JSON.Decode.bool), false);
+        let limit = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["limit"], Stdlib_JSON.Decode.float), prim => prim | 0);
+        let nextTokenStr = Stdlib_Option.flatMap(argsDict["nextToken"], Stdlib_JSON.Decode.string);
+        let offset = Stdlib_Option.getOr(Stdlib_Option.flatMap(nextTokenStr, s => Stdlib_Int.fromString(s, undefined)), 0);
         let ops = Bus.getQueryDb(name);
-        if (ops !== undefined) {
-          return await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-        } else {
-          return [];
+        if (ops === undefined) {
+          return {
+            items: [],
+            nextToken: null
+          };
         }
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+        let result = SortKey_Filter$ReventlessInMemory.apply(items, subIdField, filterPrefix, filterFrom, filterTo, filterEq, reverse, limit, offset);
+        return {
+          items: result.items,
+          nextToken: Stdlib_Nullable.fromOption(result.nextToken)
+        };
       };
       byIdListResolvers = [[
           singleQueryName + "ById",

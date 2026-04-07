@@ -1,5 +1,6 @@
-// E2E test fixtures for StateViewSlice builder.
-// Builds a StateViewSlice on top of a DcbEventLog and verifies projection into QueryDb.
+// E2E test fixtures for StateViewSlice with sub-ID (composite sort key).
+// Verifies that projection stores items with composite sub-keys and that
+// loadStream returns them sorted.
 
 open Reventless.Projection
 
@@ -7,40 +8,42 @@ open Reventless.Projection
 // Event type definition for the DcbEventLog
 // ─────────────────────────────────────────────────────────────
 
-module ItemEventLog = {
+module ScoreEventLog = {
   @schema
   type event =
-    | ItemAdded({id: @s.matches(Reventless.DcbTag.string) string, name: string})
-    | ItemRenamed({id: @s.matches(Reventless.DcbTag.string) string, name: string})
-    | ItemRemoved({id: @s.matches(Reventless.DcbTag.string) string})
+    | ScoreRecorded({id: @s.matches(Reventless.DcbTag.string) string, category: string, date: string, score: int})
+    | ScoreRemoved({id: @s.matches(Reventless.DcbTag.string) string, category: string, date: string})
 }
 
 // ─────────────────────────────────────────────────────────────
-// StateViewSlice spec: project ItemEventLog events to {id, name} state
+// StateViewSlice spec with composite sub-key (category + "/" + date)
 // ─────────────────────────────────────────────────────────────
 
-module ItemsViewSpec = {
-  let name = "ItemsView"
+module ScoresViewSpec = {
+  let name = "ScoresView"
   let moduleUrl: string = %raw(`import.meta.url`)
 
   @schema
   type consumedEvent =
-    | ItemAdded({id: string, name: string})
-    | ItemRenamed({id: string, name: string})
-    | ItemRemoved({id: string})
+    | ScoreRecorded({id: string, category: string, date: string, score: int})
+    | ScoreRemoved({id: string, category: string, date: string})
 
   @schema
-  type state = {id: string, name: string}
+  type state = {id: string, category: string, date: string, score: int}
 
   let project = event =>
     switch event {
-    | ItemAdded({id, name}) => [Set(id, {id, name})]
-    | ItemRenamed({id, name}) => [Update(id, s => {...s, name})]
-    | ItemRemoved({id}) => [Delete(id)]
+    | ScoreRecorded({id, category, date, score}) =>
+      [Set(id, {id, category, date, score})]
+    | ScoreRemoved({id, category: _, date: _}) =>
+      [Delete(id)]
     }
 
   let config = Reventless.ReadModel.config()
-  let subIdConfig = None
+  let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = Some({
+    subIdField: "_subId",
+    getSubId: (state: state) => state.category ++ "/" ++ state.date,
+  })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -59,19 +62,20 @@ let _ = TestRunner.setup()
 // Build DcbEventLog
 // ─────────────────────────────────────────────────────────────
 
-module ItemEventLogMaker = DcbEventLog_Builder.Make(Bus)
-let eventLog = ItemEventLogMaker.make(~name="ItemEventLog", ~partitionTag=Reventless.DcbTag.Simple({key: "id"}))
+module ScoreEventLogMaker = DcbEventLog_Builder.Make(Bus)
+let eventLog = ScoreEventLogMaker.make(
+  ~name="ScoreEventLog",
+  ~partitionTag=Reventless.DcbTag.Simple({key: "id"}),
+)
 
 // ─────────────────────────────────────────────────────────────
 // Build StateViewSlice
 // ─────────────────────────────────────────────────────────────
 
 module SVMaker = StateViewSlice_Builder.Make(Bus)
-module ItemsViewMaker = SVMaker.Make(ItemsViewSpec)
-let sv = ItemsViewMaker.make(~dcbEventLog=eventLog)
+module ScoresViewMaker = SVMaker.Make(ScoresViewSpec)
+let sv = ScoresViewMaker.make(~dcbEventLog=eventLog)
 
-// DcbEventLog eventTopic resource — needed for 2nd beforeAllAsync resolve to
-// trigger EventCollectorChannel.connect registration.
 let dcbEventTopicResource =
   (eventLog->ReventlessCore.Component.outputs).eventTopic.resources->Array.getUnsafe(0)
 
@@ -79,24 +83,20 @@ let dcbEventTopicResource =
 // Test helpers
 // ─────────────────────────────────────────────────────────────
 
-// Encode a typed event into a raw event for appending to the DcbEventLog
-let encodeEvent = (event: ItemEventLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
-  let json = event->S.reverseConvertToJsonOrThrow(ItemEventLog.eventSchema)
+let encodeEvent = (event: ScoreEventLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
+  let json = event->S.reverseConvertToJsonOrThrow(ScoreEventLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
-  let tags = Reventless.DcbTag.extractTags(ItemEventLog.eventSchema, event)
+  let tags = Reventless.DcbTag.extractTags(ScoreEventLog.eventSchema, event)
   {eventType, data: JSON.Object(data), tags}
 }
 
-// Append an event to the DcbEventLog (publishes to event topic automatically)
 let appendEvent = async event => {
-  let ops = await eventLog->ItemEventLogMaker.operations->TestRunner.resolve
+  let ops = await eventLog->ScoreEventLogMaker.operations->TestRunner.resolve
   let _ = await ops.append([encodeEvent(event)])
 }
 
-// Load projected state from the in-memory QueryDb.
-// QueryDb is registered with the base Spec.name = "ItemsView".
-let loadState = async id => {
-  switch Bus.getQueryDb("ItemsView") {
+let loadScores = async id => {
+  switch Bus.getQueryDb("ScoresView") {
   | None => []
   | Some(ops) =>
     let states =
@@ -104,6 +104,6 @@ let loadState = async id => {
       ->Stream.runCollect
       ->Effect.catchAll(_ => Effect.succeed([]))
       ->Effect.runPromise
-    states->Array.map(json => json->S.parseJsonOrThrow(ItemsViewSpec.stateSchema))
+    states->Array.map(json => json->S.parseJsonOrThrow(ScoresViewSpec.stateSchema))
   }
 }

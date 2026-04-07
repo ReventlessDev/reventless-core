@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -66,9 +67,13 @@ function project(event) {
   }
 }
 
+let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+
 let name = "Orders";
 
 let Id;
+
+let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateViewSlice/OrdersView.res.mjs";
 
@@ -78,6 +83,8 @@ export {
   consumedEventSchema,
   stateSchema,
   project,
+  config,
+  subIdConfig,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

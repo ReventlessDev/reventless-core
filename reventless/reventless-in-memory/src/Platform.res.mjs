@@ -45,7 +45,6 @@ import * as GraphQL_ServerInstance$ReventlessInMemory from "./adapter/GraphQL_Se
 import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateViewSlice_Builder.res.mjs";
 import * as AutomationSlice_Builder$ReventlessInMemory from "./components/AutomationSlice_Builder.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessInMemory from "./adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 import * as GraphQL_InMemory_Adapter$ReventlessInMemory from "./adapter/Api/GraphQL_InMemory_Adapter.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_InMemory$ReventlessInMemory from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
@@ -532,7 +531,21 @@ function MakeWithConfig(Config) {
       contents: []
     };
     let syncAll = () => {
-      allItems.contents = QueryDbStorage_InMemory$ReventlessInMemory.flattenWithId(store.contents);
+      allItems.contents = Object.entries(store.contents).flatMap(param => {
+        let id = param[0];
+        return param[1].map(item => {
+          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+          if (Stdlib_Option.isSome(obj["id"])) {
+            return item;
+          }
+          let copy = {};
+          Object.entries(obj).forEach(param => {
+            copy[param[0]] = param[1];
+          });
+          copy["id"] = id;
+          return copy;
+        });
+      });
     };
     let pluginOps_load = async id => ({
       TAG: "Ok",
@@ -1444,7 +1457,21 @@ function Make($star) {
       contents: []
     };
     let syncAll = () => {
-      allItems.contents = QueryDbStorage_InMemory$ReventlessInMemory.flattenWithId(store.contents);
+      allItems.contents = Object.entries(store.contents).flatMap(param => {
+        let id = param[0];
+        return param[1].map(item => {
+          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+          if (Stdlib_Option.isSome(obj["id"])) {
+            return item;
+          }
+          let copy = {};
+          Object.entries(obj).forEach(param => {
+            copy[param[0]] = param[1];
+          });
+          copy["id"] = id;
+          return copy;
+        });
+      });
     };
     let pluginOps_load = async id => ({
       TAG: "Ok",

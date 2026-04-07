@@ -26,6 +26,14 @@
 - `@reventless.projections` — on projection module bindings inside plugin functor bodies. Auto-injects `module M = Reventless.Projection.Mappings.Make(Target)`, `module type Mapping = M.Mapping`, and `let moduleUrl`. Extracts Target from the `with module Target := X` constraint.
 - `@reventless.delegate` — explicit opt-in for `Delegate`-like modules outside `*ExtensionPointMapping*` files. In `@@reventless.spec`-annotated `*ExtensionPointMapping*` files, the `Delegate` module is auto-transformed without this attribute.
 - `@schema` on all serializable types (command, event, error, state)
+- **`@schema type state` field annotations** (ReadModel and StateViewSlice files with `@@reventless.spec`):
+  - `@id` / `@compositeId` — designate partition key field(s); generate `let makeId`
+  - `@subId` / `@compositeSubId` — designate sort key field(s); generate `let subIdConfig`
+  - `@index` / `@index("name")` / `@index({name: "name", projection: "KEYS_ONLY"})` — designate GSI key fields; generate `let config` with index entries. Record form supports: `name` (index name), `projection` (`"ALL"` default, `"KEYS_ONLY"`, `"INCLUDE"`), `fields` (array of strings for `INCLUDE` — note: `include` is reserved), `group` + `authTable` (AppSync authorization). Named `@index` paired with `@indexSubId("name")` for GSI sort key.
+  - `@indexSubId("name")` — designate GSI sort key field(s) for the named index
+  - `@resolves({table: "TableName", field: "fieldName"})` — cross-table single-ID resolver; generates `config.idResolvers` entry. Optional record keys: `via` (index name), `plugin`, `sourceSubId`, `subIdArg`.
+  - `@resolvesMany({table: "TableName", field: "fieldName"})` — cross-table multi-ID resolver on `array<string>` fields; generates `config.idsResolvers` entry. Optional: `plugin`.
+  - Note: `~to`/`~as` are ReScript reserved words; `@resolves`/`@resolvesMany` use **record** payload syntax `({key: "value"})`, NOT labeled-arg syntax
 - PPX ordering in `rescript.json`: `"ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"]` (reventless-ppx before sury-ppx)
 
 ## Idempotency

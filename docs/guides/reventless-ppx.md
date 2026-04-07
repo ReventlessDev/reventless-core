@@ -157,7 +157,7 @@ These field attributes give fine-grained control over DCB tag injection. They wo
 | Annotation | Placed on | Effect |
 |---|---|---|
 | `@partitionTag` | A `*Id: string` field | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. Required when a variant has multiple `*Id` fields. |
-| `@noTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use when the field is payload data, not a DCB query key. |
+| `@noDcbTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use when the field is payload data, not a DCB query key. |
 | `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.string)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). |
 
 The PPX strips all three attributes from the output AST, so the compiler never sees them as unknown attributes.
@@ -174,13 +174,13 @@ type event =
     })
 ```
 
-**`@noTag` — payload-only field:**
+**`@noDcbTag` — payload-only field:**
 ```rescript
 @schema
 type event =
   | DemandRecorded({
       @partitionTag productId: string,
-      @noTag orderId: string,  // not a DCB tag — plain string in the event store
+      @noDcbTag orderId: string,  // not a DCB tag — plain string in the event store
     })
 ```
 
@@ -248,6 +248,195 @@ type event =
 // WRONG — annotation on the type, not the field (silently ignored)
 environment: @compositePartitionTag string
 ```
+
+---
+
+### `@id`, `@compositeId` — partition key derivation
+
+Use on `@schema type state` fields in ReadModel and StateViewSlice spec files. The PPX generates `let makeId` from the annotated field(s). This replaces a manual `let makeId` declaration.
+
+| Annotation | Usage | Generated code |
+|---|---|---|
+| `@id` | One `string` field | `let makeId = (state: state) => state.fieldName` |
+| `@compositeId` | Multiple `string` fields | `let makeId = (state: state) => \`${state.f1}/${state.f2}/...\`` |
+| `@compositeId(~sep=":")` | Multiple `string` fields, custom separator | Same with `:` between segments |
+
+**`@id` — simple entity key:**
+```rescript
+@@reventless.spec
+
+@schema
+type state = {
+  @id productId: string,
+  name: string,
+  price: float,
+}
+// PPX generates: let makeId = (state: state) => state.productId
+```
+
+**`@compositeId` — multi-segment key:**
+```rescript
+@@reventless.spec
+
+@schema
+type state = {
+  @compositeId tenantId: string,
+  @compositeId productId: string,
+  name: string,
+}
+// PPX generates: let makeId = (state: state) => `${state.tenantId}/${state.productId}`
+```
+
+**Constraints:** `@id` and `@compositeId` cannot both appear on the same type. Both require `string` fields.
+
+---
+
+### `@subId`, `@compositeSubId` — sort key derivation
+
+Use on `@schema type state` fields in ReadModel and StateViewSlice spec files. The PPX generates `let subIdConfig` from the annotated field(s). This replaces the default `let subIdConfig = None` injected by `@@reventless.spec`.
+
+| Annotation | Usage | Generated code |
+|---|---|---|
+| `@subId` | One `string` field | `let subIdConfig = Some({ subIdField: "fieldName", getSubId: state => state.fieldName })` |
+| `@compositeSubId` | Multiple `string` fields | Synthetic `_subId` attribute: `let subIdConfig = Some({ subIdField: "_subId", getSubId: state => \`${state.f1}/${state.f2}/...\` })` |
+| `@compositeSubId(~sep=":")` | Multiple `string` fields, custom separator | Same with `:` |
+
+**`@subId` — version as sort key:**
+```rescript
+@@reventless.spec
+
+@schema
+type state = {
+  @id productId: string,
+  @subId version: string,
+  name: string,
+}
+// Enables: productById(id: ID!): ProductByIdConnection!
+//   with sort key args: prefix, from, to, eq, reverse, limit, nextToken
+```
+
+**`@compositeSubId` — composite sort key:**
+```rescript
+@@reventless.spec
+
+@schema
+type state = {
+  @id orderId: string,
+  @compositeSubId createdAt: string,
+  @compositeSubId lineItemId: string,
+  amount: float,
+}
+// PPX generates: let subIdConfig = Some({ subIdField: "_subId", getSubId: ... })
+// Stored _subId value: "{createdAt}/{lineItemId}"
+```
+
+**Constraints:** `@subId` and `@compositeSubId` cannot both appear on the same type. `@subId` requires a `string` field.
+
+---
+
+### `@index`, `@indexSubId` — GSI annotations
+
+Use on `@schema type state` fields to declare DynamoDB Global Secondary Indexes. The PPX aggregates all index annotations and generates `let config` with an `indexes` array.
+
+**`@index` — simple GSI (no sort key):**
+```rescript
+@schema
+type state = {
+  @id productId: string,
+  @index categoryId: string,
+  name: string,
+}
+// GSI: partition key = categoryId, ALL projection
+// Query field generated: productByCategoryId(categoryId: ID!): ...
+```
+
+**`@index` with projection options:**
+```rescript
+// KEYS_ONLY projection
+@index({projection: "KEYS_ONLY"}) categoryId: string,
+
+// INCLUDE projection
+@index({projection: "INCLUDE", fields: ["name", "price"]}) categoryId: string,
+```
+
+**Named `@index` with `@indexSubId` — GSI with sort key:**
+
+Use the same name on both annotations to link them. The named index gets both a partition key and a sort key.
+
+```rescript
+@schema
+type state = {
+  @id productId: string,
+  @index("byCategoryDate") categoryId: string,
+  @indexSubId("byCategoryDate") createdAt: string,
+  name: string,
+}
+// GSI: partition = categoryId, sort = createdAt
+```
+
+**Composite GSI keys** — annotate multiple fields with the same name:
+```rescript
+@schema
+type state = {
+  @id productId: string,
+  @index("byTenantCategory") tenantId: string,
+  @index("byTenantCategory") categoryId: string,  // composite pk: tenantId/categoryId
+  @indexSubId("byTenantCategory") region: string,
+  @indexSubId("byTenantCategory") createdAt: string,  // composite sk: region/createdAt
+  name: string,
+}
+// Synthetic attributes injected at save: _byTenantCategory_pk, _byTenantCategory_sk
+```
+
+**Authorization — restrict GSI access by Cognito group:**
+```rescript
+@index({group: "admin", authTable: "PlatformAuth"}) tenantId: string,
+```
+
+**Constraints:** `@indexSubId("name")` without a matching `@index("name")` is an error.
+
+---
+
+### `@resolves`, `@resolvesMany` — cross-table resolvers
+
+Use on `@schema type state` fields to generate virtual GraphQL fields that resolve IDs to objects from another QueryDb table.
+
+**`@resolves` — resolve a single ID to its object:**
+
+```rescript
+@schema
+type state = {
+  @id orderId: string,
+  @resolves({table: "Products", field: "product"}) productId: string,
+  quantity: int,
+}
+// Adds virtual GraphQL field: product: Product
+// Resolved by GetItem on the Products table using productId
+```
+
+**`@resolves` via GSI index:**
+```rescript
+@resolves({table: "Orders", field: "currentOrder", via: "byProductId"}) productId: string,
+// Resolved by querying Orders table's byProductId GSI
+```
+
+**`@resolves` with cross-plugin table:**
+```rescript
+@resolves({table: "Products", field: "product", plugin: "CatalogPlugin"}) productId: string,
+```
+
+**`@resolvesMany` — resolve an array of IDs:**
+```rescript
+@schema
+type state = {
+  @id cartId: string,
+  @resolvesMany({table: "Products", field: "products"}) productIds: array<string>,
+}
+// Adds virtual GraphQL field: products: [Product!]!
+// Resolved by BatchGetItem on the Products table
+```
+
+**Note:** `@resolves` and `@resolvesMany` use **record payload syntax** (`({key: "value"})`), not labeled-arg syntax. The keywords `~to` and `~as` are reserved in ReScript and cannot be used as labeled args.
 
 ---
 
@@ -529,7 +718,11 @@ The developer only writes `let name` and the `@schema type event`. Everything el
 | `@s.matches(DcbTag.string)` on `*Id`/`*Ids` fields | Auto-injected by `@@reventless.dcbTags` (or automatically in `*Slice/` folders) |
 | `@s.matches(DcbTag.partition)` on partition key field | Use `@partitionTag` field annotation |
 | `@s.matches(DcbTag.string)` on non-`*Id` field | Use `@dcbTag` field annotation |
-| Suppress auto-tagging on a `*Id` field | Use `@noTag` field annotation |
+| Suppress auto-tagging on a `*Id` field | Use `@noDcbTag` field annotation |
 | `module M = Mappings.Make(...)` + boilerplate | Auto-injected by `@reventless.projections` |
 | `open Reventless.ReadModel; let config = config(); let subIdConfig = None` | Auto-injected by `@@reventless.spec` for `*ReadModel*` files |
 | `module Id`, `@schema command/error = unit`, `@s.matches`, `moduleUrl` in Delegate | Auto-injected in `*ExtensionPointMapping*` files; use `@reventless.delegate` elsewhere |
+| `let makeId = ...` in ReadModel/StateViewSlice spec | Use `@id` or `@compositeId` on `@schema type state` fields |
+| `let subIdConfig = Some({...})` in ReadModel/StateViewSlice spec | Use `@subId` or `@compositeSubId` on `@schema type state` fields |
+| `let config = config(~indexes=[...])` with manual `indexConfig` records | Use `@index`/`@indexSubId` on `@schema type state` fields |
+| Manual `idResolverConfig`/`idsResolverConfig` entries in `let config` | Use `@resolves`/`@resolvesMany` on `@schema type state` fields |

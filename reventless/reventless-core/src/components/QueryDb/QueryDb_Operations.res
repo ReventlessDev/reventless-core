@@ -37,10 +37,42 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
       )
     }
 
+  let injectSubId = (dict, state) =>
+    switch ReadModelSpec.subIdConfig {
+    | Some({subIdField, getSubId}) =>
+      dict->Dict.set(subIdField, JSON.Encode.string(getSubId(state)))
+    | None => ()
+    }
+
+  let injectCompositeIndexAttrs = dict => {
+    let getStr = field =>
+      dict->Dict.get(field)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+    ReadModelSpec.config.indexes->Array.forEach(idx => {
+      switch idx.pkFields {
+      | Some(fs) when fs->Array.length > 1 =>
+        let sep = idx.pkSep->Option.getOr("/")
+        let value = fs->Array.map(getStr)->Array.join(sep)
+        let attrName = idx.idField->Option.getOr("_pk")
+        dict->Dict.set(attrName, JSON.Encode.string(value))
+      | _ => ()
+      }
+      switch idx.skFields {
+      | Some(fs) when fs->Array.length > 1 =>
+        let sep = idx.skSep->Option.getOr("/")
+        let value = fs->Array.map(getStr)->Array.join(sep)
+        let attrName = idx.subIdField->Option.getOr("_sk")
+        dict->Dict.set(attrName, JSON.Encode.string(value))
+      | _ => ()
+      }
+    })
+  }
+
   let save = async (id, state, saveMode, ttl) =>
     switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
     | Some(dict) =>
       dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
+      injectSubId(dict, state)
+      injectCompositeIndexAttrs(dict)
       let json = JSON.Encode.object(dict)
       await Ops.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
@@ -53,6 +85,8 @@ module Make = (ReadModelSpec: Reventless.ReadModel.Spec, Ops: Ops) => {
         switch state->Message.encode(ReadModelSpec.stateSchema)->JSON.Decode.object {
         | Some(dict) =>
           dict->Dict.set("id", id->Message.encode(ReadModelSpec.Id.schema))
+          injectSubId(dict, state)
+          injectCompositeIndexAttrs(dict)
           let json = JSON.Encode.object(dict)
           Ok(batch->Array.concat([(id->ReadModelSpec.Id.toString, json, ttl)]))
         | None =>

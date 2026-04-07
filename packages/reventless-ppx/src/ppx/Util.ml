@@ -169,6 +169,14 @@ let is_readmodel_filename fname =
   in
   slen >= sublen && check 0
 
+let is_stateview_filename fname =
+  let dir = Filename.dirname fname in
+  let parts = String.split_on_char '/' dir in
+  List.exists (fun part ->
+    let len = String.length part in
+    len >= 9 && String.sub part 0 9 = "StateView"
+  ) parts
+
 let has_type_binding name (str : structure) =
   List.exists (fun (item : structure_item) ->
     match item.pstr_desc with

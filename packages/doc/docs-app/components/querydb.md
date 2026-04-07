@@ -299,16 +299,64 @@ let projection = async (event, queryDb) => {
 }
 ```
 
+## Composite Keys and Sort Key Queries
+
+### Declaring keys via PPX annotations
+
+The recommended way to configure composite keys, sort keys, and GSIs is via PPX annotations directly on `@schema type state` in the ReadModel or StateViewSlice spec file:
+
+```rescript title="OrderLineItemsReadModel.res"
+@@reventless.spec
+
+@schema
+type state = {
+  @id orderId: string,               // partition key
+  @subId lineItemId: string,         // sort key → enables {name}ById sort key query
+  @index("byProduct") productId: string,   // GSI partition key
+  @indexSubId("byProduct") createdAt: string,  // GSI sort key
+  quantity: int,
+}
+```
+
+This generates:
+- `let makeId = state => state.orderId`
+- `let subIdConfig = Some({ subIdField: "lineItemId", getSubId: ... })`
+- `let config` with a `byProduct` GSI (partition: `productId`, sort: `createdAt`)
+
+For the complete annotation reference see [QueryDb key design guide](../../../docs/guides/querydb-key-design-guide.md).
+
+### Sort key query arguments
+
+When `subIdConfig` is set, the `{name}ById` query gains sort-key filter arguments:
+
+```graphql
+query {
+  orderLineItemsById(
+    id: "ord-123"
+    from: "2024-01-01"      # lower bound (inclusive)
+    to: "2024-12-31"        # upper bound (inclusive)
+    prefix: "2024-"         # begins_with
+    eq: "2024-06-15"        # exact match
+    reverse: true           # reverse sort order
+    limit: 20
+    nextToken: "..."        # pagination cursor
+  ) {
+    items { orderId lineItemId quantity }
+    nextToken
+  }
+}
+```
+
 ## Table Structure
 
 ### Primary Key
 
 - **Partition Key**: `id` (String) - The primary entity identifier
-- **Optional Sort Key**: Configurable secondary key for range queries
+- **Optional Sort Key**: Configurable secondary key for range queries (declare with `@subId` or `@compositeSubId`)
 
 ### Global Secondary Indexes (GSIs)
 
-GSIs enable alternative query patterns:
+GSIs enable alternative query patterns. Declare with `@index` / `@indexSubId` annotations, or manually:
 
 ```rescript
 type indexConfig = {

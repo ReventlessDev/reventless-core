@@ -5,11 +5,38 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
-function flattenWithId(store) {
+function getSubKey(item, subIdField) {
+  if (subIdField === undefined) {
+    return "";
+  }
+  let obj = Stdlib_JSON.Decode.object(item);
+  if (obj === undefined) {
+    return "";
+  }
+  let v = obj[subIdField];
+  if (v !== undefined) {
+    return Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v), "");
+  } else {
+    return "";
+  }
+}
+
+function sortedItems(store, partitionKey) {
+  let subMap = store[partitionKey];
+  if (subMap !== undefined) {
+    return Object.entries(subMap).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => param[1]);
+  } else {
+    return [];
+  }
+}
+
+function flattenStore(store) {
   return Object.entries(store).flatMap(param => {
     let id = param[0];
-    return param[1].map(item => {
+    return Object.entries(param[1]).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => {
+      let item = param[1];
       let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
       if (Stdlib_Option.isSome(obj["id"])) {
         return item;
@@ -25,7 +52,7 @@ function flattenWithId(store) {
 }
 
 function Make(Bus) {
-  let make = (name, param, param$1, param$2, param$3, param$4, param$5) => {
+  let make = (name, param, subIdField, param$1, param$2, param$3, param$4) => {
     let store = {
       contents: {}
     };
@@ -33,15 +60,26 @@ function Make(Bus) {
       contents: []
     };
     let syncAll = () => {
-      allItems.contents = flattenWithId(store.contents);
+      allItems.contents = flattenStore(store.contents);
+    };
+    let getOrCreateSubMap = partitionKey => {
+      let m = store.contents[partitionKey];
+      if (m !== undefined) {
+        return m;
+      }
+      let m$1 = {};
+      store.contents[partitionKey] = m$1;
+      return m$1;
     };
     let load = async id => ({
       TAG: "Ok",
-      _0: Stdlib_Option.getOr(store.contents[id], [])
+      _0: sortedItems(store.contents, id)
     });
-    let loadStream = id => Stream.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
+    let loadStream = id => Stream.fromIterable(sortedItems(store.contents, id));
     let save = async (id, state, _saveMode, _ttl) => {
-      store.contents[id] = [state];
+      let subKey = getSubKey(state, subIdField);
+      let subMap = getOrCreateSubMap(id);
+      subMap[subKey] = state;
       syncAll();
       return {
         TAG: "Ok",
@@ -50,7 +88,10 @@ function Make(Bus) {
     };
     let saveBatch = async batch => {
       batch.forEach(param => {
-        store.contents[param[0]] = [param[1]];
+        let state = param[1];
+        let subKey = getSubKey(state, subIdField);
+        let subMap = getOrCreateSubMap(param[0]);
+        subMap[subKey] = state;
       });
       syncAll();
       return {
@@ -62,8 +103,15 @@ function Make(Bus) {
       TAG: "Ok",
       _0: inc
     });
-    let $$delete = async (id, _subId) => {
-      Stdlib_Dict.$$delete(store.contents, id);
+    let $$delete = async (id, subIdOpt) => {
+      if (subIdOpt !== undefined) {
+        let subMap = store.contents[id];
+        if (subMap !== undefined) {
+          Stdlib_Dict.$$delete(subMap, subIdOpt[1]);
+        }
+      } else {
+        Stdlib_Dict.$$delete(store.contents, id);
+      }
       syncAll();
       return {
         TAG: "Ok",
@@ -71,7 +119,17 @@ function Make(Bus) {
       };
     };
     let deleteBatch = async ids => {
-      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
+      ids.forEach(param => {
+        let subIdOpt = param[1];
+        let id = param[0];
+        if (subIdOpt === undefined) {
+          return Stdlib_Dict.$$delete(store.contents, id);
+        }
+        let subMap = store.contents[id];
+        if (subMap !== undefined) {
+          return Stdlib_Dict.$$delete(subMap, subIdOpt[1]);
+        }
+      });
       syncAll();
       return {
         TAG: "Ok",
@@ -102,7 +160,9 @@ function Make(Bus) {
 }
 
 export {
-  flattenWithId,
+  getSubKey,
+  sortedItems,
+  flattenStore,
   Make,
 }
 /* effect/Stream Not a pure module */

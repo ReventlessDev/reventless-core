@@ -125,6 +125,7 @@ module Make = (
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
       ) => {
         let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+        let subIdField = R.Spec.subIdConfig->Option.map(c => c.subIdField)
         {
           ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
@@ -132,6 +133,7 @@ module Make = (
           stateSchema: R.Spec.stateSchema->S.castToUnknown,
           authorization: None,
           connectionSpec: true,
+          subIdField: ?subIdField,
         }
       })
 

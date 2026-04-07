@@ -28,6 +28,8 @@ type querySchemaEntry = {
   description?: string,
   includeIdParam?: bool,
   connectionSpec?: bool,
+  /** When set, generates a `{singleFieldName}ById` sort-key query with sort condition args. */
+  subIdField?: string,
 }
 
 /**

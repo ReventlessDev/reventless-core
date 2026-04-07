@@ -350,3 +350,4 @@ module MyDcbSpec = {
 - [DcbEventLog](../components/dcbeventlog.md)
 - [QueryDb](../components/querydb.md)
 - [ReadModel](../components/readmodel.md)
+- [QueryDb Key Design Guide](../../../docs/guides/querydb-key-design-guide.md) — `@id`, `@subId`, `@index`, `@resolves` annotations; sort key query patterns

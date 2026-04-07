@@ -114,6 +114,49 @@ export function request(ctx) {
 ${resultResponseCode}
 `->Pulumi.Input.make
 
+/** Query by partition key with sort-key conditions and pagination.
+    Accepts: `prefix` (begins_with), `from`/`to` (BETWEEN or range), `eq` (equality),
+    `reverse` (scanIndexForward), `limit`, `nextToken`.
+    Returns `{ items, nextToken }` for a `ByIdConnection` response type. */
+let queryByIdWithSortConditions = (sortField: string) =>
+  `${importUtil}
+export function request(ctx) {
+  const args = ctx.args;
+  const expressionNames = { '#id': 'id', '#sk': '${sortField}' };
+  const expressionValues = { ':id': util.dynamodb.toDynamoDB(args.id) };
+  let skCondition;
+  if (args.eq != null) {
+    expressionValues[':eq'] = util.dynamodb.toDynamoDB(args.eq);
+    skCondition = '#sk = :eq';
+  } else if (args.prefix != null) {
+    expressionValues[':prefix'] = util.dynamodb.toDynamoDB(args.prefix);
+    skCondition = 'begins_with(#sk, :prefix)';
+  } else if (args.from != null && args.to != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+    skCondition = '#sk BETWEEN :from AND :to';
+  } else if (args.from != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
+    skCondition = '#sk >= :from';
+  } else if (args.to != null) {
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+    skCondition = '#sk <= :to';
+  }
+  const expression = skCondition ? \`#id = :id AND \${skCondition}\` : '#id = :id';
+  return {
+    operation: 'Query',
+    query: { expression, expressionNames, expressionValues },
+    scanIndexForward: !(args.reverse ?? false),
+    limit: (args.limit ?? 50),
+    nextToken: (args.nextToken ?? null),
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return { items: ctx.result.items ?? [], nextToken: ctx.result.nextToken ?? null };
+}
+`->Pulumi.Input.make
+
 let queryByIdSort = (sortField: string) =>
   `${importUtil}
 export function request(ctx) {

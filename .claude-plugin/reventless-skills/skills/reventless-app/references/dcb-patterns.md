@@ -3,10 +3,10 @@
 ## StateChangeSlice (e.g., AddProduct.res)
 
 ```rescript
-open Reventless
+@@reventless.spec   // injects: let name, module Id, let moduleUrl
+@@reventless.dcbTags  // injects @s.matches(DcbTag.string) on *Id fields
 
-let name = "AddProduct"
-let moduleUrl: string = %raw(`import.meta.url`)
+open Reventless
 
 type state = {exists: bool}
 let initialState = {exists: false}
@@ -23,7 +23,7 @@ let evolve = (_state, event) =>
 @schema
 type command =
   | AddProduct({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,  // @s.matches(DcbTag.string) injected by @@reventless.dcbTags
       name: string,
       description: string,
       price: float,
@@ -35,7 +35,7 @@ type error = ProductAlreadyExists
 @schema
 type producedEvent =
   | ProductAdded({
-      productId: @s.matches(DcbTag.string) string,
+      productId: string,
       name: string,
       description: string,
       price: float,
@@ -55,10 +55,10 @@ let decide = (state, command) =>
 ## StateChangeSlice with Idempotency (e.g., ChangeProductName.res)
 
 ```rescript
-open Reventless
+@@reventless.spec
+@@reventless.dcbTags
 
-let name = "ChangeProductName"
-let moduleUrl: string = %raw(`import.meta.url`)
+open Reventless
 
 type state = {exists: bool, currentName: string}
 let initialState = {exists: false, currentName: ""}
@@ -76,7 +76,7 @@ let evolve = (state, event) =>
 
 @schema
 type command = ChangeProductName({
-  productId: @s.matches(DcbTag.string) string,
+  productId: string,
   name: string,
 })
 
@@ -85,7 +85,7 @@ type error = ProductNotFound
 
 @schema
 type producedEvent = ProductNameChanged({
-  productId: @s.matches(DcbTag.string) string,
+  productId: string,
   name: string,
 })
 
@@ -105,13 +105,17 @@ let decide = (state, command) =>
 ## StateViewSlice (e.g., ProductsView.res)
 
 ```rescript
+@@reventless.spec  // injects: let name, module Id, let makeId, let subIdConfig, let config
+
 open Reventless.Projection
 
-let name = "ProductsView"
-let moduleUrl: string = %raw(`import.meta.url`)
-
 @schema
-type state = {productId: string, name: string, description: string, price: float}
+type state = {
+  @id productId: string,
+  name: string,
+  description: string,
+  price: float,
+}
 
 @schema
 type consumedEvent =
@@ -134,6 +138,39 @@ let project = event =>
   | ProductPriceChanged({productId, price}) => [
       Update(productId, state => {...state, price}),
     ]
+  }
+```
+
+## StateViewSlice with sort key and GSI (e.g., OrderLineItemsView.res)
+
+Use `@subId` to enable sort-key range queries (`{name}ById`). Use `@index` to declare a GSI for querying by a secondary field. Use `@resolves` to add a virtual cross-table join field.
+
+```rescript
+@@reventless.spec
+
+open Reventless.Projection
+
+@schema
+type state = {
+  @id orderId: string,
+  @subId lineItemId: string,           // enables orderLineItemsById(id, prefix?, from?, to?, ...) 
+  @index categoryId: string,           // GSI: query by categoryId
+  @resolves({table: "Products", field: "product"}) productId: string,  // virtual field
+  quantity: int,
+  price: float,
+}
+
+@schema
+type consumedEvent =
+  | LineItemAdded({orderId: string, lineItemId: string, productId: string, categoryId: string, quantity: int, price: float})
+  | LineItemRemoved({orderId: string, lineItemId: string})
+
+let project = event =>
+  switch event {
+  | LineItemAdded({orderId, lineItemId, productId, categoryId, quantity, price}) => [
+      Set(lineItemId, {orderId, lineItemId, productId, categoryId, quantity, price}),
+    ]
+  | LineItemRemoved({orderId: _, lineItemId}) => [Delete(lineItemId)]
   }
 ```
 

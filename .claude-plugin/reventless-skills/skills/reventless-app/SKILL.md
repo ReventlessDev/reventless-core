@@ -66,6 +66,7 @@ Generate files in dependency-safe order:
 | `references/component-catalog.md` | All component types with specs, builders, key fields |
 | `references/aggregate-patterns.md` | Complete code templates for aggregate architecture |
 | `references/dcb-patterns.md` | Complete code templates for DCB architecture |
+| `references/querydb-key-patterns.md` | QueryDb key annotations: `@id`, `@subId`, `@index`, `@resolves`, sort key query args |
 | `references/cross-plugin-patterns.md` | ExtensionPoint specs, EP mappings, Extension mappings |
 | `references/configuration-templates.md` | package.json and rescript.json templates |
 | `references/testing-patterns.md` | Test file templates for all component types |

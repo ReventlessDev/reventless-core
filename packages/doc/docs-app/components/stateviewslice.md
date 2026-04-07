@@ -170,6 +170,39 @@ let project = event =>
   }
 ```
 
+## Key Design Annotations
+
+StateViewSlice supports the same PPX annotations on `@schema type state` as ReadModel. Annotations on state fields automatically generate `let makeId`, `let subIdConfig`, and `let config`:
+
+```rescript title="OrderLineItemsView.res"
+@@reventless.spec
+
+open Reventless.Projection
+
+@schema
+type state = {
+  @id orderId: string,               // generates: let makeId
+  @subId lineItemId: string,         // generates: let subIdConfig — enables sort key queries
+  @index categoryId: string,         // generates: let config with a GSI
+  @resolves({table: "Products", field: "product"}) productId: string,
+  quantity: int,
+}
+
+@schema
+type consumedEvent =
+  | LineItemAdded({orderId: string, lineItemId: string, productId: string, categoryId: string, quantity: int})
+  | LineItemRemoved({orderId: string, lineItemId: string})
+
+let project = event =>
+  switch event {
+  | LineItemAdded({orderId, lineItemId, productId, categoryId, quantity}) =>
+    [Set(lineItemId, {orderId, lineItemId, productId, categoryId, quantity})]
+  | LineItemRemoved({lineItemId}) => [Delete(lineItemId)]
+  }
+```
+
+For the full annotation reference, see the [QueryDb key design guide](../../../docs/guides/querydb-key-design-guide.md) and [`docs/guides/reventless-ppx.md`](../../../docs/guides/reventless-ppx.md).
+
 ## Comparison with ReadModel
 
 | Aspect | ReadModel | StateViewSlice |
@@ -177,6 +210,7 @@ let project = event =>
 | **Event Source** | Multiple EventTopics | Single DcbEventLog |
 | **Mappings** | Complex mapping system | Single projection function |
 | **Spec** | Reventless.ReadModel.Spec | Custom Spec with project function |
+| **Key annotations** | `@id`, `@subId`, `@index`, `@resolves` on state fields | Same — identical PPX annotation support |
 | **Use Case** | General-purpose read models | DCB-specific view projections |
 
 ## Comparison with StateChangeSlice

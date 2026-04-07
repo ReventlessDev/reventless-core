@@ -234,18 +234,30 @@ module Make = (Bus: InMemory_Bus.T) => {
     let listResolvers = [(listQueryName, listResolver)]
 
     // -- By-id-list: {name}ById (only when subId configured) ------------------
+    // Supports sort key filtering: prefix, from, to, eq, reverse, limit, nextToken.
+    // Returns { items: [...], nextToken: String | null }.
     let byIdListSdl = switch subIdField {
-    | Some(_) => [`  ${singleQueryName}ById(id: ID!): [String]`]
+    | Some(sf) =>
+      let connectionTypeName = returnTypeName ++ "ByIdConnection"
+      [`  ${singleQueryName}ById(id: ID!, ${sf}: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ${connectionTypeName}!`]
     | None => []
     }
     let byIdListResolvers: array<(string, GraphQL_Server.resolverFn)> = switch subIdField {
-    | Some(_) =>
+    | Some(sf) =>
       let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
-        | Deny(_) => []->JSON.Encode.array
+        | Deny(_) => Obj.magic({"items": [], "nextToken": Nullable.null})
         | Allow =>
-          let id =
-            args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+          let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
+          let id = argsDict->Dict.get("id")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+          let filterPrefix = argsDict->Dict.get("prefix")->Option.flatMap(JSON.Decode.string)
+          let filterFrom   = argsDict->Dict.get("from")->Option.flatMap(JSON.Decode.string)
+          let filterTo     = argsDict->Dict.get("to")->Option.flatMap(JSON.Decode.string)
+          let filterEq     = argsDict->Dict.get("eq")->Option.flatMap(JSON.Decode.string)
+          let reverse      = argsDict->Dict.get("reverse")->Option.flatMap(JSON.Decode.bool)->Option.getOr(false)
+          let limit        = argsDict->Dict.get("limit")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+          let nextTokenStr = argsDict->Dict.get("nextToken")->Option.flatMap(JSON.Decode.string)
+          let offset = nextTokenStr->Option.flatMap(s => Int.fromString(s))->Option.getOr(0)
           switch Bus.getQueryDb(name) {
           | Some(ops) =>
             let items =
@@ -253,8 +265,19 @@ module Make = (Bus: InMemory_Bus.T) => {
               ->Stream.runCollect
               ->Effect.catchAll(_ => Effect.succeed([]))
               ->Effect.runPromise
-            items->JSON.Encode.array
-          | None => []->JSON.Encode.array
+            let result = SortKey_Filter.apply(
+              ~items,
+              ~skField=sf,
+              ~prefix=?filterPrefix,
+              ~from=?filterFrom,
+              ~to_=?filterTo,
+              ~eq=?filterEq,
+              ~reverse,
+              ~limit=?limit,
+              ~offset,
+            )
+            Obj.magic({"items": result.items, "nextToken": result.nextToken->Nullable.fromOption})
+          | None => Obj.magic({"items": [], "nextToken": Nullable.null})
           }
         }
       }

@@ -50,16 +50,40 @@ let strip_partition_tag_field_attr (attrs : attributes) =
     not (String.equal attr.attr_name.txt "partitionTag")
   ) attrs
 
-(** @noTag — suppresses auto-tagging on *Id fields that are not DCB keys. *)
+(** @noDcbTag — suppresses auto-tagging on *Id fields that are not DCB keys.
+    @noTag is the deprecated predecessor; using it raises a compile error. *)
 let has_no_tag_field_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) ->
-    String.equal attr.attr_name.txt "noTag"
+    String.equal attr.attr_name.txt "noDcbTag"
   ) attrs
 
 let strip_no_tag_field_attr (attrs : attributes) =
   List.filter (fun (attr : attribute) ->
-    not (String.equal attr.attr_name.txt "noTag")
+    not (String.equal attr.attr_name.txt "noDcbTag")
   ) attrs
+
+(** Raise a deprecation error if @noTag (old name) is used. *)
+let check_deprecated_no_tag (str : structure) : unit =
+  List.iter (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.iter (fun (td : type_declaration) ->
+        (match td.ptype_kind with
+         | Ptype_variant ctors ->
+           List.iter (fun (c : constructor_declaration) ->
+             (match c.pcd_args with
+              | Pcstr_record lds ->
+                List.iter (fun (ld : label_declaration) ->
+                  if List.exists (fun (a : attribute) -> String.equal a.attr_name.txt "noTag") ld.pld_attributes then
+                    Location.raise_errorf ~loc:ld.pld_loc
+                      "@noTag was renamed to @noDcbTag. Please update this annotation."
+                ) lds
+              | _ -> ())
+           ) ctors
+         | _ -> ())
+      ) decls
+    | _ -> ()
+  ) str
 
 (** @dcbTag — explicit opt-in DCB tag for fields that don't follow *Id naming. *)
 let has_explicit_dcb_tag_field_attr (attrs : attributes) =
@@ -183,7 +207,7 @@ let transform_explicit_dcb_tags ~loc (str : structure) : structure =
     else ld
   ) str
 
-(** @noTag — strips the field attribute, leaving the type untouched. Runs unconditionally. *)
+(** @noDcbTag — strips the field attribute, leaving the type untouched. Runs unconditionally. *)
 let strip_no_tag_attrs (str : structure) : structure =
   map_schema_fields (fun ld ->
     if has_no_tag_field_attr ld.pld_attributes then

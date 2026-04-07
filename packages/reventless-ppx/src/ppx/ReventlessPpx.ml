@@ -109,13 +109,14 @@ let gen_open_readmodel ~loc =
     };
     pstr_loc = loc }
 
-let gen_config_let ~loc =
-  ignore loc;
-  [%stri let config = config()]
+let gen_config_let ~loc body =
+  StateAnnotations.generate_config ~loc body
 
-let gen_sub_id_config_let ~loc =
-  ignore loc;
-  [%stri let subIdConfig = None]
+let gen_sub_id_config ~loc body =
+  StateAnnotations.generate_sub_id_config ~loc body
+
+let gen_make_id ~loc body =
+  StateAnnotations.generate_make_id ~loc body
 
 (* --- Phase 6.1: @reventless.delegate inside Delegate modules --- *)
 
@@ -296,6 +297,7 @@ let transform (str : structure) : structure =
     let dcb_tags = has_dcb_tags_attr str
                    || Util.is_in_slice_folder loc.loc_start.pos_fname in
     let body = strip_ppx_attrs str in
+    let () = DcbTagInference.check_deprecated_no_tag body in
     let body = if dcb_tags then DcbTagInference.transform_structure ~loc body else body in
     let body = DcbTagInference.transform_partition_tags ~loc body in
     let body = DcbTagInference.transform_composite_partition_tags ~loc body in
@@ -317,13 +319,34 @@ let transform (str : structure) : structure =
         prefix := !prefix @ [gen_name ~loc name];
       if has_reventless_spec && not (Util.has_module_binding "Id" body) then
         prefix := !prefix @ [gen_module_id ~loc];
+      let is_readmodel =
+        Util.is_readmodel_filename loc.loc_start.pos_fname
+        && Util.has_schema_state_type body
+        && not (Util.has_let_binding "config" body)
+      in
+      let is_stateview =
+        Util.is_stateview_filename loc.loc_start.pos_fname
+        && Util.has_schema_state_type body
+        && (not (Util.has_let_binding "subIdConfig" body)
+            || not (Util.has_let_binding "config" body))
+      in
+      (* Generate subIdConfig and makeId BEFORE stripping annotations *)
+      let sub_id_items = gen_sub_id_config ~loc body in
+      let make_id_items = gen_make_id ~loc body in
       let readmodel_suffix =
-        if Util.is_readmodel_filename loc.loc_start.pos_fname
-           && Util.has_schema_state_type body
-           && not (Util.has_let_binding "config" body)
-        then [gen_open_readmodel ~loc; gen_config_let ~loc; gen_sub_id_config_let ~loc]
+        if is_readmodel
+        then [gen_config_let ~loc body] @ sub_id_items @ make_id_items
+        else if is_stateview then
+          (if not (Util.has_let_binding "config" body) then [gen_config_let ~loc body] else [])
+          @ sub_id_items @ make_id_items
         else []
       in
+      let body = if is_readmodel || is_stateview
+                 then StateAnnotations.strip_sub_id_attrs body
+                      |> StateAnnotations.strip_id_attrs
+                      |> StateAnnotations.strip_index_attrs
+                      |> StateAnnotations.strip_resolver_attrs
+                 else body in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then
           [ModuleUrl.gen_module_url ~loc specifier]

@@ -46,10 +46,42 @@ function Make(ReadModelSpec) {
         _0: []
       }, (acc, state) => Stdlib_Result.flatMap(acc, arr => Stdlib_Result.map(decode(id, state), s => arr.concat([s])))));
     };
+    let injectSubId = (dict, state) => {
+      let match = ReadModelSpec.subIdConfig;
+      if (match !== undefined) {
+        dict[match.subIdField] = match.getSubId(state);
+        return;
+      }
+    };
+    let injectCompositeIndexAttrs = dict => {
+      let getStr = field => Stdlib_Option.getOr(Stdlib_Option.flatMap(dict[field], Stdlib_JSON.Decode.string), "");
+      ReadModelSpec.config.indexes.forEach(idx => {
+        let fs = idx.pkFields;
+        if (fs !== undefined && fs.length > 1) {
+          let sep = Stdlib_Option.getOr(idx.pkSep, "/");
+          let value = fs.map(getStr).join(sep);
+          let attrName = Stdlib_Option.getOr(idx.idField, "_pk");
+          dict[attrName] = value;
+        }
+        let fs$1 = idx.skFields;
+        if (fs$1 === undefined) {
+          return;
+        }
+        if (fs$1.length <= 1) {
+          return;
+        }
+        let sep$1 = Stdlib_Option.getOr(idx.skSep, "/");
+        let value$1 = fs$1.map(getStr).join(sep$1);
+        let attrName$1 = Stdlib_Option.getOr(idx.subIdField, "_sk");
+        dict[attrName$1] = value$1;
+      });
+    };
     let save = async (id, state, saveMode, ttl) => {
       let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
       if (dict !== undefined) {
         dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
+        injectSubId(dict, state);
+        injectCompositeIndexAttrs(dict);
         return await Ops.jsonOps.save(ReadModelSpec.Id.toString(id), dict, saveMode, ttl);
       } else {
         return {
@@ -73,6 +105,8 @@ function Make(ReadModelSpec) {
           let dict = Stdlib_JSON.Decode.object(Message$ReventlessCore.encode(state, ReadModelSpec.stateSchema));
           if (dict !== undefined) {
             dict["id"] = Message$ReventlessCore.encode(id, ReadModelSpec.Id.schema);
+            injectSubId(dict, state);
+            injectCompositeIndexAttrs(dict);
             return {
               TAG: "Ok",
               _0: batch.concat([[
@@ -114,6 +148,8 @@ function Make(ReadModelSpec) {
       decode: decode,
       loadStream: loadStream,
       load: load,
+      injectSubId: injectSubId,
+      injectCompositeIndexAttrs: injectCompositeIndexAttrs,
       save: save,
       saveBatch: saveBatch,
       count: count,

@@ -257,7 +257,7 @@ cat > "$DCB/src/StateChangeSlice/RecordDemand.res" <<'EOF'
 type event =
   | DemandRecorded({
       @partitionTag productId: string,
-      @noTag orderId: string,
+      @noDcbTag orderId: string,
     })
 
 @schema
@@ -283,6 +283,18 @@ type event = Synced
 type error = unit
 EOF
 
+# @noDcbTag: suppresses auto-tagging on *Id field that is not a DCB key
+cat > "$DCB/src/StateChangeSlice/OrderPlacement.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = PlaceOrder({orderId: string, @noDcbTag customerId: string})
+@schema
+type event = OrderPlaced({@partitionTag orderId: string, customerId: string})
+@schema
+type error = unit
+EOF
+
 # @dcbTag: outside a slice folder (no dcbTags auto-enabled), non-*Id field name
 cat > "$DCB/src/SkuCatalog.res" <<'EOF'
 @@reventless.spec
@@ -303,6 +315,264 @@ cat > "$PLUGIN/src/StateView/ProductsView.res" <<'EOF'
 
 @schema
 type state = { count: int }
+EOF
+
+# ─── Fixture: @subId on ReadModel ──────────────────────────────────
+
+cat > "$PLUGIN/src/ReadModel/VersionedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { itemId: string, @subId version: string, data: string }
+EOF
+
+# ─── Fixture: @compositeSubId on ReadModel ─────────────────────────
+
+cat > "$PLUGIN/src/ReadModel/CompositeReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  itemId: string,
+  @compositeSubId region: string,
+  @compositeSubId date: string,
+  value: float,
+}
+EOF
+
+# ─── Fixture: @compositeSubId with custom sep ─────────────────────
+
+cat > "$PLUGIN/src/ReadModel/CustomSepReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  itemId: string,
+  @compositeSubId(":") tenantId: string,
+  @compositeSubId location: string,
+  data: string,
+}
+EOF
+
+# ─── Fixture: no sub-ID annotation → subIdConfig = None ──────────
+
+# (ProductsReadModel.res already defined above — has no @subId)
+
+# ─── Fixture: StateViewSlice with @subId ──────────────────────────
+
+mkdir -p "$PLUGIN/src/StateViewSlice"
+cat > "$PLUGIN/src/StateViewSlice/TimelineView.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { userId: string, @subId timestamp: string, action: string }
+
+@schema
+type consumedEvent = ActionPerformed({userId: string, timestamp: string, action: string})
+
+let project = event => switch event {
+  | ActionPerformed({userId, timestamp, action}) =>
+    [Reventless.Projection.Set(userId, {userId, timestamp, action})]
+}
+EOF
+
+# ─── Fixture: standalone @index on ReadModel ─────────────────────
+
+cat > "$PLUGIN/src/ReadModel/IndexedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, @index category: string, name: string }
+EOF
+
+# ─── Fixture: named @index + @indexSubId ──────────────────────────
+
+cat > "$PLUGIN/src/ReadModel/OwnerReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @index("byOwner") ownerId: string,
+  @indexSubId("byOwner") createdAt: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: no index annotations → config() empty ──────────────
+
+# (ProductsReadModel.res above has no @index)
+
+# ─── Fixture: @id on ReadModel ───────────────────────────────────
+
+cat > "$PLUGIN/src/ReadModel/EntityReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id entityId: string, name: string }
+EOF
+
+# ─── Fixture: @compositeId on ReadModel ──────────────────────────
+
+cat > "$PLUGIN/src/ReadModel/CompositeKeyReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @compositeId environment: string,
+  @compositeId platformName: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @compositeId with custom sep ───────────────────────
+
+cat > "$PLUGIN/src/ReadModel/CustomIdSepReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @compositeId(":") tenantId: string,
+  @compositeId region: string,
+  count: int,
+}
+EOF
+
+# ─── Fixture: composite @index pk (2 fields → _name_pk) ──────────
+
+cat > "$PLUGIN/src/ReadModel/CompositePkIndexReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @index("byRegion") countryId: string,
+  @index("byRegion") regionId: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: composite @indexSubId sk (2 fields → _name_sk) ─────
+
+cat > "$PLUGIN/src/ReadModel/CompositeSkIndexReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @index("byDate") categoryId: string,
+  @indexSubId("byDate") year: string,
+  @indexSubId("byDate") month: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @index with KEYS_ONLY projection ───────────────────
+
+cat > "$PLUGIN/src/ReadModel/KeysOnlyIndexReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @index({name: "byCategory", projection: "KEYS_ONLY"}) categoryId: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @index with authorization (group + authTable) ──────
+
+cat > "$PLUGIN/src/ReadModel/AuthIndexReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @index({name: "byOwner", group: "Admins", authTable: "AuthTable"}) ownerId: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @index with INCLUDE projection ─────────────────────
+
+cat > "$PLUGIN/src/ReadModel/IncludeIndexReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @index({name: "byTag", projection: "INCLUDE", fields: ["id", "name"]}) tagId: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @resolves on ReadModel ────────────────────────────────
+
+cat > "$PLUGIN/src/ReadModel/ResolvedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @resolves({table: "Orders", field: "order"}) orderId: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @resolves with via (index target) ─────────────────
+
+cat > "$PLUGIN/src/ReadModel/IndexResolvedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @resolves({table: "Products", field: "product", via: "byOwner"}) productId: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @resolvesMany on ReadModel ─────────────────────────
+
+cat > "$PLUGIN/src/ReadModel/MultiResolvedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @resolvesMany({table: "Tags", field: "tags"}) tagIds: array<string>,
+  name: string,
+}
+EOF
+
+# ─── Fixture: @compositeId + @resolves on same type ──────────────
+
+cat > "$PLUGIN/src/ReadModel/CompositeKeyResolvedReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @compositeId tenantId: string,
+  @compositeId productId: string,
+  @resolves({table: "Orders", field: "order"}) orderId: string,
+  name: string,
+}
+EOF
+
+# ─── Fixture: StateViewSlice without @subId ───────────────────────
+
+cat > "$PLUGIN/src/StateViewSlice/SimpleView.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, name: string }
+
+@schema
+type consumedEvent = Created({id: string, name: string})
+
+let project = event => switch event {
+  | Created({id, name}) => [Reventless.Projection.Set(id, {id, name})]
+}
 EOF
 
 # ─── Build PPX ──────────────────────────────────────────────────────
@@ -433,7 +703,7 @@ assert_js_not_contains "$JS" 'partitionTag' "@partitionTag: field attr stripped"
 # orderId ends in Id but has @noTag — should NOT appear as DcbTag.string
 # productId has @partitionTag — count of 'partition' refs covers it
 # orderId should not produce a 'string' schema beyond the plain S.string
-assert_js_not_contains "$JS" 'noTag'     "@noTag: field attr stripped"
+assert_js_not_contains "$JS" 'noDcbTag'  "@noDcbTag: field attr stripped"
 # Check orderId is NOT tagged: no DcbTag.string ref for orderId
 # (partition ref covers productId; orderId must not add another DcbTag ref)
 PARTITION_COUNT=$(grep -c 'DcbTag' "$JS" 2>/dev/null || echo 0)
@@ -446,6 +716,15 @@ fi
 assert_js_not_contains "$JS" 'DcbTag.string' "@noTag: DcbTag.string absent (orderId suppressed)"
 
 echo ""
+echo "=== Test: @noDcbTag suppresses auto-tagging on *Id field ==="
+JS="$DCB/src/StateChangeSlice/OrderPlacement.res.mjs"
+assert_js_not_contains "$JS" 'noDcbTag'  "@noDcbTag: annotation stripped from output"
+# customerId ends in Id but has @noDcbTag — must not produce a DcbTag.string ref
+# orderId has @partitionTag — produces a DcbTag.partition ref
+assert_js_contains    "$JS" 'DcbTag'     "@noDcbTag: orderId still tagged via @partitionTag"
+assert_js_not_contains "$JS" 'DcbTag.string' "@noDcbTag: customerId NOT tagged (suppressed)"
+
+echo ""
 echo "=== Test: @dcbTag injects DcbTag.string on non-*Id field ==="
 JS="$DCB/src/SkuCatalog.res.mjs"
 assert_js_contains    "$JS" 'DcbTag'    "@dcbTag: DcbTag referenced for non-*Id field"
@@ -455,6 +734,319 @@ echo ""
 echo "=== Test: slice folder — slice-layer suffix View still stripped ==="
 JS="$PLUGIN/src/StateView/ProductsView.res.mjs"
 assert_js_contains "$JS" 'let name = "Products"'  "View suffix still stripped inside slice folder"
+
+echo ""
+echo "=== Test: @subId on ReadModel → subIdConfig with direct accessor ==="
+JS="$PLUGIN/src/ReadModel/VersionedReadModel.res.mjs"
+assert_js_contains "$JS" 'subIdConfig'             "@subId: subIdConfig generated"
+assert_js_contains "$JS" 'subIdField'              "@subId: subIdField present in config"
+assert_js_contains "$JS" '"version"'               "@subId: field name 'version' in config"
+assert_js_contains "$JS" 'getSubId'                "@subId: getSubId accessor generated"
+assert_js_not_contains "$JS" '@subId'               "@subId: annotation stripped from output"
+
+echo ""
+echo "=== Test: @compositeSubId → subIdConfig with composite accessor ==="
+JS="$PLUGIN/src/ReadModel/CompositeReadModel.res.mjs"
+assert_js_contains "$JS" 'subIdConfig'             "@compositeSubId: subIdConfig generated"
+assert_js_contains "$JS" '"_subId"'                "@compositeSubId: subIdField = '_subId'"
+assert_js_contains "$JS" 'getSubId'                "@compositeSubId: getSubId accessor generated"
+assert_js_not_contains "$JS" 'compositeSubId'      "@compositeSubId: annotation stripped from output"
+
+echo ""
+echo "=== Test: @compositeSubId with custom sep ==="
+JS="$PLUGIN/src/ReadModel/CustomSepReadModel.res.mjs"
+assert_js_contains "$JS" 'subIdConfig'             "@compositeSubId(sep): subIdConfig generated"
+assert_js_contains "$JS" '"_subId"'                "@compositeSubId(sep): subIdField = '_subId'"
+assert_js_contains "$JS" '":"'                     "@compositeSubId(sep): custom separator ':' in output"
+
+echo ""
+echo "=== Test: no sub-ID annotation → subIdConfig = None ==="
+JS="$PLUGIN/src/ReadModel/ProductsReadModel.res.mjs"
+assert_js_not_contains "$JS" 'getSubId'            "no annotation: no getSubId"
+# subIdConfig should be undefined (None compiles to undefined)
+assert_js_contains "$JS" 'subIdConfig'             "no annotation: subIdConfig still defined"
+
+echo ""
+echo "=== Test: StateViewSlice with @subId ==="
+JS="$PLUGIN/src/StateViewSlice/TimelineView.res.mjs"
+assert_js_contains "$JS" 'subIdConfig'             "SV @subId: subIdConfig generated"
+assert_js_contains "$JS" '"timestamp"'             "SV @subId: field name 'timestamp' in config"
+assert_js_contains "$JS" 'getSubId'                "SV @subId: getSubId accessor generated"
+assert_js_contains "$JS" 'let name = "Timeline"'   "SV @subId: View suffix stripped"
+assert_js_not_contains "$JS" 'config()'            "SV @subId: no ReadModel config injected"
+
+echo ""
+echo "=== Test: StateViewSlice without @subId → subIdConfig = None ==="
+JS="$PLUGIN/src/StateViewSlice/SimpleView.res.mjs"
+assert_js_contains "$JS" 'subIdConfig'             "SV no annotation: subIdConfig defined"
+assert_js_not_contains "$JS" 'getSubId'            "SV no annotation: no getSubId"
+assert_js_contains "$JS" 'let name = "Simple"'     "SV no annotation: View suffix stripped"
+assert_js_not_contains "$JS" 'config()'            "SV no annotation: no ReadModel config injected"
+
+echo ""
+echo "=== Test: standalone @index → standalone index entry ==="
+JS="$PLUGIN/src/ReadModel/IndexedReadModel.res.mjs"
+assert_js_contains "$JS" 'config'                  "@index: config generated"
+assert_js_contains "$JS" '"category"'              "@index: field name as index name"
+assert_js_contains "$JS" '"S"'                     "@index: type_ inferred as S for string"
+assert_js_contains "$JS" '"ALL"'                   "@index: projectionType ALL"
+assert_js_not_contains "$JS" 'Reventless_ReadModel.index' "@index: not a field access (annotation stripped)"
+
+echo ""
+echo "=== Test: named @index + @indexSubId → index with pk + sk ==="
+JS="$PLUGIN/src/ReadModel/OwnerReadModel.res.mjs"
+assert_js_contains "$JS" '"byOwner"'               "@index(name): index name in config"
+assert_js_contains "$JS" '"ownerId"'               "@index(name): idField = ownerId"
+assert_js_contains "$JS" '"createdAt"'             "@indexSubId: subIdField = createdAt"
+assert_js_not_contains "$JS" 'indexSubId'          "@indexSubId: annotation stripped"
+
+echo ""
+echo "=== Test: no @index → config() with no indexes ==="
+JS="$PLUGIN/src/ReadModel/ProductsReadModel.res.mjs"
+assert_js_contains "$JS" 'config'                  "no @index: config still generated"
+
+echo ""
+echo "=== Test: @id on ReadModel → makeId with direct accessor ==="
+JS="$PLUGIN/src/ReadModel/EntityReadModel.res.mjs"
+assert_js_contains "$JS" 'makeId'                    "@id: makeId generated"
+assert_js_contains "$JS" 'entityId'                  "@id: field name in accessor"
+assert_js_not_contains "$JS" '@id'                    "@id: annotation stripped from output"
+
+echo ""
+echo "=== Test: @compositeId on ReadModel → makeId with composite accessor ==="
+JS="$PLUGIN/src/ReadModel/CompositeKeyReadModel.res.mjs"
+assert_js_contains "$JS" 'makeId'                    "@compositeId: makeId generated"
+assert_js_contains "$JS" 'environment'               "@compositeId: first field in accessor"
+assert_js_contains "$JS" 'platformName'              "@compositeId: second field in accessor"
+assert_js_not_contains "$JS" 'compositeId'            "@compositeId: annotation stripped from output"
+
+echo ""
+echo "=== Test: @compositeId with custom sep ==="
+JS="$PLUGIN/src/ReadModel/CustomIdSepReadModel.res.mjs"
+assert_js_contains "$JS" 'makeId'                    "@compositeId(sep): makeId generated"
+assert_js_contains "$JS" '":"'                       "@compositeId(sep): custom separator ':' in output"
+
+echo ""
+echo "=== Test: composite @index pk → synthetic _name_pk + pkFields ==="
+JS="$PLUGIN/src/ReadModel/CompositePkIndexReadModel.res.mjs"
+assert_js_contains "$JS" '"_byRegion_pk"'             "@index composite pk: synthetic idField name"
+assert_js_contains "$JS" '"countryId"'                "@index composite pk: first source field in pkFields"
+assert_js_contains "$JS" '"regionId"'                 "@index composite pk: second source field in pkFields"
+
+echo ""
+echo "=== Test: composite @indexSubId sk → synthetic _name_sk + skFields ==="
+JS="$PLUGIN/src/ReadModel/CompositeSkIndexReadModel.res.mjs"
+assert_js_contains "$JS" '"_byDate_sk"'               "@indexSubId composite sk: synthetic subIdField name"
+assert_js_contains "$JS" '"year"'                     "@indexSubId composite sk: first source field in skFields"
+assert_js_contains "$JS" '"month"'                    "@indexSubId composite sk: second source field in skFields"
+
+echo ""
+echo "=== Test: @index with KEYS_ONLY projection ==="
+JS="$PLUGIN/src/ReadModel/KeysOnlyIndexReadModel.res.mjs"
+assert_js_contains "$JS" '"byCategory"'              "@index(KEYS_ONLY): index name in config"
+assert_js_contains "$JS" '"KEYS_ONLY"'               "@index(KEYS_ONLY): KEYS_ONLY value in output"
+assert_js_not_contains "$JS" '"ALL"'                 "@index(KEYS_ONLY): ALL not present"
+
+echo ""
+echo "=== Test: @index with authorization (group + authTable) ==="
+JS="$PLUGIN/src/ReadModel/AuthIndexReadModel.res.mjs"
+assert_js_contains "$JS" '"byOwner"'                 "@index(auth): index name in config"
+assert_js_contains "$JS" '"Admins"'                  "@index(auth): group in authorization"
+assert_js_contains "$JS" '"AuthTable"'               "@index(auth): tableName in authorization"
+
+echo ""
+echo "=== Test: @index with INCLUDE projection ==="
+JS="$PLUGIN/src/ReadModel/IncludeIndexReadModel.res.mjs"
+assert_js_contains "$JS" '"byTag"'                   "@index(INCLUDE): index name in config"
+assert_js_contains "$JS" '"id"'                      "@index(INCLUDE): first included field"
+assert_js_contains "$JS" '"name"'                    "@index(INCLUDE): second included field"
+
+echo ""
+echo "=== Test: @resolves → idResolverConfig generated ==="
+JS="$PLUGIN/src/ReadModel/ResolvedReadModel.res.mjs"
+assert_js_contains "$JS" '"Orders"'                  "@resolves: tableName in config"
+assert_js_contains "$JS" '"order"'                   "@resolves: resolvedField in config"
+assert_js_contains "$JS" '"orderId"'                 "@resolves: idField in source config"
+assert_js_not_contains "$JS" 'resolves'              "@resolves: annotation stripped"
+
+echo ""
+echo "=== Test: @resolves with ~via → Index target ==="
+JS="$PLUGIN/src/ReadModel/IndexResolvedReadModel.res.mjs"
+assert_js_contains "$JS" '"byOwner"'                 "@resolves via: index name in target"
+assert_js_contains "$JS" '"Products"'                "@resolves via: tableName in config"
+assert_js_contains "$JS" '"productId"'               "@resolves via: idField in source config"
+
+echo ""
+echo "=== Test: @resolvesMany → idsResolverConfig generated ==="
+JS="$PLUGIN/src/ReadModel/MultiResolvedReadModel.res.mjs"
+assert_js_contains "$JS" '"Tags"'                    "@resolvesMany: tableName in config"
+assert_js_contains "$JS" '"tags"'                    "@resolvesMany: resolvedField in config"
+assert_js_contains "$JS" '"tagIds"'                  "@resolvesMany: idsField in source config"
+assert_js_not_contains "$JS" 'resolvesMany'          "@resolvesMany: annotation stripped"
+
+echo ""
+echo "=== Test: @compositeId + @resolves on same type → both outputs independent ==="
+JS="$PLUGIN/src/ReadModel/CompositeKeyResolvedReadModel.res.mjs"
+assert_js_contains "$JS" 'tenantId'                  "@compositeId+@resolves: tenantId in makeId"
+assert_js_contains "$JS" 'productId'                 "@compositeId+@resolves: productId in makeId"
+assert_js_contains "$JS" '"Orders"'                  "@compositeId+@resolves: tableName in resolver config"
+assert_js_contains "$JS" '"orderId"'                 "@compositeId+@resolves: idField in resolver source"
+assert_js_not_contains "$JS" 'compositeId'           "@compositeId+@resolves: @compositeId annotation stripped"
+assert_js_not_contains "$JS" 'resolves'              "@compositeId+@resolves: @resolves annotation stripped"
+
+# ─── Fixture: error package (expected to fail compilation) ──────────
+
+ERROR="$TMPDIR/error-pkg"
+mkdir -p "$ERROR/src/ReadModel"
+
+cat > "$ERROR/package.json" <<'EOF'
+{ "name": "@test/error-pkg" }
+EOF
+
+cat > "$ERROR/rescript.json" <<EOF
+{
+  "name": "@test/error-pkg",
+  "namespace": "TestError",
+  "ppx-flags": ["$PPX_BIN", "sury-ppx/bin"],
+  "package-specs": { "module": "esmodule", "in-source": true },
+  "suffix": ".res.mjs",
+  "sources": [{ "dir": "src", "subdirs": true }],
+  "dependencies": ["sury", "@reventlessdev/reventless-spec"]
+}
+EOF
+
+ln -s "$REPO_ROOT/node_modules" "$ERROR/node_modules"
+
+echo ""
+echo "=== Test: PPX error — @subId + @compositeSubId on same type ==="
+
+cat > "$ERROR/src/ReadModel/ConflictModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, @subId version: string, @compositeSubId region: string }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@subId + @compositeSubId conflict" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@subId and @compositeSubId cannot both appear"; then
+    pass "@subId + @compositeSubId on same type → correct compile error"
+  else
+    fail "@subId + @compositeSubId conflict" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/ConflictModel.res"
+
+echo ""
+echo "=== Test: PPX error — @subId on non-string field ==="
+
+cat > "$ERROR/src/ReadModel/NonStringModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, @subId count: int }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@subId on non-string field" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@subId can only be used on string fields"; then
+    pass "@subId on non-string field → correct compile error"
+  else
+    fail "@subId on non-string field" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/NonStringModel.res"
+
+echo ""
+echo "=== Test: PPX error — @id + @compositeId on same type ==="
+
+cat > "$ERROR/src/ReadModel/IdConflict.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id entityId: string, @compositeId region: string }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@id + @compositeId conflict" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@id and @compositeId cannot both appear"; then
+    pass "@id + @compositeId on same type → correct compile error"
+  else
+    fail "@id + @compositeId conflict" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/IdConflict.res"
+
+echo ""
+echo "=== Test: PPX error — @id on non-string field ==="
+
+cat > "$ERROR/src/ReadModel/NonStringId.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id count: int, name: string }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@id on non-string field" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@id can only be used on string fields"; then
+    pass "@id on non-string field → correct compile error"
+  else
+    fail "@id on non-string field" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/NonStringId.res"
+
+echo ""
+echo "=== Test: PPX error — @indexSubId without matching @index ==="
+
+cat > "$ERROR/src/ReadModel/OrphanSkReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, @indexSubId("byOwner") createdAt: string, name: string }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@indexSubId without @index" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@indexSubId.*has no matching @index"; then
+    pass "@indexSubId without matching @index → correct compile error"
+  else
+    fail "@indexSubId without @index" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/OrphanSkReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @noTag (old name) produces deprecation error ==="
+
+cat > "$ERROR/src/ReadModel/OldNoTag.res" <<'EOF'
+@@reventless.spec
+@@reventless.dcbTags
+
+@schema
+type event = OrderPlaced({orderId: string, @noTag customerId: string})
+@schema
+type command = unit
+@schema
+type error = unit
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@noTag deprecation" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@noTag was renamed to @noDcbTag"; then
+    pass "@noTag (old name) → correct deprecation error"
+  else
+    fail "@noTag deprecation" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/OldNoTag.res"
 
 echo ""
 echo "─────────────────────────"

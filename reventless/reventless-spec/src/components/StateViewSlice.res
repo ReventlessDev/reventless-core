@@ -52,4 +52,10 @@ module type Spec = {
   Receives only events declared in `consumedEvent` — no wildcard needed.
   */
   let project: consumedEvent => array<Projection.action<string, state>>
+
+  /** Infrastructure configuration (indexes, resolvers). */
+  let config: ReadModel.config
+
+  /** Optional composite-key configuration. `None` for single-key tables. */
+  let subIdConfig: option<ReadModel.subIdConfig<state>>
 }
