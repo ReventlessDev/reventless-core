@@ -10,10 +10,10 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
-let bundledSideEffectInfos = {};
+let sideEffectInfos = {};
 
 function registerSideEffectHandler(sideEffectHandlerName, sideEffectModulePaths) {
-  bundledSideEffectInfos[sideEffectHandlerName] = {
+  sideEffectInfos[sideEffectHandlerName] = {
     sideEffectModulePaths: sideEffectModulePaths
   };
 }
@@ -32,7 +32,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
   let eventCollectorName = Stdlib_Option.getOr(eventCollectorResource.__name, "Unnamed");
   let parentResource = eventCollectorResource.__parentResource;
   if (parentResource === undefined) {
-    return Stdlib_JsError.throwWithMessage(`forEventCollector(bundled): eventCollector ` + eventCollectorName + ` has no parent`);
+    return Stdlib_JsError.throwWithMessage(`forEventCollector(single): eventCollector ` + eventCollectorName + ` has no parent`);
   }
   let parentName = Stdlib_Option.getOr(parentResource.__name, "Unnamed");
   if (grandParent.contents === undefined) {
@@ -79,7 +79,7 @@ function finish() {
       let handlerOutputs = [];
       let packageDirs = {};
       storedSpecs.forEach(spec => {
-        let info = bundledSideEffectInfos[spec.componentName];
+        let info = sideEffectInfos[spec.componentName];
         if (info !== undefined) {
           info.sideEffectModulePaths.forEach(modPath => {
             let pkg = Util_Bundle$ReventlessAws.extractPackageName(modPath);
@@ -93,7 +93,7 @@ function finish() {
           handlerOutputs.push(handlerJson);
           return;
         }
-        console.warn(`SideEffectHandlerRuntime_Builder_Single: no bundled info registered for ` + spec.componentName);
+        console.warn(`SideEffectHandlerRuntime_Builder_Single: no handler registered for ` + spec.componentName);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
@@ -123,7 +123,7 @@ let RuntimeEnvironment;
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
-  bundledSideEffectInfos,
+  sideEffectInfos,
   registerSideEffectHandler,
   storedSpecs,
   grandParent,

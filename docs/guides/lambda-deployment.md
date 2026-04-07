@@ -1,6 +1,6 @@
-# Bundled Handlers and Platform Deployment
+# Lambda Deployment Architecture
 
-This guide explains the two deployment strategies in Reventless — **non-bundled** (closure-based) and **bundled** (code-asset-based) — and how they relate to the **in-memory** and **AWS** platforms. It covers the architecture, the motivation for bundling, and the conventions for writing platform-agnostic vs. AWS-specific plugin code.
+This guide explains how Reventless deploys Lambda handlers on AWS, how this relates to the **in-memory** and **AWS** platforms, and the conventions for writing platform-agnostic vs. AWS-specific plugin code.
 
 For related guides, see:
 - [Application Development Layers](application-development-layers.md) — the three-layer architecture
@@ -9,7 +9,7 @@ For related guides, see:
 
 ---
 
-## 1. Background: Why Bundled Handlers Exist
+## 1. Background: Why Lambda Code Assets Are Used
 
 ### The Pulumi Serialization Problem
 
@@ -25,11 +25,11 @@ error: Error serializing '(event, ctx) => Effect.Effect.runPro ...':
 
 This is not a bug that can be worked around at individual call sites. Business logic handlers throughout `reventless-aws` (EventLogStorage, CommandTopicChannel, QueryDb, etc.) all use Effect internally. The serialization walker traverses the entire closure graph and hits non-serializable objects deep in the dependency tree.
 
-See `docs/analysis/pulumi-effect-serialization.md` for the full analysis.
+See `docs/analysis/done/pulumi-effect-serialization.md` for the full analysis.
 
-### The Bundled Solution
+### The Code-Asset Solution
 
-Instead of serializing closures, bundled handlers:
+Instead of serializing closures, all Lambda handlers:
 
 1. **Generate** a JavaScript entry point file (source code string) that imports the handler's spec and behavior modules
 2. **Bundle** it with esbuild into a self-contained `index.mjs`
@@ -73,9 +73,9 @@ Layer 2 is where plugin functors live. They accept a `Platform: ReventlessInfra.
 
 Layer 3 instantiates a concrete platform (`ReventlessAws.Platform.Make()` or `ReventlessInMemory.Platform.Make()`) and passes it to the plugin functor. This is the only layer that names a specific provider.
 
-### Where Bundled Handlers Fit
+### Where AWS Builders Fit
 
-Bundled handlers are an **AWS deployment concern**. They exist in Layer 3, in AWS-specific `*_Bundled.res` files that bypass `Platform.T` for components that need bundled Lambda handlers.
+Aggregates, ReadModels, and ExtensionPoints require AWS-specific builders that register Lambda handlers. These live in Layer 3, in `_Aws.res` files.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -87,17 +87,17 @@ Bundled handlers are an **AWS deployment concern**. They exist in Layer 3, in AW
     ┌────────────────┼────────────────────┐
     │                │                    │
     ▼                ▼                    ▼
-  Tests          In-Memory Dev       CatalogPlugin_Bundled.res
+  Tests          In-Memory Dev       CatalogPlugin_Aws.res
   (in-memory)    (GraphQL Yoga)      (Layer 3 — AWS-specific)
-                                       ReventlessAws.Aggregate_Builder_Single_Bundled.Make(...)
+                                       ReventlessAws.Aggregate_Builder_Single.Make(...)
                                        Platform.StateViewSlice.Make(ProductsView)  ← still via Platform
 ```
 
 ---
 
-## 3. Non-Bundled vs. Bundled: Component Comparison
+## 3. AWS Plugin Variants: `_Aws.res` Files
 
-### Non-Bundled (via `Platform.T`)
+### Platform-Agnostic (via `Platform.T`)
 
 ```rescript
 // Layer 2 — works with any platform
@@ -108,86 +108,97 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
-- Handler closures are created inline
-- Infrastructure references captured in closures
-- **In-memory**: works (no serialization needed)
-- **AWS**: **fails at deploy time** — Pulumi cannot serialize Effect-TS closures
+- Works with in-memory (for tests) and AWS (for production)
+- `Platform.Aggregate.Make` on AWS satisfies the type but registers **no Lambda entry point**
+- For a working AWS aggregate Lambda, use the AWS builder directly in a `_Aws.res` variant
 
-### Bundled (direct AWS builder)
+### AWS-Specific (direct AWS builders)
 
 ```rescript
-// Layer 3 — AWS-specific
+// Layer 3 — CatalogPlugin_Aws.res
 module Make = (
   Platform: ReventlessInfra.Platform.T
     with type api = ReventlessAws.Types.AppSync.api
     and type role = ReventlessAws.Types.AppSync.role,
 ) => {
-  module CategoryAggregate = ReventlessAws.Aggregate_Builder_Single_Bundled.Make(
+  // Direct AWS builder — registers Lambda handler
+  module CategoryAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
     Category, CategoryBehavior, NoEventMappings.Make(Category),
-    {
-      let specModulePath = resolveModule(pkg ++ "/Category/Aggregate/Category.res.mjs")
-      let behaviorModulePath = resolveModule(pkg ++ "/Category/Aggregate/CategoryBehavior.res.mjs")
-    },
   )
+
+  // Via Platform — DCB slices get Lambdas through the hook mechanism
+  module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersViewSpec)
 }
 ```
 
 - Handler code is generated as a JS source string, bundled with esbuild
 - Infrastructure references passed as Lambda environment variables
-- Requires `BundledConfig` with module paths so the handler can import specs at runtime
 - **AWS only** — no equivalent needed for in-memory
 
-### What `BundledConfig` Provides
+### Handler Configuration
 
-Each bundled builder requires a `BundledConfig` module. The fields vary by component type:
+Each AWS builder extracts module paths at deploy time so the generated Lambda entry point can `import` the right spec and behavior modules at runtime. These paths are resolved using `Util_Bundle.getModuleSpecifier`, which converts `import.meta.url` to an importable module specifier.
 
-| Component | BundledConfig Fields |
+| Component | Config extracted from |
 |---|---|
-| Aggregate | `specModulePath`, `behaviorModulePath` |
-| ReadModel | `specModulePath`, `mappingsModulePath` |
-| ExtensionPoint | `specModulePath`, `mappingsModulePath`, `publishToAggregatesQueueUrls` |
-| StateViewSlice | `specModulePath` |
-| AutomationSlice | `specModulePath` |
-| OutboundTranslationSlice | `specModulePath` |
-| Task | `callbackModulePaths`, `publishToAggregatesQueueUrls` |
-| Counter | `targetSpecModulePath`, `mappingsModulePath`, `publishQueueUrl` |
+| Aggregate | `Spec.moduleUrl`, `Behavior.moduleUrl` |
+| ReadModel | `Spec.moduleUrl`, `Mappings.moduleUrl` |
+| ExtensionPoint | `Spec.moduleUrl`, `Mappings.moduleUrl` |
+| StateViewSlice | `Spec.moduleUrl` |
+| AutomationSlice | `Spec.moduleUrl` |
+| OutboundTranslationSlice | `Spec.moduleUrl` |
+| Task | callback module URLs, `publishToAggregatesQueueUrls` |
+| Counter | target spec URL, mappings URL, publish queue URL |
 
-Module paths are resolved at deploy time using `Util_Bundle.resolveModule`, which calls Node.js `require.resolve` to convert npm package specifiers to absolute file paths.
+### Which Components Use AWS Builders vs. `Platform.T`
+
+| Component | Uses | Reason |
+|---|---|---|
+| Aggregate | AWS builder directly | Creates Lambda handler |
+| ReadModel | AWS builder directly | Creates Lambda handler |
+| ExtensionPoint | AWS builder directly | Creates Lambda handler |
+| Extension | `Platform.T` | No Lambda handler (maps events between EPs) |
+| StateChangeSlice | `Platform.T` | No own Lambda (events go through DCB CommandTopic Lambda) |
+| StateViewSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
+| AutomationSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
+| OutboundTranslationSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
+| InboundTranslationSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
+| DcbEventLog | `Platform.T` | Infrastructure only (DynamoDB table) |
+| Counter | `Platform.T` | Created inside Platform functor |
+| Task | AWS builder directly | Creates Lambda handler |
 
 ---
 
-## 4. The Bundled Handler Pipeline
+## 4. The Lambda Handler Pipeline
 
-When a bundled component is created, the following pipeline runs at deploy time:
+When an AWS component builder is called, the following pipeline runs at deploy time:
 
 ```
-1. Plugin provides BundledConfig with module paths
+1. Component builder calls RuntimeBuilder.registerXxx (or forEventCollector / forCommandTopic)
+   │  → accumulates handler specs in a module-level dict (does NOT create Lambda yet)
    │
-2. Component builder calls RuntimeBuilder.forEventCollector (or similar)
-   │  → accumulates handler specs in a global array (does NOT create Lambda yet)
+2. RuntimeBuilder.finish() is called (after all components registered)
    │
-3. RuntimeBuilder.finish() is called (after all components registered)
-   │
-4. Util_EntryPoint.generateBundled*EntryPoint() creates JS source code:
-   │  import { makeHandler } from "BundledAggregateHandlerFactory.mjs";
+3. Util_EntryPoint.generateXxxEntryPoint() creates JS source code:
+   │  import { makeHandler } from "AggregateHandlerFactory.mjs";
    │  import * as Spec from "<specModulePath>";
    │  import * as Behavior from "<behaviorModulePath>";
    │  const handler = makeHandler(Spec, Behavior, process.env.TABLE_NAME, ...);
    │  export { handler };
    │
-5. Util_Bundle.bundleEntryPoint() runs esbuild:
+4. Util_Bundle.bundleEntryPoint() runs esbuild:
    │  → writes JS to temp file, bundles to index.mjs, returns Zip archive
    │
-6. RuntimeEnvironment_Lambda.makeBundledFromEntryPoint() creates:
+5. RuntimeEnvironment_Lambda.makeFromCodeAsset() creates:
    │  → IAM role
-   │  → aws.lambda.Function with bundled code + env vars + Lambda Layer
+   │  → aws.lambda.Function with code asset + env vars + Lambda Layer
    │
-7. EventCollectorChannel.connect() wires DynamoDB Stream triggers
+6. EventCollectorChannel.connect() wires DynamoDB Stream triggers
 ```
 
 ### The Lambda Layer
 
-Bundled handlers share a pre-built Lambda Layer (`reventless-layer-builder`) containing common dependencies:
+All Lambda handlers share a pre-built Lambda Layer (`reventless-layer-builder`) containing common dependencies:
 
 | Package | Purpose |
 |---|---|
@@ -196,21 +207,21 @@ Bundled handlers share a pre-built Lambda Layer (`reventless-layer-builder`) con
 | `@reventlessdev/reventless-core` | Core framework |
 | `graphql` | GraphQL parser |
 
-The layer is published to AWS Lambda via CI/CD and attached to all bundled functions. This avoids duplicating 13+ MB of dependencies in every handler's zip archive.
+The layer is published to AWS Lambda via CI/CD and attached to all Lambda functions. This avoids duplicating 13+ MB of dependencies in every handler's zip archive.
 
-### Handler Consolidation
+### Handler Consolidation Strategies
 
-Bundled runtime builders consolidate multiple components into a single Lambda:
+Runtime builders consolidate multiple components into fewer Lambdas:
 
 | Lambda Name | Contents | Runtime Builder |
 |---|---|---|
-| `AllAggregates` | All aggregate handlers | `AggregateRuntime_Builder_Single_Bundled` |
-| `AllReadModels` | All read model projections | `EventCollectorRuntime_Builder_Single_Bundled` |
-| `AllStateViewSlices` | All DCB state view slice handlers | `StateViewSliceRuntime_Builder_Single_Bundled` |
-| `AllAutomationSlices` | All automation + outbound translation slice handlers | `AutomationSliceRuntime_Builder_Single_Bundled` |
-| `*CmdTopic` | Per-aggregate/EP command topic handler | `ExtensionPointRuntime_Builder_*_Bundled` |
-| `*Heartbeat` | Plugin heartbeat handler | `PluginRuntime_Builder_Bundled` |
-| `*-dcb-command-topicCmdTopic` | DCB command topic composite handler | `PluginRuntime_Builder_Bundled` |
+| `AllAggregates` | All aggregate handlers | `AggregateRuntime_Builder_Single` |
+| `AllReadModels` | All read model projections | `EventCollectorRuntime_Builder_Single` |
+| `AllStateViewSlices` | All DCB state view slice handlers | `StateViewSliceRuntime_Builder_Single` |
+| `AllAutomationSlices` | All automation + outbound translation handlers | `AutomationSliceRuntime_Builder_Single` |
+| `*CmdTopic` | Per-aggregate/EP command topic handler | `ExtensionPointRuntime_Builder_PerExtensionPoint` |
+| `*Heartbeat` | Plugin heartbeat handler | `PluginRuntime_Builder` |
+| `*-dcb-command-topicCmdTopic` | DCB command topic composite handler | `PluginRuntime_Builder` |
 
 Each consolidated Lambda receives events from multiple DynamoDB Streams and routes them to the correct handler based on the source ARN (passed via environment variables).
 
@@ -237,63 +248,41 @@ ordering/                          # Platform-agnostic (Layer 1+2)
 
 ordering-aws/                      # AWS deployment (Layer 3)
 ├── src/
-│   ├── OrderingPlugin_Bundled.res # Bundled plugin variant
+│   ├── OrderingPlugin_Aws.res     # AWS plugin variant
 │   ├── Main.res                   # Composition root
 │   └── index.mjs                  # JS entry point (DCB config registration)
 └── package.json                   # deps: reventless-aws, ordering (private)
 ```
 
-### The `_Bundled.res` Pattern
+### The `_Aws.res` Pattern
 
-A `_Bundled.res` file mirrors the platform-agnostic plugin but substitutes bundled builders for components that need Lambda handlers:
+A `_Aws.res` file mirrors the platform-agnostic plugin but substitutes direct AWS builders for components that need Lambda handlers:
 
 ```rescript
-// OrderingPlugin_Bundled.res
-let resolveModule = ReventlessAws.Util_Bundle.resolveModule
-let pkg = "@reventlessdev/online-shop-hybrid-ordering/src"
-
+// OrderingPlugin_Aws.res
 module Make = (
   Platform: ReventlessInfra.Platform.T
     with type api = ReventlessAws.Types.AppSync.api
     and type role = ReventlessAws.Types.AppSync.role,
 ) => {
-  // BUNDLED — bypasses Platform.T, uses AWS builder directly
-  module CustomerAggregate = ReventlessAws.Aggregate_Builder_Single_Bundled.Make(
+  // Direct AWS builder — registers Lambda handler
+  module CustomerAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
     OrderingPlugin.Customer, OrderingPlugin.CustomerBehavior,
     ReventlessInfra.NoEventMappings.Make(OrderingPlugin.Customer),
-    { let specModulePath = resolveModule(pkg ++ "/Customer/Aggregate/Customer.res.mjs")
-      let behaviorModulePath = resolveModule(pkg ++ "/Customer/Aggregate/CustomerBehavior.res.mjs") },
   )
 
-  // STANDARD — uses Platform.T (infrastructure-only, no Lambda handler)
+  // Via Platform — infrastructure only (no own Lambda)
   module PlaceOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.PlaceOrder)
 
-  // STANDARD — DCB slices use Platform.T
-  // (EventCollector Lambda created via onDcbSlicesCreated hook + finish())
+  // Via Platform — Lambda created via onDcbSlicesCreated hook + finish()
   module OrdersViewSlice = Platform.StateViewSlice.Make(OrderingPlugin.OrdersView)
+  module AutoShipOrderSlice = Platform.AutomationSlice.Make(OrderingPlugin.AutoShipOrder)
 
   // Assembly is identical to the platform-agnostic version
   let make = () =>
     Platform.Plugin.make(~name="Ordering", ...)
 }
 ```
-
-**Which components use bundled builders vs. `Platform.T`:**
-
-| Component | Uses | Reason |
-|---|---|---|
-| Aggregate | Bundled builder | Creates Lambda handler (serialization fails) |
-| ReadModel | Bundled builder | Creates Lambda handler |
-| ExtensionPoint | Bundled builder | Creates Lambda handler |
-| Extension | `Platform.T` | No Lambda handler (maps events between EPs) |
-| StateChangeSlice | `Platform.T` | No own Lambda (events go through DCB CommandTopic Lambda) |
-| StateViewSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
-| AutomationSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
-| OutboundTranslationSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
-| InboundTranslationSlice | `Platform.T` | Lambda created by `finish()` via platform hook |
-| DcbEventLog | `Platform.T` | Infrastructure only (DynamoDB table) |
-| Counter | `Platform.T` | Created inside Platform functor |
-| Task | Bundled builder | Creates Lambda handler |
 
 ### The `index.mjs` Entry Point
 
@@ -302,7 +291,7 @@ DCB components require configuration to be registered **before** ReScript module
 ```javascript
 // ordering-aws/src/index.mjs
 import { registerDcbConfig } from
-  "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder_Bundled.res.mjs";
+  "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res.mjs";
 import { resolveModule } from
   "@reventlessdev/reventless-aws/src/util/Util_Bundle.res.mjs";
 
@@ -323,7 +312,7 @@ export { default } from "./Main.res.mjs";
 ```rescript
 // ordering-aws/src/Main.res
 module Platform = ReventlessAws.Platform.Make()
-module Ordering = OrderingPlugin_Bundled.Make(Platform)
+module Ordering = OrderingPlugin_Aws.Make(Platform)
 
 Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCaller(),
@@ -399,49 +388,44 @@ describe("Catalog E2E", () => {
 
 - **`beforeAllAsync`** must resolve Output chains before the first test (handler registration is async)
 - **Topic names** follow the pattern: `Spec.name ++ ComponentType.toName(suffix)` (e.g., `"CatalogEventTopic"`)
-- Non-`_Bundled` plugin files are used for tests — they go through `Platform.T` and work with in-memory
-- `_Bundled` plugin files are never tested with in-memory (they import `ReventlessAws` directly)
+- Platform-agnostic plugin files (`CatalogPlugin.res`) are used for tests — they go through `Platform.T` and work with in-memory
+- `_Aws.res` plugin files are never tested with in-memory (they import `ReventlessAws` directly)
 
 ---
 
-## 7. DCB Slice Bundling: The Hook Mechanism
+## 7. DCB Slice Lambda Creation: The Hook Mechanism
 
-DCB (Dynamic Consistency Boundary) slices use a hook-based mechanism to bridge the gap between platform-agnostic slice creation (via `Platform.T`) and AWS-specific bundled Lambda creation.
+DCB (Dynamic Consistency Boundary) slices use a hook-based mechanism to bridge the gap between platform-agnostic slice creation (via `Platform.T`) and AWS-specific Lambda creation.
 
 ### The Flow
 
 ```
-1. Plugin_Bundled.res creates slices via Platform.T:
+1. Plugin_Aws.res creates slices via Platform.T:
    │  module OrdersView = Platform.StateViewSlice.Make(OrdersViewSpec)
-   │  (internally uses StateViewSlice_Builder_Bundled runtime builder)
+   │  (internally registers handler spec in StateViewSliceRuntime_Builder_Single)
    │
 2. Dcb_Builder.construct() calls .make() on each slice:
    │  → creates DynamoDB table, QueryDb, AppSync resolvers
    │  → runtime builder accumulates handler specs (no Lambda yet)
    │
-3. Dcb_Builder fires onDcbSlicesCreated hook:
-   │  Plugin_Helpers.onDcbSlicesCreated.contents->Option.forEach(hook => hook(...))
+3. Dcb_Builder fires onDcbSlicesCreated hook
    │
 4. AWS Platform's hook implementation calls finish():
-   │  StateViewSliceRuntime_Builder_Single_Bundled.finish()
-   │  AutomationSliceRuntime_Builder_Single_Bundled.finish()
+   │  StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog(dcbEventLog)
+   │  AutomationSliceRuntime_Builder_Single.finish()
    │  → creates "AllStateViewSlices" and "AllAutomationSlices" Lambdas
 ```
 
 ### Platform Hooks for DCB
 
-The AWS Platform registers four hooks that extract infrastructure IDs for bundled handler configuration:
+The AWS Platform registers four hooks that extract infrastructure IDs for Lambda handler configuration:
 
 | Hook | Fires When | AWS Action |
 |---|---|---|
-| `onDcbEventLogCreated` | DcbEventLog component created | Extracts DynamoDB table name for bundled DCB CommandTopic handler |
+| `onDcbEventLogCreated` | DcbEventLog component created | Extracts DynamoDB table name for DCB CommandTopic Lambda handler |
 | `onDcbCommandTopicCreated` | DCB CommandTopic created | Extracts SQS queue URL for AutomationSlice/OutboundTranslationSlice |
-| `onDcbSlicesCreated` | All DCB slices registered | Calls `finish()` on bundled runtime builders to create Lambdas |
-| `onHeartbeatEpChannelAvailable` | Heartbeat EP channel ready | Extracts SQS queue URL for heartbeat handler |
-
-### Current Status
-
-As of the `feat/bundled-lambda-handlers` branch, the `onDcbSlicesCreated` hook is a placeholder. The slice runtime builders (`StateViewSliceRuntime_Builder_Single_Bundled`, `AutomationSliceRuntime_Builder_Single_Bundled`) are implemented and ready — `finish()` creates the consolidated Lambda with all registered slice handlers. Wiring the hook to call `finish()` is the remaining step.
+| `onDcbSlicesCreated` | All DCB slices registered | Calls `finish()` on runtime builders to create Lambdas |
+| `onHeartbeatEpChannelAvailable` | Heartbeat EP channel ready | Extracts SQS queue URL for heartbeat Lambda handler |
 
 ---
 
@@ -465,14 +449,14 @@ The core builders (`Aggregate_Builder`, `ReadModel_Builder`, `StateViewSlice_Bui
 
 ## 9. Key Lessons
 
-1. **ReScript DCE is aggressive.** Module-level `let () = fn()` calls inside constrained functors are removed. Side-effect registration for bundled handlers must happen in plain JS entry points (`index.mjs`) or through values that are consumed.
+1. **ReScript DCE is aggressive.** Module-level `let () = fn()` calls inside constrained functors are removed. Side-effect registration for Lambda handlers must happen in plain JS entry points (`index.mjs`) or through values that are consumed.
 
-2. **`CallbackFunction` is broken with Effect-TS.** Any Lambda handler that transitively uses `Effect.runPromise` (which is all of them) fails Pulumi's closure serializer. There is no workaround short of bundling.
+2. **`CallbackFunction` is broken with Effect-TS.** Any Lambda handler that transitively uses `Effect.runPromise` (which is all of them) fails Pulumi's closure serializer. There is no workaround short of using code assets.
 
-3. **Bundled handlers require module paths.** The `specModulePath`, `behaviorModulePath`, etc. in `BundledConfig` are resolved at deploy time and embedded in the generated entry point code. The Lambda handler imports these modules at runtime.
+3. **Handler registration requires module paths.** The `specModulePath`, `behaviorModulePath`, etc. are resolved at deploy time and embedded in the generated entry point code. The Lambda handler imports these modules at runtime.
 
-4. **`finish()` timing matters.** Bundled runtime builders accumulate specs during `forEventCollector` calls and create the Lambda only when `finish()` is called. This must happen after all components have registered but before Pulumi's deployment graph is finalized.
+4. **`finish()` timing matters.** Runtime builders accumulate specs during `forEventCollector` / `registerXxx` calls and create the Lambda only when `finish()` is called. This must happen after all components have registered but before Pulumi's deployment graph is finalized.
 
-5. **The `_Bundled.res` file is AWS-specific.** It mirrors the platform-agnostic plugin but substitutes bundled builders. It imports `ReventlessAws` directly and cannot be tested with the in-memory platform. The non-`_Bundled` plugin file remains the source of truth for business logic and is used for in-memory testing.
+5. **`_Aws.res` files are AWS-specific.** They mirror the platform-agnostic plugin but substitute direct AWS builders. They import `ReventlessAws` directly and cannot be tested with the in-memory platform. The platform-agnostic plugin file remains the source of truth for business logic and is used for in-memory testing.
 
-6. **`Platform.T` deliberately does not include bundled variants.** Bundled builders bypass `Platform.T` because `BundledConfig` (module paths for esbuild) is an AWS deployment concern. Adding it to `Platform.T` would leak infrastructure details into the platform-agnostic interface. This matches how aggregates, readmodels, and extension points are already handled in `_Bundled.res` files.
+6. **`Platform.T` uses the same builders for DCB slices.** `StateViewSlice.Make`, `AutomationSlice.Make`, and `OutboundTranslationSlice.Make` all register handler specs when called from `_Aws.res` files. The Lambda is created later via `finish()` called by the `onDcbSlicesCreated` hook. No separate AWS builder is needed for slice types.

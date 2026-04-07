@@ -1,5 +1,5 @@
-// Catalog plugin — bundled variant for AWS deployment.
-// Uses bundled Lambda handlers for Aggregate and ReadModel components.
+// Catalog plugin — AWS deployment.
+// Uses direct AWS builders for Aggregate and ReadModel components.
 // DCB slices, ExtensionPoints, and Extensions use standard Platform builders.
 
 open Reventless.Projection
@@ -11,14 +11,14 @@ module Make = (
     with type api = ReventlessAws.Types.AppSync.api
     and type role = ReventlessAws.Types.AppSync.role,
 ) => {
-  // ── Category Aggregate (BUNDLED) ─────────────────────────────
+  // ── Category Aggregate ────────────────────────────────────────
   module CategoryAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
     CatalogPlugin.Category,
     CatalogPlugin.CategoryBehavior,
     ReventlessInfra.NoEventMappings.Make(CatalogPlugin.Category),
   )
 
-  // ── Categories ReadModel (BUNDLED) ───────────────────────────
+  // ── Categories ReadModel ──────────────────────────────────────
   module CategoryProjections: Mappings with module Target := CatalogPlugin.CategoriesReadModel = {
     module M = Mappings.Make(CatalogPlugin.CategoriesReadModel)
     module type Mapping = M.Mapping
@@ -44,14 +44,14 @@ module Make = (
     CatalogPlugin.RecordProductDemand,
   )
 
-  module ProductsViewSlice = Platform.StateViewSlice.Bundled.Make(CatalogPlugin.ProductsView)
-  module ProductDemandViewSlice = Platform.StateViewSlice.Bundled.Make(
+  module ProductsViewSlice = Platform.StateViewSlice.Make(CatalogPlugin.ProductsView)
+  module ProductDemandViewSlice = Platform.StateViewSlice.Make(
     CatalogPlugin.ProductDemandView,
   )
 
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(CatalogPlugin.ImportProduct)
 
-  // ── Extension Point (BUNDLED) ────────────────────────────────
+  // ── Extension Point ───────────────────────────────────────────
   module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
     CatalogPlugin.ProductsExtensionPointMapping,
   )

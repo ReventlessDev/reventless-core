@@ -9,7 +9,7 @@ import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
-let bundledInfo = {
+let info = {
   contents: {
     publishToAggregatesQueueUrls: {},
     pluginReadModelTableName: undefined,
@@ -19,7 +19,7 @@ let bundledInfo = {
 
 function registerPluginExtensionPoint(publishToAggregatesQueueUrlsOpt, pluginReadModelTableName, schedulerRoleArn, param) {
   let publishToAggregatesQueueUrls = publishToAggregatesQueueUrlsOpt !== undefined ? publishToAggregatesQueueUrlsOpt : ({});
-  bundledInfo.contents = {
+  info.contents = {
     publishToAggregatesQueueUrls: publishToAggregatesQueueUrls,
     pluginReadModelTableName: pluginReadModelTableName,
     schedulerRoleArn: schedulerRoleArn
@@ -30,7 +30,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let commandTopicResource = Component$ReventlessCore.toPulumiResource(commandTopic);
-  let info = bundledInfo.contents;
+  let info$1 = info.contents;
   let channel = commandTopic.channel;
   let channelParts = channel.parts;
   let queue = channelParts.queue;
@@ -48,7 +48,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     }
   };
   let publishToAggregatesEnvVars = {};
-  Stdlib_Dict.forEachWithKey(info.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
+  Stdlib_Dict.forEachWithKey(info$1.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
     let envVar = `PTA_` + aggName + `_QUEUE_URL`;
     envVars[envVar] = queueUrlOutput;
     publishToAggregatesEnvVars[aggName] = envVar;
@@ -57,8 +57,8 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
   let queueName = queue.id.apply(id => Stdlib_Option.getOr(id.split("/").at(-1), id));
   let handlerConfigJson = Pulumi.all([
     queue.id,
-    outputOrPlaceholder(info.pluginReadModelTableName),
-    outputOrPlaceholder(info.schedulerRoleArn),
+    outputOrPlaceholder(info$1.pluginReadModelTableName),
+    outputOrPlaceholder(info$1.schedulerRoleArn),
     queue.arn,
     queueName
   ]).apply(values => {
@@ -85,7 +85,7 @@ let RuntimeEnvironment;
 export {
   CommandTopicChannel,
   RuntimeEnvironment,
-  bundledInfo,
+  info,
   registerPluginExtensionPoint,
   forCommandTopic,
 }

@@ -4,13 +4,13 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledReadModelInfo = {
+type readModelInfo = {
   specModulePath: string,
   mappingsModulePath: string,
   queryDbTableName: Pulumi.Output.t<string>,
 }
 
-let bundledReadModelInfos: dict<bundledReadModelInfo> = Dict.make()
+let readModelInfos: dict<readModelInfo> = Dict.make()
 
 let registerReadModel = (
   ~readModelName,
@@ -18,7 +18,7 @@ let registerReadModel = (
   ~mappingsModulePath,
   ~queryDbTableName,
 ) =>
-  bundledReadModelInfos->Dict.set(
+  readModelInfos->Dict.set(
     readModelName,
     {specModulePath, mappingsModulePath, queryDbTableName},
   )
@@ -87,7 +87,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
     )
   | None =>
     JsError.throwWithMessage(
-      `forEventCollector(bundled): eventCollector ${eventCollectorName} has no parent`,
+      `forEventCollector(single): eventCollector ${eventCollectorName} has no parent`,
     )
   }
 }
@@ -112,7 +112,7 @@ let finish = () =>
         let packageDirs: dict<string> = Dict.make()
 
         storedSpecs->Array.forEach(spec => {
-          switch bundledReadModelInfos->Dict.get(spec.componentName) {
+          switch readModelInfos->Dict.get(spec.componentName) {
           | Some(info) =>
             // Collect unique user packages for the code asset
             let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
@@ -134,7 +134,7 @@ let finish = () =>
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             Console.warn(
-              `EventCollectorRuntime_Builder_Single: no bundled info registered for ${spec.componentName}`,
+              `EventCollectorRuntime_Builder_Single: no handler registered for ${spec.componentName}`,
             )
           }
         })

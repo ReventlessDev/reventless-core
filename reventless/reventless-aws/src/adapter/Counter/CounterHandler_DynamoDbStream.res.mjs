@@ -9,10 +9,10 @@ import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSou
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as CounterHandler_DynamoDbStream_Runtime$ReventlessAws from "./CounterHandler_DynamoDbStream_Runtime.res.mjs";
 
-let bundledCounterInfos = {};
+let counterInfos = {};
 
 function registerCounter(counterName, specModulePath, mappingsModulePath, publishQueueUrl) {
-  bundledCounterInfos[counterName] = {
+  counterInfos[counterName] = {
     specModulePath: specModulePath,
     mappingsModulePath: mappingsModulePath,
     publishQueueUrl: publishQueueUrl
@@ -24,7 +24,7 @@ function make(name, referencesName, referencesDb, countsName, countsDb, param, o
   let referencesStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(referencesDbResource);
   let countsDbResource = Util_DynamoDbStream$ReventlessAws.findResource(countsDb.resources);
   let countsStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(countsDbResource);
-  let info = bundledCounterInfos[name];
+  let info = counterInfos[name];
   if (info !== undefined) {
     let envVars = {};
     let countsTableName = countsDb.resources[0].name;
@@ -73,7 +73,7 @@ function make(name, referencesName, referencesDb, countsName, countsDb, param, o
 }
 
 export {
-  bundledCounterInfos,
+  counterInfos,
   registerCounter,
   make,
 }

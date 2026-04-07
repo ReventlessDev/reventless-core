@@ -3,19 +3,59 @@
 
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
-module EventCollectorRuntimeBuilder = ReventlessCore.EventCollectorRuntime_Builder_Single.Make(
-  RuntimeEnvironment,
-  EventCollectorChannel,
-)
+
+module EventCollectorRuntimeBuilder = {
+  module Inner = AutomationSliceRuntime_Builder_Single
+  type context = Inner.context
+  type runtimeParts = Inner.runtimeParts
+  module EventCollectorChannel = Inner.EventCollectorChannel
+
+  let forEventCollector = Inner.forEventCollector
+  let finish = Inner.finish
+}
 
 module Make = (Api: {
   let api: Types.AppSync.api
   let apiRole: Types.AppSync.role
-}) => ReventlessCore.OutboundTranslationSlice_Builder.Make(
-  RuntimeEnvironment,
-  QueryDbStorage.DynamoDb,
-  QueryDbResolvers.AppSync,
-  EventCollectorChannel,
-  EventCollectorRuntimeBuilder,
-  Api,
-)
+}) => {
+  module Inner = ReventlessCore.OutboundTranslationSlice_Builder.Make(
+    RuntimeEnvironment,
+    QueryDbStorage.DynamoDb,
+    QueryDbResolvers.AppSync,
+    EventCollectorChannel,
+    EventCollectorRuntimeBuilder,
+    Api,
+  )
+
+  module Make = (
+    Spec: Reventless.OutboundTranslationSlice.Spec,
+  ): (
+    ReventlessCore.OutboundTranslationSlice.T
+      with module Spec = Spec
+  ) => {
+    module InnerMake = Inner.Make(Spec)
+
+    module Spec = InnerMake.Spec
+    type component = InnerMake.component
+    let queryDbName = InnerMake.queryDbName
+
+    let make = (~dcbEventLog, ~publishJsons, ~opts=?): component => {
+      let ots = InnerMake.make(~dcbEventLog, ~publishJsons, ~opts?)
+
+      let queryDbOutputs = (ots->ReventlessCore.Component.outputs).queryDb
+      let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
+      let queryDbTableName = tableResource.name
+
+      AutomationSliceRuntime_Builder_Single.registerAutomationSlice(
+        ~name=Spec.name,
+        ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+        ~callbackType="outbound",
+        ~queryDbTableName,
+      )
+
+      ots
+    }
+  }
+
+  let finish = () => EventCollectorRuntimeBuilder.finish()
+}

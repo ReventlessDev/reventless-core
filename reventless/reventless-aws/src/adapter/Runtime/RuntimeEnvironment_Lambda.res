@@ -14,8 +14,8 @@ type iamPolicy = {
 let additionalIamPolicies: array<iamPolicy> = []
 
 // Legacy CallbackFunction path — retained for module type compatibility.
-// Not called at runtime in bundled deployments. Will be removed in Step 6
-// (Unify Lambda Function Type).
+// Not called at runtime; all Lambda deployments now use makeFromCodeAsset.
+// Can be removed once the module type no longer requires environmentMaker.
 let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, parts> = (
   ~name,
   ~handler,

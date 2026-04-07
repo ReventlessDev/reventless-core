@@ -11,10 +11,10 @@ import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
-let bundledReadModelInfos = {};
+let readModelInfos = {};
 
 function registerReadModel(readModelName, specModulePath, mappingsModulePath, queryDbTableName) {
-  bundledReadModelInfos[readModelName] = {
+  readModelInfos[readModelName] = {
     specModulePath: specModulePath,
     mappingsModulePath: mappingsModulePath,
     queryDbTableName: queryDbTableName
@@ -32,7 +32,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     return Stdlib_JsError.throwWithMessage(`forEventCollector(bundled): eventCollector ` + eventCollectorName + ` has no parent`);
   }
   let parentName = Stdlib_Option.getOr(parentResource.__name, "Unnamed");
-  let info = bundledReadModelInfos[parentName];
+  let info = readModelInfos[parentName];
   if (info !== undefined) {
     let sourceUrns = Pulumi.all(Component$ReventlessCore.outputs(eventCollector).resources.map(param => param.urn));
     let name = ComponentType$ReventlessCore.nameOpt(eventCollectorResource.__name, EventCollector$ReventlessCore.componentType);
@@ -86,7 +86,7 @@ let RuntimeEnvironment;
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
-  bundledReadModelInfos,
+  readModelInfos,
   registerReadModel,
   forEventCollector,
   finish,

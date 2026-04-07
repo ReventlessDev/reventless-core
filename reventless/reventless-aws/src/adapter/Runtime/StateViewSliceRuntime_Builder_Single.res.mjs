@@ -10,11 +10,11 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
-let bundledInfos = {};
+let sliceInfos = {};
 
 function registerStateViewSlice(name, specModulePath, queryDbTableName, queryDbResourcesOpt) {
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
-  bundledInfos[name] = {
+  sliceInfos[name] = {
     specModulePath: specModulePath,
     queryDbTableName: queryDbTableName,
     queryDbResources: queryDbResources
@@ -35,7 +35,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
   let eventCollectorName = Stdlib_Option.getOr(eventCollectorResource.__name, "Unnamed");
   let parentResource = eventCollectorResource.__parentResource;
   if (parentResource === undefined) {
-    return Stdlib_JsError.throwWithMessage(`forEventCollector(bundled): eventCollector ` + eventCollectorName + ` has no parent`);
+    return Stdlib_JsError.throwWithMessage(`forEventCollector(single): eventCollector ` + eventCollectorName + ` has no parent`);
   }
   let parentName = Stdlib_Option.getOr(parentResource.__name, "Unnamed");
   if (grandParent.contents === undefined) {
@@ -85,7 +85,7 @@ function finishWithDcbEventLog(dcbEventLog) {
   if (finished.contents) {
     return;
   }
-  let infoCount = Object.keys(bundledInfos).length;
+  let infoCount = Object.keys(sliceInfos).length;
   if (infoCount > 0) {
     let dcbResource = Component$ReventlessCore.toPulumiResource(dcbEventLog);
     let parent = dcbResource.__parentResource;
@@ -101,7 +101,7 @@ function finishWithDcbEventLog(dcbEventLog) {
       let handlerOutputs = [];
       let packageDirs = {};
       let allQueryDbResources = [];
-      Stdlib_Dict.forEachWithKey(bundledInfos, (info, _name) => {
+      Stdlib_Dict.forEachWithKey(sliceInfos, (info, _name) => {
         info.queryDbResources.forEach(r => {
           allQueryDbResources.push(r);
         });
@@ -133,7 +133,7 @@ function finish() {
   if (finished.contents) {
     return;
   }
-  console.log(`StateViewSliceRuntime_Builder_Single.finish: ` + storedSpecs.length.toString() + ` storedSpecs, ` + Object.keys(bundledInfos).length.toString() + ` bundledInfos, grandParent=` + Stdlib_Option.getOr(Stdlib_Option.map(grandParent.contents, param => "Some"), "None"));
+  console.log(`StateViewSliceRuntime_Builder_Single.finish: ` + storedSpecs.length.toString() + ` storedSpecs, ` + Object.keys(sliceInfos).length.toString() + ` sliceInfos, grandParent=` + Stdlib_Option.getOr(Stdlib_Option.map(grandParent.contents, param => "Some"), "None"));
   if (storedSpecs.length !== 0) {
     let match = Stdlib_Array.reduce(storedSpecs, [
       0,
@@ -151,7 +151,7 @@ function finish() {
       let handlerOutputs = [];
       let packageDirs = {};
       storedSpecs.forEach(spec => {
-        let info = bundledInfos[spec.componentName];
+        let info = sliceInfos[spec.componentName];
         if (info !== undefined) {
           let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
           packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
@@ -166,7 +166,7 @@ function finish() {
           handlerOutputs.push(handlerJson);
           return;
         }
-        console.warn(`StateViewSliceRuntime_Builder_Single: no bundled info registered for ` + spec.componentName);
+        console.warn(`StateViewSliceRuntime_Builder_Single: no handler registered for ` + spec.componentName);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
@@ -196,7 +196,7 @@ let RuntimeEnvironment;
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
-  bundledInfos,
+  sliceInfos,
   registerStateViewSlice,
   storedSpecs,
   grandParent,

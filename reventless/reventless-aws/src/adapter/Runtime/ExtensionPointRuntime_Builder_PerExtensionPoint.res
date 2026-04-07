@@ -4,13 +4,13 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledExtensionPointInfo = {
+type extensionPointInfo = {
   specModulePath: string,
   mappingsModulePath: string,
   publishToAggregatesQueueUrls: dict<Pulumi.Output.t<string>>,
 }
 
-let bundledInfos: dict<bundledExtensionPointInfo> = Dict.make()
+let extensionPointInfos: dict<extensionPointInfo> = Dict.make()
 
 let registerExtensionPoint = (
   ~name,
@@ -18,7 +18,7 @@ let registerExtensionPoint = (
   ~mappingsModulePath,
   ~publishToAggregatesQueueUrls,
 ) =>
-  bundledInfos->Dict.set(
+  extensionPointInfos->Dict.set(
     name,
     {specModulePath, mappingsModulePath, publishToAggregatesQueueUrls},
   )
@@ -44,10 +44,10 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
 
   // Look up by exact name first, then by suffix match (EP names get prefixed
   // by the Plugin name and dots are stripped, e.g. "Ordering.Orders" → "OrderingOrdersExtPoint").
-  let matchedInfo = switch bundledInfos->Dict.get(epName) {
+  let matchedInfo = switch extensionPointInfos->Dict.get(epName) {
   | Some(_) as hit => hit
   | None =>
-    bundledInfos
+    extensionPointInfos
     ->Dict.toArray
     ->Array.find(((registeredName, _)) =>
       epName->String.includes(registeredName->String.replaceAll(".", ""))
@@ -132,7 +132,7 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
     connect(~runtime)
   | None =>
     Console.warn(
-      `ExtensionPointRuntime_Builder_PerExtensionPoint: no bundled info for ${epName}`,
+      `ExtensionPointRuntime_Builder_PerExtensionPoint: no handler registered for ${epName}`,
     )
   }
 }

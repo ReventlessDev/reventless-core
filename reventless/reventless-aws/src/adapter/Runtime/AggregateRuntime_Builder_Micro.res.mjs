@@ -11,10 +11,10 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
-let bundledAggregateInfos = {};
+let aggregateInfos = {};
 
 function registerAggregate(aggregateName, specModulePath, behaviorModulePath, eventLogTableName, mappingsModulePath) {
-  bundledAggregateInfos[aggregateName] = {
+  aggregateInfos[aggregateName] = {
     specModulePath: specModulePath,
     behaviorModulePath: behaviorModulePath,
     eventLogTableName: eventLogTableName,
@@ -98,7 +98,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     return;
   }
   let name = Stdlib_Option.getOr(commandTopicResource.__name, "Unnamed");
-  Stdlib_JsError.throwWithMessage(`forCommandTopic(bundled-micro): commandTopic ` + name + ` has no Aggregate parent`);
+  Stdlib_JsError.throwWithMessage(`forCommandTopic(micro): commandTopic ` + name + ` has no Aggregate parent`);
 }
 
 function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) {
@@ -132,7 +132,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     return;
   }
   let name = Stdlib_Option.getOr(eventCollectorResource.__name, "Unnamed");
-  Stdlib_JsError.throwWithMessage(`forEventCollector(bundled-micro): eventCollector ` + name + ` has no Aggregate parent`);
+  Stdlib_JsError.throwWithMessage(`forEventCollector(micro): eventCollector ` + name + ` has no Aggregate parent`);
 }
 
 let finished = {
@@ -146,7 +146,7 @@ function finish() {
   let specs = Object.values(storedSpecs);
   if (specs.length !== 0) {
     specs.forEach(spec => {
-      let info = bundledAggregateInfos[spec.aggregateName];
+      let info = aggregateInfos[spec.aggregateName];
       if (info !== undefined) {
         let aggregateOpts_parent = spec.aggregateResource;
         let aggregateOpts = {
@@ -229,7 +229,7 @@ function finish() {
         console.warn(`AggregateRuntime_Builder_Micro: eventCollector registered for ` + spec.aggregateName + ` but no mappingsModulePath — skipping EventMapper Lambda`);
         return;
       }
-      console.warn(`AggregateRuntime_Builder_Micro: no bundled info registered for ` + spec.aggregateName);
+      console.warn(`AggregateRuntime_Builder_Micro: no handler registered for ` + spec.aggregateName);
     });
   }
   finished.contents = true;
@@ -245,7 +245,7 @@ export {
   CommandTopicChannel,
   EventCollectorChannel,
   RuntimeEnvironment,
-  bundledAggregateInfos,
+  aggregateInfos,
   registerAggregate,
   storedSpecs,
   getStoredSpec,

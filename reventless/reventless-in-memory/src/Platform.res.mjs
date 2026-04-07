@@ -397,42 +397,27 @@ function MakeWithConfig(Config) {
     Make: Make$5
   };
   let Make$6 = Spec => StateViewSliceMaker.Make(Spec);
-  let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
-  let Bundled = {
+  let StateViewSlice = {
+    Make: Make$6
+  };
+  let Make$7 = Spec => AutomationSliceMaker.Make(Spec);
+  let AutomationSlice = {
     Make: Make$7
   };
-  let StateViewSlice = {
-    Make: Make$6,
-    Bundled: Bundled
-  };
-  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
-  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
-  let Bundled$1 = {
-    Make: Make$9
-  };
-  let AutomationSlice = {
-    Make: Make$8,
-    Bundled: Bundled$1
-  };
-  let Make$10 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Bundled$2 = {
-    Make: Make$11
-  };
+  let Make$8 = Spec => OutboundTranslationSliceMaker.Make(Spec);
   let OutboundTranslationSlice = {
-    Make: Make$10,
-    Bundled: Bundled$2
+    Make: Make$8
   };
-  let Make$12 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let Make$9 = Spec => InboundTranslationSliceMaker.Make(Spec);
   let InboundTranslationSlice = {
-    Make: Make$12
+    Make: Make$9
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$13 = FragmentConfig => {
+  let Make$10 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
     let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
@@ -441,7 +426,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$13
+    Make: Make$10
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
@@ -487,14 +472,59 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = undefined;
-    hooks_apiRole.contents = undefined;
+    hooks_api.contents = {
+      val: undefined
+    };
+    hooks_apiRole.contents = {
+      val: undefined
+    };
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
     ])));
+    let environment = Pulumi.getStack();
+    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
+    let builtInfos = {
+      contents: []
+    };
+    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
+      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
+      builtInfos.contents.push(info);
+    });
     let plugins$1 = plugins.map(plugin => plugin.make());
+    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
+    builtInfos.contents.forEach(info => {
+      let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
+      if (hook !== undefined) {
+        return hook({
+          name: info.name,
+          version: info.version,
+          environment: environment,
+          stackName: environment,
+          components: info.components.map(c => ({
+            name: c.name,
+            kind: c.kind,
+            schema: c.schema,
+            resources: [],
+            subComponents: []
+          })),
+          extensionWirings: []
+        });
+      }
+    });
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook !== undefined) {
+      hook({
+        name: "in-memory",
+        environment: environment,
+        region: "local",
+        apiId: "in-memory",
+        apiRoleArn: "in-memory",
+        splitApiMode: Config.splitApi,
+        adminResources: []
+      });
+    }
     let store = {
       contents: {}
     };
@@ -829,8 +859,12 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = undefined;
-    hooks_apiRole.contents = undefined;
+    hooks_api.contents = {
+      val: undefined
+    };
+    hooks_apiRole.contents = {
+      val: undefined
+    };
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
@@ -878,8 +912,12 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = undefined;
-    hooks_apiRole.contents = undefined;
+    hooks_api.contents = {
+      val: undefined
+    };
+    hooks_apiRole.contents = {
+      val: undefined
+    };
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
@@ -1272,42 +1310,27 @@ function Make($star) {
     Make: Make$6
   };
   let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
-  let Make$8 = Spec => StateViewSliceMaker.Make(Spec);
-  let Bundled = {
+  let StateViewSlice = {
+    Make: Make$7
+  };
+  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
+  let AutomationSlice = {
     Make: Make$8
   };
-  let StateViewSlice = {
-    Make: Make$7,
-    Bundled: Bundled
-  };
-  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
-  let Make$10 = Spec => AutomationSliceMaker.Make(Spec);
-  let Bundled$1 = {
-    Make: Make$10
-  };
-  let AutomationSlice = {
-    Make: Make$9,
-    Bundled: Bundled$1
-  };
-  let Make$11 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Make$12 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let Bundled$2 = {
-    Make: Make$12
-  };
+  let Make$9 = Spec => OutboundTranslationSliceMaker.Make(Spec);
   let OutboundTranslationSlice = {
-    Make: Make$11,
-    Bundled: Bundled$2
+    Make: Make$9
   };
-  let Make$13 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let Make$10 = Spec => InboundTranslationSliceMaker.Make(Spec);
   let InboundTranslationSlice = {
-    Make: Make$13
+    Make: Make$10
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: []
   });
-  let Make$14 = FragmentConfig => {
+  let Make$11 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
     return {
@@ -1315,7 +1338,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$14
+    Make: Make$11
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
@@ -1361,14 +1384,59 @@ function Make($star) {
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = undefined;
-    hooks_apiRole.contents = undefined;
+    hooks_api.contents = {
+      val: undefined
+    };
+    hooks_apiRole.contents = {
+      val: undefined
+    };
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
     ])));
+    let environment = Pulumi.getStack();
+    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
+    let builtInfos = {
+      contents: []
+    };
+    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
+      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
+      builtInfos.contents.push(info);
+    });
     let plugins$1 = plugins.map(plugin => plugin.make());
+    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
+    builtInfos.contents.forEach(info => {
+      let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
+      if (hook !== undefined) {
+        return hook({
+          name: info.name,
+          version: info.version,
+          environment: environment,
+          stackName: environment,
+          components: info.components.map(c => ({
+            name: c.name,
+            kind: c.kind,
+            schema: c.schema,
+            resources: [],
+            subComponents: []
+          })),
+          extensionWirings: []
+        });
+      }
+    });
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook !== undefined) {
+      hook({
+        name: "in-memory",
+        environment: environment,
+        region: "local",
+        apiId: "in-memory",
+        apiRoleArn: "in-memory",
+        splitApiMode: true,
+        adminResources: []
+      });
+    }
     let store = {
       contents: {}
     };
@@ -1703,8 +1771,12 @@ function Make($star) {
     log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = undefined;
-    hooks_apiRole.contents = undefined;
+    hooks_api.contents = {
+      val: undefined
+    };
+    hooks_apiRole.contents = {
+      val: undefined
+    };
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
     GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
@@ -1752,8 +1824,12 @@ function Make($star) {
     log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = undefined;
-    hooks_apiRole.contents = undefined;
+    hooks_api.contents = {
+      val: undefined
+    };
+    hooks_apiRole.contents = {
+      val: undefined
+    };
     let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,

@@ -1,4 +1,4 @@
-type bundledAdminConfig = {
+type adminConfig = {
   eventTopicArn: option<Pulumi.Output.t<string>>,
   pluginReadModelTableName: option<Pulumi.Output.t<string>>,
   schedulerRoleArn: option<Pulumi.Output.t<string>>,
@@ -8,7 +8,7 @@ type bundledAdminConfig = {
   clonerEnabled: bool,
 }
 
-let configRef: ref<bundledAdminConfig> = ref({
+let configRef: ref<adminConfig> = ref({
   eventTopicArn: None,
   pluginReadModelTableName: None,
   schedulerRoleArn: None,
@@ -18,13 +18,13 @@ let configRef: ref<bundledAdminConfig> = ref({
   clonerEnabled: false,
 })
 
-type bundledDcbConfig = {
+type dcbConfig = {
   pluginName: string,
   dcbTableName: option<Pulumi.Output.t<string>>,
   stateChangeSliceSpecPaths: array<string>,
 }
 
-let dcbConfigRef: ref<bundledDcbConfig> = ref({
+let dcbConfigRef: ref<dcbConfig> = ref({
   pluginName: "",
   dcbTableName: None,
   stateChangeSliceSpecPaths: [],
@@ -41,13 +41,13 @@ let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceSpecPath
   stateChangeSliceSpecPaths->Array.length
 }
 
-type bundledHeartbeatConfig = {
+type heartbeatConfig = {
   pluginId: string,
   heartbeatTimeout: int,
   epQueueUrl: option<Pulumi.Output.t<string>>,
 }
 
-let heartbeatConfigRef: ref<bundledHeartbeatConfig> = ref({
+let heartbeatConfigRef: ref<heartbeatConfig> = ref({
   pluginId: "",
   heartbeatTimeout: 10,
   epQueueUrl: None,

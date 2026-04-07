@@ -408,33 +408,18 @@ module MakeWithConfig = (
     module Make = (Spec: Reventless.StateViewSlice.Spec): (
       ReventlessInfra.StateViewSlice.T with module Spec = Spec
     ) => StateViewSliceMaker.Make(Spec)
-    module Bundled = {
-      module Make = (Spec: Reventless.StateViewSlice.Spec): (
-        ReventlessInfra.StateViewSlice.T with module Spec = Spec
-      ) => StateViewSliceMaker.Make(Spec)
-    }
   }
 
   module AutomationSlice = {
     module Make = (Spec: Reventless.AutomationSlice.Spec): (
       ReventlessInfra.AutomationSlice.T with module Spec = Spec
     ) => AutomationSliceMaker.Make(Spec)
-    module Bundled = {
-      module Make = (Spec: Reventless.AutomationSlice.Spec): (
-        ReventlessInfra.AutomationSlice.T with module Spec = Spec
-      ) => AutomationSliceMaker.Make(Spec)
-    }
   }
 
   module OutboundTranslationSlice = {
     module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
       ReventlessInfra.OutboundTranslationSlice.T with module Spec = Spec
     ) => OutboundTranslationSliceMaker.Make(Spec)
-    module Bundled = {
-      module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
-        ReventlessInfra.OutboundTranslationSlice.T with module Spec = Spec
-      ) => OutboundTranslationSliceMaker.Make(Spec)
-    }
   }
 
   module InboundTranslationSlice = {
@@ -534,8 +519,8 @@ module MakeWithConfig = (
     // Create scheduler and populate platform context refs.
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(()->Obj.magic)
-    hooks.apiRole := Some(()->Obj.magic)
+    hooks.api := Some({val: ()->Obj.magic})
+    hooks.apiRole := Some({val: ()->Obj.magic})
 
     let admin = Admin.construct(
       ~version,
@@ -559,11 +544,64 @@ module MakeWithConfig = (
         eps->Array.map(ep => (ep.name, ep))->Dict.fromArray
       )
 
+    // Intercept onPluginBuiltHook to collect per-plugin metadata synchronously.
+    // The hook fires inside Component.make (synchronous) so we get a complete
+    // list before the async Output.apply callbacks run.
+    // We chain the existing hook (SdkService_InMemory registration) so it still fires.
+    let environment = Pulumi.Pulumi.getStackName()
+    let existingBuiltHook = ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents
+    let builtInfos: ref<array<ReventlessCore.Plugin_Helpers.pluginBuiltInfo>> = ref([])
+    ReventlessCore.Plugin_Helpers.registerOnPluginBuilt(info => {
+      existingBuiltHook->Option.forEach(h => h(info))
+      builtInfos.contents->Array.push(info)
+    })
+
     // Build each plugin.
     let plugins = plugins->Array.map(plugin => {
       module P = unpack(plugin)
       P.make()
     })
+
+    // Restore original hook and fire deployed hooks synchronously.
+    // receiveRegistry entries are pre-populated (queuing forwarder) so calls
+    // are parked and drained once bindReceive fires (async, via Output.apply).
+    ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
+    builtInfos.contents->Array.forEach(info => {
+      switch ReventlessCore.Plugin_Helpers.onPluginDeployedHook.contents {
+      | Some(hook) =>
+        let deployedInfo: ReventlessCore.Plugin_Helpers.pluginDeployedInfo = {
+          name: info.name,
+          version: info.version,
+          environment,
+          stackName: environment,
+          components: info.components->Array.map(
+            (c): ReventlessCore.Plugin_Helpers.pluginDeployedComponent => {
+              name: c.name,
+              kind: c.kind,
+              schema: c.schema,
+              resources: [],
+              subComponents: [],
+            },
+          ),
+          extensionWirings: [],
+        }
+        hook(deployedInfo)
+      | None => ()
+      }
+    })
+    switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
+    | Some(hook) =>
+      hook({
+        name: "in-memory",
+        environment,
+        region: "local",
+        apiId: "in-memory",
+        apiRoleArn: "in-memory",
+        splitApiMode: Config.splitApi,
+        adminResources: [],
+      })
+    | None => ()
+    }
 
     // Create an in-memory Plugin QueryDb in the Bus.
     // This mirrors what QueryDbStorage_InMemory does for user read models,
@@ -916,8 +954,8 @@ module MakeWithConfig = (
     log.info(~comp="Platform", `deployPlatform v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(()->Obj.magic)
-    hooks.apiRole := Some(()->Obj.magic)
+    hooks.api := Some({val: ()->Obj.magic})
+    hooks.apiRole := Some({val: ()->Obj.magic})
     let _admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
@@ -989,8 +1027,8 @@ module MakeWithConfig = (
     // Each plugin creates its own scheduler (mirrors AWS behaviour).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(()->Obj.magic)
-    hooks.apiRole := Some(()->Obj.magic)
+    hooks.api := Some({val: ()->Obj.magic})
+    hooks.apiRole := Some({val: ()->Obj.magic})
 
     // Admin components are needed in-memory even for single-plugin deploy.
     let admin = Admin.construct(

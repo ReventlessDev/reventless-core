@@ -1,4 +1,4 @@
-// Ordering plugin deployment — bundled variant.
+// Ordering plugin — AWS deployment.
 
 let _ = ReventlessAws.PluginRuntime_Builder.registerDcbConfig(
   ~pluginName="Ordering",

@@ -1,5 +1,4 @@
-// Ordering plugin — bundled variant for AWS deployment.
-// Uses bundled Lambda handlers for all components.
+// Ordering plugin — AWS deployment.
 
 open Reventless.Projection
 
@@ -10,14 +9,14 @@ module Make = (
     with type api = ReventlessAws.Types.AppSync.api
     and type role = ReventlessAws.Types.AppSync.role,
 ) => {
-  // ── Customer Aggregate (BUNDLED) ─────────────────────────────
+  // ── Customer Aggregate ────────────────────────────────────────
   module CustomerAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
     OrderingPlugin.Customer,
     OrderingPlugin.CustomerBehavior,
     ReventlessInfra.NoEventMappings.Make(OrderingPlugin.Customer),
   )
 
-  // ── Customers ReadModel (BUNDLED) ────────────────────────────
+  // ── Customers ReadModel ───────────────────────────────────────
   module CustomerProjections: Mappings with module Target := OrderingPlugin.CustomersReadModel = {
     module M = Mappings.Make(OrderingPlugin.CustomersReadModel)
     module type Mapping = M.Mapping
@@ -40,17 +39,17 @@ module Make = (
     OrderingPlugin.SyncCatalogProduct,
   )
 
-  module AutoShipOrderSlice = Platform.AutomationSlice.Bundled.Make(
+  module AutoShipOrderSlice = Platform.AutomationSlice.Make(
     OrderingPlugin.AutoShipOrder,
   )
-  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Bundled.Make(
+  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(
     OrderingPlugin.SendOrderConfirmation,
   )
 
-  module OrdersViewSlice = Platform.StateViewSlice.Bundled.Make(
+  module OrdersViewSlice = Platform.StateViewSlice.Make(
     OrderingPlugin.OrdersView,
   )
-  module AvailableProductsViewSlice = Platform.StateViewSlice.Bundled.Make(
+  module AvailableProductsViewSlice = Platform.StateViewSlice.Make(
     OrderingPlugin.AvailableProductsView,
   )
 
@@ -59,7 +58,7 @@ module Make = (
     OrderingPlugin.ProductsExtension.ProductMapping,
   )
 
-  // ── Extension Point (BUNDLED) ────────────────────────────────
+  // ── Extension Point ───────────────────────────────────────────
   module OrdersEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
     OrderingPlugin.OrdersExtensionPointMapping,
   )

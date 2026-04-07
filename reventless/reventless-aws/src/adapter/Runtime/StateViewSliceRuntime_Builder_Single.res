@@ -4,13 +4,13 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledStateViewSliceInfo = {
+type sliceInfo = {
   specModulePath: string,
   queryDbTableName: Pulumi.Output.t<string>,
   queryDbResources: array<ReventlessInfra.Adapter.resource>,
 }
 
-let bundledInfos: dict<bundledStateViewSliceInfo> = Dict.make()
+let sliceInfos: dict<sliceInfo> = Dict.make()
 
 let registerStateViewSlice = (
   ~name,
@@ -18,7 +18,7 @@ let registerStateViewSlice = (
   ~queryDbTableName,
   ~queryDbResources=[],
 ) =>
-  bundledInfos->Dict.set(name, {specModulePath, queryDbTableName, queryDbResources})
+  sliceInfos->Dict.set(name, {specModulePath, queryDbTableName, queryDbResources})
 
 type storedSpec = {
   componentName: string,
@@ -84,7 +84,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
     )
   | None =>
     JsError.throwWithMessage(
-      `forEventCollector(bundled): eventCollector ${eventCollectorName} has no parent`,
+      `forEventCollector(single): eventCollector ${eventCollectorName} has no parent`,
     )
   }
 }
@@ -142,7 +142,7 @@ let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs) => {
 
 let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) =>
   if !finished.contents {
-    let infoCount = bundledInfos->Dict.keysToArray->Array.length
+    let infoCount = sliceInfos->Dict.keysToArray->Array.length
     if infoCount > 0 {
       let dcbResource = dcbEventLog->ReventlessCore.Component.toPulumiResource
       switch dcbResource.parent {
@@ -161,7 +161,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         let packageDirs: dict<string> = Dict.make()
         let allQueryDbResources: array<ReventlessInfra.Adapter.resource> = []
 
-        bundledInfos->Dict.forEachWithKey((info, _name) => {
+        sliceInfos->Dict.forEachWithKey((info, _name) => {
           info.queryDbResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
           let pkg = Util_Bundle.extractPackageName(info.specModulePath)
           packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
@@ -194,7 +194,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
 
 let finish = () =>
   if !finished.contents {
-    Console.log(`StateViewSliceRuntime_Builder_Single.finish: ${storedSpecs->Array.length->Int.toString} storedSpecs, ${bundledInfos->Dict.keysToArray->Array.length->Int.toString} bundledInfos, grandParent=${grandParent.contents->Option.map(_ => "Some")->Option.getOr("None")}`)
+    Console.log(`StateViewSliceRuntime_Builder_Single.finish: ${storedSpecs->Array.length->Int.toString} storedSpecs, ${sliceInfos->Dict.keysToArray->Array.length->Int.toString} sliceInfos, grandParent=${grandParent.contents->Option.map(_ => "Some")->Option.getOr("None")}`)
     if storedSpecs->Array.length > 0 {
       let (maxMemorySize, maxTimeout) = storedSpecs->Array.reduce((0, 0), (
         (accMemorySize, accTimeout),
@@ -211,7 +211,7 @@ let finish = () =>
         let packageDirs: dict<string> = Dict.make()
 
         storedSpecs->Array.forEach(spec => {
-          switch bundledInfos->Dict.get(spec.componentName) {
+          switch sliceInfos->Dict.get(spec.componentName) {
           | Some(info) =>
             let pkg = Util_Bundle.extractPackageName(info.specModulePath)
             packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
@@ -228,7 +228,7 @@ let finish = () =>
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             Console.warn(
-              `StateViewSliceRuntime_Builder_Single: no bundled info registered for ${spec.componentName}`,
+              `StateViewSliceRuntime_Builder_Single: no handler registered for ${spec.componentName}`,
             )
           }
         })

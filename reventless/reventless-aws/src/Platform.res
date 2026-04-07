@@ -11,7 +11,7 @@
 // Custom config:
 //   module Platform = Platform.MakeWithConfig({let splitApi = false; let cloner = true})
 
-// API config ref — populated during MakeWithConfig so bundled slice builders
+// API config ref — populated during MakeWithConfig so slice builders
 // can access api/apiRole outside the functor constraint.
 type apiConfig = {
   api: Types.AppSync.api,
@@ -113,7 +113,7 @@ module MakeWithConfig = (
     (phantomApi, phantomRole)
   }
 
-  // Expose api/apiRole as Platform.T value bindings so bundled DCB slice builders
+  // Expose api/apiRole as Platform.T value bindings so DCB slice builders
   // can access them through the platform interface.
   let api = appSyncApi
   let apiRole = appSyncApiRole
@@ -128,7 +128,7 @@ module MakeWithConfig = (
   }
 
   module Aggregate = {
-    // Non-bundled Make satisfies Platform.T but registers no entry point.
+    // This Make satisfies Platform.T but registers no Lambda entry point.
     // For working AWS deployments, use the AWS builders directly
     // (e.g., ReventlessAws.Aggregate_Builder_Single.Make) from _Aws plugin variants.
     module Make = (
@@ -276,15 +276,12 @@ module MakeWithConfig = (
 
   module StateViewSlice = {
     include StateViewSlice_Builder.Make(ApiConfig)
-    module Bundled = StateViewSlice_Builder_Bundled.Make(ApiConfig)
   }
   module AutomationSlice = {
     include AutomationSlice_Builder.Make(ApiConfig)
-    module Bundled = AutomationSlice_Builder_Bundled.Make(ApiConfig)
   }
   module OutboundTranslationSlice = {
     include OutboundTranslationSlice_Builder.Make(ApiConfig)
-    module Bundled = OutboundTranslationSlice_Builder_Bundled.Make(ApiConfig)
   }
   module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(ApiConfig)
 
@@ -487,7 +484,7 @@ module MakeWithConfig = (
         )
       })
     },
-    // DCB EventLog created hook — extracts DynamoDB table name for bundled DCB CommandTopic handler.
+    // DCB EventLog created hook — extracts DynamoDB table name for DCB CommandTopic Lambda handler.
     onDcbEventLogCreated: dcbEventLogUnknown => {
       let dcbEventLog: ReventlessCore.Component.t<unit, ReventlessCore.DcbEventLog.outputs, unit> =
         Obj.magic(dcbEventLogUnknown)
@@ -499,7 +496,7 @@ module MakeWithConfig = (
         (),
       )
     },
-    // DCB CommandTopic created hook — extracts SQS queue URL for bundled slice builders.
+    // DCB CommandTopic created hook — extracts SQS queue URL for slice builders.
     onDcbCommandTopicCreated: dcbCommandTopicUnknown => {
       let commandTopic: ReventlessCore.CommandTopic.component<unit> = Obj.magic(
         dcbCommandTopicUnknown,
@@ -508,13 +505,13 @@ module MakeWithConfig = (
       let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
       AutomationSliceRuntime_Builder_Single.setDcbQueueUrl(channelParts.queue.id)
     },
-    // DCB slices created hook — finalize bundled slice Lambdas.
+    // DCB slices created hook — finalize slice Lambdas.
     onDcbSlicesCreated: dcbEventLogUnknown => {
       let dcbEventLog: ReventlessCore.DcbEventLog.component = Obj.magic(dcbEventLogUnknown)
       StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog(dcbEventLog)
       AutomationSliceRuntime_Builder_Single.finish()
     },
-    // Heartbeat EP channel hook — extracts SQS queue URL for bundled heartbeat handler.
+    // Heartbeat EP channel hook — extracts SQS queue URL for heartbeat Lambda handler.
     onHeartbeatEpChannelAvailable: remoteChannelUnknown => {
       let remoteChannel: ReventlessCore.CommandTopic_Adapter.remoteChannel = Obj.magic(
         remoteChannelUnknown,

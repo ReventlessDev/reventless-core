@@ -9,10 +9,10 @@ import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
-let bundledInfos = {};
+let extensionPointInfos = {};
 
 function registerExtensionPoint(name, specModulePath, mappingsModulePath, publishToAggregatesQueueUrls) {
-  bundledInfos[name] = {
+  extensionPointInfos[name] = {
     specModulePath: specModulePath,
     mappingsModulePath: mappingsModulePath,
     publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
@@ -24,8 +24,8 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let commandTopicResource = Component$ReventlessCore.toPulumiResource(commandTopic);
   let epName = Stdlib_Option.getOr(commandTopicResource.__name, "Unnamed");
-  let hit = bundledInfos[epName];
-  let matchedInfo = hit !== undefined ? hit : Stdlib_Option.map(Object.entries(bundledInfos).find(param => epName.includes(param[0].replaceAll(".", ""))), param => param[1]);
+  let hit = extensionPointInfos[epName];
+  let matchedInfo = hit !== undefined ? hit : Stdlib_Option.map(Object.entries(extensionPointInfos).find(param => epName.includes(param[0].replaceAll(".", ""))), param => param[1]);
   if (matchedInfo !== undefined) {
     let channel = commandTopic.channel;
     let channelParts = channel.parts;
@@ -63,7 +63,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
     return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, code, sourceCodeHash, envVars, memorySize, timeout, opts));
   }
-  console.warn(`ExtensionPointRuntime_Builder_PerExtensionPoint: no bundled info for ` + epName);
+  console.warn(`ExtensionPointRuntime_Builder_PerExtensionPoint: no handler registered for ` + epName);
 }
 
 let CommandTopicChannel;
@@ -73,7 +73,7 @@ let RuntimeEnvironment;
 export {
   CommandTopicChannel,
   RuntimeEnvironment,
-  bundledInfos,
+  extensionPointInfos,
   registerExtensionPoint,
   forCommandTopic,
 }

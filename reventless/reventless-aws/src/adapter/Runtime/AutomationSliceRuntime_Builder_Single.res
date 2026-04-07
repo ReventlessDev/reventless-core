@@ -4,13 +4,13 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledAutomationSliceInfo = {
+type sliceInfo = {
   specModulePath: string,
   callbackType: string,
   queryDbTableName: Pulumi.Output.t<string>,
 }
 
-let bundledInfos: dict<bundledAutomationSliceInfo> = Dict.make()
+let bundledInfos: dict<sliceInfo> = Dict.make()
 
 let dcbQueueUrlRef: ref<option<Pulumi.Output.t<string>>> = ref(None)
 let setDcbQueueUrl = url => dcbQueueUrlRef := Some(url)

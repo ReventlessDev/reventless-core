@@ -5,15 +5,15 @@ type context = PulumiAws.Lambda.context
 type callbackEvent = TaskBucket.callbackEvent
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledTaskBucketInfo = {
+type taskBucketInfo = {
   callbackModulePath: string,
   publishToAggregatesQueueUrls: dict<Pulumi.Output.t<string>>,
 }
 
-let bundledTaskBucketInfos: dict<bundledTaskBucketInfo> = Dict.make()
+let taskBucketInfos: dict<taskBucketInfo> = Dict.make()
 
 let registerTaskBucket = (~bucketName, ~callbackModulePath, ~publishToAggregatesQueueUrls) =>
-  bundledTaskBucketInfos->Dict.set(
+  taskBucketInfos->Dict.set(
     bucketName,
     {callbackModulePath, publishToAggregatesQueueUrls},
   )
@@ -29,7 +29,7 @@ let forBucketCallback = (
   let resource = task->ReventlessCore.Component.toPulumiResource
   let fullName = resource.name->Option.getOr("UnnamedTask") ++ name
 
-  switch bundledTaskBucketInfos->Dict.get(name) {
+  switch taskBucketInfos->Dict.get(name) {
   | Some(info) =>
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 
@@ -94,7 +94,7 @@ let forBucketCallback = (
     connect(~runtime)
   | None =>
     Console.warn(
-      `TaskRuntime_Builder_PerBucket: no bundled info registered for bucket "${name}"`,
+      `TaskRuntime_Builder_PerBucket: no handler registered for bucket "${name}"`,
     )
   }
 }

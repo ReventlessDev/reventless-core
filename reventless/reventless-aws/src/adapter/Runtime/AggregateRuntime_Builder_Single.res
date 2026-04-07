@@ -5,13 +5,13 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledAggregateInfo = {
+type aggregateInfo = {
   specModulePath: string,
   behaviorModulePath: string,
   eventLogTableName: Pulumi.Output.t<string>,
 }
 
-let bundledAggregateInfos: dict<bundledAggregateInfo> = Dict.make()
+let aggregateInfos: dict<aggregateInfo> = Dict.make()
 
 let registerAggregate = (
   ~aggregateName,
@@ -19,7 +19,7 @@ let registerAggregate = (
   ~behaviorModulePath,
   ~eventLogTableName,
 ) =>
-  bundledAggregateInfos->Dict.set(
+  aggregateInfos->Dict.set(
     aggregateName,
     {specModulePath, behaviorModulePath, eventLogTableName},
   )
@@ -120,7 +120,7 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
   | None =>
     let name = commandTopicResource.name->Option.getOr("Unnamed")
     JsError.throwWithMessage(
-      `forCommandTopic(bundled): commandTopic ${name} has no Aggregate parent`,
+      `forCommandTopic(single): commandTopic ${name} has no Aggregate parent`,
     )
   }
 }
@@ -156,7 +156,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
   | None =>
     let name = eventCollectorResource.name->Option.getOr("Unnamed")
     JsError.throwWithMessage(
-      `forEventCollector(bundled): eventCollector ${name} has no Aggregate parent`,
+      `forEventCollector(single): eventCollector ${name} has no Aggregate parent`,
     )
   }
 }
@@ -188,7 +188,7 @@ let finish = () =>
         let packageDirs: dict<string> = Dict.make()
 
         specs->Array.forEach(spec => {
-          switch bundledAggregateInfos->Dict.get(spec.aggregateName) {
+          switch aggregateInfos->Dict.get(spec.aggregateName) {
           | Some(info) =>
             // Collect unique user packages for the code asset
             let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
@@ -210,7 +210,7 @@ let finish = () =>
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             Console.warn(
-              `AggregateRuntime_Builder_Single: no bundled info registered for ${spec.aggregateName}`,
+              `AggregateRuntime_Builder_Single: no handler registered for ${spec.aggregateName}`,
             )
           }
         })

@@ -143,36 +143,18 @@ module type T = {
   module StateViewSlice: {
     module Make: (Spec: Reventless.StateViewSlice.Spec) => StateViewSlice.T
       with module Spec = Spec
-    module Bundled: {
-      module Make: (
-        Spec: Reventless.StateViewSlice.Spec,
-      ) => StateViewSlice.T
-        with module Spec = Spec
-    }
   }
 
   /** Factory for DCB automation slice components (TODO list pattern). */
   module AutomationSlice: {
     module Make: (Spec: Reventless.AutomationSlice.Spec) => AutomationSlice.T
       with module Spec = Spec
-    module Bundled: {
-      module Make: (
-        Spec: Reventless.AutomationSlice.Spec,
-      ) => AutomationSlice.T
-        with module Spec = Spec
-    }
   }
 
   /** Factory for DCB outbound translation slice components (tracked external calls). */
   module OutboundTranslationSlice: {
     module Make: (Spec: Reventless.OutboundTranslationSlice.Spec) => OutboundTranslationSlice.T
       with module Spec = Spec
-    module Bundled: {
-      module Make: (
-        Spec: Reventless.OutboundTranslationSlice.Spec,
-      ) => OutboundTranslationSlice.T
-        with module Spec = Spec
-    }
   }
 
   /** Factory for DCB inbound translation slice components (external input to commands). */

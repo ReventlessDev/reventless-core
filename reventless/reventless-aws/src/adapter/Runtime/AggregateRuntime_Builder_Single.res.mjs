@@ -10,10 +10,10 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
-let bundledAggregateInfos = {};
+let aggregateInfos = {};
 
 function registerAggregate(aggregateName, specModulePath, behaviorModulePath, eventLogTableName) {
-  bundledAggregateInfos[aggregateName] = {
+  aggregateInfos[aggregateName] = {
     specModulePath: specModulePath,
     behaviorModulePath: behaviorModulePath,
     eventLogTableName: eventLogTableName
@@ -81,7 +81,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     return;
   }
   let name = Stdlib_Option.getOr(commandTopicResource.__name, "Unnamed");
-  Stdlib_JsError.throwWithMessage(`forCommandTopic(bundled): commandTopic ` + name + ` has no Aggregate parent`);
+  Stdlib_JsError.throwWithMessage(`forCommandTopic(single): commandTopic ` + name + ` has no Aggregate parent`);
 }
 
 function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) {
@@ -110,7 +110,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     return;
   }
   let name = Stdlib_Option.getOr(eventCollectorResource.__name, "Unnamed");
-  Stdlib_JsError.throwWithMessage(`forEventCollector(bundled): eventCollector ` + name + ` has no Aggregate parent`);
+  Stdlib_JsError.throwWithMessage(`forEventCollector(single): eventCollector ` + name + ` has no Aggregate parent`);
 }
 
 let finished = {
@@ -141,7 +141,7 @@ function finish() {
       let handlerOutputs = [];
       let packageDirs = {};
       specs.forEach(spec => {
-        let info = bundledAggregateInfos[spec.aggregateName];
+        let info = aggregateInfos[spec.aggregateName];
         if (info !== undefined) {
           let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
           let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
@@ -157,7 +157,7 @@ function finish() {
           handlerOutputs.push(handlerJson);
           return;
         }
-        console.warn(`AggregateRuntime_Builder_Single: no bundled info registered for ` + spec.aggregateName);
+        console.warn(`AggregateRuntime_Builder_Single: no handler registered for ` + spec.aggregateName);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
@@ -191,7 +191,7 @@ export {
   CommandTopicChannel,
   EventCollectorChannel,
   RuntimeEnvironment,
-  bundledAggregateInfos,
+  aggregateInfos,
   registerAggregate,
   storedSpecs,
   getStoredSpec,

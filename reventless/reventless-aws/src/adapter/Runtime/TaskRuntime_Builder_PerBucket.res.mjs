@@ -7,10 +7,10 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
-let bundledTaskBucketInfos = {};
+let taskBucketInfos = {};
 
 function registerTaskBucket(bucketName, callbackModulePath, publishToAggregatesQueueUrls) {
-  bundledTaskBucketInfos[bucketName] = {
+  taskBucketInfos[bucketName] = {
     callbackModulePath: callbackModulePath,
     publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
   };
@@ -21,7 +21,7 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, task
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 600;
   let resource = Component$ReventlessCore.toPulumiResource(task);
   let fullName = Stdlib_Option.getOr(resource.__name, "UnnamedTask") + name;
-  let info = bundledTaskBucketInfos[name];
+  let info = taskBucketInfos[name];
   if (info !== undefined) {
     let envVars = {};
     let publishToAggregatesEnvVars = {};
@@ -49,7 +49,7 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, task
       parent: resource
     }));
   }
-  console.warn(`TaskRuntime_Builder_PerBucket: no bundled info registered for bucket "` + name + `"`);
+  console.warn(`TaskRuntime_Builder_PerBucket: no handler registered for bucket "` + name + `"`);
 }
 
 function finish() {
@@ -63,7 +63,7 @@ let TaskBucket;
 export {
   RuntimeEnvironment,
   TaskBucket,
-  bundledTaskBucketInfos,
+  taskBucketInfos,
   registerTaskBucket,
   forBucketCallback,
   finish,

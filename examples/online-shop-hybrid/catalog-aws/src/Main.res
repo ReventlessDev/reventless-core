@@ -1,6 +1,4 @@
-// Catalog plugin deployment — bundled variant.
-// Uses bundled Lambda handlers for Aggregate and ReadModel components.
-// DCB slices use standard CallbackFunction handlers.
+// Catalog plugin — AWS deployment.
 
 let _ = ReventlessAws.PluginRuntime_Builder.registerDcbConfig(
   ~pluginName="Catalog",

@@ -51,8 +51,6 @@ import * as Aggregate_Builder_NoResolver$ReventlessAws from "./components/Aggreg
 import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
 import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
-import * as StateViewSlice_Builder_Bundled$ReventlessAws from "./components/StateViewSlice_Builder_Bundled.res.mjs";
-import * as AutomationSlice_Builder_Bundled$ReventlessAws from "./components/AutomationSlice_Builder_Bundled.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
@@ -61,7 +59,6 @@ import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/Co
 import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginExtensionPointRuntime_Builder.res.mjs";
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
 import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
-import * as OutboundTranslationSlice_Builder_Bundled$ReventlessAws from "./components/OutboundTranslationSlice_Builder_Bundled.res.mjs";
 
 let apiConfigRef = {
   contents: undefined
@@ -239,11 +236,8 @@ function MakeWithConfig(Config) {
     Make: Make$5
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Bundled = StateViewSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Bundled$1 = AutomationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Bundled$2 = OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -674,22 +668,13 @@ function MakeWithConfig(Config) {
     },
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: {
-      Make: include.Make,
-      Bundled: {
-        Make: Bundled.Make
-      }
+      Make: include.Make
     },
     AutomationSlice: {
-      Make: include$1.Make,
-      Bundled: {
-        Make: Bundled$1.Make
-      }
+      Make: include$1.Make
     },
     OutboundTranslationSlice: {
-      Make: include$2.Make,
-      Bundled: {
-        Make: Bundled$2.Make
-      }
+      Make: include$2.Make
     },
     InboundTranslationSlice: InboundTranslationSlice,
     Api: Api,
@@ -861,11 +846,8 @@ function Make($star) {
     Make: Make$6
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Bundled = StateViewSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Bundled$1 = AutomationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Bundled$2 = OutboundTranslationSlice_Builder_Bundled$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -1278,29 +1260,14 @@ function Make($star) {
     outputs: Counter_outputs,
     operations: Counter_operations
   };
-  let StateViewSlice_Make = include.Make;
-  let StateViewSlice_Bundled = {
-    Make: Bundled.Make
-  };
   let StateViewSlice = {
-    Make: StateViewSlice_Make,
-    Bundled: StateViewSlice_Bundled
-  };
-  let AutomationSlice_Make = include$1.Make;
-  let AutomationSlice_Bundled = {
-    Make: Bundled$1.Make
+    Make: include.Make
   };
   let AutomationSlice = {
-    Make: AutomationSlice_Make,
-    Bundled: AutomationSlice_Bundled
-  };
-  let OutboundTranslationSlice_Make = include$2.Make;
-  let OutboundTranslationSlice_Bundled = {
-    Make: Bundled$2.Make
+    Make: include$1.Make
   };
   let OutboundTranslationSlice = {
-    Make: OutboundTranslationSlice_Make,
-    Bundled: OutboundTranslationSlice_Bundled
+    Make: include$2.Make
   };
   return {
     api: appSyncApi,

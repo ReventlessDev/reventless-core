@@ -4,14 +4,14 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledSideEffectInfo = {
+type sideEffectInfo = {
   sideEffectModulePaths: array<string>,
 }
 
-let bundledSideEffectInfos: dict<bundledSideEffectInfo> = Dict.make()
+let sideEffectInfos: dict<sideEffectInfo> = Dict.make()
 
 let registerSideEffectHandler = (~sideEffectHandlerName, ~sideEffectModulePaths) =>
-  bundledSideEffectInfos->Dict.set(sideEffectHandlerName, {sideEffectModulePaths: sideEffectModulePaths})
+  sideEffectInfos->Dict.set(sideEffectHandlerName, {sideEffectModulePaths: sideEffectModulePaths})
 
 type storedSpec = {
   componentName: string,
@@ -77,7 +77,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
     )
   | None =>
     JsError.throwWithMessage(
-      `forEventCollector(bundled): eventCollector ${eventCollectorName} has no parent`,
+      `forEventCollector(single): eventCollector ${eventCollectorName} has no parent`,
     )
   }
 }
@@ -103,7 +103,7 @@ let finish = () =>
         let packageDirs: dict<string> = Dict.make()
 
         storedSpecs->Array.forEach(spec => {
-          switch bundledSideEffectInfos->Dict.get(spec.componentName) {
+          switch sideEffectInfos->Dict.get(spec.componentName) {
           | Some(info) =>
             // Collect unique user packages for the code asset
             info.sideEffectModulePaths->Array.forEach(modPath => {
@@ -126,7 +126,7 @@ let finish = () =>
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
             Console.warn(
-              `SideEffectHandlerRuntime_Builder_Single: no bundled info registered for ${spec.componentName}`,
+              `SideEffectHandlerRuntime_Builder_Single: no handler registered for ${spec.componentName}`,
             )
           }
         })

@@ -4,13 +4,13 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledPluginEPInfo = {
+type pluginEPInfo = {
   publishToAggregatesQueueUrls: dict<Pulumi.Output.t<string>>,
   pluginReadModelTableName: option<Pulumi.Output.t<string>>,
   schedulerRoleArn: option<Pulumi.Output.t<string>>,
 }
 
-let bundledInfo: ref<bundledPluginEPInfo> = ref({
+let info: ref<pluginEPInfo> = ref({
   publishToAggregatesQueueUrls: Dict.make(),
   pluginReadModelTableName: None,
   schedulerRoleArn: None,
@@ -22,7 +22,7 @@ let registerPluginExtensionPoint = (
   ~schedulerRoleArn=?,
   (),
 ) =>
-  bundledInfo := {
+  info := {
     publishToAggregatesQueueUrls,
     pluginReadModelTableName,
     schedulerRoleArn,
@@ -45,7 +45,7 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
   commandTopic,
 ) => {
   let commandTopicResource = commandTopic->ReventlessCore.Component.toPulumiResource
-  let info = bundledInfo.contents
+  let info = info.contents
 
   let channel = commandTopic->ReventlessCore.CommandTopic_Adapter.channel
   let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)

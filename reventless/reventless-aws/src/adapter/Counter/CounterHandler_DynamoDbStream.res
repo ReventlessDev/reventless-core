@@ -1,13 +1,13 @@
-type bundledCounterInfo = {
+type counterInfo = {
   specModulePath: string,
   mappingsModulePath: string,
   publishQueueUrl: Pulumi.Output.t<string>,
 }
 
-let bundledCounterInfos: dict<bundledCounterInfo> = Dict.make()
+let counterInfos: dict<counterInfo> = Dict.make()
 
 let registerCounter = (~counterName, ~specModulePath, ~mappingsModulePath, ~publishQueueUrl) =>
-  bundledCounterInfos->Dict.set(
+  counterInfos->Dict.set(
     counterName,
     {specModulePath, mappingsModulePath, publishQueueUrl},
   )
@@ -26,7 +26,7 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
   let countsDbResource = countsDb.resources->Util.DynamoDbStream.findResource
   let countsStream = countsDbResource->Util.DynamoDbStream.toStreamResource
 
-  switch bundledCounterInfos->Dict.get(name) {
+  switch counterInfos->Dict.get(name) {
   | Some(info) =>
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 

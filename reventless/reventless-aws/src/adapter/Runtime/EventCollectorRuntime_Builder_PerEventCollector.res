@@ -4,13 +4,13 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type bundledReadModelInfo = {
+type readModelInfo = {
   specModulePath: string,
   mappingsModulePath: string,
   queryDbTableName: Pulumi.Output.t<string>,
 }
 
-let bundledReadModelInfos: dict<bundledReadModelInfo> = Dict.make()
+let readModelInfos: dict<readModelInfo> = Dict.make()
 
 let registerReadModel = (
   ~readModelName,
@@ -18,7 +18,7 @@ let registerReadModel = (
   ~mappingsModulePath,
   ~queryDbTableName,
 ) =>
-  bundledReadModelInfos->Dict.set(
+  readModelInfos->Dict.set(
     readModelName,
     {specModulePath, mappingsModulePath, queryDbTableName},
   )
@@ -47,7 +47,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
   | Some(parentResource) =>
     let parentName = parentResource.name->Option.getOr("Unnamed")
 
-    switch bundledReadModelInfos->Dict.get(parentName) {
+    switch readModelInfos->Dict.get(parentName) {
     | Some(info) =>
       let sourceUrns =
         (eventCollector->ReventlessCore.Component.outputs).resources
