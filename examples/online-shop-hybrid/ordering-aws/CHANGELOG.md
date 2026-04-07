@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.14 (2026-04-07)
+
+### Bug Fixes
+
+* rebuild stale catalog-aws and ordering-aws .mjs artifacts ([3b7eab1](https://github.com/ReventlessDev/reventless-core/commit/3b7eab15c77dfbd2729f028994be7111566abeab))
+
+
 # 1.0.0-alpha.13 (2026-04-07)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-aws
