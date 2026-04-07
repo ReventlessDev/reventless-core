@@ -33,33 +33,33 @@ queries are possible.
 
 ```
                         ┌─────────────────────┐
-                        │ One global value?    │
+                        │ One global value?   │
                         └──────┬──────────────┘
                                │ yes → Pattern 1: Singleton (key = "")
                                │ no ↓
                         ┌─────────────────────┐
-                        │ One current record   │
-                        │ per entity?          │
+                        │ One current record  │
+                        │ per entity?         │
                         └──────┬──────────────┘
                                │ yes → Pattern 2: Entity-keyed
                                │ no ↓
                         ┌─────────────────────┐
-                        │ History accumulates  │
-                        │ per entity?          │
+                        │ History accumulates │
+                        │ per entity?         │
                         └──────┬──────────────┘
                                │ yes → Use @subId for the varying dimension
                                │ no ↓
                         ┌─────────────────────┐
-                        │ Need grouped queries │
-                        │ by parent entity?    │
+                        │ Need grouped queries│
+                        │ by parent entity?   │
                         └──────┬──────────────┘
                                │ yes → Use @compositeId for partition key
                                │       + @subId for grouping dimension
                                │ no ↓
                         ┌─────────────────────┐
-                        │ Need cross-cutting   │
-                        │ queries (by category,│
-                        │ by environment)?     │
+                        │ Need cross-cutting  │
+                        │ queries (by category│
+                        │ by environment)?    │
                         └──────┬──────────────┘
                                │ yes → Add @index on the cross-cutting field
                                │ no → Pattern 2 is sufficient
@@ -175,7 +175,7 @@ When the sort key should be built from multiple fields for hierarchical prefix q
 ```rescript
 @schema
 type state = {
-  @compositeId orderId: string,
+  @id orderId: string,
   @compositeSubId category: string,
   @compositeSubId productId: string,
   quantity: int,
@@ -316,19 +316,19 @@ type OrderHistoryByIdConnection {
 ### Common query patterns
 
 ```graphql
-# Last 5 orders
-OrderHistoryById(id: "customer-123", reverse: true, limit: 5) {
+# Last 5 status changes for an order
+OrderHistoryById(id: "order-123", reverse: true, limit: 5) {
   items { timestamp status total }
   nextToken
 }
 
-# Orders in a date range
-OrderHistoryById(id: "customer-123", from: "2024-01-01", to: "2024-03-31") {
+# Status changes in a date range
+OrderHistoryById(id: "order-123", from: "2024-01-01", to: "2024-03-31") {
   items { timestamp status total }
 }
 
 # Next page
-OrderHistoryById(id: "customer-123", reverse: true, limit: 5, nextToken: "abc...") {
+OrderHistoryById(id: "order-123", reverse: true, limit: 5, nextToken: "abc...") {
   items { ... }
   nextToken
 }
@@ -343,33 +343,39 @@ Use a sentinel sort key to store both current state and full history in one Quer
 ```rescript
 @schema
 type state = {
-  @compositeId orderId: string,
+  @id orderId: string,
   @subId version: string,      // "v1", "v2", ... or "~current"
   status: string,
   total: float,
 }
 ```
 
-In the `project` function, write two entries per event:
+In the `project` function, write two entries per event — one for history, one for current:
 
 ```rescript
-| OrderStatusChanged({ orderId, newStatus, version }) => [
-    Set(orderId, { orderId, version, status: newStatus, total }),         // history
-    Set(orderId, { orderId, version: "~current", status: newStatus, total }), // current
-  ]
+| OrderStatusChanged({ orderId, status, total, version }) => {
+    let state = { orderId, version, status, total }
+    [
+      Set(orderId, state),                                           // history
+      Set(orderId, { ...state, version: "~current" }),               // current (overwrites)
+    ]
+  }
 ```
+
+Both `Set` calls use the same partition key (`orderId`) but produce different sort keys
+because `getSubId` extracts the `version` field, which differs (`"v3"` vs `"~current"`).
 
 **Queries:**
 
 ```graphql
 # Full history + current state
-OrderById(id: "order-123") { items { version status } }
+Plugin_OrderById(id: "order-123") { items { version status } }
 
 # Just current state
-OrderById(id: "order-123", eq: "~current") { items { status total } }
+Plugin_OrderById(id: "order-123", eq: "~current") { items { status total } }
 
 # History only (tilde sorts after all alphanumeric values)
-OrderById(id: "order-123", to: "z") { items { version status } }
+Plugin_OrderById(id: "order-123", to: "z") { items { version status } }
 ```
 
 ---
@@ -394,7 +400,8 @@ version-based sort keys.
 
 ## Complete Example
 
-An order tracking StateViewSlice using the full annotation set:
+An order tracking StateViewSlice using the full annotation set. Note how each record field
+appears exactly once — multiple annotations stack on the same field declaration.
 
 ```rescript
 @@reventless.spec
@@ -410,18 +417,16 @@ type consumedEvent =
   | OrderStatusChanged({
       @partitionTag orderId: string,
       status: string,
+      total: float,
       changedAt: string,
     })
 
 @schema
 type state = {
-  @id orderId: string,                              // main table pk
-  @subId changedAt: string,                         // main table sk (ISO timestamp)
-  @index customerId: string,                        // GSI: orders by customer
-  @index("byStatus") status: string,               // GSI pk: orders by status
-  @indexSubId("byStatus") changedAt: string,        // GSI sk: sorted by time
-  @resolves(~to="Customers", ~as="customer") customerId: string,
-  status: string,
+  @id orderId: string,
+  @subId @indexSubId("byStatus") changedAt: string,
+  @index @resolves(~to="Customers", ~as="customer") customerId: string,
+  @index("byStatus") status: string,
   total: float,
 }
 
@@ -429,36 +434,60 @@ let project = event => switch event {
   | OrderPlaced({ orderId, customerId, total, placedAt }) =>
     [Set(orderId, { orderId, changedAt: placedAt, customerId,
                     status: "placed", total })]
-  | OrderStatusChanged({ orderId, status, changedAt }) =>
+  | OrderStatusChanged({ orderId, status, total, changedAt }) =>
     [Set(orderId, { orderId, changedAt, customerId: "",
-                    status, total: 0.0 })]
+                    status, total })]
 }
 ```
+
+`@id orderId` — main table partition key.
+`@subId @indexSubId("byStatus") changedAt` — main table sort key AND sort key for the
+"byStatus" GSI. Two annotations on one field.
+`@index @resolves(~to="Customers", ~as="customer") customerId` — standalone GSI AND
+cross-table resolver. Two annotations on one field.
+`@index("byStatus") status` — partition key for the "byStatus" GSI.
+
+**Note on the project function:** `OrderStatusChanged` sets `customerId: ""` because the
+event doesn't carry the customer ID. With `@subId`, each `Set` with a different `changedAt`
+value creates a new entry (different sort key). Use `Update` instead of `Set` if you need
+to preserve fields from the previous entry.
 
 **Generated queries:**
 
 ```graphql
-# Full timeline for one order
-Plugin_OrderTrackingById(id: "order-123") { items { changedAt status total } }
-
-# Last status change
-Plugin_OrderTrackingById(id: "order-123", reverse: true, limit: 1) {
-  items { changedAt status }
+# Full timeline for one order — all entries sorted by changedAt ascending
+query {
+  Plugin_OrderTrackingById(id: "order-123") {
+    items { changedAt status total }
+  }
 }
 
-# All orders by a customer (via GSI)
-Plugin_OrderTrackings(customerId: "cust-456") {
-  edges { node { orderId status total } }
+# Last status change — reverse sort, limit 1
+query {
+  Plugin_OrderTrackingById(id: "order-123", reverse: true, limit: 1) {
+    items { changedAt status }
+  }
 }
 
-# All "shipped" orders, newest first (via named GSI with sort key)
-Plugin_OrderTrackings(status: "shipped", forward: false) {
-  edges { node { orderId changedAt } }
+# All orders by a customer (via standalone GSI on customerId)
+query {
+  Plugin_OrderTrackings(customerId: "cust-456") {
+    edges { node { orderId status total } }
+  }
 }
 
-# Order with expanded customer object (via @resolves)
-Plugin_OrderTracking(id: "order-123") {
-  orderId status total
-  customer { name email }
+# All "shipped" orders, newest first (via named GSI "byStatus" with changedAt sort key)
+query {
+  Plugin_OrderTrackings(status: "shipped", reverse: true) {
+    edges { node { orderId changedAt } }
+  }
+}
+
+# Single order with expanded customer object (via @resolves)
+query {
+  Plugin_OrderTracking(id: "order-123") {
+    orderId status total
+    customer { name email }
+  }
 }
 ```
