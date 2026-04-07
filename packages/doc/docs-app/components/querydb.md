@@ -303,7 +303,7 @@ let projection = async (event, queryDb) => {
 
 ### Declaring keys via PPX annotations
 
-The recommended way to configure composite keys, sort keys, and GSIs is via PPX annotations directly on `@schema type state` in the ReadModel or StateViewSlice spec file:
+The recommended way to configure composite keys, sort keys, and secondary indexes is via PPX annotations directly on `@schema type state` in the ReadModel or StateViewSlice spec file:
 
 ```rescript title="OrderLineItemsReadModel.res"
 @@reventless.spec
@@ -312,8 +312,8 @@ The recommended way to configure composite keys, sort keys, and GSIs is via PPX 
 type state = {
   @id orderId: string,               // partition key
   @subId lineItemId: string,         // sort key → enables {name}ById sort key query
-  @index("byProduct") productId: string,   // GSI partition key
-  @indexSubId("byProduct") createdAt: string,  // GSI sort key
+  @index("byProduct") productId: string,   // secondary index partition key
+  @indexSubId("byProduct") createdAt: string,  // secondary index sort key
   quantity: int,
 }
 ```
@@ -321,7 +321,7 @@ type state = {
 This generates:
 - `let makeId = state => state.orderId`
 - `let subIdConfig = Some({ subIdField: "lineItemId", getSubId: ... })`
-- `let config` with a `byProduct` GSI (partition: `productId`, sort: `createdAt`)
+- `let config` with a `byProduct` secondary index (partition: `productId`, sort: `createdAt`)
 
 For the complete annotation reference see [QueryDb key design guide](../../../docs/guides/querydb-key-design-guide.md).
 
@@ -354,9 +354,9 @@ query {
 - **Partition Key**: `id` (String) - The primary entity identifier
 - **Optional Sort Key**: Configurable secondary key for range queries (declare with `@subId` or `@compositeSubId`)
 
-### Global Secondary Indexes (GSIs)
+### Secondary Indexes
 
-GSIs enable alternative query patterns. Declare with `@index` / `@indexSubId` annotations, or manually:
+secondary indexes enable alternative query patterns. Declare with `@index` / `@indexSubId` annotations, or manually:
 
 ```rescript
 type indexConfig = {
@@ -444,7 +444,7 @@ type state = {
 ```rescript
 // Partition key: customerId
 // Sort key: orderTimestamp
-// GSI: orderStatus
+// secondary index: orderStatus
 type state = {
   id: string,
   customerId: string,
@@ -491,12 +491,12 @@ await queryDb.count(productId, "stockCount", -1)
 ### Latency
 
 - **Single-digit milliseconds** for point queries
-- **GSI queries**: Similar latency to base table
+- **secondary index queries**: Similar latency to base table
 - **Batch operations**: Parallel execution
 
 ### Cost Optimization
 
-- **Right-size GSIs**: Use appropriate projection types
+- **Right-size secondary indexes**: Use appropriate projection types
 - **TTL cleanup**: Automatic deletion of expired items
 - **Batch operations**: Reduce API calls
 - **On-demand vs provisioned**: Choose based on traffic patterns

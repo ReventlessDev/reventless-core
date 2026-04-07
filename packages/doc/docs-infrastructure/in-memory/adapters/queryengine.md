@@ -29,5 +29,5 @@ Created via `Make(Bus)` functor. Uses the bus's QueryDb registries to look up da
 |--------|----------|-----|
 | Scan | In-memory array/stream iteration | DynamoDB Scan with filter expressions |
 | Query | Dict key lookup | DynamoDB Query with key conditions |
-| Indexes | Not supported | GSI/LSI support |
+| Indexes | Not supported | secondary index/LSI support |
 | Filtering | None (returns all matches) | DynamoDB filter expressions |

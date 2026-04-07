@@ -370,7 +370,7 @@ type outputs = {
 When DCB is configured, `Dcb_Builder.Make.construct` (invoked by `Plugin_Builder`) does the following:
 
 1. **Validates event compatibility** — `DcbValidation.validateProducedAndConsumed` checks that every consumed event TAG has a matching producer, payloads are equivalent across producers, and consumed fields are subsets of produced fields
-2. **Extracts tagged fields** from all slices' schemas to determine DynamoDB GSI names
+2. **Extracts tagged fields** from all slices' schemas to determine DynamoDB secondary index names
 3. **Derives the partition tag** via `DcbTag.derivePartitionTag` — auto-selects when unambiguous, requires `DcbTag.partition` annotation when a variant has multiple tags
 4. **Creates one `DcbEventLog`** using the plugin name, extracted indexes, and partition tag
 4. **Creates one `DcbCommandTopic`** — typed as `command = JSON.t` (accepts all JSON)
@@ -609,13 +609,13 @@ let dcbRuntimeSetup = () =>
 
 The DCB EventLog uses **primary-tag partitioning** — each event's tag determines its DynamoDB partition key. Instead of a single `id="dcb"` partition for all events, the partition key is `"<tagKey>:<tagValue>"` (e.g., `"productId:prod-1"`, `"categoryId:cat-1"`).
 
-This distributes events across DynamoDB partitions by entity, eliminating the single-partition bottleneck and enabling per-entity queries via direct key lookups instead of GSI queries.
+This distributes events across DynamoDB partitions by entity, eliminating the single-partition bottleneck and enabling per-entity queries via direct key lookups instead of secondary index queries.
 
 ### How partitioning works
 
 **Write path**: Each event's first tag determines its partition key. A `ProductAdded({productId: "p1", ...})` event goes to partition `productId:p1`. A `CategoryAdded({categoryId: "c1", ...})` event goes to partition `categoryId:c1`.
 
-**Read path**: Each query clause routes to the partition matching its tag. A query for `{tags: [{key: "productId", value: "p1"}]}` does a direct partition key lookup on `productId:p1` — no GSI needed.
+**Read path**: Each query clause routes to the partition matching its tag. A query for `{tags: [{key: "productId", value: "p1"}]}` does a direct partition key lookup on `productId:p1` — no secondary index needed.
 
 **Multi-clause queries**: Cross-entity queries (e.g., PlaceOrder referencing multiple products) dispatch each clause to its target partition in parallel, then merge results using the existing k-way merge.
 

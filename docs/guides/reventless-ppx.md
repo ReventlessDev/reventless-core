@@ -334,11 +334,11 @@ type state = {
 
 ---
 
-### `@index`, `@indexSubId` — GSI annotations
+### `@index`, `@indexSubId` — secondary index annotations
 
-Use on `@schema type state` fields to declare DynamoDB Global Secondary Indexes. The PPX aggregates all index annotations and generates `let config` with an `indexes` array.
+Use on `@schema type state` fields to declare DynamoDB secondary indexes. The PPX aggregates all index annotations and generates `let config` with an `indexes` array.
 
-**`@index` — simple GSI (no sort key):**
+**`@index` — simple secondary index (no sort key):**
 ```rescript
 @schema
 type state = {
@@ -346,7 +346,7 @@ type state = {
   @index categoryId: string,
   name: string,
 }
-// GSI: partition key = categoryId, ALL projection
+// secondary index: partition key = categoryId, ALL projection
 // Query field generated: productByCategoryId(categoryId: ID!): ...
 ```
 
@@ -359,7 +359,7 @@ type state = {
 @index({projection: "INCLUDE", fields: ["name", "price"]}) categoryId: string,
 ```
 
-**Named `@index` with `@indexSubId` — GSI with sort key:**
+**Named `@index` with `@indexSubId` — secondary index with sort key:**
 
 Use the same name on both annotations to link them. The named index gets both a partition key and a sort key.
 
@@ -371,10 +371,10 @@ type state = {
   @indexSubId("byCategoryDate") createdAt: string,
   name: string,
 }
-// GSI: partition = categoryId, sort = createdAt
+// secondary index: partition = categoryId, sort = createdAt
 ```
 
-**Composite GSI keys** — annotate multiple fields with the same name:
+**Composite secondary index keys** — annotate multiple fields with the same name:
 ```rescript
 @schema
 type state = {
@@ -388,7 +388,7 @@ type state = {
 // Synthetic attributes injected at save: _byTenantCategory_pk, _byTenantCategory_sk
 ```
 
-**Authorization — restrict GSI access by Cognito group:**
+**Authorization — restrict secondary index access by Cognito group:**
 ```rescript
 @index({group: "admin", authTable: "PlatformAuth"}) tenantId: string,
 ```
@@ -414,10 +414,10 @@ type state = {
 // Resolved by GetItem on the Products table using productId
 ```
 
-**`@resolves` via GSI index:**
+****`@resolves` via secondary index:**
 ```rescript
 @resolves({table: "Orders", field: "currentOrder", via: "byProductId"}) productId: string,
-// Resolved by querying Orders table's byProductId GSI
+// Resolved by querying Orders table's byProductId secondary index
 ```
 
 **`@resolves` with cross-plugin table:**

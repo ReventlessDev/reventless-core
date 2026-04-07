@@ -257,7 +257,7 @@ Each log has a smaller event union and fewer slices. Tag-based filtering becomes
 - Natural DynamoDB partitioning — separate tables, separate capacity
 - Independent scaling per domain area
 - Slices only subscribe to the events they care about
-- Reduced GSI breadth — fewer tag types per log
+- Reduced secondary index breadth — fewer tag types per log
 
 **Cons**:
 - **Loses cross-entity consistency** — the core DCB advantage. If `AddProduct` needs to check category existence, and category events are in a different log, the conditional append can't span both logs. The consistency boundary is limited to a single log.
@@ -284,12 +284,12 @@ Slices query with domain-prefixed tags. The log remains shared (preserving cross
 **Pros**:
 - Single log — full DCB consistency preserved
 - Organizational clarity without infrastructure changes
-- GSI queries can use the domain tag for pre-filtering
+- secondary index queries can use the domain tag for pre-filtering
 
 **Cons**:
 - Doesn't solve the growing event union problem (all events still in one type)
 - Doesn't help with depth (event accumulation over time)
-- Tag proliferation — more tags per event, more GSI columns
+- Tag proliferation — more tags per event, more secondary index columns
 
 **When to use**: When you need cross-entity consistency but want better logical organization. Good for documentation and developer orientation, less impactful for runtime performance.
 
@@ -395,7 +395,7 @@ On next read, the slice:
 - Not a domain concept — purely technical debt management
 - "Snapshots solve a problem that rarely exists" — the performance concern often doesn't materialize until very high event counts
 
-**When to use**: As a last resort for performance optimization, after domain modeling (chapters) and query optimization (GSI tuning) have been exhausted.
+**When to use**: As a last resort for performance optimization, after domain modeling (chapters) and query optimization (secondary index tuning) have been exhausted.
 
 **Reventless impact**: Requires new infrastructure — snapshot store adapter, background snapshot builder, snapshot-aware read operations. A significant cross-cutting change.
 
@@ -465,13 +465,13 @@ The analysis in [dcb-eventlog-partitioning-improvement.md](dcb-eventlog-partitio
 
 #### The Single-Partition World (Current)
 
-In the current design, all events live in one DynamoDB partition keyed by `id="dcb"`. Chapters must be implemented as tagged events within this flat log. Finding the latest `ChapterOpened` event for an entity requires a GSI query. The shared partition means chapter-closing writes for one entity compete with regular command writes for all other entities. This is the world where Options A, B, and C all have significant trade-offs.
+In the current design, all events live in one DynamoDB partition keyed by `id="dcb"`. Chapters must be implemented as tagged events within this flat log. Finding the latest `ChapterOpened` event for an entity requires a secondary index query. The shared partition means chapter-closing writes for one entity compete with regular command writes for all other entities. This is the world where Options A, B, and C all have significant trade-offs.
 
 #### The Primary-Tag-Partitioned World (Recommended)
 
 With primary-tag partitioning, each entity already has its own physical partition (e.g., `id="productId:prod-1"`). This changes everything:
 
-1. **Entity-level chapters become trivial to locate.** Finding the latest `ChapterOpened` event is a simple backward scan within the entity's own partition — no GSI needed, no cross-partition query. The partition is already scoped to the entity.
+1. **Entity-level chapters become trivial to locate.** Finding the latest `ChapterOpened` event is a simple backward scan within the entity's own partition — no secondary index needed, no cross-partition query. The partition is already scoped to the entity.
 
 2. **Option A (global log chapters) becomes irrelevant.** There is no longer a single global log to segment. Each entity partition is its own mini-log. Global chapter boundaries would require coordinating across all partitions — the opposite of what partitioning achieves.
 
@@ -483,11 +483,11 @@ With primary-tag partitioning, each entity already has its own physical partitio
 
 | Concern | Single Partition + Chapters | Primary-Tag Partition + Chapters |
 |---------|---------------------------|----------------------------------|
-| **Finding latest chapter** | GSI query across all events | Backward scan within entity partition |
+| **Finding latest chapter** | secondary index query across all events | Backward scan within entity partition |
 | **Chapter closing atomicity** | Competes with all writers | DynamoDB transaction within one partition (atomic) |
 | **Archival granularity** | Must archive entire log or nothing | Archive per-entity partition independently |
-| **Chapter position index** | Dedicated table/GSI required | Not needed — partition IS the index |
-| **Cross-entity decision models** | Chapter positions from multiple entities via GSI | Each entity's partition queried independently; chapter position found per-partition |
+| **Chapter position index** | Dedicated table/secondary index required | Not needed — partition IS the index |
+| **Cross-entity decision models** | Chapter positions from multiple entities via secondary index | Each entity's partition queried independently; chapter position found per-partition |
 | **Concurrency during transition** | High risk — all entities share one partition | Low risk — only that entity's commands contend |
 
 ### Impact on Chapter Implementation Phases
@@ -515,7 +515,7 @@ This eliminates the race condition concern from the chapter analysis. Without pa
 
 ### Cross-Entity Decision Models: Already Addressed
 
-The partitioning analysis identifies cross-entity queries as rare and recommends GSI-based fallback or targeted single-partition reads. The same applies to cross-entity chapter concerns:
+The partitioning analysis identifies cross-entity queries as rare and recommends secondary index-based fallback or targeted single-partition reads. The same applies to cross-entity chapter concerns:
 
 - If a StateChangeSlice queries multiple entities, each entity's partition is queried independently. Each query can independently skip to the latest chapter opening within its partition.
 - The k-way merge infrastructure (already described in the partitioning doc) handles merging results across partitions, respecting per-partition chapter boundaries.
@@ -569,7 +569,7 @@ This sequencing means chapters become a lightweight addition on top of partition
 
 2. **Chapter-aware `DcbEventLog.read`**
    - Enhance the read operation to optionally start from the latest chapter opening
-   - With primary-tag partitioning, finding the latest `ChapterOpened` is a backward scan within the entity's own partition — no separate index or GSI needed
+   - With primary-tag partitioning, finding the latest `ChapterOpened` is a backward scan within the entity's own partition — no separate index or secondary index needed
    - The existing `~after` parameter provides the interface — the adapter finds the chapter start position internally
 
 #### Phase D2: StateChangeSlice Integration

@@ -183,7 +183,7 @@ open Reventless.Projection
 type state = {
   @id orderId: string,               // generates: let makeId
   @subId lineItemId: string,         // generates: let subIdConfig — enables sort key queries
-  @index categoryId: string,         // generates: let config with a GSI
+  @index categoryId: string,         // generates: let config with a secondary index
   @resolves({table: "Products", field: "product"}) productId: string,
   quantity: int,
 }

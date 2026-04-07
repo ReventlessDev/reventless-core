@@ -402,7 +402,7 @@ let combinedEventSchema: S.t<JSON.t> =
 ```
 
 This combined schema is used for:
-1. **DynamoDB GSI creation** — `DcbTag.extractTaggedFields` runs on the merged schema to determine which tag indexes to create
+1. **DynamoDB secondary index creation** — `DcbTag.extractTaggedFields` runs on the merged schema to determine which tag indexes to create
 2. **EventLog API schema** — the GraphQL introspection / admin API shows all event types
 3. **Storage encoding** — the adapter stores events as `{eventType, data, tags}` (already JSON — no typed encoding needed at the log level)
 
@@ -602,7 +602,7 @@ Similarly for `AutomationSlice.Spec` (`collect` and `resolve` receive `consumedE
 
 **Deploy-time structural subtype validation** — the framework's schema merge step validates consumed events against produced events at deploy time (Pulumi). This is the primary safety mechanism that replaces the compile-time shared union:
 
-1. **Payload equivalence across producers**: Multiple slices may produce the same event type TAG — this is a valid pattern (e.g., `AddProduct` and `CloneProduct` both produce `ProductAdded`). However, all producers of the same TAG must declare identical field names, types, and tag annotations (`@s.matches`). If `AddProduct` produces `ProductAdded({productId: @s.matches(DcbTag.string) string, name, price})` and `CloneProduct` produces `ProductAdded({productId: string, name})`, the deploy fails for two reasons: missing `price` field and missing `@s.matches` tag annotation on `productId`. Tag annotations must match because they determine storage indexing (`tag_productId` GSI entries) and query routing — if one producer tags a field and another doesn't, consumers relying on tag-filtered queries would miss events from the untagged producer.
+1. **Payload equivalence across producers**: Multiple slices may produce the same event type TAG — this is a valid pattern (e.g., `AddProduct` and `CloneProduct` both produce `ProductAdded`). However, all producers of the same TAG must declare identical field names, types, and tag annotations (`@s.matches`). If `AddProduct` produces `ProductAdded({productId: @s.matches(DcbTag.string) string, name, price})` and `CloneProduct` produces `ProductAdded({productId: string, name})`, the deploy fails for two reasons: missing `price` field and missing `@s.matches` tag annotation on `productId`. Tag annotations must match because they determine storage indexing (`tag_productId` secondary index entries) and query routing — if one producer tags a field and another doesn't, consumers relying on tag-filtered queries would miss events from the untagged producer.
 
 2. **Consumed fields must exist in produced shape**: For each consumed event variant, the framework looks up the produced event with the same TAG name and verifies that every field in the consumed schema exists in the produced schema with a compatible type. Payload-less consumed variants are always valid — they require no fields at all. Examples:
    - Produced: `ProductAdded({productId: string, name: string, description: string, price: float})`
@@ -612,7 +612,7 @@ Similarly for `AutomationSlice.Spec` (`collect` and `resolve` receive `consumedE
 
 3. **Every consumed event type has a producer**: If a slice consumes `| ProductArchived(...)` but no slice produces it, the deploy fails. This catches typos and stale references.
 
-4. **Tag completeness on produced events**: The framework verifies that produced events carry the same tag annotations needed for query routing. Since tags only appear on `producedEvent`, this is a straightforward check against the DynamoDB GSI configuration.
+4. **Tag completeness on produced events**: The framework verifies that produced events carry the same tag annotations needed for query routing. Since tags only appear on `producedEvent`, this is a straightforward check against the DynamoDB secondary index configuration.
 
 These checks provide safety comparable to the compile-time union — the feedback loop is slightly later (deploy time vs compile time) but still before any code reaches runtime. sury's schema introspection API (`S.toDefinition`, field enumeration) makes the structural comparison implementable without custom parsing.
 

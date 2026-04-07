@@ -365,7 +365,7 @@ type outputs = {
 
 **Resources:**
 - DynamoDB table for event storage
-- Global Secondary Indexes (GSIs) for tag queries
+- Secondary indexes for tag queries
 - SNS topic for event publishing
 - IAM roles for DynamoDB and SNS access
 

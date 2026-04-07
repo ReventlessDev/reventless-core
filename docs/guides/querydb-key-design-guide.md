@@ -197,11 +197,11 @@ The composite value is stored as a synthetic `"_subId"` attribute in DynamoDB, i
 
 ---
 
-## GSI Indexes
+## Secondary Indexes
 
-Global Secondary Indexes allow querying by a field other than the partition key.
+Secondary indexes allow querying by a field other than the partition key.
 
-### `@index` — standalone GSI
+### `@index` — standalone secondary index
 
 ```rescript
 @schema
@@ -213,7 +213,7 @@ type state = {
 }
 ```
 
-Creates a GSI named `"category"` and generates a query
+Creates a secondary index named `"category"` and generates a query
 `Plugin_ProductByCategory(category: "electronics")` — enables querying all products in a
 category without scanning the entire table.
 
@@ -221,7 +221,7 @@ category without scanning the entire table.
 - `@index(~projection=KEYS_ONLY)` — only keys projected (smaller index, lower cost)
 - `@index(~include=["name", "price"])` — specific attributes projected
 
-### `@index("name")` + `@indexSubId("name")` — GSI with sort key
+### `@index("name")` + `@indexSubId("name")` — secondary index with sort key
 
 ```rescript
 @schema
@@ -233,13 +233,13 @@ type state = {
 }
 ```
 
-Creates a GSI with `category` as partition key and `createdAt` as sort key. Generates
+Creates a secondary index with `category` as partition key and `createdAt` as sort key. Generates
 `Plugin_ProductByCategory(category: "electronics", reverse: true)` — "all products in
 electronics, newest first".
 
-Multiple fields with the same `@index("name")` form a **composite GSI partition key**
+Multiple fields with the same `@index("name")` form a **composite secondary index partition key**
 (concatenated, same as `@compositeId`). Multiple fields with the same `@indexSubId("name")`
-form a **composite GSI sort key**.
+form a **composite secondary index sort key**.
 
 ### `@index` with authorization
 
@@ -269,7 +269,7 @@ Creates a virtual `customer` field on the `Order` GraphQL type that resolves to 
 `Customers` table by primary key lookup.
 
 **Parameters:**
-- `~via="indexName"` — resolve via a GSI instead of primary key
+- `~via="indexName"` — resolve via a secondary index instead of primary key
 - `~plugin="OtherPlugin"` — cross-plugin table reference
 
 ### `@resolvesMany` — batch join
@@ -444,10 +444,10 @@ let project = event => switch event {
 
 `@id orderId` — main table partition key.
 `@subId @indexSubId("byStatus") changedAt` — main table sort key AND sort key for the
-"byStatus" GSI. Two annotations on one field.
-`@index @resolves(~to="Customers", ~as="customer") customerId` — standalone GSI AND
+"byStatus" secondary index. Two annotations on one field.
+`@index @resolves(~to="Customers", ~as="customer") customerId` — standalone secondary index AND
 cross-table resolver. Two annotations on one field.
-`@index("byStatus") status` — partition key for the "byStatus" GSI.
+`@index("byStatus") status` — partition key for the "byStatus" secondary index.
 
 **Note on the project function:** `OrderStatusChanged` sets `customerId: ""` because the
 event doesn't carry the customer ID. With `@subId`, each `Set` with a different `changedAt`
@@ -462,8 +462,8 @@ Each annotation produces a distinct, named GraphQL query:
 |---|---|
 | `@id orderId` | `Plugin_OrderTracking(id: ID!)` — single item by pk |
 | `@subId changedAt` | `Plugin_OrderTrackingById(id: ID!, ...)` — all items for a pk, with sort key conditions |
-| `@index customerId` | `Plugin_OrderTrackingByCustomerId(customerId: String!, ...)` — GSI query |
-| `@index("byStatus") status` | `Plugin_OrderTrackingByStatus(status: String!, ...)` — named GSI query |
+| `@index customerId` | `Plugin_OrderTrackingByCustomerId(customerId: String!, ...)` — secondary index query |
+| `@index("byStatus") status` | `Plugin_OrderTrackingByStatus(status: String!, ...)` — named secondary index query |
 | `@resolves(~as="customer")` | `customer` field on `OrderTracking` type — virtual field |
 
 ```graphql
@@ -481,14 +481,14 @@ query {
   }
 }
 
-# All orders by a customer (via standalone GSI on customerId)
+# All orders by a customer (via standalone secondary index on customerId)
 query {
   Plugin_OrderTrackingByCustomerId(customerId: "cust-456") {
     items { orderId status total }
   }
 }
 
-# All "shipped" orders, newest first (via named GSI "byStatus" with changedAt sort key)
+# All "shipped" orders, newest first (via named secondary index "byStatus" with changedAt sort key)
 query {
   Plugin_OrderTrackingByStatus(status: "shipped", reverse: true) {
     items { orderId changedAt }

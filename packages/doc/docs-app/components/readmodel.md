@@ -64,7 +64,7 @@ type state = {
   @id orderId: string,                // generates: let makeId = state => state.orderId
   @subId lineItemId: string,          // generates: let subIdConfig = Some({...})
                                       // enables: orderLineItemsById(id, from?, to?, prefix?, ...)
-  @index categoryId: string,          // generates: let config with a GSI for categoryId
+  @index categoryId: string,          // generates: let config with a secondary index for categoryId
   @resolves({table: "Products", field: "product"}) productId: string,
                                       // generates: virtual GraphQL field product: Product
   quantity: int,

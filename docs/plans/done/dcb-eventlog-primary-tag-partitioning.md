@@ -85,8 +85,8 @@ Since there's no migration path needed, this is a breaking change to the existin
 
 ### Read operation
 - Extract partition tag value from the query's tags via `getPartitionTagValue`
-- If present: direct partition key lookup — no GSI needed for the primary tag filter
-- If absent (cross-entity query): fall back to GSI-based query (same as current behavior)
+- If present: direct partition key lookup — no secondary index needed for the primary tag filter
+- If absent (cross-entity query): fall back to secondary index-based query (same as current behavior)
 
 ### Append operation
 - Derive partition key from the new events' tags using `partitionTag`
@@ -99,7 +99,7 @@ Since there's no migration path needed, this is a breaking change to the existin
 - When query contains multiple clauses targeting different partitions (multi-clause DCB queries):
   - Dispatch each clause to its target partition in parallel
   - Use existing k-way merge (`mergeSortedEvents`) to combine results
-- GSI fallback for queries without a partition tag value
+- secondary index fallback for queries without a partition tag value
 
 **Done when:** Existing DCB EventLog tests pass with partition-key routing. Single-entity reads, cross-entity scatter-gather, and conditional appends all work.
 

@@ -37,6 +37,6 @@ When created via `Make(Bus)`, the adapter registers three functions on the bus:
 | Aspect | InMemory | AWS |
 |--------|----------|-----|
 | Storage | In-memory `Dict` | DynamoDB table |
-| Indexes | Ignored (all lookups by primary key) | GSI support with configurable projections |
+| Indexes | Ignored (all lookups by primary key) | secondary index support with configurable projections |
 | TTL | Ignored | DynamoDB TTL attribute |
 | AppSync | None | DataSource integration for GraphQL |

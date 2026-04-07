@@ -18,13 +18,13 @@ Sort Key:      position    (timestamp-uuid string)
 Attributes:    eventType, data, tags[], tag_<field>, tag_composite
 ```
 
-**GSI structure (one per tagged field):**
+**secondary index structure (one per tagged field):**
 ```
-GSI "tag_itemId":     hashKey = tag_itemId,    rangeKey = position
-GSI "tag_composite":  hashKey = tag_composite,  rangeKey = position
+secondary index "tag_itemId":     hashKey = tag_itemId,    rangeKey = position
+secondary index "tag_composite":  hashKey = tag_composite,  rangeKey = position
 ```
 
-All queries — whether for a single entity ("itemId=item-123") or a broader filter — hit the same physical partition. The GSIs provide efficient tag-based lookups, but their base table data still originates from the single "dcb" partition.
+All queries — whether for a single entity ("itemId=item-123") or a broader filter — hit the same physical partition. The secondary indexes provide efficient tag-based lookups, but their base table data still originates from the single "dcb" partition.
 
 ### What the StateChangeSlice Actually Queries
 
@@ -35,7 +35,7 @@ The critical consumer is `StateChangeSlice_Callback.res` (lines 34-103). On ever
 3. Calls `Spec.decide` to produce new events, then conditionally appends with: `{query, after: headPosition}`
 4. On conflict (another writer appended matching events), retries from step 1 (up to 3 retries)
 
-**Key observation**: The query is always scoped to the command's tag values. A command for item "item-123" only needs events tagged with `itemId=item-123`. It does not need to read events from other items. The "global" partition is never actually queried globally — it is always filtered through a GSI.
+**Key observation**: The query is always scoped to the command's tag values. A command for item "item-123" only needs events tagged with `itemId=item-123`. It does not need to read events from other items. The "global" partition is never actually queried globally — it is always filtered through a secondary index.
 
 ---
 
@@ -48,7 +48,7 @@ DynamoDB partitions have throughput limits:
 - All DCB EventLog reads and writes funnel through one partition
 - Under load, this becomes a bottleneck — throttling affects ALL entities, not just the busy ones
 
-Even though GSI queries route through separate physical structures, the base table writes all go to the `id="dcb"` partition. Every `append` operation writes to this single hot spot.
+Even though secondary index queries route through separate physical structures, the base table writes all go to the `id="dcb"` partition. Every `append` operation writes to this single hot spot.
 
 ### 2.2 Partition Size Limits
 
@@ -114,12 +114,12 @@ Sort Key:      position                  (timestamp-uuid, local to partition)
 - At schema definition time, the first `@s.matches(DcbTag.string)` field is designated as the "primary tag"
 - The partition key becomes `"<tagKey>:<tagValue>"` (e.g., `"itemId:item-123"`)
 - Each entity's events are isolated in their own partition
-- GSIs remain for secondary tag lookups across partitions
+- secondary indexes remain for secondary tag lookups across partitions
 
 **Query execution**:
-- Single-entity query (common case): Direct partition key lookup — no GSI needed, no scan
+- Single-entity query (common case): Direct partition key lookup — no secondary index needed, no scan
 - Multi-tag query (same entity): Partition key + filter on secondary tags
-- Cross-entity query (rare): Scatter-gather across partitions via GSI
+- Cross-entity query (rare): Scatter-gather across partitions via secondary index
 
 **Conditional append**:
 - Same read-then-write pattern, but now scoped to a single partition
@@ -153,7 +153,7 @@ Sort Key:      sequenceNr = 1, 2, 3, ...
 
 **How it works**:
 - Each entity has its own monotonically increasing sequence
-- Tags are still stored for cross-entity queries via GSIs
+- Tags are still stored for cross-entity queries via secondary indexes
 - The decision model is built by reading one entity's stream
 - Conditional append uses `sequenceNr` for optimistic concurrency (like aggregates)
 
@@ -185,7 +185,7 @@ Partition Key: id = "categoryId:cat-1#itemId:item-123"        (multi-tag)
 - Each unique tag combination becomes a partition
 - Events with multiple tags are written to **multiple partitions** (fan-out write)
 - Queries hit exactly one partition — the one matching their tag combination
-- No GSIs needed for tag filtering — the partition key IS the filter
+- No secondary indexes needed for tag filtering — the partition key IS the filter
 
 **Pros**:
 - Every query hits exactly one partition — optimal read performance
@@ -239,7 +239,7 @@ Sort Key:      position              (timestamp-uuid)
 
 Strategy 4.1 (Primary Tag as Partition Key) is the best balance of simplicity, performance, and portability:
 
-1. **It matches how DCB is actually used.** Every StateChangeSlice command carries tags that scope the query to a specific entity. The primary tag is always present and always filters the query. Using it as the partition key makes the common case (single-entity reads/writes) a direct key lookup — no GSI, no scan.
+1. **It matches how DCB is actually used.** Every StateChangeSlice command carries tags that scope the query to a specific entity. The primary tag is always present and always filters the query. Using it as the partition key makes the common case (single-entity reads/writes) a direct key lookup — no secondary index, no scan.
 
 2. **It eliminates the hot partition without changing the programming model.** The `read(~query, ~after?)` interface doesn't change. The adapter internally derives the partition key from the query's tags. Application code (StateChangeSlice specs, decision models) remains identical.
 
@@ -284,7 +284,7 @@ Changes in `DcbEventLogStorage_DynamoDb_Runtime.res`:
 1. **Partition key derivation**: Replace `id: "dcb"` with `id: "${partitionTag.key}:${tagValue}"` extracted from the event's tags
 2. **Read operation**: Extract the partition tag value from the query's tags, use as partition key
 3. **Conditional append**: Scoped to one partition — can use DynamoDB `TransactWriteItems` for atomicity
-4. **Cross-entity queries** (if needed): Scatter-gather across partitions via GSI or scan
+4. **Cross-entity queries** (if needed): Scatter-gather across partitions via secondary index or scan
 
 #### Handling Cross-Entity Queries via Scatter-Gather
 
@@ -317,35 +317,35 @@ Gather phase:
 
 ##### Scatter-Gather Implementation Approaches
 
-**Approach A: GSI-Based Scatter-Gather (Recommended)**
+**Approach A: secondary index-Based Scatter-Gather (Recommended)**
 
 Use a Global Secondary Index that spans all partitions:
 
 ```
-GSI "by_eventType":  hashKey = eventType,  rangeKey = position
+secondary index "by_eventType":  hashKey = eventType,  rangeKey = position
 ```
 
-When a query lacks the primary tag (cross-entity), the adapter queries this GSI instead of the base table. The GSI's hash key is the event type, so it naturally groups events by type across all entities. DynamoDB distributes GSI partitions independently from the base table, so this doesn't recreate the hot-partition problem — each event type gets its own GSI partition.
+When a query lacks the primary tag (cross-entity), the adapter queries this secondary index instead of the base table. The secondary index's hash key is the event type, so it naturally groups events by type across all entities. DynamoDB distributes secondary index partitions independently from the base table, so this doesn't recreate the hot-partition problem — each event type gets its own secondary index partition.
 
 ```
-Cross-entity query:   GSI query on eventType="ItemCreated"
+Cross-entity query:   secondary index query on eventType="ItemCreated"
                       → Returns all ItemCreated events, sorted by position
-                      → Single GSI partition per event type
-                      → No scatter needed — the GSI already aggregates
+                      → Single secondary index partition per event type
+                      → No scatter needed — the secondary index already aggregates
 
-Multi-type query:     Parallel GSI queries per event type
+Multi-type query:     Parallel secondary index queries per event type
                       → [query(eventType="ItemCreated"), query(eventType="ItemDeleted")]
                       → K-way merge on position (existing infrastructure)
 ```
 
 This is efficient because:
-- Each event type maps to one GSI partition — no fan-out
+- Each event type maps to one secondary index partition — no fan-out
 - The existing k-way merge (`mergeSortedEvents` in the runtime) handles multi-type queries
-- No application-level scatter logic needed — DynamoDB's GSI does the aggregation
+- No application-level scatter logic needed — DynamoDB's secondary index does the aggregation
 
 **Approach B: Explicit Partition Enumeration**
 
-When no GSI covers the query, the adapter must enumerate partitions:
+When no secondary index covers the query, the adapter must enumerate partitions:
 
 1. Maintain a **partition registry** (a DynamoDB item or separate table listing all known partition keys)
 2. On cross-entity query, read the registry to get all partition keys
@@ -392,7 +392,7 @@ Stream merge (lazy):
   Memory usage: O(N) where N = number of partitions (one page buffer each).
 ```
 
-The runtime already implements this pattern in `mergeSortedEvents` (lines 344-373 of `DcbEventLogStorage_DynamoDb_Runtime.res`), using bounded queues and `Stream.paginateEffect`. It would need to be adapted from merging GSI query streams to merging partition query streams, but the core algorithm is identical.
+The runtime already implements this pattern in `mergeSortedEvents` (lines 344-373 of `DcbEventLogStorage_DynamoDb_Runtime.res`), using bounded queues and `Stream.paginateEffect`. It would need to be adapted from merging secondary index query streams to merging partition query streams, but the core algorithm is identical.
 
 ##### Performance Characteristics of Scatter-Gather
 
@@ -413,16 +413,16 @@ Cross-entity queries in DCB are inherently rare. The DCB model is designed aroun
 | **Uniqueness check** ("is this name taken?") | Per-create command | Dedicated uniqueness read model (updated by EventCollector). The read model provides O(1) lookup; no need to query the event log. |
 | **Cross-entity validation** ("does the referenced product exist?") | Per-command with reference | Query the referenced entity's partition directly (if its ID is known from the command). This is a targeted single-partition read, not scatter-gather. |
 | **Global replay** (migration, analytics) | Rare, offline | Streaming scatter-gather is acceptable — latency doesn't matter for batch operations. Or use DynamoDB export to S3 for bulk processing. |
-| **Audit / debugging** ("show all events for last hour") | Rare, manual | GSI on `eventType` + `position` handles this efficiently. |
+| **Audit / debugging** ("show all events for last hour") | Rare, manual | secondary index on `eventType` + `position` handles this efficiently. |
 
 **Key insight**: Most apparent "cross-entity" needs can be decomposed into either (a) a read model query or (b) a targeted single-partition read using a known entity ID. True scatter-gather — querying all partitions without knowing which ones to target — is almost always a sign that a read model should exist for that query pattern.
 
 ##### Recommendation
 
-**Use GSI-based scatter-gather (Approach A) as the fallback for cross-entity queries.** This requires no partition enumeration, leverages DynamoDB's built-in distribution, and integrates with the existing k-way merge infrastructure. Document that:
+**Use secondary index-based scatter-gather (Approach A) as the fallback for cross-entity queries.** This requires no partition enumeration, leverages DynamoDB's built-in distribution, and integrates with the existing k-way merge infrastructure. Document that:
 
 1. Entity-scoped queries (with primary tag) are the fast path — direct partition lookup
-2. Cross-entity queries (without primary tag) use a GSI fallback — still efficient for event-type-scoped queries
+2. Cross-entity queries (without primary tag) use a secondary index fallback — still efficient for event-type-scoped queries
 3. True cross-partition scatter (no event type, no tags) falls back to table scan — same as current behavior, but now distributed across partitions rather than concentrated in one
 4. For recurring cross-entity query patterns, a dedicated read model is the recommended approach
 
@@ -445,7 +445,7 @@ The primary tag partitioning strategy enables a significant improvement to condi
 ### Current (Single Partition, Non-Atomic)
 
 ```
-1. Read events matching query         → DynamoDB Query on GSI
+1. Read events matching query         → DynamoDB Query on secondary index
 2. Check: any events after position?  → Application logic
 3. Write new events                   → DynamoDB BatchWriteItem
    (Race window between steps 1 and 3)
@@ -490,7 +490,7 @@ Primary tag partitioning **solves the Cosmos DB 20GB limit** identified in `azur
 
 ### Medium Risk
 - **Primary tag selection**: Choosing the wrong primary tag leads to uneven partition distribution. Mitigate by requiring explicit annotation (`@s.matches(DcbTag.partition)`) and documenting selection criteria.
-- **Cross-entity query performance**: Rare but possible. Mitigate with GSI fallback and clear documentation.
+- **Cross-entity query performance**: Rare but possible. Mitigate with secondary index fallback and clear documentation.
 - **Migration complexity**: Existing deployments need a data migration tool. Mitigate by making V2 opt-in for new deployments first.
 
 ### High Risk
@@ -504,7 +504,7 @@ Primary tag partitioning **solves the Cosmos DB 20GB limit** identified in `azur
 |--------|--------------------------|---------------------------|
 | **Partition key** | `"dcb"` (fixed) | `"<tagKey>:<tagValue>"` (per entity) |
 | **Write throughput** | Limited by single partition | Scales with entity count |
-| **Read pattern** | GSI query → single partition | Direct partition lookup (common case) |
+| **Read pattern** | secondary index query → single partition | Direct partition lookup (common case) |
 | **Ordering** | Global total order | Per-entity order (sufficient for all consumers) |
 | **Conditional append** | Non-atomic read-then-write | Atomic DynamoDB transaction (optional) |
 | **Cosmos DB compatibility** | Blocked at 20GB | Each partition well within limits |
@@ -536,7 +536,7 @@ When `PlaceOrder({orderId: "ord-1", productId: ["prod-1", "prod-2"]})` has a tag
 ]
 ```
 
-Under **single-partition** storage (current), all three clauses hit the same `id="dcb"` partition via GSI lookups — the existing k-way merge handles this.
+Under **single-partition** storage (current), all three clauses hit the same `id="dcb"` partition via secondary index lookups — the existing k-way merge handles this.
 
 Under **primary-tag partitioning** (recommended here), each clause targets a different partition:
 
@@ -561,7 +561,7 @@ Section 6 describes how per-entity partitions enable atomic DynamoDB transaction
 
 Multi-clause queries have already been implemented on the current single-partition storage. The remaining work is primary-tag partitioning at the adapter level:
 
-1. ~~**Multi-clause queries can be implemented first**~~ — **Done.** `DcbTag.buildQueryFromCommand` and `StateChangeSlice_Callback` now handle automatic schema-driven query construction. All clauses hit GSIs on the same `"dcb"` partition.
+1. ~~**Multi-clause queries can be implemented first**~~ — **Done.** `DcbTag.buildQueryFromCommand` and `StateChangeSlice_Callback` now handle automatic schema-driven query construction. All clauses hit secondary indexes on the same `"dcb"` partition.
 2. **Primary-tag partitioning is the next step**. The adapter's `read` function already receives `array<queryItem>` — it just needs to route each item to the correct partition instead of the fixed `"dcb"` partition.
 3. When partitioning is in place, cross-entity queries automatically benefit from distributed partition reads — no additional integration work needed.
 

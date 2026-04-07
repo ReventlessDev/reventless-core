@@ -130,7 +130,7 @@ The aggregate approach handles these scenarios through **Tasks** (for long-runni
 
 **Trade-offs:**
 - **Aggregate replay** is fast for small streams (< 1000 events per ID) but grows linearly. Snapshots can mitigate this.
-- **DCB queries** use DynamoDB GSIs indexed by tag values. Cross-entity queries are efficient but all events compete for the same table throughput.
+- **DCB queries** use DynamoDB secondary indexes indexed by tag values. Cross-entity queries are efficient but all events compete for the same table throughput.
 
 ---
 

@@ -258,10 +258,10 @@ The current code in `StateChangeSlice_Callback.res` already uses the same `query
 
 ## AWS Performance Implications
 
-- **Single tag per clause**: Each clause hits a GSI directly — efficient
+- **Single tag per clause**: Each clause hits a secondary index directly — efficient
 - **Multiple clauses**: The AWS adapter already k-way merge-sorts them — efficient for tag-based clauses
-- **Array expansion**: N product IDs → N additional clauses → N GSI queries. For large arrays this could be slow, but typical cross-entity commands reference a small number of related entities (< 10)
-- **No new GSIs needed**: The existing per-tag GSIs handle single-tag clauses
+- **Array expansion**: N product IDs → N additional clauses → N secondary index queries. For large arrays this could be slow, but typical cross-entity commands reference a small number of related entities (< 10)
+- **No new secondary indexes needed**: The existing per-tag secondary indexes handle single-tag clauses
 
 ---
 

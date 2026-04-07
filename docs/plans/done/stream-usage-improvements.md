@@ -43,8 +43,8 @@ Consequences:
 
 ### Key fact: sub-streams are already position-ordered
 
-The DcbEventLog DynamoDB table GSIs all use `rangeKey: "position"`. DynamoDB returns items within
-a GSI query in ascending range-key order by default. This means:
+The DcbEventLog DynamoDB table secondary indexes all use `rangeKey: "position"`. DynamoDB returns items within
+a secondary index query in ascending range-key order by default. This means:
 - `queryBySingleTagStream` → items arrive in position order ✓
 - `queryByCompositeTagsStream` → items arrive in position order ✓
 - `scanWithFilterStream` (full scan, no tags) → DynamoDB makes **no ordering guarantee** ✗
@@ -101,7 +101,7 @@ emits elements in position order without collecting any sub-stream upfront.
 
 **How it works:**
 
-For **tag-based queries** (single-tag and composite-tag GSIs), each sub-stream is already
+For **tag-based queries** (single-tag and composite-tag secondary indexes), each sub-stream is already
 sorted by position. We can merge N sorted streams into one sorted stream using a k-way merge:
 maintain one "head" element per sub-stream (fetched lazily), always emit the one with the smallest
 position, advance only that sub-stream. Deduplication becomes a simple "skip if same position as
@@ -130,7 +130,7 @@ let readStream = table => (~query, ~after=?) => {
       // Scan sub-queries cannot be lazily merged — fall back to eager collect
       streams->collectAndMergeEagerly(~concurrency=3)
     else
-      // All sub-streams are position-sorted GSI queries — merge lazily
+      // All sub-streams are position-sorted secondary index queries — merge lazily
       mergeSortedStreams(streams, (a, b) => String.compare(a.position, b.position))
       ->Stream.map(fromItem)
       ->deduplicate    // skip consecutive events with the same position

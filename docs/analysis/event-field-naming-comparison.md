@@ -32,8 +32,8 @@ Source: `EventLog_Operations.res:37-51`, `Message.res:26-40`
 | `eventType` | String | Event variant name (e.g. `"CategoryAdded"`) |
 | `data` | Object | Event payload (variant fields, excluding TAG) |
 | `tags` | Array | Content-based routing tags `[{key, value}]` |
-| `tag_<field>` | String | GSI attribute per tag field |
-| `tag_composite` | String | GSI attribute for multi-tag queries |
+| `tag_<field>` | String | secondary index attribute per tag field |
+| `tag_composite` | String | secondary index attribute for multi-tag queries |
 
 Source: `DcbEventLog_Adapter.res:1-12`, `DcbEventLogStorage_DynamoDb_Runtime.res:32-65`
 

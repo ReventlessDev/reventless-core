@@ -3,7 +3,7 @@
 **Analysis:** `private-consumer-repo/docs/analysis/querydb-design-patterns.md`
 
 **Scope:** Extend `reventless-ppx`, framework specs, builders, storage adapters, and resolvers
-to support declarative `@schema type state` annotations for composite keys, GSI indexes,
+to support declarative `@schema type state` annotations for composite keys, secondary indexes,
 cross-table resolvers, and sort key query conditions. All features work identically for both
 `ReadModel` and `StateViewSlice`.
 
@@ -96,9 +96,9 @@ cross-table resolvers, and sort key query conditions. All features work identica
 
 ---
 
-## Phase 3 — `@index` and `@indexSubId` (GSI annotations)
+## Phase 3 — `@index` and `@indexSubId` (secondary index annotations)
 
-### 3.1 PPX: standalone `@index` (single-field GSI, no sort key)
+### 3.1 PPX: standalone `@index` (single-field secondary index, no sort key)
 
 - [x] Detect unnamed `@index` on a field; generate index entry with field as pk,
       no sort key, ALL projection
@@ -106,7 +106,7 @@ cross-table resolvers, and sort key query conditions. All features work identica
 - [x] Support `projection: "KEYS_ONLY"` and `fields: ["f1", "f2"]` (for `INCLUDE`) in record form
       (Note: `include` is a reserved word; `fields` used instead)
 
-### 3.2 PPX: named `@index("name")` with `@indexSubId("name")` (GSI with sort key)
+### 3.2 PPX: named `@index("name")` with `@indexSubId("name")` (secondary index with sort key)
 
 - [x] Collect all `@index("name")` fields with the same name — grouped by name, first field
       is pk, subsequent fields form composite pk (concatenated)
@@ -143,9 +143,9 @@ cross-table resolvers, and sort key query conditions. All features work identica
 - [x] PPX snapshot test: `@index({group, authTable})` → authorization populated
 - [x] PPX snapshot test: no index annotations → `let config = ReadModel.config()`
 - [x] PPX error test: `@indexSubId("name")` without matching `@index("name")` → error
-- [ ] Integration test: StateViewSlice with `@index` — verify GSI created in DynamoDB
+- [ ] Integration test: StateViewSlice with `@index` — verify secondary index created in DynamoDB
 - [ ] Integration test: ReadModel with `@index("name")` + `@indexSubId("name")` — verify
-      composite GSI query works
+      composite secondary index query works
 
 ---
 
@@ -230,7 +230,7 @@ cross-table resolvers, and sort key query conditions. All features work identica
   - Key pattern decision flowchart (singleton → entity-keyed → versioned → composite)
   - `@id` / `@compositeId` usage with generic examples
   - `@subId` / `@compositeSubId` usage with generic examples
-  - `@index` / `@indexSubId` for GSIs with generic examples
+  - `@index` / `@indexSubId` for secondary indexes with generic examples
   - `@resolves` / `@resolvesMany` for cross-table joins
   - Sort key query conditions (`prefix`, `from`/`to`, `eq`, `reverse`, `limit`)
   - Combining current state + audit log (sentinel sort key pattern)
