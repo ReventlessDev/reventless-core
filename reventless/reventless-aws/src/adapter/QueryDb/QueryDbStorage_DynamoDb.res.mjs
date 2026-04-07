@@ -49,7 +49,7 @@ function attributes(sortField, indexes) {
       }]),
     indexes.map(indexConfig => [
       [{
-          name: indexConfig.index,
+          name: Stdlib_Option.getOr(indexConfig.idField, indexConfig.index),
           type: indexConfig.type_
         }],
       Stdlib_Option.mapOr(indexConfig.subIdField, [], sortField => [{

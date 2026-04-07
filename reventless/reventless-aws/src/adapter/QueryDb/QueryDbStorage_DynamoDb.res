@@ -37,7 +37,7 @@ let attributes = (sortField, indexes: array<Reventless.ReadModel.indexConfig>) =
     ->Array.map((indexConfig: Reventless.ReadModel.indexConfig) => {
       let {index, type_} = indexConfig
       [
-        [{name: index, type_}],
+        [{name: indexConfig.idField->Option.getOr(index), type_}],
         indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
       ]->Array.flat
     })
