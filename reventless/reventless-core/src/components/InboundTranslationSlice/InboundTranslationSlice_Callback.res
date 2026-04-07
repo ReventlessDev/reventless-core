@@ -10,7 +10,7 @@ type auditStatus =
 
 @schema
 type auditRow = {
-  input: JSON.t,
+  input: string,
   status: auditStatus,
   targetIds?: array<string>,
   commandCount?: int,
@@ -69,7 +69,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
       auditLog.contents->Dict.set(
         requestId,
         {
-          input: inputJson,
+          input: inputJson->JSON.stringify,
           status: Failure,
           error: msg,
           receivedAt: now(),
@@ -84,7 +84,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
           auditLog.contents->Dict.set(
             requestId,
             {
-              input: inputJson,
+              input: inputJson->JSON.stringify,
               status: Success,
               targetIds: [],
               commandCount: 0,
@@ -124,7 +124,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
             auditLog.contents->Dict.set(
               requestId,
               {
-                input: inputJson,
+                input: inputJson->JSON.stringify,
                 status: Failure,
                 error: msg,
                 receivedAt: now(),
@@ -141,7 +141,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
               auditLog.contents->Dict.set(
                 requestId,
                 {
-                  input: inputJson,
+                  input: inputJson->JSON.stringify,
                   status: Success,
                   targetIds,
                   commandCount: pairs->Array.length,
@@ -159,7 +159,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
               auditLog.contents->Dict.set(
                 requestId,
                 {
-                  input: inputJson,
+                  input: inputJson->JSON.stringify,
                   status: Failure,
                   error: msg,
                   receivedAt: now(),
@@ -174,7 +174,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
         auditLog.contents->Dict.set(
           requestId,
           {
-            input: inputJson,
+            input: inputJson->JSON.stringify,
             status: Failure,
             error: msg,
             receivedAt: now(),
