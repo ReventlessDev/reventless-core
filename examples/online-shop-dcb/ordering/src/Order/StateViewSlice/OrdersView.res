@@ -2,10 +2,6 @@
 // Projects order events from the shared ordering event log into an Orders read model.
 @@reventless.spec
 
-
-open Reventless.Projection
-
-
 @schema
 type state = {
   orderId: string,

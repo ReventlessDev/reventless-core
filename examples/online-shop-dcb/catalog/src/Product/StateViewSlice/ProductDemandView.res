@@ -2,10 +2,6 @@
 // Projects catalog events into a per-product demand counter (order count).
 @@reventless.spec
 
-
-open Reventless.Projection
-
-
 @schema
 type state = {productId: string, name: string, orderCount: int}
 

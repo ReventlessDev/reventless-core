@@ -2,10 +2,6 @@
 // Projects customer events from the shared ordering event log into a Customers read model.
 @@reventless.spec
 
-
-open Reventless.Projection
-
-
 @schema
 type state = {customerId: string, email: string, address: string, deactivated: bool}
 

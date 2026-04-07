@@ -109,6 +109,16 @@ let gen_open_readmodel ~loc =
     };
     pstr_loc = loc }
 
+let gen_open_projection ~loc =
+  let lid = { txt = Ldot (Lident "Reventless", "Projection"); loc } in
+  { pstr_desc = Pstr_open {
+      popen_expr = { pmod_desc = Pmod_ident lid; pmod_loc = loc; pmod_attributes = [] };
+      popen_override = Fresh;
+      popen_loc = loc;
+      popen_attributes = [];
+    };
+    pstr_loc = loc }
+
 let gen_config_let ~loc body =
   StateAnnotations.generate_config ~loc body
 
@@ -315,6 +325,9 @@ let transform (str : structure) : structure =
       if Util.is_extensionpointmapping_filename loc.loc_start.pos_fname
          && not (Util.has_open_dotted "ReventlessInfra" "ExtensionPointMapping" body) then
         prefix := !prefix @ [gen_open_ep_mapping ~loc];
+      if Util.is_stateview_filename loc.loc_start.pos_fname
+         && not (Util.has_open_dotted "Reventless" "Projection" body) then
+        prefix := !prefix @ [gen_open_projection ~loc];
       if not (Util.has_let_binding "name" body) then
         prefix := !prefix @ [gen_name ~loc name];
       if has_reventless_spec && not (Util.has_module_binding "Id" body) then

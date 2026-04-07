@@ -172,12 +172,10 @@ let project = event =>
 
 ## Key Design Annotations
 
-StateViewSlice supports the same PPX annotations on `@schema type state` as ReadModel. Annotations on state fields automatically generate `let makeId`, `let subIdConfig`, and `let config`:
+StateViewSlice supports the same PPX annotations on `@schema type state` as ReadModel. Annotations on state fields automatically generate `let makeId`, `let subIdConfig`, and `let config`. The PPX also auto-injects `open Reventless.Projection`, so `Set`, `Update`, `UpdateWithDefault`, and `Delete` are available without qualification:
 
 ```rescript title="OrderLineItemsView.res"
 @@reventless.spec
-
-open Reventless.Projection
 
 @schema
 type state = {

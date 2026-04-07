@@ -372,7 +372,7 @@ type consumedEvent = ActionPerformed({userId: string, timestamp: string, action:
 
 let project = event => switch event {
   | ActionPerformed({userId, timestamp, action}) =>
-    [Reventless.Projection.Set(userId, {userId, timestamp, action})]
+    [Set(userId, {userId, timestamp, action})]
 }
 EOF
 
@@ -571,7 +571,7 @@ type state = { id: string, name: string }
 type consumedEvent = Created({id: string, name: string})
 
 let project = event => switch event {
-  | Created({id, name}) => [Reventless.Projection.Set(id, {id, name})]
+  | Created({id, name}) => [Set(id, {id, name})]
 }
 EOF
 
@@ -774,6 +774,7 @@ assert_js_contains "$JS" '"timestamp"'             "SV @subId: field name 'times
 assert_js_contains "$JS" 'getSubId'                "SV @subId: getSubId accessor generated"
 assert_js_contains "$JS" 'let name = "Timeline"'   "SV @subId: View suffix stripped"
 assert_js_not_contains "$JS" 'config()'            "SV @subId: no ReadModel config injected"
+assert_js_not_contains "$JS" 'Reventless_Projection' "SV @subId: Projection auto-opened, no qualified refs"
 
 echo ""
 echo "=== Test: StateViewSlice without @subId → subIdConfig = None ==="
@@ -782,6 +783,7 @@ assert_js_contains "$JS" 'subIdConfig'             "SV no annotation: subIdConfi
 assert_js_not_contains "$JS" 'getSubId'            "SV no annotation: no getSubId"
 assert_js_contains "$JS" 'let name = "Simple"'     "SV no annotation: View suffix stripped"
 assert_js_not_contains "$JS" 'config()'            "SV no annotation: no ReadModel config injected"
+assert_js_not_contains "$JS" 'Reventless_Projection' "SV no annotation: Projection auto-opened, no qualified refs"
 
 echo ""
 echo "=== Test: standalone @index → standalone index entry ==="

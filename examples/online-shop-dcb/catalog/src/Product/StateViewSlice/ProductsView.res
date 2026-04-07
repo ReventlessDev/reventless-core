@@ -2,10 +2,6 @@
 // Projects product events from the shared catalog event log into a Products read model.
 @@reventless.spec
 
-
-open Reventless.Projection
-
-
 @schema
 type state = {productId: string, name: string, description: string, price: float}
 
