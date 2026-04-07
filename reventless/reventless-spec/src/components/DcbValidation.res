@@ -65,6 +65,8 @@ let rec schemasAreCompatible = (a: S.t<unknown>, b: S.t<unknown>): bool =>
   | (BigInt(_), BigInt(_)) => true
   | (Array({additionalItems: Schema(aItem)}), Array({additionalItems: Schema(bItem)})) =>
     schemasAreCompatible(aItem, bItem)
+  | (Union(_), Union(_)) => true
+  | (Object(_), Object(_)) => true
   | _ => false
   }
 

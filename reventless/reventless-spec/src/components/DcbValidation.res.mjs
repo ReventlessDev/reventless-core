@@ -93,6 +93,10 @@ function schemasAreCompatible(_a, _b) {
         _b = bItem;
         _a = aItem;
         continue;
+      case "object" :
+        return b.type === "object";
+      case "union" :
+        return b.type === "union";
       default:
         return false;
     }
