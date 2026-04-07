@@ -1,7 +1,7 @@
 # Plan: AWS Lambda Layer Per-Branch Naming
 
 **Date:** 2026-04-06  
-**Status:** Not started  
+**Status:** Complete  
 **Analysis:** [docs/analysis/aws-layer-per-branch-naming.md](../analysis/aws-layer-per-branch-naming.md)
 
 ## Goal
@@ -77,54 +77,37 @@ File: `.github/workflows/deploy-reventless-aws.yml`
 
 - [x] Commit the two workflow file changes with message:
   `feat(ci): use branch-scoped Lambda layer names (alpha/beta/prod)`
-- [ ] Push to `alpha` branch
-- [ ] Confirm the workflow runs and publishes `reventless-aws-alpha:1`
-- [ ] Confirm `.github/layer-arn-alpha.txt` is committed back with the new ARN
+- [x] Push to `alpha` branch
+- [x] Workflow ran and published `reventless-aws-alpha:1` (then `:2` after subsequent push)
+- [x] `.github/layer-arn-alpha.txt` committed back with the new ARN
 
 ### Step 4 — Redeploy the alpha environment
 
 - [x] Platform stack deployed on 2026-04-06 — platform Lambdas reference `reventless-aws-alpha:1`
 - [x] Plugin deploy bug fixed (plugin job read `layer-arn.txt` instead of `layer-arn-alpha.txt`)
-- [ ] Confirm plugin Lambdas (catalog, ordering) reference `reventless-aws-alpha:1` after redeploy triggered by the bug-fix commit
+- [x] Confirm plugin Lambdas (catalog, ordering) reference `reventless-aws-alpha:2` after redeploy — all active alpha functions confirmed on `:2`
 
 ### Step 5 — Delete all existing `reventless-aws` versions
 
 > Only run this after Step 4 is confirmed working. No running environment should reference the old ARNs at this point.
 
-- [ ] Run the following from a terminal with AWS credentials for `eu-west-1`:
-  ```bash
-  aws lambda list-layer-versions \
-    --layer-name reventless-aws \
-    --region eu-west-1 \
-    --query 'LayerVersions[*].Version' \
-    --output text \
-  | tr '\t' '\n' \
-  | xargs -I{} aws lambda delete-layer-version \
-      --layer-name reventless-aws \
-      --version-number {} \
-      --region eu-west-1
-  ```
-- [ ] Verify no versions remain:
-  ```bash
-  aws lambda list-layer-versions --layer-name reventless-aws --region eu-west-1
-  ```
+- [x] All 72 versions of `reventless-aws` deleted
+- [x] Verified: zero versions remain
 
 ### Step 6 — Clear the old ARN file
 
-- [ ] Clear `.github/layer-arn.txt` (empty the file — do not delete it, the workflow still writes to it for `main`)
-- [ ] Commit: `chore(ci): clear stale reventless-aws layer ARN after cleanup`
-- [ ] Push to `alpha`
+- [x] `.github/layer-arn.txt` was already empty (no action needed)
 
 ---
 
 ## Verification Checklist
 
-- [ ] `reventless-aws-alpha` layer exists in AWS Lambda console (eu-west-1)
-- [ ] Alpha environment Lambdas reference the new ARN
-- [ ] `reventless-aws` has zero versions in AWS Lambda console
-- [ ] `.github/layer-arn.txt` is empty
-- [ ] `.github/layer-arn-alpha.txt` contains the active alpha ARN
-- [ ] A subsequent push to `alpha` that touches `reventless-layer-builder/` produces `reventless-aws-alpha:2`
+- [x] `reventless-aws-alpha` layer exists in AWS Lambda console (eu-west-1) — at `:2`
+- [x] Alpha environment Lambdas reference `reventless-aws-alpha:2`
+- [x] `reventless-aws` has zero versions in AWS Lambda console
+- [x] `.github/layer-arn.txt` is empty
+- [x] `.github/layer-arn-alpha.txt` contains the active alpha ARN (`reventless-aws-alpha:2`)
+- [x] Subsequent push produced `reventless-aws-alpha:2` ✓
 
 ---
 
