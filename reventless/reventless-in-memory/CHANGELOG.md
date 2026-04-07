@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.18 (2026-04-07)
+
+### Bug Fixes
+
+* **reventless-in-memory:** add rescript-mcp-sdk to package.json dependencies ([fbf7522](https://github.com/ReventlessDev/reventless-core/commit/fbf752254ecc8f11fb70c10387df3bdfa53a19ee))
+
+
 # 3.0.0-alpha.17 (2026-04-07)
 
 ### Features
