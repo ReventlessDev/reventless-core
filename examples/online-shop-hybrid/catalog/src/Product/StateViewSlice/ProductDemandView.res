@@ -3,8 +3,6 @@
 
 @@reventless.spec
 
-open Reventless.Projection
-
 @schema
 type consumedEvent =
   | ProductAdded({productId: string, name: string})

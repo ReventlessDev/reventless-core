@@ -3,8 +3,6 @@
 
 @@reventless.spec
 
-open Reventless.Projection
-
 @schema
 type consumedEvent =
   | CatalogProductSynced({productId: string, name: string, price: float})

@@ -3,8 +3,6 @@
 
 @@reventless.spec
 
-open Reventless.Projection
-
 @schema
 type consumedEvent =
   | OrderPlaced({orderId: string, customerId: string, productId: array<string>})
