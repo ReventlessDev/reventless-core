@@ -213,8 +213,9 @@ type state = {
 }
 ```
 
-Creates a GSI named `"category"` — enables querying all products in a category without
-scanning the entire table.
+Creates a GSI named `"category"` and generates a query
+`Plugin_ProductByCategory(category: "electronics")` — enables querying all products in a
+category without scanning the entire table.
 
 **Parameters:**
 - `@index(~projection=KEYS_ONLY)` — only keys projected (smaller index, lower cost)
@@ -232,8 +233,9 @@ type state = {
 }
 ```
 
-Creates a GSI with `category` as partition key and `createdAt` as sort key — enables
-"all products in electronics, newest first".
+Creates a GSI with `category` as partition key and `createdAt` as sort key. Generates
+`Plugin_ProductByCategory(category: "electronics", reverse: true)` — "all products in
+electronics, newest first".
 
 Multiple fields with the same `@index("name")` form a **composite GSI partition key**
 (concatenated, same as `@compositeId`). Multiple fields with the same `@indexSubId("name")`
@@ -454,6 +456,16 @@ to preserve fields from the previous entry.
 
 **Generated queries:**
 
+Each annotation produces a distinct, named GraphQL query:
+
+| Source | Generated query |
+|---|---|
+| `@id orderId` | `Plugin_OrderTracking(id: ID!)` — single item by pk |
+| `@subId changedAt` | `Plugin_OrderTrackingById(id: ID!, ...)` — all items for a pk, with sort key conditions |
+| `@index customerId` | `Plugin_OrderTrackingByCustomerId(customerId: String!, ...)` — GSI query |
+| `@index("byStatus") status` | `Plugin_OrderTrackingByStatus(status: String!, ...)` — named GSI query |
+| `@resolves(~as="customer")` | `customer` field on `OrderTracking` type — virtual field |
+
 ```graphql
 # Full timeline for one order — all entries sorted by changedAt ascending
 query {
@@ -471,15 +483,15 @@ query {
 
 # All orders by a customer (via standalone GSI on customerId)
 query {
-  Plugin_OrderTrackings(customerId: "cust-456") {
-    edges { node { orderId status total } }
+  Plugin_OrderTrackingByCustomerId(customerId: "cust-456") {
+    items { orderId status total }
   }
 }
 
 # All "shipped" orders, newest first (via named GSI "byStatus" with changedAt sort key)
 query {
-  Plugin_OrderTrackings(status: "shipped", reverse: true) {
-    edges { node { orderId changedAt } }
+  Plugin_OrderTrackingByStatus(status: "shipped", reverse: true) {
+    items { orderId changedAt }
   }
 }
 
