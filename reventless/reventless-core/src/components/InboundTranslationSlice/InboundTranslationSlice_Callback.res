@@ -100,7 +100,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
             let (targetId, cmd) = pair
             if encodeError.contents->Option.isNone {
               try {
-                let commandJson = cmd->S.reverseConvertToJsonOrThrow(Spec.commandSchema)
+                let commandJson = cmd->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
                 let msg: Reventless.Message.commandJson = {
                   id: targetId,
                   meta: makeMeta(),

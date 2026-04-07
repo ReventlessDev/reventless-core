@@ -292,7 +292,7 @@ let tags = DcbTag.extractTags(
 ```
 */
 let extractTags = (schema: S.t<'a>, value: 'a): array<tag> => {
-  let json = value->S.reverseConvertToJsonOrThrow(schema)
+  let json = value->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
   extractTagsFromJson(schema->toUnknownSchema, json)
 }
 
@@ -433,7 +433,7 @@ let tags = DcbTag.extractTagsExpanded(
 ```
 */
 let extractTagsExpanded = (schema: S.t<'a>, value: 'a): array<tag> => {
-  let json = value->S.reverseConvertToJsonOrThrow(schema)
+  let json = value->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
   extractTagsFromJsonExpanded(schema->toUnknownSchema, json)
 }
 

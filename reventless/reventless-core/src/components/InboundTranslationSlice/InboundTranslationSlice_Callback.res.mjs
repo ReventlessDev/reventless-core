@@ -79,7 +79,7 @@ function Make(Spec) {
             return;
           }
           try {
-            let commandJson = S.reverseConvertToJsonOrThrow(pair[1], Spec.commandSchema);
+            let commandJson = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(pair[1]), undefined));
             let msg_id = pair[0];
             let msg_meta = makeMeta();
             let msg = {

@@ -130,7 +130,7 @@ function extractTagsFromJson(schema, json) {
 }
 
 function extractTags(schema, value) {
-  let json = S.reverseConvertToJsonOrThrow(value, schema);
+  let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(value), undefined));
   return extractTagsFromJson(schema, json);
 }
 
@@ -249,7 +249,7 @@ function extractTagsFromJsonExpanded(schema, json) {
 }
 
 function extractTagsExpanded(schema, value) {
-  let json = S.reverseConvertToJsonOrThrow(value, schema);
+  let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(value), undefined));
   return extractTagsFromJsonExpanded(schema, json);
 }
 

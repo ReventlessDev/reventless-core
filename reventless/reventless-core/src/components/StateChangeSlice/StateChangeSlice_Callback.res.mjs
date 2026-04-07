@@ -18,7 +18,7 @@ function Make(Spec) {
   let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
   let queryEventTypes = decoder.eventTypes;
   let encodeEvent = event => {
-    let json = S.reverseConvertToJsonOrThrow(event, Spec.eventSchema);
+    let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(event), undefined));
     let match = Message$ReventlessCore.splitMessage(json);
     let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, event);
     return {
