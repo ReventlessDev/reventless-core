@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.41 (2026-04-07)
+
+### Bug Fixes
+
+* **query-db:** use idField name for DynamoDB attribute definition in GSI ([bd2ab7d](https://github.com/ReventlessDev/reventless-core/commit/bd2ab7db101c6a3e5f89ef268503c90f38d1a453))
+
+
 # 3.0.0-alpha.40 (2026-04-07)
 
 ### Features

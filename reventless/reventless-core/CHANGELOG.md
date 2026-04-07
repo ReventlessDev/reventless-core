@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.41 (2026-04-07)
+
+### Dependency Updates
+
+* **@reventlessdev/reventless-infra** updated to `^3.0.0-alpha.28`
+* **@reventlessdev/reventless-spec** updated to `^3.0.0-alpha.23`
+
+
 # 3.0.0-alpha.40 (2026-04-07)
 
 ### Features

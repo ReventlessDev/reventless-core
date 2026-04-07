@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.23 (2026-04-07)
+
+### Bug Fixes
+
+* **dcb-validation:** handle union and object types in schemasAreCompatible ([8b13bb5](https://github.com/ReventlessDev/reventless-core/commit/8b13bb552cfa643f486c2761a441d1a2ae1cd7e0))
+
+
 # 3.0.0-alpha.22 (2026-04-07)
 
 ### Features
