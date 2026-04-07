@@ -287,3 +287,61 @@ type crossEntityCommand =
 @schema
 type singleTagCommand =
   CreateItem({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+
+// --- Composite partition tag test schemas ---
+
+@schema
+type compositeEvent =
+  | SyncPlugin({
+      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0)) string,
+      platformName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1)) string,
+      pluginName: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=2)) string,
+      version: string,
+    })
+
+@schema
+type compositeEventCustomSep =
+  | ConfigUpdated({
+      tenantId: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep=":")) string,
+      region: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1, ~sep="/")) string,
+      service: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=2)) string,
+      value: string,
+    })
+
+@schema
+type compositeMultiVariant =
+  | VariantA({
+      env: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0)) string,
+      name: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1)) string,
+      data: string,
+    })
+  | VariantB({
+      env: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0)) string,
+      name: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1)) string,
+      count: int,
+    })
+
+// Schema with @partitionTag (simple) for derivePartitionTagV2 fallback test
+@schema
+type simplePartitionEvent =
+  | OrderPlaced({
+      orderId: @s.matches(Reventless.DcbTag.partition) string,
+      customerId: @s.matches(Reventless.DcbTag.string) string,
+    })
+
+// Schema that mixes composite and simple partition (should throw)
+@schema
+type mixedStrategyEvent =
+  | BadEvent({
+      env: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0)) string,
+      name: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1)) string,
+      orderId: @s.matches(Reventless.DcbTag.partition) string,
+    })
+
+// Schema with only 1 composite field (should throw)
+@schema
+type singleCompositeEvent =
+  | OnlyOne({
+      env: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0)) string,
+      data: string,
+    })

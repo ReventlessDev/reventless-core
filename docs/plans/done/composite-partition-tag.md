@@ -107,7 +107,7 @@ type derivedPartitionTag =
 
 ```rescript
 let getCompositePartitionKeyValue = (
-  tags: array<tag>,
+  tags: array<dcbTag>,
   spec: compositePartitionSpec,
 ): string => {
   spec.keys
@@ -156,28 +156,34 @@ let getCompositePartitionKeyValue = (
 - [x] Replaced `derivePartitionTag` call with `derivePartitionTagV2`.
 - [x] Updated `DcbEventLog_Adapter.res`, `DcbEventLog.res`, `DcbEventLog_Builder.res` (in-memory) to use `derivedPartitionTag`.
 
-### 5 — Tests
+### 5 — Tests ✅
 
-- [ ] **PPX output test** — write a ReScript fixture using `@compositePartitionTag` with default
-      and custom separators, capture the PPX-transformed schema, assert field types carry the
-      expected `compositePartitionMember` metadata.
-- [ ] **DcbTag unit tests** in `DcbFixtures.res` (or a new `DcbTag_Composite_test.res`):
+- [x] **PPX output test** — ReScript fixtures in `DcbFixtures.res` using `compositePartitionMember`
+      with default and custom separators. Tests assert field types carry the expected metadata
+      via `extractCompositePartitionFields` and `isCompositePartitionMember`.
+- [x] **DcbTag unit tests** in `DcbTagTest.res`:
   - `extractCompositePartitionFields` on a single-variant and multi-variant schema.
   - `derivePartitionTagV2` returns `Composite` for a schema with ≥ 2 composite fields.
+  - `derivePartitionTagV2` returns `Composite` with custom separators.
   - `derivePartitionTagV2` returns `Simple` for a schema with only `@partitionTag`.
+  - `derivePartitionTagV2` returns `Simple` for a schema with single tagged field.
   - `derivePartitionTagV2` throws on mixed strategy within one schema.
   - `derivePartitionTagV2` throws on single composite field (< 2).
   - `getCompositePartitionKeyValue` with default `"/"` separators.
   - `getCompositePartitionKeyValue` with a mixed separator (`":"` between first two fields,
     `"/"` between the rest).
-- [ ] **Runtime test** — `derivePartitionKey` with a `Composite` partition tag produces the
-      expected `"env/platform/plugin"` string.
+  - `getCompositePartitionKeyValue` with missing tag values.
+  - `getCompositePartitionKeyValue` with tags in different order than keys.
+  - `isCompositePartitionMember` positive and negative cases.
+- [x] **Runtime test** — `getCompositePartitionKeyValue` (called by `derivePartitionKey`'s
+      `Composite` branch) tested directly with spec `{keys, seps}` producing
+      `"prod/aws/catalog"` and `"acme:eu-west-1/auth"` strings.
 
-### 6 — Documentation
+### 6 — Documentation ✅
 
-- [ ] Update `docs/analysis/platform-inspector-dcb-partition-keys.md` (in private-consumer-repo)
+- [x] Update `docs/analysis/platform-inspector-dcb-partition-keys.md` (in private-consumer-repo)
       to mark Approach 2 as implemented.
-- [ ] Add a short reference entry to the sury PPX patterns reference in the skills plugin.
+- [x] Add a short reference entry to the sury PPX patterns reference in the skills plugin.
 
 ---
 

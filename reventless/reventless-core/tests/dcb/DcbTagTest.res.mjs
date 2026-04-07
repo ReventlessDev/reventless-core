@@ -2,8 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as DcbFixtures$ReventlessCore from "./DcbFixtures.res.mjs";
 
 Jest.describe("DcbTag:", () => {
@@ -194,6 +197,263 @@ Jest.describe("DcbTag:", () => {
         key: "itemId",
         value: "item-1"
       }]));
+  });
+  Jest.describe("extractCompositePartitionFields", () => {
+    Jest.test("extracts 3 fields from single-variant composite schema", () => {
+      let fields = DcbTag$Reventless.extractCompositePartitionFields(DcbFixtures$ReventlessCore.compositeEventSchema);
+      Jest.Expect.toBe(Jest.Expect.expect(fields.length), 3);
+      return Jest.Expect.toEqual(Jest.Expect.expect(fields.map(f => f.name)), [
+        "environment",
+        "platformName",
+        "pluginName"
+      ]);
+    });
+    Jest.test("fields are sorted by position", () => {
+      let fields = DcbTag$Reventless.extractCompositePartitionFields(DcbFixtures$ReventlessCore.compositeEventSchema);
+      let positions = fields.map(f => f.position);
+      return Jest.Expect.toEqual(Jest.Expect.expect(positions), [
+        0,
+        1,
+        2
+      ]);
+    });
+    Jest.test("extracts separator values", () => {
+      let fields = DcbTag$Reventless.extractCompositePartitionFields(DcbFixtures$ReventlessCore.compositeEventCustomSepSchema);
+      return Jest.Expect.toEqual(Jest.Expect.expect(fields.map(f => f.sep)), [
+        ":",
+        "/",
+        "/"
+      ]);
+    });
+    Jest.test("deduplicates fields across variants", () => {
+      let fields = DcbTag$Reventless.extractCompositePartitionFields(DcbFixtures$ReventlessCore.compositeMultiVariantSchema);
+      Jest.Expect.toBe(Jest.Expect.expect(fields.length), 2);
+      return Jest.Expect.toEqual(Jest.Expect.expect(fields.map(f => f.name)), [
+        "env",
+        "name"
+      ]);
+    });
+    Jest.test("returns empty for schema without composite fields", () => {
+      let fields = DcbTag$Reventless.extractCompositePartitionFields(DcbFixtures$ReventlessCore.TestEventLogSpec.eventSchema);
+      return Jest.Expect.toEqual(Jest.Expect.expect(fields), []);
+    });
+  });
+  Jest.describe("getCompositePartitionKeyValue", () => {
+    Jest.test("joins values with default separator", () => {
+      let spec_keys = [
+        "environment",
+        "platformName",
+        "pluginName"
+      ];
+      let spec_seps = [
+        "/",
+        "/"
+      ];
+      let spec = {
+        keys: spec_keys,
+        seps: spec_seps
+      };
+      let tags = [
+        {
+          key: "environment",
+          value: "prod"
+        },
+        {
+          key: "platformName",
+          value: "aws"
+        },
+        {
+          key: "pluginName",
+          value: "catalog"
+        }
+      ];
+      return Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.getCompositePartitionKeyValue(tags, spec)), "prod/aws/catalog");
+    });
+    Jest.test("joins values with mixed separators", () => {
+      let spec_keys = [
+        "tenantId",
+        "region",
+        "service"
+      ];
+      let spec_seps = [
+        ":",
+        "/"
+      ];
+      let spec = {
+        keys: spec_keys,
+        seps: spec_seps
+      };
+      let tags = [
+        {
+          key: "tenantId",
+          value: "acme"
+        },
+        {
+          key: "region",
+          value: "eu-west-1"
+        },
+        {
+          key: "service",
+          value: "auth"
+        }
+      ];
+      return Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.getCompositePartitionKeyValue(tags, spec)), "acme:eu-west-1/auth");
+    });
+    Jest.test("uses empty string for missing tag values", () => {
+      let spec_keys = [
+        "a",
+        "b"
+      ];
+      let spec_seps = ["/"];
+      let spec = {
+        keys: spec_keys,
+        seps: spec_seps
+      };
+      let tags = [{
+          key: "a",
+          value: "x"
+        }];
+      return Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.getCompositePartitionKeyValue(tags, spec)), "x/");
+    });
+    Jest.test("handles tags in different order than keys", () => {
+      let spec_keys = [
+        "a",
+        "b",
+        "c"
+      ];
+      let spec_seps = [
+        "/",
+        "/"
+      ];
+      let spec = {
+        keys: spec_keys,
+        seps: spec_seps
+      };
+      let tags = [
+        {
+          key: "c",
+          value: "3"
+        },
+        {
+          key: "a",
+          value: "1"
+        },
+        {
+          key: "b",
+          value: "2"
+        }
+      ];
+      return Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.getCompositePartitionKeyValue(tags, spec)), "1/2/3");
+    });
+  });
+  Jest.describe("derivePartitionTagV2", () => {
+    Jest.test("returns Composite for schema with >= 2 composite fields", () => {
+      let result = DcbTag$Reventless.derivePartitionTagV2([[
+          "Sync",
+          "test.res",
+          DcbFixtures$ReventlessCore.compositeEventSchema
+        ]]);
+      if (result.TAG === "Simple") {
+        return Jest.fail("Expected Composite");
+      }
+      let spec = result._0;
+      Jest.Expect.toEqual(Jest.Expect.expect(spec.keys), [
+        "environment",
+        "platformName",
+        "pluginName"
+      ]);
+      return Jest.Expect.toEqual(Jest.Expect.expect(spec.seps), [
+        "/",
+        "/"
+      ]);
+    });
+    Jest.test("returns Composite with custom separators", () => {
+      let result = DcbTag$Reventless.derivePartitionTagV2([[
+          "Config",
+          "test.res",
+          DcbFixtures$ReventlessCore.compositeEventCustomSepSchema
+        ]]);
+      if (result.TAG === "Simple") {
+        return Jest.fail("Expected Composite");
+      }
+      let spec = result._0;
+      Jest.Expect.toEqual(Jest.Expect.expect(spec.keys), [
+        "tenantId",
+        "region",
+        "service"
+      ]);
+      return Jest.Expect.toEqual(Jest.Expect.expect(spec.seps), [
+        ":",
+        "/"
+      ]);
+    });
+    Jest.test("returns Simple for schema with only @partitionTag", () => {
+      let result = DcbTag$Reventless.derivePartitionTagV2([[
+          "Order",
+          "test.res",
+          DcbFixtures$ReventlessCore.simplePartitionEventSchema
+        ]]);
+      if (result.TAG === "Simple") {
+        return Jest.Expect.toBe(Jest.Expect.expect(result._0.key), "orderId");
+      } else {
+        return Jest.fail("Expected Simple");
+      }
+    });
+    Jest.test("returns Simple for schema with single tagged field", () => {
+      let result = DcbTag$Reventless.derivePartitionTagV2([[
+          "Item",
+          "test.res",
+          DcbFixtures$ReventlessCore.singleTagCommandSchema
+        ]]);
+      if (result.TAG === "Simple") {
+        return Jest.Expect.toBe(Jest.Expect.expect(result._0.key), "itemId");
+      } else {
+        return Jest.fail("Expected Simple");
+      }
+    });
+    Jest.test("throws on mixed composite and simple partition strategy", () => {
+      let threw = false;
+      try {
+        DcbTag$Reventless.derivePartitionTagV2([[
+            "Mixed",
+            "test.res",
+            DcbFixtures$ReventlessCore.mixedStrategyEventSchema
+          ]]);
+      } catch (raw_err) {
+        let err = Primitive_exceptions.internalToException(raw_err);
+        if (err.RE_EXN_ID === "JsExn") {
+          threw = true;
+          Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "").includes("mixes @compositePartitionTag and @partitionTag")), true);
+        } else {
+          throw err;
+        }
+      }
+      return Jest.Expect.toBe(Jest.Expect.expect(threw), true);
+    });
+    Jest.test("throws on single composite field (< 2)", () => {
+      let threw = false;
+      try {
+        DcbTag$Reventless.derivePartitionTagV2([[
+            "Single",
+            "test.res",
+            DcbFixtures$ReventlessCore.singleCompositeEventSchema
+          ]]);
+      } catch (raw_err) {
+        let err = Primitive_exceptions.internalToException(raw_err);
+        if (err.RE_EXN_ID === "JsExn") {
+          threw = true;
+          Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "").includes("at least 2 annotated fields")), true);
+        } else {
+          throw err;
+        }
+      }
+      return Jest.Expect.toBe(Jest.Expect.expect(threw), true);
+    });
+  });
+  Jest.describe("isCompositePartitionMember", () => {
+    Jest.test("returns true for compositePartitionMember schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isCompositePartitionMember(DcbTag$Reventless.compositePartitionMember(0, undefined))), true));
+    Jest.test("returns false for plain DcbTag.string", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isCompositePartitionMember(DcbTag$Reventless.string)), false));
+    Jest.test("returns false for plain S.string", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isCompositePartitionMember(S.string)), false));
   });
   Jest.describe("buildQueryFromCommand", () => {
     let eventTypes = [

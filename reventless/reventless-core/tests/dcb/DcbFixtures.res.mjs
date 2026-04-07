@@ -377,6 +377,56 @@ let singleTagCommandSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
+let compositeEventSchema = S.schema(s => ({
+  TAG: "SyncPlugin",
+  environment: s.m(DcbTag$Reventless.compositePartitionMember(0, undefined)),
+  platformName: s.m(DcbTag$Reventless.compositePartitionMember(1, undefined)),
+  pluginName: s.m(DcbTag$Reventless.compositePartitionMember(2, undefined)),
+  version: s.m(S.string)
+}));
+
+let compositeEventCustomSepSchema = S.schema(s => ({
+  TAG: "ConfigUpdated",
+  tenantId: s.m(DcbTag$Reventless.compositePartitionMember(0, ":")),
+  region: s.m(DcbTag$Reventless.compositePartitionMember(1, "/")),
+  service: s.m(DcbTag$Reventless.compositePartitionMember(2, undefined)),
+  value: s.m(S.string)
+}));
+
+let compositeMultiVariantSchema = S.union([
+  S.schema(s => ({
+    TAG: "VariantA",
+    env: s.m(DcbTag$Reventless.compositePartitionMember(0, undefined)),
+    name: s.m(DcbTag$Reventless.compositePartitionMember(1, undefined)),
+    data: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "VariantB",
+    env: s.m(DcbTag$Reventless.compositePartitionMember(0, undefined)),
+    name: s.m(DcbTag$Reventless.compositePartitionMember(1, undefined)),
+    count: s.m(S.int)
+  }))
+]);
+
+let simplePartitionEventSchema = S.schema(s => ({
+  TAG: "OrderPlaced",
+  orderId: s.m(DcbTag$Reventless.partition),
+  customerId: s.m(DcbTag$Reventless.string)
+}));
+
+let mixedStrategyEventSchema = S.schema(s => ({
+  TAG: "BadEvent",
+  env: s.m(DcbTag$Reventless.compositePartitionMember(0, undefined)),
+  name: s.m(DcbTag$Reventless.compositePartitionMember(1, undefined)),
+  orderId: s.m(DcbTag$Reventless.partition)
+}));
+
+let singleCompositeEventSchema = S.schema(s => ({
+  TAG: "OnlyOne",
+  env: s.m(DcbTag$Reventless.compositePartitionMember(0, undefined)),
+  data: s.m(S.string)
+}));
+
 let testMeta = {
   service: "test",
   time: "2024-01-01T00:00:00Z",
@@ -403,5 +453,11 @@ export {
   multiFieldEventSchema,
   crossEntityCommandSchema,
   singleTagCommandSchema,
+  compositeEventSchema,
+  compositeEventCustomSepSchema,
+  compositeMultiVariantSchema,
+  simplePartitionEventSchema,
+  mixedStrategyEventSchema,
+  singleCompositeEventSchema,
 }
 /*  Not a pure module */

@@ -410,6 +410,259 @@ describe("DcbTag:", () => {
     )
   })
 
+  describe("extractCompositePartitionFields", () => {
+    test(
+      "extracts 3 fields from single-variant composite schema",
+      () => {
+        let fields = Reventless.DcbTag.extractCompositePartitionFields(
+          DcbFixtures.compositeEventSchema,
+        )
+        expect(fields->Array.length)->toBe(3)->ignore
+        expect(fields->Array.map(f => f.name))->toEqual(["environment", "platformName", "pluginName"])
+      },
+    )
+
+    test(
+      "fields are sorted by position",
+      () => {
+        let fields = Reventless.DcbTag.extractCompositePartitionFields(
+          DcbFixtures.compositeEventSchema,
+        )
+        let positions = fields->Array.map(f => f.position)
+        expect(positions)->toEqual([0, 1, 2])
+      },
+    )
+
+    test(
+      "extracts separator values",
+      () => {
+        let fields = Reventless.DcbTag.extractCompositePartitionFields(
+          DcbFixtures.compositeEventCustomSepSchema,
+        )
+        expect(fields->Array.map(f => f.sep))->toEqual([":", "/", "/"])
+      },
+    )
+
+    test(
+      "deduplicates fields across variants",
+      () => {
+        let fields = Reventless.DcbTag.extractCompositePartitionFields(
+          DcbFixtures.compositeMultiVariantSchema,
+        )
+        expect(fields->Array.length)->toBe(2)->ignore
+        expect(fields->Array.map(f => f.name))->toEqual(["env", "name"])
+      },
+    )
+
+    test(
+      "returns empty for schema without composite fields",
+      () => {
+        let fields = Reventless.DcbTag.extractCompositePartitionFields(
+          DcbFixtures.TestEventLogSpec.eventSchema,
+        )
+        expect(fields)->toEqual([])
+      },
+    )
+  })
+
+  describe("getCompositePartitionKeyValue", () => {
+    test(
+      "joins values with default separator",
+      () => {
+        let spec: Reventless.DcbTag.compositePartitionSpec = {
+          keys: ["environment", "platformName", "pluginName"],
+          seps: ["/", "/"],
+        }
+        let tags: array<Reventless.DcbTag.tag> = [
+          {key: "environment", value: "prod"},
+          {key: "platformName", value: "aws"},
+          {key: "pluginName", value: "catalog"},
+        ]
+        expect(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))->toBe(
+          "prod/aws/catalog",
+        )
+      },
+    )
+
+    test(
+      "joins values with mixed separators",
+      () => {
+        let spec: Reventless.DcbTag.compositePartitionSpec = {
+          keys: ["tenantId", "region", "service"],
+          seps: [":", "/"],
+        }
+        let tags: array<Reventless.DcbTag.tag> = [
+          {key: "tenantId", value: "acme"},
+          {key: "region", value: "eu-west-1"},
+          {key: "service", value: "auth"},
+        ]
+        expect(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))->toBe(
+          "acme:eu-west-1/auth",
+        )
+      },
+    )
+
+    test(
+      "uses empty string for missing tag values",
+      () => {
+        let spec: Reventless.DcbTag.compositePartitionSpec = {
+          keys: ["a", "b"],
+          seps: ["/"],
+        }
+        let tags: array<Reventless.DcbTag.tag> = [{key: "a", value: "x"}]
+        expect(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))->toBe("x/")
+      },
+    )
+
+    test(
+      "handles tags in different order than keys",
+      () => {
+        let spec: Reventless.DcbTag.compositePartitionSpec = {
+          keys: ["a", "b", "c"],
+          seps: ["/", "/"],
+        }
+        let tags: array<Reventless.DcbTag.tag> = [
+          {key: "c", value: "3"},
+          {key: "a", value: "1"},
+          {key: "b", value: "2"},
+        ]
+        expect(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))->toBe("1/2/3")
+      },
+    )
+  })
+
+  describe("derivePartitionTagV2", () => {
+    let u = S.castToUnknown
+
+    test(
+      "returns Composite for schema with >= 2 composite fields",
+      () => {
+        let result = Reventless.DcbTag.derivePartitionTagV2([
+          ("Sync", "test.res", DcbFixtures.compositeEventSchema->u),
+        ])
+        switch result {
+        | Composite(spec) =>
+          expect(spec.keys)->toEqual(["environment", "platformName", "pluginName"])->ignore
+          expect(spec.seps)->toEqual(["/", "/"])
+        | Simple(_) => fail("Expected Composite")
+        }
+      },
+    )
+
+    test(
+      "returns Composite with custom separators",
+      () => {
+        let result = Reventless.DcbTag.derivePartitionTagV2([
+          ("Config", "test.res", DcbFixtures.compositeEventCustomSepSchema->u),
+        ])
+        switch result {
+        | Composite(spec) =>
+          expect(spec.keys)->toEqual(["tenantId", "region", "service"])->ignore
+          expect(spec.seps)->toEqual([":", "/"])
+        | Simple(_) => fail("Expected Composite")
+        }
+      },
+    )
+
+    test(
+      "returns Simple for schema with only @partitionTag",
+      () => {
+        let result = Reventless.DcbTag.derivePartitionTagV2([
+          ("Order", "test.res", DcbFixtures.simplePartitionEventSchema->u),
+        ])
+        switch result {
+        | Simple(pt) => expect(pt.key)->toBe("orderId")
+        | Composite(_) => fail("Expected Simple")
+        }
+      },
+    )
+
+    test(
+      "returns Simple for schema with single tagged field",
+      () => {
+        let result = Reventless.DcbTag.derivePartitionTagV2([
+          ("Item", "test.res", DcbFixtures.singleTagCommandSchema->u),
+        ])
+        switch result {
+        | Simple(pt) => expect(pt.key)->toBe("itemId")
+        | Composite(_) => fail("Expected Simple")
+        }
+      },
+    )
+
+    test(
+      "throws on mixed composite and simple partition strategy",
+      () => {
+        let threw = ref(false)
+        try {
+          let _ = Reventless.DcbTag.derivePartitionTagV2([
+            ("Mixed", "test.res", DcbFixtures.mixedStrategyEventSchema->u),
+          ])
+        } catch {
+        | JsExn(err) =>
+          threw := true
+          expect(
+            JsExn.message(err)->Option.getOr("")->String.includes(
+              "mixes @compositePartitionTag and @partitionTag",
+            ),
+          )->toBe(true)->ignore
+        }
+        expect(threw.contents)->toBe(true)
+      },
+    )
+
+    test(
+      "throws on single composite field (< 2)",
+      () => {
+        let threw = ref(false)
+        try {
+          let _ = Reventless.DcbTag.derivePartitionTagV2([
+            ("Single", "test.res", DcbFixtures.singleCompositeEventSchema->u),
+          ])
+        } catch {
+        | JsExn(err) =>
+          threw := true
+          expect(
+            JsExn.message(err)->Option.getOr("")->String.includes("at least 2 annotated fields"),
+          )->toBe(true)->ignore
+        }
+        expect(threw.contents)->toBe(true)
+      },
+    )
+  })
+
+  describe("isCompositePartitionMember", () => {
+    test(
+      "returns true for compositePartitionMember schema",
+      () =>
+        expect(
+          Reventless.DcbTag.isCompositePartitionMember(
+            Reventless.DcbTag.compositePartitionMember(~position=0)->Reventless.DcbTag.toUnknownSchema,
+          ),
+        )->toBe(true),
+    )
+
+    test(
+      "returns false for plain DcbTag.string",
+      () =>
+        expect(
+          Reventless.DcbTag.isCompositePartitionMember(
+            Reventless.DcbTag.string->Reventless.DcbTag.toUnknownSchema,
+          ),
+        )->toBe(false),
+    )
+
+    test(
+      "returns false for plain S.string",
+      () =>
+        expect(
+          Reventless.DcbTag.isCompositePartitionMember(
+            S.string->Reventless.DcbTag.toUnknownSchema,
+          ),
+        )->toBe(false),
+    )
+  })
+
   describe("buildQueryFromCommand", () => {
     let eventTypes = ["EventA", "EventB"]
 
