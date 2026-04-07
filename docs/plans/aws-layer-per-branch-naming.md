@@ -70,7 +70,8 @@ File: `.github/workflows/deploy-reventless-aws.yml`
       esac
   ```
 - [x] Update the ARN resolution logic to read from `${{ steps.arn-file.outputs.path }}`
-- [x] Verify both places where the ARN is resolved (platform deploy ~line 234 and plugin deploy ~line 338) use the dynamic path
+- [x] Platform deploy ~line 234 updated ✓
+- [x] Plugin deploy ~line 348 was missed in the original change — fixed in `fix(ci): apply branch-scoped layer ARN resolution to plugin deploy step`
 
 ### Step 3 — Commit workflow changes and push to `alpha`
 
@@ -82,9 +83,9 @@ File: `.github/workflows/deploy-reventless-aws.yml`
 
 ### Step 4 — Redeploy the alpha environment
 
-- [ ] Trigger `deploy-reventless-aws.yml` on `alpha`
-- [ ] Confirm Pulumi picks up the ARN from `layer-arn-alpha.txt`
-- [ ] Confirm Lambda functions in the alpha environment reference `reventless-aws-alpha:1` (not `reventless-aws:NN`)
+- [x] Platform stack deployed on 2026-04-06 — platform Lambdas reference `reventless-aws-alpha:1`
+- [x] Plugin deploy bug fixed (plugin job read `layer-arn.txt` instead of `layer-arn-alpha.txt`)
+- [ ] Confirm plugin Lambdas (catalog, ordering) reference `reventless-aws-alpha:1` after redeploy triggered by the bug-fix commit
 
 ### Step 5 — Delete all existing `reventless-aws` versions
 

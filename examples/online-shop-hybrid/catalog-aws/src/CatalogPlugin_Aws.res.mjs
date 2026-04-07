@@ -122,14 +122,14 @@ function Make(Platform) {
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });
-  let ProductsViewSlice = Platform.StateViewSlice.Bundled.Make({
+  let ProductsViewSlice = Platform.StateViewSlice.Make({
     name: ProductsView$CatalogPlugin.name,
     moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
     stateSchema: ProductsView$CatalogPlugin.stateSchema,
     consumedEventSchema: ProductsView$CatalogPlugin.consumedEventSchema,
     project: ProductsView$CatalogPlugin.project
   });
-  let ProductDemandViewSlice = Platform.StateViewSlice.Bundled.Make({
+  let ProductDemandViewSlice = Platform.StateViewSlice.Make({
     name: ProductDemandView$CatalogPlugin.name,
     moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemandView$CatalogPlugin.stateSchema,

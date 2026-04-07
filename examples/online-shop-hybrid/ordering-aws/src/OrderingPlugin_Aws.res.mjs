@@ -110,7 +110,7 @@ function Make(Platform) {
     decide: SyncCatalogProduct$OrderingPlugin.decide,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
   });
-  let AutoShipOrderSlice = Platform.AutomationSlice.Bundled.Make({
+  let AutoShipOrderSlice = Platform.AutomationSlice.Make({
     name: AutoShipOrder$OrderingPlugin.name,
     moduleUrl: AutoShipOrder$OrderingPlugin.moduleUrl,
     consumedEventSchema: AutoShipOrder$OrderingPlugin.consumedEventSchema,
@@ -122,7 +122,7 @@ function Make(Platform) {
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
     heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
   });
-  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Bundled.Make({
+  let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,
     moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
     consumedEventSchema: SendOrderConfirmation$OrderingPlugin.consumedEventSchema,
@@ -133,14 +133,14 @@ function Make(Platform) {
     maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
     heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
   });
-  let OrdersViewSlice = Platform.StateViewSlice.Bundled.Make({
+  let OrdersViewSlice = Platform.StateViewSlice.Make({
     name: OrdersView$OrderingPlugin.name,
     moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
     stateSchema: OrdersView$OrderingPlugin.stateSchema,
     consumedEventSchema: OrdersView$OrderingPlugin.consumedEventSchema,
     project: OrdersView$OrderingPlugin.project
   });
-  let AvailableProductsViewSlice = Platform.StateViewSlice.Bundled.Make({
+  let AvailableProductsViewSlice = Platform.StateViewSlice.Make({
     name: AvailableProductsView$OrderingPlugin.name,
     moduleUrl: AvailableProductsView$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProductsView$OrderingPlugin.stateSchema,
