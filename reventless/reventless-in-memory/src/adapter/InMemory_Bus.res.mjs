@@ -7,7 +7,6 @@ import * as PubSub from "effect/PubSub";
 import * as Stream from "effect/Stream";
 import * as Deferred from "effect/Deferred";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 
 function Impl(C) {
   let capacity = C.capacity;
@@ -18,6 +17,9 @@ function Impl(C) {
     contents: {}
   };
   let commandHandlers = {
+    contents: {}
+  };
+  let pendingCommandQueues = {
     contents: {}
   };
   let queryDbRegistry = {
@@ -113,14 +115,31 @@ function Impl(C) {
     let handler = commandHandlers.contents[channelName];
     if (handler !== undefined) {
       return await handler(json, undefined);
-    } else if (!C.silent) {
-      return Logger$ReventlessCore.emit("Warn", "Bus", undefined, `no command handler for channel: ` + channelName);
-    } else {
-      return;
     }
+    let q = pendingCommandQueues.contents[channelName];
+    let queue;
+    if (q !== undefined) {
+      queue = q;
+    } else {
+      let q$1 = {
+        contents: []
+      };
+      pendingCommandQueues.contents[channelName] = q$1;
+      queue = q$1;
+    }
+    queue.contents.push(json);
   };
   let registerCommandHandler = (channelName, handler) => {
     commandHandlers.contents[channelName] = handler;
+    let queue = pendingCommandQueues.contents[channelName];
+    if (queue === undefined) {
+      return;
+    }
+    let pending = queue.contents;
+    queue.contents = [];
+    pending.forEach(json => {
+      handler(json, undefined);
+    });
   };
   let registerQueryDb = (name, ops) => {
     queryDbRegistry.contents[name] = ops;
@@ -150,6 +169,7 @@ function Impl(C) {
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};
+    pendingCommandQueues.contents = {};
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
@@ -186,6 +206,9 @@ function Make($star) {
   let commandHandlers = {
     contents: {}
   };
+  let pendingCommandQueues = {
+    contents: {}
+  };
   let queryDbRegistry = {
     contents: {}
   };
@@ -273,12 +296,31 @@ function Make($star) {
     let handler = commandHandlers.contents[channelName];
     if (handler !== undefined) {
       return await handler(json, undefined);
-    } else {
-      return Logger$ReventlessCore.emit("Warn", "Bus", undefined, `no command handler for channel: ` + channelName);
     }
+    let q = pendingCommandQueues.contents[channelName];
+    let queue;
+    if (q !== undefined) {
+      queue = q;
+    } else {
+      let q$1 = {
+        contents: []
+      };
+      pendingCommandQueues.contents[channelName] = q$1;
+      queue = q$1;
+    }
+    queue.contents.push(json);
   };
   let registerCommandHandler = (channelName, handler) => {
     commandHandlers.contents[channelName] = handler;
+    let queue = pendingCommandQueues.contents[channelName];
+    if (queue === undefined) {
+      return;
+    }
+    let pending = queue.contents;
+    queue.contents = [];
+    pending.forEach(json => {
+      handler(json, undefined);
+    });
   };
   let registerQueryDb = (name, ops) => {
     queryDbRegistry.contents[name] = ops;
@@ -308,6 +350,7 @@ function Make($star) {
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};
+    pendingCommandQueues.contents = {};
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
@@ -344,6 +387,9 @@ function MakeSilent($star) {
   let commandHandlers = {
     contents: {}
   };
+  let pendingCommandQueues = {
+    contents: {}
+  };
   let queryDbRegistry = {
     contents: {}
   };
@@ -432,9 +478,30 @@ function MakeSilent($star) {
     if (handler !== undefined) {
       return await handler(json, undefined);
     }
+    let q = pendingCommandQueues.contents[channelName];
+    let queue;
+    if (q !== undefined) {
+      queue = q;
+    } else {
+      let q$1 = {
+        contents: []
+      };
+      pendingCommandQueues.contents[channelName] = q$1;
+      queue = q$1;
+    }
+    queue.contents.push(json);
   };
   let registerCommandHandler = (channelName, handler) => {
     commandHandlers.contents[channelName] = handler;
+    let queue = pendingCommandQueues.contents[channelName];
+    if (queue === undefined) {
+      return;
+    }
+    let pending = queue.contents;
+    queue.contents = [];
+    pending.forEach(json => {
+      handler(json, undefined);
+    });
   };
   let registerQueryDb = (name, ops) => {
     queryDbRegistry.contents[name] = ops;
@@ -464,6 +531,7 @@ function MakeSilent($star) {
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};
+    pendingCommandQueues.contents = {};
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
@@ -499,6 +567,9 @@ function MakeBounded(C) {
     contents: {}
   };
   let commandHandlers = {
+    contents: {}
+  };
+  let pendingCommandQueues = {
     contents: {}
   };
   let queryDbRegistry = {
@@ -585,12 +656,31 @@ function MakeBounded(C) {
     let handler = commandHandlers.contents[channelName];
     if (handler !== undefined) {
       return await handler(json, undefined);
-    } else {
-      return Logger$ReventlessCore.emit("Warn", "Bus", undefined, `no command handler for channel: ` + channelName);
     }
+    let q = pendingCommandQueues.contents[channelName];
+    let queue;
+    if (q !== undefined) {
+      queue = q;
+    } else {
+      let q$1 = {
+        contents: []
+      };
+      pendingCommandQueues.contents[channelName] = q$1;
+      queue = q$1;
+    }
+    queue.contents.push(json);
   };
   let registerCommandHandler = (channelName, handler) => {
     commandHandlers.contents[channelName] = handler;
+    let queue = pendingCommandQueues.contents[channelName];
+    if (queue === undefined) {
+      return;
+    }
+    let pending = queue.contents;
+    queue.contents = [];
+    pending.forEach(json => {
+      handler(json, undefined);
+    });
   };
   let registerQueryDb = (name, ops) => {
     queryDbRegistry.contents[name] = ops;
@@ -620,6 +710,7 @@ function MakeBounded(C) {
     eventHubs.contents = {};
     subscriberCounts.contents = {};
     commandHandlers.contents = {};
+    pendingCommandQueues.contents = {};
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};

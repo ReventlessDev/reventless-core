@@ -5,14 +5,24 @@ import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/revent
 
 let receiveRegistry = {};
 
+let pendingQueueRegistry = {};
+
 function register(fieldName, externalInputSchema) {
   let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, externalInputSchema);
   let sdlFields = field !== undefined ? [field] : [`  ` + fieldName + `: String!`];
+  let pendingQueue = {
+    contents: []
+  };
+  pendingQueueRegistry[fieldName] = pendingQueue;
+  let queuingReceive = inputJson => new Promise((resolve, _reject) => {
+    pendingQueue.contents.push({
+      inputJson: inputJson,
+      resolve: resolve
+    });
+  });
+  receiveRegistry[fieldName] = queuingReceive;
   let resolver = async (_root, args, _ctx) => {
     let receive = receiveRegistry[fieldName];
-    if (receive === undefined) {
-      return `error: no receive handler registered for ` + fieldName;
-    }
     let result = await receive(args);
     if (result.TAG === "Ok") {
       return result._0.map(prim => prim);
@@ -27,10 +37,21 @@ function register(fieldName, externalInputSchema) {
 
 function bindReceive(fieldName, receive) {
   receiveRegistry[fieldName] = receive;
+  let pendingQueue = pendingQueueRegistry[fieldName];
+  if (pendingQueue === undefined) {
+    return;
+  }
+  let pending = pendingQueue.contents;
+  pendingQueue.contents = [];
+  pending.forEach(param => {
+    let resolve = param.resolve;
+    receive(param.inputJson).then(result => resolve(result));
+  });
 }
 
 export {
   receiveRegistry,
+  pendingQueueRegistry,
   register,
   bindReceive,
 }

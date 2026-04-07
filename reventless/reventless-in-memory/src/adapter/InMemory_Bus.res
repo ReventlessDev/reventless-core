@@ -126,6 +126,8 @@ module Impl = (C: BusConfig): T => {
   let subscriberCounts: ref<dict<int>> = ref(Dict.make())
 
   let commandHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
+  // Per-channel pending command queues — drained when registerCommandHandler fires.
+  let pendingCommandQueues: ref<dict<ref<array<JSON.t>>>> = ref(Dict.make())
   let queryDbRegistry: ref<dict<ReventlessCore.QueryDb_Adapter.operations>> = ref(Dict.make())
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
   let queryDbStreamRegistry: ref<dict<unit => Stream.t<JSON.t, string, unit>>> = ref(Dict.make())
@@ -251,14 +253,30 @@ module Impl = (C: BusConfig): T => {
     switch commandHandlers.contents->Dict.get(channelName) {
     | Some(handler) => await handler(json, ())
     | None =>
-      if !C.silent {
-        ReventlessCore.Logger.emit(~level=Warn, ~comp="Bus", `no command handler for channel: ${channelName}`)
+      // Park the command — drained once registerCommandHandler fires for this channel.
+      let queue = switch pendingCommandQueues.contents->Dict.get(channelName) {
+      | Some(q) => q
+      | None =>
+        let q = ref([])
+        pendingCommandQueues.contents->Dict.set(channelName, q)
+        q
       }
+      queue.contents->Array.push(json)
     }
   }
 
   let registerCommandHandler = (channelName, handler) => {
     commandHandlers.contents->Dict.set(channelName, handler)
+    // Drain any commands that arrived before the handler was registered.
+    switch pendingCommandQueues.contents->Dict.get(channelName) {
+    | Some(queue) =>
+      let pending = queue.contents
+      queue.contents = []
+      pending->Array.forEach(json => {
+        let _ = handler(json, ())
+      })
+    | None => ()
+    }
   }
 
   let registerQueryDb = (name, ops) => queryDbRegistry.contents->Dict.set(name, ops)
@@ -289,6 +307,7 @@ module Impl = (C: BusConfig): T => {
     eventHubs := Dict.make()
     subscriberCounts := Dict.make()
     commandHandlers := Dict.make()
+    pendingCommandQueues := Dict.make()
     queryDbRegistry := Dict.make()
     queryDbScanRegistry := Dict.make()
     queryDbStreamRegistry := Dict.make()
