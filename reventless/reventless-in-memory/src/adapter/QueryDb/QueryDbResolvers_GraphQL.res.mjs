@@ -174,6 +174,7 @@ function Make(Bus) {
     let byIdListSdl;
     if (subIdField !== undefined) {
       let connectionTypeName$1 = returnTypeName + "ByIdConnection";
+      GraphQL_Server$ReventlessInMemory.registerTypes([`type ` + connectionTypeName$1 + ` {\n  items: [` + returnTypeName + `!]!\n  nextToken: String\n}`]);
       byIdListSdl = [`  ` + singleQueryName + `ById(id: ID!, ` + subIdField + `: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ` + connectionTypeName$1 + `!`];
     } else {
       byIdListSdl = [];

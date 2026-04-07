@@ -239,6 +239,11 @@ module Make = (Bus: InMemory_Bus.T) => {
     let byIdListSdl = switch subIdField {
     | Some(sf) =>
       let connectionTypeName = returnTypeName ++ "ByIdConnection"
+      GraphQL_Server.registerTypes(
+        ~sdlTypes=[
+          `type ${connectionTypeName} {\n  items: [${returnTypeName}!]!\n  nextToken: String\n}`,
+        ],
+      )
       [`  ${singleQueryName}ById(id: ID!, ${sf}: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ${connectionTypeName}!`]
     | None => []
     }
