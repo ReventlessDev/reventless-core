@@ -46,27 +46,35 @@ jobs:
           fi
 
           # Triggered by Release — skip if build-lambda-layer.yml will also run
-          # for this commit (it dispatches this workflow with a fresh ARN when done).
+          # (it dispatches this workflow with a fresh ARN when done).
           # Two cases where it runs:
           #   1. reventless-aws was released → a new layer is published after release
           #   2. reventless-layer-builder/** was changed → path-triggered layer build
-          RELEASE_SHA="${{ github.event.workflow_run.head_sha }}"
+          #
+          # NOTE: head_sha is the commit that triggered Release, but Lerna pushes a
+          # NEW version commit during the release. Tags point to that new commit, not
+          # head_sha. Resolve the current branch HEAD to find the version commit.
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          VERSION_SHA=$(gh api "repos/${{ github.repository }}/git/ref/heads/${BRANCH}" \
+            --jq '.object.sha' 2>/dev/null || echo "")
 
-          AWS_TAGS=$(gh api "repos/${{ github.repository }}/git/matching-refs/tags/@reventlessdev/reventless-aws@" \
-            --jq "[.[] | select(.object.sha == \"$RELEASE_SHA\")] | length" 2>/dev/null || echo "0")
-          if [ "$AWS_TAGS" -gt 0 ]; then
-            echo "Release includes reventless-aws — layer build will dispatch deploy with fresh ARN"
-            echo "should-deploy=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          if [ -n "$VERSION_SHA" ]; then
+            AWS_TAGS=$(gh api "repos/${{ github.repository }}/git/matching-refs/tags/@reventlessdev/reventless-aws@" \
+              --jq "[.[] | select(.object.sha == \"$VERSION_SHA\")] | length" 2>/dev/null || echo "0")
+            if [ "$AWS_TAGS" -gt 0 ]; then
+              echo "Release includes reventless-aws — layer build will dispatch deploy with fresh ARN"
+              echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
 
-          LAYER_BUILDER_CHANGES=$(gh api "repos/${{ github.repository }}/commits/$RELEASE_SHA" \
-            --jq '[.files[]?.filename | select(startswith("reventless/reventless-layer-builder/"))] | length' \
-            2>/dev/null || echo "0")
-          if [ "$LAYER_BUILDER_CHANGES" -gt 0 ]; then
-            echo "Layer builder changed — build-lambda-layer.yml will dispatch deploy with fresh ARN"
-            echo "should-deploy=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            LAYER_BUILDER_CHANGES=$(gh api "repos/${{ github.repository }}/commits/$VERSION_SHA" \
+              --jq '[.files[]?.filename | select(startswith("reventless/reventless-layer-builder/"))] | length' \
+              2>/dev/null || echo "0")
+            if [ "$LAYER_BUILDER_CHANGES" -gt 0 ]; then
+              echo "Layer builder changed — build-lambda-layer.yml will dispatch deploy with fresh ARN"
+              echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
 
           echo "Release triggered deploy, no layer build needed — deploying"
