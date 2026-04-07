@@ -344,9 +344,17 @@ jobs:
 
       - name: Resolve Lambda Layer ARN
         run: |
+          # Input takes precedence, then branch-specific ARN file, then empty (no layer)
           ARN="${{ inputs.layer-arn }}"
-          if [[ -z "$ARN" && -f .github/layer-arn.txt ]]; then
-            ARN=$(cat .github/layer-arn.txt | tr -d '[:space:]')
+          if [[ -z "$ARN" ]]; then
+            BRANCH="${{ needs.detect-changes.outputs.branch }}"
+            case "$BRANCH" in
+              main)  ARN_FILE=".github/layer-arn.txt" ;;
+              beta)  ARN_FILE=".github/layer-arn-beta.txt" ;;
+              alpha) ARN_FILE=".github/layer-arn-alpha.txt" ;;
+              *)     ARN_FILE=".github/layer-arn-alpha.txt" ;;
+            esac
+            [[ -f "$ARN_FILE" ]] && ARN=$(cat "$ARN_FILE" | tr -d '[:space:]')
           fi
           echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
           echo "Layer ARN: ${ARN:-(none)}"
