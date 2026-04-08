@@ -30,6 +30,7 @@ import * as EventMapper$ReventlessInterop from "@reventlessdev/reventless-intero
 import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
 import * as StateViewSlice$ReventlessCore from "../StateViewSlice/StateViewSlice.res.mjs";
 import * as Util_StackRefs$ReventlessCore from "../../util/Util_StackRefs.res.mjs";
+import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
 import * as AutomationSlice$ReventlessCore from "../AutomationSlice/AutomationSlice.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../Builder_Helpers.res.mjs";
 import * as Plugin_Callback$ReventlessCore from "./Plugin_Callback.res.mjs";
@@ -766,6 +767,14 @@ let createExtensionPoints = Builder_Helpers$ReventlessCore.createExtensionPoints
 
 let createResolvers = Builder_Helpers$ReventlessCore.createResolvers;
 
+let ApiNoApi;
+
+let isNoApi = ApiNoApiHelpers$ReventlessCore.isNoApi;
+
+let getExcludedVariants = ApiNoApiHelpers$ReventlessCore.getExcludedVariants;
+
+let filterNoApiVariants = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants;
+
 export {
   log,
   getRemoteStorageResources,
@@ -787,6 +796,10 @@ export {
   createReadModels,
   createExtensionPoints,
   createResolvers,
+  ApiNoApi,
+  isNoApi,
+  getExcludedVariants,
+  filterNoApiVariants,
   createExtensions,
   extractExtensionPointDefinitions,
   extractExtensionDefinitions,

@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -11,6 +12,7 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
+import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/AutomationSlice_Callback.res.mjs";
@@ -133,12 +135,21 @@ function Make(DcbEventLogStorage) {
       }));
       let registerResolver = HooksConfig.hooks.mutationResolverHook;
       if (registerResolver !== undefined) {
-        stateChangeSlices.forEach(S => registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], S.Spec.commandSchema));
+        stateChangeSlices.forEach(S => {
+          let commandSchema = S.Spec.commandSchema;
+          if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema);
+          }
+        });
       }
       let bindHandler = HooksConfig.hooks.mutationBindHook;
       if (bindHandler !== undefined) {
         Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
           stateChangeSlices.forEach(S => {
+            let commandSchema = S.Spec.commandSchema;
+            if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+              return;
+            }
             let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
             let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
             bindHandler(fieldName, generateCommand);
@@ -252,7 +263,11 @@ function Make(DcbEventLogStorage) {
       let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources));
       let inboundFieldNames = inboundTranslationSliceData.map(param => param[1]);
       let inboundSchemas = inboundTranslationSliceData.map(param => param[3]);
-      let dcbMutationData = stateChangeSlices.map(S => {
+      let dcbMutationData = Stdlib_Array.filterMap(stateChangeSlices, S => {
+        let commandSchema = S.Spec.commandSchema;
+        if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+          return;
+        }
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
         let constructorNames = DcbTag$Reventless.extractEventTypes(S.Spec.commandSchema);
         let tag = Stdlib_Option.getOr(constructorNames[0], S.Spec.name);
@@ -291,10 +306,17 @@ function Make(DcbEventLogStorage) {
       };
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbSlicesCreated, hook => hook(dcbEventLog));
       let dcbRuntimeSetup = () => RuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, undefined, undefined, dcbCommandTopic);
-      let mutationEntriesFromSlices = stateChangeSlices.map(S => ({
-        fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)],
-        commandSchema: S.Spec.commandSchema
-      }));
+      let mutationEntriesFromSlices = Stdlib_Array.filterMap(stateChangeSlices, S => {
+        let commandSchema = S.Spec.commandSchema;
+        if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+          return;
+        } else {
+          return {
+            fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)],
+            commandSchema: commandSchema
+          };
+        }
+      });
       let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => ({
         fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name)],
         commandSchema: ITS.Spec.externalInputSchema

@@ -251,6 +251,35 @@ environment: @compositePartitionTag string
 
 ---
 
+### `@noApi` — exclude commands from GraphQL/MCP exposure
+
+Use on command types or individual command variants to exclude them from automatic GraphQL mutation and MCP tool generation.
+
+| Annotation | Placed on | Effect |
+|---|---|---|
+| `@noApi` | `@schema type command` | Entire command type hidden from API |
+| `@noApi` | A single variant in a command type | Only that variant hidden, others remain public |
+
+**Type-level `@noApi` — entire command hidden:**
+```rescript
+@schema @noApi
+type command =
+  | IssueRefund({orderId: string, reason: string})
+```
+All variants of this command type are excluded from GraphQL mutations and MCP tools. Use this for internal automation-only workflows.
+
+**Variant-level `@noApi` — individual variants hidden:**
+```rescript
+@schema
+type command =
+  | CancelOrder({orderId: string})      // Public — exposed as GraphQL mutation + MCP tool
+  | @noApi ReopenOrder({orderId: string})  // Internal — hidden from API
+```
+
+The `@noApi` annotation is stripped from the compiled output by the PPX. Filtering happens at schema generation time in `Plugin_Builder` (for Aggregates) and `Dcb_Builder` (for StateChangeSlices).
+
+---
+
 ### `@id`, `@compositeId` — partition key derivation
 
 Use on `@schema type state` fields in ReadModel and StateViewSlice spec files. The PPX generates `let makeId` from the annotated field(s). This replaces a manual `let makeId` declaration.

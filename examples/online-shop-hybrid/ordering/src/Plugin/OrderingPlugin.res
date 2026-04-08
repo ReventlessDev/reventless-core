@@ -26,6 +26,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder)
   module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder)
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder)
+  module RefundOrderSlice = Platform.StateChangeSlice.Make(RefundOrder)
 
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder)
   module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation)
@@ -59,6 +60,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(PlaceOrderSlice),
         module(ShipOrderSlice),
         module(CancelOrderSlice),
+        module(RefundOrderSlice),  // @noApi — internal automation only
         module(SyncCatalogProductSlice),
       ],
       ~stateViewSlices=[

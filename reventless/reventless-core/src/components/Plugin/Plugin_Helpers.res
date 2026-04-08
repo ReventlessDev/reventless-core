@@ -120,6 +120,12 @@ let serviceNameToJsonEventsHandlers: (
 
 include Builder_Helpers
 
+module ApiNoApi = ApiNoApiHelpers
+
+let isNoApi = ApiNoApi.isNoApi
+let getExcludedVariants = ApiNoApi.getExcludedVariants
+let filterNoApiVariants = ApiNoApi.filterNoApiVariants
+
 let createExtensions = (
   extensions: array<module(ReventlessInfra.Extension.Blueprint)>,
   ~pluginName,

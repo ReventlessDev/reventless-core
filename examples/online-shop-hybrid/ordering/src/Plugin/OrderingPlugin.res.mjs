@@ -7,6 +7,7 @@ import * as ShipOrder$OrderingPlugin from "../Order/StateChangeSlice/ShipOrder.r
 import * as OrdersView$OrderingPlugin from "../Order/StateViewSlice/OrdersView.res.mjs";
 import * as PlaceOrder$OrderingPlugin from "../Order/StateChangeSlice/PlaceOrder.res.mjs";
 import * as CancelOrder$OrderingPlugin from "../Order/StateChangeSlice/CancelOrder.res.mjs";
+import * as RefundOrder$OrderingPlugin from "../Order/StateChangeSlice/RefundOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "../Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as CustomerBehavior$OrderingPlugin from "../Customer/Aggregate/CustomerBehavior.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
@@ -93,6 +94,18 @@ function Make(Platform) {
     eventSchema: CancelOrder$OrderingPlugin.eventSchema,
     decide: CancelOrder$OrderingPlugin.decide,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema
+  });
+  let RefundOrderSlice = Platform.StateChangeSlice.Make({
+    name: RefundOrder$OrderingPlugin.name,
+    moduleUrl: RefundOrder$OrderingPlugin.moduleUrl,
+    initialState: RefundOrder$OrderingPlugin.initialState,
+    consumedEventSchema: RefundOrder$OrderingPlugin.consumedEventSchema,
+    evolve: RefundOrder$OrderingPlugin.evolve,
+    errorSchema: RefundOrder$OrderingPlugin.errorSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: RefundOrder$OrderingPlugin.eventSchema,
+    decide: RefundOrder$OrderingPlugin.decide,
+    commandSchema: RefundOrder$OrderingPlugin.commandSchema
   });
   let AutoShipOrderSlice = Platform.AutomationSlice.Make({
     name: AutoShipOrder$OrderingPlugin.name,
@@ -192,6 +205,7 @@ function Make(Platform) {
     PlaceOrderSlice,
     ShipOrderSlice,
     CancelOrderSlice,
+    RefundOrderSlice,
     SyncCatalogProductSlice
   ], [
     OrdersViewSlice,
@@ -204,6 +218,7 @@ function Make(Platform) {
     PlaceOrderSlice: PlaceOrderSlice,
     ShipOrderSlice: ShipOrderSlice,
     CancelOrderSlice: CancelOrderSlice,
+    RefundOrderSlice: RefundOrderSlice,
     AutoShipOrderSlice: AutoShipOrderSlice,
     SendOrderConfirmationSlice: SendOrderConfirmationSlice,
     OrdersViewSlice: OrdersViewSlice,

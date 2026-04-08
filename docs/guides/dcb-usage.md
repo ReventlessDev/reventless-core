@@ -273,6 +273,32 @@ Note: `consumedEvent` is a payload-less `| ProductAdded` — it only needs the T
 
 Fields marked `@s.matches(DcbTag.string)` become DCB tags — the event log is queried by these values to build the decision model. Each event's first tag is also used as the DynamoDB partition key (see [Event Log Partitioning](#event-log-partitioning) below).
 
+### Hiding Commands from the API (`@noApi`)
+
+Commands are automatically exposed as GraphQL mutations and MCP tools. Use `@noApi` to hide internal commands that should only be triggered by automations or admin workflows.
+
+**Variant-level — hide specific commands:**
+```rescript
+@schema
+type command =
+  | CancelOrder({orderId: string})           // Public API
+  | @noApi ReopenOrder({orderId: string})   // Internal only
+```
+
+**Type-level — hide entire command type:**
+```rescript
+// Internal refund processing — triggered by automation, not exposed to API
+@schema @noApi
+type command = IssueRefund({orderId: string, reason: string})
+```
+
+The `@noApi` annotation prevents commands from appearing in:
+- GraphQL mutations
+- MCP tool definitions
+- API documentation
+
+The command still executes normally when called programmatically or by internal automations.
+
 ### 2. Define state view slice specs
 
 ```rescript

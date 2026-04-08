@@ -1,3 +1,20 @@
+// --- Sury metadata IDs for API exposure control ---
+
+/** Internal sury metadata ID used to mark a schema as excluded from API exposure. */
+let noApiId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="api", ~name="noApi")
+
+/** Internal sury metadata ID used to mark specific variant names excluded from API exposure. */
+let noApiVariantsId: S.Metadata.Id.t<Set.t<string>> =
+  S.Metadata.Id.make(~namespace="api", ~name="noApiVariants")
+
+/** PPX helper: attaches the noApi flag to a command schema. Called by generated code. */
+let markNoApi = (schema: S.t<'a>): S.t<'a> =>
+  schema->S.Metadata.set(~id=noApiId, true)
+
+/** PPX helper: attaches variant-level exclusions to a command schema. Called by generated code. */
+let markNoApiVariants = (schema: S.t<'a>, variants: array<string>): S.t<'a> =>
+  schema->S.Metadata.set(~id=noApiVariantsId, Set.fromArray(variants))
+
 /** Type alias for schema fragments (re-exports Plugin.apiSchemaFragment). */
 type schemaFragment = Reventless.Plugin.apiSchemaFragment
 

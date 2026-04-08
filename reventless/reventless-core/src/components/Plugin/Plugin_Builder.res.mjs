@@ -21,6 +21,7 @@ import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as ExportMeta$ReventlessInterop from "@reventlessdev/reventless-interop/src/ExportMeta.res.mjs";
 import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "./Plugin_Helpers.res.mjs";
+import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../Api/GraphQL_Stitcher.res.mjs";
 import * as AdapterDeploytime$ReventlessCore from "../../adapter/AdapterDeploytime.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
@@ -61,14 +62,22 @@ function Make(Spec) {
         let dcbResult = DcbBuilder.construct(extra$1, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
+          if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+            return [];
+          }
           let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
-          let fieldNames = constructorNames.map(cname => Api_Naming$ReventlessCore.aggregateMutationField(extra$1, M.Spec.name, cname));
+          let filteredConstructorNames = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants(constructorNames, commandSchema);
+          let fieldNames = filteredConstructorNames.map(cname => Api_Naming$ReventlessCore.aggregateMutationField(extra$1, M.Spec.name, cname));
           Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[M.Spec.name] = fieldNames;
-          Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema));
-          return [{
-              fieldNames: fieldNames,
-              commandSchema: commandSchema
-            }];
+          if (fieldNames.length === 0) {
+            return [];
+          } else {
+            Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema));
+            return [{
+                fieldNames: fieldNames,
+                commandSchema: commandSchema
+              }];
+          }
         });
         let mutationEntries = mutationEntriesFromAggregates.concat(dcbResult.mutationEntries);
         let queryEntriesFromReadModels = readModels.map(R => {

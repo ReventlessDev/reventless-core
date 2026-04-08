@@ -103,19 +103,28 @@ module Make = (
     let mutationEntriesFromAggregates =
       aggregates->Array.flatMap((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
         let commandSchema = M.Spec.commandSchema->S.castToUnknown
-        let constructorNames = Reventless.DcbTag.extractEventTypes(M.Spec.commandSchema)
-        let fieldNames =
-          constructorNames->Array.map(cname =>
-            Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
-          )
-        // Register plugin-prefixed field names for CommandGenerator_Builder.
-        Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.set(M.Spec.name, fieldNames)
-        // Register aggregate mutation SDL + resolver stubs synchronously via hook
-        // (before Output.apply chains fire).
-        Spec.hooks.mutationResolverHook->Option.forEach(registerResolver =>
-          registerResolver(~kind=Aggregate, ~fields=fieldNames, ~commandSchema)
-        )
-        [{ReventlessInfra.Api.fieldNames, commandSchema}]
+        if ApiNoApiHelpers.isNoApi(commandSchema) {
+          []
+        } else {
+          let constructorNames = Reventless.DcbTag.extractEventTypes(M.Spec.commandSchema)
+          let filteredConstructorNames = ApiNoApiHelpers.filterNoApiVariants(constructorNames, commandSchema)
+          let fieldNames =
+            filteredConstructorNames->Array.map(cname =>
+              Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
+            )
+          // Register plugin-prefixed field names for CommandGenerator_Builder.
+          Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.set(M.Spec.name, fieldNames)
+          if fieldNames->Array.length === 0 {
+            []
+          } else {
+            // Register aggregate mutation SDL + resolver stubs synchronously via hook
+            // (before Output.apply chains fire).
+            Spec.hooks.mutationResolverHook->Option.forEach(registerResolver =>
+              registerResolver(~kind=Aggregate, ~fields=fieldNames, ~commandSchema)
+            )
+            [{ReventlessInfra.Api.fieldNames, commandSchema}]
+          }
+        }
       })
 
     let mutationEntries = Array.concat(mutationEntriesFromAggregates, dcbResult.mutationEntries)

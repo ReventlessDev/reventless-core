@@ -288,12 +288,45 @@ let has_module_level_attr_deep (str : structure) =
   scan_str str;
   !found
 
+let has_no_api_attr (str : structure) =
+  let found = ref false in
+  let rec scan_str items =
+    List.iter (fun item ->
+      match item.pstr_desc with
+      | Pstr_type (_, decls) ->
+        List.iter (fun td ->
+          if List.exists (fun a -> String.equal a.attr_name.txt "noApi") td.ptype_attributes then
+            found := true
+          else
+            (match td.ptype_kind with
+             | Ptype_variant ctors ->
+               List.iter (fun cd ->
+                 if List.exists (fun a -> String.equal a.attr_name.txt "noApi") cd.pcd_attributes then
+                   found := true
+               ) ctors
+             | _ -> ())
+        ) decls
+      | Pstr_module mb ->
+        scan_mod mb.pmb_expr
+      | _ -> ()
+    ) items
+  and scan_mod (me : module_expr) =
+    match me.pmod_desc with
+    | Pmod_structure s -> scan_str s
+    | Pmod_functor (_, body) -> scan_mod body
+    | Pmod_constraint (body, _) -> scan_mod body
+    | _ -> ()
+  in
+  scan_str str;
+  !found
+
 let transform (str : structure) : structure =
   let initial_mode = detect_mode str in
   let has_mode = initial_mode <> None in
   let is_spec = match initial_mode with Some (Spec _, _) -> true | _ -> false in
   let has_module_attr = has_module_level_attr_deep str in
-  if not has_mode && not has_module_attr then str
+  let has_no_api = has_no_api_attr str in
+  if not has_mode && not has_module_attr && not has_no_api then str
   else
   let loc = match str with
     | item :: _ -> item.pstr_loc
@@ -302,7 +335,12 @@ let transform (str : structure) : structure =
   let specifier = ModuleUrl.compute_specifier loc in
   let str = if has_module_attr || is_spec then walk_structure ~specifier ~is_spec str else str in
   match detect_mode str with
-  | None -> str
+  | None ->
+    (* No @reventless.spec or @reventless.behavior, but might have @noApi annotations *)
+    if has_no_api then
+      NoApiAnnotation.transform ~loc str
+    else
+      str
   | Some (mode, loc) ->
     let dcb_tags = has_dcb_tags_attr str
                    || Util.is_in_slice_folder loc.loc_start.pos_fname in
@@ -313,6 +351,7 @@ let transform (str : structure) : structure =
     let body = DcbTagInference.transform_composite_partition_tags ~loc body in
     let body = DcbTagInference.transform_explicit_dcb_tags ~loc body in
     let body = DcbTagInference.strip_no_tag_attrs body in
+    let body = NoApiAnnotation.transform ~loc body in
     match mode with
     | Spec name_opt ->
       let name = derive_spec_name ~loc name_opt in

@@ -4,6 +4,6 @@ case "$(uname -s)-$(uname -m)" in
   Linux-x86_64)  exec "$DIR/ppx-linux.exe" "$@" ;;
   Linux-aarch64) exec "$DIR/ppx-linux-arm.exe" "$@" ;;
   Darwin-x86_64) exec "$DIR/ppx-osx-x64.exe" "$@" ;;
-  Darwin-arm64)  exec "$DIR/ppx-osx.exe" "$@" ;;
+  Darwin-arm64)  echo "ppx-osx.exe (Apple Silicon) not built — run: cd packages/reventless-ppx/src && opam exec -- dune build && cp _build/default/bin/bin.exe ../ppx-osx.exe" >&2; exit 1 ;;
   *) echo "Unsupported platform: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
 esac

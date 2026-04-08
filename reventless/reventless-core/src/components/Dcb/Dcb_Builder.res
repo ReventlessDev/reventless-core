@@ -179,11 +179,14 @@ module Make = (
           stateChangeSlices->Array.forEach((
             module(S: StateChangeSlice.T),
           ) => {
-            registerResolver(
-              ~kind=Dcb,
-              ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
-              ~commandSchema=S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
-            )
+            let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
+            if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
+              registerResolver(
+                ~kind=Dcb,
+                ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
+                ~commandSchema,
+              )
+            }
           })
         | None => ()
         }
@@ -198,15 +201,18 @@ module Make = (
               stateChangeSlices->Array.forEach((
                 module(S: StateChangeSlice.T),
               ) => {
-                let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
-                let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
-                  ~publishJsons=ops.publishJsons,
-                  ~serviceName=S.Spec.name,
-                  ~commandSchema=S.Spec.commandSchema->Obj.magic,
-                  ~componentKind=CommandGenerator_Callback.StateChangeSlice,
-                  ~stripIdFromParams=false,
-                )
-                bindHandler(~field=fieldName, ~generateCommand)
+                let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
+                if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
+                  let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+                  let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
+                    ~publishJsons=ops.publishJsons,
+                    ~serviceName=S.Spec.name,
+                    ~commandSchema=S.Spec.commandSchema->Obj.magic,
+                    ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+                    ~stripIdFromParams=false,
+                  )
+                  bindHandler(~field=fieldName, ~generateCommand)
+                }
               })
             })
         | None => ()
@@ -387,15 +393,21 @@ module Make = (
         let inboundSchemas = inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
 
         // Collect DCB mutation field names + TAGs for AppSync resolver creation
+        // (excludes @noApi slices)
         let dcbMutationData =
-          stateChangeSlices->Array.map((
+          stateChangeSlices->Array.filterMap((
             module(S: StateChangeSlice.T),
           ) => {
-            let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
-            let constructorNames =
-              Reventless.DcbTag.extractEventTypes(S.Spec.commandSchema->Obj.magic)
-            let tag = constructorNames->Array.get(0)->Option.getOr(S.Spec.name)
-            (fieldName, tag)
+            let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
+            if ApiNoApiHelpers.isNoApi(commandSchema) {
+              None
+            } else {
+              let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+              let constructorNames =
+                Reventless.DcbTag.extractEventTypes(S.Spec.commandSchema->Obj.magic)
+              let tag = constructorNames->Array.get(0)->Option.getOr(S.Spec.name)
+              Some((fieldName, tag))
+            }
           })
         let dcbFieldNames = dcbMutationData->Array.map(((f, _)) => f)
         let dcbTags = dcbMutationData->Array.map(((_, t)) => t)
@@ -444,11 +456,18 @@ module Make = (
 
         // DCB-specific API schema entries
         let mutationEntriesFromSlices =
-          stateChangeSlices->Array.map((
+          stateChangeSlices->Array.filterMap((
             module(S: StateChangeSlice.T),
           ) => {
-            ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
-            commandSchema: S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
+            let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
+            if ApiNoApiHelpers.isNoApi(commandSchema) {
+              None
+            } else {
+              Some({
+                ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
+                commandSchema,
+              })
+            }
           })
 
         let mutationEntriesFromInboundSlices =

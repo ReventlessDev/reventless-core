@@ -48,6 +48,8 @@ Each command exposed via GraphQL mutations becomes an MCP Tool:
 
 When an AI agent calls a tool, the request goes through the same command pipeline as a GraphQL mutation — identical validation, event sourcing, and side effects.
 
+**Excluding commands from MCP:** Use the `@noApi` annotation on commands you want to hide from AI agents. Commands marked `@noApi` are excluded from both GraphQL mutations and MCP tool generation. See the [PPX guide](/docs/guides/reventless-ppx#noapi) for syntax.
+
 ### Resources (read operations)
 
 Each query exposed via GraphQL becomes an MCP Resource:
@@ -165,3 +167,5 @@ MCP_Server.printDiagnostics()
 //     - Catalog_Categories
 //   Server running: yes (port 3001)
 ```
+
+Commands marked with `@noApi` are not listed in the MCP tools diagnostics — they are excluded from the MCP server entirely.

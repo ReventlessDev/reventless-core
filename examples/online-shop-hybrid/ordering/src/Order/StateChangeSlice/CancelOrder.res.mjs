@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let initialState_productId = [];
 
@@ -18,27 +19,12 @@ let consumedEventSchema = S.union([
     productId: s.m(S.array(DcbTag$Reventless.string))
   })),
   S.literal("OrderShipped"),
-  S.literal("OrderCancelled")
+  S.literal("OrderCancelled"),
+  S.literal("OrderReopened")
 ]);
 
 function evolve(state, event) {
-  if (typeof event !== "object") {
-    if (event === "OrderShipped") {
-      return {
-        exists: state.exists,
-        shipped: true,
-        cancelled: state.cancelled,
-        productId: state.productId
-      };
-    } else {
-      return {
-        exists: state.exists,
-        shipped: state.shipped,
-        cancelled: true,
-        productId: state.productId
-      };
-    }
-  } else {
+  if (typeof event === "object") {
     return {
       exists: true,
       shipped: false,
@@ -46,44 +32,101 @@ function evolve(state, event) {
       productId: event.productId
     };
   }
+  switch (event) {
+    case "OrderShipped" :
+      return {
+        exists: state.exists,
+        shipped: true,
+        cancelled: state.cancelled,
+        productId: state.productId
+      };
+    case "OrderCancelled" :
+      return {
+        exists: state.exists,
+        shipped: state.shipped,
+        cancelled: true,
+        productId: state.productId
+      };
+    case "OrderReopened" :
+      return {
+        exists: state.exists,
+        shipped: state.shipped,
+        cancelled: false,
+        productId: state.productId
+      };
+  }
 }
 
-let commandSchema = S.schema(s => ({
-  TAG: "CancelOrder",
-  orderId: s.m(DcbTag$Reventless.string)
-}));
+let commandSchema = S.union([
+  S.schema(s => ({
+    TAG: "CancelOrder",
+    orderId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "ReopenOrder",
+    orderId: s.m(DcbTag$Reventless.string)
+  }))
+]);
 
 let errorSchema = S.union([
   S.literal("OrderNotFound"),
   S.literal("OrderAlreadyShipped")
 ]);
 
-let eventSchema = S.schema(s => ({
-  TAG: "OrderCancelled",
-  orderId: s.m(DcbTag$Reventless.string),
-  productId: s.m(S.array(DcbTag$Reventless.string))
-}));
+let eventSchema = S.union([
+  S.schema(s => ({
+    TAG: "OrderCancelled",
+    orderId: s.m(DcbTag$Reventless.string),
+    productId: s.m(S.array(DcbTag$Reventless.string))
+  })),
+  S.schema(s => ({
+    TAG: "OrderReopened",
+    orderId: s.m(DcbTag$Reventless.string)
+  }))
+]);
 
 function decide(state, command) {
-  if (state.exists) {
-    if (state.shipped) {
+  if (command.TAG === "CancelOrder") {
+    if (state.exists) {
+      if (state.shipped) {
+        return {
+          TAG: "Error",
+          _0: "OrderAlreadyShipped"
+        };
+      } else if (state.cancelled) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "OrderCancelled",
+              orderId: command.orderId,
+              productId: state.productId
+            }]
+        };
+      }
+    } else {
       return {
         TAG: "Error",
-        _0: "OrderAlreadyShipped"
+        _0: "OrderNotFound"
       };
-    } else if (state.cancelled) {
+    }
+  } else if (state.exists) {
+    if (state.cancelled) {
       return {
         TAG: "Ok",
-        _0: []
+        _0: [{
+            TAG: "OrderReopened",
+            orderId: command.orderId
+          }]
       };
     } else {
       return {
         TAG: "Ok",
-        _0: [{
-            TAG: "OrderCancelled",
-            orderId: command.orderId,
-            productId: state.productId
-          }]
+        _0: []
       };
     }
   } else {
@@ -93,6 +136,8 @@ function decide(state, command) {
     };
   }
 }
+
+let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, ["ReopenOrder"]);
 
 let name = "CancelOrder";
 
@@ -106,10 +151,10 @@ export {
   initialState,
   consumedEventSchema,
   evolve,
-  commandSchema,
   errorSchema,
   eventSchema,
   decide,
+  commandSchema$1 as commandSchema,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

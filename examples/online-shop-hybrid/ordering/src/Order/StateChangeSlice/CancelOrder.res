@@ -12,16 +12,20 @@ type consumedEvent =
   | OrderPlaced({productId: array<string>})
   | OrderShipped
   | OrderCancelled
+  | OrderReopened
 
 let evolve = (state, event) =>
   switch event {
   | OrderPlaced({productId}) => {exists: true, shipped: false, cancelled: false, productId}
   | OrderShipped => {...state, shipped: true}
   | OrderCancelled => {...state, cancelled: true}
+  | OrderReopened => {...state, cancelled: false}
   }
 
 @schema
-type command = CancelOrder({orderId: string})
+type command =
+  | CancelOrder({orderId: string})
+  | @noApi ReopenOrder({orderId: string})  // Internal: admin/automation only
 
 @schema
 type error =
@@ -34,6 +38,7 @@ type event =
       orderId: string,
       productId: array<string>,
     })
+  | OrderReopened({orderId: string})
 
 let decide = (state, command) =>
   switch command {
@@ -46,5 +51,13 @@ let decide = (state, command) =>
       Ok([]) // idempotent — already cancelled
     } else {
       Ok([OrderCancelled({orderId: theId, productId: state.productId})])
+    }
+  | ReopenOrder({orderId: theId}) =>
+    if !state.exists {
+      Error(OrderNotFound)
+    } else if !state.cancelled {
+      Ok([]) // idempotent — not cancelled
+    } else {
+      Ok([OrderReopened({orderId: theId})])
     }
   }
