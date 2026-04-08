@@ -339,7 +339,7 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result.items ?? [];
+  const items = ctx.result?.items ?? [];
   const edges = items.map((item, i) => ({
     node: item,
     cursor: ctx.args.after ? ctx.args.after + '_' + i : '' + i,
@@ -347,12 +347,12 @@ export function response(ctx) {
   return {
     edges,
     pageInfo: {
-      hasNextPage: !!ctx.result.nextToken,
+      hasNextPage: !!ctx.result?.nextToken,
       hasPreviousPage: !!ctx.args.after,
       startCursor: edges.length > 0 ? edges[0].cursor : null,
       endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
     },
-    totalCount: ctx.result.scannedCount ?? items.length,
+    totalCount: ctx.result?.scannedCount ?? items.length,
   };
 }
 `;
