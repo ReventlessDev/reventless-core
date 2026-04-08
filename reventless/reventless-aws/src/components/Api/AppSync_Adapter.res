@@ -254,10 +254,8 @@ let updateSchema = (
     ->Pulumi.Output.apply(graphQLApi =>
       graphQLApi.id->Pulumi.Output.apply(apiId => {
         let definition: unknown = sdl->Obj.magic
-        let p =
-          getClient()
-          ->startSchemaCreation({apiId, definition})
-          ->Promise.then(_ => Promise.resolve())
+        let effect = deploySchemaWithRetry(getClient(), apiId, definition)
+        let p = effect->Effect.runPromise
         resultPromise.contents = p
       })
     )

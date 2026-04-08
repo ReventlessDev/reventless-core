@@ -185,11 +185,8 @@ function updateSchema(api, baseFragment, pluginFragments) {
     contents: Promise.resolve()
   };
   api.apply(graphQLApi => graphQLApi.id.apply(apiId => {
-    let client = getClient();
-    let p = client.send(new ClientAppsync.StartSchemaCreationCommand({
-      apiId: apiId,
-      definition: sdl
-    })).then(param => Promise.resolve());
+    let effect = deploySchemaWithRetry(getClient(), apiId, sdl, undefined);
+    let p = Effect$1.runPromise(effect);
     resultPromise.contents = p;
   }));
   return resultPromise.contents;
