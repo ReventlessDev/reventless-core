@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM ocaml/opam:debian-12-ocaml-4.14
+FROM ocaml/opam:debian-12-ocaml-5.2
 
 WORKDIR /workspace
 
