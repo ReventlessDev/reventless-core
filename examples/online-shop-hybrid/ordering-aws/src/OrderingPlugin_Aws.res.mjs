@@ -138,14 +138,18 @@ function Make(Platform) {
     moduleUrl: OrdersView$OrderingPlugin.moduleUrl,
     stateSchema: OrdersView$OrderingPlugin.stateSchema,
     consumedEventSchema: OrdersView$OrderingPlugin.consumedEventSchema,
-    project: OrdersView$OrderingPlugin.project
+    project: OrdersView$OrderingPlugin.project,
+    config: OrdersView$OrderingPlugin.config,
+    subIdConfig: undefined
   });
   let AvailableProductsViewSlice = Platform.StateViewSlice.Make({
     name: AvailableProductsView$OrderingPlugin.name,
     moduleUrl: AvailableProductsView$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProductsView$OrderingPlugin.stateSchema,
     consumedEventSchema: AvailableProductsView$OrderingPlugin.consumedEventSchema,
-    project: AvailableProductsView$OrderingPlugin.project
+    project: AvailableProductsView$OrderingPlugin.project,
+    config: AvailableProductsView$OrderingPlugin.config,
+    subIdConfig: undefined
   });
   let ProductsExtensionMaker = Platform.Extension.Make({
     ExtensionPoint: {

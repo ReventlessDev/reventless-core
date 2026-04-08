@@ -127,14 +127,18 @@ function Make(Platform) {
     moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
     stateSchema: ProductsView$CatalogPlugin.stateSchema,
     consumedEventSchema: ProductsView$CatalogPlugin.consumedEventSchema,
-    project: ProductsView$CatalogPlugin.project
+    project: ProductsView$CatalogPlugin.project,
+    config: ProductsView$CatalogPlugin.config,
+    subIdConfig: undefined
   });
   let ProductDemandViewSlice = Platform.StateViewSlice.Make({
     name: ProductDemandView$CatalogPlugin.name,
     moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemandView$CatalogPlugin.stateSchema,
     consumedEventSchema: ProductDemandView$CatalogPlugin.consumedEventSchema,
-    project: ProductDemandView$CatalogPlugin.project
+    project: ProductDemandView$CatalogPlugin.project,
+    config: ProductDemandView$CatalogPlugin.config,
+    subIdConfig: undefined
   });
   let ImportProductSlice = Platform.InboundTranslationSlice.Make({
     name: ImportProduct$CatalogPlugin.name,
