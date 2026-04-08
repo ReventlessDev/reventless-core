@@ -62,6 +62,35 @@ let rec waitForSchemaActive = async (client, apiId, ~maxAttempts=30, ~attempt=0)
   }
 }
 
+type schemaDeployOptions = {
+  maxRetries: int,
+  baseDelayMs: int,
+}
+
+let deploySchemaWithRetry = (
+  client: appSyncClient,
+  apiId: string,
+  definition: unknown,
+  ~options: option<schemaDeployOptions>=?,
+): Effect.t<unit, unknown, unit> => {
+  let opts = switch options {
+  | Some(o) => o
+  | None => {maxRetries: 5, baseDelayMs: 1000}
+  }
+
+  let effect = Effect.tryPromise(
+    ~catch=exn => exn,
+    () => startSchemaCreation(client, {apiId, definition})->Promise.then(_ => Promise.resolve()),
+  )
+
+  let retrySchedule = Schedule.compose(
+    Schedule.exponential(Duration.millis(opts.baseDelayMs)),
+    Schedule.recurs(opts.maxRetries),
+  )
+
+  effect->Effect.retry(retrySchedule)
+}
+
 // Lazy singleton AppSync client (runtime only)
 let _client: ref<option<appSyncClient>> = ref(None)
 let getClient = () =>
