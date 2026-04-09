@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.43 (2026-04-09)
+
+### Features
+
+* **platform:** add apiEndpoint to platformDeployedInfo, extract Plugin_BuiltHook ([d53cfc5](https://github.com/ReventlessDev/reventless-core/commit/d53cfc5bd33671d2ca539b4eeb45bbaa7b3979e3))
+
+
 # 3.0.0-alpha.42 (2026-04-09)
 
 ### Bug Fixes
