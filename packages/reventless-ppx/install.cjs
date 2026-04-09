@@ -1,14 +1,11 @@
 const path = require("path");
 const fs = require("fs");
 
-const installMacLinuxBinary = (binary) => {
-  const source = path.join(__dirname, binary);
-  if (fs.existsSync(source)) {
-    const target = path.join(__dirname, "bin");
-    fs.renameSync(source, target);
-    fs.chmodSync(target, 0o777);
-  }
-};
+// On Linux and macOS the `bin` shell script dispatches to the correct
+// platform binary based on `uname -s`/`uname -m`. No install step needed.
+//
+// On Windows the shell script cannot be executed directly, so we rename
+// the pre-built Windows binary to `bin.exe` which Node/npm can invoke.
 
 const installWindowsBinary = () => {
   const source = path.join(__dirname, "ppx-windows.exe");
@@ -22,18 +19,6 @@ const installWindowsBinary = () => {
   }
 };
 
-switch (process.platform) {
-  case "linux":
-    installMacLinuxBinary(
-      process.arch === "arm64" ? "ppx-linux-arm.exe" : "ppx-linux.exe"
-    );
-    break;
-  case "darwin":
-    const binaryName =
-      process.arch === "x64" ? "ppx-osx-x64.exe" : "ppx-osx.exe";
-    installMacLinuxBinary(binaryName);
-    break;
-  case "win32":
-    installWindowsBinary();
-    break;
+if (process.platform === "win32") {
+  installWindowsBinary();
 }
