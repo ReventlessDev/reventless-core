@@ -6,7 +6,7 @@ import * as HashNode from "@smithy/hash-node";
 import * as SignatureV4 from "@smithy/signature-v4";
 import * as CredentialProviderNode from "@aws-sdk/credential-provider-node";
 
-let sha256 = Function.prototype.bind(HashNode.Hash, null, "sha256");
+let sha256 = HashNode.Hash.bind(null, "sha256");
 
 function jsonToLiteral(value) {
   if (value === null) {

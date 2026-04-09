@@ -31,11 +31,8 @@ type hashCtor
 
 // Hash.bind(null, "sha256") yields a zero-argument constructor that
 // SignatureV4 calls internally to create SHA-256 hash instances.
-let sha256: hashCtor = (%raw(`Function.prototype.bind`): (hashCtor, 'null, string) => hashCtor)(
-  _hashClass,
-  %raw(`null`),
-  "sha256",
-)
+@send external bindCtor: (hashCtor, @as(json`null`) _, string) => hashCtor = "bind"
+let sha256: hashCtor = _hashClass->bindCtor("sha256")
 
 type signerOptions = {
   service: string,
