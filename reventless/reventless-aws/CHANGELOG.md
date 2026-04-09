@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.42 (2026-04-09)
+
+### Bug Fixes
+
+* **AppSync:** use deploySchemaWithRetry in updateSchema ([3f741f7](https://github.com/ReventlessDev/reventless-core/commit/3f741f7eb435264f3b7d4ed61aa8f15eb965044f))
+### Features
+
+* **AppSync:** add deploySchemaWithRetry for concurrent schema modification handling ([f58f920](https://github.com/ReventlessDev/reventless-core/commit/f58f920af1a396aa71df6d2fe3f57351d3792190))
+* **reventless-aws:** add Util_AppSync_Caller for IAM-signed AppSync dispatch ([8c0bc23](https://github.com/ReventlessDev/reventless-core/commit/8c0bc232f215b22c2bee8eac8d36f991ef18d430))
+
+
 # 3.0.0-alpha.41 (2026-04-07)
 
 ### Bug Fixes

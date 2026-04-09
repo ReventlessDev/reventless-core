@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.12 (2026-04-09)
+
+### Bug Fixes
+
+* **AppSync:** handle null ctx.result in listAllItemsConnection ([48ae647](https://github.com/ReventlessDev/reventless-core/commit/48ae6470c53896239295917a24ffd698ec79689c))
+
+
 # 2.4.0-alpha.11 (2026-04-07)
 
 ### Features

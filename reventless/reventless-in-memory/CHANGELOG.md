@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.19 (2026-04-09)
+
+### Bug Fixes
+
+* **in-memory:** register ByIdConnection type definition in GraphQL schema ([6b13fde](https://github.com/ReventlessDev/reventless-core/commit/6b13fde0abb5eb12cba5b28511dfc5193e35f7d8))
+
+
 # 3.0.0-alpha.18 (2026-04-07)
 
 ### Bug Fixes

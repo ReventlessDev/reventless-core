@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.15 (2026-04-09)
+
+### Bug Fixes
+
+* **examples:** rebuild stale StateViewSlice mjs after config added to Spec ([aa70aa5](https://github.com/ReventlessDev/reventless-core/commit/aa70aa5f1b50abd96f91f7ce8ac843848a5a2c9b))
+
+
 # 1.0.0-alpha.14 (2026-04-07)
 
 ### Bug Fixes
