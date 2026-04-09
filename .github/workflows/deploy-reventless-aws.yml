@@ -502,8 +502,9 @@ jobs:
           git commit -m "chore(ci): record successful deploy at ${{ github.sha }} [skip ci]"
           BRANCH="${GITHUB_REF#refs/heads/}"
           for i in 1 2 3; do
-            git pull --rebase origin "$BRANCH" && \
+            git pull --rebase -X theirs origin "$BRANCH" && \
             git push && exit 0
+            git rebase --abort 2>/dev/null || true
             echo "Push attempt $i failed, retrying..."
             sleep 5
           done
