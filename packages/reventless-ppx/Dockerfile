@@ -10,4 +10,4 @@ RUN cd /workspace/reventless-ppx/src && opam install -y --deps-only .
 
 RUN cd /workspace/reventless-ppx/src && opam exec -- dune build
 
-RUN cp /workspace/reventless-ppx/src/_build/install/default/lib/reventless-ppx/ppx.exe /workspace/ppx-linux.exe
+RUN cp /workspace/reventless-ppx/src/_build/default/bin/bin.exe /workspace/ppx-linux.exe
