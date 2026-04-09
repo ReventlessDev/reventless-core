@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.43 (2026-04-09)
+
+### Bug Fixes
+
+* **reventless-aws:** correct sha256 hash constructor binding for SignatureV4 ([0edb56c](https://github.com/ReventlessDev/reventless-core/commit/0edb56c6b66145d501f896e90e597509400b8bd2))
+
+
 # 3.0.0-alpha.42 (2026-04-09)
 
 ### Bug Fixes
