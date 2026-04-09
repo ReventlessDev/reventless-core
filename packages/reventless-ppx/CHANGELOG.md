@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.7 (2026-04-09)
+
+### Bug Fixes
+
+* **ppx:** add -as-ppx for Linux binaries and fix Dockerfile to use bin.exe ([6016b82](https://github.com/ReventlessDev/reventless-core/commit/6016b82f5e9b79690202b36992cffb6c6ff7331e))
+* **ppx:** remove erroneous -as-ppx flag from bin wrapper ([6457895](https://github.com/ReventlessDev/reventless-core/commit/64578959808781d54ab6728f052bb470c47cad1e))
+
+
 # 1.0.0-alpha.6 (2026-04-09)
 
 ### Bug Fixes
