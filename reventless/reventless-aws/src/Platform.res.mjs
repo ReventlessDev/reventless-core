@@ -613,6 +613,7 @@ function MakeWithConfig(Config) {
       return;
     }
     let resolvedApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let resolvedApiEndpoint = Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedApiRoleArn = Output$Pulumi.flatMap(appSyncApiRole, role => role.arn);
     let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
       r.eventLog.resources,
@@ -622,6 +623,7 @@ function MakeWithConfig(Config) {
     ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
     Pulumi.all([
       resolvedApiId,
+      resolvedApiEndpoint,
       resolvedApiRoleArn,
       adminResourcesOutput
     ]).apply(param => {
@@ -631,9 +633,10 @@ function MakeWithConfig(Config) {
         environment: Pulumi.getStack(),
         region: region,
         apiId: param[0],
-        apiRoleArn: param[1],
+        apiEndpoint: param[1],
+        apiRoleArn: param[2],
         splitApiMode: Config.splitApi,
-        adminResources: param[2]
+        adminResources: param[3]
       });
     });
   };
@@ -1212,6 +1215,7 @@ function Make($star) {
       return;
     }
     let resolvedApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let resolvedApiEndpoint = Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedApiRoleArn = Output$Pulumi.flatMap(appSyncApiRole, role => role.arn);
     let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
       r.eventLog.resources,
@@ -1221,6 +1225,7 @@ function Make($star) {
     ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
     Pulumi.all([
       resolvedApiId,
+      resolvedApiEndpoint,
       resolvedApiRoleArn,
       adminResourcesOutput
     ]).apply(param => {
@@ -1230,9 +1235,10 @@ function Make($star) {
         environment: Pulumi.getStack(),
         region: region,
         apiId: param[0],
-        apiRoleArn: param[1],
+        apiEndpoint: param[1],
+        apiRoleArn: param[2],
         splitApiMode: true,
-        adminResources: param[2]
+        adminResources: param[3]
       });
     });
   };

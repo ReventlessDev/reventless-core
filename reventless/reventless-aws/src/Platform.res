@@ -873,6 +873,9 @@ module MakeWithConfig = (
     switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
     | Some(hook) =>
       let resolvedApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
+      let resolvedApiEndpoint = appSyncApi->Pulumi.Output.flatMap(api =>
+        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+      )
       let resolvedApiRoleArn = appSyncApiRole->Pulumi.Output.flatMap(role => role.arn)
       // Collect admin aggregate + read model resources.
       let adminResourcesOutput =
@@ -904,9 +907,9 @@ module MakeWithConfig = (
         ->Pulumi.Output.all
         ->Pulumi.Output.apply(arrays => Array.flat(arrays))
       let _ =
-        (resolvedApiId, resolvedApiRoleArn, adminResourcesOutput)
-        ->Pulumi.Output.all3
-        ->Pulumi.Output.apply(((apiId, apiRoleArn, adminResources)) => {
+        (resolvedApiId, resolvedApiEndpoint, resolvedApiRoleArn, adminResourcesOutput)
+        ->Pulumi.Output.all4
+        ->Pulumi.Output.apply(((apiId, apiEndpoint, apiRoleArn, adminResources)) => {
           let region =
             Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
           let info: ReventlessCore.Plugin_Helpers.platformDeployedInfo = {
@@ -914,6 +917,7 @@ module MakeWithConfig = (
             environment: Pulumi.Pulumi.getStackName(),
             region,
             apiId,
+            apiEndpoint,
             apiRoleArn,
             splitApiMode: Config.splitApi,
             adminResources,

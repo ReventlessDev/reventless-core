@@ -34,6 +34,7 @@ import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs"
 import * as AutomationSlice$ReventlessCore from "../AutomationSlice/AutomationSlice.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../Builder_Helpers.res.mjs";
 import * as Plugin_Callback$ReventlessCore from "./Plugin_Callback.res.mjs";
+import * as Plugin_BuiltHook$ReventlessCore from "./Plugin_BuiltHook.res.mjs";
 import * as StateChangeSlice$ReventlessCore from "../StateChangeSlice/StateChangeSlice.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 import * as Extension_Builder$ReventlessCore from "../Extension/Extension_Builder.res.mjs";
@@ -293,22 +294,6 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
   });
 }
 
-let componentSchemaRegistry = {
-  contents: {}
-};
-
-let onPluginBuiltHook = {
-  contents: undefined
-};
-
-function registerOnPluginBuilt(hook) {
-  onPluginBuiltHook.contents = hook;
-}
-
-function clearOnPluginBuilt() {
-  onPluginBuiltHook.contents = undefined;
-}
-
 let onPluginDeployedHook = {
   contents: undefined
 };
@@ -541,7 +526,7 @@ function exportPluginOutputs(pluginOutputs) {
   if (hook === undefined) {
     return;
   }
-  let schemaFor = name => Stdlib_Option.getOr(componentSchemaRegistry.contents[name], {});
+  let schemaFor = name => Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry.contents[name], {});
   let resolveAggregates = Output$Pulumi.flatMap(pluginOutputs.aggregates, aggs => Pulumi.all(Object.entries(aggs).map(param => {
     let name = param[0];
     return Aggregate$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
@@ -774,6 +759,14 @@ let isNoApi = ApiNoApiHelpers$ReventlessCore.isNoApi;
 let getExcludedVariants = ApiNoApiHelpers$ReventlessCore.getExcludedVariants;
 
 let filterNoApiVariants = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants;
+
+let componentSchemaRegistry = Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry;
+
+let onPluginBuiltHook = Plugin_BuiltHook$ReventlessCore.onPluginBuiltHook;
+
+let registerOnPluginBuilt = Plugin_BuiltHook$ReventlessCore.registerOnPluginBuilt;
+
+let clearOnPluginBuilt = Plugin_BuiltHook$ReventlessCore.clearOnPluginBuilt;
 
 export {
   log,

@@ -519,6 +519,7 @@ function MakeWithConfig(Config) {
         environment: environment,
         region: "local",
         apiId: "in-memory",
+        apiEndpoint: "http://localhost:4000/graphql",
         apiRoleArn: "in-memory",
         splitApiMode: Config.splitApi,
         adminResources: []
@@ -915,6 +916,7 @@ function MakeWithConfig(Config) {
         environment: "local",
         region: "local",
         apiId: "in-memory",
+        apiEndpoint: "http://localhost:4000/graphql",
         apiRoleArn: "in-memory",
         splitApiMode: Config.splitApi,
         adminResources: []
@@ -1445,6 +1447,7 @@ function Make($star) {
         environment: environment,
         region: "local",
         apiId: "in-memory",
+        apiEndpoint: "http://localhost:4000/graphql",
         apiRoleArn: "in-memory",
         splitApiMode: true,
         adminResources: []
@@ -1841,6 +1844,7 @@ function Make($star) {
         environment: "local",
         region: "local",
         apiId: "in-memory",
+        apiEndpoint: "http://localhost:4000/graphql",
         apiRoleArn: "in-memory",
         splitApiMode: true,
         adminResources: []

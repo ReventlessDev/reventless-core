@@ -432,53 +432,10 @@ module MakeEventCollectorHelper = (
 
 
 // ---------------------------------------------------------------------------
-// Shared schema type — used by both pluginBuiltComponent and
-// pluginDeployedComponent to describe per-component schema details.
+// Shared schema type and plugin-built hook — re-exported from Plugin_Callbacks
+// (runtime-safe, no Pulumi imports) for backward compatibility.
 // ---------------------------------------------------------------------------
-type pluginDeployedSchema = {
-  commandTypes?: array<string>,
-  eventTypes?: array<string>,
-  errorTypes?: array<string>,
-  stateType?: string,
-  sourceNames?: array<string>,
-  queryFields?: array<string>,
-  consumedEventTypes?: array<string>,
-  producedCommandTypes?: array<string>,
-  sharedBy?: array<string>,
-  extensionPointName?: string,
-  providerPlugin?: string,
-  subscriberPlugins?: array<string>,
-}
-
-// ---------------------------------------------------------------------------
-// Plugin-built hook — fires synchronously after plugin construction with a
-// plain-data summary of the plugin's components.
-// ---------------------------------------------------------------------------
-type pluginBuiltComponent = {
-  name: string,
-  kind: string,
-  schema: pluginDeployedSchema,
-}
-
-type pluginBuiltInfo = {
-  name: string,
-  version: string,
-  components: array<pluginBuiltComponent>,
-}
-
-// Registry for component schemas — populated during Plugin_Builder.construct,
-// read by exportPluginOutputs to populate pluginDeployedComponent.schema.
-let componentSchemaRegistry: ref<dict<pluginDeployedSchema>> = ref(Dict.make())
-
-let onPluginBuiltHook: ref<option<pluginBuiltInfo => unit>> = ref(None)
-
-let registerOnPluginBuilt = (hook: pluginBuiltInfo => unit) => {
-  onPluginBuiltHook.contents = Some(hook)
-}
-
-let clearOnPluginBuilt = () => {
-  onPluginBuiltHook.contents = None
-}
+include Plugin_BuiltHook
 
 // ---------------------------------------------------------------------------
 // Plugin-deployed hook — fires inside Output.apply after all component
@@ -534,6 +491,7 @@ type platformDeployedInfo = {
   environment: string,
   region: string,
   apiId: string,
+  apiEndpoint: string,
   apiRoleArn: string,
   splitApiMode: bool,
   adminResources: array<ReventlessInterop.Resource.t>,
