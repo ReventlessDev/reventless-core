@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.46 (2026-04-10)
+
+### Bug Fixes
+
+* **aws:** wrap hooked api/apiRole in {val} to prevent Pulumi Proxy corruption ([8c071b1](https://github.com/ReventlessDev/reventless-core/commit/8c071b130d1dbe43610ae6cf8d75bb43be0ed7d5))
+
+
 # 3.0.0-alpha.45 (2026-04-10)
 
 ### Features
