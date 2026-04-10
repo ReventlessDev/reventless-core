@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.45 (2026-04-10)
+
+### Features
+
+* **aws:** implement dual-API architecture (Phases 1–3) ([9e11efc](https://github.com/ReventlessDev/reventless-core/commit/9e11efc21bb012552fbe1c1b510664d372f84b96))
+
+
 # 3.0.0-alpha.44 (2026-04-09)
 
 ### Features
