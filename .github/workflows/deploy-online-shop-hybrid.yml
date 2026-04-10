@@ -59,9 +59,10 @@ jobs:
             --jq '.object.sha' 2>/dev/null || echo "")
 
           if [ -n "$VERSION_SHA" ]; then
-            AWS_TAGS=$(gh api "repos/${{ github.repository }}/git/matching-refs/tags/@reventlessdev/reventless-aws@" \
-              --jq "[.[] | select(.object.sha == \"$VERSION_SHA\")] | length" 2>/dev/null || echo "0")
-            if [ "$AWS_TAGS" -gt 0 ]; then
+            AWS_CHANGES=$(gh api "repos/${{ github.repository }}/commits/$VERSION_SHA" \
+              --jq '[.files[]?.filename | select(startswith("reventless/reventless-aws/"))] | length' \
+              2>/dev/null || echo "0")
+            if [ "$AWS_CHANGES" -gt 0 ]; then
               echo "Release includes reventless-aws — layer build will dispatch deploy with fresh ARN"
               echo "should-deploy=false" >> "$GITHUB_OUTPUT"
               exit 0
