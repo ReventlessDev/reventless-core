@@ -12,7 +12,7 @@ type appSyncClient
 // AWS SDK v3 command pattern: client.send(new StartSchemaCreationCommand({...}))
 type startSchemaCreationInput = {
   apiId: string,
-  definition: unknown,
+  definition: string,
 }
 
 type startSchemaCreationCommand
@@ -70,7 +70,7 @@ type schemaDeployOptions = {
 let deploySchemaWithRetry = (
   client: appSyncClient,
   apiId: string,
-  definition: unknown,
+  definition: string,
   ~options: option<schemaDeployOptions>=?,
 ): Effect.t<unit, unknown, unit> => {
   let opts = switch options {
@@ -253,8 +253,7 @@ let updateSchema = (
     api
     ->Pulumi.Output.apply(graphQLApi =>
       graphQLApi.id->Pulumi.Output.apply(apiId => {
-        let definition: unknown = sdl->Obj.magic
-        let effect = deploySchemaWithRetry(getClient(), apiId, definition)
+        let effect = deploySchemaWithRetry(getClient(), apiId, sdl)
         let p = effect->Effect.runPromise
         resultPromise.contents = p
       })

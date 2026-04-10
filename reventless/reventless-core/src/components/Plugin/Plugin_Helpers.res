@@ -490,10 +490,13 @@ type platformDeployedInfo = {
   name: string,
   environment: string,
   region: string,
-  apiId: string,
-  apiEndpoint: string,
-  apiRoleArn: string,
-  splitApiMode: bool,
+  // Domain API — handles application mutations from plugin stacks.
+  domainApiEndpoint: string,
+  domainApiRoleArn: string,
+  // Platform API — handles Platform_Sync* and admin mutations.
+  // Equals domainApiEndpoint/domainApiRoleArn in unified (non-split) mode.
+  platformApiEndpoint: string,
+  platformApiRoleArn: string,
   adminResources: array<ReventlessInterop.Resource.t>,
 }
 

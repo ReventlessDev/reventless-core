@@ -595,10 +595,10 @@ module MakeWithConfig = (
         name: "in-memory",
         environment,
         region: "local",
-        apiId: "in-memory",
-        apiEndpoint: "http://localhost:4000/graphql",
-        apiRoleArn: "in-memory",
-        splitApiMode: Config.splitApi,
+        domainApiEndpoint: "http://localhost:4000/graphql",
+        domainApiRoleArn: "in-memory",
+        platformApiEndpoint: "http://localhost:4000/graphql",
+        platformApiRoleArn: "in-memory",
         adminResources: [],
       })
     | None => ()
@@ -1028,10 +1028,10 @@ module MakeWithConfig = (
         name: "in-memory",
         environment: "local",
         region: "local",
-        apiId: "in-memory",
-        apiEndpoint: "http://localhost:4000/graphql",
-        apiRoleArn: "in-memory",
-        splitApiMode: Config.splitApi,
+        domainApiEndpoint: "http://localhost:4000/graphql",
+        domainApiRoleArn: "in-memory",
+        platformApiEndpoint: "http://localhost:4000/graphql",
+        platformApiRoleArn: "in-memory",
         adminResources: [],
       })
     | None => ()
