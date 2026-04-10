@@ -20,6 +20,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
+import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
@@ -520,8 +521,8 @@ function MakeWithConfig(Config) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = appSyncApi;
-    hooks_apiRole.contents = appSyncApiRole;
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let match = Config.splitApi ? AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {}) : [
         appSyncApi,
         appSyncApiRole
@@ -585,8 +586,8 @@ function MakeWithConfig(Config) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = appSyncApi;
-    hooks_apiRole.contents = appSyncApiRole;
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let match = Config.splitApi ? AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {}) : [
         appSyncApi,
         appSyncApiRole
@@ -735,8 +736,8 @@ function MakeWithConfig(Config) {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = appSyncApi;
-    hooks_apiRole.contents = appSyncApiRole;
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let pluginComponent = plugin.make();
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
@@ -1219,8 +1220,8 @@ function Make($star) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = appSyncApi;
-    hooks_apiRole.contents = appSyncApiRole;
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -1273,8 +1274,8 @@ function Make($star) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = appSyncApi;
-    hooks_apiRole.contents = appSyncApiRole;
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -1409,8 +1410,8 @@ function Make($star) {
     console.log(`[Platform:deployPlugin] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = appSyncApi;
-    hooks_apiRole.contents = appSyncApiRole;
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let pluginComponent = plugin.make();
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);

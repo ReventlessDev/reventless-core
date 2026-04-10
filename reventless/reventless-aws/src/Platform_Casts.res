@@ -102,4 +102,5 @@ external asSqsChannelParts: 'a => Util.SQS.channelParts = "%identity"
 // There is no type-level fix because the problem does not exist at the type
 // level — it is a mismatch between ReScript's JS boxing convention and Pulumi's
 // Proxy-based lazy evaluation model.
-external wrapHookedValue: 'a => ReventlessCore.Plugin_Helpers.hookedValue<unknown> = "%identity"
+external _toUnknown: 'a => unknown = "%identity"
+let wrapHookedValue: 'a => ReventlessCore.Plugin_Helpers.hookedValue<unknown> = x => {val: x->_toUnknown}
