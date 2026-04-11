@@ -52,6 +52,12 @@ module MakeWithConfig = (
 ) => {
   type api = Types.AppSync.api
   type role = Types.AppSync.role
+  type apiTarget = Domain | Platform
+
+  // Ref tracking which API target deployPlugin is currently building for.
+  // Domain (default): resolvers/schema go to the application AppSync API.
+  // Platform: resolvers/schema go to the admin/Platform_Sync* Core API.
+  let currentDeployTarget: ref<apiTarget> = ref(Domain)
 
   // Determine API source based on platform:stack config.
   // - Platform/monolithic mode (no config): create a real AppSync API resource.
@@ -412,6 +418,18 @@ module MakeWithConfig = (
   // AWS platform hooks — all AWS-specific callbacks defined as a record.
   // In-memory hooks (mutationResolverHook etc.) are absent (optional = None).
   let deploySchemaPrefix = "deploy-schema:"
+  let deploySchemaPlatformPrefix = "deploy-schema-platform:"
+
+  // Returns the AppSync API to attach resolvers/schema to for the current deploy target.
+  let resolveTargetApi = () =>
+    switch currentDeployTarget.contents {
+    | Domain => appSyncApi
+    | Platform =>
+      switch apiConfigRef.contents {
+      | Some({platformApi}) => platformApi
+      | None => appSyncApi // fallback: platform API not yet constructed
+      }
+    }
 
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
@@ -424,7 +442,7 @@ module MakeWithConfig = (
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->asLambdaRuntime
       InboundTranslationResolvers_AppSync.make(
-        ~api=appSyncApi,
+        ~api=resolveTargetApi(),
         ~runtime=runtimeTyped,
         ~fieldNames,
         ~opts,
@@ -434,7 +452,7 @@ module MakeWithConfig = (
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->asLambdaRuntime
       CommandGeneratorResolvers_AppSync.makeDcb(
-        ~api=appSyncApi,
+        ~api=resolveTargetApi(),
         ~runtime=runtimeTyped,
         ~fieldNames,
         ~tags,
@@ -449,6 +467,20 @@ module MakeWithConfig = (
     // overwritten by each plugin deployment.
     preResolversSchemaHook: (~name, pluginFragment) => {
       Console.log(`[preResolversSchemaHook] Pushing schema for plugin ${name} to AppSync`)
+
+      // Select DynamoDB key prefix and target AppSync API based on the current deploy target.
+      // Domain plugins use "deploy-schema:" and the Domain API (default behaviour).
+      // Platform plugins use a separate "deploy-schema-platform:" namespace and the Core API,
+      // so their cumulative schema is kept independent from the Domain API's schema.
+      let (schemaPrefix, targetApi) = switch currentDeployTarget.contents {
+      | Domain => (deploySchemaPrefix, appSyncApi)
+      | Platform =>
+        let api = switch apiConfigRef.contents {
+        | Some({platformApi}) => platformApi
+        | None => appSyncApi // fallback: Core API not yet constructed
+        }
+        (deploySchemaPlatformPrefix, api)
+      }
 
       // Read Plugin RM table name from platform StackReference.
       let pluginRmTableNameOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
@@ -487,7 +519,7 @@ module MakeWithConfig = (
             // Write this plugin's fragment so subsequent plugin deployments find it.
             let deployItem =
               Dict.fromArray([
-                ("id", `${deploySchemaPrefix}${name}`->JSON.Encode.string),
+                ("id", `${schemaPrefix}${name}`->JSON.Encode.string),
                 ("fragment", pluginFragment.encoded->JSON.Encode.string),
               ])->JSON.Encode.object
             Console.log(
@@ -505,7 +537,7 @@ module MakeWithConfig = (
                   filterExpression: "begins_with(#id, :prefix)",
                   expressionAttributeNames: Dict.fromArray([("#id", "id")]),
                   expressionAttributeValues: Dict.fromArray([
-                    (":prefix", deploySchemaPrefix->JSON.Encode.string),
+                    (":prefix", schemaPrefix->JSON.Encode.string),
                   ]),
                 }),
               )
@@ -546,19 +578,29 @@ module MakeWithConfig = (
             })
           }
 
-        appSyncApi->Pulumi.Output.flatMap(api =>
+        targetApi->Pulumi.Output.flatMap(api =>
           api.id->Pulumi.Output.flatMap(apiId => {
             writeAndScanFragments()
             ->Promise.then(async allPluginFragments => {
-              // In split mode, use empty base (admin is on the core API).
-              // In unified mode, include admin base so the single API has everything.
-              let baseFragment = if Config.splitApi {
-                emptyBaseFragment
-              } else {
+              // Base fragment selection:
+              // - Platform target: always include admin base (the Core API owns admin ops).
+              // - Domain target, split mode: empty base (admin lives on Core API).
+              // - Domain target, unified mode: include admin base (single API has everything).
+              let baseFragment = switch currentDeployTarget.contents {
+              | Platform =>
                 AppSync_Adapter.injectAwsAuthAll(
                   ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
                   ~group="Admin",
                 )
+              | Domain =>
+                if Config.splitApi {
+                  emptyBaseFragment
+                } else {
+                  AppSync_Adapter.injectAwsAuthAll(
+                    ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+                    ~group="Admin",
+                  )
+                }
               }
               let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
                 ~baseFragment,
@@ -1142,8 +1184,9 @@ module MakeWithConfig = (
     }
   }
 
-  let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {
+  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~target=Domain) => {
     Console.log(`[Platform:deployPlugin] v${version}`)
+    currentDeployTarget := target
     // Each plugin stack creates its own scheduler (closures can't cross stacks).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
@@ -1152,6 +1195,7 @@ module MakeWithConfig = (
 
     module P = unpack(plugin)
     let pluginComponent = P.make()
+    currentDeployTarget := Domain // reset after build
 
     // Export interop metadata for cross-stack consumption.
     Pulumi.Pulumi.export("_interopMeta", ReventlessCore.Plugin_Helpers.getInteropMeta())

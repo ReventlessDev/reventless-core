@@ -169,6 +169,195 @@ Remove `splitApiMode` read sites (already removed from the type in Phase 3).
 
 ---
 
+## Phase 4 — Platform-plugin routing and index query naming fix
+
+**Goal:** Allow individual plugins to be deployed to the Platform API instead of the Domain API. Fix the index query naming bug in `QueryDbResolvers_AppSync` that produces unprefixed, sometimes double-`By` field names.
+
+### 4a — `apiTarget` type and routing ref
+
+**File:** `reventless/reventless-infra/src/types/Platform.res`
+
+Add the type and update `deployPlugin`:
+
+```rescript
+type apiTarget = Domain | Platform
+
+// update signature:
+let deployPlugin: (~version: string, ~plugin: module(PluginMaker), ~target: apiTarget=?) => pluginOutputs
+```
+
+**File:** `reventless/reventless-aws/src/Platform.res`
+
+Add a module-level routing ref inside `MakeWithConfig` (alongside `apiConfigRef` and `splitApiOutputsRef`):
+
+```rescript
+let currentDeployTarget: ref<apiTarget> = ref(Domain)
+```
+
+Update `deployPlugin` to accept and apply the target:
+
+```rescript
+let deployPlugin = (~version, ~plugin: module(PluginMaker), ~target: apiTarget=Domain) => {
+  currentDeployTarget := target
+  // ... existing body unchanged ...
+  currentDeployTarget := Domain  // reset after build
+  pluginOutputs
+}
+```
+
+**File:** `reventless/reventless-in-memory/src/Platform.res`
+
+Same changes — add `currentDeployTarget` ref and update `deployPlugin` signature. The in-memory resolver and schema hooks need the same branching (see 4b).
+
+### 4b — Route resolver hooks to the correct API
+
+**File:** `reventless/reventless-aws/src/Platform.res`
+
+Both resolver hooks currently close over `appSyncApi`. Add a helper inside `MakeWithConfig` that reads the current target:
+
+```rescript
+let resolveTargetApi = () =>
+  switch currentDeployTarget.contents {
+  | Domain => appSyncApi
+  | Platform =>
+    switch apiConfigRef.contents {
+    | Some({platformApi}) => platformApi
+    | None => appSyncApi  // fallback: platform API not yet constructed
+    }
+  }
+
+let resolveTargetRole = () =>
+  switch currentDeployTarget.contents {
+  | Domain => appSyncApiRole
+  | Platform =>
+    switch apiConfigRef.contents {
+    | Some({platformApiRole}) => platformApiRole
+    | None => appSyncApiRole
+    }
+  }
+```
+
+Update the two hooks:
+
+```rescript
+inboundAppSyncResolverHook: ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
+  InboundTranslationResolvers_AppSync.make(
+    ~api=resolveTargetApi(),   // was: ~api=appSyncApi
+    ~runtime=runtimeTyped,
+    ~fieldNames,
+    ~opts,
+  )
+},
+dcbAppSyncResolverHook: ({runtime, fieldNames, tags, opts}) => {
+  CommandGeneratorResolvers_AppSync.makeDcb(
+    ~api=resolveTargetApi(),   // was: ~api=appSyncApi
+    ~runtime=runtimeTyped,
+    ~fieldNames,
+    ~tags,
+    ~opts,
+  )
+},
+```
+
+### 4c — Route schema hook to the correct API
+
+**File:** `reventless/reventless-aws/src/Platform.res`
+
+`preResolversSchemaHook` currently always writes to `"deploy-schema:{name}"` in DynamoDB and pushes to `appSyncApi`. Platform plugins must use a separate DynamoDB key namespace and push to `coreApiOutput`.
+
+Add a second prefix constant:
+
+```rescript
+let deploySchemaPrefix = "deploy-schema:"
+let deploySchemaPlatformPrefix = "deploy-schema-platform:"
+```
+
+At the top of `preResolversSchemaHook`, select the active prefix and target API:
+
+```rescript
+preResolversSchemaHook: (~name, pluginFragment) => {
+  let (schemaPrefix, targetApi) = switch currentDeployTarget.contents {
+  | Domain => (deploySchemaPrefix, appSyncApi)
+  | Platform =>
+    let api = switch apiConfigRef.contents {
+    | Some({platformApi}) => platformApi
+    | None => appSyncApi
+    }
+    (deploySchemaPlatformPrefix, api)
+  }
+  // replace all uses of `deploySchemaPrefix` with `schemaPrefix`
+  // replace all uses of `appSyncApi` with `targetApi`
+  // the filter expression prefix, put/scan keys, and startSchemaCreation target all use these variables
+```
+
+For Platform target, stitch with `adminBaseFragment` (not `emptyBaseFragment`) because the Platform API owns admin operations:
+
+```rescript
+let baseFragment = switch currentDeployTarget.contents {
+| Domain =>
+  if Config.splitApi { emptyBaseFragment }
+  else { AppSync_Adapter.injectAwsAuthAll(ReventlessCore.AdminApi.baseFragment(...), ...) }
+| Platform =>
+  AppSync_Adapter.injectAwsAuthAll(ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner), ~group="Admin")
+}
+```
+
+### 4d — Fix index query naming in `QueryDbResolvers_AppSync`
+
+**File:** `reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res`
+
+Current code at line 169 inside `resourcesMaker`:
+
+```rescript
+let name = name ++ ("By" ++ index->String.capitalize)
+```
+
+This uses the raw entity name (no plugin prefix) and capitalizes the full index string, producing `"SchemaHistoryByByPlugin"` when the index is `"byPlugin"`.
+
+Replace with:
+
+```rescript
+let stripLeadingBy = s =>
+  if s->String.startsWith("by") && s->String.length > 2 {
+    s->String.sliceToEnd(~start=2)
+  } else {
+    s
+  }
+let resolverName =
+  fieldNameForSingle->String.capitalize ++
+  "By" ++
+  (index->stripLeadingBy->String.capitalize)
+let fieldName =
+  fieldNameForSingle ++
+  "By" ++
+  (index->stripLeadingBy->String.capitalize)
+```
+
+Update the resolver and field references on lines 173 and 178 to use `resolverName` and `fieldName` respectively (replacing `name` in both positions).
+
+**Note:** The schema SDL (generated by reventless-ppx from `@index` annotations) must declare the same field names. Verify that the ppx-generated schema uses the same `fieldNameForSingle + "By" + stripLeadingBy(index)` pattern, and update it if not. This is a **breaking change** — any client querying by index must update field names.
+
+---
+
+## Phase 5 — Retire legacy export names
+
+**Prerequisites:** All plugin stacks that read stack reference outputs have migrated to the new field names.
+
+**File:** `reventless/reventless-aws/src/Platform.res`
+
+Remove:
+- `Pulumi.Pulumi.export("apiId", ...)`
+- `Pulumi.Pulumi.export("apiEndpoint", ...)`
+- `Pulumi.Pulumi.export("apiRoleArn", ...)`
+- `Pulumi.Pulumi.export("coreApiId", ...)`
+- `Pulumi.Pulumi.export("coreApiRoleArn", ...)`
+
+Remove any deprecated alias fields from `platformDeployedInfo` retained during Phase 3.
+
+Remove `splitApiMode` read sites (already removed from the type in Phase 3).
+
+---
+
 ## Checklist
 
 - [x] Phase 1: Add `domainApi*` and `platformApi*` exports to `Platform.res`
@@ -176,4 +365,8 @@ Remove `splitApiMode` read sites (already removed from the type in Phase 3).
 - [x] Phase 3a: Expand `apiConfig` type and update `getApiConfig`
 - [x] Phase 3b: Expand `platformDeployedInfo` type and update all construction/read sites
 - [x] Phase 3c: Add phantom Platform API construction
-- [ ] Phase 4: Remove legacy export names and deprecated aliases
+- [x] Phase 4a: Add `apiTarget` type to `Platform.T` and `deployPlugin` signature
+- [x] Phase 4b: Route resolver hooks via `currentDeployTarget` ref
+- [x] Phase 4c: Route schema hook and DynamoDB key namespace via `currentDeployTarget` ref
+- [x] Phase 4d: Fix index query naming in `QueryDbResolvers_AppSync`
+- [ ] Phase 5: Remove legacy export names and deprecated aliases

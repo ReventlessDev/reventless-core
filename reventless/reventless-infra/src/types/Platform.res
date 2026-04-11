@@ -176,6 +176,11 @@ module type T = {
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported: mcpSupported
 
+  /** Which AppSync API a plugin's resolvers and schema are deployed to.
+      Domain — the application-facing API (default, backwards-compatible).
+      Platform — the admin/Platform_Sync* API (for framework-internal plugins). */
+  type apiTarget = Domain | Platform
+
   /** Factory for plugin deployment units. */
   module Plugin: Plugin.T with type api = api and type role = role
 
@@ -197,6 +202,8 @@ module type T = {
   let deployPlatform: (~version: string) => unit
 
   /** Deploy a single plugin as an independent stack.
-      Creates its own scheduler and exports stack outputs for cross-stack consumption. */
-  let deployPlugin: (~version: string, ~plugin: module(PluginMaker)) => pluginOutputs
+      Creates its own scheduler and exports stack outputs for cross-stack consumption.
+      Pass `~target=Platform` to route the plugin's resolvers and schema to the Platform API.
+      Defaults to `Domain`. */
+  let deployPlugin: (~version: string, ~plugin: module(PluginMaker), ~target: apiTarget=?) => pluginOutputs
 }

@@ -923,7 +923,8 @@ function MakeWithConfig(Config) {
       });
     }
   };
-  let deployPlugin = (version, plugin) => {
+  let deployPlugin = (version, plugin, $staropt$star) => {
+    $staropt$star !== undefined;
     log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
@@ -1851,7 +1852,8 @@ function Make($star) {
       });
     }
   };
-  let deployPlugin = (version, plugin) => {
+  let deployPlugin = (version, plugin, $staropt$star) => {
+    $staropt$star !== undefined;
     log.info("Platform", undefined, `deployPlugin v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;

@@ -77,6 +77,9 @@ function getSplitApiOutputs() {
 }
 
 function MakeWithConfig(Config) {
+  let currentDeployTarget = {
+    contents: "Domain"
+  };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
   let makePhantomApi = (apiId, apiEndpoint) => ({
     id: Pulumi.output(apiId),
@@ -310,9 +313,37 @@ function MakeWithConfig(Config) {
   let Api = {
     Make: Make$6
   };
-  let deploySchemaPrefix = "deploy-schema:";
+  let resolveTargetApi = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return appSyncApi;
+    }
+    let match$1 = apiConfigRef.contents;
+    if (match$1 !== undefined) {
+      return match$1.platformApi;
+    } else {
+      return appSyncApi;
+    }
+  };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
+    let match = currentDeployTarget.contents;
+    let match$1;
+    if (match === "Domain") {
+      match$1 = [
+        "deploy-schema:",
+        appSyncApi
+      ];
+    } else {
+      let match$2 = apiConfigRef.contents;
+      let api = match$2 !== undefined ? match$2.platformApi : appSyncApi;
+      match$1 = [
+        "deploy-schema-platform:",
+        api
+      ];
+    }
+    let targetApi = match$1[1];
+    let schemaPrefix = match$1[0];
     let pluginRmTableNameOutput;
     if (platformStackRef !== undefined) {
       let stackRef = Primitive_option.valFromOption(platformStackRef);
@@ -338,7 +369,7 @@ function MakeWithConfig(Config) {
           let deployItem = Object.fromEntries([
             [
               "id",
-              deploySchemaPrefix + name
+              schemaPrefix + name
             ],
             [
               "fragment",
@@ -359,7 +390,7 @@ function MakeWithConfig(Config) {
                 ]]),
               ExpressionAttributeValues: Object.fromEntries([[
                   ":prefix",
-                  deploySchemaPrefix
+                  schemaPrefix
                 ]]),
               FilterExpression: "begins_with(#id, :prefix)"
             }));
@@ -396,8 +427,10 @@ function MakeWithConfig(Config) {
         console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
-      return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
-        let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+      return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
+        let match = currentDeployTarget.contents;
+        let baseFragment;
+        baseFragment = match === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
         console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
@@ -411,8 +444,8 @@ function MakeWithConfig(Config) {
       })));
     });
   };
-  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveTargetApi(), param.runtime, param.fieldNames, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveTargetApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
@@ -732,13 +765,16 @@ function MakeWithConfig(Config) {
       });
     });
   };
-  let deployPlugin = (version, plugin) => {
+  let deployPlugin = (version, plugin, targetOpt) => {
+    let target = targetOpt !== undefined ? targetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
+    currentDeployTarget.contents = target;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
     hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let pluginComponent = plugin.make();
+    currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
@@ -778,6 +814,9 @@ function MakeWithConfig(Config) {
 }
 
 function Make($star) {
+  let currentDeployTarget = {
+    contents: "Domain"
+  };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
   let makePhantomApi = (apiId, apiEndpoint) => ({
     id: Pulumi.output(apiId),
@@ -1010,9 +1049,37 @@ function Make($star) {
   let Api = {
     Make: Make$7
   };
-  let deploySchemaPrefix = "deploy-schema:";
+  let resolveTargetApi = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return appSyncApi;
+    }
+    let match$1 = apiConfigRef.contents;
+    if (match$1 !== undefined) {
+      return match$1.platformApi;
+    } else {
+      return appSyncApi;
+    }
+  };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
+    let match = currentDeployTarget.contents;
+    let match$1;
+    if (match === "Domain") {
+      match$1 = [
+        "deploy-schema:",
+        appSyncApi
+      ];
+    } else {
+      let match$2 = apiConfigRef.contents;
+      let api = match$2 !== undefined ? match$2.platformApi : appSyncApi;
+      match$1 = [
+        "deploy-schema-platform:",
+        api
+      ];
+    }
+    let targetApi = match$1[1];
+    let schemaPrefix = match$1[0];
     let pluginRmTableNameOutput;
     if (platformStackRef !== undefined) {
       let stackRef = Primitive_option.valFromOption(platformStackRef);
@@ -1038,7 +1105,7 @@ function Make($star) {
           let deployItem = Object.fromEntries([
             [
               "id",
-              deploySchemaPrefix + name
+              schemaPrefix + name
             ],
             [
               "fragment",
@@ -1059,7 +1126,7 @@ function Make($star) {
                 ]]),
               ExpressionAttributeValues: Object.fromEntries([[
                   ":prefix",
-                  deploySchemaPrefix
+                  schemaPrefix
                 ]]),
               FilterExpression: "begins_with(#id, :prefix)"
             }));
@@ -1096,8 +1163,11 @@ function Make($star) {
         console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
-      return Output$Pulumi.flatMap(appSyncApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
-        let sdl = GraphQL_Stitcher$ReventlessCore.stitch(emptyBaseFragment, allPluginFragments);
+      return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
+        let match = currentDeployTarget.contents;
+        let baseFragment;
+        baseFragment = match === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
+        let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
         console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
         await AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
@@ -1110,8 +1180,8 @@ function Make($star) {
       })));
     });
   };
-  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(appSyncApi, param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(appSyncApi, param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveTargetApi(), param.runtime, param.fieldNames, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveTargetApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
@@ -1406,13 +1476,16 @@ function Make($star) {
       });
     });
   };
-  let deployPlugin = (version, plugin) => {
+  let deployPlugin = (version, plugin, targetOpt) => {
+    let target = targetOpt !== undefined ? targetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
+    currentDeployTarget.contents = target;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
     hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
     let pluginComponent = plugin.make();
+    currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);

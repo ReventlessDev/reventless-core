@@ -35,6 +35,7 @@ module MakeWithConfig = (
 
   type api = unit
   type role = unit
+  type apiTarget = Domain | Platform
 
   let api = ()
   let apiRole = ()
@@ -1038,7 +1039,7 @@ module MakeWithConfig = (
     }
   }
 
-  let deployPlugin = (~version, ~plugin: module(PluginMaker)) => {
+  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~target as _=Domain) => {
     log.info(~comp="Platform", `deployPlugin v${version}`)
     // Each plugin creates its own scheduler (mirrors AWS behaviour).
     let scheduler = makeScheduler()

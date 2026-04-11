@@ -166,16 +166,34 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
 
   let resourcesMaker: ReventlessCore.QueryDb.resolversResourcesMaker = allQueryDbs => {
     let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
-      let name = name ++ ("By" ++ index->String.capitalize)
+      // Strip a leading "by" from the index name before capitalizing to avoid
+      // double "By" in the generated field name (e.g. index "byPlugin" → "ByPlugin",
+      // not "ByByPlugin"). Uses the plugin-prefixed fieldNameForSingle so the
+      // resolver name is properly namespaced (e.g. "schemaHistoryByPlugin", not
+      // "SchemaHistoryByByPlugin" from the raw entity name).
+      let stripLeadingBy = s =>
+        if s->String.startsWith("by") && s->String.length > 2 {
+          s->String.slice(~start=2, ~end=s->String.length)
+        } else {
+          s
+        }
+      let resolverName =
+        fieldNameForSingle->String.capitalize ++
+        "By" ++
+        (index->stripLeadingBy->String.capitalize)
+      let fieldName =
+        fieldNameForSingle ++
+        "By" ++
+        (index->stripLeadingBy->String.capitalize)
       let idField = indexConfig.idField->Option.getOr(index)
       switch indexConfig.authorization {
       | None =>
         Resolver.makeUnitJsResolver(
-          ~name,
+          ~name=resolverName,
           ~api,
           ~dataSourceName,
           ~type_="Query"->Pulumi.Input.make,
-          ~field=name->Resolver.Functions.uncapitalize->Pulumi.Input.make,
+          ~field=fieldName->Pulumi.Input.make,
           ~code=switch indexConfig.subIdField {
           | Some(sortField) =>
             Resolver.Functions.queryByIndexSortFiltered(~index, ~idField, ~sortField)
@@ -185,7 +203,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         )
       | Some({tableName, group}) =>
         let authDataSource = DataSource.makeDynamoDBDataSourceWithTableName(
-          ~name=name ++ "Auth",
+          ~name=resolverName ++ "Auth",
           ~api,
           ~tableName=(
             allQueryDbs
@@ -196,24 +214,24 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~opts,
         )
         let authFunction = Function.makeJs(
-          ~name=name ++ "Auth",
+          ~name=resolverName ++ "Auth",
           ~api,
           ~dataSource=authDataSource.name->Pulumi.Output.asInput,
           ~code=Resolver.Functions.authorizeIndexedAccess(~index, ~group),
           ~opts,
         )
         let queryFunction = Function.makeJs(
-          ~name,
+          ~name=resolverName,
           ~api,
           ~dataSource=dataSourceName,
           ~code=Resolver.Functions.queryByIndexFiltered(~index, ~idField),
           ~opts,
         )
         Resolver.makePipelineJsResolver(
-          ~name,
+          ~name=resolverName,
           ~api,
           ~type_="Query"->Pulumi.Input.make,
-          ~field=name->Resolver.Functions.uncapitalize->Pulumi.Input.make,
+          ~field=fieldName->Pulumi.Input.make,
           ~code=Resolver.Functions.pipelinePassThrough,
           ~functions=[authFunction, queryFunction],
           ~opts,
