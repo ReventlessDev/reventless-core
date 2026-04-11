@@ -327,17 +327,30 @@ jobs:
 
       - name: Trigger Lambda Layer build if reventless-aws was released
         if: steps.changes.outputs.count != '0'
+        id: layer-build
         run: |
           NEW_TAGS=$(git tag --points-at HEAD)
+          TRIGGERED=false
           for tag in $NEW_TAGS; do
             if [[ "$tag" == @reventlessdev/reventless-aws@* ]]; then
               VERSION="${tag##*@}"
               echo "Triggering Lambda Layer build for version $VERSION"
               gh workflow run build-lambda-layer.yml \
                 -f version="$VERSION"
+              TRIGGERED=true
               break
             fi
           done
+          echo "triggered=$TRIGGERED" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger deploy if no layer build needed
+        if: steps.changes.outputs.count != '0' && steps.layer-build.outputs.triggered == 'false'
+        run: |
+          BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
+          echo "No reventless-aws release — dispatching deploy directly on $BRANCH_NAME"
+          gh workflow run deploy-online-shop-hybrid.yml --ref "$BRANCH_NAME"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
