@@ -1184,9 +1184,11 @@ module MakeWithConfig = (
     }
   }
 
-  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~target=Domain) => {
+  let startServers = () => ()
+
+  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~apiTarget=Domain) => {
     Console.log(`[Platform:deployPlugin] v${version}`)
-    currentDeployTarget := target
+    currentDeployTarget := apiTarget
     // Each plugin stack creates its own scheduler (closures can't cross stacks).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)

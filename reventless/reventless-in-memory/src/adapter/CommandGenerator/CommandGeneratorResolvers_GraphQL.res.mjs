@@ -8,7 +8,6 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
-import * as GraphQL_Server$ReventlessInMemory from "../GraphQL_Server.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 function extractIdentity(ctx) {
@@ -55,7 +54,7 @@ function deriveSdlField(fieldName, variantSchema) {
 
 let handlerRefs = {};
 
-function register(fields, commandSchema) {
+function register(fields, commandSchema, server) {
   let sdlFields = fields.map((field, i) => {
     let sdl = deriveSdlField(field, extractVariantSchema(commandSchema, i));
     if (sdl.includes("(")) {
@@ -92,10 +91,10 @@ function register(fields, commandSchema) {
     };
     resolvers[field] = resolver;
   });
-  GraphQL_Server$ReventlessInMemory.registerMutations(sdlFields, resolvers);
+  server.registerMutations(sdlFields, resolvers);
 }
 
-function registerDcb(fieldName, commandSchema) {
+function registerDcb(fieldName, commandSchema, server) {
   let variantSchema = extractVariantSchema(commandSchema, undefined);
   let sdlFields = [deriveSdlField(fieldName, variantSchema)];
   let constructorNames = DcbTag$Reventless.extractEventTypes(commandSchema);
@@ -136,7 +135,7 @@ function registerDcb(fieldName, commandSchema) {
   };
   let resolvers = {};
   resolvers[fieldName] = resolver;
-  GraphQL_Server$ReventlessInMemory.registerMutations(sdlFields, resolvers);
+  server.registerMutations(sdlFields, resolvers);
 }
 
 function bindHandler(field, generateCommand) {

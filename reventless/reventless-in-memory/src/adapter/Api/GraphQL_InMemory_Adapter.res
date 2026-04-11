@@ -1,9 +1,9 @@
 // GraphQL_InMemory_Adapter — implements ReventlessInfra.Api_Adapter.Provider for
 // the in-memory graphql-yoga server.
 //
-// makeApiResource: no-op (server lifecycle is managed by GraphQL_Server.start/rebuildSchema)
+// makeApiResource: no-op (server lifecycle is managed by DomainGraphQL_Server.start/rebuildSchema)
 // generateFragment: delegates to ReventlessCore.GraphQL_FragmentGenerator
-// updateSchema: rebuilds the stitched SDL via GraphQL_Server.rebuildSchema
+// updateSchema: rebuilds the stitched SDL via DomainGraphQL_Server.rebuildSchema
 
 type api = unit
 type role = unit
@@ -24,6 +24,6 @@ let updateSchema = (
   ~baseFragment: Reventless.Plugin.apiSchemaFragment,
   ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
 ): promise<unit> => {
-  GraphQL_Server.rebuildSchema(~baseFragment, ~pluginFragments)
+  DomainGraphQL_Server.rebuildSchema(~baseFragment, ~pluginFragments)
   Promise.resolve()
 }

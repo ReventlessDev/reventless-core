@@ -35,11 +35,11 @@ let resolve = (output: Pulumi.Output.t<'a>): promise<'a> => output->promise
 
 // Stop the shared GraphQL server started by Platform.Make().
 // Call this in afterAll() to release the HTTP port.
-let stopGraphQLServer = () => GraphQL_Server.stop()
+let stopGraphQLServer = () => DomainGraphQL_Server.stop()
 
 // Reset GraphQL server registry state.
 // Call between test suites when creating multiple Platform.Make() instances.
-let resetGraphQLServer = () => GraphQL_Server.reset()
+let resetGraphQLServer = () => DomainGraphQL_Server.reset()
 
 // Clear all active heartbeat timers started by HeartbeatRunner_InMemory.
 // Call in afterAll when using Plugin_Builder with HeartbeatRunner_InMemory.

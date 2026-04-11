@@ -203,7 +203,14 @@ module type T = {
 
   /** Deploy a single plugin as an independent stack.
       Creates its own scheduler and exports stack outputs for cross-stack consumption.
-      Pass `~target=Platform` to route the plugin's resolvers and schema to the Platform API.
+      Pass `~apiTarget=Platform` to route the plugin's resolvers and schema to the Platform API.
       Defaults to `Domain`. */
-  let deployPlugin: (~version: string, ~plugin: module(PluginMaker), ~target: apiTarget=?) => pluginOutputs
+  let deployPlugin: (~version: string, ~plugin: module(PluginMaker), ~apiTarget: apiTarget=?) => pluginOutputs
+
+  /** Start all servers after all makePlatform/deployPlugin calls are complete.
+      In split in-memory mode, servers are deferred until this is called so all
+      plugins (domain and platform) can register their schema before serving requests.
+      In AWS and unified in-memory mode this is a no-op — server lifecycle is managed
+      by Pulumi / existing inline start() calls. */
+  let startServers: unit => unit
 }

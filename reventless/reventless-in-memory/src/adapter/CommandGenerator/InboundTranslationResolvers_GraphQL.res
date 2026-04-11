@@ -23,7 +23,7 @@ let pendingQueueRegistry: dict<ref<array<pendingCall>>> = Dict.make()
 // Phase 1: Register SDL + resolver stub synchronously (before server starts).
 // Also pre-registers a queuing forwarder in receiveRegistry so callers can
 // invoke receive immediately; calls are parked until bindReceive drains them.
-let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
+let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
   let sdlFields = switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
     ~fieldName,
     externalInputSchema,
@@ -43,7 +43,7 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
     })
   receiveRegistry->Dict.set(fieldName, queuingReceive)
 
-  let resolver: GraphQL_Server.resolverFn = async (_root, args, _ctx) => {
+  let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, _ctx) => {
     let inputJson: JSON.t = args->Obj.magic
     let receive = receiveRegistry->Dict.getUnsafe(fieldName)
     let result = await receive(inputJson)
@@ -55,7 +55,7 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>) => {
 
   let resolvers = Dict.make()
   resolvers->Dict.set(fieldName, resolver)
-  GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
+  server.registerMutations(~sdlFields, ~resolvers)
 }
 
 // Phase 2: Bind the real receive function once Output.apply resolves.

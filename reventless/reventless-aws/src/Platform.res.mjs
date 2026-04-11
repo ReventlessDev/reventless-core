@@ -765,10 +765,11 @@ function MakeWithConfig(Config) {
       });
     });
   };
-  let deployPlugin = (version, plugin, targetOpt) => {
-    let target = targetOpt !== undefined ? targetOpt : "Domain";
+  let startServers = () => {};
+  let deployPlugin = (version, plugin, apiTargetOpt) => {
+    let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
-    currentDeployTarget.contents = target;
+    currentDeployTarget.contents = apiTarget;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
@@ -809,7 +810,8 @@ function MakeWithConfig(Config) {
     Plugin: Plugin,
     makePlatform: makePlatform,
     deployPlatform: deployPlatform,
-    deployPlugin: deployPlugin
+    deployPlugin: deployPlugin,
+    startServers: startServers
   };
 }
 
@@ -1476,10 +1478,11 @@ function Make($star) {
       });
     });
   };
-  let deployPlugin = (version, plugin, targetOpt) => {
-    let target = targetOpt !== undefined ? targetOpt : "Domain";
+  let startServers = () => {};
+  let deployPlugin = (version, plugin, apiTargetOpt) => {
+    let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
-    currentDeployTarget.contents = target;
+    currentDeployTarget.contents = apiTarget;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
@@ -1527,7 +1530,8 @@ function Make($star) {
     Plugin: Plugin,
     makePlatform: makePlatform,
     deployPlatform: deployPlatform,
-    deployPlugin: deployPlugin
+    deployPlugin: deployPlugin,
+    startServers: startServers
   };
 }
 

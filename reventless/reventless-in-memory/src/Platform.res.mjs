@@ -19,7 +19,6 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
-import * as MCP_Server$ReventlessInMemory from "./adapter/MCP_Server.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as TestRunner$ReventlessInMemory from "./test/TestRunner.res.mjs";
@@ -28,24 +27,26 @@ import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
-import * as GraphQL_Server$ReventlessInMemory from "./adapter/GraphQL_Server.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
 import * as Plugin_Builder$ReventlessInMemory from "./components/Plugin_Builder.res.mjs";
 import * as Counter_Builder$ReventlessInMemory from "./components/Counter_Builder.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
+import * as DomainMCP_Server$ReventlessInMemory from "./adapter/DomainMCP_Server.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
-import * as MCP_ServerInstance$ReventlessInMemory from "./adapter/MCP_ServerInstance.res.mjs";
+import * as PlatformMCP_Server$ReventlessInMemory from "./adapter/PlatformMCP_Server.res.mjs";
 import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_PluginSpec.res.mjs";
+import * as DomainGraphQL_Server$ReventlessInMemory from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as QueryEngine_InMemory$ReventlessInMemory from "./adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
 import * as ClonerRunner_InMemory$ReventlessInMemory from "./adapter/Cloner/ClonerRunner_InMemory.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "./components/ExtensionPoint_Builder.res.mjs";
-import * as GraphQL_ServerInstance$ReventlessInMemory from "./adapter/GraphQL_ServerInstance.res.mjs";
+import * as PlatformGraphQL_Server$ReventlessInMemory from "./adapter/PlatformGraphQL_Server.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateViewSlice_Builder.res.mjs";
 import * as AutomationSlice_Builder$ReventlessInMemory from "./components/AutomationSlice_Builder.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as GraphQL_InMemory_Adapter$ReventlessInMemory from "./adapter/Api/GraphQL_InMemory_Adapter.res.mjs";
+import * as QueryDbResolvers_GraphQL$ReventlessInMemory from "./adapter/QueryDb/QueryDbResolvers_GraphQL.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_InMemory$ReventlessInMemory from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 import * as RuntimeEnvironment_InMemory$ReventlessInMemory from "./adapter/Runtime/RuntimeEnvironment_InMemory.res.mjs";
@@ -60,13 +61,17 @@ import * as InboundTranslationResolvers_GraphQL$ReventlessInMemory from "./adapt
 
 let log = Logger$ReventlessCore.fromEnv();
 
-let adminGraphQLRef = {
+let platformGraphQLRef = {
   contents: undefined
 };
 
-function getAdminGraphQL() {
-  return adminGraphQLRef.contents;
+function getPlatformGraphQL() {
+  return platformGraphQLRef.contents;
 }
+
+let platformMCPRef = {
+  contents: undefined
+};
 
 function MakeWithConfig(Config) {
   TestRunner$ReventlessInMemory.setup();
@@ -74,20 +79,53 @@ function MakeWithConfig(Config) {
     capacity: undefined,
     silent: Config.silent
   });
-  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
-    if (kind === "Aggregate") {
-      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema);
+  let currentDeployTarget = {
+    contents: "Domain"
+  };
+  let domainRelaySupport = {
+    encodeGlobalId: DomainGraphQL_Server$ReventlessInMemory.encodeGlobalId,
+    registerNodeType: DomainGraphQL_Server$ReventlessInMemory.registerNodeType,
+    registerNodeResolverCallback: DomainGraphQL_Server$ReventlessInMemory.registerNodeResolverCallback,
+    nodeTypeRegistry: DomainGraphQL_Server$ReventlessInMemory.nodeTypeRegistry
+  };
+  let resolveTargetGraphQL = () => {
+    if (!Config.splitApi) {
+      return DomainGraphQL_Server$ReventlessInMemory.asInterface;
     }
-    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema));
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return DomainGraphQL_Server$ReventlessInMemory.asInterface;
+    } else {
+      return PlatformGraphQL_Server$ReventlessInMemory.asInterface;
+    }
+  };
+  let resolveTargetMCP = () => {
+    if (!Config.splitApi) {
+      return DomainMCP_Server$ReventlessInMemory.asInterface;
+    }
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return DomainMCP_Server$ReventlessInMemory.asInterface;
+    } else {
+      return PlatformMCP_Server$ReventlessInMemory.asInterface;
+    }
+  };
+  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
+    let server = resolveTargetGraphQL();
+    if (kind === "Aggregate") {
+      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema, server);
+    }
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
-  let hooks_inboundMutationResolverHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
+  let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema) => InboundTranslationResolvers_GraphQL$ReventlessInMemory.register(fieldName, externalInputSchema, resolveTargetGraphQL());
   let hooks_inboundMutationBindReceiveHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
-  let hooks_schemaTypeRegistrationHook = GraphQL_Server$ReventlessInMemory.registerTypes;
+  let hooks_schemaTypeRegistrationHook = sdlTypes => resolveTargetGraphQL().registerTypes(sdlTypes);
   let hooks_mcpSchemaRegistrationHook = param => {
     let eventLogEntries = param.eventLogEntries;
     let pluginName = param.pluginName;
-    MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
+    let mcp = resolveTargetMCP();
+    mcp.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
       let handlerRef = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handlerRefs[toolName];
       if (handlerRef === undefined) {
         return `error: no handler for ` + toolName;
@@ -109,7 +147,7 @@ function MakeWithConfig(Config) {
       };
       return await Effect.runPromise(generateCommand(payload));
     });
-    MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
+    mcp.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
       let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => {
@@ -140,7 +178,7 @@ function MakeWithConfig(Config) {
         return [];
       }
     });
-    MCP_Server$ReventlessInMemory.registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, async (resourceName, uri) => {
+    mcp.registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, async (resourceName, uri) => {
       let pathPart = uri.split("?")[0];
       let segments = pathPart.split("/");
       let entityId = Stdlib_Option.getOr(segments.at(-1), "");
@@ -466,64 +504,13 @@ function MakeWithConfig(Config) {
     return Component$ReventlessCore.operations(S.make(undefined));
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
-  let makePlatform = (version, plugins) => {
-    log.info("Platform", undefined, `v` + version);
-    log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
-    let scheduler = makeScheduler();
-    hooks_scheduler.contents = scheduler;
-    hooks_api.contents = {
-      val: undefined
-    };
-    hooks_apiRole.contents = {
-      val: undefined
-    };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
-    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
-      ep.name,
-      ep
-    ])));
-    let environment = Pulumi.getStack();
-    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
-    let builtInfos = {
-      contents: []
-    };
-    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
-      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
-      builtInfos.contents.push(info);
-    });
-    let plugins$1 = plugins.map(plugin => plugin.make());
-    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
-    builtInfos.contents.forEach(info => {
-      let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
-      if (hook !== undefined) {
-        return hook({
-          name: info.name,
-          version: info.version,
-          environment: environment,
-          stackName: environment,
-          components: info.components.map(c => ({
-            name: c.name,
-            kind: c.kind,
-            schema: c.schema,
-            resources: [],
-            subComponents: []
-          })),
-          extensionWirings: []
-        });
-      }
-    });
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      hook({
-        name: "in-memory",
-        environment: environment,
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
-        platformApiRoleArn: "in-memory",
-        adminResources: []
-      });
+  let pluginQueryDbOpsRef = {
+    contents: undefined
+  };
+  let ensurePluginQueryDbStore = () => {
+    let ops = pluginQueryDbOpsRef.contents;
+    if (ops !== undefined) {
+      return ops;
     }
     let store = {
       contents: {}
@@ -603,7 +590,12 @@ function MakeWithConfig(Config) {
     Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
     Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
     Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
-    plugins$1.forEach(plugin => {
+    pluginQueryDbOpsRef.contents = pluginOps;
+    return pluginOps;
+  };
+  let seedPluginQueryDb = pluginComponents => {
+    let pluginOps = ensurePluginQueryDbStore();
+    pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
         outputs.id,
@@ -654,60 +646,92 @@ function MakeWithConfig(Config) {
           apiSchemaFragment: state_apiSchemaFragment
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
-        pluginOps_save(id, entry, "Any", undefined);
+        pluginOps.save(id, entry, "Any", undefined);
       });
     });
-    let adminGraphQL = Config.splitApi ? GraphQL_ServerInstance$ReventlessInMemory.make("GraphQL:Admin") : undefined;
-    let adminMCP = Config.splitApi ? MCP_ServerInstance$ReventlessInMemory.make("MCP:Admin") : undefined;
-    let registerAdminTypes = sdlTypes => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.registerTypes(sdlTypes);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.registerTypes(sdlTypes);
+  };
+  let firePluginDeployedHooks = builtInfos => {
+    let environment = Pulumi.getStack();
+    builtInfos.forEach(info => {
+      let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
+      if (hook !== undefined) {
+        return hook({
+          name: info.name,
+          version: info.version,
+          environment: environment,
+          stackName: environment,
+          components: info.components.map(c => ({
+            name: c.name,
+            kind: c.kind,
+            schema: c.schema,
+            resources: [],
+            subComponents: []
+          })),
+          extensionWirings: []
+        });
       }
+    });
+  };
+  let startServers = () => {
+    if (Config.splitApi) {
+      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+      DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
+      PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
+      return PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
+    }
+  };
+  let makePlatform = (version, plugins) => {
+    log.info("Platform", undefined, `v` + version);
+    log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
+    let scheduler = makeScheduler();
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = {
+      val: undefined
     };
-    let registerAdminQueries = (sdlFields, resolvers) => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.registerQueries(sdlFields, resolvers);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.registerQueries(sdlFields, resolvers);
-      }
+    hooks_apiRole.contents = {
+      val: undefined
     };
-    let registerAdminMutations = (sdlFields, resolvers) => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.registerMutations(sdlFields, resolvers);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.registerMutations(sdlFields, resolvers);
-      }
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
+      ep.name,
+      ep
+    ])));
+    let environment = Pulumi.getStack();
+    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
+    let builtInfos = {
+      contents: []
     };
-    let getAdminMutationResolver = fieldName => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.getMutationResolver(fieldName);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.getMutationResolver(fieldName);
-      }
-    };
-    let registerAdminMcpResources = (pluginName, queryEntries, queryHandler) => {
-      if (adminMCP !== undefined) {
-        return adminMCP.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
-      } else {
-        return MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
-      }
-    };
-    let registerAdminMcpTools = (pluginName, mutationEntries, commandHandler) => {
-      if (adminMCP !== undefined) {
-        return adminMCP.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
-      } else {
-        return MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
-      }
-    };
+    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
+      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
+      builtInfos.contents.push(info);
+    });
+    let plugins$1 = plugins.map(plugin => plugin.make());
+    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
+    firePluginDeployedHooks(builtInfos.contents);
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook !== undefined) {
+      hook({
+        name: "in-memory",
+        environment: environment,
+        region: "local",
+        domainApiEndpoint: "http://localhost:4000/graphql",
+        domainApiRoleArn: "in-memory",
+        platformApiEndpoint: "http://localhost:4000/graphql",
+        platformApiRoleArn: "in-memory",
+        adminResources: []
+      });
+    }
+    seedPluginQueryDb(plugins$1);
+    currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    let platformGraphQL = resolveTargetGraphQL();
+    let platformMCP = resolveTargetMCP();
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
-    registerAdminTypes(baseParts.types);
+    platformGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -736,7 +760,7 @@ function MakeWithConfig(Config) {
         ]
       ]);
     };
-    registerAdminQueries(baseParts.queries, queryResolvers);
+    platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {
       switch (s) {
         case "Connected" :
@@ -814,7 +838,7 @@ function MakeWithConfig(Config) {
         return;
       }
     });
-    registerAdminMutations(baseParts.mutations, mutationResolvers);
+    platformGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
@@ -833,9 +857,9 @@ function MakeWithConfig(Config) {
         return [];
       }
     };
-    registerAdminMcpResources("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args, _identity) => {
-      let resolver = getAdminMutationResolver(toolName);
+    platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
+    platformMCP.registerToolsFromEntries("Admin", adminMutationEntries, async (toolName, args, _identity) => {
+      let resolver = platformGraphQL.getMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
@@ -847,23 +871,21 @@ function MakeWithConfig(Config) {
         return JSON.stringify(result);
       }
     });
-    GraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
-    GraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
-    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
-    MCP_Server$ReventlessInMemory.start(undefined, undefined);
-    if (adminGraphQL !== undefined) {
-      adminGraphQL.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
-      adminGraphQL.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
-      adminGraphQL.start(4001, undefined);
-      adminGraphQLRef.contents = adminGraphQL;
+    DomainGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+    DomainGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
+    if (Config.splitApi) {
+      PlatformGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+      PlatformGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     }
-    if (adminMCP !== undefined) {
-      adminMCP.start(3002, undefined);
+    currentDeployTarget.contents = "Domain";
+    if (!Config.splitApi) {
+      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+      DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     }
     if (graphqlDebug) {
-      GraphQL_Server$ReventlessInMemory.printDiagnostics();
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.printDiagnostics();
+      DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
+      if (Config.splitApi) {
+        return PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
       } else {
         return;
       }
@@ -880,8 +902,11 @@ function MakeWithConfig(Config) {
       val: undefined
     };
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    currentDeployTarget.contents = "Platform";
+    let adminGraphQL = resolveTargetGraphQL();
+    let adminMCP = resolveTargetMCP();
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
-    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    adminGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
@@ -899,16 +924,21 @@ function MakeWithConfig(Config) {
         []
       ]
     ]);
-    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
       mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
-    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
-    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
-    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    currentDeployTarget.contents = "Domain";
+    adminGraphQL.start(Config.splitApi ? 4001 : 4000, undefined);
+    adminMCP.start(Config.splitApi ? 3002 : 3001, undefined);
+    if (Config.splitApi) {
+      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+      DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
+    }
     let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
     if (hook !== undefined) {
       return hook({
@@ -917,15 +947,21 @@ function MakeWithConfig(Config) {
         region: "local",
         domainApiEndpoint: "http://localhost:4000/graphql",
         domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
+        platformApiEndpoint: Config.splitApi ? "http://localhost:4001/graphql" : "http://localhost:4000/graphql",
         platformApiRoleArn: "in-memory",
         adminResources: []
       });
     }
   };
-  let deployPlugin = (version, plugin, $staropt$star) => {
-    $staropt$star !== undefined;
+  let deployPlugin = (version, plugin, apiTargetOpt) => {
+    let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     log.info("Platform", undefined, `deployPlugin v` + version);
+    currentDeployTarget.contents = apiTarget;
+    let QR = QueryDbResolvers_GraphQL$ReventlessInMemory.Make(Bus);
+    QR.serverRef.contents = resolveTargetGraphQL();
+    let tmp;
+    tmp = apiTarget === "Domain" ? domainRelaySupport : undefined;
+    QR.relayRef.contents = tmp;
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -939,9 +975,19 @@ function MakeWithConfig(Config) {
       ep.name,
       ep
     ])));
+    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
+    let builtInfos = {
+      contents: []
+    };
+    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
+      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
+      builtInfos.contents.push(info);
+    });
     let pluginComponent = plugin.make();
+    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
+    let adminGraphQL = resolveTargetGraphQL();
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
-    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    adminGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
@@ -959,16 +1005,28 @@ function MakeWithConfig(Config) {
         []
       ]
     ]);
-    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
       mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
-    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
-    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
-    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    currentDeployTarget.contents = "Domain";
+    QR.serverRef.contents = DomainGraphQL_Server$ReventlessInMemory.asInterface;
+    QR.relayRef.contents = domainRelaySupport;
+    seedPluginQueryDb([pluginComponent]);
+    firePluginDeployedHooks(builtInfos.contents);
+    if (!Config.splitApi) {
+      if (apiTarget === "Domain") {
+        DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+        DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
+      } else {
+        PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
+        PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
+      }
+    }
     return Component$ReventlessCore.outputs(pluginComponent);
   };
   return {
@@ -994,7 +1052,8 @@ function MakeWithConfig(Config) {
     Plugin: Plugin,
     makePlatform: makePlatform,
     deployPlatform: deployPlatform,
-    deployPlugin: deployPlugin
+    deployPlugin: deployPlugin,
+    startServers: startServers
   };
 }
 
@@ -1004,20 +1063,47 @@ function Make($star) {
     capacity: undefined,
     silent: false
   });
-  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
-    if (kind === "Aggregate") {
-      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema);
+  let currentDeployTarget = {
+    contents: "Domain"
+  };
+  let domainRelaySupport = {
+    encodeGlobalId: DomainGraphQL_Server$ReventlessInMemory.encodeGlobalId,
+    registerNodeType: DomainGraphQL_Server$ReventlessInMemory.registerNodeType,
+    registerNodeResolverCallback: DomainGraphQL_Server$ReventlessInMemory.registerNodeResolverCallback,
+    nodeTypeRegistry: DomainGraphQL_Server$ReventlessInMemory.nodeTypeRegistry
+  };
+  let resolveTargetGraphQL = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return DomainGraphQL_Server$ReventlessInMemory.asInterface;
+    } else {
+      return PlatformGraphQL_Server$ReventlessInMemory.asInterface;
     }
-    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema));
+  };
+  let resolveTargetMCP = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return DomainMCP_Server$ReventlessInMemory.asInterface;
+    } else {
+      return PlatformMCP_Server$ReventlessInMemory.asInterface;
+    }
+  };
+  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
+    let server = resolveTargetGraphQL();
+    if (kind === "Aggregate") {
+      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema, server);
+    }
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
-  let hooks_inboundMutationResolverHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.register;
+  let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema) => InboundTranslationResolvers_GraphQL$ReventlessInMemory.register(fieldName, externalInputSchema, resolveTargetGraphQL());
   let hooks_inboundMutationBindReceiveHook = InboundTranslationResolvers_GraphQL$ReventlessInMemory.bindReceive;
-  let hooks_schemaTypeRegistrationHook = GraphQL_Server$ReventlessInMemory.registerTypes;
+  let hooks_schemaTypeRegistrationHook = sdlTypes => resolveTargetGraphQL().registerTypes(sdlTypes);
   let hooks_mcpSchemaRegistrationHook = param => {
     let eventLogEntries = param.eventLogEntries;
     let pluginName = param.pluginName;
-    MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
+    let mcp = resolveTargetMCP();
+    mcp.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
       let handlerRef = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handlerRefs[toolName];
       if (handlerRef === undefined) {
         return `error: no handler for ` + toolName;
@@ -1039,7 +1125,7 @@ function Make($star) {
       };
       return await Effect.runPromise(generateCommand(payload));
     });
-    MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
+    mcp.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
       let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => {
@@ -1070,7 +1156,7 @@ function Make($star) {
         return [];
       }
     });
-    MCP_Server$ReventlessInMemory.registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, async (resourceName, uri) => {
+    mcp.registerEventHistoryResourcesFromEntries(pluginName, eventLogEntries, async (resourceName, uri) => {
       let pathPart = uri.split("?")[0];
       let segments = pathPart.split("/");
       let entityId = Stdlib_Option.getOr(segments.at(-1), "");
@@ -1395,64 +1481,13 @@ function Make($star) {
     return Component$ReventlessCore.operations(S.make(undefined));
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
-  let makePlatform = (version, plugins) => {
-    log.info("Platform", undefined, `v` + version);
-    log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
-    let scheduler = makeScheduler();
-    hooks_scheduler.contents = scheduler;
-    hooks_api.contents = {
-      val: undefined
-    };
-    hooks_apiRole.contents = {
-      val: undefined
-    };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
-    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
-      ep.name,
-      ep
-    ])));
-    let environment = Pulumi.getStack();
-    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
-    let builtInfos = {
-      contents: []
-    };
-    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
-      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
-      builtInfos.contents.push(info);
-    });
-    let plugins$1 = plugins.map(plugin => plugin.make());
-    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
-    builtInfos.contents.forEach(info => {
-      let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
-      if (hook !== undefined) {
-        return hook({
-          name: info.name,
-          version: info.version,
-          environment: environment,
-          stackName: environment,
-          components: info.components.map(c => ({
-            name: c.name,
-            kind: c.kind,
-            schema: c.schema,
-            resources: [],
-            subComponents: []
-          })),
-          extensionWirings: []
-        });
-      }
-    });
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      hook({
-        name: "in-memory",
-        environment: environment,
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
-        platformApiRoleArn: "in-memory",
-        adminResources: []
-      });
+  let pluginQueryDbOpsRef = {
+    contents: undefined
+  };
+  let ensurePluginQueryDbStore = () => {
+    let ops = pluginQueryDbOpsRef.contents;
+    if (ops !== undefined) {
+      return ops;
     }
     let store = {
       contents: {}
@@ -1532,7 +1567,12 @@ function Make($star) {
     Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
     Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
     Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
-    plugins$1.forEach(plugin => {
+    pluginQueryDbOpsRef.contents = pluginOps;
+    return pluginOps;
+  };
+  let seedPluginQueryDb = pluginComponents => {
+    let pluginOps = ensurePluginQueryDbStore();
+    pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
         outputs.id,
@@ -1583,60 +1623,90 @@ function Make($star) {
           apiSchemaFragment: state_apiSchemaFragment
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
-        pluginOps_save(id, entry, "Any", undefined);
+        pluginOps.save(id, entry, "Any", undefined);
       });
     });
-    let adminGraphQL = GraphQL_ServerInstance$ReventlessInMemory.make("GraphQL:Admin");
-    let adminMCP = MCP_ServerInstance$ReventlessInMemory.make("MCP:Admin");
-    let registerAdminTypes = sdlTypes => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.registerTypes(sdlTypes);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.registerTypes(sdlTypes);
+  };
+  let firePluginDeployedHooks = builtInfos => {
+    let environment = Pulumi.getStack();
+    builtInfos.forEach(info => {
+      let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
+      if (hook !== undefined) {
+        return hook({
+          name: info.name,
+          version: info.version,
+          environment: environment,
+          stackName: environment,
+          components: info.components.map(c => ({
+            name: c.name,
+            kind: c.kind,
+            schema: c.schema,
+            resources: [],
+            subComponents: []
+          })),
+          extensionWirings: []
+        });
       }
+    });
+  };
+  let startServers = () => {
+    DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
+    PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
+    PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
+  };
+  let makePlatform = (version, plugins) => {
+    log.info("Platform", undefined, `v` + version);
+    log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
+    let scheduler = makeScheduler();
+    hooks_scheduler.contents = scheduler;
+    hooks_api.contents = {
+      val: undefined
     };
-    let registerAdminQueries = (sdlFields, resolvers) => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.registerQueries(sdlFields, resolvers);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.registerQueries(sdlFields, resolvers);
-      }
+    hooks_apiRole.contents = {
+      val: undefined
     };
-    let registerAdminMutations = (sdlFields, resolvers) => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.registerMutations(sdlFields, resolvers);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.registerMutations(sdlFields, resolvers);
-      }
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
+      ep.name,
+      ep
+    ])));
+    let environment = Pulumi.getStack();
+    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
+    let builtInfos = {
+      contents: []
     };
-    let getAdminMutationResolver = fieldName => {
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.getMutationResolver(fieldName);
-      } else {
-        return GraphQL_Server$ReventlessInMemory.getMutationResolver(fieldName);
-      }
-    };
-    let registerAdminMcpResources = (pluginName, queryEntries, queryHandler) => {
-      if (adminMCP !== undefined) {
-        return adminMCP.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
-      } else {
-        return MCP_Server$ReventlessInMemory.registerResourcesFromEntries(pluginName, queryEntries, queryHandler);
-      }
-    };
-    let registerAdminMcpTools = (pluginName, mutationEntries, commandHandler) => {
-      if (adminMCP !== undefined) {
-        return adminMCP.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
-      } else {
-        return MCP_Server$ReventlessInMemory.registerToolsFromEntries(pluginName, mutationEntries, commandHandler);
-      }
-    };
+    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
+      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
+      builtInfos.contents.push(info);
+    });
+    let plugins$1 = plugins.map(plugin => plugin.make());
+    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
+    firePluginDeployedHooks(builtInfos.contents);
+    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
+    if (hook !== undefined) {
+      hook({
+        name: "in-memory",
+        environment: environment,
+        region: "local",
+        domainApiEndpoint: "http://localhost:4000/graphql",
+        domainApiRoleArn: "in-memory",
+        platformApiEndpoint: "http://localhost:4000/graphql",
+        platformApiRoleArn: "in-memory",
+        adminResources: []
+      });
+    }
+    seedPluginQueryDb(plugins$1);
+    currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+    let platformGraphQL = resolveTargetGraphQL();
+    let platformMCP = resolveTargetMCP();
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
-    registerAdminTypes(baseParts.types);
+    platformGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -1665,7 +1735,7 @@ function Make($star) {
         ]
       ]);
     };
-    registerAdminQueries(baseParts.queries, queryResolvers);
+    platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {
       switch (s) {
         case "Connected" :
@@ -1743,7 +1813,7 @@ function Make($star) {
         return;
       }
     });
-    registerAdminMutations(baseParts.mutations, mutationResolvers);
+    platformGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
@@ -1762,9 +1832,9 @@ function Make($star) {
         return [];
       }
     };
-    registerAdminMcpResources("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
-    registerAdminMcpTools("Admin", adminMutationEntries, async (toolName, args, _identity) => {
-      let resolver = getAdminMutationResolver(toolName);
+    platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, pluginQueryHandler);
+    platformMCP.registerToolsFromEntries("Admin", adminMutationEntries, async (toolName, args, _identity) => {
+      let resolver = platformGraphQL.getMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
       }
@@ -1776,26 +1846,14 @@ function Make($star) {
         return JSON.stringify(result);
       }
     });
-    GraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
-    GraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
-    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
-    MCP_Server$ReventlessInMemory.start(undefined, undefined);
-    if (adminGraphQL !== undefined) {
-      adminGraphQL.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
-      adminGraphQL.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
-      adminGraphQL.start(4001, undefined);
-      adminGraphQLRef.contents = adminGraphQL;
-    }
-    if (adminMCP !== undefined) {
-      adminMCP.start(3002, undefined);
-    }
+    DomainGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+    DomainGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
+    PlatformGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
+    PlatformGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
+    currentDeployTarget.contents = "Domain";
     if (graphqlDebug) {
-      GraphQL_Server$ReventlessInMemory.printDiagnostics();
-      if (adminGraphQL !== undefined) {
-        return adminGraphQL.printDiagnostics();
-      } else {
-        return;
-      }
+      DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
+      return PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
     }
   };
   let deployPlatform = version => {
@@ -1809,8 +1867,11 @@ function Make($star) {
       val: undefined
     };
     Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    currentDeployTarget.contents = "Platform";
+    let adminGraphQL = resolveTargetGraphQL();
+    let adminMCP = resolveTargetMCP();
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
-    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    adminGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
@@ -1828,16 +1889,19 @@ function Make($star) {
         []
       ]
     ]);
-    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
       mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
-    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
-    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
-    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    currentDeployTarget.contents = "Domain";
+    adminGraphQL.start(4001, undefined);
+    adminMCP.start(3002, undefined);
+    DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
     if (hook !== undefined) {
       return hook({
@@ -1846,15 +1910,21 @@ function Make($star) {
         region: "local",
         domainApiEndpoint: "http://localhost:4000/graphql",
         domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
+        platformApiEndpoint: "http://localhost:4001/graphql",
         platformApiRoleArn: "in-memory",
         adminResources: []
       });
     }
   };
-  let deployPlugin = (version, plugin, $staropt$star) => {
-    $staropt$star !== undefined;
+  let deployPlugin = (version, plugin, apiTargetOpt) => {
+    let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     log.info("Platform", undefined, `deployPlugin v` + version);
+    currentDeployTarget.contents = apiTarget;
+    let QR = QueryDbResolvers_GraphQL$ReventlessInMemory.Make(Bus);
+    QR.serverRef.contents = resolveTargetGraphQL();
+    let tmp;
+    tmp = apiTarget === "Domain" ? domainRelaySupport : undefined;
+    QR.relayRef.contents = tmp;
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -1868,9 +1938,19 @@ function Make($star) {
       ep.name,
       ep
     ])));
+    let existingBuiltHook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
+    let builtInfos = {
+      contents: []
+    };
+    Plugin_Helpers$ReventlessCore.registerOnPluginBuilt(info => {
+      Stdlib_Option.forEach(existingBuiltHook, h => h(info));
+      builtInfos.contents.push(info);
+    });
     let pluginComponent = plugin.make();
+    Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
+    let adminGraphQL = resolveTargetGraphQL();
     let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
-    GraphQL_Server$ReventlessInMemory.registerTypes(baseParts.types);
+    adminGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
@@ -1888,16 +1968,19 @@ function Make($star) {
         []
       ]
     ]);
-    GraphQL_Server$ReventlessInMemory.registerQueries(baseParts.queries, queryResolvers);
+    adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
       mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
     });
-    GraphQL_Server$ReventlessInMemory.registerMutations(baseParts.mutations, mutationResolvers);
-    GraphQL_Server$ReventlessInMemory.start(undefined, undefined);
-    MCP_Server$ReventlessInMemory.start(undefined, undefined);
+    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    currentDeployTarget.contents = "Domain";
+    QR.serverRef.contents = DomainGraphQL_Server$ReventlessInMemory.asInterface;
+    QR.relayRef.contents = domainRelaySupport;
+    seedPluginQueryDb([pluginComponent]);
+    firePluginDeployedHooks(builtInfos.contents);
     return Component$ReventlessCore.outputs(pluginComponent);
   };
   let Counter_make = Counter.make;
@@ -1927,14 +2010,16 @@ function Make($star) {
     Plugin: Plugin,
     makePlatform: makePlatform,
     deployPlatform: deployPlatform,
-    deployPlugin: deployPlugin
+    deployPlugin: deployPlugin,
+    startServers: startServers
   };
 }
 
 export {
   log,
-  adminGraphQLRef,
-  getAdminGraphQL,
+  platformGraphQLRef,
+  getPlatformGraphQL,
+  platformMCPRef,
   MakeWithConfig,
   Make,
 }

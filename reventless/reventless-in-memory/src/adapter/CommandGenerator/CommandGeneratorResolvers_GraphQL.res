@@ -65,7 +65,7 @@ let handlerRefs: dict<ref<option<CommandGenerator.commandGenerator>>> = Dict.mak
 // Called by Plugin_Builder via aggregateMutationResolverHook before any
 // Output.apply chains fire. Registers SDL + resolver stubs in GraphQL_Server.
 
-let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
+let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
   // Aggregate commands target a specific instance — prepend id: ID!
   let sdlFields = fields->Array.mapWithIndex((field, i) => {
     let sdl = deriveSdlField(~fieldName=field, extractVariantSchema(commandSchema, ~index=i))
@@ -80,7 +80,7 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
   fields->Array.forEach(field => {
     let handlerRef = ref(None)
     handlerRefs->Dict.set(field, handlerRef)
-    let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+    let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
       switch handlerRef.contents {
       | Some(generateCommand) =>
         let identity = extractIdentity(ctx)
@@ -99,7 +99,7 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
     resolvers->Dict.set(field, resolver)
   })
 
-  GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
+  server.registerMutations(~sdlFields, ~resolvers)
 }
 
 // -- registerDcb (Phase 1 — synchronous, DCB StateChangeSlices) ---------------
@@ -107,7 +107,7 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>) => {
 // stubs for DCB mutations. Unlike aggregate mutations, DCB commands use a tagged
 // ID field (e.g., itemId) instead of a separate id: ID! parameter.
 
-let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
+let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
   let variantSchema = extractVariantSchema(commandSchema)
   let sdlFields = [deriveSdlField(~fieldName, variantSchema)]
 
@@ -133,7 +133,7 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
   let handlerRef = ref(None)
   handlerRefs->Dict.set(fieldName, handlerRef)
 
-  let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+  let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
     switch handlerRef.contents {
     | Some(generateCommand) =>
       let identity = extractIdentity(ctx)
@@ -165,7 +165,7 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>) => {
 
   let resolvers = Dict.make()
   resolvers->Dict.set(fieldName, resolver)
-  GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
+  server.registerMutations(~sdlFields, ~resolvers)
 }
 
 // -- bindHandler (Phase 2 — direct binding) -----------------------------------

@@ -10,8 +10,8 @@ import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
-import * as GraphQL_Server$ReventlessInMemory from "../GraphQL_Server.res.mjs";
 import * as SortKey_Filter$ReventlessInMemory from "./SortKey_Filter.res.mjs";
+import * as DomainGraphQL_Server$ReventlessInMemory from "../DomainGraphQL_Server.res.mjs";
 
 function Make(Bus) {
   let extractIdentity = ctx => {
@@ -28,24 +28,39 @@ function Make(Bus) {
       return Identity$Reventless.anonymous;
     }
   };
-  GraphQL_Server$ReventlessInMemory.registerNodeResolverCallback(async (typeName, localId) => {
-    let name = GraphQL_Server$ReventlessInMemory.nodeTypeRegistry.contents[typeName];
-    let queryDbName = name !== undefined ? name : typeName;
-    let ops = Bus.getQueryDb(queryDbName);
-    if (ops === undefined) {
-      return;
+  let serverRef = {
+    contents: DomainGraphQL_Server$ReventlessInMemory.asInterface
+  };
+  let relayRef = {
+    contents: {
+      encodeGlobalId: DomainGraphQL_Server$ReventlessInMemory.encodeGlobalId,
+      registerNodeType: DomainGraphQL_Server$ReventlessInMemory.registerNodeType,
+      registerNodeResolverCallback: DomainGraphQL_Server$ReventlessInMemory.registerNodeResolverCallback,
+      nodeTypeRegistry: DomainGraphQL_Server$ReventlessInMemory.nodeTypeRegistry
     }
-    let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(localId)), param => Effect.succeed([])));
-    let item = items[0];
-    if (item === undefined) {
-      return;
-    }
-    let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-    obj["__typename"] = typeName;
-    obj["id"] = GraphQL_Server$ReventlessInMemory.encodeGlobalId(typeName, localId);
-    return obj;
-  });
+  };
   let make = (name, param, param$1, param$2, indexes, subIdField, param$3, param$4, param$5) => {
+    let server = serverRef.contents;
+    let relay = relayRef.contents;
+    if (relay !== undefined) {
+      relay.registerNodeResolverCallback(async (typeName, localId) => {
+        let n = relay.nodeTypeRegistry.contents[typeName];
+        let queryDbName = n !== undefined ? n : typeName;
+        let ops = Bus.getQueryDb(queryDbName);
+        if (ops === undefined) {
+          return;
+        }
+        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(localId)), param => Effect.succeed([])));
+        let item = items[0];
+        if (item === undefined) {
+          return;
+        }
+        let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+        obj["__typename"] = typeName;
+        obj["id"] = relay.encodeGlobalId(typeName, localId);
+        return obj;
+      });
+    }
     let runInterceptor = async (ctx, args) => {
       let interceptor = QueryDb_Callback$ReventlessCore.queryInterceptorHook.contents;
       if (interceptor !== undefined) {
@@ -62,9 +77,10 @@ function Make(Bus) {
     let pluralTypeName = registryEntry !== undefined ? registryEntry.pluralTypeName : "[String]";
     let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
     let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : true;
-    if (includeIdParam) {
-      GraphQL_Server$ReventlessInMemory.registerNodeType(returnTypeName, name);
+    if (includeIdParam && relay !== undefined) {
+      relay.registerNodeType(returnTypeName, name);
     }
+    let encodeId = relay !== undefined ? (typeName, localId) => relay.encodeGlobalId(typeName, localId) : (param, localId) => localId;
     let byIdSdl = includeIdParam ? (
         subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName
       ) : `  ` + singleQueryName + `: ` + returnTypeName;
@@ -87,7 +103,7 @@ function Make(Bus) {
         return item;
       }
       let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-      obj["id"] = GraphQL_Server$ReventlessInMemory.encodeGlobalId(returnTypeName, id);
+      obj["id"] = encodeId(returnTypeName, id);
       return obj;
     };
     let match;
@@ -174,7 +190,7 @@ function Make(Bus) {
     let byIdListSdl;
     if (subIdField !== undefined) {
       let connectionTypeName$1 = returnTypeName + "ByIdConnection";
-      GraphQL_Server$ReventlessInMemory.registerTypes([`type ` + connectionTypeName$1 + ` {\n  items: [` + returnTypeName + `!]!\n  nextToken: String\n}`]);
+      server.registerTypes([`type ` + connectionTypeName$1 + ` {\n  items: [` + returnTypeName + `!]!\n  nextToken: String\n}`]);
       byIdListSdl = [`  ` + singleQueryName + `ById(id: ID!, ` + subIdField + `: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ` + connectionTypeName$1 + `!`];
     } else {
       byIdListSdl = [];
@@ -255,7 +271,7 @@ function Make(Bus) {
     indexResolvers.forEach(param => {
       resolvers[param[0]] = param[1];
     });
-    GraphQL_Server$ReventlessInMemory.registerQueries(allSdl, resolvers);
+    server.registerQueries(allSdl, resolvers);
     return {
       resources: [],
       resourcesMaker: param => []
@@ -263,7 +279,8 @@ function Make(Bus) {
   };
   return {
     extractIdentity: extractIdentity,
-    _nodeResolverRegistered: true,
+    serverRef: serverRef,
+    relayRef: relayRef,
     make: make
   };
 }

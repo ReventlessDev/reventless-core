@@ -14,10 +14,14 @@ let _ = ReventlessCore.EffectLogger.install
 
 let log = ReventlessCore.Logger.fromEnv()
 
-// Module-level ref to hold the admin GraphQL server instance in split mode.
+// Module-level ref to hold the platform GraphQL server instance in split mode.
 // Populated by makePlatform when splitApi=true.
-let adminGraphQLRef: ref<option<GraphQL_ServerInstance.t>> = ref(None)
-let getAdminGraphQL = () => adminGraphQLRef.contents
+let platformGraphQLRef: ref<option<GraphQL_ServerInstance.t>> = ref(None)
+let getPlatformGraphQL = () => platformGraphQLRef.contents
+
+// Module-level ref to hold the platform MCP server instance in split mode.
+// Populated by makePlatform when splitApi=true.
+let platformMCPRef: ref<option<MCP_ServerInstance.t>> = ref(None)
 
 // Configurable platform — set silent=true to suppress diagnostic warnings in tests,
 // splitApi=true to serve core and plugin APIs on separate ports.
@@ -45,6 +49,44 @@ module MakeWithConfig = (
     let silent = Config.silent
   })
 
+  // Track which API target is active during deployPlugin / admin schema registration.
+  // Domain = plugin-facing (default); Platform = admin/core (split mode).
+  let currentDeployTarget: ref<apiTarget> = ref(Domain)
+
+  // Relay support record for domain QueryDbs (platform QueryDbs pass None).
+  let domainRelaySupport: QueryDbResolvers_GraphQL.relaySupport = {
+    encodeGlobalId: DomainGraphQL_Server.encodeGlobalId,
+    registerNodeType: DomainGraphQL_Server.registerNodeType,
+    registerNodeResolverCallback: DomainGraphQL_Server.registerNodeResolverCallback,
+    nodeTypeRegistry: DomainGraphQL_Server.nodeTypeRegistry,
+  }
+
+  // Resolve the active GraphQL server based on current deploy target.
+  // In unified mode always routes to DomainGraphQL_Server (single server).
+  // In split mode routes based on currentDeployTarget.
+  let resolveTargetGraphQL = (): GraphQL_ServerInstance.t =>
+    if !Config.splitApi {
+      DomainGraphQL_Server.asInterface
+    } else {
+      switch currentDeployTarget.contents {
+      | Domain => DomainGraphQL_Server.asInterface
+      | Platform => PlatformGraphQL_Server.asInterface
+      }
+    }
+
+  // Resolve the active MCP server based on current deploy target.
+  // In unified mode always routes to DomainMCP_Server.
+  // In split mode routes based on currentDeployTarget.
+  let resolveTargetMCP = (): MCP_ServerInstance.t =>
+    if !Config.splitApi {
+      DomainMCP_Server.asInterface
+    } else {
+      switch currentDeployTarget.contents {
+      | Domain => DomainMCP_Server.asInterface
+      | Platform => PlatformMCP_Server.asInterface
+      }
+    }
+
   // Platform hook record — callbacks known at MakeWithConfig time plus a
   // mutable ref for admin extension points (set by makePlatform/deployPlugin
   // after Admin.construct returns, before plugins are built).
@@ -55,26 +97,35 @@ module MakeWithConfig = (
     api: ref(None),
     apiRole: ref(None),
     // Phase 1: register SDL + resolver stub synchronously.
-    mutationResolverHook: (~kind, ~fields, ~commandSchema) =>
+    // Pass the resolved server so the correct target (domain or platform) receives the schema.
+    mutationResolverHook: (~kind, ~fields, ~commandSchema) => {
+      let server = resolveTargetGraphQL()
       switch kind {
       | ReventlessCore.Plugin_Helpers.Aggregate =>
-        CommandGeneratorResolvers_GraphQL.register(~fields, ~commandSchema)
+        CommandGeneratorResolvers_GraphQL.register(~fields, ~commandSchema, ~server)
       | Dcb =>
         fields->Array.forEach(field =>
-          CommandGeneratorResolvers_GraphQL.registerDcb(~fieldName=field, ~commandSchema)
+          CommandGeneratorResolvers_GraphQL.registerDcb(~fieldName=field, ~commandSchema, ~server)
         )
-      },
+      }
+    },
     // Phase 2: bind generateCommand when Output.apply resolves.
     mutationBindHook: CommandGeneratorResolvers_GraphQL.bindHandler,
-    // InboundTranslationSlice hooks
-    inboundMutationResolverHook: InboundTranslationResolvers_GraphQL.register,
+    // InboundTranslationSlice hooks — pass resolved server for correct target routing.
+    inboundMutationResolverHook: (~fieldName, ~externalInputSchema) =>
+      InboundTranslationResolvers_GraphQL.register(
+        ~fieldName,
+        ~externalInputSchema,
+        ~server=resolveTargetGraphQL(),
+      ),
     inboundMutationBindReceiveHook: InboundTranslationResolvers_GraphQL.bindReceive,
     // Register GraphQL type definitions from the generated schema fragment.
-    schemaTypeRegistrationHook: sdlTypes => GraphQL_Server.registerTypes(~sdlTypes),
+    schemaTypeRegistrationHook: sdlTypes => resolveTargetGraphQL().registerTypes(~sdlTypes),
     // MCP tools and resources — registered during plugin construction.
     // See the large lambda below; it references Bus for QueryDb lookups.
     mcpSchemaRegistrationHook: ({pluginName, mutationEntries, queryEntries, eventLogEntries}) => {
-      MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
+      let mcp = resolveTargetMCP()
+      mcp.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
         toolName,
         args,
         identity,
@@ -96,7 +147,7 @@ module MakeWithConfig = (
         }
       })
 
-      MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler=async (
+      mcp.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler=async (
         resourceName,
         uri,
       ) => {
@@ -131,7 +182,7 @@ module MakeWithConfig = (
         }
       })
 
-      MCP_Server.registerEventHistoryResourcesFromEntries(
+      mcp.registerEventHistoryResourcesFromEntries(
         ~pluginName,
         ~eventLogEntries,
         ~eventLogHandler=async (resourceName, uri) => {
@@ -511,6 +562,176 @@ module MakeWithConfig = (
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpSupported
 
+  // ---------------------------------------------------------------------------
+  // Shared helpers — used by both makePlatform and deployPlugin.
+  // ---------------------------------------------------------------------------
+
+  // Plugin QueryDb store ops — initialized lazily on first seedPluginQueryDb call.
+  let pluginQueryDbOpsRef: ref<option<ReventlessCore.QueryDb_Adapter.operations>> = ref(None)
+
+  // Ensure the Plugin QueryDb store is registered in the Bus. Returns the ops handle.
+  let ensurePluginQueryDbStore = () => {
+    switch pluginQueryDbOpsRef.contents {
+    | Some(ops) => ops
+    | None =>
+      let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
+      let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
+      let allItems: ref<array<JSON.t>> = ref([])
+      let syncAll = () => {
+        allItems.contents =
+          store.contents
+          ->Dict.toArray
+          ->Array.flatMap(((id, items)) =>
+            items->Array.map(item => {
+              let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+              if !(obj->Dict.get("id")->Option.isSome) {
+                let copy = Dict.make()
+                obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
+                copy->Dict.set("id", JSON.Encode.string(id))
+                JSON.Encode.object(copy)
+              } else {
+                item
+              }
+            })
+          )
+      }
+      let pluginOps: ReventlessCore.QueryDb_Adapter.operations = {
+        load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
+        loadStream: id =>
+          store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
+        save: async (id, state, _, _) => {
+          store.contents->Dict.set(id, [state])
+          syncAll()
+          Ok()
+        },
+        saveBatch: async batch => {
+          batch->Array.forEach(((id, state, _)) => store.contents->Dict.set(id, [state]))
+          syncAll()
+          Ok()
+        },
+        count: async (_, _, inc) => Ok(inc),
+        delete: async (id, _) => {
+          store.contents->Dict.delete(id)
+          syncAll()
+          Ok()
+        },
+        deleteBatch: async ids => {
+          ids->Array.forEach(((id, _)) => store.contents->Dict.delete(id))
+          syncAll()
+          Ok()
+        },
+      }
+      Bus.registerQueryDb(pluginQueryDbName, pluginOps)
+      Bus.registerQueryDbScan(pluginQueryDbName, () => allItems.contents)
+      Bus.registerQueryDbStream(
+        pluginQueryDbName,
+        () => allItems.contents->Stream.fromIterable,
+      )
+      pluginQueryDbOpsRef := Some(pluginOps)
+      pluginOps
+    }
+  }
+
+  // Seed the Plugin QueryDb from constructed plugin component outputs.
+  // Uses real output values serialized via PluginReadModelSpec.stateSchema.
+  let seedPluginQueryDb = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
+    let pluginOps = ensurePluginQueryDbStore()
+    pluginComponents->Array.forEach(plugin => {
+      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
+      let _ =
+        (
+          outputs.id,
+          outputs.version,
+          outputs.eventCollector,
+          outputs.extensionPoints,
+          outputs.extensions,
+          outputs.apiSchemaFragment,
+        )
+        ->Pulumi.Output.all6
+        ->Pulumi.Output.apply(((
+          id,
+          version,
+          eventCollector,
+          extensionPoints,
+          extensions,
+          apiSchemaFragment,
+        )) => {
+          let state: ReventlessCore.PluginReadModelSpec.state = {
+            name: id->String.split("@")->Array.get(0)->Option.getOr(id),
+            version,
+            eventCollector: eventCollector.name,
+            extensionPoints: extensionPoints
+            ->Dict.toArray
+            ->Array.map(
+              ((epName, ep: ReventlessInfra.ExtensionPoint.outputs)) => {
+                Reventless.Plugin.name: epName,
+                commandTopic: epName,
+                eventTopic: ep.name,
+              },
+            ),
+            extensionPointNames: extensionPoints->Dict.keysToArray,
+            extensionNames: extensions->Dict.keysToArray,
+            extensions: extensions
+            ->Dict.toArray
+            ->Array.map(
+              ((_, ext: ReventlessInfra.Extension.outputs)) => {
+                Reventless.Plugin.name: ext.name,
+                extensionPointName: ext.extensionPointName,
+              },
+            ),
+            status: Connected,
+            statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
+            apiSchemaFragment,
+          }
+          let entry =
+            state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+          let _ = pluginOps.save(id, entry, Any, None)
+        })
+    })
+  }
+
+  // Fire onPluginDeployed hooks for each plugin that was built.
+  let firePluginDeployedHooks = (
+    ~builtInfos: array<ReventlessCore.Plugin_Helpers.pluginBuiltInfo>,
+  ) => {
+    let environment = Pulumi.Pulumi.getStackName()
+    builtInfos->Array.forEach(info => {
+      switch ReventlessCore.Plugin_Helpers.onPluginDeployedHook.contents {
+      | Some(hook) =>
+        let deployedInfo: ReventlessCore.Plugin_Helpers.pluginDeployedInfo = {
+          name: info.name,
+          version: info.version,
+          environment,
+          stackName: environment,
+          components: info.components->Array.map(
+            (c): ReventlessCore.Plugin_Helpers.pluginDeployedComponent => {
+              name: c.name,
+              kind: c.kind,
+              schema: c.schema,
+              resources: [],
+              subComponents: [],
+            },
+          ),
+          extensionWirings: [],
+        }
+        hook(deployedInfo)
+      | None => ()
+      }
+    })
+  }
+
+  // Start all servers. In split mode this is deferred — called explicitly by the
+  // caller after all makePlatform/deployPlugin calls are complete. In unified mode
+  // this is a no-op (start() is called inline inside makePlatform/deployPlugin).
+  let startServers = () => {
+    if Config.splitApi {
+      DomainGraphQL_Server.start()
+      DomainMCP_Server.start()
+      PlatformGraphQL_Server.start(~port=4001, ())
+      PlatformMCP_Server.start(~port=3002, ())
+    }
+  }
+
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
     log.info(~comp="Platform", `v${version}`)
     log.info(
@@ -567,29 +788,7 @@ module MakeWithConfig = (
     // receiveRegistry entries are pre-populated (queuing forwarder) so calls
     // are parked and drained once bindReceive fires (async, via Output.apply).
     ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
-    builtInfos.contents->Array.forEach(info => {
-      switch ReventlessCore.Plugin_Helpers.onPluginDeployedHook.contents {
-      | Some(hook) =>
-        let deployedInfo: ReventlessCore.Plugin_Helpers.pluginDeployedInfo = {
-          name: info.name,
-          version: info.version,
-          environment,
-          stackName: environment,
-          components: info.components->Array.map(
-            (c): ReventlessCore.Plugin_Helpers.pluginDeployedComponent => {
-              name: c.name,
-              kind: c.kind,
-              schema: c.schema,
-              resources: [],
-              subComponents: [],
-            },
-          ),
-          extensionWirings: [],
-        }
-        hook(deployedInfo)
-      | None => ()
-      }
-    })
+    firePluginDeployedHooks(~builtInfos=builtInfos.contents)
     switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
     | Some(hook) =>
       hook({
@@ -605,158 +804,16 @@ module MakeWithConfig = (
     | None => ()
     }
 
-    // Create an in-memory Plugin QueryDb in the Bus.
-    // This mirrors what QueryDbStorage_InMemory does for user read models,
-    // providing the runtime store that backs plugin/everyPlugin queries.
-    let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
-    let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
-    let allItems: ref<array<JSON.t>> = ref([])
-    let syncAll = () => {
-      allItems.contents = store.contents
-        ->Dict.toArray
-        ->Array.flatMap(((id, items)) =>
-          items->Array.map(item => {
-            let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-            if !(obj->Dict.get("id")->Option.isSome) {
-              let copy = Dict.make()
-              obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
-              copy->Dict.set("id", JSON.Encode.string(id))
-              JSON.Encode.object(copy)
-            } else {
-              item
-            }
-          })
-        )
-    }
-    let pluginOps: ReventlessCore.QueryDb_Adapter.operations = {
-      load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
-      loadStream: id => store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
-      save: async (id, state, _, _) => {
-        store.contents->Dict.set(id, [state])
-        syncAll()
-        Ok()
-      },
-      saveBatch: async batch => {
-        batch->Array.forEach(((id, state, _)) => store.contents->Dict.set(id, [state]))
-        syncAll()
-        Ok()
-      },
-      count: async (_, _, inc) => Ok(inc),
-      delete: async (id, _) => {
-        store.contents->Dict.delete(id)
-        syncAll()
-        Ok()
-      },
-      deleteBatch: async ids => {
-        ids->Array.forEach(((id, _)) => store.contents->Dict.delete(id))
-        syncAll()
-        Ok()
-      },
-    }
-    Bus.registerQueryDb(pluginQueryDbName, pluginOps)
-    Bus.registerQueryDbScan(pluginQueryDbName, () => allItems.contents)
-    Bus.registerQueryDbStream(pluginQueryDbName, () => allItems.contents->Stream.fromIterable)
-
     // Seed the Plugin QueryDb from constructed plugin component outputs.
-    // Uses the real output values and serializes via PluginReadModelSpec.stateSchema
-    // so the JSON shape stays in sync with the GraphQL type automatically.
-    plugins->Array.forEach(plugin => {
-      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
-      let _ =
-        (
-          outputs.id,
-          outputs.version,
-          outputs.eventCollector,
-          outputs.extensionPoints,
-          outputs.extensions,
-          outputs.apiSchemaFragment,
-        )
-        ->Pulumi.Output.all6
-        ->Pulumi.Output.apply(((
-          id,
-          version,
-          eventCollector,
-          extensionPoints,
-          extensions,
-          apiSchemaFragment,
-        )) => {
-          let state: ReventlessCore.PluginReadModelSpec.state = {
-            name: id->String.split("@")->Array.get(0)->Option.getOr(id),
-            version,
-            eventCollector: eventCollector.name,
-            extensionPoints: extensionPoints
-            ->Dict.toArray
-            ->Array.map(
-              ((epName, ep: ReventlessInfra.ExtensionPoint.outputs)) => {
-                Reventless.Plugin.name: epName,
-                commandTopic: epName,
-                eventTopic: ep.name,
-              },
-            ),
-            extensionPointNames: extensionPoints->Dict.keysToArray,
-            extensionNames: extensions->Dict.keysToArray,
-            extensions: extensions
-            ->Dict.toArray
-            ->Array.map(
-              ((_, ext: ReventlessInfra.Extension.outputs)) => {
-                Reventless.Plugin.name: ext.name,
-                extensionPointName: ext.extensionPointName,
-              },
-            ),
-            status: Connected,
-            statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
-            apiSchemaFragment,
-          }
-          let entry =
-            state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
-          let _ = pluginOps.save(id, entry, Any, None)
-        })
-    })
+    // Initializes the store on first call and serializes via PluginReadModelSpec.stateSchema.
+    seedPluginQueryDb(~pluginComponents=plugins)
 
-    // In split mode, create dedicated admin server instances.
-    // In unified mode (default), admin schema registers into the plugin singletons.
-    let adminGraphQL = if Config.splitApi {
-      Some(GraphQL_ServerInstance.make(~label="GraphQL:Admin"))
-    } else {
-      None
-    }
-    let adminMCP = if Config.splitApi {
-      Some(MCP_ServerInstance.make(~label="MCP:Admin"))
-    } else {
-      None
-    }
+    let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
 
-    // Helpers that route admin registrations to the correct target.
-    let registerAdminTypes = (~sdlTypes) =>
-      switch adminGraphQL {
-      | Some(inst) => inst.registerTypes(~sdlTypes)
-      | None => GraphQL_Server.registerTypes(~sdlTypes)
-      }
-    let registerAdminQueries = (~sdlFields, ~resolvers) =>
-      switch adminGraphQL {
-      | Some(inst) => inst.registerQueries(~sdlFields, ~resolvers)
-      | None => GraphQL_Server.registerQueries(~sdlFields, ~resolvers)
-      }
-    let registerAdminMutations = (~sdlFields, ~resolvers) =>
-      switch adminGraphQL {
-      | Some(inst) => inst.registerMutations(~sdlFields, ~resolvers)
-      | None => GraphQL_Server.registerMutations(~sdlFields, ~resolvers)
-      }
-    let getAdminMutationResolver = fieldName =>
-      switch adminGraphQL {
-      | Some(inst) => inst.getMutationResolver(fieldName)
-      | None => GraphQL_Server.getMutationResolver(fieldName)
-      }
-    let registerAdminMcpResources = (~pluginName, ~queryEntries, ~queryHandler) =>
-      switch adminMCP {
-      | Some(inst) => inst.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
-      | None => MCP_Server.registerResourcesFromEntries(~pluginName, ~queryEntries, ~queryHandler)
-      }
-    let registerAdminMcpTools = (~pluginName, ~mutationEntries, ~commandHandler) =>
-      switch adminMCP {
-      | Some(inst) => inst.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
-      | None => MCP_Server.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler)
-      }
+    // Set deploy target to Platform for admin schema registration.
+    // resolveTargetGraphQL/MCP() will return PlatformGraphQL_Server / PlatformMCP_Server
+    // in split mode, or DomainGraphQL_Server / DomainMCP_Server in unified mode.
+    currentDeployTarget.contents = Platform
 
     // Derive field names from the schema entries — single source of truth.
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
@@ -765,13 +822,13 @@ module MakeWithConfig = (
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
 
-    // Register the admin Plugin aggregate's types/queries/mutations.
-    // In unified mode these go into GraphQL_Server alongside plugin schema.
-    // In split mode they go into a dedicated admin GraphQL instance.
+    // Register the admin Plugin aggregate's types/queries/mutations to the platform target.
+    let platformGraphQL = resolveTargetGraphQL()
+    let platformMCP = resolveTargetMCP()
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
       ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
     )
-    registerAdminTypes(~sdlTypes=baseParts.types)
+    platformGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
     // Resolvers for the admin Plugin queries — backed by Bus Plugin QueryDb.
     let queryResolvers = Dict.make()
@@ -803,7 +860,7 @@ module MakeWithConfig = (
         ("items", items->JSON.Encode.array),
       ])->JSON.Encode.object
     })
-    registerAdminQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+    platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Helper: extract plugin id from mutation args, load state, apply status change, save.
     let statusToString = (s: ReventlessCore.PluginReadModelSpec.status) =>
@@ -879,7 +936,7 @@ module MakeWithConfig = (
         )
       }
     )
-    registerAdminMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+    platformGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 
     // Register admin Plugin queries and mutations as MCP resources and tools.
     let pluginQueryHandler = async (_resourceName, uri) => {
@@ -902,18 +959,18 @@ module MakeWithConfig = (
       | None => JSON.Encode.null
       }
     }
-    registerAdminMcpResources(
+    platformMCP.registerResourcesFromEntries(
       ~pluginName="Admin",
       ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
       ~queryHandler=pluginQueryHandler,
     )
 
     // Register admin mutations as MCP tools using the same entry-based path as plugins.
-    registerAdminMcpTools(
+    platformMCP.registerToolsFromEntries(
       ~pluginName="Admin",
       ~mutationEntries=adminMutationEntries,
       ~commandHandler=async (toolName, args, _identity) => {
-        switch getAdminMutationResolver(toolName) {
+        switch platformGraphQL.getMutationResolver(toolName) {
         | Some(resolver) =>
           let result = await resolver(JSON.Encode.null, args, JSON.Encode.null)
           switch result->JSON.Decode.string {
@@ -925,43 +982,42 @@ module MakeWithConfig = (
       },
     )
 
-    // Start servers.
-    // In unified mode: one GraphQL + one MCP server with all schema combined.
-    // In split mode: plugin servers on default ports, admin servers on +1 ports.
     // Always inject Relay base types (Node interface, PageInfo) and the node
-    // query field into the plugin GraphQL server so that:
+    // query field into the domain GraphQL server so that:
     // 1. `type X implements Node { ... }` fragments compile (Node interface must exist)
     // 2. The node resolver registered by QueryDbResolvers_GraphQL.res has a
     //    matching `node(id: ID!): Node` field in the Query type.
-    GraphQL_Server.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
-    GraphQL_Server.registerQueries(
+    DomainGraphQL_Server.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
+    DomainGraphQL_Server.registerQueries(
       ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
       ~resolvers=Dict.make(),
     )
-    GraphQL_Server.start()
-    MCP_Server.start()
-    switch adminGraphQL {
-    | Some(inst) =>
-      inst.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
-      inst.registerQueries(
+    // In split mode, also inject Relay base types into the platform server so platform
+    // plugins that call registerTypes with Node-implementing types compile correctly.
+    if Config.splitApi {
+      PlatformGraphQL_Server.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
+      PlatformGraphQL_Server.registerQueries(
         ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
         ~resolvers=Dict.make(),
       )
-      inst.start(~port=4001, ())
-      adminGraphQLRef := Some(inst)
-    | None => ()
     }
-    switch adminMCP {
-    | Some(inst) => inst.start(~port=3002, ())
-    | None => ()
+
+    // Reset deploy target to Domain after admin registration is done.
+    currentDeployTarget.contents = Domain
+
+    // In split mode, start() is deferred to startServers() so all plugins
+    // (domain and platform) can register their schema first.
+    // In unified mode, start immediately (backwards-compatible).
+    if !Config.splitApi {
+      DomainGraphQL_Server.start()
+      DomainMCP_Server.start()
     }
 
     // Print schema diagnostics when GRAPHQL_DEBUG is set.
     if graphqlDebug {
-      GraphQL_Server.printDiagnostics()
-      switch adminGraphQL {
-      | Some(inst) => inst.printDiagnostics()
-      | None => ()
+      DomainGraphQL_Server.printDiagnostics()
+      if Config.splitApi {
+        PlatformGraphQL_Server.printDiagnostics()
       }
     }
   }
@@ -988,11 +1044,15 @@ module MakeWithConfig = (
       ~inboundTranslationSlices=[],
     )
 
-    // Register admin schema and start servers (admin-only, no plugins).
+    // Route admin schema to PlatformGraphQL_Server in split mode, DomainGraphQL_Server otherwise.
+    currentDeployTarget.contents = Platform
+    let adminGraphQL = resolveTargetGraphQL()
+    let adminMCP = resolveTargetMCP()
+
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
       ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
     )
-    GraphQL_Server.registerTypes(~sdlTypes=baseParts.types)
+    adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
     // Minimal admin query resolvers (no plugin QueryDb seeding needed for platform-only).
     let queryResolvers = Dict.make()
@@ -1007,7 +1067,7 @@ module MakeWithConfig = (
         ("items", []->JSON.Encode.array),
       ])->JSON.Encode.object
     )
-    GraphQL_Server.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+    adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     let mutationResolvers = Dict.make()
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
@@ -1017,10 +1077,17 @@ module MakeWithConfig = (
         JSON.Encode.string("ok")
       )
     )
-    GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+    adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 
-    GraphQL_Server.start()
-    MCP_Server.start()
+    currentDeployTarget.contents = Domain
+
+    // Start servers immediately (deployPlatform is always called standalone).
+    adminGraphQL.start(~port=if Config.splitApi { 4001 } else { 4000 }, ())
+    adminMCP.start(~port=if Config.splitApi { 3002 } else { 3001 }, ())
+    if Config.splitApi {
+      DomainGraphQL_Server.start()
+      DomainMCP_Server.start()
+    }
 
     // Fire onPlatformDeployed hook with in-memory platform metadata.
     switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
@@ -1031,7 +1098,11 @@ module MakeWithConfig = (
         region: "local",
         domainApiEndpoint: "http://localhost:4000/graphql",
         domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
+        platformApiEndpoint: if Config.splitApi {
+          "http://localhost:4001/graphql"
+        } else {
+          "http://localhost:4000/graphql"
+        },
         platformApiRoleArn: "in-memory",
         adminResources: [],
       })
@@ -1039,8 +1110,20 @@ module MakeWithConfig = (
     }
   }
 
-  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~target as _=Domain) => {
+  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~apiTarget=Domain) => {
     log.info(~comp="Platform", `deployPlugin v${version}`)
+
+    // Set the active deploy target so resolveTargetGraphQL/MCP() and QueryDb serverRef/relayRef
+    // route registrations to the correct server. Mirrors AWS resolveTargetApi() pattern.
+    currentDeployTarget.contents = apiTarget
+    // Update QueryDb server/relay refs to match the target.
+    module QR = QueryDbResolvers_GraphQL.Make(Bus)
+    QR.serverRef.contents = resolveTargetGraphQL()
+    QR.relayRef.contents = switch apiTarget {
+    | Domain => Some(domainRelaySupport)
+    | Platform => None
+    }
+
     // Each plugin creates its own scheduler (mirrors AWS behaviour).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
@@ -1068,14 +1151,26 @@ module MakeWithConfig = (
         eps->Array.map(ep => (ep.name, ep))->Dict.fromArray
       )
 
+    // Intercept onPluginBuiltHook so we can fire onPluginDeployed after build.
+    let existingBuiltHook = ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents
+    let builtInfos: ref<array<ReventlessCore.Plugin_Helpers.pluginBuiltInfo>> = ref([])
+    ReventlessCore.Plugin_Helpers.registerOnPluginBuilt(info => {
+      existingBuiltHook->Option.forEach(h => h(info))
+      builtInfos.contents->Array.push(info)
+    })
+
     module P = unpack(plugin)
     let pluginComponent = P.make()
 
-    // Register admin schema into the shared server alongside plugin schema.
+    ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
+
+    // Register admin schema to the correct target (domain or platform).
+    // resolveTargetGraphQL() returns the right server based on currentDeployTarget.
+    let adminGraphQL = resolveTargetGraphQL()
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
       ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
     )
-    GraphQL_Server.registerTypes(~sdlTypes=baseParts.types)
+    adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
     let queryResolvers = Dict.make()
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
@@ -1089,7 +1184,7 @@ module MakeWithConfig = (
         ("items", []->JSON.Encode.array),
       ])->JSON.Encode.object
     )
-    GraphQL_Server.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+    adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     let mutationResolvers = Dict.make()
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
@@ -1099,10 +1194,31 @@ module MakeWithConfig = (
         JSON.Encode.string("ok")
       )
     )
-    GraphQL_Server.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+    adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
 
-    GraphQL_Server.start()
-    MCP_Server.start()
+    // Reset deploy target back to Domain for subsequent calls.
+    currentDeployTarget.contents = Domain
+    QR.serverRef.contents = DomainGraphQL_Server.asInterface
+    QR.relayRef.contents = Some(domainRelaySupport)
+
+    // Seed the Plugin QueryDb so this plugin appears in plugin queries.
+    seedPluginQueryDb(~pluginComponents=[pluginComponent])
+
+    // Fire onPluginDeployed hooks so subscribers learn about this plugin.
+    firePluginDeployedHooks(~builtInfos=builtInfos.contents)
+
+    // In unified mode, start servers immediately (backwards-compatible).
+    // In split mode, start() is deferred to startServers().
+    if !Config.splitApi {
+      switch apiTarget {
+      | Domain =>
+        DomainGraphQL_Server.start()
+        DomainMCP_Server.start()
+      | Platform =>
+        PlatformGraphQL_Server.start(~port=4001, ())
+        PlatformMCP_Server.start(~port=3002, ())
+      }
+    }
 
     let pluginOutputs: ReventlessCore.Plugin.outputs =
       (pluginComponent->Obj.magic: ReventlessCore.Plugin.component)->ReventlessCore.Component.outputs

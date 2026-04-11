@@ -1,10 +1,26 @@
 // GraphQL query resolvers for in-memory QueryDb.
-// Make(Bus) functor: registers query fields into GraphQL_Server during component construction.
+// Make(Bus) functor: registers query fields into the provided server during component construction.
 // Supports: getById, list (when listFieldName provided), {name}ById (when subId), and {name}By{Index} per index.
 //
 // Query names are resolved from Plugin_Helpers.queryFieldNamesRegistry (populated by
 // Plugin_Builder) to align with fragment SDL. Falls back to camelCase(name) for
 // backward compatibility when no registry entry exists.
+//
+// Relay support is domain-only (platform QueryDbs pass relay=None):
+//   - encodeGlobalId / decodeGlobalId for Relay global IDs
+//   - node(id: ID!) resolution via registerNodeResolverCallback
+//   - registerNodeType for the Relay Node type registry
+// Platform admin views are not Relay-paginated so relay=None is correct for them.
+
+// Relay support type — lifted to module level so Platform.res can construct a value
+// without a functor application in type position (not supported in ReScript).
+// Domain plugins pass Some(domainRelaySupport); platform plugins pass None.
+type relaySupport = {
+  encodeGlobalId: (~typeName: string, ~localId: string) => string,
+  registerNodeType: (~typeName: string, ~queryDbName: string) => unit,
+  registerNodeResolverCallback: DomainGraphQL_Server.nodeResolverCallback => unit,
+  nodeTypeRegistry: ref<dict<string>>,
+}
 
 module Make = (Bus: InMemory_Bus.T) => {
   open ReventlessCore
@@ -31,34 +47,16 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
   }
 
-  // Register the Relay node resolver callback once per Bus functor instantiation.
-  // Scans all QueryDb instances to resolve node(id: ID!) queries.
-  let _nodeResolverRegistered = {
-    GraphQL_Server.registerNodeResolverCallback(async (~typeName, ~localId) => {
-      let queryDbName = switch GraphQL_Server.nodeTypeRegistry.contents->Dict.get(typeName) {
-      | Some(name) => name
-      | None => typeName
-      }
-      switch Bus.getQueryDb(queryDbName) {
-      | Some(ops) =>
-        let items =
-          await ops.loadStream(localId)
-          ->Stream.runCollect
-          ->Effect.catchAll(_ => Effect.succeed([]))
-          ->Effect.runPromise
-        switch items->Array.get(0) {
-        | Some(item) =>
-          let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-          obj->Dict.set("__typename", JSON.Encode.string(typeName))
-          obj->Dict.set("id", GraphQL_Server.encodeGlobalId(~typeName, ~localId)->JSON.Encode.string)
-          Some(JSON.Encode.object(obj))
-        | None => None
-        }
-      | None => None
-      }
-    })
-    true
-  }
+  // -- Module-level server and relay refs ------------------------------------
+  // Set by Platform.res before component construction runs so the make function
+  // can pick up the correct target server and relay support (mirrors AWS ~api pattern).
+  let serverRef: ref<GraphQL_ServerInstance.t> = ref(DomainGraphQL_Server.asInterface)
+  let relayRef: ref<option<relaySupport>> = ref(Some({
+    encodeGlobalId: DomainGraphQL_Server.encodeGlobalId,
+    registerNodeType: DomainGraphQL_Server.registerNodeType,
+    registerNodeResolverCallback: DomainGraphQL_Server.registerNodeResolverCallback,
+    nodeTypeRegistry: DomainGraphQL_Server.nodeTypeRegistry,
+  }))
 
   let make: QueryDb_Adapter.resolversMaker<unit, unit> = (
     ~name,
@@ -71,6 +69,42 @@ module Make = (Bus: InMemory_Bus.T) => {
     ~idsResolverConfigs as _,
     ~opts as _,
   ) => {
+    // Read the active server and relay support from module-level refs set by Platform.res.
+    // This mirrors how AWS adapters receive ~api from the hook; here the hook sets the refs
+    // before calling make() so the values are available at registration time.
+    let server = serverRef.contents
+    let relay = relayRef.contents
+
+    // Register the Relay node resolver callback once per QueryDb (domain only).
+    // Scans all QueryDb instances to resolve node(id: ID!) queries.
+    switch relay {
+    | Some(r) =>
+      r.registerNodeResolverCallback(async (~typeName, ~localId) => {
+        let queryDbName = switch r.nodeTypeRegistry.contents->Dict.get(typeName) {
+        | Some(n) => n
+        | None => typeName
+        }
+        switch Bus.getQueryDb(queryDbName) {
+        | Some(ops) =>
+          let items =
+            await ops.loadStream(localId)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
+          switch items->Array.get(0) {
+          | Some(item) =>
+            let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+            obj->Dict.set("__typename", JSON.Encode.string(typeName))
+            obj->Dict.set("id", r.encodeGlobalId(~typeName, ~localId)->JSON.Encode.string)
+            Some(JSON.Encode.object(obj))
+          | None => None
+          }
+        | None => None
+        }
+      })
+    | None => ()
+    }
+
     let runInterceptor = async (~ctx, ~args): QueryDb_Callback.interceptResult => {
       switch QueryDb_Callback.queryInterceptorHook.contents {
       | None => Allow
@@ -117,9 +151,17 @@ module Make = (Bus: InMemory_Bus.T) => {
     | None => true
     }
 
-    // Register this entity type in the Relay Node type registry
+    // Register this entity type in the Relay Node type registry (domain only).
     if includeIdParam {
-      GraphQL_Server.registerNodeType(~typeName=returnTypeName, ~queryDbName=name)
+      switch relay {
+      | Some(r) => r.registerNodeType(~typeName=returnTypeName, ~queryDbName=name)
+      | None => ()
+      }
+    }
+
+    let encodeId = switch relay {
+    | Some(r) => (~typeName, ~localId) => r.encodeGlobalId(~typeName, ~localId)
+    | None => (~typeName as _, ~localId) => localId
     }
 
     // -- Main query: getById ---------------------------------------------------
@@ -131,7 +173,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     } else {
       `  ${singleQueryName}: ${returnTypeName}`
     }
-    let byIdResolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+    let byIdResolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
       switch await runInterceptor(~ctx, ~args) {
       | Deny(_) => JSON.Encode.null
       | Allow =>
@@ -148,7 +190,7 @@ module Make = (Bus: InMemory_Bus.T) => {
           | Some(item) =>
             if includeIdParam {
               let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-              obj->Dict.set("id", GraphQL_Server.encodeGlobalId(~typeName=returnTypeName, ~localId=id)->JSON.Encode.string)
+              obj->Dict.set("id", encodeId(~typeName=returnTypeName, ~localId=id)->JSON.Encode.string)
               JSON.Encode.object(obj)
             } else {
               item
@@ -161,11 +203,11 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
 
     // -- List query -------------------------------------------------------------
-    let (listSdl, listResolver): (array<string>, GraphQL_Server.resolverFn) = if connectionSpec {
+    let (listSdl, listResolver): (array<string>, GraphQL_ServerInstance.resolverFn) = if connectionSpec {
       // Relay Connection spec format
       let connectionTypeName = returnTypeName ++ "Connection"
       let sdl = [`  ${listQueryName}(first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
-      let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+      let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) =>
           Obj.magic({
@@ -213,7 +255,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     } else {
       // Legacy AppSync-style format
       let sdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
-      let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+      let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
         | Allow =>
@@ -239,7 +281,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     let byIdListSdl = switch subIdField {
     | Some(sf) =>
       let connectionTypeName = returnTypeName ++ "ByIdConnection"
-      GraphQL_Server.registerTypes(
+      server.registerTypes(
         ~sdlTypes=[
           `type ${connectionTypeName} {\n  items: [${returnTypeName}!]!\n  nextToken: String\n}`,
         ],
@@ -247,9 +289,9 @@ module Make = (Bus: InMemory_Bus.T) => {
       [`  ${singleQueryName}ById(id: ID!, ${sf}: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ${connectionTypeName}!`]
     | None => []
     }
-    let byIdListResolvers: array<(string, GraphQL_Server.resolverFn)> = switch subIdField {
+    let byIdListResolvers: array<(string, GraphQL_ServerInstance.resolverFn)> = switch subIdField {
     | Some(sf) =>
-      let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+      let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) => Obj.magic({"items": [], "nextToken": Nullable.null})
         | Allow =>
@@ -294,12 +336,12 @@ module Make = (Bus: InMemory_Bus.T) => {
     let indexSdlFields = indexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
       `  ${singleQueryName}By${cap(ic.index)}(${ic.index}: String!): [String]`
     )
-    let indexResolvers: array<(string, GraphQL_Server.resolverFn)> = indexes->Array.map(
+    let indexResolvers: array<(string, GraphQL_ServerInstance.resolverFn)> = indexes->Array.map(
       (ic: Reventless.ReadModel.indexConfig) => {
         let index = ic.index
         let resolverName = singleQueryName ++ "By" ++ cap(index)
         let filterField = ic.idField->Option.getOr(index)
-        let resolver: GraphQL_Server.resolverFn = async (_root, args, ctx) => {
+        let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
           switch await runInterceptor(~ctx, ~args) {
           | Deny(_) => []->JSON.Encode.array
           | Allow =>
@@ -334,11 +376,12 @@ module Make = (Bus: InMemory_Bus.T) => {
     listResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     byIdListResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     indexResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
-    GraphQL_Server.registerQueries(~sdlFields=allSdl, ~resolvers)
+    server.registerQueries(~sdlFields=allSdl, ~resolvers)
 
     {
       resources: [],
       resourcesMaker: _ => [],
     }
   }
+
 }
