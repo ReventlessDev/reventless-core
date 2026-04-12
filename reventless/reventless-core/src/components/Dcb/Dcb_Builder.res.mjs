@@ -329,7 +329,7 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: V.Spec.stateSchema,
           authorization: undefined,
-          includeIdParam: false,
+          includeIdParam: qn.includeIdParam,
           connectionSpec: true
         };
       });

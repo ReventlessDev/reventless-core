@@ -48,7 +48,7 @@ let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connecti
     listFieldName: `${plugin}_${plural}`,
     returnTypeName: `${plugin}_${singular}`,
     pluralTypeName: `${plugin}_${plural}`,
-    includeIdParam: false,
+    includeIdParam: true,
     connectionSpec,
   }
 }

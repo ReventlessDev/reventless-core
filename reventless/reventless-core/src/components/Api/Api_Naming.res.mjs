@@ -59,7 +59,7 @@ function queryFieldNamesForStateView(plugin, viewName, connectionSpecOpt) {
     listFieldName: plugin + `_` + plural,
     returnTypeName: plugin + `_` + singular,
     pluralTypeName: plugin + `_` + plural,
-    includeIdParam: false,
+    includeIdParam: true,
     connectionSpec: connectionSpec
   };
 }
