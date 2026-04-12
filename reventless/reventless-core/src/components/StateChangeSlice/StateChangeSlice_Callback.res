@@ -25,6 +25,11 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
     {eventType, data: JSON.Object(data), tags}
   }
 
+  // Computed once at functor init — used to extract entityId for publishJsonsAndWait outcomes.
+  let derivedPartitionTag = Reventless.DcbTag.derivePartitionTagV2([
+    (Spec.name, Spec.moduleUrl, Spec.eventSchema->S.castToUnknown),
+  ])
+
   let maxRetries = 3
 
   // Processes one command against the DCB event log with optimistic concurrency:
@@ -54,6 +59,14 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
       ~value=command'.command,
     )
 
+    // Extract the entity ID from the command for use in Accepted outcomes.
+    let entityId = switch derivedPartitionTag {
+    | Simple(pt) => Reventless.DcbTag.getPartitionTagValue(query, pt)
+    | Composite(spec) =>
+      let tags = Reventless.DcbTag.extractTags(Spec.commandSchema, command'.command)
+      Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
+    }
+
     let rec attempt = (~retries) =>
       dcbEventLog.readStream(~query)
       ->Stream.map(raw => {
@@ -78,6 +91,13 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
       ->Effect.flatMap(((state, headPosition, _)) =>
         switch Spec.decide(state, command'.command) {
         | Ok(newEvents) if newEvents->Array.length == 0 =>
+          CommandTopic_Helpers.reportAccepted(
+            cmdJson.meta.msgId,
+            switch entityId {
+            | Some(eid) => {entityId: eid, eventCount: 0}
+            | None => {eventCount: 0}
+            },
+          )
           EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
         | Ok(newEvents) =>
           let rawEvents = newEvents->Array.map(encodeEvent)
@@ -108,6 +128,13 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
           ->Effect.flatMap(appendResult =>
             switch appendResult {
             | Ok(_position) =>
+              CommandTopic_Helpers.reportAccepted(
+                cmdJson.meta.msgId,
+                switch entityId {
+                | Some(eid) => {entityId: eid, eventCount: rawEvents->Array.length}
+                | None => {eventCount: rawEvents->Array.length}
+                },
+              )
               EffectLogger.logInfo(~comp, `append: ${eventCount} event(s)`)->Effect.map(
                 _ => Ok("ok"),
               )

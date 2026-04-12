@@ -65,8 +65,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       ->Stream.runForEach(jsons => Effect.promise(() => publishJsons(jsons)))
 
     // Runs commands inline via the captured handler and maps results to commandOutcome.
-    // Ok("ok") → Accepted; Ok("rejected") → Rejected; Error(_) → Rejected(Conflict).
-    // Note: business-rule rejection details require callback-level propagation (future work).
+    // Error(_) → Rejected(Conflict); otherwise Accepted with entityId/eventCount from side-channel.
     let publishJsonsAndWait: ReventlessCore.CommandTopic.publishJsonsAndWait = async jsons => {
       switch handleCmdsRef.contents {
       | None =>
@@ -84,16 +83,27 @@ module Make = (Bus: InMemory_Bus.T) => {
           }
           item
         })
+        // Set up side-channel to collect entityId/eventCount populated by StateChangeSlice_Callback
+        let acceptedResults: dict<ReventlessCore.CommandTopic.acceptedResult> = Dict.make()
+        ReventlessCore.CommandTopic.acceptedResultChannel.contents = Some(
+          (reference, result) => acceptedResults->Dict.set(reference, result),
+        )
         let results =
           await handleCmds(Stream.fromIterable(items))->Effect.runPromise
+        ReventlessCore.CommandTopic.acceptedResultChannel.contents = None
         jsons->Array.mapWithIndex((cmdJson, i) => {
           let msgId = cmdJson.meta.msgId
           switch results->Array.get(i) {
-          | Some(Ok("rejected")) =>
-            ReventlessCore.CommandTopic.Rejected({msgId, errorCode: "BusinessRuleViolation", errorDetail: None})
           | Some(Error(msg)) =>
             ReventlessCore.CommandTopic.Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
-          | _ => ReventlessCore.CommandTopic.Accepted({msgId: msgId})
+          | _ =>
+            let ar = acceptedResults->Dict.get(msgId)->Option.getOr({eventCount: 0})
+            switch ar.entityId {
+            | Some(entityId) =>
+              ReventlessCore.CommandTopic.Accepted({msgId, entityId, eventCount: ar.eventCount})
+            | None =>
+              ReventlessCore.CommandTopic.Accepted({msgId, eventCount: ar.eventCount})
+            }
           }
         })
       }

@@ -73,33 +73,18 @@ function make(name, opts) {
           return jsons.map((cmdJson, i) => {
             let msgId = cmdJson.meta.msgId;
             let match = results[i];
-            if (match !== undefined) {
-              if (match.TAG === "Ok") {
-                if (match._0 === "rejected") {
-                  return {
-                    TAG: "Rejected",
-                    msgId: msgId,
-                    errorCode: "BusinessRuleViolation",
-                    errorDetail: undefined
-                  };
-                } else {
-                  return {
-                    TAG: "Accepted",
-                    msgId: msgId
-                  };
-                }
-              } else {
-                return {
-                  TAG: "Rejected",
-                  msgId: msgId,
-                  errorCode: "Conflict",
-                  errorDetail: match._0
-                };
-              }
+            if (match !== undefined && match.TAG !== "Ok") {
+              return {
+                TAG: "Rejected",
+                msgId: msgId,
+                errorCode: "Conflict",
+                errorDetail: match._0
+              };
             } else {
               return {
                 TAG: "Accepted",
-                msgId: msgId
+                msgId: msgId,
+                eventCount: 0
               };
             }
           });

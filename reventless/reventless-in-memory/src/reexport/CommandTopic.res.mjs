@@ -6,6 +6,10 @@ let componentType = CommandTopic$ReventlessCore.componentType;
 
 let NotPublishedToChannel = CommandTopic$ReventlessCore.NotPublishedToChannel;
 
+let acceptedResultChannel = CommandTopic$ReventlessCore.acceptedResultChannel;
+
+let reportAccepted = CommandTopic$ReventlessCore.reportAccepted;
+
 let callHandlerWithArray = CommandTopic$ReventlessCore.callHandlerWithArray;
 
 let extractTypeNamesFromSchema = CommandTopic$ReventlessCore.extractTypeNamesFromSchema;
@@ -23,6 +27,8 @@ let filter = CommandTopic$ReventlessCore.filter;
 export {
   componentType,
   NotPublishedToChannel,
+  acceptedResultChannel,
+  reportAccepted,
   callHandlerWithArray,
   extractTypeNamesFromSchema,
   globalRegistry,

@@ -208,6 +208,8 @@ union CommandResult = CommandAccepted | CommandRejected | CommandPending
 
 type CommandAccepted {
   msgId: ID!
+  entityId: ID          # id of the created/modified entity (absent for extension point commands)
+  eventCount: Int!      # number of events appended; 0 for idempotent no-ops
 }
 
 type CommandRejected {
@@ -221,7 +223,7 @@ type CommandPending {
 }
 ```
 
-- **`CommandAccepted`** — command was valid, business rules passed, events committed (`SQS_Sync`)
+- **`CommandAccepted`** — command was valid, business rules passed, events committed (`SQS_Sync`). `entityId` lets the client navigate directly to the affected entity; `eventCount` is 0 for idempotent no-ops.
 - **`CommandRejected`** — `decide` returned `Error` — business rule violated; state unchanged (`SQS_Sync`)
 - **`CommandPending`** — command queued fire-and-forget; result not yet known (`SQS_Async`)
 
@@ -231,7 +233,7 @@ Client example:
 mutation RegisterCustomer($id: ID!, $email: String!, $address: String!) {
   registerCustomer(id: $id, email: $email, address: $address) {
     __typename
-    ... on CommandAccepted { msgId }
+    ... on CommandAccepted { msgId entityId eventCount }
     ... on CommandRejected { msgId errorCode errorDetail }
     ... on CommandPending  { msgId }
   }

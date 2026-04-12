@@ -1,6 +1,6 @@
 # Plan: End-to-End Error Handling
 
-**Analysis**: [docs/analysis/end-to-end-error-handling.md](../analysis/end-to-end-error-handling.md)
+**Analysis**: [docs/analysis/done/end-to-end-error-handling.md](../analysis/done/end-to-end-error-handling.md)
 
 ## Overview
 
@@ -191,6 +191,77 @@ All runtime builders currently hardcode a channel. Update them to use `CommandTo
 
 ---
 
+### Step 8 — Extend `CommandAccepted` with `entityId` and `eventCount`
+
+**Motivation**: After acceptance, the client often needs to navigate to the affected entity or confirm that the command produced actual state change (vs. an idempotent no-op returning `Ok([])`). Both fields are derivable from data already in-flight at acceptance time — no extra round-trips required.
+
+**SDL change** (`CommandAccepted` type):
+
+```graphql
+type CommandAccepted {
+  msgId: ID!
+  entityId: ID      # absent for extension point commands (see below)
+  eventCount: Int!  # 0 for idempotent no-ops
+}
+```
+
+**ReScript type change** (`CommandTopic.res`):
+
+```rescript
+type commandOutcome =
+  | Accepted({msgId: string, entityId?: string, eventCount: int})
+  | Rejected({msgId: string, errorCode: string, errorDetail?: string})
+  | Pending({msgId: string})
+```
+
+**`entityId` by command type:**
+
+- **Aggregate commands** — envelope `id` IS the aggregate ID (`CommandGenerator_Callback.res:44`: `let id = payload.arguments.id`). Available immediately, no extra work.
+
+- **DCB single-entity slices** (`AddProduct`, `ShipOrder`) — entity identity is the `@partitionTag` field inside the command payload, not the envelope `id`. Populated via `DcbTag.getPartitionTagValue(query, partitionTag)` inside `handleSingleCommand`, where `query` is already built.
+
+- **DCB cross-entity slices** (`PlaceOrder` with `orderId` + `productId[]`) — the `@partitionTag` (`orderId`) identifies the entity being written; `productId[]` are read-only decision inputs. `entityId = orderId` is the correct navigation target. `getPartitionTagValue` correctly resolves it from the query despite array-tag clauses.
+
+- **DCB composite partition key slices** — no single `@partitionTag` field; `derivePartitionTagV2` returns `Composite({keys, seps})`. The constructed composite key (e.g. `"tenant-a/prod-123"`) is returned as an opaque `ID` via `DcbTag.getCompositePartitionKeyValue(tags, compositeSpec)`. Clients treat it as an opaque navigation token — no decomposition required.
+
+- **Extension point commands** — `entityId` is absent. Three compounding reasons: (1) the EP callback dispatches to target aggregates fire-and-forget (`publishJsons`, not `publishJsonsAndWait`), so `CommandAccepted` means "mapping executed and dispatched", not "target aggregate accepted"; (2) `mapIncomingCommand` can fan out to zero, one, or many target aggregates — there is no single entity ID to return; (3) the EP envelope `id` is the source-side identity in the EP's domain, which is not the same as any target aggregate's entity ID.
+
+**Implementation — DCB path (Option B, recommended):**
+
+Widen `handleSingleCommand` return type from `result<string, string>` to `result<acceptedResult, string>`:
+
+```rescript
+type acceptedResult = {entityId?: string, eventCount: int}
+```
+
+`entityId` is extracted from the already-built `query` using a dispatch on `derivePartitionTagV2`:
+
+```rescript
+// Computed once at Make(Spec) functor init:
+let derivedPartitionTag = DcbTag.derivePartitionTagV2([("", "", Spec.eventSchema->S.castToUnknown)])
+
+// Inside handleSingleCommand, after query is built:
+let entityId = switch derivedPartitionTag {
+| Simple(pt) => DcbTag.getPartitionTagValue(query, pt)
+| Composite(spec) =>
+  let tags = DcbTag.extractTags(Spec.commandSchema, command'.command)
+  Some(DcbTag.getCompositePartitionKeyValue(tags, spec))
+}
+```
+
+**Files to update**:
+- `reventless/reventless-core/src/components/CommandTopic/CommandTopic.res` — extend `Accepted` variant
+- `reventless/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res` — populate `entityId` from envelope `id` for aggregates; leave absent for DCB (comes from handler via outcome)
+- `reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res` — widen `handleSingleCommand` return to carry `entityId` and `eventCount`; dispatch on `derivePartitionTagV2` for the `Simple` / `Composite` cases
+- `reventless/reventless-in-memory/src/InMemory_Bus.res` — thread `acceptedResult` through dispatch
+- `reventless/reventless-in-memory/src/adapter/CommandTopic/CommandTopicChannel_InMemory.res` — map to `Accepted({..., entityId, eventCount})`
+- `reventless/reventless-in-memory/src/adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res` — update `commandOutcomeToJson`
+- `reventless/reventless-in-memory/src/adapter/GraphQL/` (wherever `CommandResult` SDL is registered) — update `CommandAccepted` type definition
+
+**AWS scope**: `publishJsonsAndWait: None` on the AWS path means DCB commands return `Pending`. `entityId` and `eventCount` are not populated. Addressable when AWS sync support is added.
+
+---
+
 ## Key Constraints
 
 - **Steps 1–3 are independent of steps 4–6**. The NACKing fix (step 1) and the type/SDL work (steps 2–3) can be merged before any channel implementation lands.
@@ -206,3 +277,4 @@ All runtime builders currently hardcode a channel. Update them to use `CommandTo
 - [x] Step 5 — Rename/split AWS channel adapters (`SQS_Sync` / `SQS_Async`)
 - [x] Step 6 — Switch runtime builder defaults to `SQS_Sync`
 - [x] Step 7 — Update examples and documentation
+- [x] Step 8 — Extend `CommandAccepted` with `entityId` and `eventCount`

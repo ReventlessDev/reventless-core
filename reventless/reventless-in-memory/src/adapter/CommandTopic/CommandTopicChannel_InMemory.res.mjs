@@ -8,6 +8,7 @@ import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Deferred from "effect/Deferred";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 
 function Make(Bus) {
   let encodeMessage = cmdJson => Object.fromEntries([
@@ -53,37 +54,39 @@ function Make(Bus) {
             reference: reference
           };
         });
+        let acceptedResults = {};
+        CommandTopic$ReventlessCore.acceptedResultChannel.contents = (reference, result) => {
+          acceptedResults[reference] = result;
+        };
         let results = await Effect.runPromise(handleCmds(Stream$1.fromIterable(items)));
+        CommandTopic$ReventlessCore.acceptedResultChannel.contents = undefined;
         return jsons.map((cmdJson, i) => {
           let msgId = cmdJson.meta.msgId;
           let match = results[i];
-          if (match !== undefined) {
-            if (match.TAG === "Ok") {
-              if (match._0 === "rejected") {
-                return {
-                  TAG: "Rejected",
-                  msgId: msgId,
-                  errorCode: "BusinessRuleViolation",
-                  errorDetail: undefined
-                };
-              } else {
-                return {
-                  TAG: "Accepted",
-                  msgId: msgId
-                };
-              }
-            } else {
-              return {
-                TAG: "Rejected",
-                msgId: msgId,
-                errorCode: "Conflict",
-                errorDetail: match._0
-              };
-            }
+          if (match !== undefined && match.TAG !== "Ok") {
+            return {
+              TAG: "Rejected",
+              msgId: msgId,
+              errorCode: "Conflict",
+              errorDetail: match._0
+            };
+          }
+          let ar = Stdlib_Option.getOr(acceptedResults[msgId], {
+            eventCount: 0
+          });
+          let entityId = ar.entityId;
+          if (entityId !== undefined) {
+            return {
+              TAG: "Accepted",
+              msgId: msgId,
+              entityId: entityId,
+              eventCount: ar.eventCount
+            };
           } else {
             return {
               TAG: "Accepted",
-              msgId: msgId
+              msgId: msgId,
+              eventCount: ar.eventCount
             };
           }
         });

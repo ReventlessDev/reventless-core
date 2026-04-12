@@ -76,7 +76,21 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
                 id: id,
                 meta: meta,
                 commandJson: commandJson
-              }])), outcomes => outcomes[0]);
+              }])), outcomes => {
+              let payload = outcomes[0];
+              switch (payload.TAG) {
+                case "Accepted" :
+                  if (!Stdlib_Option.isNone(payload.entityId)) {
+                    return payload;
+                  }
+                  let newrecord = {...payload};
+                  newrecord.entityId = id;
+                  return newrecord;
+                case "Rejected" :
+                case "Pending" :
+                  return payload;
+              }
+            });
           } else {
             return Effect.map(Effect.promise(() => publishJsons([{
                 id: id,

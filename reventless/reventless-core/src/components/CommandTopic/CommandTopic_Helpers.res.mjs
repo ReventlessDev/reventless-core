@@ -5,6 +5,14 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
+let acceptedResultChannel = {
+  contents: undefined
+};
+
+function reportAccepted(reference, result) {
+  Stdlib_Option.forEach(acceptedResultChannel.contents, cb => cb(reference, result));
+}
+
 function callHandlerWithArray(handler, items) {
   return Effect.runPromise(handler(Stream.fromIterable(items)));
 }
@@ -28,6 +36,8 @@ function getHandlers(typeName) {
 }
 
 export {
+  acceptedResultChannel,
+  reportAccepted,
   callHandlerWithArray,
   extractTypeNamesFromSchema,
   globalRegistry,

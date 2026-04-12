@@ -3,6 +3,22 @@ type topicItem<'command> = ReventlessInfra.CommandTopic.topicItem<'command>
 
 type jsonCommandsHandler = ReventlessInfra.CommandTopic.commandsHandler<JSON.t>
 
+/**
+Carries entity identity and event count from a successful synchronous command dispatch.
+Populated by `StateChangeSlice_Callback.handleSingleCommand` during in-memory
+`publishJsonsAndWait` execution and read by the channel adapter to build
+`CommandTopic.Accepted` outcomes.
+*/
+type acceptedResult = {entityId?: string, eventCount: int}
+
+// Side-channel for publishJsonsAndWait result propagation.
+// Set by the channel adapter before running a synchronous handler invocation; cleared after.
+// StateChangeSlice_Callback calls reportAccepted during inline dispatch.
+let acceptedResultChannel: ref<option<(string, acceptedResult) => unit>> = ref(None)
+
+let reportAccepted = (reference: string, result: acceptedResult) =>
+  acceptedResultChannel.contents->Option.forEach(cb => cb(reference, result))
+
 // Convenience helper for test code that needs to call a stream handler with an array
 // (for use in packages that don't have rescript-effect as a direct dependency)
 let callHandlerWithArray: (

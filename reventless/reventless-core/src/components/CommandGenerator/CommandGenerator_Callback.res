@@ -106,7 +106,15 @@ let makeGenerateCommand = (
             switch publishJsonsAndWait {
             | Some(publishAndWait) =>
               Effect.promise(() => publishAndWait([{id, meta, commandJson}]))
-              ->Effect.map(outcomes => outcomes->Array.getUnsafe(0))
+              ->Effect.map(outcomes => {
+                // For aggregates, entityId comes from the envelope id.
+                // DCB slices populate entityId via the side-channel; don't override it.
+                switch outcomes->Array.getUnsafe(0) {
+                | CommandTopic.Accepted(payload) when payload.entityId->Option.isNone =>
+                  CommandTopic.Accepted({...payload, entityId: id})
+                | outcome => outcome
+                }
+              })
             | None =>
               Effect.promise(() => publishJsons([{id, meta, commandJson}]))
               ->Effect.map(_ => CommandTopic.Pending({msgId: meta.msgId}))

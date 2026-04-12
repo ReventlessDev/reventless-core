@@ -12,6 +12,7 @@ import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 
 function Make(Spec) {
   let comp = `StateChangeSlice(` + Spec.name + `)`;
@@ -27,10 +28,22 @@ function Make(Spec) {
       tags: tags
     };
   };
+  let derivedPartitionTag = DcbTag$Reventless.derivePartitionTagV2([[
+      Spec.name,
+      Spec.moduleUrl,
+      Spec.eventSchema
+    ]]);
   let handleSingleCommand = (dcbEventLog, command$p) => {
     let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
     Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
     let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
+    let entityId;
+    if (derivedPartitionTag.TAG === "Simple") {
+      entityId = DcbTag$Reventless.getPartitionTagValue(query, derivedPartitionTag._0);
+    } else {
+      let tags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
+      entityId = DcbTag$Reventless.getCompositePartitionKeyValue(tags, derivedPartitionTag._0);
+    }
     let attempt = retries => Effect.flatMap(Effect.tap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, undefined), raw => {
       let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
       return Stdlib_Option.map(decoded, event => [
@@ -56,6 +69,12 @@ function Make(Spec) {
       if (newEvents.TAG === "Ok") {
         let newEvents$1 = newEvents._0;
         if (newEvents$1.length === 0) {
+          CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
+              entityId: entityId,
+              eventCount: 0
+            }) : ({
+              eventCount: 0
+            }));
           return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, "no events produced"), () => ({
             TAG: "Ok",
             _0: "ok"
@@ -81,19 +100,26 @@ function Make(Spec) {
           after: condition_after
         };
         return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => dcbEventLog.append(rawEvents, condition))), appendResult => {
-          if (appendResult.TAG === "Ok") {
-            return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: ` + eventCount + ` event(s)`), () => ({
-              TAG: "Ok",
-              _0: "ok"
-            }));
-          } else if (retries > 0) {
-            return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict, retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retries - 1 | 0));
-          } else {
-            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, "conflict, retries exhausted"), () => ({
-              TAG: "Error",
-              _0: "conflict: retries exhausted"
-            }));
+          if (appendResult.TAG !== "Ok") {
+            if (retries > 0) {
+              return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict, retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retries - 1 | 0));
+            } else {
+              return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, "conflict, retries exhausted"), () => ({
+                TAG: "Error",
+                _0: "conflict: retries exhausted"
+              }));
+            }
           }
+          CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
+              entityId: entityId,
+              eventCount: rawEvents.length
+            }) : ({
+              eventCount: rawEvents.length
+            }));
+          return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: ` + eventCount + ` event(s)`), () => ({
+            TAG: "Ok",
+            _0: "ok"
+          }));
         });
       }
       let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));

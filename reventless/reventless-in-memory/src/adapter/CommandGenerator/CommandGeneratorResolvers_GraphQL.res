@@ -43,6 +43,8 @@ let commandResultSdl = `union CommandResult = CommandAccepted | CommandRejected 
 
 type CommandAccepted {
   msgId: ID!
+  entityId: ID
+  eventCount: Int!
 }
 
 type CommandRejected {
@@ -63,11 +65,13 @@ let ensureCommandResultTypes = (server: GraphQL_ServerInstance.t) => {
 
 let commandOutcomeToJson = (outcome: ReventlessCore.CommandTopic.commandOutcome): JSON.t =>
   switch outcome {
-  | Accepted({msgId}) =>
+  | Accepted({msgId, eventCount} as accepted) =>
     JSON.Object(
       Dict.fromArray([
         ("__typename", JSON.String("CommandAccepted")),
         ("msgId", JSON.String(msgId)),
+        ("entityId", accepted.entityId->Option.map(id => JSON.String(id))->Option.getOr(JSON.Null)),
+        ("eventCount", JSON.Number(eventCount->Int.toFloat)),
       ]),
     )
   | Rejected({msgId, errorCode, errorDetail}) =>

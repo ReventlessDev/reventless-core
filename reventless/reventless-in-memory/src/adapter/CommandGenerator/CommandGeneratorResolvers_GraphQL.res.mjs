@@ -33,6 +33,8 @@ let commandResultSdl = `union CommandResult = CommandAccepted | CommandRejected 
 
 type CommandAccepted {
   msgId: ID!
+  entityId: ID
+  eventCount: Int!
 }
 
 type CommandRejected {
@@ -62,6 +64,14 @@ function commandOutcomeToJson(outcome) {
         [
           "msgId",
           outcome.msgId
+        ],
+        [
+          "entityId",
+          Stdlib_Option.getOr(Stdlib_Option.map(outcome.entityId, id => (id)), null)
+        ],
+        [
+          "eventCount",
+          outcome.eventCount
         ]
       ]);
     case "Rejected" :

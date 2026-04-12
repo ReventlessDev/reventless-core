@@ -239,7 +239,7 @@ By default all aggregates use `CommandTopicChannel.SQS_Sync` — a standard SQS 
 mutation AddProduct($id: ID!, $name: String!) {
   addProduct(id: $id, name: $name) {
     __typename
-    ... on CommandAccepted { msgId }
+    ... on CommandAccepted { msgId entityId eventCount }
     ... on CommandRejected { msgId errorCode errorDetail }
     ... on CommandPending  { msgId }
   }

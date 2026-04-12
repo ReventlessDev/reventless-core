@@ -91,19 +91,13 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
           jsons->Array.mapWithIndex((cmdJson, i) => {
             let msgId = cmdJson.meta.msgId
             switch results->Array.get(i) {
-            | Some(Ok("rejected")) =>
-              ReventlessCore.CommandTopic.Rejected({
-                msgId,
-                errorCode: "BusinessRuleViolation",
-                errorDetail: None,
-              })
             | Some(Error(msg)) =>
               ReventlessCore.CommandTopic.Rejected({
                 msgId,
                 errorCode: "Conflict",
                 errorDetail: Some(msg),
               })
-            | _ => ReventlessCore.CommandTopic.Accepted({msgId: msgId})
+            | _ => ReventlessCore.CommandTopic.Accepted({msgId, eventCount: 0})
             }
           })
         }

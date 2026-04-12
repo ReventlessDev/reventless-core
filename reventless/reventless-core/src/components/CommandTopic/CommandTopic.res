@@ -17,7 +17,7 @@ type publishJsonsStream = ReventlessInfra.CommandTopic.publishJsonsStream
 type commandsHandler<'command> = ReventlessInfra.CommandTopic.commandsHandler<'command>
 
 type commandOutcome =
-  | Accepted({msgId: string})
+  | Accepted({msgId: string, entityId?: string, eventCount: int})
   | Rejected({msgId: string, errorCode: string, errorDetail: option<string>})
   | Pending({msgId: string})
 

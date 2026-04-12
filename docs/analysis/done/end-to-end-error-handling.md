@@ -626,3 +626,183 @@ Different aggregates and DcbEventLogs in the same plugin can use different chann
 - Entity type with one owner (a product catalog entry, a user profile) → `CommandTopicChannel.SQS_Sync` (the default — no explicit declaration needed)
 
 The DCB vs Aggregate decision guide (`docs/guides/aggregate-vs-dcb-decision-guide.md`) already encodes this reasoning: high-contention cross-entity scenarios use DCB; self-contained lifecycles use Aggregates. The same classification guides channel selection. Static configuration keeps behavior predictable and adds no runtime overhead.
+
+---
+
+## 8. Extending `CommandAccepted` with `entityId` and `eventCount`
+
+### 8.1 Motivation
+
+A bare `CommandAccepted { msgId }` tells the client the command succeeded but not what changed or where to find it. Two additions make acceptance actionable without extra round-trips:
+
+- **`entityId: ID`** — the aggregate or primary entity ID, so the client can navigate to a detail view, update a local cache entry, or open an optimistic update immediately after acceptance.
+- **`eventCount: Int!`** — the number of events emitted. `0` means the command was idempotent (state already matched the intent — `decide` returned `Ok([])`). `1+` means real state change occurred. Without this, the client cannot distinguish "saved" from "already up to date".
+
+Updated SDL:
+
+```graphql
+type CommandAccepted {
+  msgId: ID!
+  entityId: ID      # absent for DCB cross-entity and extension point commands (see below)
+  eventCount: Int!  # 0 for idempotent no-ops
+}
+```
+
+Updated ReScript type (`CommandTopic.res`):
+
+```rescript
+type commandOutcome =
+  | Accepted({msgId: string, entityId?: string, eventCount: int})
+  | Rejected({msgId: string, errorCode: string, errorDetail?: string})
+  | Pending({msgId: string})
+```
+
+### 8.2 Aggregates: straightforward
+
+For aggregate commands the envelope `id` IS the aggregate ID. In `CommandGenerator_Callback.res:44`:
+
+```rescript
+let id = payload.arguments.id
+```
+
+Every aggregate GraphQL mutation has a top-level `id: ID!` argument — the aggregate root identifier. It is already in hand when the outcome is constructed. `eventCount` flows back from the handler via `publishJsonsAndWait`. No architectural changes beyond threading both values into `Accepted`.
+
+### 8.3 DCB StateChangeSlices: the `id` gap
+
+DCB StateChangeSlice mutations do **not** have a top-level `id` argument. The entity identity is embedded inside the command payload as a DCB-tagged field:
+
+```rescript
+// AddProduct (single-entity): productId is the only tagged field
+type command = AddProduct({productId: string, name: string, ...})
+
+// PlaceOrder (cross-entity): orderId is @partitionTag, productId[] are read-side prerequisites
+type command = PlaceOrder({@partitionTag orderId: string, @noDcbTag customerId: string, productId: array<string>})
+```
+
+`payload.arguments.id` is therefore `undefined` for DCB mutations. Setting `entityId` from the envelope `id` would always produce an absent field.
+
+### 8.4 Returning the `@partitionTag` value for DCB
+
+The `@partitionTag` field is the natural `entityId` for a DCB command — it identifies the primary entity the command targets (`productId` for `AddProduct`, `orderId` for `PlaceOrder`). Both the field name and its value are derivable from data already in flight.
+
+#### Option A — Extract at `CommandGenerator` level (pre-dispatch)
+
+`makeGenerateCommand` builds `commandJson` from `payload.arguments` before publishing. For `StateChangeSlice` commands it could call `DcbTag.extractTagsFromJson(commandSchema, commandJson)` to find tagged fields, then `DcbTag.extractPartitionTagFields(commandSchema)` to identify the partition key field, and return its value as `entityId`.
+
+**Limitation**: `eventCount` is not available at this point — the handler hasn't run yet. Option A solves `entityId` only; `eventCount` still requires threading from the handler. Doing two partial changes creates more surface area than one complete change.
+
+#### Option B — Widen `handleSingleCommand` return type (recommended)
+
+`StateChangeSlice_Callback.handleSingleCommand` already computes everything needed:
+
+- **`eventCount`**: `newEvents->Array.length` at line 84 — available when `decide` returns `Ok(newEvents)`.
+- **`entityId`**: the `query` built at lines 51–55 already contains the partition tag value. `DcbTag.getPartitionTagValue(query, partitionTag)` extracts it. The partition tag key is derivable once per `Make(Spec)` functor from `Spec.eventSchema` via `DcbTag.derivePartitionTag([("", "", Spec.eventSchema->S.castToUnknown)])`.
+
+The return type changes from `result<string, string>` to `result<acceptedResult, string>`:
+
+```rescript
+type acceptedResult = {entityId?: string, eventCount: int}
+```
+
+This propagates upward through the dispatch chain:
+
+| Layer | File | Change |
+|---|---|---|
+| Callback | `StateChangeSlice_Callback.res` | `handleSingleCommand` returns `result<acceptedResult, string>` |
+| Bus | `InMemory_Bus.res` | dispatch result carries `acceptedResult` for accepted outcomes |
+| Channel | `CommandTopicChannel_InMemory.res` | map to `Accepted({..., entityId, eventCount})` |
+| Outcome type | `CommandTopic.res` | `Accepted` variant extended (Step 8 of plan) |
+
+### 8.5 Client value
+
+**Single-entity DCB slices** (`AddProduct`, `ShipOrder`, `ChangeProductName`) are the common case. The `@partitionTag` unambiguously identifies one entity. The client gets `productId` / `orderId` / etc. directly in the mutation response:
+
+```graphql
+mutation {
+  addProduct(productId: "prod-123", name: "Widget", ...) {
+    ... on CommandAccepted {
+      entityId   # "prod-123"
+      eventCount # 1
+    }
+    ... on CommandRejected {
+      errorCode  # "ProductAlreadyExists"
+    }
+  }
+}
+```
+
+**Cross-entity slices** (`PlaceOrder` with `orderId` + `productId[]`): a cross-entity slice reads events belonging to multiple entity types in a single DCB query — `PlaceOrder` reads both `Order` events (to detect duplicate placement) and `CatalogProduct` events (to validate the requested products exist). Only one of those entity types is actually being written to: the new `Order`. The others are consulted read-only as inputs to the decision model.
+
+The `@partitionTag` annotation on `orderId` makes this explicit — it marks the field whose value becomes the storage partition key, i.e. the entity being written. The array-tagged `productId[]` fields expand into separate query clauses that read existing `CatalogProduct` events but never produce new events for those entities.
+
+`entityId = orderId` is therefore the correct and unambiguous navigation target. The client already knows the product IDs (it sent them in the command) and has no use for them in the response. The new order's ID is what the client needs to navigate to the order confirmation view or update its local state.
+
+```graphql
+mutation {
+  placeOrder(orderId: "ord-456", customerId: "cust-1", productId: ["p1", "p2"]) {
+    ... on CommandAccepted {
+      entityId   # "ord-456" — navigate to order detail; product IDs already known by client
+      eventCount # 1
+    }
+    ... on CommandRejected {
+      errorCode  # "OrderAlreadyPlaced" | "ProductsNotAvailable"
+    }
+  }
+}
+```
+
+Technically `entityId` could also be absent here — the client generated `orderId` before sending the command, so it already has it. But returning it makes the API consistent with single-entity slices and eliminates any ambiguity about which ID to use for navigation.
+
+**Composite partition key slices**: some entities are scoped within a parent — a product within a tenant, a line item within an order. A single `productId` field is not globally unique; the storage partition key must combine multiple fields (e.g., `tenantId + "/" + productId`). This is expressed via `@compositePartitionTag` annotations on each contributing field:
+
+```rescript
+@schema type event =
+  | ProductAdded({
+      @compositePartitionTag tenantId: string,   // position 0, sep "/"
+      @compositePartitionTag productId: string,  // position 1
+      name: string,
+    })
+// Partition key: "tenant-a/prod-123"
+```
+
+Returning this composite key as `entityId` is valuable and consistent with the pattern for all other DCB slices:
+
+- **GraphQL `ID` fields are opaque by contract.** The client uses `entityId` as a navigation token for a subsequent `node(id: ...)` query or as a Relay cache key — it does not need to decompose it into component parts. A composite string is a perfectly valid opaque ID from the client's perspective.
+- **The client may not already hold the key.** For single-entity slices the client generates the entity ID itself. For composite keys, one component is often session-derived (`tenantId` comes from auth context, not an explicit command argument) and another may be server-generated. The client cannot safely reconstruct the composite key without knowing the separator and field order — returning it is the only reliable contract.
+- **Consistency.** All DCB slice types returning `entityId` is simpler for clients than a rule that says "single-entity: present, cross-entity: present, composite: absent".
+
+The implementation requires handling the `Composite` case that `getPartitionTagValue` does not cover. `derivePartitionTagV2` (used at `Make(Spec)` functor time) already returns `Simple(partitionTag)` or `Composite({keys, seps})`. The extraction becomes a dispatch on that result:
+
+```rescript
+// Inside Make(Spec) — computed once at module init:
+let derivedPartitionTag = DcbTag.derivePartitionTagV2([("", "", Spec.eventSchema->S.castToUnknown)])
+
+// Inside handleSingleCommand — after query is built:
+let entityId = switch derivedPartitionTag {
+| Simple(pt) => DcbTag.getPartitionTagValue(query, pt)
+| Composite(spec) =>
+  let tags = DcbTag.extractTags(Spec.commandSchema, command'.command)
+  Some(DcbTag.getCompositePartitionKeyValue(tags, spec))
+}
+```
+
+The composite key value (`"tenant-a/prod-123"`) is then returned in `acceptedResult.entityId` and surfaces as `CommandAccepted.entityId` in the GraphQL response. The client treats it as an opaque `ID` — no parsing required.
+
+**`eventCount = 0`** — distinguishes real acceptance from idempotent no-ops. A command that produces `Ok([])` is accepted but nothing changed. Without `eventCount`, the client cannot differentiate "saved" from "already up to date" — a material UX difference for retry-safe operations.
+
+### 8.6 Constraints
+
+- **AWS path**: `publishJsonsAndWait: None` means DCB commands return `Pending` on AWS. `entityId` and `eventCount` are not populated on the AWS path. Consistent with current aggregate behaviour — addressable when AWS sync support is added.
+- **Extension point commands**: there are three distinct reasons why `entityId` is absent for EP commands, and they compound on each other.
+
+  **What an EP command dispatch actually does.** When a client sends an EP mutation, the command travels to the extension point's CommandTopic. `ExtensionPoint_Callback.handleIncomingCommands` collects the batch, runs it through every registered `Mapping` module's `mapIncomingCommand` function, and executes the resulting `abstractCommandAction` values concurrently. Each action is either an `AbstractPublishCommand(aggregateName, reference, cmdJson)` — which fires the encoded command at the named aggregate's CommandTopic — or an `AbstractCall` side-effect. Crucially, `applyCommandAction` uses the aggregate's existing `publishJsons` (fire-and-forget), not `publishJsonsAndWait`. The EP callback returns `Ok(reference)` as soon as the downstream publish call is dispatched, without waiting for the target aggregate to run `decide`.
+
+  **The `CommandAccepted` an EP mutation returns does not mean the target aggregate accepted the command.** It means the extension point successfully executed the mapping and dispatched to the target(s). The actual aggregate decisions happen asynchronously, after the EP mutation has already returned. This is a fundamental difference from aggregate and DCB slice commands, where `publishJsonsAndWait` waits for `decide` to complete.
+
+  **Fan-out: zero, one, or many target entities.** `mapIncomingCommand` returns `array<commandAction>` — the mapping is free to produce any number of downstream commands. A single EP command can dispatch to multiple aggregates with different entity IDs (fan-out), or produce no downstream commands at all if the mapping decides to ignore the input. There is no single target entity to name as `entityId`.
+
+  **The EP envelope `id` is the source-side identity, not the target.** The `id` in the EP command envelope (`payload.arguments.id`) is the identity of the entity in the extension point's domain — for example, the order ID in an ordering EP. The target aggregate command's `id` is whatever the mapping extracts and places in `cmdJson` — it could be the same value, a different value derived from the payload, or different IDs for each fan-out target. These are separate identities at separate layers.
+
+  For completeness: if EP dispatch were made end-to-end synchronous (waiting for all target aggregate decisions), returning `entityId` would require returning an array of outcomes — one per target. That is a richer API design beyond the current `CommandResult` union and not in scope here.
+- **Cross-entity array tag queries**: `PlaceOrder` has `productId: array<string>`. The query has one clause per product ID plus the `orderId` clause. `getPartitionTagValue` correctly finds `orderId` from the clause whose tag key matches the partition tag — array tags land in separate clauses and do not interfere.
+- **Composite partition key extraction**: uses `DcbTag.extractTags` on the command value rather than reading from the query, because `buildQueryFromCommand` does not preserve composite-member tags as individual clauses. The command value is available in `handleSingleCommand` as `command'.command`, so this is straightforward.
