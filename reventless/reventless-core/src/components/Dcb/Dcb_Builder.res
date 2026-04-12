@@ -223,6 +223,15 @@ module Make = (
           module(V: StateViewSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
+          let qn = switch V.Spec.subIdConfig {
+          | Some(_) =>
+            {
+              ...qn,
+              itemsFieldName: qn.singleFieldName ++ "Items",
+              filterTypeName: qn.returnTypeName ++ "Filter",
+            }
+          | None => qn
+          }
           Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(V.Spec.name, qn)
         })
 
@@ -482,6 +491,7 @@ module Make = (
           module(V: StateViewSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
+          let subIdField = V.Spec.subIdConfig->Option.map(c => c.subIdField)
           {
             ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
@@ -490,6 +500,7 @@ module Make = (
             authorization: None,
             includeIdParam: qn.includeIdParam,
             connectionSpec: true,
+            subIdField: ?subIdField,
           }
         })
 

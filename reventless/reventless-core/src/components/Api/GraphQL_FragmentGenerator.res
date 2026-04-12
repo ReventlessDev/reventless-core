@@ -119,14 +119,15 @@ let deriveConnectionTypes = (~singularTypeName: string): array<string> => [
   `type ${singularTypeName}Connection {\n  edges: [${singularTypeName}Edge!]!\n  pageInfo: PageInfo!\n  totalCount: Int\n}`,
 ]
 
-let deriveByIdConnectionType = (~typeName: string): string =>
-  `type ${typeName}ByIdConnection {\n  items: [${typeName}!]!\n  nextToken: String\n}`
+let deriveSubIdFilterType = (~filterTypeName: string): string =>
+  `input ${filterTypeName} {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`
 
-let deriveByIdConnectionQueryField = (
+let deriveItemsQueryField = (
   ~singleFieldName: string,
   ~returnTypeName: string,
+  ~filterTypeName: string,
 ): string =>
-  `  ${singleFieldName}ById(id: ID!, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ${returnTypeName}ByIdConnection!`
+  `  ${singleFieldName}Items(id: ID!, filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${returnTypeName}Connection!`
 
 // ── Query field derivation ─────────────────────────────────────────────────
 
@@ -243,18 +244,19 @@ let generate = (
     queries->Array.push(singleField)
 
     let listFieldName = entry.listFieldName
-    // ByIdConnection query (sort key conditions) — generated when subIdField is set
+    // Items query (sort key conditions, Relay connection) — generated when subIdField is set
     switch entry.subIdField {
     | Some(_sf) =>
-      let byIdConnTypeName = entry.returnTypeName ++ "ByIdConnection"
-      if !(seenTypes->Set.has(byIdConnTypeName)) {
-        seenTypes->Set.add(byIdConnTypeName)
-        types->Array.push(deriveByIdConnectionType(~typeName=entry.returnTypeName))
+      let filterTypeName = entry.returnTypeName ++ "Filter"
+      if !(seenTypes->Set.has(filterTypeName)) {
+        seenTypes->Set.add(filterTypeName)
+        types->Array.push(deriveSubIdFilterType(~filterTypeName))
       }
       queries->Array.push(
-        deriveByIdConnectionQueryField(
+        deriveItemsQueryField(
           ~singleFieldName=entry.singleFieldName,
           ~returnTypeName=entry.returnTypeName,
+          ~filterTypeName,
         ),
       )
     | None => ()

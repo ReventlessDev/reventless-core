@@ -1,17 +1,28 @@
 type queryNames = {
   singleFieldName: string,
   listFieldName: string,
+  itemsFieldName?: string,
   returnTypeName: string,
   pluralTypeName: string,
+  filterTypeName?: string,
   includeIdParam: bool,
   connectionSpec: bool,
 }
 
-let pluralize = (n: string) => n->String.endsWith("s") ? n : n ++ "s"
+let pluralize = (n: string) =>
+  if RegExp.test(%re("/[^aeiou]y$/i"), n) {
+    n->String.slice(~start=0, ~end=String.length(n) - 1) ++ "ies"
+  } else if n->String.endsWith("s") {
+    n ++ "es"
+  } else {
+    n ++ "s"
+  }
 
 let singularize = (n: string) =>
   if n->String.endsWith("ies") {
     n->String.slice(~start=0, ~end=n->String.length - 3) ++ "y"
+  } else if n->String.endsWith("ses") || n->String.endsWith("xes") || n->String.endsWith("zes") || n->String.endsWith("ches") || n->String.endsWith("shes") {
+    n->String.slice(~start=0, ~end=n->String.length - 2)
   } else if n->String.endsWith("s") {
     n->String.slice(~start=0, ~end=n->String.length - 1)
   } else {
@@ -56,9 +67,9 @@ let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connecti
 let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string, ~connectionSpec: bool=true): queryNames => {
   {
     singleFieldName: `${plugin}_${queryDbName}`,
-    listFieldName: `${plugin}_${queryDbName}s`,
+    listFieldName: `${plugin}_${pluralize(queryDbName)}`,
     returnTypeName: `${plugin}_${queryDbName}`,
-    pluralTypeName: `${plugin}_${queryDbName}s`,
+    pluralTypeName: `${plugin}_${pluralize(queryDbName)}`,
     includeIdParam: false,
     connectionSpec,
   }

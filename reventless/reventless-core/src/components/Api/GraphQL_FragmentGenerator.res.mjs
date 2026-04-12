@@ -104,12 +104,12 @@ function deriveConnectionTypes(singularTypeName) {
   ];
 }
 
-function deriveByIdConnectionType(typeName) {
-  return `type ` + typeName + `ByIdConnection {\n  items: [` + typeName + `!]!\n  nextToken: String\n}`;
+function deriveSubIdFilterType(filterTypeName) {
+  return `input ` + filterTypeName + ` {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`;
 }
 
-function deriveByIdConnectionQueryField(singleFieldName, returnTypeName) {
-  return `  ` + singleFieldName + `ById(id: ID!, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ` + returnTypeName + `ByIdConnection!`;
+function deriveItemsQueryField(singleFieldName, returnTypeName, filterTypeName) {
+  return `  ` + singleFieldName + `Items(id: ID!, filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + returnTypeName + `Connection!`;
 }
 
 function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt) {
@@ -193,12 +193,12 @@ function generate(mutationEntries, queryEntries) {
     let listFieldName = entry.listFieldName;
     let _sf = entry.subIdField;
     if (_sf !== undefined) {
-      let byIdConnTypeName = entry.returnTypeName + "ByIdConnection";
-      if (!seenTypes.has(byIdConnTypeName)) {
-        seenTypes.add(byIdConnTypeName);
-        types.push(deriveByIdConnectionType(entry.returnTypeName));
+      let filterTypeName = entry.returnTypeName + "Filter";
+      if (!seenTypes.has(filterTypeName)) {
+        seenTypes.add(filterTypeName);
+        types.push(deriveSubIdFilterType(filterTypeName));
       }
-      queries.push(deriveByIdConnectionQueryField(entry.singleFieldName, entry.returnTypeName));
+      queries.push(deriveItemsQueryField(entry.singleFieldName, entry.returnTypeName, filterTypeName));
     }
     if (connectionSpec) {
       let connectionTypeName = entry.returnTypeName + "Connection";
@@ -249,8 +249,8 @@ export {
   deriveObjectTypeWithNested,
   derivePluralWrapperType,
   deriveConnectionTypes,
-  deriveByIdConnectionType,
-  deriveByIdConnectionQueryField,
+  deriveSubIdFilterType,
+  deriveItemsQueryField,
   deriveObjectQueryField,
   deriveListQueryField,
   deriveConnectionQueryField,

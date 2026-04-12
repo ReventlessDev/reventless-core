@@ -2,7 +2,6 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -187,54 +186,114 @@ function Make(Bus) {
         listQueryName,
         match[1]
       ]];
-    let byIdListSdl;
+    let decodeCursor = cursor => atob(cursor);
+    let itemsSdl;
     if (subIdField !== undefined) {
-      let connectionTypeName$1 = returnTypeName + "ByIdConnection";
-      server.registerTypes([`type ` + connectionTypeName$1 + ` {\n  items: [` + returnTypeName + `!]!\n  nextToken: String\n}`]);
-      byIdListSdl = [`  ` + singleQueryName + `ById(id: ID!, ` + subIdField + `: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ` + connectionTypeName$1 + `!`];
+      let filterTypeName = returnTypeName + "Filter";
+      let connectionTypeName$1 = returnTypeName + "Connection";
+      server.registerTypes([`input ` + filterTypeName + ` {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`]);
+      itemsSdl = [`  ` + singleQueryName + `Items(id: ID!, filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + connectionTypeName$1 + `!`];
     } else {
-      byIdListSdl = [];
+      itemsSdl = [];
     }
-    let byIdListResolvers;
+    let itemsResolvers;
     if (subIdField !== undefined) {
       let resolver$2 = async (_root, args, ctx) => {
+        let emptyConn = {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false,
+            hasPreviousPage: false,
+            startCursor: null,
+            endCursor: null
+          }
+        };
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
-          return {
-            items: [],
-            nextToken: null
-          };
+          return emptyConn;
         }
         let argsDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(args), {});
         let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["id"], Stdlib_JSON.Decode.string), "");
-        let filterPrefix = Stdlib_Option.flatMap(argsDict["prefix"], Stdlib_JSON.Decode.string);
-        let filterFrom = Stdlib_Option.flatMap(argsDict["from"], Stdlib_JSON.Decode.string);
-        let filterTo = Stdlib_Option.flatMap(argsDict["to"], Stdlib_JSON.Decode.string);
-        let filterEq = Stdlib_Option.flatMap(argsDict["eq"], Stdlib_JSON.Decode.string);
-        let reverse = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["reverse"], Stdlib_JSON.Decode.bool), false);
-        let limit = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["limit"], Stdlib_JSON.Decode.float), prim => prim | 0);
-        let nextTokenStr = Stdlib_Option.flatMap(argsDict["nextToken"], Stdlib_JSON.Decode.string);
-        let offset = Stdlib_Option.getOr(Stdlib_Option.flatMap(nextTokenStr, s => Stdlib_Int.fromString(s, undefined)), 0);
+        let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
+        let filterPrefix = Stdlib_Option.flatMap(filterDict["prefix"], Stdlib_JSON.Decode.string);
+        let filterFrom = Stdlib_Option.flatMap(filterDict["from"], Stdlib_JSON.Decode.string);
+        let filterTo = Stdlib_Option.flatMap(filterDict["to"], Stdlib_JSON.Decode.string);
+        let filterEq = Stdlib_Option.flatMap(filterDict["eq"], Stdlib_JSON.Decode.string);
+        let orderDesc = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(filterDict["order"], Stdlib_JSON.Decode.string), o => o === "DESC"), false);
+        let first = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0);
+        let after = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
+        let last = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["last"], Stdlib_JSON.Decode.float), prim => prim | 0);
+        let before = Stdlib_Option.flatMap(argsDict["before"], Stdlib_JSON.Decode.string);
+        let isBackward = Stdlib_Option.isSome(last);
         let ops = Bus.getQueryDb(name);
         if (ops === undefined) {
-          return {
-            items: [],
-            nextToken: null
-          };
+          return emptyConn;
         }
-        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-        let result = SortKey_Filter$ReventlessInMemory.apply(items, subIdField, filterPrefix, filterFrom, filterTo, filterEq, reverse, limit, offset);
+        let allItems = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+        let cursorFiltered;
+        if (isBackward) {
+          let beforeKey = Stdlib_Option.map(before, decodeCursor);
+          cursorFiltered = beforeKey !== undefined ? allItems.filter(item => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[subIdField]), Stdlib_JSON.Decode.string), v => v < beforeKey), false)) : allItems;
+        } else {
+          let afterKey = Stdlib_Option.map(after, decodeCursor);
+          cursorFiltered = afterKey !== undefined ? allItems.filter(item => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[subIdField]), Stdlib_JSON.Decode.string), v => v > afterKey), false)) : allItems;
+        }
+        let filtered = SortKey_Filter$ReventlessInMemory.apply(cursorFiltered, subIdField, filterPrefix, filterFrom, filterTo, filterEq, isBackward ? !orderDesc : orderDesc, undefined, 0).items;
+        let match$1;
+        let exit = 0;
+        if (isBackward && last !== undefined) {
+          let take = last + 1 | 0;
+          let taken = filtered.slice(0, take);
+          let hasMore = taken.length > last;
+          let result = taken.slice(0, last).toReversed();
+          match$1 = [
+            result,
+            hasMore
+          ];
+        } else {
+          exit = 1;
+        }
+        if (exit === 1) {
+          if (first !== undefined) {
+            let take$1 = first + 1 | 0;
+            let taken$1 = filtered.slice(0, take$1);
+            let hasMore$1 = taken$1.length > first;
+            match$1 = [
+              taken$1.slice(0, first),
+              hasMore$1
+            ];
+          } else {
+            match$1 = [
+              filtered,
+              false
+            ];
+          }
+        }
+        let hasMore$2 = match$1[1];
+        let pageItems = match$1[0];
+        let getSkValue = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[subIdField]), Stdlib_JSON.Decode.string), "");
+        let edges = pageItems.map(item => ({
+          node: item,
+          cursor: btoa(getSkValue(item))
+        }));
+        let startCursor = Stdlib_Option.map(pageItems[0], item => btoa(getSkValue(item)));
+        let endCursor = Stdlib_Option.map(pageItems[pageItems.length - 1 | 0], item => btoa(getSkValue(item)));
         return {
-          items: result.items,
-          nextToken: Stdlib_Nullable.fromOption(result.nextToken)
+          edges: edges,
+          pageInfo: {
+            hasNextPage: !isBackward && hasMore$2,
+            hasPreviousPage: isBackward && hasMore$2,
+            startCursor: Stdlib_Nullable.fromOption(startCursor),
+            endCursor: Stdlib_Nullable.fromOption(endCursor)
+          }
         };
       };
-      byIdListResolvers = [[
-          singleQueryName + "ById",
+      itemsResolvers = [[
+          singleQueryName + "Items",
           resolver$2
         ]];
     } else {
-      byIdListResolvers = [];
+      itemsResolvers = [];
     }
     let indexSdlFields = indexes.map(ic => `  ` + singleQueryName + `By` + cap(ic.index) + `(` + ic.index + `: String!): [String]`);
     let indexResolvers = indexes.map(ic => {
@@ -259,13 +318,13 @@ function Make(Bus) {
         resolver
       ];
     });
-    let allSdl = [byIdSdl].concat(match[0]).concat(byIdListSdl).concat(indexSdlFields);
+    let allSdl = [byIdSdl].concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
     let resolvers = {};
     resolvers[singleQueryName] = byIdResolver;
     listResolvers.forEach(param => {
       resolvers[param[0]] = param[1];
     });
-    byIdListResolvers.forEach(param => {
+    itemsResolvers.forEach(param => {
       resolvers[param[0]] = param[1];
     });
     indexResolvers.forEach(param => {

@@ -158,7 +158,17 @@ function Make(DcbEventLogStorage) {
       }
       stateViewSlices.forEach(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, undefined);
-        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[V.Spec.name] = qn;
+        let match = V.Spec.subIdConfig;
+        let qn$1;
+        if (match !== undefined) {
+          let newrecord = {...qn};
+          newrecord.filterTypeName = qn.returnTypeName + "Filter";
+          newrecord.itemsFieldName = qn.singleFieldName + "Items";
+          qn$1 = newrecord;
+        } else {
+          qn$1 = qn;
+        }
+        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[V.Spec.name] = qn$1;
       });
       automationSlices.forEach(A => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, A.queryDbName, undefined);
@@ -323,6 +333,7 @@ function Make(DcbEventLogStorage) {
       }));
       let stateViewEntries = stateViewSlices.map(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, undefined);
+        let subIdField = Stdlib_Option.map(V.Spec.subIdConfig, c => c.subIdField);
         return {
           singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
@@ -330,7 +341,8 @@ function Make(DcbEventLogStorage) {
           stateSchema: V.Spec.stateSchema,
           authorization: undefined,
           includeIdParam: qn.includeIdParam,
-          connectionSpec: true
+          connectionSpec: true,
+          subIdField: subIdField
         };
       });
       let automationEntries = automationSlices.map(A => {

@@ -2,8 +2,10 @@
 
 
 function pluralize(n) {
-  if (n.endsWith("s")) {
-    return n;
+  if (/[^aeiou]y$/i.test(n)) {
+    return n.slice(0, n.length - 1 | 0) + "ies";
+  } else if (n.endsWith("s")) {
+    return n + "es";
   } else {
     return n + "s";
   }
@@ -12,6 +14,8 @@ function pluralize(n) {
 function singularize(n) {
   if (n.endsWith("ies")) {
     return n.slice(0, n.length - 3 | 0) + "y";
+  } else if (n.endsWith("ses") || n.endsWith("xes") || n.endsWith("zes") || n.endsWith("ches") || n.endsWith("shes")) {
+    return n.slice(0, n.length - 2 | 0);
   } else if (n.endsWith("s")) {
     return n.slice(0, n.length - 1 | 0);
   } else {
@@ -68,9 +72,9 @@ function queryFieldNamesForSliceQueryDb(plugin, queryDbName, connectionSpecOpt) 
   let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   return {
     singleFieldName: plugin + `_` + queryDbName,
-    listFieldName: plugin + `_` + queryDbName + `s`,
+    listFieldName: plugin + `_` + pluralize(queryDbName),
     returnTypeName: plugin + `_` + queryDbName,
-    pluralTypeName: plugin + `_` + queryDbName + `s`,
+    pluralTypeName: plugin + `_` + pluralize(queryDbName),
     includeIdParam: false,
     connectionSpec: connectionSpec
   };

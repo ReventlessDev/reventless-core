@@ -141,9 +141,9 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   let resolverByIdMultiple = if includeIdParam {
     subIdField->Option.map(sortField =>
       makeQueryResolver(
-        ~resolverName=fieldNameForSingle->String.capitalize ++ "ById",
-        ~field=(fieldNameForSingle ++ "ById")->Pulumi.Input.make,
-        ~code=Resolver.Functions.queryByIdWithSortConditions(sortField),
+        ~resolverName=fieldNameForSingle->String.capitalize ++ "Items",
+        ~field=(fieldNameForSingle ++ "Items")->Pulumi.Input.make,
+        ~code=Resolver.Functions.queryItemsWithSortConditions(sortField),
       )
     )
   } else {

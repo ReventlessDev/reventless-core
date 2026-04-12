@@ -22,6 +22,9 @@ type relaySupport = {
   nodeTypeRegistry: ref<dict<string>>,
 }
 
+@val external btoa: string => string = "btoa"
+@val external atob: string => string = "atob"
+
 module Make = (Bus: InMemory_Bus.T) => {
   open ReventlessCore
 
@@ -275,60 +278,132 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
     let listResolvers = [(listQueryName, listResolver)]
 
-    // -- By-id-list: {name}ById (only when subId configured) ------------------
-    // Supports sort key filtering: prefix, from, to, eq, reverse, limit, nextToken.
-    // Returns { items: [...], nextToken: String | null }.
-    let byIdListSdl = switch subIdField {
-    | Some(sf) =>
-      let connectionTypeName = returnTypeName ++ "ByIdConnection"
+    // -- Items query: {name}Items (only when subId configured) -----------------
+    // Relay Connection response. Accepts `filter` input object + first/after/last/before.
+    // Cursor is base64 of the sort key value (keyset pagination).
+    let encodeCursor = (skValue: string): string => btoa(skValue)
+    let decodeCursor = (cursor: string): string => atob(cursor)
+
+    let itemsSdl = switch subIdField {
+    | Some(_sf) =>
+      let filterTypeName = returnTypeName ++ "Filter"
+      let connectionTypeName = returnTypeName ++ "Connection"
       server.registerTypes(
         ~sdlTypes=[
-          `type ${connectionTypeName} {\n  items: [${returnTypeName}!]!\n  nextToken: String\n}`,
+          `input ${filterTypeName} {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`,
         ],
       )
-      [`  ${singleQueryName}ById(id: ID!, ${sf}: String, prefix: String, from: String, to: String, eq: String, reverse: Boolean, limit: Int, nextToken: String): ${connectionTypeName}!`]
+      [`  ${singleQueryName}Items(id: ID!, filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
     | None => []
     }
-    let byIdListResolvers: array<(string, GraphQL_ServerInstance.resolverFn)> = switch subIdField {
+    let itemsResolvers: array<(string, GraphQL_ServerInstance.resolverFn)> = switch subIdField {
     | Some(sf) =>
       let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+        let emptyConn = Obj.magic({
+          "edges": [],
+          "pageInfo": {
+            "hasNextPage": false,
+            "hasPreviousPage": false,
+            "startCursor": Nullable.null,
+            "endCursor": Nullable.null,
+          },
+        })
         switch await runInterceptor(~ctx, ~args) {
-        | Deny(_) => Obj.magic({"items": [], "nextToken": Nullable.null})
+        | Deny(_) => emptyConn
         | Allow =>
           let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
           let id = argsDict->Dict.get("id")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-          let filterPrefix = argsDict->Dict.get("prefix")->Option.flatMap(JSON.Decode.string)
-          let filterFrom   = argsDict->Dict.get("from")->Option.flatMap(JSON.Decode.string)
-          let filterTo     = argsDict->Dict.get("to")->Option.flatMap(JSON.Decode.string)
-          let filterEq     = argsDict->Dict.get("eq")->Option.flatMap(JSON.Decode.string)
-          let reverse      = argsDict->Dict.get("reverse")->Option.flatMap(JSON.Decode.bool)->Option.getOr(false)
-          let limit        = argsDict->Dict.get("limit")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-          let nextTokenStr = argsDict->Dict.get("nextToken")->Option.flatMap(JSON.Decode.string)
-          let offset = nextTokenStr->Option.flatMap(s => Int.fromString(s))->Option.getOr(0)
+          let filterDict =
+            argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
+          let filterPrefix = filterDict->Dict.get("prefix")->Option.flatMap(JSON.Decode.string)
+          let filterFrom   = filterDict->Dict.get("from")->Option.flatMap(JSON.Decode.string)
+          let filterTo     = filterDict->Dict.get("to")->Option.flatMap(JSON.Decode.string)
+          let filterEq     = filterDict->Dict.get("eq")->Option.flatMap(JSON.Decode.string)
+          let orderDesc    = filterDict->Dict.get("order")->Option.flatMap(JSON.Decode.string)->Option.map(o => o == "DESC")->Option.getOr(false)
+          let first        = argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+          let after        = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
+          let last         = argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+          let before       = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
+          let isBackward   = last->Option.isSome
+
           switch Bus.getQueryDb(name) {
+          | None => emptyConn
           | Some(ops) =>
-            let items =
+            let allItems =
               await ops.loadStream(id)
               ->Stream.runCollect
               ->Effect.catchAll(_ => Effect.succeed([]))
               ->Effect.runPromise
-            let result = SortKey_Filter.apply(
-              ~items,
+
+            // Cursor-keyed filtering: exclude items on the cursor side of the boundary
+            let cursorFiltered = if isBackward {
+              switch before->Option.map(decodeCursor) {
+              | Some(beforeKey) =>
+                allItems->Array.filter(item =>
+                  item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(sf))->Option.flatMap(JSON.Decode.string)->Option.map(v => v < beforeKey)->Option.getOr(false)
+                )
+              | None => allItems
+              }
+            } else {
+              switch after->Option.map(decodeCursor) {
+              | Some(afterKey) =>
+                allItems->Array.filter(item =>
+                  item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(sf))->Option.flatMap(JSON.Decode.string)->Option.map(v => v > afterKey)->Option.getOr(false)
+                )
+              | None => allItems
+              }
+            }
+
+            // Apply SortKey_Filter for prefix/from/to/eq
+            let filtered = SortKey_Filter.apply(
+              ~items=cursorFiltered,
               ~skField=sf,
               ~prefix=?filterPrefix,
               ~from=?filterFrom,
               ~to_=?filterTo,
               ~eq=?filterEq,
-              ~reverse,
-              ~limit=?limit,
-              ~offset,
+              ~reverse=if isBackward { !orderDesc } else { orderDesc },
+              ~offset=0,
+            ).items
+
+            // For backward pagination flip to logical order after taking
+            let (pageItems, hasMore) = switch (isBackward, last, first) {
+            | (true, Some(n), _) =>
+              let take = n + 1
+              let taken = filtered->Array.slice(~start=0, ~end=take)
+              let hasMore = taken->Array.length > n
+              let result = taken->Array.slice(~start=0, ~end=n)->Array.toReversed
+              (result, hasMore)
+            | (_, _, Some(n)) =>
+              let take = n + 1
+              let taken = filtered->Array.slice(~start=0, ~end=take)
+              let hasMore = taken->Array.length > n
+              (taken->Array.slice(~start=0, ~end=n), hasMore)
+            | _ => (filtered, false)
+            }
+
+            let getSkValue = item =>
+              item->JSON.Decode.object->Option.flatMap(d => d->Dict.get(sf))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+
+            let edges = pageItems->Array.map(item =>
+              Obj.magic({"node": item, "cursor": encodeCursor(getSkValue(item))})
             )
-            Obj.magic({"items": result.items, "nextToken": result.nextToken->Nullable.fromOption})
-          | None => Obj.magic({"items": [], "nextToken": Nullable.null})
+            let startCursor = pageItems->Array.get(0)->Option.map(item => encodeCursor(getSkValue(item)))
+            let endCursor   = pageItems->Array.get(pageItems->Array.length - 1)->Option.map(item => encodeCursor(getSkValue(item)))
+
+            Obj.magic({
+              "edges": edges,
+              "pageInfo": {
+                "hasNextPage": !isBackward && hasMore,
+                "hasPreviousPage": isBackward && hasMore,
+                "startCursor": startCursor->Nullable.fromOption,
+                "endCursor": endCursor->Nullable.fromOption,
+              },
+            })
           }
         }
       }
-      [(singleQueryName ++ "ById", resolver)]
+      [(singleQueryName ++ "Items", resolver)]
     | None => []
     }
 
@@ -369,12 +444,12 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     // -- Register all fields --------------------------------------------------
     let allSdl =
-      [byIdSdl]->Array.concat(listSdl)->Array.concat(byIdListSdl)->Array.concat(indexSdlFields)
+      [byIdSdl]->Array.concat(listSdl)->Array.concat(itemsSdl)->Array.concat(indexSdlFields)
 
     let resolvers = Dict.make()
     resolvers->Dict.set(singleQueryName, byIdResolver)
     listResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
-    byIdListResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
+    itemsResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     indexResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     server.registerQueries(~sdlFields=allSdl, ~resolvers)
 

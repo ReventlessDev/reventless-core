@@ -87,42 +87,78 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function queryByIdWithSortConditions(sortField) {
+function queryItemsWithSortConditions(sortField) {
   return importUtil + `
+const encodeCursor = (skValue) => Buffer.from(skValue).toString('base64');
+const decodeCursor = (cursor) => Buffer.from(cursor, 'base64').toString('utf8');
 export function request(ctx) {
   const args = ctx.args;
+  const filter = args.filter ?? {};
+  const isBackward = args.last != null;
   const expressionNames = { '#id': 'id', '#sk': '` + sortField + `' };
   const expressionValues = { ':id': util.dynamodb.toDynamoDB(args.id) };
   let skCondition;
-  if (args.eq != null) {
-    expressionValues[':eq'] = util.dynamodb.toDynamoDB(args.eq);
+  if (filter.eq != null) {
+    expressionValues[':eq'] = util.dynamodb.toDynamoDB(filter.eq);
     skCondition = '#sk = :eq';
-  } else if (args.prefix != null) {
-    expressionValues[':prefix'] = util.dynamodb.toDynamoDB(args.prefix);
+  } else if (filter.prefix != null) {
+    expressionValues[':prefix'] = util.dynamodb.toDynamoDB(filter.prefix);
     skCondition = 'begins_with(#sk, :prefix)';
-  } else if (args.from != null && args.to != null) {
-    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
-    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+  } else if (filter.from != null && filter.to != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(filter.from);
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(filter.to);
     skCondition = '#sk BETWEEN :from AND :to';
-  } else if (args.from != null) {
-    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
+  } else if (filter.from != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(filter.from);
     skCondition = '#sk >= :from';
-  } else if (args.to != null) {
-    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+  } else if (filter.to != null) {
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(filter.to);
     skCondition = '#sk <= :to';
   }
+  if (isBackward && args.before != null) {
+    const beforeKey = decodeCursor(args.before);
+    expressionValues[':cursor'] = util.dynamodb.toDynamoDB(beforeKey);
+    const cursorCond = '#sk < :cursor';
+    skCondition = skCondition ? \`(\${skCondition}) AND \${cursorCond}\` : cursorCond;
+  } else if (!isBackward && args.after != null) {
+    const afterKey = decodeCursor(args.after);
+    expressionValues[':cursor'] = util.dynamodb.toDynamoDB(afterKey);
+    const cursorCond = '#sk > :cursor';
+    skCondition = skCondition ? \`(\${skCondition}) AND \${cursorCond}\` : cursorCond;
+  }
   const expression = skCondition ? \`#id = :id AND \${skCondition}\` : '#id = :id';
+  const orderDesc = filter.order === 'DESC';
+  const scanForward = isBackward ? orderDesc : !orderDesc;
+  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);
   return {
     operation: 'Query',
     query: { expression, expressionNames, expressionValues },
-    scanIndexForward: !(args.reverse ?? false),
-    limit: (args.limit ?? 50),
-    nextToken: (args.nextToken ?? null),
+    scanIndexForward: scanForward,
+    limit: pageSize + 1,
   };
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  return { items: ctx.result.items ?? [], nextToken: ctx.result.nextToken ?? null };
+  const args = ctx.args;
+  const filter = args.filter ?? {};
+  const isBackward = args.last != null;
+  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);
+  let items = ctx.result.items ?? [];
+  const hasMore = items.length > pageSize;
+  if (hasMore) items = items.slice(0, pageSize);
+  if (isBackward) items = items.reverse();
+  const edges = items.map(item => ({ node: item, cursor: encodeCursor(item['` + sortField + `'] ?? '') }));
+  const startCursor = edges.length > 0 ? edges[0].cursor : null;
+  const endCursor = edges.length > 0 ? edges[edges.length - 1].cursor : null;
+  return {
+    edges,
+    pageInfo: {
+      hasNextPage: !isBackward && hasMore,
+      hasPreviousPage: isBackward && hasMore,
+      startCursor,
+      endCursor,
+    },
+  };
 }
 `;
 }
@@ -719,7 +755,7 @@ export {
   nodeGetItemForType,
   getItemById,
   queryById,
-  queryByIdWithSortConditions,
+  queryItemsWithSortConditions,
   queryByIdSort,
   queryByIndex,
   queryByIndexDeletable,

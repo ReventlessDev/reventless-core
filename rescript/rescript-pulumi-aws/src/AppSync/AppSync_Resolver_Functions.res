@@ -114,46 +114,83 @@ export function request(ctx) {
 ${resultResponseCode}
 `->Pulumi.Input.make
 
-/** Query by partition key with sort-key conditions and pagination.
-    Accepts: `prefix` (begins_with), `from`/`to` (BETWEEN or range), `eq` (equality),
-    `reverse` (scanIndexForward), `limit`, `nextToken`.
-    Returns `{ items, nextToken }` for a `ByIdConnection` response type. */
-let queryByIdWithSortConditions = (sortField: string) =>
+/** Query by partition key with sort-key conditions and Relay cursor pagination.
+    Reads from `args.filter` object: `prefix`, `from`, `to`, `eq`, `order` (ASC/DESC).
+    Relay pagination: `first`/`after` (forward) or `last`/`before` (backward).
+    Cursor is base64 of the sort key value.
+    Returns a Relay `{ edges, pageInfo }` shape reusing the entity's `Connection` type. */
+let queryItemsWithSortConditions = (sortField: string) =>
   `${importUtil}
+const encodeCursor = (skValue) => Buffer.from(skValue).toString('base64');
+const decodeCursor = (cursor) => Buffer.from(cursor, 'base64').toString('utf8');
 export function request(ctx) {
   const args = ctx.args;
+  const filter = args.filter ?? {};
+  const isBackward = args.last != null;
   const expressionNames = { '#id': 'id', '#sk': '${sortField}' };
   const expressionValues = { ':id': util.dynamodb.toDynamoDB(args.id) };
   let skCondition;
-  if (args.eq != null) {
-    expressionValues[':eq'] = util.dynamodb.toDynamoDB(args.eq);
+  if (filter.eq != null) {
+    expressionValues[':eq'] = util.dynamodb.toDynamoDB(filter.eq);
     skCondition = '#sk = :eq';
-  } else if (args.prefix != null) {
-    expressionValues[':prefix'] = util.dynamodb.toDynamoDB(args.prefix);
+  } else if (filter.prefix != null) {
+    expressionValues[':prefix'] = util.dynamodb.toDynamoDB(filter.prefix);
     skCondition = 'begins_with(#sk, :prefix)';
-  } else if (args.from != null && args.to != null) {
-    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
-    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+  } else if (filter.from != null && filter.to != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(filter.from);
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(filter.to);
     skCondition = '#sk BETWEEN :from AND :to';
-  } else if (args.from != null) {
-    expressionValues[':from'] = util.dynamodb.toDynamoDB(args.from);
+  } else if (filter.from != null) {
+    expressionValues[':from'] = util.dynamodb.toDynamoDB(filter.from);
     skCondition = '#sk >= :from';
-  } else if (args.to != null) {
-    expressionValues[':to'] = util.dynamodb.toDynamoDB(args.to);
+  } else if (filter.to != null) {
+    expressionValues[':to'] = util.dynamodb.toDynamoDB(filter.to);
     skCondition = '#sk <= :to';
   }
+  if (isBackward && args.before != null) {
+    const beforeKey = decodeCursor(args.before);
+    expressionValues[':cursor'] = util.dynamodb.toDynamoDB(beforeKey);
+    const cursorCond = '#sk < :cursor';
+    skCondition = skCondition ? \`(\${skCondition}) AND \${cursorCond}\` : cursorCond;
+  } else if (!isBackward && args.after != null) {
+    const afterKey = decodeCursor(args.after);
+    expressionValues[':cursor'] = util.dynamodb.toDynamoDB(afterKey);
+    const cursorCond = '#sk > :cursor';
+    skCondition = skCondition ? \`(\${skCondition}) AND \${cursorCond}\` : cursorCond;
+  }
   const expression = skCondition ? \`#id = :id AND \${skCondition}\` : '#id = :id';
+  const orderDesc = filter.order === 'DESC';
+  const scanForward = isBackward ? orderDesc : !orderDesc;
+  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);
   return {
     operation: 'Query',
     query: { expression, expressionNames, expressionValues },
-    scanIndexForward: !(args.reverse ?? false),
-    limit: (args.limit ?? 50),
-    nextToken: (args.nextToken ?? null),
+    scanIndexForward: scanForward,
+    limit: pageSize + 1,
   };
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  return { items: ctx.result.items ?? [], nextToken: ctx.result.nextToken ?? null };
+  const args = ctx.args;
+  const filter = args.filter ?? {};
+  const isBackward = args.last != null;
+  const pageSize = isBackward ? (args.last ?? 50) : (args.first ?? 50);
+  let items = ctx.result.items ?? [];
+  const hasMore = items.length > pageSize;
+  if (hasMore) items = items.slice(0, pageSize);
+  if (isBackward) items = items.reverse();
+  const edges = items.map(item => ({ node: item, cursor: encodeCursor(item['${sortField}'] ?? '') }));
+  const startCursor = edges.length > 0 ? edges[0].cursor : null;
+  const endCursor = edges.length > 0 ? edges[edges.length - 1].cursor : null;
+  return {
+    edges,
+    pageInfo: {
+      hasNextPage: !isBackward && hasMore,
+      hasPreviousPage: isBackward && hasMore,
+      startCursor,
+      endCursor,
+    },
+  };
 }
 `->Pulumi.Input.make
 

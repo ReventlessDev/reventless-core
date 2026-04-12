@@ -165,6 +165,15 @@ module Make = (
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
     ) => {
       let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+      let qn = switch R.Spec.subIdConfig {
+      | Some(_) =>
+        {
+          ...qn,
+          itemsFieldName: qn.singleFieldName ++ "Items",
+          filterTypeName: qn.returnTypeName ++ "Filter",
+        }
+      | None => qn
+      }
       Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(R.Spec.name, qn)
     })
 

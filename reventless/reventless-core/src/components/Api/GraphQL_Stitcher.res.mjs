@@ -65,7 +65,8 @@ function extractLeadingName(str) {
 
 let relayBaseTypes = [
   `interface Node {\n  id: ID!\n}`,
-  `type PageInfo {\n  hasNextPage: Boolean!\n  hasPreviousPage: Boolean!\n  startCursor: String\n  endCursor: String\n}`
+  `type PageInfo {\n  hasNextPage: Boolean!\n  hasPreviousPage: Boolean!\n  startCursor: String\n  endCursor: String\n}`,
+  `enum SortOrder {\n  ASC\n  DESC\n}`
 ];
 
 let relayBaseQueries = [`  node(id: ID!): Node`];

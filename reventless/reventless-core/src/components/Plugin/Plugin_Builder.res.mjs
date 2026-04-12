@@ -102,7 +102,17 @@ function Make(Spec) {
         let eventLogEntries = eventLogEntriesFromAggregates.concat(dcbResult.eventLogEntries);
         readModels.forEach(R => {
           let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
-          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = qn;
+          let match = R.Spec.subIdConfig;
+          let qn$1;
+          if (match !== undefined) {
+            let newrecord = {...qn};
+            newrecord.filterTypeName = qn.returnTypeName + "Filter";
+            newrecord.itemsFieldName = qn.singleFieldName + "Items";
+            qn$1 = newrecord;
+          } else {
+            qn$1 = qn;
+          }
+          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = qn$1;
         });
         let apiSchemaFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
         Stdlib_Option.forEach(Spec.hooks.schemaTypeRegistrationHook, registerTypes => {
