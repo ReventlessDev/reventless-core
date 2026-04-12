@@ -122,7 +122,7 @@ The component reference correctly explains `evolve`/`decide` in prose (lines 190
 - [x] **Step 4** — Fix `dcb-based-plugin.md` parameter naming:
   - Renamed `model` → `state` in all `evolve` and `decide` function signatures and bodies (CreateItem, RenameItem, DeleteItem slices)
 
-- [ ] **Step 5** — Verify: build docs site locally (`cd packages/doc && npm run build`) and spot-check all edited pages render without errors (covers round-1 and round-2 changes)
+- [x] **Step 5** — Verify: build docs site locally (`cd packages/doc && npm run build`) and spot-check all edited pages render without errors (covers round-1 and round-2 changes)
 
 ---
 
