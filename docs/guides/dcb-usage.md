@@ -720,7 +720,7 @@ Each `@compositePartitionTag` field is still a regular DCB tag — individually 
 ```
 
 **Rules:**
-- Requires ≥ 2 annotated fields — `derivePartitionTagV2` throws at startup if only 1 is found.
+- Requires ≥ 2 annotated fields — `derivePartitionTag` throws at startup if only 1 is found.
 - Cannot mix `@compositePartitionTag` with `@partitionTag` on the same schema — throws at startup.
 - Annotations must be on `string` fields; non-string fields are silently ignored.
 - Placement is **before the field name** (field-level attribute), not after the colon.

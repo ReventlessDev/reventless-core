@@ -26,7 +26,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
   }
 
   // Computed once at functor init — used to extract entityId for publishJsonsAndWait outcomes.
-  let derivedPartitionTag = Reventless.DcbTag.derivePartitionTagV2([
+  let derivedPartitionTag = Reventless.DcbTag.derivePartitionTag([
     (Spec.name, Spec.moduleUrl, Spec.eventSchema->S.castToUnknown),
   ])
 

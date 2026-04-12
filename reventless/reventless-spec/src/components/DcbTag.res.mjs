@@ -396,63 +396,6 @@ function findMultiTagVariantNames(schema) {
   }
 }
 
-function derivePartitionTag(namedSchemas) {
-  let schemas = namedSchemas.map(param => param[2]);
-  let seen = new Set();
-  let allTaggedFields = schemas.flatMap(extractTaggedFields).filter(f => {
-    if (seen.has(f)) {
-      return false;
-    } else {
-      seen.add(f);
-      return true;
-    }
-  });
-  let len = allTaggedFields.length;
-  if (len !== 1) {
-    if (len === 0) {
-      return Stdlib_JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag");
-    }
-    let needsExplicitPartition = schemas.some(hasMultiTagVariant);
-    if (needsExplicitPartition) {
-      let context = Stdlib_Array.filterMap(namedSchemas, param => {
-        let variantNames = findMultiTagVariantNames(param[2]);
-        if (variantNames.length !== 0) {
-          return param[0] + ` (` + variantNames.join(", ") + `) @ ` + param[1];
-        }
-      }).join(", ");
-      let seen$1 = new Set();
-      let allPartitionFields = schemas.flatMap(extractPartitionTagFields).filter(f => {
-        if (seen$1.has(f)) {
-          return false;
-        } else {
-          seen$1.add(f);
-          return true;
-        }
-      });
-      let len$1 = allPartitionFields.length;
-      if (len$1 !== 1) {
-        if (len$1 !== 0) {
-          return Stdlib_JsError.throwWithMessage(`DCB spec has multiple fields annotated with @partitionTag (` + allPartitionFields.join(", ") + `) — only one is allowed — affected: ` + context);
-        } else {
-          return Stdlib_JsError.throwWithMessage(`DCB spec has variants with multiple tagged fields (` + allTaggedFields.join(", ") + `) but none is annotated with @partitionTag — affected: ` + context + ` — mark one field as the partition key`);
-        }
-      }
-      let singlePartition = allPartitionFields[0];
-      return {
-        key: singlePartition
-      };
-    }
-    let sorted = allTaggedFields.toSorted(Primitive_string.compare);
-    return {
-      key: sorted[0]
-    };
-  }
-  let singleField = allTaggedFields[0];
-  return {
-    key: singleField
-  };
-}
-
 function extractCompositePartitionFieldsFromProperties(properties) {
   return Stdlib_Array.filterMap(Object.entries(properties), param => {
     let meta = S.Metadata.get(param[1], dcbCompositePartitionMemberId);
@@ -507,7 +450,7 @@ function getCompositePartitionKeyValue(tags, spec) {
   }).join("");
 }
 
-function derivePartitionTagV2(namedSchemas) {
+function derivePartitionTag(namedSchemas) {
   let schemas = namedSchemas.map(param => param[2]);
   let seen = new Set();
   let allCompositeFields = schemas.flatMap(extractCompositePartitionFields).filter(info => {
@@ -531,23 +474,72 @@ function derivePartitionTagV2(namedSchemas) {
   if (hasComposite && allPartitionFields.length !== 0) {
     Stdlib_JsError.throwWithMessage(`DCB spec mixes @compositePartitionTag and @partitionTag — use one strategy per schema`);
   }
-  if (!hasComposite) {
+  if (hasComposite) {
+    if (allCompositeFields.length < 2) {
+      Stdlib_JsError.throwWithMessage(`@compositePartitionTag requires at least 2 annotated fields — only ` + allCompositeFields.length.toString() + ` found`);
+    }
+    let sorted = allCompositeFields.toSorted((a, b) => Primitive_int.compare(a.position, b.position));
+    let keys = sorted.map(info => info.name);
+    let seps = sorted.slice(0, sorted.length - 1 | 0).map(info => info.sep);
     return {
-      TAG: "Simple",
-      _0: derivePartitionTag(namedSchemas)
+      TAG: "Composite",
+      _0: {
+        keys: keys,
+        seps: seps
+      }
     };
   }
-  if (allCompositeFields.length < 2) {
-    Stdlib_JsError.throwWithMessage(`@compositePartitionTag requires at least 2 annotated fields — only ` + allCompositeFields.length.toString() + ` found`);
+  let seen$2 = new Set();
+  let allTaggedFields = schemas.flatMap(extractTaggedFields).filter(f => {
+    if (seen$2.has(f)) {
+      return false;
+    } else {
+      seen$2.add(f);
+      return true;
+    }
+  });
+  let len = allTaggedFields.length;
+  if (len !== 1) {
+    if (len === 0) {
+      return Stdlib_JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag");
+    }
+    let needsExplicitPartition = schemas.some(hasMultiTagVariant);
+    if (needsExplicitPartition) {
+      let context = Stdlib_Array.filterMap(namedSchemas, param => {
+        let variantNames = findMultiTagVariantNames(param[2]);
+        if (variantNames.length !== 0) {
+          return param[0] + ` (` + variantNames.join(", ") + `) @ ` + param[1];
+        }
+      }).join(", ");
+      let len$1 = allPartitionFields.length;
+      if (len$1 !== 1) {
+        if (len$1 !== 0) {
+          return Stdlib_JsError.throwWithMessage(`DCB spec has multiple fields annotated with @partitionTag (` + allPartitionFields.join(", ") + `) — only one is allowed — affected: ` + context);
+        } else {
+          return Stdlib_JsError.throwWithMessage(`DCB spec has variants with multiple tagged fields (` + allTaggedFields.join(", ") + `) but none is annotated with @partitionTag — affected: ` + context + ` — mark one field as the partition key`);
+        }
+      }
+      let singlePartition = allPartitionFields[0];
+      return {
+        TAG: "Simple",
+        _0: {
+          key: singlePartition
+        }
+      };
+    }
+    let sorted$1 = allTaggedFields.toSorted(Primitive_string.compare);
+    return {
+      TAG: "Simple",
+      _0: {
+        key: sorted$1[0]
+      }
+    };
   }
-  let sorted = allCompositeFields.toSorted((a, b) => Primitive_int.compare(a.position, b.position));
-  let keys = sorted.map(info => info.name);
-  let seps = sorted.slice(0, sorted.length - 1 | 0).map(info => info.sep);
+  let singleField = allTaggedFields[0];
   return {
-    TAG: "Composite",
+    TAG: "Simple",
     _0: {
-      keys: keys,
-      seps: seps
+      key: singleField
     }
   };
 }
@@ -591,11 +583,10 @@ export {
   extractPartitionTagFields,
   hasMultiTagVariant,
   findMultiTagVariantNames,
-  derivePartitionTag,
   extractCompositePartitionFieldsFromProperties,
   extractCompositePartitionFields,
   getCompositePartitionKeyValue,
-  derivePartitionTagV2,
+  derivePartitionTag,
   getPartitionTagValue,
 }
 /* dcbTagId Not a pure module */

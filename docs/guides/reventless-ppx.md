@@ -236,8 +236,8 @@ type event =
 | Rule | Behaviour |
 |---|---|
 | Non-`string` field annotated | No-op — field is left untouched |
-| `@compositePartitionTag` and `@partitionTag` on the same schema | `derivePartitionTagV2` throws at startup |
-| Fewer than 2 fields annotated | `derivePartitionTagV2` throws at startup |
+| `@compositePartitionTag` and `@partitionTag` on the same schema | `derivePartitionTag` throws at startup |
+| Fewer than 2 fields annotated | `derivePartitionTag` throws at startup |
 
 **Placement:** Place `@compositePartitionTag` **before the field name**, exactly like `@partitionTag`:
 

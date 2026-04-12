@@ -531,13 +531,13 @@ describe("DcbTag:", () => {
     )
   })
 
-  describe("derivePartitionTagV2", () => {
+  describe("derivePartitionTag", () => {
     let u = S.castToUnknown
 
     test(
       "returns Composite for schema with >= 2 composite fields",
       () => {
-        let result = Reventless.DcbTag.derivePartitionTagV2([
+        let result = Reventless.DcbTag.derivePartitionTag([
           ("Sync", "test.res", DcbFixtures.compositeEventSchema->u),
         ])
         switch result {
@@ -552,7 +552,7 @@ describe("DcbTag:", () => {
     test(
       "returns Composite with custom separators",
       () => {
-        let result = Reventless.DcbTag.derivePartitionTagV2([
+        let result = Reventless.DcbTag.derivePartitionTag([
           ("Config", "test.res", DcbFixtures.compositeEventCustomSepSchema->u),
         ])
         switch result {
@@ -567,7 +567,7 @@ describe("DcbTag:", () => {
     test(
       "returns Simple for schema with only @partitionTag",
       () => {
-        let result = Reventless.DcbTag.derivePartitionTagV2([
+        let result = Reventless.DcbTag.derivePartitionTag([
           ("Order", "test.res", DcbFixtures.simplePartitionEventSchema->u),
         ])
         switch result {
@@ -580,7 +580,7 @@ describe("DcbTag:", () => {
     test(
       "returns Simple for schema with single tagged field",
       () => {
-        let result = Reventless.DcbTag.derivePartitionTagV2([
+        let result = Reventless.DcbTag.derivePartitionTag([
           ("Item", "test.res", DcbFixtures.singleTagCommandSchema->u),
         ])
         switch result {
@@ -595,7 +595,7 @@ describe("DcbTag:", () => {
       () => {
         let threw = ref(false)
         try {
-          let _ = Reventless.DcbTag.derivePartitionTagV2([
+          let _ = Reventless.DcbTag.derivePartitionTag([
             ("Mixed", "test.res", DcbFixtures.mixedStrategyEventSchema->u),
           ])
         } catch {
@@ -616,7 +616,7 @@ describe("DcbTag:", () => {
       () => {
         let threw = ref(false)
         try {
-          let _ = Reventless.DcbTag.derivePartitionTagV2([
+          let _ = Reventless.DcbTag.derivePartitionTag([
             ("Single", "test.res", DcbFixtures.singleCompositeEventSchema->u),
           ])
         } catch {

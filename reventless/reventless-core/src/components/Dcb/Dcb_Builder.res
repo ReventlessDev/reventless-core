@@ -129,7 +129,7 @@ module Make = (
           indexes
         }
 
-        let partitionTag = Reventless.DcbTag.derivePartitionTagV2(producedNamed)
+        let partitionTag = Reventless.DcbTag.derivePartitionTag(producedNamed)
 
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,

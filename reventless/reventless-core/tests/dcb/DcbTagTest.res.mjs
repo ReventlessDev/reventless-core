@@ -346,9 +346,9 @@ Jest.describe("DcbTag:", () => {
       return Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.getCompositePartitionKeyValue(tags, spec)), "1/2/3");
     });
   });
-  Jest.describe("derivePartitionTagV2", () => {
+  Jest.describe("derivePartitionTag", () => {
     Jest.test("returns Composite for schema with >= 2 composite fields", () => {
-      let result = DcbTag$Reventless.derivePartitionTagV2([[
+      let result = DcbTag$Reventless.derivePartitionTag([[
           "Sync",
           "test.res",
           DcbFixtures$ReventlessCore.compositeEventSchema
@@ -368,7 +368,7 @@ Jest.describe("DcbTag:", () => {
       ]);
     });
     Jest.test("returns Composite with custom separators", () => {
-      let result = DcbTag$Reventless.derivePartitionTagV2([[
+      let result = DcbTag$Reventless.derivePartitionTag([[
           "Config",
           "test.res",
           DcbFixtures$ReventlessCore.compositeEventCustomSepSchema
@@ -388,7 +388,7 @@ Jest.describe("DcbTag:", () => {
       ]);
     });
     Jest.test("returns Simple for schema with only @partitionTag", () => {
-      let result = DcbTag$Reventless.derivePartitionTagV2([[
+      let result = DcbTag$Reventless.derivePartitionTag([[
           "Order",
           "test.res",
           DcbFixtures$ReventlessCore.simplePartitionEventSchema
@@ -400,7 +400,7 @@ Jest.describe("DcbTag:", () => {
       }
     });
     Jest.test("returns Simple for schema with single tagged field", () => {
-      let result = DcbTag$Reventless.derivePartitionTagV2([[
+      let result = DcbTag$Reventless.derivePartitionTag([[
           "Item",
           "test.res",
           DcbFixtures$ReventlessCore.singleTagCommandSchema
@@ -414,7 +414,7 @@ Jest.describe("DcbTag:", () => {
     Jest.test("throws on mixed composite and simple partition strategy", () => {
       let threw = false;
       try {
-        DcbTag$Reventless.derivePartitionTagV2([[
+        DcbTag$Reventless.derivePartitionTag([[
             "Mixed",
             "test.res",
             DcbFixtures$ReventlessCore.mixedStrategyEventSchema
@@ -433,7 +433,7 @@ Jest.describe("DcbTag:", () => {
     Jest.test("throws on single composite field (< 2)", () => {
       let threw = false;
       try {
-        DcbTag$Reventless.derivePartitionTagV2([[
+        DcbTag$Reventless.derivePartitionTag([[
             "Single",
             "test.res",
             DcbFixtures$ReventlessCore.singleCompositeEventSchema

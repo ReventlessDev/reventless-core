@@ -28,7 +28,7 @@ function Make(Spec) {
       tags: tags
     };
   };
-  let derivedPartitionTag = DcbTag$Reventless.derivePartitionTagV2([[
+  let derivedPartitionTag = DcbTag$Reventless.derivePartitionTag([[
       Spec.name,
       Spec.moduleUrl,
       Spec.eventSchema

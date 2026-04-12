@@ -665,89 +665,6 @@ let findMultiTagVariantNames = (schema: S.t<unknown>): array<string> => {
   }
 }
 
-/**
-Derives the partition tag from an array of named event schemas.
-
-Rules:
-- If only one tagged field exists across all schemas, it is automatically selected.
-- If multiple tagged fields exist but each event variant has at most one tagged
-  field (multi-entity DCB), the first field alphabetically is selected. The
-  runtime will use each event's own tag for the partition key.
-- If any event variant has multiple tagged fields and exactly one is annotated
-  with `DcbTag.partition`, that one is selected.
-- If any event variant has multiple tagged fields and none (or multiple) are
-  annotated with `DcbTag.partition`, throws an error naming the affected slice,
-  variant(s), and source file path.
-*/
-let derivePartitionTag = (namedSchemas: array<(string, string, S.t<unknown>)>): partitionTag => {
-  let schemas = namedSchemas->Array.map(((_, _, schema)) => schema)
-  let allTaggedFields = {
-    let seen = Set.make()
-    schemas->Array.flatMap(schema => extractTaggedFields(schema))->Array.filter(f => {
-      if seen->Set.has(f) {
-        false
-      } else {
-        seen->Set.add(f)
-        true
-      }
-    })
-  }
-
-  switch allTaggedFields {
-  | [] => JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag")
-  | [singleField] => {key: singleField}
-  | multipleFields => {
-      // Check if any individual variant has multiple tagged fields
-      let needsExplicitPartition = schemas->Array.some(schema => hasMultiTagVariant(schema))
-
-      if needsExplicitPartition {
-        // Build diagnostic context: "SliceName (VariantA, VariantB) @ path, ..."
-        let context =
-          namedSchemas
-          ->Array.filterMap(((sliceName, path, schema)) => {
-            let variantNames = findMultiTagVariantNames(schema)
-            if variantNames->Array.length > 0 {
-              Some(`${sliceName} (${variantNames->Array.join(", ")}) @ ${path}`)
-            } else {
-              None
-            }
-          })
-          ->Array.join(", ")
-
-        // Need explicit DcbTag.partition annotation
-        let allPartitionFields = {
-          let seen = Set.make()
-          schemas->Array.flatMap(schema => extractPartitionTagFields(schema))->Array.filter(f => {
-            if seen->Set.has(f) {
-              false
-            } else {
-              seen->Set.add(f)
-              true
-            }
-          })
-        }
-        switch allPartitionFields {
-        | [singlePartition] => {key: singlePartition}
-        | [] =>
-          JsError.throwWithMessage(
-            `DCB spec has variants with multiple tagged fields (${multipleFields->Array.join(", ")}) but none is annotated with @partitionTag — affected: ${context} — mark one field as the partition key`,
-          )
-        | multiplePartitions =>
-          JsError.throwWithMessage(
-            `DCB spec has multiple fields annotated with @partitionTag (${multiplePartitions->Array.join(", ")}) — only one is allowed — affected: ${context}`,
-          )
-        }
-      } else {
-        // Each variant has at most 1 tag — multi-entity DCB log.
-        // Pick the first field alphabetically as the nominal partition tag.
-        // The runtime will use each event's own tag for the actual partition key.
-        let sorted = multipleFields->Array.toSorted((a, b) => String.compare(a, b))
-        {key: sorted->Array.getUnsafe(0)}
-      }
-    }
-  }
-}
-
 // --- Composite partition key helpers ---
 
 type compositePartitionFieldInfo = {name: string, position: int, sep: string}
@@ -814,23 +731,33 @@ let getCompositePartitionKeyValue = (tags: array<tag>, spec: compositePartitionS
   })
   ->Array.join("")
 
+// --- Partition tag derivation ---
+
 /**
 Derives the partition tag strategy from an array of named event schemas.
 
 Returns `Simple(partitionTag)` when the schema uses `@partitionTag` (or a single tag),
 or `Composite(compositePartitionSpec)` when it uses `@compositePartitionTag`.
 
+Rules for simple strategy:
+- If only one tagged field exists across all schemas, it is automatically selected.
+- If multiple tagged fields exist but each event variant has at most one tagged
+  field (multi-entity DCB), the first field alphabetically is selected.
+- If any event variant has multiple tagged fields and exactly one is annotated
+  with `DcbTag.partition`, that one is selected.
+- If any event variant has multiple tagged fields and none (or multiple) are
+  annotated with `DcbTag.partition`, throws an error naming the affected slice,
+  variant(s), and source file path.
+
 Throws when:
 - A schema mixes `@compositePartitionTag` and `@partitionTag` fields.
-- Some schemas use composite and others use simple.
 - Fewer than 2 fields are annotated with `@compositePartitionTag`.
 */
-let derivePartitionTagV2 = (
+let derivePartitionTag = (
   namedSchemas: array<(string, string, S.t<unknown>)>,
 ): derivedPartitionTag => {
   let schemas = namedSchemas->Array.map(((_, _, schema)) => schema)
 
-  // Collect composite fields from all schemas
   let allCompositeFields = {
     let seen = Set.make()
     schemas
@@ -847,7 +774,6 @@ let derivePartitionTagV2 = (
 
   let hasComposite = allCompositeFields->Array.length > 0
 
-  // Check for mixed strategies (composite + simple @partitionTag)
   let allPartitionFields = {
     let seen = Set.make()
     schemas->Array.flatMap(schema => extractPartitionTagFields(schema))->Array.filter(f => {
@@ -874,13 +800,59 @@ let derivePartitionTagV2 = (
     }
     let sorted = allCompositeFields->Array.toSorted((a, b) => Int.compare(a.position, b.position))
     let keys = sorted->Array.map(info => info.name)
-    // seps[i] is placed between keys[i] and keys[i+1]; last sep is ignored
     let seps = sorted->Array.slice(~start=0, ~end=sorted->Array.length - 1)->Array.map(info =>
       info.sep
     )
     Composite({keys, seps})
   } else {
-    Simple(derivePartitionTag(namedSchemas))
+    let allTaggedFields = {
+      let seen = Set.make()
+      schemas->Array.flatMap(schema => extractTaggedFields(schema))->Array.filter(f => {
+        if seen->Set.has(f) {
+          false
+        } else {
+          seen->Set.add(f)
+          true
+        }
+      })
+    }
+
+    switch allTaggedFields {
+    | [] => JsError.throwWithMessage("DCB spec has no tagged fields — cannot derive partition tag")
+    | [singleField] => Simple({key: singleField})
+    | multipleFields => {
+        let needsExplicitPartition = schemas->Array.some(schema => hasMultiTagVariant(schema))
+
+        if needsExplicitPartition {
+          let context =
+            namedSchemas
+            ->Array.filterMap(((sliceName, path, schema)) => {
+              let variantNames = findMultiTagVariantNames(schema)
+              if variantNames->Array.length > 0 {
+                Some(`${sliceName} (${variantNames->Array.join(", ")}) @ ${path}`)
+              } else {
+                None
+              }
+            })
+            ->Array.join(", ")
+
+          switch allPartitionFields {
+          | [singlePartition] => Simple({key: singlePartition})
+          | [] =>
+            JsError.throwWithMessage(
+              `DCB spec has variants with multiple tagged fields (${multipleFields->Array.join(", ")}) but none is annotated with @partitionTag — affected: ${context} — mark one field as the partition key`,
+            )
+          | multiplePartitions =>
+            JsError.throwWithMessage(
+              `DCB spec has multiple fields annotated with @partitionTag (${multiplePartitions->Array.join(", ")}) — only one is allowed — affected: ${context}`,
+            )
+          }
+        } else {
+          let sorted = multipleFields->Array.toSorted((a, b) => String.compare(a, b))
+          Simple({key: sorted->Array.getUnsafe(0)})
+        }
+      }
+    }
   }
 }
 
