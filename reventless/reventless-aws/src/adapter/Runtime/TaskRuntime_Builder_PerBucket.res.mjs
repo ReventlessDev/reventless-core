@@ -2,7 +2,6 @@
 
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
@@ -37,15 +36,8 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, task
     let packageDirs = {};
     let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.callbackModulePath);
     packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.mjs";`;
-    let archiveContents = {};
-    archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
-    Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
-      archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
-    });
-    let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-    let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
-    return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(fullName, code, sourceCodeHash, envVars, memorySize, timeout, {
+    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.mjs", packageDirs);
+    return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(fullName, match.code, match.sourceCodeHash, envVars, memorySize, timeout, {
       parent: resource
     }));
   }
@@ -68,4 +60,4 @@ export {
   forBucketCallback,
   finish,
 }
-/* @pulumi/pulumi Not a pure module */
+/* Component-ReventlessCore Not a pure module */

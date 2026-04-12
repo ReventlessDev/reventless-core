@@ -22,11 +22,16 @@ function createFilteredPackageArchive(prim) {
   return Util_BundleMjs.createFilteredPackageArchive(prim);
 }
 
+function buildCodeArchive(prim0, prim1) {
+  return Util_BundleMjs.buildCodeArchive(prim0, prim1);
+}
+
 export {
   getModuleSpecifier,
   extractPackageName,
   resolvePackageRoot,
   hashString,
   createFilteredPackageArchive,
+  buildCodeArchive,
 }
 /* ./Util_Bundle.mjs Not a pure module */

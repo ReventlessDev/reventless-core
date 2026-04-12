@@ -83,24 +83,9 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
       packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
       // Build AssetArchive: static re-export + user packages
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs";`
-
-      let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-      archiveContents->Dict.set(
-        "index.mjs",
-        Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-      )
-      packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-        archiveContents->Dict.set(
-          `node_modules/${pkgName}`,
-          Util_Bundle.createFilteredPackageArchive(pkgRoot)
-          ->Pulumi.Archive.archiveToAssetOrArchive,
-        )
-      })
-
-      let code = Pulumi.Archive.assetArchive(archiveContents)
-      let sourceCodeHash = Util_Bundle.hashString(
-        reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+      let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+        ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs",
+        ~packageDirs,
       )
 
       let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

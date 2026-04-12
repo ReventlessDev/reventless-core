@@ -76,6 +76,11 @@ let registerConfig = (
     clonerEnabled,
   }
 
+// PluginRuntime_Builder is a functor so that the caller can inject the EventCollectorChannel
+// implementation. All other runtime builders hardcode EventCollectorChannel.DynamoDbStream, but
+// the Plugin admin handler (AdminEventCollectorEntryPoint) is shared across DCB and aggregate
+// plugins which may use different event log backends. The functor keeps the builder generic
+// while the concrete instantiation picks the right channel at the platform level.
 module Make = (
   EventCollectorChannel: ReventlessCore.EventCollector_Adapter.Channel
     with type runtimeParts = Util.Lambda.runtimeParts,
@@ -150,16 +155,10 @@ module Make = (
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
     // No user packages — all framework imports are in the Layer
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs";`
-
-    let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-    archiveContents->Dict.set(
-      "index.mjs",
-      Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+    let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+      ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs",
+      ~packageDirs=Dict.make(),
     )
-
-    let code = Pulumi.Archive.assetArchive(archiveContents)
-    let sourceCodeHash = Util_Bundle.hashString(reExportCode)
 
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
@@ -218,14 +217,10 @@ module Make = (
       )
 
       // Static re-export from Layer entry point — no esbuild, no user packages
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs";`
-      let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-      archiveContents->Dict.set(
-        "index.mjs",
-        Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
+      let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+        ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs",
+        ~packageDirs=Dict.make(),
       )
-      let code = Pulumi.Archive.assetArchive(archiveContents)
-      let sourceCodeHash = Util_Bundle.hashString(reExportCode)
 
       let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
         ~name,
@@ -307,24 +302,9 @@ module Make = (
         Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
       )
 
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs";`
-
-      let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-      archiveContents->Dict.set(
-        "index.mjs",
-        Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-      )
-      packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-        archiveContents->Dict.set(
-          `node_modules/${pkgName}`,
-          Util_Bundle.createFilteredPackageArchive(pkgRoot)
-          ->Pulumi.Archive.archiveToAssetOrArchive,
-        )
-      })
-
-      let code = Pulumi.Archive.assetArchive(archiveContents)
-      let sourceCodeHash = Util_Bundle.hashString(
-        reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+      let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+        ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs",
+        ~packageDirs,
       )
 
       let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

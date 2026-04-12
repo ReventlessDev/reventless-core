@@ -61,7 +61,9 @@ let finished = {
   contents: false
 };
 
-function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs) {
+function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, memorySizeOpt, timeoutOpt) {
+  let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
+  let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts_parent = parent;
   let opts = {
     parent: opts_parent
@@ -69,15 +71,8 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs) {
   let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs";`;
-  let archiveContents = {};
-  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
-  Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
-    archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
-  });
-  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", code, sourceCodeHash, envVars, 1024, 30, opts);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts);
   EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllStateViewSlices", channelSpecs, runtime, opts);
 }
 
@@ -121,7 +116,7 @@ function finishWithDcbEventLog(dcbEventLog) {
           channel: channel,
           eventTopics: eventTopics,
           resources: allQueryDbResources
-        }]);
+        }], undefined, undefined);
     } else {
       console.warn("StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog: DCB EventLog has no parent");
     }
@@ -144,10 +139,6 @@ function finish() {
     ]);
     let parent = grandParent.contents;
     if (parent !== undefined) {
-      let opts_parent = parent;
-      let opts = {
-        parent: opts_parent
-      };
       let handlerOutputs = [];
       let packageDirs = {};
       storedSpecs.forEach(spec => {
@@ -168,20 +159,7 @@ function finish() {
         }
         console.warn(`StateViewSliceRuntime_Builder_Single: no handler registered for ` + spec.componentName);
       });
-      let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
-      let envVars = {};
-      envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-      let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs";`;
-      let archiveContents = {};
-      archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
-      Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
-        archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
-      });
-      let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-      let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", code, sourceCodeHash, envVars, match[0], match[1], opts);
-      let channelSpecs = storedSpecs.map(param => param.channelSpec);
-      EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllStateViewSlices", channelSpecs, runtime, opts);
+      buildLambda(parent, handlerOutputs, packageDirs, storedSpecs.map(param => param.channelSpec), match[0], match[1]);
     } else {
       console.warn(`StateViewSliceRuntime_Builder_Single.finish: grandParent not set`);
     }

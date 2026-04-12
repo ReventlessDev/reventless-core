@@ -185,6 +185,9 @@ let finish = () =>
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
 
+        // Build HANDLER_CONFIG as a single JSON env var.
+        // Each handler's dynamic values (table name, queue URL/ARN) are Pulumi Outputs
+        // that resolve at deploy time. Static values (module paths) are plain strings.
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
         let packageDirs: dict<string> = Dict.make()
 
@@ -223,24 +226,10 @@ let finish = () =>
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
 
-        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs";`
-
-        let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-        archiveContents->Dict.set(
-          "index.mjs",
-          Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-        )
-        packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-          archiveContents->Dict.set(
-            `node_modules/${pkgName}`,
-            Util_Bundle.createFilteredPackageArchive(pkgRoot)
-            ->Pulumi.Archive.archiveToAssetOrArchive,
-          )
-        })
-
-        let code = Pulumi.Archive.assetArchive(archiveContents)
-        let sourceCodeHash = Util_Bundle.hashString(
-          reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+        // Build AssetArchive: static re-export + user packages
+        let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+          ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs",
+          ~packageDirs,
         )
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

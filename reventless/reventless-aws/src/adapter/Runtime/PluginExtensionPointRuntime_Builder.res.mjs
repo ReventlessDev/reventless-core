@@ -70,12 +70,12 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     return `{"queueUrl":"` + queueUrl + `","pluginReadModelTableName":"` + rmTable + `","schedulerRoleArn":"` + schedRoleArn + `","schedulerQueueArn":"` + schedQueueArn + `","schedulerQueueName":"` + schedQueueName + `","publishToAggregates":{` + publishToAggregatesJson + `}}`;
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
-  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs";`;
-  let archiveContents = {};
-  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
-  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode);
-  connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, code, sourceCodeHash, envVars, memorySize, timeout, opts));
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs", {});
+  connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts));
+}
+
+function finish() {
+  
 }
 
 let CommandTopicChannel;
@@ -88,5 +88,6 @@ export {
   info,
   registerPluginExtensionPoint,
   forCommandTopic,
+  finish,
 }
 /* @pulumi/pulumi Not a pure module */

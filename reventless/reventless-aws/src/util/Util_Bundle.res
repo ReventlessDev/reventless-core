@@ -12,3 +12,11 @@ external hashString: string => string = "hashString"
 
 @module("./Util_Bundle.mjs")
 external createFilteredPackageArchive: string => Pulumi.Archive.t = "createFilteredPackageArchive"
+
+type codeArchive = {
+  code: Pulumi.Archive.t,
+  sourceCodeHash: string,
+}
+
+@module("./Util_Bundle.mjs")
+external buildCodeArchive: (~entryPointModule: string, ~packageDirs: dict<string>) => codeArchive = "buildCodeArchive"

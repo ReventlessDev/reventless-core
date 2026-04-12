@@ -33,7 +33,10 @@ let forBucketCallback = (
   | Some(info) =>
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 
-    // Build publishToAggregates env var mapping
+    // Build publishToAggregates env var mapping.
+    // Task Lambdas use PUBLISH_<Agg>_QUEUE_URL; Extension Point Lambdas use PTA_<Agg>_QUEUE_URL.
+    // The prefix difference is intentional — they are distinct feature areas with separate builders.
+    // Each entry point reads whichever prefix its own builder writes, so the two sets never clash.
     let publishToAggregatesEnvVars: dict<string> = Dict.make()
     info.publishToAggregatesQueueUrls->Dict.forEachWithKey((queueUrlOutput, aggName) => {
       let envVar = `PUBLISH_${aggName}_QUEUE_URL`
@@ -61,24 +64,9 @@ let forBucketCallback = (
     let pkg = Util_Bundle.extractPackageName(info.callbackModulePath)
     packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
 
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.mjs";`
-
-    let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-    archiveContents->Dict.set(
-      "index.mjs",
-      Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-    )
-    packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-      archiveContents->Dict.set(
-        `node_modules/${pkgName}`,
-        Util_Bundle.createFilteredPackageArchive(pkgRoot)
-        ->Pulumi.Archive.archiveToAssetOrArchive,
-      )
-    })
-
-    let code = Pulumi.Archive.assetArchive(archiveContents)
-    let sourceCodeHash = Util_Bundle.hashString(
-      reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+    let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+      ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.mjs",
+      ~packageDirs,
     )
 
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

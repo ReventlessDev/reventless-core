@@ -91,7 +91,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
 
 let finished = ref(false)
 
-let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs) => {
+let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs, ~memorySize=1024, ~timeout=30) => {
   let opts = {Pulumi.ComponentResource.parent: parent}
   let handlerConfigOutput =
     Pulumi.Output.all(handlerOutputs)
@@ -102,24 +102,9 @@ let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs) => {
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
 
-  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs";`
-
-  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-  archiveContents->Dict.set(
-    "index.mjs",
-    Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-  )
-  packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-    archiveContents->Dict.set(
-      `node_modules/${pkgName}`,
-      Util_Bundle.createFilteredPackageArchive(pkgRoot)
-      ->Pulumi.Archive.archiveToAssetOrArchive,
-    )
-  })
-
-  let code = Pulumi.Archive.assetArchive(archiveContents)
-  let sourceCodeHash = Util_Bundle.hashString(
-    reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+  let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs",
+    ~packageDirs,
   )
 
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
@@ -127,8 +112,8 @@ let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs) => {
     ~code,
     ~sourceCodeHash,
     ~envVars,
-    ~memorySize=1024,
-    ~timeout=30,
+    ~memorySize,
+    ~timeout,
     ~opts,
   )
 
@@ -205,8 +190,6 @@ let finish = () =>
 
       switch grandParent.contents {
       | Some(parent) =>
-        let opts = {Pulumi.ComponentResource.parent: parent}
-
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
         let packageDirs: dict<string> = Dict.make()
 
@@ -233,51 +216,13 @@ let finish = () =>
           }
         })
 
-        let handlerConfigOutput =
-          Pulumi.Output.all(handlerOutputs)
-          ->Pulumi.Output.apply(handlers =>
-            `{"handlers":[${handlers->Array.join(",")}]}`
-          )
-
-        let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
-        envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
-
-        let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs";`
-
-        let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-        archiveContents->Dict.set(
-          "index.mjs",
-          Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-        )
-        packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-          archiveContents->Dict.set(
-            `node_modules/${pkgName}`,
-            Util_Bundle.createFilteredPackageArchive(pkgRoot)
-            ->Pulumi.Archive.archiveToAssetOrArchive,
-          )
-        })
-
-        let code = Pulumi.Archive.assetArchive(archiveContents)
-        let sourceCodeHash = Util_Bundle.hashString(
-          reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
-        )
-
-        let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
-          ~name="AllStateViewSlices",
-          ~code,
-          ~sourceCodeHash,
-          ~envVars,
+        buildLambda(
+          ~parent,
+          ~handlerOutputs,
+          ~packageDirs,
+          ~channelSpecs=storedSpecs->Array.map(({channelSpec}) => channelSpec),
           ~memorySize=maxMemorySize,
           ~timeout=maxTimeout,
-          ~opts,
-        )
-
-        let channelSpecs = storedSpecs->Array.map(({channelSpec}) => channelSpec)
-        let _connectResources = EventCollectorChannel.connect(
-          ~name="AllStateViewSlices",
-          ~channelSpecs,
-          ~runtime,
-          ~opts,
         )
       | None =>
         Console.warn(

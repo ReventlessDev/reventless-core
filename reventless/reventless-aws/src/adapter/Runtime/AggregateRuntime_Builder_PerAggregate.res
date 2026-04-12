@@ -164,6 +164,9 @@ let finished = ref(false)
 
 let finish = () =>
   if !finished.contents {
+    // PerAggregate strategy: CommandTopic and EventCollector share one Lambda per aggregate.
+    // Unlike Single (one Lambda for all) or Micro (one Lambda per function), here memorySize
+    // and timeout are a single value per aggregate — the max across all registered functions.
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
       specs->Array.forEach(spec => {
@@ -200,24 +203,9 @@ let finish = () =>
           packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
 
           // Build AssetArchive: static re-export + user packages
-          let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs";`
-
-          let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-          archiveContents->Dict.set(
-            "index.mjs",
-            Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-          )
-          packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-            archiveContents->Dict.set(
-              `node_modules/${pkgName}`,
-              Util_Bundle.createFilteredPackageArchive(pkgRoot)
-              ->Pulumi.Archive.archiveToAssetOrArchive,
-            )
-          })
-
-          let code = Pulumi.Archive.assetArchive(archiveContents)
-          let sourceCodeHash = Util_Bundle.hashString(
-            reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+          let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+            ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs",
+            ~packageDirs,
           )
 
           let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

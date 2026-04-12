@@ -204,8 +204,6 @@ let finish = () =>
           let behaviorModule =
             info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
-          let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs";`
-
           // --- CommandTopic Lambda ---
           let cmdTopicHandlerConfigOutput =
             Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
@@ -216,22 +214,9 @@ let finish = () =>
           let cmdTopicEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
           cmdTopicEnvVars->Dict.set("HANDLER_CONFIG", cmdTopicHandlerConfigOutput->Pulumi.Output.asInput)
 
-          let cmdTopicArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-          cmdTopicArchiveContents->Dict.set(
-            "index.mjs",
-            Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-          )
-          packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-            cmdTopicArchiveContents->Dict.set(
-              `node_modules/${pkgName}`,
-              Util_Bundle.createFilteredPackageArchive(pkgRoot)
-              ->Pulumi.Archive.archiveToAssetOrArchive,
-            )
-          })
-
-          let cmdTopicCode = Pulumi.Archive.assetArchive(cmdTopicArchiveContents)
-          let cmdTopicSourceCodeHash = Util_Bundle.hashString(
-            reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+          let {code: cmdTopicCode, sourceCodeHash: cmdTopicSourceCodeHash} = Util_Bundle.buildCodeArchive(
+            ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs",
+            ~packageDirs,
           )
 
           let cmdTopicName = baseName ++ "CmdTopic"
@@ -258,22 +243,9 @@ let finish = () =>
             let cmdGenEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
             cmdGenEnvVars->Dict.set("HANDLER_CONFIG", cmdGenHandlerConfigOutput->Pulumi.Output.asInput)
 
-            let cmdGenArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-            cmdGenArchiveContents->Dict.set(
-              "index.mjs",
-              Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-            )
-            packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-              cmdGenArchiveContents->Dict.set(
-                `node_modules/${pkgName}`,
-                Util_Bundle.createFilteredPackageArchive(pkgRoot)
-                ->Pulumi.Archive.archiveToAssetOrArchive,
-              )
-            })
-
-            let cmdGenCode = Pulumi.Archive.assetArchive(cmdGenArchiveContents)
-            let cmdGenSourceCodeHash = Util_Bundle.hashString(
-              reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+            let {code: cmdGenCode, sourceCodeHash: cmdGenSourceCodeHash} = Util_Bundle.buildCodeArchive(
+              ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs",
+              ~packageDirs,
             )
 
             let cmdGenName = baseName ++ "CmdGen"
@@ -315,24 +287,9 @@ let finish = () =>
             evtMapperPackageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
             evtMapperPackageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
-            let evtMapperReExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs";`
-
-            let evtMapperArchiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-            evtMapperArchiveContents->Dict.set(
-              "index.mjs",
-              Pulumi.Asset.stringAsset(evtMapperReExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-            )
-            evtMapperPackageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-              evtMapperArchiveContents->Dict.set(
-                `node_modules/${pkgName}`,
-                Util_Bundle.createFilteredPackageArchive(pkgRoot)
-                ->Pulumi.Archive.archiveToAssetOrArchive,
-              )
-            })
-
-            let evtMapperCode = Pulumi.Archive.assetArchive(evtMapperArchiveContents)
-            let evtMapperSourceCodeHash = Util_Bundle.hashString(
-              evtMapperReExportCode ++ evtMapperPackageDirs->Dict.keysToArray->Array.join(","),
+            let {code: evtMapperCode, sourceCodeHash: evtMapperSourceCodeHash} = Util_Bundle.buildCodeArchive(
+              ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs",
+              ~packageDirs=evtMapperPackageDirs,
             )
 
             let evtMapperName = baseName ++ "EvtMapper"

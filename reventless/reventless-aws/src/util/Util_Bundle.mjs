@@ -88,6 +88,28 @@ export function hashString(str) {
 }
 
 /**
+ * Build a Lambda code AssetArchive with a static re-export entry point and optional user packages.
+ * Centralises the archive-building pattern used by every runtime builder.
+ *
+ * @param {string} entryPointModule - npm specifier of the entry point to re-export
+ *   (e.g. "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs")
+ * @param {Object} packageDirs - { [pkgName]: pkgRoot } — user packages to bundle under node_modules/.
+ *   Pass an empty object when all imports are satisfied by the Lambda Layer.
+ * @returns {{ code: pulumi.asset.AssetArchive, sourceCodeHash: string }}
+ */
+export function buildCodeArchive(entryPointModule, packageDirs) {
+  const reExportCode = `export { handler } from "${entryPointModule}";`;
+  const archiveContents = {};
+  archiveContents["index.mjs"] = new pulumi.asset.StringAsset(reExportCode);
+  for (const [pkgName, pkgRoot] of Object.entries(packageDirs)) {
+    archiveContents[`node_modules/${pkgName}`] = createFilteredPackageArchive(pkgRoot);
+  }
+  const code = new pulumi.asset.AssetArchive(archiveContents);
+  const sourceCodeHash = hashString(reExportCode + Object.keys(packageDirs).join(","));
+  return { code, sourceCodeHash };
+}
+
+/**
  * Create a filtered AssetArchive from a package directory.
  * Only includes runtime-essential files: *.res.mjs and package.json.
  * Excludes lib/, tests/, __mocks__/, *.res, CHANGELOG, README, node_modules/, etc.
