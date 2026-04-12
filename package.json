@@ -22,7 +22,7 @@
     "rescript": "^12.2.0"
   },
   "scripts": {
-    "build": "rescript build && rescript build examples/online-shop-aggregates/online-shop-aggregates && rescript build examples/online-shop-dcb/online-shop-dcb && rescript build examples/online-shop-hybrid/platform",
+    "build": "rescript build && rescript build examples/online-shop-aggregates/platform-in-memory && rescript build examples/online-shop-dcb/platform-in-memory && rescript build examples/online-shop-hybrid/platform-in-memory",
     "watch": "rescript watch",
     "clean": "rescript clean",
     "format": "rescript format",

@@ -1,5 +1,5 @@
 {
-  "name": "@reventlessdev/online-shop-hybrid-platform",
+  "name": "@reventlessdev/online-shop-hybrid-platform-in-memory",
   "version": "1.0.0-alpha.17",
   "description": "Online Shop Hybrid example — full platform with Catalog + Ordering plugins (in-memory)",
   "scripts": {

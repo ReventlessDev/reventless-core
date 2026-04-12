@@ -1,5 +1,5 @@
 {
-  "name": "@reventlessdev/online-shop-dcb",
+  "name": "@reventlessdev/online-shop-dcb-platform-in-memory",
   "version": "1.0.0-alpha.11",
   "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
   "license": "MIT",

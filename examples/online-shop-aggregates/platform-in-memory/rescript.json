@@ -1,5 +1,5 @@
 {
-  "name": "@reventlessdev/online-shop-dcb",
+  "name": "@reventlessdev/online-shop-aggregates-platform-in-memory",
   "package-specs": {
     "module": "esmodule",
     "in-source": true
@@ -20,15 +20,14 @@
   ],
   "dependencies": [
     "sury",
-    "@reventlessdev/online-shop-dcb-catalog-spec",
-    "@reventlessdev/online-shop-dcb-ordering-spec",
-    "@reventlessdev/online-shop-dcb-catalog",
-    "@reventlessdev/online-shop-dcb-ordering",
-    "@reventlessdev/reventless-infra",
+    "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-in-memory",
-    "@reventlessdev/rescript-pulumi-pulumi"
+    "@reventlessdev/online-shop-aggregates-catalog-spec",
+    "@reventlessdev/online-shop-aggregates-ordering-spec",
+    "@reventlessdev/online-shop-aggregates-catalog",
+    "@reventlessdev/online-shop-aggregates-ordering"
   ],
-  "compiler-flags": [],
   "suffix": ".res.mjs"
 }
